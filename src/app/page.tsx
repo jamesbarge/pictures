@@ -1,65 +1,90 @@
-import Image from "next/image";
+import { db } from "@/db";
+import { screenings, films, cinemas } from "@/db/schema";
+import { eq, gte, lte, and } from "drizzle-orm";
+import { startOfDay, endOfDay, addDays } from "date-fns";
+import { CalendarView } from "@/components/calendar/calendar-view";
+import { Header } from "@/components/layout/header";
 
-export default function Home() {
+export default async function Home() {
+  // Fetch a wide date range - filtering happens client-side via the filter store
+  const startDate = startOfDay(new Date());
+  const endDate = endOfDay(addDays(startDate, 30)); // Next 30 days
+
+  const allScreenings = await db
+    .select({
+      id: screenings.id,
+      datetime: screenings.datetime,
+      format: screenings.format,
+      screen: screenings.screen,
+      eventType: screenings.eventType,
+      eventDescription: screenings.eventDescription,
+      isSpecialEvent: screenings.isSpecialEvent,
+      bookingUrl: screenings.bookingUrl,
+      film: {
+        id: films.id,
+        title: films.title,
+        year: films.year,
+        directors: films.directors,
+        posterUrl: films.posterUrl,
+        runtime: films.runtime,
+        isRepertory: films.isRepertory,
+        genres: films.genres,
+        decade: films.decade,
+      },
+      cinema: {
+        id: cinemas.id,
+        name: cinemas.name,
+        shortName: cinemas.shortName,
+      },
+    })
+    .from(screenings)
+    .innerJoin(films, eq(screenings.filmId, films.id))
+    .innerJoin(cinemas, eq(screenings.cinemaId, cinemas.id))
+    .where(
+      and(
+        gte(screenings.datetime, startDate),
+        lte(screenings.datetime, endDate)
+      )
+    )
+    .orderBy(screenings.datetime);
+
+  // Get cinema count for stats
+  const allCinemas = await db.select().from(cinemas);
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="min-h-screen bg-background-primary">
+      {/* Unified Header with Filters */}
+      <Header cinemas={allCinemas.map(c => ({ id: c.id, name: c.name, shortName: c.shortName }))} />
+
+      {/* Main Content */}
+      <main className="max-w-6xl mx-auto px-4 py-6">
+        {/* Stats Bar */}
+        <div className="flex items-center gap-4 mb-6 text-sm text-text-tertiary">
+          <span className="flex items-center gap-1.5">
+            <div className="w-2 h-2 bg-accent-green rounded-full" />
+            {allCinemas.length} cinemas
+          </span>
+          <span className="text-white/20">•</span>
+          <span>{allScreenings.length} screenings</span>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+
+        {/* Calendar View */}
+        <CalendarView screenings={allScreenings} />
+
+        {/* Empty State Helper */}
+        {allScreenings.length === 0 && (
+          <div className="mt-8 p-6 bg-background-secondary/50 border border-white/5 rounded-lg text-center">
+            <p className="text-text-secondary mb-4">
+              No screenings yet. Seed some test data to see the calendar in
+              action:
+            </p>
+            <code className="block bg-background-tertiary text-text-primary text-sm px-4 py-3 rounded-lg font-mono">
+              npm run db:seed-screenings
+            </code>
+          </div>
+        )}
       </main>
+
     </div>
   );
 }

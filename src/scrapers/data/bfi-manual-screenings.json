@@ -1,0 +1,163 @@
+{
+  "venue": "bfi-southbank",
+  "extractedAt": "2025-12-19T12:00:00Z",
+  "screenings": [
+    {
+      "filmTitle": "It Was Just an Accident",
+      "datetime": "2025-12-19T12:30:00",
+      "screen": "NFT4",
+      "bookingUrl": "https://whatson.bfi.org.uk/Online/default.asp?doWork::WScontent::loadArticle=Load&BOparam::WScontent::loadArticle::article_id=98E97E13-E464-4744-92CE-B7BD693AFDD8"
+    },
+    {
+      "filmTitle": "It's a Wonderful Life",
+      "datetime": "2025-12-19T14:30:00",
+      "screen": "NFT1",
+      "bookingUrl": "https://whatson.bfi.org.uk/Online/default.asp?doWork::WScontent::loadArticle=Load&BOparam::WScontent::loadArticle::article_id=8C58CE71-E39C-4CBB-81B6-37E7F0DA291C"
+    },
+    {
+      "filmTitle": "Sunset Boulevard",
+      "datetime": "2025-12-19T14:50:00",
+      "screen": "NFT4",
+      "bookingUrl": "https://whatson.bfi.org.uk/Online/default.asp?doWork::WScontent::loadArticle=Load&BOparam::WScontent::loadArticle::article_id=F3E1F1B7-5CFD-44B8-AD84-BB5ED2A35BAC"
+    },
+    {
+      "filmTitle": "The Apartment",
+      "datetime": "2025-12-19T18:00:00",
+      "screen": "NFT1",
+      "bookingUrl": "https://whatson.bfi.org.uk/Online/default.asp?doWork::WScontent::loadArticle=Load&BOparam::WScontent::loadArticle::article_id=31AC0FD5-1967-4845-B1AB-9E1B9D7C51E8"
+    },
+    {
+      "filmTitle": "Restoration: Beyond Oblivion",
+      "datetime": "2025-12-19T18:15:00",
+      "screen": "NFT2",
+      "eventType": "premiere",
+      "bookingUrl": "https://whatson.bfi.org.uk/Online/default.asp?doWork::WScontent::loadArticle=Load&BOparam::WScontent::loadArticle::article_id=10CAA90A-1645-492C-861D-942BE45F3224"
+    },
+    {
+      "filmTitle": "Lives of the Performers",
+      "datetime": "2025-12-19T18:20:00",
+      "screen": "NFT3",
+      "bookingUrl": "https://whatson.bfi.org.uk/Online/default.asp?doWork::WScontent::loadArticle=Load&BOparam::WScontent::loadArticle::article_id=3D28DEC2-9CE6-45F6-A022-E70867F48053"
+    },
+    {
+      "filmTitle": "Pillion",
+      "datetime": "2025-12-19T18:25:00",
+      "screen": "NFT4",
+      "bookingUrl": "https://whatson.bfi.org.uk/Online/default.asp?doWork::WScontent::loadArticle=Load&BOparam::WScontent::loadArticle::article_id=EDD032F9-46CB-4170-AF6D-FD587BDE6406"
+    },
+    {
+      "filmTitle": "The Seventh Veil",
+      "datetime": "2025-12-19T20:35:00",
+      "screen": "NFT3",
+      "bookingUrl": "https://whatson.bfi.org.uk/Online/default.asp?doWork::WScontent::loadArticle=Load&BOparam::WScontent::loadArticle::article_id=46F9B83D-1095-4DC9-B650-8E0D0C2FA270"
+    },
+    {
+      "filmTitle": "Carol",
+      "datetime": "2025-12-19T20:40:00",
+      "screen": "NFT1",
+      "bookingUrl": "https://whatson.bfi.org.uk/Online/default.asp?doWork::WScontent::loadArticle=Load&BOparam::WScontent::loadArticle::article_id=70E615D6-418C-4C4D-B0FF-145639B6AB6C"
+    },
+    {
+      "filmTitle": "Exorcist II: The Heretic",
+      "datetime": "2025-12-19T20:45:00",
+      "screen": "NFT2",
+      "bookingUrl": "https://whatson.bfi.org.uk/Online/default.asp?doWork::WScontent::loadArticle=Load&BOparam::WScontent::loadArticle::article_id=8612C4E1-7943-436E-A3CC-339FBFD7A190"
+    },
+    {
+      "filmTitle": "It Was Just an Accident",
+      "datetime": "2025-12-19T20:50:00",
+      "screen": "NFT4",
+      "bookingUrl": "https://whatson.bfi.org.uk/Online/default.asp?doWork::WScontent::loadArticle=Load&BOparam::WScontent::loadArticle::article_id=98E97E13-E464-4744-92CE-B7BD693AFDD8"
+    },
+    {
+      "filmTitle": "Tim Burton's The Nightmare Before Christmas",
+      "datetime": "2025-12-20T11:50:00",
+      "screen": "NFT2",
+      "bookingUrl": "https://whatson.bfi.org.uk/Online/default.asp?doWork::WScontent::loadArticle=Load&BOparam::WScontent::loadArticle::article_id=49C80474-8A07-4ED4-80B0-CED3E54596BA"
+    },
+    {
+      "filmTitle": "Equus",
+      "datetime": "2025-12-20T12:00:00",
+      "screen": "NFT3",
+      "bookingUrl": "https://whatson.bfi.org.uk/Online/default.asp?doWork::WScontent::loadArticle=Load&BOparam::WScontent::loadArticle::article_id=7C8EE8BC-4CB7-45A6-8C95-F51B9AFB0567"
+    },
+    {
+      "filmTitle": "Scrooge",
+      "datetime": "2025-12-20T13:00:00",
+      "screen": "NFT1",
+      "bookingUrl": "https://whatson.bfi.org.uk/Online/default.asp?doWork::WScontent::loadArticle=Load&BOparam::WScontent::loadArticle::article_id=DA01C901-FF14-40FB-AB54-C59F13CA920B"
+    },
+    {
+      "filmTitle": "At Berkeley",
+      "datetime": "2025-12-20T13:45:00",
+      "screen": "NFT2",
+      "bookingUrl": "https://whatson.bfi.org.uk/Online/default.asp?doWork::WScontent::loadArticle=Load&BOparam::WScontent::loadArticle::article_id=E48E5B7B-B2AB-44F4-BDF3-7CE5B4EE5548"
+    },
+    {
+      "filmTitle": "Daughters of the Dust",
+      "datetime": "2025-12-20T14:30:00",
+      "screen": "NFT4",
+      "bookingUrl": "https://whatson.bfi.org.uk/Online/default.asp?doWork::WScontent::loadArticle=Load&BOparam::WScontent::loadArticle::article_id=D36DC565-8535-46BA-BAC6-BD4D12950CCB"
+    },
+    {
+      "filmTitle": "Meet Me in St. Louis",
+      "datetime": "2025-12-20T14:50:00",
+      "screen": "NFT3",
+      "bookingUrl": "https://whatson.bfi.org.uk/Online/default.asp?doWork::WScontent::loadArticle=Load&BOparam::WScontent::loadArticle::article_id=48D9493C-D393-4BF4-803F-3700505BFD4A"
+    },
+    {
+      "filmTitle": "Imitation of Life",
+      "datetime": "2025-12-20T15:10:00",
+      "screen": "NFT1",
+      "bookingUrl": "https://whatson.bfi.org.uk/Online/default.asp?doWork::WScontent::loadArticle=Load&BOparam::WScontent::loadArticle::article_id=F4B24546-04A2-43A1-BAF0-408CC1C46244"
+    },
+    {
+      "filmTitle": "Where Eagles Dare",
+      "datetime": "2025-12-20T17:20:00",
+      "screen": "NFT3",
+      "bookingUrl": "https://whatson.bfi.org.uk/Online/default.asp?doWork::WScontent::loadArticle=Load&BOparam::WScontent::loadArticle::article_id=F0DDE3C3-60CF-451A-8A41-B944A7612DBD"
+    },
+    {
+      "filmTitle": "The Terminator",
+      "datetime": "2025-12-20T17:50:00",
+      "screen": "NFT1",
+      "bookingUrl": "https://whatson.bfi.org.uk/Online/default.asp?doWork::WScontent::loadArticle=Load&BOparam::WScontent::loadArticle::article_id=EC9F6378-602A-4DBE-9545-5F4516DAF8D7"
+    },
+    {
+      "filmTitle": "It Was Just an Accident",
+      "datetime": "2025-12-20T18:00:00",
+      "screen": "NFT4",
+      "bookingUrl": "https://whatson.bfi.org.uk/Online/default.asp?doWork::WScontent::loadArticle=Load&BOparam::WScontent::loadArticle::article_id=98E97E13-E464-4744-92CE-B7BD693AFDD8"
+    },
+    {
+      "filmTitle": "Tokyo Godfathers",
+      "datetime": "2025-12-20T18:30:00",
+      "screen": "NFT2",
+      "bookingUrl": "https://whatson.bfi.org.uk/Online/default.asp?doWork::WScontent::loadArticle=Load&BOparam::WScontent::loadArticle::article_id=680208BF-EEDC-46E1-A136-4A506A964729"
+    },
+    {
+      "filmTitle": "Terminator 2: Judgment Day",
+      "datetime": "2025-12-20T20:20:00",
+      "screen": "NFT1",
+      "bookingUrl": "https://whatson.bfi.org.uk/Online/default.asp?doWork::WScontent::loadArticle=Load&BOparam::WScontent::loadArticle::article_id=DAB25319-05F4-41A5-A560-C54A81EDF4FE"
+    },
+    {
+      "filmTitle": "It's a Wonderful Life",
+      "datetime": "2025-12-20T20:30:00",
+      "screen": "NFT3",
+      "bookingUrl": "https://whatson.bfi.org.uk/Online/default.asp?doWork::WScontent::loadArticle=Load&BOparam::WScontent::loadArticle::article_id=8C58CE71-E39C-4CBB-81B6-37E7F0DA291C"
+    },
+    {
+      "filmTitle": "Gremlins",
+      "datetime": "2025-12-20T20:40:00",
+      "screen": "NFT4",
+      "bookingUrl": "https://whatson.bfi.org.uk/Online/default.asp?doWork::WScontent::loadArticle=Load&BOparam::WScontent::loadArticle::article_id=6E8BB35F-EA78-478B-BC65-A3217911C210"
+    },
+    {
+      "filmTitle": "New Women",
+      "datetime": "2025-12-20T20:45:00",
+      "screen": "NFT2",
+      "bookingUrl": "https://whatson.bfi.org.uk/Online/default.asp?doWork::WScontent::loadArticle=Load&BOparam::WScontent::loadArticle::article_id=8681975D-4EC6-432C-B306-F78A48F68708"
+    }
+  ]
+}

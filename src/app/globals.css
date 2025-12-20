@@ -1,26 +1,456 @@
 @import "tailwindcss";
 
+/* Postboxd Design System */
+/* Cinema-inspired dark theme - like sitting in the theater before the lights dim */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* ============================================
+   * SCALE TOKENS - The foundation
+   * ============================================ */
+
+  /* Spacing scale (4px base) */
+  --space-0: 0;
+  --space-1: 0.25rem;   /* 4px */
+  --space-2: 0.5rem;    /* 8px */
+  --space-3: 0.75rem;   /* 12px */
+  --space-4: 1rem;      /* 16px */
+  --space-5: 1.25rem;   /* 20px */
+  --space-6: 1.5rem;    /* 24px */
+  --space-8: 2rem;      /* 32px */
+  --space-10: 2.5rem;   /* 40px */
+  --space-12: 3rem;     /* 48px */
+  --space-16: 4rem;     /* 64px */
+
+  /* Radius scale */
+  --radius-none: 0;
+  --radius-sm: 0.25rem;   /* 4px */
+  --radius-md: 0.5rem;    /* 8px */
+  --radius-lg: 0.75rem;   /* 12px */
+  --radius-xl: 1rem;      /* 16px */
+  --radius-2xl: 1.5rem;   /* 24px */
+  --radius-full: 9999px;
+
+  /* Typography scale */
+  --text-xs: 0.75rem;     /* 12px */
+  --text-sm: 0.875rem;    /* 14px */
+  --text-base: 1rem;      /* 16px */
+  --text-lg: 1.125rem;    /* 18px */
+  --text-xl: 1.25rem;     /* 20px */
+  --text-2xl: 1.5rem;     /* 24px */
+  --text-3xl: 1.875rem;   /* 30px */
+  --text-4xl: 2.25rem;    /* 36px */
+
+  /* Line heights */
+  --leading-none: 1;
+  --leading-tight: 1.25;
+  --leading-snug: 1.375;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
+
+  /* Animation */
+  --duration-instant: 0ms;
+  --duration-fast: 100ms;
+  --duration-normal: 200ms;
+  --duration-slow: 300ms;
+  --duration-slower: 500ms;
+
+  --ease-default: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+
+  /* ============================================
+   * COLOR TOKENS - The palette
+   * ============================================
+   *
+   * Core palette:
+   * --prussian-blue: #001427 (deep cinematic dark)
+   * --deep-teal: #708d81 (muted sage/teal)
+   * --jasmine: #f4d58d (warm golden yellow)
+   * --brick-ember: #bf0603 (vibrant red)
+   * --blood-red: #8d0801 (deep crimson)
+   */
+
+  /* Background colors - prussian blue base */
+  --background-primary: #001427;
+  --background-secondary: #0a2235;
+  --background-tertiary: #143044;
+  --background-hover: #1e3d52;
+  --background-active: #284a61;
+
+  /* Surface overlays (for cards, dropdowns) */
+  --surface-overlay: rgba(112, 141, 129, 0.08);
+  --surface-overlay-hover: rgba(112, 141, 129, 0.12);
+  --surface-overlay-active: rgba(112, 141, 129, 0.16);
+
+  /* Text colors - WCAG AA compliant contrast ratios */
+  --text-primary: #F5F5F5;
+  --text-secondary: #94b3a8;  /* Lighter teal for better contrast (5.2:1) */
+  --text-tertiary: #708d81;   /* Original teal now tertiary (3.8:1 - OK for large text) */
+  --text-muted: #4a6b5e;
+
+  /* Accent colors - jasmine gold and ember reds */
+  --accent-gold: #f4d58d;
+  --accent-gold-light: #f7e0a8;
+  --accent-gold-dark: #d4b56d;
+  --accent-red: #bf0603;
+  --accent-red-dark: #8d0801;
+  --accent-teal: #708d81;
+  --accent-teal-light: #8aa89c;
+  --accent-green: #22C55E;
+  --accent-purple: #A855F7;
+
+  /* Border colors - teal-tinted */
+  --border-subtle: rgba(112, 141, 129, 0.12);
+  --border-default: rgba(112, 141, 129, 0.2);
+  --border-emphasis: rgba(112, 141, 129, 0.35);
+  --border-focus: var(--accent-gold);
+
+  /* Status colors */
+  --status-want-to-see: #708d81;
+  --status-seen: #22C55E;
+  --status-not-interested: #5a7268;
+
+  /* Format badge colors */
+  --format-35mm: #f4d58d;
+  --format-70mm: #bf0603;
+  --format-imax: #708d81;
+  --format-dcp: #5a7268;
+  --format-4k: #8aa89c;
+
+  /* ============================================
+   * COMPONENT TOKENS - Semantic values
+   * ============================================ */
+
+  /* Button */
+  --button-height-sm: 2rem;       /* 32px */
+  --button-height-md: 2.5rem;     /* 40px */
+  --button-height-lg: 3rem;       /* 48px */
+  --button-padding-x-sm: var(--space-3);
+  --button-padding-x-md: var(--space-4);
+  --button-padding-x-lg: var(--space-5);
+  --button-radius: var(--radius-lg);
+
+  /* Input */
+  --input-height-sm: 2rem;
+  --input-height-md: 2.5rem;
+  --input-height-lg: 3rem;
+  --input-padding-x: var(--space-3);
+  --input-radius: var(--radius-lg);
+  --input-border-width: 1px;
+
+  /* Card */
+  --card-padding: var(--space-4);
+  --card-radius: var(--radius-lg);
+  --card-border-width: 1px;
+
+  /* Dropdown/Select */
+  --dropdown-radius: var(--radius-xl);
+  --dropdown-padding: var(--space-2);
+  --dropdown-item-radius: var(--radius-lg);
+  --dropdown-item-padding-x: var(--space-3);
+  --dropdown-item-padding-y: var(--space-2);
+  --dropdown-max-height: 20rem;
+
+  /* Badge */
+  --badge-height: 1.5rem;
+  --badge-padding-x: var(--space-2);
+  --badge-radius: var(--radius-sm);
+
+  /* Focus ring */
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+  --focus-ring-color: var(--accent-gold);
+}
+
+/* Light mode overrides (for those who prefer daylight) */
+.light {
+  --background-primary: #f8f9f7;
+  --background-secondary: #eef2ef;
+  --background-tertiary: #e0e8e3;
+  --background-hover: #d2ddd6;
+  --background-active: #c4d2c9;
+
+  --surface-overlay: rgba(0, 20, 39, 0.03);
+  --surface-overlay-hover: rgba(0, 20, 39, 0.06);
+  --surface-overlay-active: rgba(0, 20, 39, 0.09);
+
+  --text-primary: #001427;
+  --text-secondary: #3d5a4c;
+  --text-tertiary: #5a7268;
+  --text-muted: #8aa89c;
+
+  --accent-gold: #c4a050;
+  --accent-gold-light: #d4b56d;
+  --accent-gold-dark: #a68530;
+
+  --accent-red: #8d0801;
+  --accent-red-dark: #6a0601;
+
+  --border-subtle: rgba(0, 20, 39, 0.08);
+  --border-default: rgba(0, 20, 39, 0.15);
+  --border-emphasis: rgba(0, 20, 39, 0.25);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* ============================================
+   * COLORS
+   * ============================================ */
+
+  /* Backgrounds */
+  --color-background-primary: var(--background-primary);
+  --color-background-secondary: var(--background-secondary);
+  --color-background-tertiary: var(--background-tertiary);
+  --color-background-hover: var(--background-hover);
+  --color-background-active: var(--background-active);
+
+  /* Surfaces */
+  --color-surface-overlay: var(--surface-overlay);
+  --color-surface-overlay-hover: var(--surface-overlay-hover);
+  --color-surface-overlay-active: var(--surface-overlay-active);
+
+  /* Text */
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+  --color-text-muted: var(--text-muted);
+
+  /* Accents */
+  --color-accent-gold: var(--accent-gold);
+  --color-accent-gold-light: var(--accent-gold-light);
+  --color-accent-gold-dark: var(--accent-gold-dark);
+  --color-accent-red: var(--accent-red);
+  --color-accent-red-dark: var(--accent-red-dark);
+  --color-accent-teal: var(--accent-teal);
+  --color-accent-teal-light: var(--accent-teal-light);
+  --color-accent-green: var(--accent-green);
+  --color-accent-purple: var(--accent-purple);
+
+  /* Borders */
+  --color-border-subtle: var(--border-subtle);
+  --color-border-default: var(--border-default);
+  --color-border-emphasis: var(--border-emphasis);
+  --color-border-focus: var(--border-focus);
+
+  /* Status */
+  --color-status-want-to-see: var(--status-want-to-see);
+  --color-status-seen: var(--status-seen);
+  --color-status-not-interested: var(--status-not-interested);
+
+  /* Formats */
+  --color-format-35mm: var(--format-35mm);
+  --color-format-70mm: var(--format-70mm);
+  --color-format-imax: var(--format-imax);
+  --color-format-dcp: var(--format-dcp);
+  --color-format-4k: var(--format-4k);
+
+  /* ============================================
+   * TYPOGRAPHY
+   * ============================================ */
+
+  --font-display: var(--font-instrument-serif), Georgia, serif;
+  --font-body: var(--font-inter), system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), monospace;
+
+  /* ============================================
+   * SHADOWS
+   * ============================================ */
+
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.4);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.5);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.6), 0 8px 10px -6px rgb(0 0 0 / 0.6);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.7);
+  --shadow-glow: 0 0 20px rgba(244, 213, 141, 0.25);
+  --shadow-glow-red: 0 0 20px rgba(191, 6, 3, 0.3);
+
+  /* ============================================
+   * ANIMATION
+   * ============================================ */
+
+  --animate-fade-in: fade-in var(--duration-normal) var(--ease-out);
+  --animate-slide-up: slide-up var(--duration-normal) var(--ease-out);
+  --animate-slide-down: slide-down var(--duration-normal) var(--ease-out);
+  --animate-scale-in: scale-in var(--duration-fast) var(--ease-spring);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* Base body styles */
+body {
+  background: var(--background-primary);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+}
+
+/* Film title styling - uses display font */
+.font-display {
+  font-family: var(--font-display);
+}
+
+/* Metadata styling - uses mono font */
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+/* Custom scrollbar for dark mode */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-emphasis);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary);
+}
+
+/* Focus styles for accessibility */
+:focus-visible {
+  outline: 2px solid var(--accent-gold);
+  outline-offset: 2px;
+}
+
+/* Selection styling */
+::selection {
+  background: var(--accent-gold);
+  color: var(--background-primary);
+}
+
+/* ============================================
+ * KEYFRAME ANIMATIONS
+ * ============================================ */
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@keyframes slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes ken-burns {
+  0% {
+    transform: scale(1) translate(0, 0);
+  }
+  50% {
+    transform: scale(1.08) translate(-1%, -1%);
+  }
+  100% {
+    transform: scale(1.04) translate(0.5%, 0.5%);
+  }
+}
+
+/* ============================================
+ * UTILITY CLASSES
+ * ============================================ */
+
+/* Animation utilities */
+.animate-fade-in {
+  animation: fade-in var(--duration-normal) var(--ease-out);
+}
+
+.animate-slide-up {
+  animation: slide-up var(--duration-normal) var(--ease-out);
+}
+
+.animate-slide-down {
+  animation: slide-down var(--duration-normal) var(--ease-out);
+}
+
+.animate-scale-in {
+  animation: scale-in var(--duration-fast) var(--ease-spring);
+}
+
+.animate-ken-burns {
+  animation: ken-burns 20s ease-in-out infinite alternate;
+}
+
+/* Skeleton loading state */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--background-secondary) 0%,
+    var(--background-tertiary) 50%,
+    var(--background-secondary) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Focus ring utility (for when you need to apply it manually) */
+.focus-ring {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* Glass effect for elevated surfaces */
+.glass {
+  background: rgba(0, 20, 39, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Gold gradient text */
+.text-gradient-gold {
+  background: linear-gradient(135deg, var(--accent-gold-light), var(--accent-gold));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Teal gradient text */
+.text-gradient-teal {
+  background: linear-gradient(135deg, var(--accent-teal-light), var(--accent-teal));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Red gradient text */
+.text-gradient-red {
+  background: linear-gradient(135deg, var(--accent-red), var(--accent-red-dark));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
