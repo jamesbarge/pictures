@@ -58,16 +58,6 @@ export default async function Home() {
 
       {/* Main Content */}
       <main className="max-w-6xl mx-auto px-4 py-6">
-        {/* Stats Bar */}
-        <div className="flex items-center gap-4 mb-6 text-sm text-text-tertiary">
-          <span className="flex items-center gap-1.5">
-            <div className="w-2 h-2 bg-accent-green rounded-full" />
-            {allCinemas.length} cinemas
-          </span>
-          <span className="text-white/20">•</span>
-          <span>{allScreenings.length} screenings</span>
-        </div>
-
         {/* Calendar View */}
         <CalendarView screenings={allScreenings} />
 

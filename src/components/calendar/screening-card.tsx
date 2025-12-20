@@ -10,7 +10,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { format } from "date-fns";
 import { cn } from "@/lib/cn";
-import { Button, FormatBadge, EventBadge, RepertoryBadge, Badge } from "@/components/ui";
+import { Button, FormatBadge, EventBadge, Badge } from "@/components/ui";
 import { ExternalLink } from "lucide-react";
 
 interface ScreeningCardProps {
@@ -75,12 +75,6 @@ export function ScreeningCard({ screening }: ScreeningCardProps) {
             sizes="(max-width: 640px) 80px, 96px"
             unoptimized={!film.posterUrl}
           />
-          {/* Repertory badge */}
-          {film.isRepertory && (
-            <div className="absolute top-1.5 left-1.5">
-              <RepertoryBadge size="sm" />
-            </div>
-          )}
         </div>
       </Link>
 
