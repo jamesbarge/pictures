@@ -511,8 +511,8 @@ function FilmSearchFilter({ mounted }: { mounted: boolean }) {
       {/* Keyboard shortcut hint */}
       {showShortcutHint && (
         <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-          <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-mono text-text-muted bg-background-tertiary rounded border border-border-subtle">
-            <span className="text-[9px]">⌘</span>K
+          <kbd className="hidden sm:inline-flex items-center justify-center gap-0.5 px-1.5 py-0.5 text-[11px] font-mono text-text-muted bg-background-tertiary rounded border border-border-subtle leading-none">
+            <span>⌘</span><span>K</span>
           </kbd>
         </div>
       )}
