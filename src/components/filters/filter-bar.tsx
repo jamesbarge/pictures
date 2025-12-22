@@ -28,7 +28,21 @@ export function FilterBar() {
     setMounted(true);
   }, []);
 
-  const activeCount = mounted ? filters.getActiveFilterCount() : 0;
+  // Compute activeCount by directly accessing state properties
+  // This creates proper Zustand subscriptions so the component re-renders when filters clear
+  const activeCount = mounted
+    ? (filters.filmSearch.trim() ? 1 : 0) +
+      filters.cinemaIds.length +
+      (filters.dateFrom || filters.dateTo ? 1 : 0) +
+      (filters.timeFrom !== null || filters.timeTo !== null ? 1 : 0) +
+      filters.formats.length +
+      filters.programmingTypes.length +
+      filters.decades.length +
+      filters.genres.length +
+      filters.timesOfDay.length +
+      (filters.hideSeen ? 1 : 0) +
+      (filters.hideNotInterested ? 1 : 0)
+    : 0;
 
   return (
     <div className="hidden sm:block border-b border-white/5 bg-background-primary/50 backdrop-blur-sm">

@@ -11,7 +11,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Settings, Search, ListFilter, X, Film, Calendar, Loader2 } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { useFilters } from "@/stores/filters";
+import { useFilters, type FilterState } from "@/stores/filters";
 
 interface SearchResult {
   id: string;
@@ -24,7 +24,7 @@ interface SearchResult {
 
 export function HeaderNav() {
   const [searchOpen, setSearchOpen] = useState(false);
-  const { clearAllFilters, getActiveFilterCount } = useFilters();
+  const filters = useFilters();
 
   // Listen for Cmd+K
   useEffect(() => {
@@ -49,22 +49,7 @@ export function HeaderNav() {
         >
           <Search className="w-5 h-5" />
         </button>
-        <button
-          onClick={() => {
-            if (getActiveFilterCount() > 0) {
-              clearAllFilters();
-            }
-          }}
-          className={cn(
-            "p-2 rounded-lg hover:bg-white/5 transition-colors",
-            getActiveFilterCount() > 0
-              ? "text-accent-gold hover:text-accent-gold"
-              : "text-text-secondary hover:text-text-primary"
-          )}
-          title={getActiveFilterCount() > 0 ? "Clear filters" : "Filters"}
-        >
-          <ListFilter className="w-5 h-5" />
-        </button>
+        <FilterButton filters={filters} />
         <Link
           href="/settings"
           className="p-2 rounded-lg hover:bg-white/5 text-text-secondary hover:text-text-primary transition-colors"
@@ -76,6 +61,42 @@ export function HeaderNav() {
       {/* Search Dialog */}
       {searchOpen && <SearchDialogContent onClose={() => setSearchOpen(false)} />}
     </>
+  );
+}
+
+// Separate component to properly subscribe to filter state changes
+function FilterButton({ filters }: { filters: FilterState & { clearAllFilters: () => void } }) {
+  // Compute count by directly accessing state - this creates proper Zustand subscriptions
+  const activeCount =
+    (filters.filmSearch.trim() ? 1 : 0) +
+    filters.cinemaIds.length +
+    (filters.dateFrom || filters.dateTo ? 1 : 0) +
+    (filters.timeFrom !== null || filters.timeTo !== null ? 1 : 0) +
+    filters.formats.length +
+    filters.programmingTypes.length +
+    filters.decades.length +
+    filters.genres.length +
+    filters.timesOfDay.length +
+    (filters.hideSeen ? 1 : 0) +
+    (filters.hideNotInterested ? 1 : 0);
+
+  return (
+    <button
+      onClick={() => {
+        if (activeCount > 0) {
+          filters.clearAllFilters();
+        }
+      }}
+      className={cn(
+        "p-2 rounded-lg hover:bg-white/5 transition-colors",
+        activeCount > 0
+          ? "text-accent-gold hover:text-accent-gold"
+          : "text-text-secondary hover:text-text-primary"
+      )}
+      title={activeCount > 0 ? "Clear filters" : "Filters"}
+    >
+      <ListFilter className="w-5 h-5" />
+    </button>
   );
 }
 
