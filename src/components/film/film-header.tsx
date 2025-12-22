@@ -10,8 +10,9 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Clock, Calendar, Globe, Star } from "lucide-react";
+import { Clock, Calendar, Globe, Star, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { getTmdbUrl, getImdbUrl, generateLetterboxdUrl } from "@/lib/external-urls";
 import { useFilters } from "@/stores/filters";
 import type { CastMember } from "@/types/film";
 
@@ -34,6 +35,10 @@ interface FilmHeaderProps {
     decade?: string | null;
     certification?: string | null;
     tmdbRating?: number | null;
+    // External IDs for linking
+    tmdbId?: number | null;
+    imdbId?: string | null;
+    letterboxdUrl?: string | null;
   };
 }
 
@@ -90,18 +95,30 @@ export function FilmHeader({ film }: FilmHeaderProps) {
             <div className="shrink-0 mx-auto sm:mx-0">
               <div className="relative w-48 h-72 sm:w-56 sm:h-84 rounded-lg overflow-hidden shadow-2xl bg-background-secondary ring-1 ring-white/10">
                 {/* Use poster URL or fall back to generated placeholder */}
-                <Image
-                  src={film.posterUrl || `/api/poster-placeholder?title=${encodeURIComponent(film.title)}${film.year ? `&year=${film.year}` : ""}`}
-                  alt={film.title}
-                  fill
-                  className={cn(
-                    "object-cover transition-all duration-700 ease-out",
-                    posterLoaded ? "opacity-100 scale-100" : "opacity-0 scale-105"
-                  )}
-                  priority
-                  unoptimized={!film.posterUrl}
-                  onLoad={() => setPosterLoaded(true)}
-                />
+                {film.posterUrl && !film.posterUrl.includes('poster-placeholder') ? (
+                  <Image
+                    src={film.posterUrl}
+                    alt={film.title}
+                    fill
+                    className={cn(
+                      "object-cover transition-all duration-700 ease-out",
+                      posterLoaded ? "opacity-100 scale-100" : "opacity-0 scale-105"
+                    )}
+                    priority
+                    onLoad={() => setPosterLoaded(true)}
+                  />
+                ) : (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={`/api/poster-placeholder?title=${encodeURIComponent(film.title)}${film.year ? `&year=${film.year}` : ""}`}
+                    alt={film.title}
+                    className={cn(
+                      "absolute inset-0 w-full h-full object-cover transition-all duration-700 ease-out",
+                      posterLoaded ? "opacity-100 scale-100" : "opacity-0 scale-105"
+                    )}
+                    onLoad={() => setPosterLoaded(true)}
+                  />
+                )}
 
                 {/* Loading skeleton */}
                 {!posterLoaded && (
@@ -246,6 +263,59 @@ export function FilmHeader({ film }: FilmHeaderProps) {
               </p>
             </div>
           )}
+
+          {/* External Links */}
+          <div className="mt-8 flex flex-wrap items-center gap-4">
+            {film.tmdbId && (
+              <a
+                href={getTmdbUrl(film.tmdbId)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cn(
+                  "inline-flex items-center gap-2 px-3 py-1.5 rounded-lg",
+                  "text-sm text-text-tertiary hover:text-text-primary",
+                  "bg-white/5 hover:bg-white/10",
+                  "border border-white/10 hover:border-white/20",
+                  "transition-all"
+                )}
+              >
+                <span className="font-medium">TMDB</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            )}
+            {film.imdbId && (
+              <a
+                href={getImdbUrl(film.imdbId)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cn(
+                  "inline-flex items-center gap-2 px-3 py-1.5 rounded-lg",
+                  "text-sm text-text-tertiary hover:text-text-primary",
+                  "bg-white/5 hover:bg-white/10",
+                  "border border-white/10 hover:border-white/20",
+                  "transition-all"
+                )}
+              >
+                <span className="font-medium">IMDb</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            )}
+            <a
+              href={film.letterboxdUrl || generateLetterboxdUrl(film.title)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(
+                "inline-flex items-center gap-2 px-3 py-1.5 rounded-lg",
+                "text-sm text-text-tertiary hover:text-text-primary",
+                "bg-white/5 hover:bg-white/10",
+                "border border-white/10 hover:border-white/20",
+                "transition-all"
+              )}
+            >
+              <span className="font-medium">Letterboxd</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+          </div>
         </div>
       </div>
     </div>

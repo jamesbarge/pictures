@@ -6,8 +6,13 @@ import {
   timestamp,
   jsonb,
   real,
+  // vector,
+  // index,
 } from "drizzle-orm/pg-core";
 import type { CastMember, ReleaseStatus } from "@/types/film";
+
+// OpenAI text-embedding-3-small produces 1536-dimensional vectors
+const EMBEDDING_DIMENSIONS = 1536;
 
 /**
  * Films table - stores film metadata enriched from TMDB
@@ -53,6 +58,10 @@ export const films = pgTable("films", {
   // External ratings
   tmdbRating: real("tmdb_rating"),
   letterboxdUrl: text("letterboxd_url"),
+
+  // AI-powered duplicate detection (commented out until pgvector extension is enabled)
+  // Embedding of title + year + director for semantic similarity search
+  // titleEmbedding: vector("title_embedding", { dimensions: EMBEDDING_DIMENSIONS }),
 
   // Metadata
   createdAt: timestamp("created_at", { withTimezone: true })
