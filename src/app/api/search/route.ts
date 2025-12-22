@@ -39,14 +39,22 @@ export async function GET(request: NextRequest) {
     .orderBy(sql`COUNT(${screenings.id}) DESC`, films.title)
     .limit(10);
 
-  return NextResponse.json({
-    films: results.map((r) => ({
-      id: r.id,
-      title: r.title,
-      year: r.year,
-      directors: r.directors,
-      posterUrl: r.posterUrl,
-      screeningCount: Number(r.screeningCount),
-    })),
-  });
+  return NextResponse.json(
+    {
+      films: results.map((r) => ({
+        id: r.id,
+        title: r.title,
+        year: r.year,
+        directors: r.directors,
+        posterUrl: r.posterUrl,
+        screeningCount: Number(r.screeningCount),
+      })),
+    },
+    {
+      headers: {
+        // Cache for 5 minutes at edge, serve stale for 10 min while revalidating
+        "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+      },
+    }
+  );
 }

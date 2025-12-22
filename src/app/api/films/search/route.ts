@@ -32,9 +32,18 @@ export async function GET(request: NextRequest) {
             lte(screenings.datetime, endDate)
           )
         )
-        .orderBy(asc(films.title));
+        .orderBy(asc(films.title))
+        .limit(200); // Safety cap for browse mode
 
-      return NextResponse.json({ results });
+      return NextResponse.json(
+        { results },
+        {
+          headers: {
+            // Cache browse results for 10 minutes (very stable data)
+            "Cache-Control": "public, s-maxage=600, stale-while-revalidate=1200",
+          },
+        }
+      );
     }
 
     // Search mode: filter by query, only films with upcoming screenings
@@ -67,7 +76,15 @@ export async function GET(request: NextRequest) {
       .orderBy(asc(films.title))
       .limit(50);
 
-    return NextResponse.json({ results });
+    return NextResponse.json(
+      { results },
+      {
+        headers: {
+          // Cache search results for 5 minutes
+          "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+        },
+      }
+    );
   } catch (error) {
     console.error("Film search error:", error);
     return NextResponse.json({ results: [] }, { status: 500 });

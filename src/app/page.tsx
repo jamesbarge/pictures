@@ -5,8 +5,9 @@ import { endOfDay, addDays } from "date-fns";
 import { CalendarView } from "@/components/calendar/calendar-view";
 import { Header } from "@/components/layout/header";
 
-// Force dynamic rendering to avoid ISR size limits
-export const dynamic = "force-dynamic";
+// ISR: Revalidate every 5 minutes for fast cached loads
+// Data only changes when scrapers run (weekly)
+export const revalidate = 300;
 
 export default async function Home() {
   // Fetch a wide date range - filtering happens client-side via the filter store

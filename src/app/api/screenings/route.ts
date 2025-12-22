@@ -68,7 +68,8 @@ export async function GET(request: NextRequest) {
       .innerJoin(films, eq(screenings.filmId, films.id))
       .innerJoin(cinemas, eq(screenings.cinemaId, cinemas.id))
       .where(and(...conditions))
-      .orderBy(screenings.datetime);
+      .orderBy(screenings.datetime)
+      .limit(500); // Safety cap to prevent huge responses
 
     // Filter by repertory if requested
     let filtered = results;
@@ -78,14 +79,22 @@ export async function GET(request: NextRequest) {
       filtered = results.filter((s) => !s.film.isRepertory);
     }
 
-    return NextResponse.json({
-      screenings: filtered,
-      meta: {
-        total: filtered.length,
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
+    return NextResponse.json(
+      {
+        screenings: filtered,
+        meta: {
+          total: filtered.length,
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString(),
+        },
       },
-    });
+      {
+        headers: {
+          // Cache for 5 minutes at edge, serve stale for 10 min while revalidating
+          "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+        },
+      }
+    );
   } catch (error) {
     console.error("Error fetching screenings:", error);
     return NextResponse.json(
