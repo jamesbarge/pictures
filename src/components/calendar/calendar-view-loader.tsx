@@ -135,7 +135,7 @@ export function CalendarViewWithLoader({ initialScreenings }: CalendarViewWithLo
           <button
             onClick={handleLoadMore}
             disabled={isLoading}
-            className="flex items-center gap-2 px-6 py-3 rounded-xl bg-background-secondary border border-white/10 text-text-secondary hover:text-text-primary hover:border-white/20 transition-all disabled:opacity-50"
+            className="flex items-center gap-2 px-6 py-3 rounded-xl bg-background-secondary border border-border-subtle text-text-secondary hover:text-text-primary hover:border-border-default shadow-card transition-all disabled:opacity-50"
           >
             {isLoading ? (
               <>

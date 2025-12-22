@@ -47,10 +47,10 @@ export function DateFilter({ currentPeriod }: DateFilterProps) {
           key={value}
           onClick={() => handlePeriodChange(value)}
           className={cn(
-            "px-3 py-1.5 text-sm rounded-full whitespace-nowrap transition-colors",
+            "px-3 py-1.5 text-sm rounded-full whitespace-nowrap transition-colors border",
             currentPeriod === value
-              ? "bg-accent-gold text-background-primary font-medium"
-              : "bg-white/5 text-text-secondary hover:bg-white/10 hover:text-text-primary"
+              ? "bg-accent-primary text-text-inverse font-medium border-accent-primary shadow-sm"
+              : "bg-background-secondary text-text-secondary border-border-subtle hover:bg-surface-overlay-hover hover:text-text-primary hover:border-border-default"
           )}
         >
           {label}

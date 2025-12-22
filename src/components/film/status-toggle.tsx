@@ -76,7 +76,7 @@ export function StatusToggle({ filmId, variant = "full" }: StatusToggleProps) {
                 key={status}
                 onClick={() => handleStatusChange(isActive ? null : status)}
                 className={cn(
-                  "p-2 rounded-lg border border-white/10 transition-all",
+                  "p-2 rounded-lg border border-border-default transition-all",
                   isActive ? config.activeClassName : "text-text-tertiary " + config.className
                 )}
                 title={config.label}
@@ -102,7 +102,7 @@ export function StatusToggle({ filmId, variant = "full" }: StatusToggleProps) {
           "flex items-center gap-2 px-4 py-2 rounded-lg border transition-all",
           currentStatus && activeConfig
             ? activeConfig.activeClassName
-            : "border-white/10 text-text-secondary hover:border-white/20 hover:text-text-primary"
+            : "border-border-default text-text-secondary hover:border-border-emphasis hover:text-text-primary"
         )}
       >
         {ActiveIcon ? (
@@ -127,7 +127,7 @@ export function StatusToggle({ filmId, variant = "full" }: StatusToggleProps) {
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute top-full left-0 mt-2 py-1 bg-background-secondary border border-white/10 rounded-lg shadow-xl z-50 min-w-[180px]">
+        <div className="absolute top-full left-0 mt-2 py-1 bg-background-secondary border border-border-default rounded-lg shadow-elevated z-50 min-w-[180px]">
           {(Object.entries(statusConfig) as [Exclude<FilmStatus, null>, typeof statusConfig["want_to_see"]][]).map(
             ([status, config]) => {
               const Icon = config.icon;
@@ -141,7 +141,7 @@ export function StatusToggle({ filmId, variant = "full" }: StatusToggleProps) {
                     "w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors",
                     isActive
                       ? config.activeClassName
-                      : "text-text-secondary hover:text-text-primary hover:bg-white/5"
+                      : "text-text-secondary hover:text-text-primary hover:bg-surface-overlay-hover"
                   )}
                 >
                   <Icon className="w-4 h-4" />

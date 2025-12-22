@@ -66,15 +66,14 @@ export function ScreeningCard({ screening }: ScreeningCardProps) {
   return (
     <article
       className={cn(
-        "group relative flex flex-col rounded-xl overflow-hidden cursor-pointer h-full",
-        "bg-background-secondary/30 border border-white/[0.06]",
-        // Enhanced hover state
-        "hover:border-accent-gold/30 hover:bg-background-secondary/60",
-        "hover:shadow-xl hover:shadow-black/30",
-        "hover:scale-[1.02] hover:-translate-y-1 transform-gpu",
+        "group relative flex flex-col rounded-lg overflow-hidden cursor-pointer h-full",
+        "bg-background-secondary border border-border-subtle",
+        // Refined hover state - subtle lift with warm shadow
+        "hover:border-accent-primary/30 hover:shadow-card-hover",
+        "hover:-translate-y-0.5 transform-gpu",
         "transition-all duration-300 ease-out",
         // Focus-within for keyboard navigation
-        "focus-within:ring-2 focus-within:ring-accent-gold/50 focus-within:ring-offset-2 focus-within:ring-offset-background-primary"
+        "focus-within:ring-2 focus-within:ring-accent-primary/40 focus-within:ring-offset-2 focus-within:ring-offset-background-primary"
       )}
       aria-label={`${film.title} screening at ${cinema.name}, ${formattedDate} at ${time}`}
     >
@@ -103,13 +102,13 @@ export function ScreeningCard({ screening }: ScreeningCardProps) {
         )}
 
         {/* Gradient overlay for better text readability */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-60 group-hover:opacity-70 transition-opacity" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-50 group-hover:opacity-60 transition-opacity" />
 
         {/* Time badge - floating on poster */}
         <div className="absolute top-3 right-3">
           <time
             dateTime={new Date(datetime).toISOString()}
-            className="inline-flex items-center px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-sm font-mono text-sm font-semibold text-accent-gold border border-accent-gold/20"
+            className="inline-flex items-center px-2 py-1 rounded-md bg-accent-highlight font-mono text-xs font-semibold text-text-inverse shadow-sm"
           >
             {time}
           </time>
@@ -121,10 +120,10 @@ export function ScreeningCard({ screening }: ScreeningCardProps) {
             <button
               onClick={(e) => handleStatusClick(e, "want_to_see")}
               className={cn(
-                "p-1.5 rounded-lg backdrop-blur-sm transition-all",
+                "p-1.5 rounded-md backdrop-blur-sm transition-all",
                 status === "want_to_see"
-                  ? "bg-pink-500/30 text-pink-400"
-                  : "bg-black/50 text-white/60 hover:text-pink-400 hover:bg-pink-500/20"
+                  ? "bg-accent-danger/40 text-accent-danger"
+                  : "bg-black/50 text-white/70 hover:text-accent-danger hover:bg-accent-danger/20"
               )}
               title={status === "want_to_see" ? "Remove from watchlist" : "Add to watchlist"}
               aria-label={status === "want_to_see" ? "Remove from watchlist" : "Add to watchlist"}
@@ -134,10 +133,10 @@ export function ScreeningCard({ screening }: ScreeningCardProps) {
             <button
               onClick={(e) => handleStatusClick(e, "seen")}
               className={cn(
-                "p-1.5 rounded-lg backdrop-blur-sm transition-all",
+                "p-1.5 rounded-md backdrop-blur-sm transition-all",
                 status === "seen"
-                  ? "bg-green-500/30 text-green-400"
-                  : "bg-black/50 text-white/60 hover:text-green-400 hover:bg-green-500/20"
+                  ? "bg-accent-success/40 text-accent-success"
+                  : "bg-black/50 text-white/70 hover:text-accent-success hover:bg-accent-success/20"
               )}
               title={status === "seen" ? "Unmark as seen" : "Mark as seen"}
               aria-label={status === "seen" ? "Unmark as seen" : "Mark as seen"}
@@ -149,7 +148,7 @@ export function ScreeningCard({ screening }: ScreeningCardProps) {
 
         {/* Cinema badge - bottom of poster */}
         <div className="absolute bottom-3 left-3 right-3">
-          <span className="inline-block px-2 py-1 rounded-md bg-black/60 backdrop-blur-sm text-xs font-medium text-text-primary truncate max-w-full">
+          <span className="inline-block px-2 py-1 rounded-md bg-accent-primary/90 backdrop-blur-sm text-xs font-medium text-text-inverse truncate max-w-full shadow-sm">
             {cinema.shortName || cinema.name}
           </span>
         </div>
@@ -161,7 +160,7 @@ export function ScreeningCard({ screening }: ScreeningCardProps) {
         className="flex flex-col flex-1 p-2 focus:outline-none"
       >
         {/* Title */}
-        <h3 className="font-display text-xs sm:text-sm text-text-primary group-hover:text-accent-gold transition-colors line-clamp-1 leading-tight">
+        <h3 className="font-display text-xs sm:text-sm text-text-primary group-hover:text-accent-primary transition-colors line-clamp-1 leading-tight">
           {film.title}
           {film.year && (
             <span className="text-text-tertiary font-body text-[10px] ml-1">

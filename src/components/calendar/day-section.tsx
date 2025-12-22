@@ -66,8 +66,8 @@ export function DaySection({ date, screenings }: DaySectionProps) {
 
   return (
     <section className="relative">
-      {/* Sticky Date Header - Full width with subtle gradient */}
-      <header className="sticky top-[105px] z-10 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-4 bg-gradient-to-b from-background-primary via-background-primary to-background-primary/95 backdrop-blur-sm border-b border-white/[0.04]">
+      {/* Sticky Date Header - Full width with solid background for light theme */}
+      <header className="sticky top-[105px] z-10 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-4 bg-background-primary border-b border-border-subtle">
         <div className="flex items-baseline gap-3">
           <h2 className="font-display text-2xl sm:text-3xl text-text-primary tracking-tight">
             {primary}

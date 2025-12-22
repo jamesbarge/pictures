@@ -77,7 +77,7 @@ export function DropdownItem({
         "text-sm transition-colors cursor-pointer",
         "focus:outline-none",
         destructive
-          ? "text-accent-red hover:bg-accent-red/10 focus:bg-accent-red/10"
+          ? "text-accent-danger hover:bg-accent-danger/10 focus:bg-accent-danger/10"
           : "text-text-secondary hover:bg-surface-overlay-hover hover:text-text-primary focus:bg-surface-overlay-hover focus:text-text-primary",
         disabled && "opacity-50 cursor-not-allowed pointer-events-none"
       )}
@@ -240,10 +240,10 @@ export function Select({
             "bg-background-secondary border border-border-default",
             "rounded-[var(--input-radius)]",
             "text-left transition-all duration-[var(--duration-fast)]",
-            "focus:outline-none focus:ring-2 focus:ring-accent-gold/50 focus:border-accent-gold/50",
+            "focus:outline-none focus:ring-2 focus:ring-accent-primary/30 focus:border-accent-primary",
             "hover:border-border-emphasis",
             "disabled:bg-background-tertiary disabled:text-text-muted disabled:cursor-not-allowed",
-            error && "border-accent-red",
+            error && "border-accent-danger",
             sizeStyles[size],
             fullWidth ? "w-full" : "min-w-[180px]"
           )}
@@ -296,7 +296,7 @@ export function Select({
                   "text-sm text-left transition-colors",
                   "focus:outline-none",
                   option.value === value
-                    ? "bg-accent-gold/10 text-accent-gold"
+                    ? "bg-accent-primary/10 text-accent-primary"
                     : highlightedIndex === index
                     ? "bg-surface-overlay-hover text-text-primary"
                     : "text-text-secondary hover:bg-surface-overlay-hover hover:text-text-primary",
@@ -315,7 +315,7 @@ export function Select({
                   )}
                 </div>
                 {option.value === value && (
-                  <Check className="w-4 h-4 shrink-0 text-accent-gold" />
+                  <Check className="w-4 h-4 shrink-0 text-accent-primary" />
                 )}
               </button>
             ))}
@@ -324,7 +324,7 @@ export function Select({
       </div>
 
       {error && (
-        <p className="text-sm text-accent-red">{error}</p>
+        <p className="text-sm text-accent-danger">{error}</p>
       )}
     </div>
   );
@@ -421,10 +421,10 @@ export function MultiSelect({
             "w-full flex items-center justify-between gap-2",
             "h-[var(--button-height-md)] px-[var(--input-padding-x)]",
             "bg-background-secondary border",
-            values.length > 0 ? "border-accent-gold/30" : "border-border-default",
+            values.length > 0 ? "border-accent-primary/30" : "border-border-default",
             "rounded-[var(--input-radius)]",
             "text-sm text-left transition-all duration-[var(--duration-fast)]",
-            "focus:outline-none focus:ring-2 focus:ring-accent-gold/50",
+            "focus:outline-none focus:ring-2 focus:ring-accent-primary/30",
             "hover:border-border-emphasis",
             "disabled:opacity-50 disabled:cursor-not-allowed"
           )}
@@ -490,7 +490,7 @@ export function MultiSelect({
                       "rounded-[var(--dropdown-item-radius)]",
                       "text-sm text-left transition-colors",
                       isSelected
-                        ? "bg-accent-gold/10 text-accent-gold"
+                        ? "bg-accent-primary/10 text-accent-primary"
                         : "text-text-secondary hover:bg-surface-overlay-hover hover:text-text-primary",
                       option.disabled && "opacity-50 cursor-not-allowed"
                     )}
@@ -500,12 +500,12 @@ export function MultiSelect({
                       className={cn(
                         "w-4 h-4 rounded border flex items-center justify-center shrink-0",
                         isSelected
-                          ? "bg-accent-gold border-accent-gold"
+                          ? "bg-accent-primary border-accent-primary"
                           : "border-border-emphasis"
                       )}
                     >
                       {isSelected && (
-                        <Check className="w-3 h-3 text-background-primary" />
+                        <Check className="w-3 h-3 text-text-inverse" />
                       )}
                     </div>
 

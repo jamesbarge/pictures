@@ -112,8 +112,8 @@ export function DateRangePicker({ className }: DateRangePickerProps) {
         className={cn(
           "flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors text-sm",
           hasSelection
-            ? "bg-accent-gold/10 border-accent-gold/30 text-accent-gold"
-            : "bg-background-secondary border-white/10 text-text-secondary hover:border-white/20 hover:text-text-primary"
+            ? "bg-accent-primary/10 border-accent-primary/30 text-accent-primary"
+            : "bg-background-secondary border-border-subtle text-text-secondary hover:border-border-default hover:text-text-primary"
         )}
       >
         <Calendar className="w-4 h-4" />
@@ -124,7 +124,7 @@ export function DateRangePicker({ className }: DateRangePickerProps) {
               e.stopPropagation();
               clearDateRange();
             }}
-            className="ml-1 p-0.5 rounded hover:bg-white/10"
+            className="ml-1 p-0.5 rounded hover:bg-accent-primary/20"
           >
             <X className="w-3 h-3" />
           </button>
@@ -133,10 +133,10 @@ export function DateRangePicker({ className }: DateRangePickerProps) {
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute top-full left-0 mt-2 z-50 bg-background-secondary border border-white/10 rounded-xl shadow-2xl overflow-hidden">
+        <div className="absolute top-full left-0 mt-2 z-50 bg-background-secondary border border-border-default rounded-xl shadow-elevated overflow-hidden">
           <div className="flex">
             {/* Quick Presets */}
-            <div className="w-32 border-r border-white/5 py-3 px-2">
+            <div className="w-32 border-r border-border-subtle py-3 px-2">
               <p className="text-xs text-text-tertiary uppercase tracking-wider px-2 mb-2">
                 Quick Select
               </p>
@@ -149,18 +149,18 @@ export function DateRangePicker({ className }: DateRangePickerProps) {
                 <button
                   key={key}
                   onClick={() => handleQuickSelect(key as any)}
-                  className="w-full text-left px-2 py-1.5 rounded text-sm text-text-secondary hover:bg-white/5 hover:text-text-primary transition-colors"
+                  className="w-full text-left px-2 py-1.5 rounded text-sm text-text-secondary hover:bg-surface-overlay-hover hover:text-text-primary transition-colors"
                 >
                   {label}
                 </button>
               ))}
-              <div className="my-2 border-t border-white/5" />
+              <div className="my-2 border-t border-border-subtle" />
               <button
                 onClick={() => {
                   clearDateRange();
                   setIsOpen(false);
                 }}
-                className="w-full text-left px-2 py-1.5 rounded text-sm text-text-tertiary hover:bg-white/5 hover:text-text-primary transition-colors"
+                className="w-full text-left px-2 py-1.5 rounded text-sm text-text-tertiary hover:bg-surface-overlay-hover hover:text-text-primary transition-colors"
               >
                 All Dates
               </button>
@@ -182,7 +182,7 @@ export function DateRangePicker({ className }: DateRangePickerProps) {
                   caption: "flex justify-center pt-1 relative items-center",
                   caption_label: "text-sm font-medium",
                   nav: "flex items-center gap-1",
-                  nav_button: "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 flex items-center justify-center rounded hover:bg-white/10",
+                  nav_button: "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 flex items-center justify-center rounded hover:bg-surface-overlay-hover",
                   nav_button_previous: "absolute left-1",
                   nav_button_next: "absolute right-1",
                   table: "w-full border-collapse",
@@ -190,14 +190,14 @@ export function DateRangePicker({ className }: DateRangePickerProps) {
                   head_cell: "text-text-tertiary rounded-md w-8 font-normal text-[0.8rem]",
                   row: "flex w-full mt-1",
                   cell: "relative p-0 text-center text-sm focus-within:relative focus-within:z-20",
-                  day: "h-8 w-8 p-0 font-normal rounded-md hover:bg-white/10 flex items-center justify-center transition-colors",
-                  day_range_start: "bg-accent-gold text-background-primary hover:bg-accent-gold rounded-l-md rounded-r-none",
-                  day_range_end: "bg-accent-gold text-background-primary hover:bg-accent-gold rounded-r-md rounded-l-none",
-                  day_selected: "bg-accent-gold text-background-primary hover:bg-accent-gold",
-                  day_today: "border border-accent-gold/50",
+                  day: "h-8 w-8 p-0 font-normal rounded-md hover:bg-surface-overlay-hover flex items-center justify-center transition-colors",
+                  day_range_start: "bg-accent-primary text-text-inverse hover:bg-accent-primary rounded-l-md rounded-r-none",
+                  day_range_end: "bg-accent-primary text-text-inverse hover:bg-accent-primary rounded-r-md rounded-l-none",
+                  day_selected: "bg-accent-primary text-text-inverse hover:bg-accent-primary",
+                  day_today: "border border-accent-primary/50",
                   day_outside: "opacity-30",
                   day_disabled: "opacity-30 cursor-not-allowed",
-                  day_range_middle: "bg-accent-gold/20 rounded-none",
+                  day_range_middle: "bg-accent-primary/20 rounded-none",
                   day_hidden: "invisible",
                 }}
                 components={{
@@ -212,10 +212,10 @@ export function DateRangePicker({ className }: DateRangePickerProps) {
           </div>
 
           {/* Footer */}
-          <div className="border-t border-white/5 px-4 py-2 flex justify-end">
+          <div className="border-t border-border-subtle px-4 py-2 flex justify-end">
             <button
               onClick={() => setIsOpen(false)}
-              className="px-3 py-1.5 rounded-lg text-sm bg-accent-gold text-background-primary hover:bg-accent-gold/90 transition-colors"
+              className="px-3 py-1.5 rounded-lg text-sm bg-accent-primary text-text-inverse hover:bg-accent-hover transition-colors"
             >
               Apply
             </button>

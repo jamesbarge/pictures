@@ -102,13 +102,13 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
             "text-text-primary placeholder:text-text-tertiary",
             "transition-all duration-[var(--duration-fast)]",
             // Focus styles
-            "focus:outline-none focus:ring-2 focus:ring-accent-gold/50 focus:border-accent-gold/50",
+            "focus:outline-none focus:ring-2 focus:ring-accent-primary/30 focus:border-accent-primary",
             // Hover styles
             "hover:border-border-emphasis",
             // Disabled styles
             "disabled:bg-background-tertiary disabled:text-text-muted disabled:cursor-not-allowed disabled:border-border-subtle",
             // Error styles
-            error && "border-accent-red focus:ring-accent-red/50 focus:border-accent-red",
+            error && "border-accent-danger focus:ring-accent-danger/30 focus:border-accent-danger",
             // Size styles
             sizeStyles[size],
             // Padding based on icons
@@ -145,7 +145,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
 
       {/* Error message */}
       {error && (
-        <p className="text-sm text-accent-red flex items-center gap-1.5">
+        <p className="text-sm text-accent-danger flex items-center gap-1.5">
           <ErrorIcon className="w-3.5 h-3.5 shrink-0" />
           {error}
         </p>

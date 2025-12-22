@@ -131,10 +131,10 @@ export function CinemaSelector({ cinemas }: CinemaSelectorProps) {
         {cinemas.map((cinema) => (
           <div
             key={cinema.id}
-            className="p-4 rounded-lg border border-white/5 bg-background-secondary/50 animate-pulse"
+            className="p-4 rounded-lg border border-border-subtle bg-background-secondary animate-pulse"
           >
-            <div className="h-6 w-32 bg-white/10 rounded mb-2" />
-            <div className="h-4 w-24 bg-white/5 rounded" />
+            <div className="h-6 w-32 bg-background-tertiary rounded mb-2" />
+            <div className="h-4 w-24 bg-background-tertiary rounded" />
           </div>
         ))}
       </div>
@@ -156,12 +156,12 @@ export function CinemaSelector({ cinemas }: CinemaSelectorProps) {
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           placeholder="Search cinemas by name or area..."
-          className="w-full pl-10 pr-10 py-2.5 bg-background-secondary border border-white/10 rounded-lg text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent-gold/50 focus:ring-2 focus:ring-accent-gold/20 transition-colors"
+          className="w-full pl-10 pr-10 py-2.5 bg-background-secondary border border-border-default rounded-lg text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent-primary/50 focus:ring-2 focus:ring-accent-primary/20 transition-colors"
         />
         {searchTerm && (
           <button
             onClick={() => setSearchTerm("")}
-            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-white/10 rounded transition-colors"
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-surface-overlay-hover rounded transition-colors"
             aria-label="Clear search"
           >
             <X className="w-4 h-4 text-text-tertiary" />
@@ -177,8 +177,8 @@ export function CinemaSelector({ cinemas }: CinemaSelectorProps) {
           className={cn(
             "px-3 py-1.5 text-sm rounded-lg border transition-colors",
             allSelected
-              ? "border-white/10 text-text-tertiary cursor-not-allowed"
-              : "border-white/20 text-text-secondary hover:text-text-primary hover:border-white/30"
+              ? "border-border-subtle text-text-tertiary cursor-not-allowed"
+              : "border-border-default text-text-secondary hover:text-text-primary hover:border-border-emphasis"
           )}
         >
           Select All
@@ -189,8 +189,8 @@ export function CinemaSelector({ cinemas }: CinemaSelectorProps) {
           className={cn(
             "px-3 py-1.5 text-sm rounded-lg border transition-colors",
             clearDisabled
-              ? "border-white/10 text-text-tertiary cursor-not-allowed"
-              : "border-white/20 text-text-secondary hover:text-text-primary hover:border-white/30"
+              ? "border-border-subtle text-text-tertiary cursor-not-allowed"
+              : "border-border-default text-text-secondary hover:text-text-primary hover:border-border-emphasis"
           )}
         >
           Clear All
@@ -200,8 +200,8 @@ export function CinemaSelector({ cinemas }: CinemaSelectorProps) {
           className={cn(
             "px-3 py-1.5 text-sm rounded-lg border transition-colors ml-auto",
             groupByArea
-              ? "border-accent-gold/40 bg-accent-gold/10 text-accent-gold"
-              : "border-white/20 text-text-secondary hover:text-text-primary hover:border-white/30"
+              ? "border-accent-primary/40 bg-accent-primary/10 text-accent-primary"
+              : "border-border-default text-text-secondary hover:text-text-primary hover:border-border-emphasis"
           )}
         >
           Group by Area
@@ -231,9 +231,9 @@ export function CinemaSelector({ cinemas }: CinemaSelectorProps) {
             const allInAreaSelected = isShowingAll || selectedInArea === areaCinemas.length;
 
             return (
-              <div key={area} className="border border-white/5 rounded-xl overflow-hidden">
+              <div key={area} className="border border-border-subtle rounded-xl overflow-hidden shadow-card">
                 {/* Area Header */}
-                <div className="flex items-center justify-between px-4 py-3 bg-background-secondary/50">
+                <div className="flex items-center justify-between px-4 py-3 bg-background-tertiary">
                   {/* Collapse Toggle - clickable area */}
                   <button
                     onClick={() => toggleAreaCollapse(area)}
@@ -263,8 +263,8 @@ export function CinemaSelector({ cinemas }: CinemaSelectorProps) {
                       className={cn(
                         "px-2 py-1 text-xs rounded border transition-colors",
                         allInAreaSelected
-                          ? "border-accent-gold/40 bg-accent-gold/10 text-accent-gold"
-                          : "border-white/20 text-text-secondary hover:text-text-primary"
+                          ? "border-accent-primary/40 bg-accent-primary/10 text-accent-primary"
+                          : "border-border-default text-text-secondary hover:text-text-primary"
                       )}
                     >
                       {allInAreaSelected ? "Deselect All" : "Select All"}
@@ -310,7 +310,7 @@ export function CinemaSelector({ cinemas }: CinemaSelectorProps) {
           <p className="text-text-secondary">No cinemas match "{searchTerm}"</p>
           <button
             onClick={() => setSearchTerm("")}
-            className="text-accent-gold hover:text-accent-gold-light text-sm mt-2 transition-colors"
+            className="text-accent-primary hover:text-accent-primary-hover text-sm mt-2 transition-colors"
           >
             Clear search
           </button>
@@ -348,18 +348,18 @@ function CinemaCard({
       className={cn(
         "group relative p-4 rounded-lg border text-left transition-all",
         isSelected
-          ? "border-accent-gold/50 bg-accent-gold/10"
-          : "border-white/5 bg-background-secondary/50 hover:border-white/20 hover:bg-background-secondary"
+          ? "border-accent-primary/50 bg-accent-primary/10"
+          : "border-border-subtle bg-background-secondary hover:border-border-default hover:shadow-card"
       )}
     >
       {/* Selection Indicator */}
       <div
         className={cn(
           "absolute top-3 right-3 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all",
-          isSelected ? "border-accent-gold bg-accent-gold" : "border-white/20"
+          isSelected ? "border-accent-primary bg-accent-primary" : "border-border-default"
         )}
       >
-        {isSelected && <Check className="w-3 h-3 text-background-primary" />}
+        {isSelected && <Check className="w-3 h-3 text-text-inverse" />}
       </div>
 
       {/* Cinema Info */}
@@ -386,7 +386,7 @@ function CinemaCard({
             {cinema.features.slice(0, 3).map((feature) => (
               <span
                 key={feature}
-                className="px-2 py-0.5 text-xs bg-white/5 text-text-tertiary rounded capitalize"
+                className="px-2 py-0.5 text-xs bg-background-tertiary text-text-tertiary rounded capitalize border border-border-subtle"
               >
                 {feature.replace(/_/g, " ")}
               </span>
@@ -401,7 +401,7 @@ function CinemaCard({
             target="_blank"
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
-            className="inline-flex items-center gap-1 text-xs text-text-tertiary hover:text-accent-gold mt-3 transition-colors"
+            className="inline-flex items-center gap-1 text-xs text-text-tertiary hover:text-accent-primary mt-3 transition-colors"
             aria-label={`Visit ${cinema.name} website`}
           >
             <Globe className="w-3 h-3" />

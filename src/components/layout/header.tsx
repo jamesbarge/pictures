@@ -43,13 +43,13 @@ export function Header({ cinemas }: HeaderProps) {
   }, []);
 
   return (
-    <header className="sticky top-0 z-50 bg-background-primary border-b border-white/[0.06]">
+    <header className="sticky top-0 z-50 bg-background-primary border-b border-border-subtle shadow-sm">
       {/* Top Bar - Logo and Settings */}
-      <div className="border-b border-white/[0.04]">
+      <div className="border-b border-border-subtle">
         <div className="px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
           {/* Logo */}
           <Link href="/" className="group">
-            <span className="font-display text-xl text-text-primary tracking-tight hover:text-accent-gold transition-colors">
+            <span className="font-display text-2xl text-text-primary tracking-tight hover:text-accent-primary transition-colors">
               Postboxd
             </span>
           </Link>
@@ -166,8 +166,8 @@ function DateFilter({ mounted }: { mounted: boolean }) {
         className={cn(
           "flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-all min-w-[140px]",
           hasFilter
-            ? "bg-accent-gold/10 border-accent-gold/30 text-accent-gold"
-            : "bg-background-secondary border-white/10 text-text-secondary hover:border-white/20 hover:text-text-primary"
+            ? "bg-accent-primary/10 border-accent-primary/30 text-accent-primary"
+            : "bg-background-secondary border-border-default text-text-secondary hover:border-border-emphasis hover:text-text-primary"
         )}
       >
         <Calendar className="w-4 h-4 shrink-0" />
@@ -176,9 +176,9 @@ function DateFilter({ mounted }: { mounted: boolean }) {
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 sm:left-0 right-0 sm:right-auto mt-2 z-50 w-[calc(100vw-2rem)] sm:w-auto bg-background-secondary border border-white/10 rounded-xl shadow-2xl overflow-hidden">
+        <div className="absolute top-full left-0 sm:left-0 right-0 sm:right-auto mt-2 z-50 w-[calc(100vw-2rem)] sm:w-auto bg-background-secondary border border-border-default rounded-xl shadow-elevated overflow-hidden">
           {/* Date Section */}
-          <div className="p-3 border-b border-white/5">
+          <div className="p-3 border-b border-border-subtle">
             <div className="flex items-center gap-2 mb-2">
               <Calendar className="w-4 h-4 text-text-tertiary" />
               <span className="text-xs font-medium text-text-secondary uppercase tracking-wide">Date</span>
@@ -191,8 +191,8 @@ function DateFilter({ mounted }: { mounted: boolean }) {
                 className={cn(
                   "px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors",
                   !dateFrom && !dateTo
-                    ? "bg-accent-gold text-background-primary"
-                    : "bg-white/5 text-text-secondary hover:bg-white/10 hover:text-text-primary"
+                    ? "bg-accent-primary text-text-inverse"
+                    : "bg-background-tertiary text-text-secondary hover:bg-background-active hover:text-text-primary"
                 )}
               >
                 Any Date
@@ -202,8 +202,8 @@ function DateFilter({ mounted }: { mounted: boolean }) {
                 className={cn(
                   "px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors",
                   dateFrom && isSameDay(dateFrom, today) && dateTo && isSameDay(dateTo, today)
-                    ? "bg-accent-gold text-background-primary"
-                    : "bg-white/5 text-text-secondary hover:bg-white/10 hover:text-text-primary"
+                    ? "bg-accent-primary text-text-inverse"
+                    : "bg-background-tertiary text-text-secondary hover:bg-background-active hover:text-text-primary"
                 )}
               >
                 Today
@@ -215,7 +215,7 @@ function DateFilter({ mounted }: { mounted: boolean }) {
                 }}
                 className={cn(
                   "px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors",
-                  "bg-white/5 text-text-secondary hover:bg-white/10 hover:text-text-primary"
+                  "bg-background-tertiary text-text-secondary hover:bg-background-active hover:text-text-primary"
                 )}
               >
                 Weekend
@@ -224,7 +224,7 @@ function DateFilter({ mounted }: { mounted: boolean }) {
                 onClick={() => setDateRange(today, addDays(today, 6))}
                 className={cn(
                   "px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors",
-                  "bg-white/5 text-text-secondary hover:bg-white/10 hover:text-text-primary"
+                  "bg-background-tertiary text-text-secondary hover:bg-background-active hover:text-text-primary"
                 )}
               >
                 7 Days
@@ -246,16 +246,16 @@ function DateFilter({ mounted }: { mounted: boolean }) {
                 month_caption: "flex justify-center relative items-center h-8 mb-2",
                 caption_label: "text-sm font-medium text-text-primary",
                 nav: "flex items-center gap-1 absolute inset-x-0 justify-between",
-                button_previous: "p-1.5 rounded-lg hover:bg-white/10 text-text-secondary hover:text-text-primary transition-colors",
-                button_next: "p-1.5 rounded-lg hover:bg-white/10 text-text-secondary hover:text-text-primary transition-colors",
+                button_previous: "p-1.5 rounded-lg hover:bg-background-active text-text-secondary hover:text-text-primary transition-colors",
+                button_next: "p-1.5 rounded-lg hover:bg-background-active text-text-secondary hover:text-text-primary transition-colors",
                 month_grid: "w-full",
                 weekdays: "grid grid-cols-7 gap-1 mb-1",
                 weekday: "text-text-tertiary text-xs font-medium h-8 flex items-center justify-center",
                 week: "grid grid-cols-7 gap-1",
                 day: "h-9 p-0",
-                day_button: "w-9 h-9 rounded-lg flex items-center justify-center text-sm transition-colors hover:bg-white/10 text-text-secondary hover:text-text-primary",
-                selected: "[&>button]:!bg-accent-gold [&>button]:!text-background-primary [&>button]:hover:!bg-accent-gold [&>button]:font-medium",
-                today: "[&>button]:ring-1 [&>button]:ring-accent-gold/50 [&>button]:text-accent-gold [&>button]:font-medium",
+                day_button: "w-9 h-9 rounded-lg flex items-center justify-center text-sm transition-colors hover:bg-background-active text-text-secondary hover:text-text-primary",
+                selected: "[&>button]:!bg-accent-primary [&>button]:!text-text-inverse [&>button]:hover:!bg-accent-primary [&>button]:font-medium",
+                today: "[&>button]:ring-1 [&>button]:ring-accent-primary/50 [&>button]:text-accent-primary [&>button]:font-medium",
                 outside: "[&>button]:text-text-muted [&>button]:opacity-50",
                 disabled: "[&>button]:text-text-muted [&>button]:opacity-30 [&>button]:cursor-not-allowed [&>button]:hover:bg-transparent",
               }}
@@ -276,8 +276,8 @@ function DateFilter({ mounted }: { mounted: boolean }) {
                 className={cn(
                   "px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors",
                   timeFrom === null && timeTo === null
-                    ? "bg-accent-gold text-background-primary"
-                    : "bg-white/5 text-text-secondary hover:bg-white/10 hover:text-text-primary"
+                    ? "bg-accent-primary text-text-inverse"
+                    : "bg-background-tertiary text-text-secondary hover:bg-background-active hover:text-text-primary"
                 )}
               >
                 Any Time
@@ -289,8 +289,8 @@ function DateFilter({ mounted }: { mounted: boolean }) {
                   className={cn(
                     "px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors",
                     isTimePresetActive(preset)
-                      ? "bg-accent-gold text-background-primary"
-                      : "bg-white/5 text-text-secondary hover:bg-white/10 hover:text-text-primary"
+                      ? "bg-accent-primary text-text-inverse"
+                      : "bg-background-tertiary text-text-secondary hover:bg-background-active hover:text-text-primary"
                   )}
                   title={preset.description}
                 >
@@ -318,7 +318,7 @@ function DateFilter({ mounted }: { mounted: boolean }) {
                       e.target.value === "" ? null : Number(e.target.value),
                       timeTo
                     )}
-                    className="w-full px-2 py-1.5 rounded-lg bg-background-tertiary border border-white/10 text-sm text-text-primary focus:outline-none focus:border-accent-gold/50"
+                    className="w-full px-2 py-1.5 rounded-lg bg-background-tertiary border border-border-default text-sm text-text-primary focus:outline-none focus:border-accent-primary"
                   >
                     <option value="">Any</option>
                     {Array.from({ length: 24 }, (_, i) => (
@@ -335,7 +335,7 @@ function DateFilter({ mounted }: { mounted: boolean }) {
                       timeFrom,
                       e.target.value === "" ? null : Number(e.target.value)
                     )}
-                    className="w-full px-2 py-1.5 rounded-lg bg-background-tertiary border border-white/10 text-sm text-text-primary focus:outline-none focus:border-accent-gold/50"
+                    className="w-full px-2 py-1.5 rounded-lg bg-background-tertiary border border-border-default text-sm text-text-primary focus:outline-none focus:border-accent-primary"
                   >
                     <option value="">Any</option>
                     {Array.from({ length: 24 }, (_, i) => (
@@ -349,10 +349,10 @@ function DateFilter({ mounted }: { mounted: boolean }) {
 
           {/* Done Button */}
           {hasFilter && (
-            <div className="p-2 border-t border-white/5">
+            <div className="p-2 border-t border-border-subtle">
               <button
                 onClick={() => setIsOpen(false)}
-                className="w-full px-3 py-2 rounded-lg text-sm font-medium bg-accent-gold text-background-primary hover:bg-accent-gold/90 transition-colors"
+                className="w-full px-3 py-2 rounded-lg text-sm font-medium bg-accent-primary text-text-inverse hover:bg-accent-primary-hover transition-colors"
               >
                 Done
               </button>
@@ -502,9 +502,9 @@ function FilmSearchFilter({ mounted }: { mounted: boolean }) {
         className={cn(
           "w-full pl-9 py-2 rounded-lg border bg-background-secondary text-sm text-text-primary placeholder:text-text-tertiary",
           "transition-all duration-150",
-          "focus:outline-none focus:ring-2 focus:ring-accent-gold/50 focus:border-accent-gold/50",
+          "focus:outline-none focus:ring-2 focus:ring-accent-primary/30 focus:border-accent-primary",
           hasValue
-            ? "border-accent-gold/40 pr-8"
+            ? "border-accent-primary/40 pr-8"
             : "border-border-default hover:border-border-emphasis pr-16"
         )}
       />
@@ -532,10 +532,10 @@ function FilmSearchFilter({ mounted }: { mounted: boolean }) {
 
       {/* Films Dropdown */}
       {showDropdown && (
-        <div className="absolute top-full left-0 right-0 mt-2 z-50 bg-background-secondary border border-white/10 rounded-xl shadow-2xl overflow-hidden">
+        <div className="absolute top-full left-0 right-0 mt-2 z-50 bg-background-secondary border border-border-default rounded-xl shadow-elevated overflow-hidden">
           {/* Header showing count */}
           {!filmSearch.trim() && displayList.length > 0 && (
-            <div className="px-3 py-2 border-b border-white/5 text-xs text-text-tertiary">
+            <div className="px-3 py-2 border-b border-border-subtle text-xs text-text-tertiary">
               {displayList.length} films • scroll to browse
             </div>
           )}
@@ -554,8 +554,8 @@ function FilmSearchFilter({ mounted }: { mounted: boolean }) {
                     className={cn(
                       "w-full flex items-center gap-3 px-3 py-2 text-left transition-colors",
                       index === selectedIndex
-                        ? "bg-accent-gold/10 text-text-primary"
-                        : "text-text-secondary hover:bg-white/5"
+                        ? "bg-accent-primary/10 text-text-primary"
+                        : "text-text-secondary hover:bg-background-hover"
                     )}
                   >
                     {/* Mini Poster */}
@@ -652,8 +652,8 @@ function CinemaFilter({ cinemas, mounted }: { cinemas: Cinema[]; mounted: boolea
         className={cn(
           "flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-all min-w-[140px]",
           hasSelection
-            ? "bg-accent-gold/10 border-accent-gold/30 text-accent-gold"
-            : "bg-background-secondary border-white/10 text-text-secondary hover:border-white/20 hover:text-text-primary"
+            ? "bg-accent-primary/10 border-accent-primary/30 text-accent-primary"
+            : "bg-background-secondary border-border-default text-text-secondary hover:border-border-emphasis hover:text-text-primary"
         )}
       >
         <MapPin className="w-4 h-4 shrink-0" />
@@ -662,9 +662,9 @@ function CinemaFilter({ cinemas, mounted }: { cinemas: Cinema[]; mounted: boolea
       </button>
 
       {isOpen && (
-        <div className="absolute top-full right-0 sm:left-0 sm:right-auto mt-2 z-50 w-[calc(100vw-2rem)] sm:w-72 max-w-72 bg-background-secondary border border-white/10 rounded-xl shadow-2xl overflow-hidden">
+        <div className="absolute top-full right-0 sm:left-0 sm:right-auto mt-2 z-50 w-[calc(100vw-2rem)] sm:w-72 max-w-72 bg-background-secondary border border-border-default rounded-xl shadow-elevated overflow-hidden">
           {/* Search Input */}
-          <div className="p-2 border-b border-white/5">
+          <div className="p-2 border-b border-border-subtle">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
               <input
@@ -673,7 +673,7 @@ function CinemaFilter({ cinemas, mounted }: { cinemas: Cinema[]; mounted: boolea
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search cinemas..."
-                className="w-full pl-9 pr-3 py-2 bg-background-tertiary rounded-lg text-sm text-text-primary placeholder:text-text-tertiary border border-white/5 focus:outline-none focus:border-white/20"
+                className="w-full pl-9 pr-3 py-2 bg-background-tertiary rounded-lg text-sm text-text-primary placeholder:text-text-tertiary border border-border-subtle focus:outline-none focus:border-border-emphasis"
               />
             </div>
           </div>
@@ -690,23 +690,23 @@ function CinemaFilter({ cinemas, mounted }: { cinemas: Cinema[]; mounted: boolea
               className={cn(
                 "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-2",
                 cinemaIds.length === 0
-                  ? "bg-accent-gold/10 text-accent-gold"
-                  : "text-text-secondary hover:bg-white/5 hover:text-text-primary"
+                  ? "bg-accent-primary/10 text-accent-primary"
+                  : "text-text-secondary hover:bg-background-hover hover:text-text-primary"
               )}
             >
               <div
                 className={cn(
                   "w-4 h-4 rounded border flex items-center justify-center shrink-0",
-                  cinemaIds.length === 0 ? "bg-accent-gold border-accent-gold" : "border-white/20"
+                  cinemaIds.length === 0 ? "bg-accent-primary border-accent-primary" : "border-border-default"
                 )}
               >
-                {cinemaIds.length === 0 && <Check className="w-3 h-3 text-background-primary" />}
+                {cinemaIds.length === 0 && <Check className="w-3 h-3 text-text-inverse" />}
               </div>
               All Cinemas
             </button>
 
             {/* Divider */}
-            <div className="h-px bg-white/5 my-2" />
+            <div className="h-px bg-border-subtle my-2" />
 
             {/* Individual Cinemas */}
             {filteredCinemas.map((cinema) => {
@@ -718,17 +718,17 @@ function CinemaFilter({ cinemas, mounted }: { cinemas: Cinema[]; mounted: boolea
                   className={cn(
                     "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-2",
                     isSelected
-                      ? "bg-accent-gold/10 text-accent-gold"
-                      : "text-text-secondary hover:bg-white/5 hover:text-text-primary"
+                      ? "bg-accent-primary/10 text-accent-primary"
+                      : "text-text-secondary hover:bg-background-hover hover:text-text-primary"
                   )}
                 >
                   <div
                     className={cn(
                       "w-4 h-4 rounded border flex items-center justify-center shrink-0",
-                      isSelected ? "bg-accent-gold border-accent-gold" : "border-white/20"
+                      isSelected ? "bg-accent-primary border-accent-primary" : "border-border-default"
                     )}
                   >
-                    {isSelected && <Check className="w-3 h-3 text-background-primary" />}
+                    {isSelected && <Check className="w-3 h-3 text-text-inverse" />}
                   </div>
                   <span className="truncate">{cinema.name}</span>
                 </button>
@@ -744,13 +744,13 @@ function CinemaFilter({ cinemas, mounted }: { cinemas: Cinema[]; mounted: boolea
 
           {/* Clear Selection */}
           {cinemaIds.length > 0 && (
-            <div className="border-t border-white/5 p-2">
+            <div className="border-t border-border-subtle p-2">
               <button
                 onClick={() => {
                   setCinemas([]);
                   setSearchTerm("");
                 }}
-                className="w-full text-left px-3 py-2 rounded-lg text-sm text-text-tertiary hover:bg-white/5 hover:text-text-primary transition-colors"
+                className="w-full text-left px-3 py-2 rounded-lg text-sm text-text-tertiary hover:bg-background-hover hover:text-text-primary transition-colors"
               >
                 Clear selection
               </button>

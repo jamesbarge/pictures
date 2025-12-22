@@ -1,7 +1,9 @@
 @import "tailwindcss";
 
-/* Postboxd Design System */
-/* Cinema-inspired dark theme - like sitting in the theater before the lights dim */
+/* Postboxd Design System - Warm Cream Editorial
+ * Inspired by Criterion Collection booklets and quality film magazines.
+ * Light, warm backgrounds with subtle paper grain texture.
+ */
 
 :root {
   /* ============================================
@@ -39,6 +41,7 @@
   --text-2xl: 1.5rem;     /* 24px */
   --text-3xl: 1.875rem;   /* 30px */
   --text-4xl: 2.25rem;    /* 36px */
+  --text-5xl: 3rem;       /* 48px */
 
   /* Line heights */
   --leading-none: 1;
@@ -60,63 +63,76 @@
   --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
 
   /* ============================================
-   * COLOR TOKENS - The palette
+   * COLOR TOKENS - Warm Cream Editorial Palette
    * ============================================
    *
    * Core palette:
-   * --prussian-blue: #001427 (deep cinematic dark)
-   * --deep-teal: #708d81 (muted sage/teal)
-   * --jasmine: #f4d58d (warm golden yellow)
-   * --brick-ember: #bf0603 (vibrant red)
-   * --blood-red: #8d0801 (deep crimson)
+   * --cream: #F7F4ED (warm cream, like quality paper)
+   * --criterion-blue: #1E3A5F (deep editorial blue)
+   * --bronze: #C9A96E (warm highlight)
+   * --burgundy: #8B2E3B (danger/hearts)
+   * --charcoal: #1A1A1A (deep text)
    */
 
-  /* Background colors - prussian blue base */
-  --background-primary: #001427;
-  --background-secondary: #0a2235;
-  --background-tertiary: #143044;
-  --background-hover: #1e3d52;
-  --background-active: #284a61;
+  /* Background colors - warm cream base */
+  --background-primary: #F7F4ED;
+  --background-secondary: #FFFFFF;
+  --background-tertiary: #EDE8DD;
+  --background-hover: #FDFCF9;
+  --background-active: #F0EDE4;
 
   /* Surface overlays (for cards, dropdowns) */
-  --surface-overlay: rgba(112, 141, 129, 0.08);
-  --surface-overlay-hover: rgba(112, 141, 129, 0.12);
-  --surface-overlay-active: rgba(112, 141, 129, 0.16);
+  --surface-overlay: rgba(26, 26, 26, 0.02);
+  --surface-overlay-hover: rgba(26, 26, 26, 0.04);
+  --surface-overlay-active: rgba(26, 26, 26, 0.06);
 
-  /* Text colors - WCAG AA compliant contrast ratios */
-  --text-primary: #F5F5F5;
-  --text-secondary: #94b3a8;  /* Lighter teal for better contrast (5.2:1) */
-  --text-tertiary: #708d81;   /* Original teal now tertiary (3.8:1 - OK for large text) */
-  --text-muted: #4a6b5e;
+  /* Text colors - WCAG AA compliant */
+  --text-primary: #1A1A1A;
+  --text-secondary: #4A4A4A;
+  --text-tertiary: #6B6B6B;
+  --text-muted: #8A8A8A;
+  --text-inverse: #FFFFFF;
 
-  /* Accent colors - jasmine gold and ember reds */
-  --accent-gold: #f4d58d;
-  --accent-gold-light: #f7e0a8;
-  --accent-gold-dark: #d4b56d;
-  --accent-red: #bf0603;
-  --accent-red-dark: #8d0801;
-  --accent-teal: #708d81;
-  --accent-teal-light: #8aa89c;
-  --accent-green: #22C55E;
-  --accent-purple: #A855F7;
+  /* Accent colors - Criterion blue and bronze */
+  --accent-primary: #1E3A5F;
+  --accent-primary-hover: #2A4A72;
+  --accent-primary-light: #3A5A82;
+  --accent-highlight: #C9A96E;
+  --accent-highlight-light: #D4BA85;
+  --accent-highlight-dark: #B89958;
+  --accent-danger: #8B2E3B;
+  --accent-danger-dark: #6B1E2B;
+  --accent-success: #2D5A3D;
+  --accent-success-light: #3D7A4D;
 
-  /* Border colors - teal-tinted */
-  --border-subtle: rgba(112, 141, 129, 0.12);
-  --border-default: rgba(112, 141, 129, 0.2);
-  --border-emphasis: rgba(112, 141, 129, 0.35);
-  --border-focus: var(--accent-gold);
+  /* Legacy accent names (for compatibility) */
+  --accent-gold: var(--accent-highlight);
+  --accent-gold-light: var(--accent-highlight-light);
+  --accent-gold-dark: var(--accent-highlight-dark);
+  --accent-red: var(--accent-danger);
+  --accent-red-dark: var(--accent-danger-dark);
+  --accent-teal: var(--accent-primary);
+  --accent-teal-light: var(--accent-primary-hover);
+  --accent-green: var(--accent-success);
+  --accent-purple: #6B4D82;
+
+  /* Border colors - warm gray */
+  --border-subtle: #E8E4DA;
+  --border-default: #D4CFC3;
+  --border-emphasis: #1A1A1A;
+  --border-focus: var(--accent-primary);
 
   /* Status colors */
-  --status-want-to-see: #708d81;
-  --status-seen: #22C55E;
-  --status-not-interested: #5a7268;
+  --status-want-to-see: var(--accent-danger);
+  --status-seen: var(--accent-success);
+  --status-not-interested: var(--text-muted);
 
-  /* Format badge colors */
-  --format-35mm: #f4d58d;
-  --format-70mm: #bf0603;
-  --format-imax: #708d81;
-  --format-dcp: #5a7268;
-  --format-4k: #8aa89c;
+  /* Format badge colors - editorial palette */
+  --format-35mm: #C9A96E;
+  --format-70mm: #8B2E3B;
+  --format-imax: #1E3A5F;
+  --format-dcp: #6B6B6B;
+  --format-4k: #2D5A3D;
 
   /* ============================================
    * COMPONENT TOKENS - Semantic values
@@ -129,14 +145,14 @@
   --button-padding-x-sm: var(--space-3);
   --button-padding-x-md: var(--space-4);
   --button-padding-x-lg: var(--space-5);
-  --button-radius: var(--radius-lg);
+  --button-radius: var(--radius-md);
 
   /* Input */
   --input-height-sm: 2rem;
   --input-height-md: 2.5rem;
   --input-height-lg: 3rem;
   --input-padding-x: var(--space-3);
-  --input-radius: var(--radius-lg);
+  --input-radius: var(--radius-md);
   --input-border-width: 1px;
 
   /* Card */
@@ -145,9 +161,9 @@
   --card-border-width: 1px;
 
   /* Dropdown/Select */
-  --dropdown-radius: var(--radius-xl);
+  --dropdown-radius: var(--radius-lg);
   --dropdown-padding: var(--space-2);
-  --dropdown-item-radius: var(--radius-lg);
+  --dropdown-item-radius: var(--radius-md);
   --dropdown-item-padding-x: var(--space-3);
   --dropdown-item-padding-y: var(--space-2);
   --dropdown-max-height: 20rem;
@@ -160,36 +176,29 @@
   /* Focus ring */
   --focus-ring-width: 2px;
   --focus-ring-offset: 2px;
-  --focus-ring-color: var(--accent-gold);
+  --focus-ring-color: var(--accent-primary);
 }
 
-/* Light mode overrides (for those who prefer daylight) */
-.light {
-  --background-primary: #f8f9f7;
-  --background-secondary: #eef2ef;
-  --background-tertiary: #e0e8e3;
-  --background-hover: #d2ddd6;
-  --background-active: #c4d2c9;
+/* Dark mode overrides (for those who prefer cinema darkness) */
+.dark {
+  --background-primary: #0D0D0D;
+  --background-secondary: #1A1A1A;
+  --background-tertiary: #242424;
+  --background-hover: #2A2A2A;
+  --background-active: #333333;
 
-  --surface-overlay: rgba(0, 20, 39, 0.03);
-  --surface-overlay-hover: rgba(0, 20, 39, 0.06);
-  --surface-overlay-active: rgba(0, 20, 39, 0.09);
+  --surface-overlay: rgba(255, 255, 255, 0.03);
+  --surface-overlay-hover: rgba(255, 255, 255, 0.06);
+  --surface-overlay-active: rgba(255, 255, 255, 0.09);
 
-  --text-primary: #001427;
-  --text-secondary: #3d5a4c;
-  --text-tertiary: #5a7268;
-  --text-muted: #8aa89c;
+  --text-primary: #FAFAFA;
+  --text-secondary: #A3A3A3;
+  --text-tertiary: #737373;
+  --text-muted: #525252;
 
-  --accent-gold: #c4a050;
-  --accent-gold-light: #d4b56d;
-  --accent-gold-dark: #a68530;
-
-  --accent-red: #8d0801;
-  --accent-red-dark: #6a0601;
-
-  --border-subtle: rgba(0, 20, 39, 0.08);
-  --border-default: rgba(0, 20, 39, 0.15);
-  --border-emphasis: rgba(0, 20, 39, 0.25);
+  --border-subtle: #262626;
+  --border-default: #404040;
+  --border-emphasis: #FAFAFA;
 }
 
 @theme inline {
@@ -214,8 +223,21 @@
   --color-text-secondary: var(--text-secondary);
   --color-text-tertiary: var(--text-tertiary);
   --color-text-muted: var(--text-muted);
+  --color-text-inverse: var(--text-inverse);
 
   /* Accents */
+  --color-accent-primary: var(--accent-primary);
+  --color-accent-primary-hover: var(--accent-primary-hover);
+  --color-accent-primary-light: var(--accent-primary-light);
+  --color-accent-highlight: var(--accent-highlight);
+  --color-accent-highlight-light: var(--accent-highlight-light);
+  --color-accent-highlight-dark: var(--accent-highlight-dark);
+  --color-accent-danger: var(--accent-danger);
+  --color-accent-danger-dark: var(--accent-danger-dark);
+  --color-accent-success: var(--accent-success);
+  --color-accent-success-light: var(--accent-success-light);
+
+  /* Legacy accent colors (for compatibility) */
   --color-accent-gold: var(--accent-gold);
   --color-accent-gold-light: var(--accent-gold-light);
   --color-accent-gold-dark: var(--accent-gold-dark);
@@ -248,21 +270,22 @@
    * TYPOGRAPHY
    * ============================================ */
 
-  --font-display: var(--font-instrument-serif), Georgia, serif;
-  --font-body: var(--font-inter), system-ui, sans-serif;
+  --font-display: var(--font-cormorant), Georgia, serif;
+  --font-body: var(--font-dm-sans), system-ui, sans-serif;
   --font-mono: var(--font-jetbrains-mono), monospace;
 
   /* ============================================
-   * SHADOWS
+   * SHADOWS - Warm, subtle for light theme
    * ============================================ */
 
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.4);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.5);
-  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.6), 0 8px 10px -6px rgb(0 0 0 / 0.6);
-  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.7);
-  --shadow-glow: 0 0 20px rgba(244, 213, 141, 0.25);
-  --shadow-glow-red: 0 0 20px rgba(191, 6, 3, 0.3);
+  --shadow-sm: 0 1px 2px 0 rgba(26, 26, 26, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(26, 26, 26, 0.08), 0 2px 4px -2px rgba(26, 26, 26, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(26, 26, 26, 0.10), 0 4px 6px -4px rgba(26, 26, 26, 0.08);
+  --shadow-xl: 0 20px 25px -5px rgba(26, 26, 26, 0.12), 0 8px 10px -6px rgba(26, 26, 26, 0.08);
+  --shadow-2xl: 0 25px 50px -12px rgba(26, 26, 26, 0.18);
+  --shadow-card: 0 1px 3px rgba(26, 26, 26, 0.08);
+  --shadow-card-hover: 0 4px 12px rgba(26, 26, 26, 0.12);
+  --shadow-elevated: 0 8px 24px rgba(26, 26, 26, 0.15);
 
   /* ============================================
    * ANIMATION
@@ -279,6 +302,18 @@ body {
   background: var(--background-primary);
   color: var(--text-primary);
   font-family: var(--font-body);
+  position: relative;
+}
+
+/* Paper grain texture overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  opacity: 0.025;
+  pointer-events: none;
+  z-index: 9999;
 }
 
 /* Film title styling - uses display font */
@@ -291,35 +326,35 @@ body {
   font-family: var(--font-mono);
 }
 
-/* Custom scrollbar for dark mode */
+/* Custom scrollbar for light theme */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--background-secondary);
+  background: var(--background-tertiary);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--border-emphasis);
+  background: var(--border-default);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-tertiary);
+  background: var(--text-muted);
 }
 
 /* Focus styles for accessibility */
 :focus-visible {
-  outline: 2px solid var(--accent-gold);
+  outline: 2px solid var(--accent-primary);
   outline-offset: 2px;
 }
 
 /* Selection styling */
 ::selection {
-  background: var(--accent-gold);
-  color: var(--background-primary);
+  background: var(--accent-primary);
+  color: var(--text-inverse);
 }
 
 /* ============================================
@@ -410,9 +445,9 @@ body {
 .skeleton {
   background: linear-gradient(
     90deg,
-    var(--background-secondary) 0%,
-    var(--background-tertiary) 50%,
-    var(--background-secondary) 100%
+    var(--background-tertiary) 0%,
+    var(--background-hover) 50%,
+    var(--background-tertiary) 100%
   );
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
@@ -424,33 +459,63 @@ body {
   outline-offset: var(--focus-ring-offset);
 }
 
-/* Glass effect for elevated surfaces */
-.glass {
-  background: rgba(0, 20, 39, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+/* Editorial card surface */
+.card-surface {
+  background: var(--background-secondary);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-card);
+  transition: box-shadow var(--duration-normal) var(--ease-default),
+              border-color var(--duration-normal) var(--ease-default);
 }
 
-/* Gold gradient text */
+.card-surface:hover {
+  box-shadow: var(--shadow-card-hover);
+  border-color: var(--border-default);
+}
+
+/* Blue gradient text (Criterion-style) */
+.text-gradient-blue {
+  background: linear-gradient(135deg, var(--accent-primary-light), var(--accent-primary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Bronze/Gold gradient text */
 .text-gradient-gold {
-  background: linear-gradient(135deg, var(--accent-gold-light), var(--accent-gold));
+  background: linear-gradient(135deg, var(--accent-highlight-light), var(--accent-highlight));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-/* Teal gradient text */
-.text-gradient-teal {
-  background: linear-gradient(135deg, var(--accent-teal-light), var(--accent-teal));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-/* Red gradient text */
+/* Burgundy gradient text */
 .text-gradient-red {
-  background: linear-gradient(135deg, var(--accent-red), var(--accent-red-dark));
+  background: linear-gradient(135deg, var(--accent-danger), var(--accent-danger-dark));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+/* Editorial divider - thin charcoal rule */
+.editorial-divider {
+  height: 1px;
+  background: var(--border-emphasis);
+  opacity: 0.15;
+}
+
+/* Small caps utility for editorial typography */
+.small-caps {
+  font-variant: small-caps;
+  letter-spacing: 0.05em;
+}
+
+/* Drop cap for editorial synopsis */
+.drop-cap::first-letter {
+  font-family: var(--font-display);
+  font-size: 3.5em;
+  float: left;
+  line-height: 0.8;
+  padding-right: 0.1em;
+  color: var(--accent-primary);
 }

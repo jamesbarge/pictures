@@ -15,14 +15,14 @@ export interface CardProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 const variantStyles: Record<CardVariant, string> = {
-  default: "bg-background-secondary/50 border border-border-subtle",
-  elevated: "bg-background-secondary border border-border-subtle shadow-md",
+  default: "bg-background-secondary border border-border-subtle shadow-card",
+  elevated: "bg-background-secondary border border-border-subtle shadow-card-hover",
   outlined: "bg-transparent border border-border-default",
   ghost: "bg-transparent border-none",
   interactive: cn(
-    "bg-background-secondary/50 border border-border-subtle",
+    "bg-background-secondary border border-border-subtle shadow-card",
     "transition-all duration-[var(--duration-normal)]",
-    "hover:border-accent-gold/30 hover:bg-background-secondary hover:shadow-md",
+    "hover:border-accent-primary/30 hover:shadow-card-hover",
     "cursor-pointer"
   ),
 };

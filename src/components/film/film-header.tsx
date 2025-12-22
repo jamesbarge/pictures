@@ -79,11 +79,11 @@ export function FilmHeader({ film }: FilmHeaderProps) {
             priority
             onLoad={() => setBackdropLoaded(true)}
           />
-          {/* Gradient overlays */}
-          <div className="absolute inset-0 bg-gradient-to-b from-background-primary/20 via-background-primary/60 to-background-primary" />
-          <div className="absolute inset-0 bg-gradient-to-r from-background-primary/40 via-transparent to-background-primary/40" />
-          {/* Subtle vignette */}
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(0,20,39,0.4)_100%)]" />
+          {/* Gradient overlays for light theme */}
+          <div className="absolute inset-0 bg-gradient-to-b from-background-primary/30 via-background-primary/70 to-background-primary" />
+          <div className="absolute inset-0 bg-gradient-to-r from-background-primary/50 via-transparent to-background-primary/50" />
+          {/* Subtle vignette - warm neutral */}
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(26,26,26,0.15)_100%)]" />
         </div>
       )}
 
@@ -93,7 +93,7 @@ export function FilmHeader({ film }: FilmHeaderProps) {
           <div className="flex flex-col sm:flex-row gap-6">
             {/* Poster */}
             <div className="shrink-0 mx-auto sm:mx-0">
-              <div className="relative w-48 h-72 sm:w-56 sm:h-84 rounded-lg overflow-hidden shadow-2xl bg-background-secondary ring-1 ring-white/10">
+              <div className="relative w-48 h-72 sm:w-56 sm:h-84 rounded-lg overflow-hidden shadow-elevated bg-background-secondary border border-border-subtle">
                 {/* Use poster URL or fall back to generated placeholder */}
                 {film.posterUrl && !film.posterUrl.includes('poster-placeholder') ? (
                   <Image
@@ -127,13 +127,13 @@ export function FilmHeader({ film }: FilmHeaderProps) {
 
                 {/* Repertory Badge */}
                 {film.isRepertory && (
-                  <div className="absolute top-2 left-2 px-2 py-1 text-xs font-medium bg-accent-gold text-background-primary rounded shadow-md">
+                  <div className="absolute top-2 left-2 px-2 py-1 text-xs font-medium bg-accent-highlight text-text-inverse rounded shadow-sm">
                     REPERTORY
                   </div>
                 )}
 
-                {/* Subtle poster border glow on hover */}
-                <div className="absolute inset-0 rounded-lg ring-1 ring-inset ring-white/10 pointer-events-none" />
+                {/* Subtle poster border on hover */}
+                <div className="absolute inset-0 rounded-lg ring-1 ring-inset ring-border-subtle pointer-events-none" />
               </div>
             </div>
 
@@ -171,13 +171,13 @@ export function FilmHeader({ film }: FilmHeaderProps) {
                   </span>
                 )}
                 {film.certification && (
-                  <span className="px-2 py-0.5 border border-white/20 rounded text-xs font-mono">
+                  <span className="px-2 py-0.5 border border-border-default rounded text-xs font-mono text-text-secondary">
                     {film.certification}
                   </span>
                 )}
                 {film.tmdbRating && film.tmdbRating > 0 && (
                   <span className="flex items-center gap-1.5">
-                    <Star className="w-4 h-4 text-accent-gold fill-accent-gold" />
+                    <Star className="w-4 h-4 text-accent-highlight fill-accent-highlight" />
                     {film.tmdbRating.toFixed(1)}
                   </span>
                 )}
@@ -218,9 +218,9 @@ export function FilmHeader({ film }: FilmHeaderProps) {
                       onClick={() => handleGenreClick(genre)}
                       className={cn(
                         "px-3 py-1 text-sm rounded-full capitalize transition-all",
-                        "bg-white/5 text-text-secondary",
-                        "hover:bg-accent-gold/20 hover:text-accent-gold hover:scale-105",
-                        "focus:outline-none focus:ring-2 focus:ring-accent-gold/50",
+                        "bg-background-tertiary text-text-secondary border border-border-subtle",
+                        "hover:bg-accent-primary/10 hover:text-accent-primary hover:border-accent-primary/30",
+                        "focus:outline-none focus:ring-2 focus:ring-accent-primary/40",
                         "cursor-pointer"
                       )}
                       aria-label={`View all ${genre} films`}
@@ -238,9 +238,9 @@ export function FilmHeader({ film }: FilmHeaderProps) {
                     onClick={() => handleDecadeClick(film.decade!)}
                     className={cn(
                       "px-3 py-1 text-sm rounded-full transition-all",
-                      "bg-accent-gold/10 text-accent-gold border border-accent-gold/30",
-                      "hover:bg-accent-gold/20 hover:border-accent-gold/50 hover:scale-105",
-                      "focus:outline-none focus:ring-2 focus:ring-accent-gold/50",
+                      "bg-accent-highlight/15 text-accent-highlight-dark border border-accent-highlight/30",
+                      "hover:bg-accent-highlight/25 hover:border-accent-highlight/50",
+                      "focus:outline-none focus:ring-2 focus:ring-accent-highlight/40",
                       "cursor-pointer"
                     )}
                     aria-label={`View all films from the ${film.decade}`}
@@ -274,8 +274,8 @@ export function FilmHeader({ film }: FilmHeaderProps) {
                 className={cn(
                   "inline-flex items-center gap-2 px-3 py-1.5 rounded-lg",
                   "text-sm text-text-tertiary hover:text-text-primary",
-                  "bg-white/5 hover:bg-white/10",
-                  "border border-white/10 hover:border-white/20",
+                  "bg-background-tertiary hover:bg-surface-overlay-hover",
+                  "border border-border-subtle hover:border-border-default",
                   "transition-all"
                 )}
               >
@@ -291,8 +291,8 @@ export function FilmHeader({ film }: FilmHeaderProps) {
                 className={cn(
                   "inline-flex items-center gap-2 px-3 py-1.5 rounded-lg",
                   "text-sm text-text-tertiary hover:text-text-primary",
-                  "bg-white/5 hover:bg-white/10",
-                  "border border-white/10 hover:border-white/20",
+                  "bg-background-tertiary hover:bg-surface-overlay-hover",
+                  "border border-border-subtle hover:border-border-default",
                   "transition-all"
                 )}
               >
@@ -307,8 +307,8 @@ export function FilmHeader({ film }: FilmHeaderProps) {
               className={cn(
                 "inline-flex items-center gap-2 px-3 py-1.5 rounded-lg",
                 "text-sm text-text-tertiary hover:text-text-primary",
-                "bg-white/5 hover:bg-white/10",
-                "border border-white/10 hover:border-white/20",
+                "bg-background-tertiary hover:bg-surface-overlay-hover",
+                "border border-border-subtle hover:border-border-default",
                 "transition-all"
               )}
             >

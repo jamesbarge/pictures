@@ -69,7 +69,7 @@ export default async function Home() {
 
         {/* Empty State Helper */}
         {initialScreenings.length === 0 && (
-          <div className="mt-8 p-6 bg-background-secondary/50 border border-white/5 rounded-lg text-center">
+          <div className="mt-8 p-6 bg-background-secondary/50 border border-border-subtle rounded-lg text-center">
             <p className="text-text-secondary mb-4">
               No screenings yet. Seed some test data to see the calendar in
               action:

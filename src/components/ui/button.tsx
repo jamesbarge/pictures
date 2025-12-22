@@ -22,16 +22,16 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantStyles: Record<ButtonVariant, string> = {
   primary: cn(
-    "bg-accent-gold text-background-primary",
-    "hover:bg-accent-gold-light",
-    "active:bg-accent-gold-dark",
-    "disabled:bg-accent-gold/50 disabled:text-background-primary/70"
+    "bg-accent-primary text-text-inverse",
+    "hover:bg-accent-primary-hover",
+    "active:bg-accent-primary-light",
+    "disabled:bg-accent-primary/50 disabled:text-text-inverse/70"
   ),
   secondary: cn(
-    "bg-background-tertiary text-text-primary border border-border-default",
+    "bg-background-secondary text-text-primary border border-border-default",
     "hover:bg-background-hover hover:border-border-emphasis",
     "active:bg-background-active",
-    "disabled:bg-background-tertiary/50 disabled:text-text-tertiary disabled:border-border-subtle"
+    "disabled:bg-background-secondary/50 disabled:text-text-tertiary disabled:border-border-subtle"
   ),
   ghost: cn(
     "bg-transparent text-text-secondary",
@@ -40,16 +40,16 @@ const variantStyles: Record<ButtonVariant, string> = {
     "disabled:text-text-muted disabled:bg-transparent"
   ),
   danger: cn(
-    "bg-accent-red text-white",
-    "hover:bg-accent-red/90",
-    "active:bg-accent-red/80",
-    "disabled:bg-accent-red/50"
+    "bg-accent-danger text-text-inverse",
+    "hover:bg-accent-danger/90",
+    "active:bg-accent-danger/80",
+    "disabled:bg-accent-danger/50"
   ),
   gold: cn(
-    "bg-accent-gold/10 text-accent-gold border border-accent-gold/30",
-    "hover:bg-accent-gold/20 hover:border-accent-gold/50",
-    "active:bg-accent-gold/30",
-    "disabled:bg-accent-gold/5 disabled:text-accent-gold/50 disabled:border-accent-gold/20"
+    "bg-accent-highlight/10 text-accent-highlight-dark border border-accent-highlight/30",
+    "hover:bg-accent-highlight/20 hover:border-accent-highlight/50",
+    "active:bg-accent-highlight/30",
+    "disabled:bg-accent-highlight/5 disabled:text-accent-highlight/50 disabled:border-accent-highlight/20"
   ),
 };
 
@@ -84,7 +84,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           "inline-flex items-center justify-center font-medium",
           "rounded-[var(--button-radius)]",
           "transition-all duration-[var(--duration-fast)]",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold focus-visible:ring-offset-2 focus-visible:ring-offset-background-primary",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background-primary",
           "disabled:cursor-not-allowed",
           // Variant styles
           variantStyles[variant],

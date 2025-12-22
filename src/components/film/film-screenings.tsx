@@ -36,9 +36,9 @@ const formatBadgeColors: Record<string, string> = {
 };
 
 const eventTypeBadges: Record<string, { label: string; className: string }> = {
-  q_and_a: { label: "Q&A", className: "bg-accent-gold/20 text-accent-gold" },
-  intro: { label: "Intro", className: "bg-green-500/20 text-green-400" },
-  discussion: { label: "Discussion", className: "bg-blue-500/20 text-blue-400" },
+  q_and_a: { label: "Q&A", className: "bg-accent-highlight/20 text-accent-highlight-dark" },
+  intro: { label: "Intro", className: "bg-accent-success/20 text-accent-success" },
+  discussion: { label: "Discussion", className: "bg-accent-primary/20 text-accent-primary" },
 };
 
 function formatScreeningDate(date: Date): string {
@@ -76,9 +76,9 @@ export function FilmScreenings({ screenings }: FilmScreeningsProps) {
   return (
     <div className="space-y-6">
       {sortedCinemas.map(({ cinema, screenings: cinemaScreenings }) => (
-        <div key={cinema.id} className="bg-background-secondary/50 rounded-lg border border-white/5 overflow-hidden">
+        <div key={cinema.id} className="bg-background-secondary rounded-lg border border-border-subtle shadow-card overflow-hidden">
           {/* Cinema Header */}
-          <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
+          <div className="px-4 py-3 border-b border-border-subtle flex items-center justify-between">
             <div>
               <h3 className="font-display text-lg text-text-primary">{cinema.name}</h3>
               {cinema.address?.area && (
@@ -94,20 +94,20 @@ export function FilmScreenings({ screenings }: FilmScreeningsProps) {
           </div>
 
           {/* Screenings List */}
-          <div className="divide-y divide-white/5">
+          <div className="divide-y divide-border-subtle">
             {cinemaScreenings
               .sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime())
               .map((screening) => (
                 <div
                   key={screening.id}
-                  className="px-4 py-3 flex items-center gap-4 hover:bg-white/5 transition-colors"
+                  className="px-4 py-3 flex items-center gap-4 hover:bg-surface-overlay-hover transition-colors"
                 >
                   {/* Date & Time */}
                   <div className="w-28 shrink-0">
                     <div className="text-text-primary font-medium">
                       {formatScreeningDate(new Date(screening.datetime))}
                     </div>
-                    <div className="text-accent-gold font-mono text-lg">
+                    <div className="text-accent-highlight font-mono text-lg font-semibold">
                       {format(new Date(screening.datetime), "HH:mm")}
                     </div>
                   </div>
@@ -131,7 +131,7 @@ export function FilmScreenings({ screenings }: FilmScreeningsProps) {
                       </span>
                     )}
                     {screening.screen && (
-                      <span className="px-2 py-0.5 text-xs text-text-tertiary bg-white/5 rounded">
+                      <span className="px-2 py-0.5 text-xs text-text-tertiary bg-background-tertiary rounded border border-border-subtle">
                         {screening.screen}
                       </span>
                     )}
@@ -142,7 +142,7 @@ export function FilmScreenings({ screenings }: FilmScreeningsProps) {
                     href={screening.bookingUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="shrink-0 px-4 py-2 text-sm font-medium text-background-primary bg-accent-gold hover:bg-accent-gold/90 rounded-lg transition-colors flex items-center gap-1.5"
+                    className="shrink-0 px-4 py-2 text-sm font-medium text-text-inverse bg-accent-primary hover:bg-accent-primary-hover rounded-lg transition-colors flex items-center gap-1.5 shadow-sm"
                   >
                     Book
                     <ExternalLink className="w-3.5 h-3.5" />

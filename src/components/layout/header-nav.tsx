@@ -44,7 +44,7 @@ export function HeaderNav() {
       <nav className="flex items-center gap-2">
         <button
           onClick={() => setSearchOpen(true)}
-          className="p-2 rounded-lg hover:bg-white/5 text-text-secondary hover:text-text-primary transition-colors"
+          className="p-2 rounded-lg hover:bg-surface-overlay-hover text-text-secondary hover:text-text-primary transition-colors"
           title="Search (⌘K)"
         >
           <Search className="w-5 h-5" />
@@ -52,7 +52,7 @@ export function HeaderNav() {
         <FilterButton filters={filters} />
         <Link
           href="/settings"
-          className="p-2 rounded-lg hover:bg-white/5 text-text-secondary hover:text-text-primary transition-colors"
+          className="p-2 rounded-lg hover:bg-surface-overlay-hover text-text-secondary hover:text-text-primary transition-colors"
         >
           <Settings className="w-5 h-5" />
         </Link>
@@ -88,9 +88,9 @@ function FilterButton({ filters }: { filters: FilterState & { clearAllFilters: (
         }
       }}
       className={cn(
-        "p-2 rounded-lg hover:bg-white/5 transition-colors",
+        "p-2 rounded-lg hover:bg-surface-overlay-hover transition-colors",
         activeCount > 0
-          ? "text-accent-gold hover:text-accent-gold"
+          ? "text-accent-primary hover:text-accent-primary"
           : "text-text-secondary hover:text-text-primary"
       )}
       title={activeCount > 0 ? "Clear filters" : "Filters"}
@@ -179,9 +179,9 @@ function SearchDialogContent({ onClose }: { onClose: () => void }) {
 
       {/* Dialog */}
       <div className="fixed inset-x-4 top-[15%] sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:w-full sm:max-w-lg z-50">
-        <div className="bg-background-secondary border border-white/10 rounded-xl shadow-2xl overflow-hidden">
+        <div className="bg-background-secondary border border-border-default rounded-xl shadow-elevated overflow-hidden">
           {/* Search Input */}
-          <div className="flex items-center gap-3 px-4 border-b border-white/5">
+          <div className="flex items-center gap-3 px-4 border-b border-border-subtle">
             <Search className="w-5 h-5 text-text-tertiary shrink-0" />
             <input
               ref={inputRef}
@@ -197,7 +197,7 @@ function SearchDialogContent({ onClose }: { onClose: () => void }) {
             )}
             <button
               onClick={onClose}
-              className="p-1 rounded-lg hover:bg-white/5 text-text-tertiary hover:text-text-primary transition-colors"
+              className="p-1 rounded-lg hover:bg-surface-overlay-hover text-text-tertiary hover:text-text-primary transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
@@ -214,8 +214,8 @@ function SearchDialogContent({ onClose }: { onClose: () => void }) {
                     className={cn(
                       "w-full flex items-center gap-3 px-4 py-3 text-left transition-colors",
                       selectedIndex === index
-                        ? "bg-accent-gold/10"
-                        : "hover:bg-white/5"
+                        ? "bg-accent-primary/10"
+                        : "hover:bg-surface-overlay-hover"
                     )}
                   >
                     {/* Poster */}
@@ -256,7 +256,7 @@ function SearchDialogContent({ onClose }: { onClose: () => void }) {
 
                     {/* Screening Count */}
                     {film.screeningCount > 0 && (
-                      <div className="flex items-center gap-1 text-xs text-accent-gold shrink-0">
+                      <div className="flex items-center gap-1 text-xs text-accent-highlight-dark shrink-0">
                         <Calendar className="w-3.5 h-3.5" />
                         <span>{film.screeningCount}</span>
                       </div>
@@ -279,19 +279,19 @@ function SearchDialogContent({ onClose }: { onClose: () => void }) {
                 </p>
                 <div className="flex justify-center gap-4 mt-4 text-xs text-text-tertiary">
                   <span>
-                    <kbd className="px-1.5 py-0.5 bg-white/5 rounded border border-white/10">
+                    <kbd className="px-1.5 py-0.5 bg-background-tertiary rounded border border-border-subtle">
                       ↑↓
                     </kbd>{" "}
                     Navigate
                   </span>
                   <span>
-                    <kbd className="px-1.5 py-0.5 bg-white/5 rounded border border-white/10">
+                    <kbd className="px-1.5 py-0.5 bg-background-tertiary rounded border border-border-subtle">
                       ↵
                     </kbd>{" "}
                     Select
                   </span>
                   <span>
-                    <kbd className="px-1.5 py-0.5 bg-white/5 rounded border border-white/10">
+                    <kbd className="px-1.5 py-0.5 bg-background-tertiary rounded border border-border-subtle">
                       Esc
                     </kbd>{" "}
                     Close

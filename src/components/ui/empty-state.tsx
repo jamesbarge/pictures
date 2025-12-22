@@ -103,7 +103,7 @@ export function SearchEmptyState({
         onClear && (
           <button
             onClick={onClear}
-            className="text-sm text-accent-gold hover:text-accent-gold-light transition-colors"
+            className="text-sm text-accent-primary hover:text-accent-primary-hover transition-colors"
           >
             Clear search
           </button>
@@ -132,7 +132,7 @@ export function DateEmptyState({
         onExpandRange && (
           <button
             onClick={onExpandRange}
-            className="text-sm text-accent-gold hover:text-accent-gold-light transition-colors"
+            className="text-sm text-accent-primary hover:text-accent-primary-hover transition-colors"
           >
             View next 7 days
           </button>

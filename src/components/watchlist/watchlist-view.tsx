@@ -169,7 +169,7 @@ export function WatchlistView({ films, screeningsByFilm }: WatchlistViewProps) {
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as SortOption)}
-            className="bg-background-secondary border border-white/10 rounded-lg px-3 py-1.5 text-sm text-text-primary focus:outline-none focus:border-accent-gold/50"
+            className="bg-background-secondary border border-border-default rounded-lg px-3 py-1.5 text-sm text-text-primary focus:outline-none focus:border-accent-primary/50"
           >
             <option value="next_screening">Next Screening</option>
             <option value="date_added">Date Added</option>
@@ -252,8 +252,8 @@ function WatchlistFilmCard({
       className={cn(
         "border rounded-xl overflow-hidden transition-all",
         isNotPlaying
-          ? "border-white/5 bg-background-secondary/30"
-          : "border-white/10 bg-background-secondary"
+          ? "border-border-subtle bg-background-secondary/30"
+          : "border-border-default bg-background-secondary"
       )}
     >
       {/* Main Card Content */}
@@ -278,7 +278,7 @@ function WatchlistFilmCard({
         {/* Info */}
         <div className="flex-1 min-w-0">
           <Link href={`/film/${film.id}`} className="group">
-            <h3 className="font-display text-text-primary group-hover:text-accent-gold transition-colors truncate">
+            <h3 className="font-display text-text-primary group-hover:text-accent-primary transition-colors truncate">
               {film.title}
             </h3>
           </Link>
@@ -287,13 +287,13 @@ function WatchlistFilmCard({
             {film.year && <span>{film.year}</span>}
             {film.directors.length > 0 && (
               <>
-                <span className="text-white/20">•</span>
+                <span className="text-border-subtle">•</span>
                 <span className="truncate">{film.directors[0]}</span>
               </>
             )}
             {film.runtime && (
               <>
-                <span className="text-white/20">•</span>
+                <span className="text-border-subtle">•</span>
                 <span>{film.runtime}m</span>
               </>
             )}
@@ -304,7 +304,7 @@ function WatchlistFilmCard({
             <div className="mt-2">
               <button
                 onClick={onToggleExpand}
-                className="inline-flex items-center gap-2 text-sm text-accent-gold hover:text-accent-gold-light transition-colors"
+                className="inline-flex items-center gap-2 text-sm text-accent-primary hover:text-accent-hover transition-colors"
               >
                 <Calendar className="w-4 h-4" />
                 <span>
@@ -352,7 +352,7 @@ function WatchlistFilmCard({
 
       {/* Expanded Screenings */}
       {isExpanded && film.screenings.length > 0 && (
-        <div className="border-t border-white/5 bg-background-tertiary/30">
+        <div className="border-t border-border-subtle bg-background-tertiary/30">
           <div className="p-4 space-y-2">
             {film.screenings.slice(0, 10).map((screening) => (
               <a
@@ -374,25 +374,25 @@ function WatchlistFilmCard({
                     <span>{screening.cinema.name}</span>
                     {screening.format && (
                       <>
-                        <span className="text-white/20">•</span>
+                        <span className="text-border-subtle">•</span>
                         <span className="uppercase text-xs">{screening.format}</span>
                       </>
                     )}
                     {screening.screen && (
                       <>
-                        <span className="text-white/20">•</span>
+                        <span className="text-border-subtle">•</span>
                         <span>{screening.screen}</span>
                       </>
                     )}
                   </div>
                 </div>
-                <ExternalLink className="w-4 h-4 text-text-tertiary group-hover:text-accent-gold transition-colors" />
+                <ExternalLink className="w-4 h-4 text-text-tertiary group-hover:text-accent-primary transition-colors" />
               </a>
             ))}
             {film.screenings.length > 10 && (
               <Link
                 href={`/film/${film.id}`}
-                className="block text-center text-sm text-accent-gold hover:text-accent-gold-light transition-colors py-2"
+                className="block text-center text-sm text-accent-primary hover:text-accent-hover transition-colors py-2"
               >
                 View all {film.screenings.length} screenings
               </Link>
@@ -427,8 +427,8 @@ function WatchlistSkeleton() {
     <div className="space-y-8">
       {/* Sort Controls Skeleton */}
       <div className="flex items-center justify-between">
-        <div className="h-5 w-32 bg-white/10 rounded animate-pulse" />
-        <div className="h-8 w-40 bg-white/10 rounded animate-pulse" />
+        <div className="h-5 w-32 bg-background-tertiary rounded animate-pulse" />
+        <div className="h-8 w-40 bg-background-tertiary rounded animate-pulse" />
       </div>
 
       {/* Cards Skeleton */}
@@ -436,14 +436,14 @@ function WatchlistSkeleton() {
         {[1, 2, 3].map((i) => (
           <div
             key={i}
-            className="border border-white/5 rounded-xl p-4 bg-background-secondary/50"
+            className="border border-border-subtle rounded-xl p-4 bg-background-secondary/50"
           >
             <div className="flex gap-4">
-              <div className="w-16 h-24 bg-white/10 rounded-lg animate-pulse" />
+              <div className="w-16 h-24 bg-background-tertiary rounded-lg animate-pulse" />
               <div className="flex-1 space-y-2">
-                <div className="h-5 w-48 bg-white/10 rounded animate-pulse" />
-                <div className="h-4 w-32 bg-white/5 rounded animate-pulse" />
-                <div className="h-4 w-40 bg-white/5 rounded animate-pulse" />
+                <div className="h-5 w-48 bg-background-tertiary rounded animate-pulse" />
+                <div className="h-4 w-32 bg-surface-muted rounded animate-pulse" />
+                <div className="h-4 w-40 bg-surface-muted rounded animate-pulse" />
               </div>
             </div>
           </div>
