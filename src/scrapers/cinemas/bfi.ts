@@ -82,7 +82,7 @@ export class BFIScraper {
     console.log(`[${this.config.cinemaId}] Session established`);
   }
 
-  private async waitForCloudflare(maxWaitSeconds = 20): Promise<boolean> {
+  private async waitForCloudflare(maxWaitSeconds = 45): Promise<boolean> {
     if (!this.page) return false;
 
     for (let i = 0; i < maxWaitSeconds; i++) {
@@ -95,7 +95,7 @@ export class BFIScraper {
       }
       await this.page.waitForTimeout(1000);
     }
-    console.log(`[${this.config.cinemaId}] Cloudflare challenge timeout`);
+    console.log(`[${this.config.cinemaId}] Cloudflare challenge timeout after ${maxWaitSeconds}s`);
     return false;
   }
 
@@ -112,48 +112,161 @@ export class BFIScraper {
     if (!this.page) throw new Error("Browser not initialized");
 
     const screenings: RawScreening[] = [];
-    const dates = this.generateDateRange(30); // 30 days ahead
 
-    for (const date of dates) {
-      try {
-        const dateStr = this.formatDate(date);
-        console.log(`[${this.config.cinemaId}] Fetching ${dateStr}...`);
+    try {
+      // Navigate to the calendar page first
+      console.log(`[${this.config.cinemaId}] Opening calendar...`);
 
-        // Click on the date in the calendar or navigate directly
-        const url = this.buildSearchUrl(dateStr);
-        await this.page.goto(url, { waitUntil: "domcontentloaded", timeout: 30000 });
+      // The calendar is at the main whatson page
+      await this.page.goto(`${this.venue.baseUrl}/default.asp`, {
+        waitUntil: "domcontentloaded",
+        timeout: 60000,
+      });
 
-        // Wait for Cloudflare if needed
-        const passed = await this.waitForCloudflare(10);
-        if (!passed) {
-          console.log(`[${this.config.cinemaId}] Skipping ${dateStr} - Cloudflare blocked`);
-          continue;
-        }
-
-        // Wait for main content
-        try {
-          await this.page.waitForSelector("main", { timeout: 5000 });
-        } catch {
-          // Continue even if main not found immediately
-        }
-
-        await this.page.waitForTimeout(1000);
-
-        const html = await this.page.content();
-        const dayScreenings = this.parseSearchResults(html);
-
-        if (dayScreenings.length > 0) {
-          console.log(`[${this.config.cinemaId}] ${dateStr}: ${dayScreenings.length} screenings`);
-          screenings.push(...dayScreenings);
-        } else {
-          console.log(`[${this.config.cinemaId}] ${dateStr}: no screenings`);
-        }
-
-        // Rate limiting
-        await this.page.waitForTimeout(this.config.delayBetweenRequests);
-      } catch (error) {
-        console.error(`[${this.config.cinemaId}] Error on ${this.formatDate(date)}:`, error);
+      const cloudflareCleared = await this.waitForCloudflare(45);
+      if (!cloudflareCleared) {
+        console.log(`[${this.config.cinemaId}] Cloudflare did not clear, trying anyway...`);
       }
+
+      await this.page.waitForTimeout(3000);
+
+      // Debug: Log the page title and URL
+      const title = await this.page.title();
+      const url = this.page.url();
+      console.log(`[${this.config.cinemaId}] Page title: "${title}", URL: ${url}`);
+
+      // Try waiting for calendar to appear - various selectors
+      const calendarSelectors = [
+        '[role="grid"]',
+        '[role="gridcell"]',
+        '.calendar',
+        '[class*="calendar"]',
+        '[class*="datepicker"]',
+        'table',
+      ];
+
+      let calendarFound = false;
+      for (const selector of calendarSelectors) {
+        const exists = await this.page.$(selector);
+        if (exists) {
+          console.log(`[${this.config.cinemaId}] Found element matching: ${selector}`);
+          calendarFound = true;
+          break;
+        }
+      }
+
+      if (!calendarFound) {
+        // Debug: Log snippet of HTML to understand page structure
+        const html = await this.page.content();
+        console.log(`[${this.config.cinemaId}] No calendar found. Page HTML length: ${html.length}`);
+        console.log(`[${this.config.cinemaId}] HTML preview: ${html.substring(0, 500)}...`);
+
+        // Try alternative: look for film listings directly on the page
+        return this.parseSearchResults(html);
+      }
+
+      // Debug: Inspect grid structure
+      const gridHtml = await this.page.$eval('[role="grid"]', el => el.outerHTML.substring(0, 2000)).catch(() => "grid not found");
+      console.log(`[${this.config.cinemaId}] Grid HTML preview: ${gridHtml.substring(0, 500)}...`);
+
+      // Try multiple selector patterns for calendar cells
+      const cellSelectors = [
+        '[role="gridcell"][aria-disabled="false"]',
+        '[role="gridcell"]:not([aria-disabled="true"])',
+        '[role="gridcell"]',
+        '[role="grid"] button',
+        '[role="grid"] a',
+        '.calendar-day',
+        '[class*="day"]',
+      ];
+
+      let dateCells: any[] = [];
+      let usedSelector = "";
+      for (const selector of cellSelectors) {
+        const cells = await this.page.$$(selector);
+        console.log(`[${this.config.cinemaId}] Selector "${selector}" found ${cells.length} elements`);
+        if (cells.length > 0 && dateCells.length === 0) {
+          dateCells = cells;
+          usedSelector = selector;
+        }
+      }
+      console.log(`[${this.config.cinemaId}] Using selector: ${usedSelector}, found ${dateCells.length} active calendar dates`);
+
+      // Use the working selector in the loop
+      const workingSelector = usedSelector || '[role="gridcell"]:not([aria-disabled="true"])';
+      console.log(`[${this.config.cinemaId}] Starting date loop with ${dateCells.length} dates...`);
+
+      for (let i = 0; i < Math.min(dateCells.length, 30); i++) {
+        try {
+          // Re-query date cells after each navigation since DOM changes
+          const currentCells = await this.page.$$(workingSelector);
+          console.log(`[${this.config.cinemaId}] Re-queried: ${currentCells.length} cells for iteration ${i}`);
+          if (i >= currentCells.length) break;
+
+          const cell = currentCells[i];
+          const dateLabel = await cell.getAttribute("aria-label") || await cell.textContent() || "";
+
+          console.log(`[${this.config.cinemaId}] Clicking date: ${dateLabel.trim() || `cell ${i}`}...`);
+
+          // Click the date cell
+          await cell.click();
+          await this.page.waitForTimeout(2000);
+
+          // Wait for content to load
+          await this.waitForCloudflare(10);
+
+          try {
+            await this.page.waitForSelector("main", { timeout: 5000 });
+          } catch {
+            // Continue even if main not found
+          }
+
+          await this.page.waitForTimeout(1000);
+
+          const html = await this.page.content();
+
+          // Debug: Show what we got after clicking
+          const pageUrl = this.page.url();
+          console.log(`[${this.config.cinemaId}] After click - URL: ${pageUrl}, HTML length: ${html.length}`);
+
+          // Debug: Check for screening-like content
+          const hasMain = html.includes('<main');
+          const hasLoadArticle = html.includes('loadArticle');
+          const hasGeneric = html.includes('generic');
+          console.log(`[${this.config.cinemaId}] Page content: main=${hasMain}, loadArticle=${hasLoadArticle}, generic=${hasGeneric}`);
+
+          const dayScreenings = this.parseSearchResults(html);
+          console.log(`[${this.config.cinemaId}] Parsed ${dayScreenings.length} screenings from this date`);
+
+          if (dayScreenings.length > 0) {
+            console.log(`[${this.config.cinemaId}] ${dateLabel.trim()}: ${dayScreenings.length} screenings`);
+            screenings.push(...dayScreenings);
+          }
+
+          // Navigate back to calendar for next date
+          await this.page.goto(`${this.venue.baseUrl}/default.asp`, {
+            waitUntil: "domcontentloaded",
+            timeout: 30000,
+          });
+          await this.waitForCloudflare(10);
+          await this.page.waitForTimeout(1500);
+
+        } catch (error) {
+          console.error(`[${this.config.cinemaId}] Error on date ${i}:`, error);
+          // Try to recover by going back to calendar
+          try {
+            await this.page.goto(`${this.venue.baseUrl}/default.asp`, {
+              waitUntil: "domcontentloaded",
+              timeout: 30000,
+            });
+            await this.page.waitForTimeout(2000);
+          } catch {
+            // Ignore recovery errors
+          }
+        }
+      }
+    } catch (error) {
+      console.error(`[${this.config.cinemaId}] Calendar navigation failed:`, error);
     }
 
     return screenings;
@@ -196,53 +309,72 @@ export class BFIScraper {
       return [];
     }
 
-    // BFI search results structure (from MCP Playwright exploration):
-    // main > generic > [generic containers per screening]
-    // Each screening container has:
-    //   - div with: link (title), div (datetime), div (screen)
-    //   - div "Buy" button
-    //
-    // The links have hrefs containing "loadArticle"
+    // BFI search results structure:
+    // Links with loadArticle in href point to film/event pages
+    // The datetime and screen info is in sibling/parent elements
+    // Note: Page may not have <main> element - search for loadArticle links directly
 
     // Find all links that point to articles (film/event pages)
-    $("main a").each((_, el) => {
+    const loadArticleLinks = $('a[href*="loadArticle"]');
+    console.log(`[${this.config.cinemaId}] Found ${loadArticleLinks.length} loadArticle links`);
+
+    let processedCount = 0;
+    loadArticleLinks.each((idx, el) => {
       const $link = $(el);
       const title = $link.text().trim();
       const href = $link.attr("href") || "";
+
+      // Debug: log first few links
+      if (idx < 3) {
+        console.log(`[${this.config.cinemaId}] Link ${idx}: title="${title.substring(0, 50)}", href contains loadArticle`);
+      }
 
       // Skip empty, short titles, and navigation links
       if (!title || title.length < 3) return;
       if (href.includes("javascript:")) return;
 
-      // Only process film/event links (contain loadArticle)
-      if (!href.includes("loadArticle")) return;
-
       // Skip non-film items
       if (this.isNonFilmEvent(title)) return;
+
+      processedCount++;
 
       // Get the parent container to find datetime and screen
       // Structure: generic > generic > [link, datetime div, screen div]
       const $container = $link.parent();
-      const siblings = $container.children();
+      const $grandparent = $container.parent();
+
+      // Try to find datetime in container text or grandparent
+      const containerText = $container.text();
+      const grandparentText = $grandparent.text();
+
+      // Debug: log structure for first few
+      if (processedCount <= 3) {
+        console.log(`[${this.config.cinemaId}] Processing "${title.substring(0, 30)}...": container="${containerText.substring(0, 100)}..."`);
+      }
 
       // Find datetime from sibling elements
       let datetimeStr = "";
       let screen = "";
 
-      siblings.each((_, sibling) => {
-        const text = $(sibling).text().trim();
+      // First try to match from the grandparent text (which includes siblings)
+      const datetimePattern = /(\w+)\s+(\d{1,2})\s+(\w+)\s+(\d{4})\s+(\d{1,2}:\d{2})/;
+      const dtMatch = grandparentText.match(datetimePattern);
+      if (dtMatch) {
+        datetimeStr = dtMatch[0];
+      }
 
-        // Look for datetime pattern: "Friday 19 December 2025 14:30"
-        if (/\w+\s+\d{1,2}\s+\w+\s+\d{4}\s+\d{1,2}:\d{2}/.test(text)) {
-          datetimeStr = text;
-        }
-        // Look for screen: NFT1-4, IMAX, Studio, etc.
-        else if (/^(NFT[1-4]|IMAX|Studio|BFI Reuben Library)$/i.test(text)) {
-          screen = text;
-        }
-      });
+      // Also look for screen info
+      const screenMatch = grandparentText.match(/(NFT[1-4]|IMAX|Studio|BFI Reuben Library)/i);
+      if (screenMatch) {
+        screen = screenMatch[1];
+      }
 
-      if (!datetimeStr) return;
+      if (!datetimeStr) {
+        if (processedCount <= 3) {
+          console.log(`[${this.config.cinemaId}] No datetime found in: "${grandparentText.substring(0, 200)}..."`);
+        }
+        return;
+      }
 
       const datetime = this.parseBFIDateTime(datetimeStr);
       if (!datetime || datetime < now) return;

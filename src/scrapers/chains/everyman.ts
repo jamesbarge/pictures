@@ -18,6 +18,25 @@ import type { Page } from "playwright";
 // Everyman Venue Configurations - London Locations
 // ============================================================================
 
+// Venue codes discovered from Everyman website - required for new URL pattern
+const VENUE_CODES: Record<string, string> = {
+  "baker-street": "x0712",
+  "barnet": "x06si",
+  "belsize-park": "x077p",
+  "borough-yards": "g011i",
+  "broadgate": "x11nt",
+  "canary-wharf": "x0vpb",
+  "chelsea": "x078x",
+  "crystal-palace": "x11dr",
+  "hampstead": "x06zw",
+  "kings-cross": "x0x5p",
+  "maida-vale": "x0lwi",
+  "muswell-hill": "x06sn",
+  "screen-on-the-green": "x077o",
+  "stratford-international": "g029x",
+  "walthamstow": "x0wt1", // Estimated code
+};
+
 export const EVERYMAN_VENUES: VenueConfig[] = [
   {
     id: "everyman-baker-street",
@@ -260,17 +279,62 @@ export class EverymanScraper implements ChainScraper {
     }
 
     try {
-      const url = `${this.chainConfig.baseUrl}/venues/${venue.slug}/listings`;
+      // New URL pattern: /venues-list/{code}-everyman-{slug}/
+      // Special case for Screen on the Green which doesn't have "everyman" in the slug
+      const venueCode = VENUE_CODES[venue.slug];
+      if (!venueCode) {
+        console.error(`[everyman] No venue code for: ${venue.slug}`);
+        return [];
+      }
+
+      let url: string;
+      if (venue.slug === "screen-on-the-green") {
+        url = `${this.chainConfig.baseUrl}/venues-list/${venueCode}-screen-on-the-green/`;
+      } else {
+        url = `${this.chainConfig.baseUrl}/venues-list/${venueCode}-everyman-${venue.slug}/`;
+      }
+
       await this.page!.goto(url, { waitUntil: "networkidle", timeout: 30000 });
 
       // Wait for content to load
       await this.page!.waitForTimeout(2000);
 
-      const html = await this.page!.content();
-      const screenings = this.parseScreenings(html, venue);
+      // Click through date tabs to get all screenings
+      const allScreenings: RawScreening[] = [];
 
-      console.log(`[everyman] ${venue.name}: ${screenings.length} screenings`);
-      return screenings;
+      // Get initial screenings from current view
+      let html = await this.page!.content();
+      let screenings = this.parseScreenings(html, venue);
+      allScreenings.push(...screenings);
+
+      // Try to click date tabs to get more screenings
+      const dateTabs = await this.page!.$$('[class*="date"], [class*="day"], button[data-date]');
+      for (let i = 1; i < Math.min(dateTabs.length, 14); i++) {
+        try {
+          const tabs = await this.page!.$$('[class*="date"], [class*="day"], button[data-date]');
+          if (i >= tabs.length) break;
+
+          await tabs[i].click();
+          await this.page!.waitForTimeout(1500);
+
+          html = await this.page!.content();
+          screenings = this.parseScreenings(html, venue);
+          allScreenings.push(...screenings);
+        } catch {
+          // Continue on tab click errors
+        }
+      }
+
+      // Dedupe screenings by sourceId
+      const seen = new Set<string>();
+      const uniqueScreenings = allScreenings.filter(s => {
+        if (s.sourceId && seen.has(s.sourceId)) return false;
+        if (s.sourceId) seen.add(s.sourceId);
+        return true;
+      });
+
+      console.log(`[everyman] ${venue.name}: ${uniqueScreenings.length} screenings`);
+      return uniqueScreenings;
     } catch (error) {
       console.error(`[everyman] Error scraping ${venue.name}:`, error);
       return [];

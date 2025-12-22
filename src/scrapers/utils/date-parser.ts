@@ -100,12 +100,20 @@ export function parseScreeningTime(timeStr: string): { hours: number; minutes: n
   const cleaned = timeStr.trim().toLowerCase();
 
   // 24-hour format: 18:30
+  // NOTE: If time is ambiguous (1:00-9:59 without AM/PM), assume PM
+  // since cinema showtimes are typically afternoon/evening, not early morning
   const time24Match = cleaned.match(/^(\d{1,2}):(\d{2})$/);
   if (time24Match) {
-    return {
-      hours: parseInt(time24Match[1], 10),
-      minutes: parseInt(time24Match[2], 10),
-    };
+    let hours = parseInt(time24Match[1], 10);
+    const minutes = parseInt(time24Match[2], 10);
+
+    // If hour is 1-9 (ambiguous 12-hour format without AM/PM), assume PM
+    // Cinema screenings at 2:00 mean 14:00, not 02:00
+    if (hours >= 1 && hours <= 9) {
+      hours += 12;
+    }
+
+    return { hours, minutes };
   }
 
   // 12-hour format: 6:30pm, 6.30 PM

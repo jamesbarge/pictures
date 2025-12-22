@@ -93,6 +93,17 @@ export function CalendarView({ screenings }: CalendarViewProps) {
         }
       }
 
+      // Time range filter (hour-based)
+      if (filters.timeFrom !== null || filters.timeTo !== null) {
+        const hour = getHours(new Date(s.datetime));
+        if (filters.timeFrom !== null && hour < filters.timeFrom) {
+          return false;
+        }
+        if (filters.timeTo !== null && hour > filters.timeTo) {
+          return false;
+        }
+      }
+
       // Format filter
       if (filters.formats.length > 0) {
         if (!s.format || !filters.formats.includes(s.format)) {

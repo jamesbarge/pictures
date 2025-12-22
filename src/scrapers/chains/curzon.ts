@@ -1,15 +1,18 @@
 /**
  * Curzon Cinemas Scraper
- * Uses Vista Web Client API for showtime data
+ * Uses Playwright to scrape showtimes from the Curzon website
  *
- * API: https://vwc.curzon.com/WSVistaWebClient
+ * Website: https://www.curzon.com
  *
  * To add a new Curzon venue:
  * 1. Add venue config to CURZON_VENUES array below
- * 2. Find the venue's cinema ID from the Curzon website network requests
+ * 2. Find the venue's slug from their website URL
  */
 
+import * as cheerio from "cheerio";
 import type { ChainConfig, VenueConfig, RawScreening, ChainScraper } from "../types";
+import { getBrowser, closeBrowser, createPage } from "../utils/browser";
+import type { Page } from "playwright";
 
 // ============================================================================
 // Curzon Venue Configurations
@@ -23,9 +26,9 @@ export const CURZON_VENUES: VenueConfig[] = [
     shortName: "Curzon Soho",
     slug: "soho",
     area: "Soho",
-    postcode: "W1D 3DG",
+    postcode: "W1D 5DY",
     address: "99 Shaftesbury Avenue",
-    chainVenueId: "0000000002", // Vista cinema ID
+    chainVenueId: "0000000002",
     features: ["bar", "cafe"],
     active: true,
   },
@@ -37,13 +40,10 @@ export const CURZON_VENUES: VenueConfig[] = [
     area: "Mayfair",
     postcode: "W1J 7SH",
     address: "38 Curzon Street",
-    chainVenueId: "0000000001", // Vista cinema ID
+    chainVenueId: "0000000001",
     features: ["historic", "single_screen"],
     active: true,
   },
-  // -------------------------------------------------------------------------
-  // Add more Curzon venues below (inactive by default until tested)
-  // -------------------------------------------------------------------------
   {
     id: "curzon-bloomsbury",
     name: "Curzon Bloomsbury",
@@ -146,164 +146,18 @@ export const CURZON_CONFIG: ChainConfig = {
   chainId: "curzon",
   chainName: "Curzon",
   baseUrl: "https://www.curzon.com",
-  apiUrl: "https://vwc.curzon.com/WSVistaWebClient",
   venues: CURZON_VENUES,
-  requestsPerMinute: 20,
-  delayBetweenRequests: 1500,
+  requestsPerMinute: 10,
+  delayBetweenRequests: 3000,
 };
 
 // ============================================================================
-// Vista API Types
-// ============================================================================
-
-interface VistaFilm {
-  ID: string;
-  Title: string;
-  ShortCode: string;
-  Rating: string;
-  RunTime: number;
-  Synopsis?: string;
-  CinemaId: string;
-}
-
-interface VistaSession {
-  ID: string;
-  CinemaId: string;
-  FilmId: string;
-  ScreenName: string;
-  ScreenNumber: number;
-  SessionDateTime: string; // ISO format
-  SessionDisplayPriority: number;
-  SessionAttributesNames: string[];
-  BookingUrl?: string;
-}
-
-interface VistaShowtimesResponse {
-  Films: VistaFilm[];
-  Sessions: VistaSession[];
-}
-
-// ============================================================================
-// Curzon Scraper Implementation
+// Curzon Scraper Implementation (uses Playwright due to JS rendering)
 // ============================================================================
 
 export class CurzonScraper implements ChainScraper {
   chainConfig = CURZON_CONFIG;
-  private authToken: string | null = null;
-
-  /**
-   * Fetch auth token from Curzon site
-   * The token is embedded in the page's initial data
-   */
-  private async getAuthToken(): Promise<string> {
-    if (this.authToken) return this.authToken;
-
-    console.log("[curzon] Fetching auth token...");
-
-    const response = await fetch(`${this.chainConfig.baseUrl}/venues/soho/`, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
-      },
-    });
-
-    const html = await response.text();
-
-    // Extract authToken from initialData in the page
-    const tokenMatch = html.match(/"authToken"\s*:\s*"([^"]+)"/);
-    if (!tokenMatch) {
-      throw new Error("Could not extract Curzon auth token");
-    }
-
-    this.authToken = tokenMatch[1];
-    console.log("[curzon] Auth token obtained");
-    return this.authToken;
-  }
-
-  /**
-   * Fetch showtimes from Vista API for a specific venue
-   */
-  private async fetchVenueShowtimes(venue: VenueConfig): Promise<VistaShowtimesResponse | null> {
-    const token = await this.getAuthToken();
-
-    // Vista API endpoint for getting scheduled films
-    const apiUrl = `${this.chainConfig.apiUrl}/ocapi/v1/browsing/master-data/films-and-sessions`;
-
-    const today = new Date();
-    const endDate = new Date(today);
-    endDate.setDate(today.getDate() + 30);
-
-    const params = new URLSearchParams({
-      cinemaId: venue.chainVenueId || "",
-      dateFrom: today.toISOString().split("T")[0],
-      dateTo: endDate.toISOString().split("T")[0],
-    });
-
-    try {
-      const response = await fetch(`${apiUrl}?${params}`, {
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Accept": "application/json",
-          "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
-        },
-      });
-
-      if (!response.ok) {
-        console.error(`[curzon] API error for ${venue.name}: ${response.status}`);
-        return null;
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error(`[curzon] Failed to fetch ${venue.name}:`, error);
-      return null;
-    }
-  }
-
-  /**
-   * Parse Vista API response into RawScreenings
-   */
-  private parseShowtimes(data: VistaShowtimesResponse, venue: VenueConfig): RawScreening[] {
-    const screenings: RawScreening[] = [];
-    const filmsById = new Map(data.Films.map(f => [f.ID, f]));
-
-    for (const session of data.Sessions) {
-      const film = filmsById.get(session.FilmId);
-      if (!film) continue;
-
-      const datetime = new Date(session.SessionDateTime);
-      if (isNaN(datetime.getTime())) continue;
-
-      // Detect format from session attributes
-      let format: string | undefined;
-      const attrs = session.SessionAttributesNames || [];
-      if (attrs.some(a => /imax/i.test(a))) format = "imax";
-      else if (attrs.some(a => /70mm/i.test(a))) format = "70mm";
-      else if (attrs.some(a => /35mm/i.test(a))) format = "35mm";
-      else if (attrs.some(a => /4k|dcp/i.test(a))) format = "dcp_4k";
-      else if (attrs.some(a => /dolby\s*cinema/i.test(a))) format = "dolby_cinema";
-
-      // Detect event type
-      let eventType: string | undefined;
-      if (attrs.some(a => /q\s*&?\s*a/i.test(a))) eventType = "q_and_a";
-      else if (attrs.some(a => /preview/i.test(a))) eventType = "preview";
-      else if (attrs.some(a => /premiere/i.test(a))) eventType = "premiere";
-      else if (attrs.some(a => /intro/i.test(a))) eventType = "intro";
-
-      const bookingUrl = `${this.chainConfig.baseUrl}/booking/${venue.slug}/${session.ID}`;
-
-      screenings.push({
-        filmTitle: film.Title,
-        datetime,
-        screen: session.ScreenName || `Screen ${session.ScreenNumber}`,
-        format,
-        bookingUrl,
-        eventType,
-        sourceId: `curzon-${venue.id}-${session.ID}`,
-      });
-    }
-
-    return screenings;
-  }
+  private page: Page | null = null;
 
   /**
    * Scrape all active venues
@@ -319,26 +173,32 @@ export class CurzonScraper implements ChainScraper {
   async scrapeVenues(venueIds: string[]): Promise<Map<string, RawScreening[]>> {
     const results = new Map<string, RawScreening[]>();
 
-    for (const venueId of venueIds) {
-      const venue = this.chainConfig.venues.find(v => v.id === venueId);
-      if (!venue) {
-        console.warn(`[curzon] Unknown venue: ${venueId}`);
-        continue;
+    try {
+      await this.initialize();
+
+      for (const venueId of venueIds) {
+        const venue = this.chainConfig.venues.find(v => v.id === venueId);
+        if (!venue) {
+          console.warn(`[curzon] Unknown venue: ${venueId}`);
+          continue;
+        }
+
+        console.log(`[curzon] Scraping ${venue.name}...`);
+        const screenings = await this.scrapeVenue(venueId);
+        results.set(venueId, screenings);
+
+        // Rate limiting
+        await new Promise(r => setTimeout(r, this.chainConfig.delayBetweenRequests));
       }
-
-      console.log(`[curzon] Scraping ${venue.name}...`);
-      const screenings = await this.scrapeVenue(venueId);
-      results.set(venueId, screenings);
-
-      // Rate limiting
-      await new Promise(r => setTimeout(r, this.chainConfig.delayBetweenRequests));
+    } finally {
+      await this.cleanup();
     }
 
     return results;
   }
 
   /**
-   * Scrape single venue
+   * Scrape single venue - scrapes multiple dates
    */
   async scrapeVenue(venueId: string): Promise<RawScreening[]> {
     const venue = this.chainConfig.venues.find(v => v.id === venueId);
@@ -347,22 +207,222 @@ export class CurzonScraper implements ChainScraper {
       return [];
     }
 
-    const data = await this.fetchVenueShowtimes(venue);
-    if (!data) return [];
+    if (!this.page) {
+      await this.initialize();
+    }
 
-    const screenings = this.parseShowtimes(data, venue);
-    console.log(`[curzon] ${venue.name}: ${screenings.length} screenings`);
+    const allScreenings: RawScreening[] = [];
+
+    try {
+      const url = `${this.chainConfig.baseUrl}/venues/${venue.slug}/`;
+      await this.page!.goto(url, { waitUntil: "networkidle", timeout: 60000 });
+
+      // Wait for content to load
+      await this.page!.waitForTimeout(3000);
+
+      // Try to close any popups/modals
+      try {
+        await this.page!.keyboard.press("Escape");
+        await this.page!.waitForTimeout(500);
+      } catch {
+        // Ignore if no popup
+      }
+
+      // Get all date buttons
+      const dateButtons = await this.page!.$$('[class*="date-picker"] button, [role="listitem"] button');
+      const dateCount = Math.min(dateButtons.length, 14); // Scrape up to 14 days
+
+      console.log(`[curzon] Found ${dateCount} dates to scrape`);
+
+      // First, scrape the current page (already showing first date - no click needed)
+      if (dateCount > 0) {
+        try {
+          const firstButton = dateButtons[0];
+          const dateText = await firstButton.textContent();
+          const dateInfo = this.parseDateFromButton(dateText || "");
+          const html = await this.page!.content();
+          const screenings = this.parseScreenings(html, venue, dateInfo);
+          allScreenings.push(...screenings);
+        } catch (error) {
+          console.error(`[curzon] Error scraping first date for ${venue.name}:`, error);
+        }
+      }
+
+      // Then click through remaining dates (starting from index 1)
+      for (let i = 1; i < dateCount; i++) {
+        try {
+          // Re-query buttons as DOM may have changed
+          const buttons = await this.page!.$$('[class*="date-picker"] button, [role="listitem"] button');
+          if (i >= buttons.length) break;
+
+          // Click the date button
+          await buttons[i].click();
+          await this.page!.waitForTimeout(2000);
+
+          // Get the date text from the button
+          const dateText = await buttons[i].textContent();
+          const dateInfo = this.parseDateFromButton(dateText || "");
+
+          // Get page HTML and parse screenings
+          const html = await this.page!.content();
+          const screenings = this.parseScreenings(html, venue, dateInfo);
+          allScreenings.push(...screenings);
+
+        } catch (error) {
+          console.error(`[curzon] Error scraping date ${i} for ${venue.name}:`, error);
+        }
+      }
+
+      console.log(`[curzon] ${venue.name}: ${allScreenings.length} screenings`);
+      return this.deduplicate(allScreenings);
+
+    } catch (error) {
+      console.error(`[curzon] Error scraping ${venue.name}:`, error);
+      return [];
+    }
+  }
+
+  private async initialize(): Promise<void> {
+    console.log(`[curzon] Launching browser...`);
+    await getBrowser();
+    this.page = await createPage();
+  }
+
+  private async cleanup(): Promise<void> {
+    if (this.page) {
+      await this.page.close();
+      this.page = null;
+    }
+    await closeBrowser();
+    console.log(`[curzon] Browser closed`);
+  }
+
+  /**
+   * Parse date from button text like "Mon 22 Dec" or "Today"
+   */
+  private parseDateFromButton(text: string): Date {
+    const now = new Date();
+
+    if (text.toLowerCase().includes("today")) {
+      return now;
+    }
+
+    // Try to parse "Mon 22 Dec" format
+    const match = text.match(/(\d{1,2})\s*(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/i);
+    if (match) {
+      const day = parseInt(match[1]);
+      const monthStr = match[2].toLowerCase();
+      const months: Record<string, number> = {
+        jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
+        jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
+      };
+      const month = months[monthStr];
+      let year = now.getFullYear();
+
+      // If the date is in the past, assume next year
+      const date = new Date(year, month, day);
+      if (date < now) {
+        date.setFullYear(year + 1);
+      }
+      return date;
+    }
+
+    return now;
+  }
+
+  /**
+   * Parse screenings from page HTML
+   */
+  private parseScreenings(html: string, venue: VenueConfig, date: Date): RawScreening[] {
+    const $ = cheerio.load(html);
+    const screenings: RawScreening[] = [];
+
+    // Find film containers - look for list items with film info
+    $('ul[class*="film"] > li, [role="list"] > [role="listitem"]').each((_, filmEl) => {
+      const $film = $(filmEl);
+
+      // Extract film title from heading
+      const title = $film.find('h3, h2[class*="title"], [class*="film-title"]').first().text().trim();
+      if (!title || title.length < 2) return;
+
+      // Find showtime links
+      $film.find('a[href*="ticketing"], a[href*="seats"]').each((_, timeEl) => {
+        const $time = $(timeEl);
+        // IMPORTANT: Get full text of the link, not just <time> element
+        // Curzon structure: <a><time>2:15</time>PM</a> - need both parts
+        const timeText = $time.text().trim();
+        const bookingUrl = $time.attr("href") || "";
+
+        // Parse time from text like "12:00PM" or "12:00 PM"
+        const timeMatch = timeText.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+        if (!timeMatch) return;
+
+        let hours = parseInt(timeMatch[1]);
+        const minutes = parseInt(timeMatch[2]);
+        const ampm = timeMatch[3]?.toUpperCase();
+
+        // If no AM/PM specified and hour is 1-9, assume PM (cinema showtimes are usually afternoon/evening)
+        // This handles edge cases where AM/PM might be missing
+        if (!ampm && hours >= 1 && hours <= 9) {
+          hours += 12;
+        }
+
+        if (ampm === "PM" && hours < 12) hours += 12;
+        if (ampm === "AM" && hours === 12) hours = 0;
+
+        const datetime = new Date(date);
+        datetime.setHours(hours, minutes, 0, 0);
+
+        // Check for accessibility features
+        const hasOpenCaption = $time.find('img[alt*="Caption"], [class*="caption"]').length > 0 ||
+          timeText.toLowerCase().includes("caption");
+        const hasAudioDesc = $time.find('img[alt*="Audio"], [class*="audio"]').length > 0 ||
+          timeText.toLowerCase().includes("audio");
+
+        let eventDescription: string | undefined;
+        if (hasOpenCaption) eventDescription = "Open Captioned";
+        if (hasAudioDesc) eventDescription = eventDescription ? `${eventDescription}, Audio Described` : "Audio Described";
+
+        const sourceId = `curzon-${venue.id}-${title.toLowerCase().replace(/\s+/g, "-")}-${datetime.toISOString()}`;
+
+        screenings.push({
+          filmTitle: title,
+          datetime,
+          bookingUrl: bookingUrl.startsWith("http")
+            ? bookingUrl
+            : `${this.chainConfig.baseUrl}${bookingUrl}`,
+          sourceId,
+          eventDescription,
+        });
+      });
+    });
 
     return screenings;
   }
 
   /**
-   * Health check - verify API is accessible
+   * Remove duplicate screenings
    */
+  private deduplicate(screenings: RawScreening[]): RawScreening[] {
+    const seen = new Set<string>();
+    const now = new Date();
+
+    return screenings.filter((s) => {
+      if (!s.filmTitle || s.filmTitle.trim() === "") return false;
+      if (!s.datetime || isNaN(s.datetime.getTime())) return false;
+      if (s.datetime < now) return false;
+
+      if (s.sourceId && seen.has(s.sourceId)) return false;
+      if (s.sourceId) seen.add(s.sourceId);
+
+      return true;
+    });
+  }
+
   async healthCheck(): Promise<boolean> {
     try {
-      await this.getAuthToken();
-      return true;
+      const response = await fetch(this.chainConfig.baseUrl, { method: "HEAD" });
+      return response.ok;
     } catch {
       return false;
     }

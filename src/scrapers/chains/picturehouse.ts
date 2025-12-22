@@ -26,7 +26,7 @@ export const PICTUREHOUSE_VENUES: VenueConfig[] = [
     area: "West End",
     postcode: "W1D 7DH",
     address: "Corner of Great Windmill Street & Shaftesbury Avenue",
-    chainVenueId: "011", // Picturehouse cinema_id
+    chainVenueId: "022", // Verified from website
     features: ["bar", "restaurant", "cafe", "members_bar"],
     active: true,
   },
@@ -38,13 +38,10 @@ export const PICTUREHOUSE_VENUES: VenueConfig[] = [
     area: "East Dulwich",
     postcode: "SE22 8EW",
     address: "Lordship Lane",
-    chainVenueId: "023",
+    chainVenueId: "009", // Verified from website
     features: ["bar", "cafe"],
     active: true,
   },
-  // -------------------------------------------------------------------------
-  // More London Picturehouse venues (inactive until tested)
-  // -------------------------------------------------------------------------
   {
     id: "picturehouse-hackney",
     name: "Hackney Picturehouse",
@@ -53,7 +50,7 @@ export const PICTUREHOUSE_VENUES: VenueConfig[] = [
     area: "Hackney",
     postcode: "E8 1EJ",
     address: "270 Mare Street",
-    chainVenueId: "010",
+    chainVenueId: "010", // Verified from website
     features: ["bar", "cafe"],
     active: true,
   },
@@ -65,7 +62,7 @@ export const PICTUREHOUSE_VENUES: VenueConfig[] = [
     area: "Brixton",
     postcode: "SW2 1JG",
     address: "Brixton Oval, Coldharbour Lane",
-    chainVenueId: "003",
+    chainVenueId: "004", // Verified from website
     features: ["bar", "cafe", "historic"],
     active: true,
   },
@@ -77,7 +74,7 @@ export const PICTUREHOUSE_VENUES: VenueConfig[] = [
     area: "Notting Hill",
     postcode: "W11 3JE",
     address: "87 Notting Hill Gate",
-    chainVenueId: "002",
+    chainVenueId: "016", // Verified from website
     features: ["historic", "single_screen"],
     active: true,
   },
@@ -89,7 +86,7 @@ export const PICTUREHOUSE_VENUES: VenueConfig[] = [
     area: "Greenwich",
     postcode: "SE10 9HB",
     address: "180 Greenwich High Road",
-    chainVenueId: "005",
+    chainVenueId: "021", // Verified from website
     features: ["bar"],
     active: true,
   },
@@ -101,7 +98,7 @@ export const PICTUREHOUSE_VENUES: VenueConfig[] = [
     area: "Clapham",
     postcode: "SW4 7UL",
     address: "76 Venn Street",
-    chainVenueId: "007",
+    chainVenueId: "020", // Verified from website
     features: ["bar"],
     active: true,
   },
@@ -113,7 +110,7 @@ export const PICTUREHOUSE_VENUES: VenueConfig[] = [
     area: "Crouch End",
     postcode: "N8 8HP",
     address: "165 Tottenham Lane",
-    chainVenueId: "006",
+    chainVenueId: "024", // Verified from website
     features: ["bar"],
     active: true,
   },
@@ -125,7 +122,7 @@ export const PICTUREHOUSE_VENUES: VenueConfig[] = [
     area: "Finsbury Park",
     postcode: "N4 3FP",
     address: "Unit B, Finsbury Park Station",
-    chainVenueId: "016",
+    chainVenueId: "029", // Verified from website
     features: ["bar"],
     active: true,
   },
@@ -137,7 +134,7 @@ export const PICTUREHOUSE_VENUES: VenueConfig[] = [
     area: "West Norwood",
     postcode: "SE27 9NX",
     address: "The Old Library, 14-16 Knight's Hill",
-    chainVenueId: "025",
+    chainVenueId: "023", // Verified from website
     features: ["bar", "library_building"],
     active: true,
   },
@@ -149,7 +146,7 @@ export const PICTUREHOUSE_VENUES: VenueConfig[] = [
     area: "Ealing",
     postcode: "W5 2PA",
     address: "The Ealing Cinema, Ealing Green",
-    chainVenueId: "024",
+    chainVenueId: "031", // Verified from website
     features: ["bar"],
     active: true,
   },
@@ -170,42 +167,39 @@ export const PICTUREHOUSE_CONFIG: ChainConfig = {
 };
 
 // ============================================================================
-// Picturehouse API Types
+// Picturehouse API Types (matched to actual API response)
 // ============================================================================
 
-interface PicturehouseFilm {
-  id: string;
-  title: string;
-  synopsis?: string;
-  runtime?: number;
-  release_date?: string;
-  poster_url?: string;
-  director?: string;
-  cast?: string;
-  rating?: string;
+interface PicturehouseShowTime {
+  CinemaId: string;
+  ScheduledFilmId: string;
+  Showtime: string; // ISO format: "2025-12-21T18:30:00"
+  SessionId: string;
+  ScreenName: string;
+  SessionAttributesNames: string[]; // ["2D", "Audio D"]
+  SoldoutStatus: number; // 0 = available, 1 = sold out
+  date_f: string; // "2025-12-21"
+  time: string; // "18:30"
+  attributes?: Array<{
+    attribute: string;
+    attribute_full: string;
+    description: string;
+  }>;
 }
 
-interface PicturehouseSession {
-  session_id: string;
-  time: string; // "14:30"
-  date_f: string; // "Fri 20 Dec"
-  date: string; // "2024-12-20"
-  screen_name?: string;
-  attributes?: string[];
-  sold_out?: boolean;
-  booking_url?: string;
-}
-
-interface PicturehouseMovieData {
-  film: PicturehouseFilm;
-  sessions: PicturehouseSession[];
+interface PicturehouseMovie {
+  ID: string; // "022-HO00017386"
+  ScheduledFilmId: string;
+  Title: string;
+  CinemaId: string;
+  TrailerUrl?: string;
+  image_url?: string;
+  show_times: PicturehouseShowTime[];
 }
 
 interface PicturehouseApiResponse {
-  success: boolean;
-  data: {
-    movies: PicturehouseMovieData[];
-  };
+  response: string; // "success"
+  movies: PicturehouseMovie[];
 }
 
 // ============================================================================
@@ -250,24 +244,22 @@ export class PicturehouseScraper implements ChainScraper {
   private parseShowtimes(data: PicturehouseApiResponse, venue: VenueConfig): RawScreening[] {
     const screenings: RawScreening[] = [];
 
-    if (!data.success || !data.data?.movies) {
+    if (data.response !== "success" || !data.movies) {
       return screenings;
     }
 
-    for (const movieData of data.data.movies) {
-      const film = movieData.film;
-
-      for (const session of movieData.sessions) {
-        // Parse datetime from date + time
-        const datetime = this.parseDateTime(session.date, session.time);
-        if (!datetime || isNaN(datetime.getTime())) continue;
+    for (const movie of data.movies) {
+      for (const showTime of movie.show_times) {
+        // Parse datetime from ISO format Showtime field
+        const datetime = new Date(showTime.Showtime);
+        if (isNaN(datetime.getTime())) continue;
 
         // Skip sold out screenings (optional - might want to show them)
-        // if (session.sold_out) continue;
+        // if (showTime.SoldoutStatus === 1) continue;
 
-        // Detect format from attributes
+        // Detect format from SessionAttributesNames
         let format: string | undefined;
-        const attrs = session.attributes || [];
+        const attrs = showTime.SessionAttributesNames || [];
         if (attrs.some(a => /imax/i.test(a))) format = "imax";
         else if (attrs.some(a => /70mm/i.test(a))) format = "70mm";
         else if (attrs.some(a => /35mm/i.test(a))) format = "35mm";
@@ -291,39 +283,23 @@ export class PicturehouseScraper implements ChainScraper {
           eventDescription = "Silver Screen - over 60s";
         }
 
-        const bookingUrl = session.booking_url ||
-          `${this.chainConfig.baseUrl}/cinema/${venue.slug}/film/${film.id}/times`;
+        // Build booking URL
+        const bookingUrl = `${this.chainConfig.baseUrl}/cinema/${venue.slug}/film/${movie.ScheduledFilmId}/times`;
 
         screenings.push({
-          filmTitle: film.title,
+          filmTitle: movie.Title,
           datetime,
-          screen: session.screen_name,
+          screen: showTime.ScreenName,
           format,
           bookingUrl,
           eventType,
           eventDescription,
-          sourceId: `picturehouse-${venue.id}-${session.session_id}`,
+          sourceId: `picturehouse-${venue.id}-${showTime.SessionId}`,
         });
       }
     }
 
     return screenings;
-  }
-
-  /**
-   * Parse date and time strings into Date object
-   */
-  private parseDateTime(dateStr: string, timeStr: string): Date | null {
-    try {
-      // dateStr format: "2024-12-20"
-      // timeStr format: "14:30"
-      const [year, month, day] = dateStr.split("-").map(Number);
-      const [hours, minutes] = timeStr.split(":").map(Number);
-
-      return new Date(year, month - 1, day, hours, minutes);
-    } catch {
-      return null;
-    }
   }
 
   /**

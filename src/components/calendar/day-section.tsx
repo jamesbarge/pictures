@@ -66,21 +66,21 @@ export function DaySection({ date, screenings }: DaySectionProps) {
 
   return (
     <section className="relative">
-      {/* Sticky Date Header */}
-      <header className="sticky top-0 z-10 -mx-4 px-4 py-3 bg-background-primary/95 backdrop-blur-sm border-b border-white/5">
-        <div className="flex items-baseline gap-2">
-          <h2 className="font-display text-xl sm:text-2xl text-text-primary">
+      {/* Sticky Date Header - Full width with subtle gradient */}
+      <header className="sticky top-[105px] z-10 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-4 bg-gradient-to-b from-background-primary via-background-primary to-background-primary/95 backdrop-blur-sm border-b border-white/[0.04]">
+        <div className="flex items-baseline gap-3">
+          <h2 className="font-display text-2xl sm:text-3xl text-text-primary tracking-tight">
             {primary}
           </h2>
-          <span className="text-sm text-text-secondary">{secondary}</span>
-          <span className="ml-auto text-sm text-text-tertiary font-mono">
+          <span className="text-sm sm:text-base text-text-secondary font-light">{secondary}</span>
+          <span className="ml-auto text-sm text-text-tertiary font-mono tabular-nums">
             {screenings.length} {screenings.length === 1 ? "screening" : "screenings"}
           </span>
         </div>
       </header>
 
-      {/* Screenings Grid */}
-      <div className="grid gap-3 py-4">
+      {/* Screenings Grid - Responsive multi-column layout */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 py-6">
         {sortedScreenings.map((screening) => (
           <ScreeningCard key={screening.id} screening={screening} />
         ))}

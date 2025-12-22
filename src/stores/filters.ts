@@ -18,6 +18,10 @@ export interface FilterState {
   dateFrom: Date | null;
   dateTo: Date | null;
 
+  // Time range (hours 0-23)
+  timeFrom: number | null; // Start hour (inclusive)
+  timeTo: number | null; // End hour (inclusive)
+
   // Format filters
   formats: string[]; // "35mm", "70mm", "imax", etc.
 
@@ -28,7 +32,7 @@ export interface FilterState {
   decades: string[]; // "1950s", "1960s", etc.
   genres: string[];
 
-  // Time of day
+  // Time of day (legacy, kept for compatibility)
   timesOfDay: TimeOfDay[];
 
   // Personal
@@ -41,6 +45,7 @@ interface FilterActions {
   toggleCinema: (cinemaId: string) => void;
   setCinemas: (cinemaIds: string[]) => void;
   setDateRange: (from: Date | null, to: Date | null) => void;
+  setTimeRange: (from: number | null, to: number | null) => void;
   toggleFormat: (format: string) => void;
   toggleProgrammingType: (type: ProgrammingType) => void;
   toggleDecade: (decade: string) => void;
@@ -59,6 +64,8 @@ const initialState: FilterState = {
   cinemaIds: [],
   dateFrom: null,
   dateTo: null,
+  timeFrom: null,
+  timeTo: null,
   formats: [],
   programmingTypes: [],
   decades: [],
@@ -84,6 +91,8 @@ export const useFilters = create<FilterState & FilterActions>()(
       setCinemas: (cinemaIds) => set({ cinemaIds }),
 
       setDateRange: (from, to) => set({ dateFrom: from, dateTo: to }),
+
+      setTimeRange: (from, to) => set({ timeFrom: from, timeTo: to }),
 
       toggleFormat: (format) => set((state) => ({
         formats: state.formats.includes(format)
@@ -130,6 +139,7 @@ export const useFilters = create<FilterState & FilterActions>()(
         if (state.filmSearch.trim()) count++;
         count += state.cinemaIds.length;
         if (state.dateFrom || state.dateTo) count++;
+        if (state.timeFrom !== null || state.timeTo !== null) count++;
         count += state.formats.length;
         count += state.programmingTypes.length;
         count += state.decades.length;
@@ -218,3 +228,37 @@ export const FORMAT_OPTIONS = [
   { value: "dcp_4k", label: "4K" },
   { value: "dolby_cinema", label: "Dolby Cinema" },
 ] as const;
+
+// Time presets for common screening windows
+export const TIME_PRESETS = [
+  { label: "Morning", shortLabel: "AM", from: 0, to: 11, description: "Before 12pm" },
+  { label: "Afternoon", shortLabel: "Aft", from: 12, to: 16, description: "12pm - 5pm" },
+  { label: "Evening", shortLabel: "Eve", from: 17, to: 20, description: "5pm - 9pm" },
+  { label: "Late", shortLabel: "Late", from: 21, to: 23, description: "After 9pm" },
+] as const;
+
+// Format hour to 12h display (e.g., 14 -> "2pm", 9 -> "9am")
+export function formatHour(hour: number): string {
+  if (hour === 0) return "12am";
+  if (hour === 12) return "12pm";
+  if (hour < 12) return `${hour}am`;
+  return `${hour - 12}pm`;
+}
+
+// Format time range for display
+export function formatTimeRange(from: number | null, to: number | null): string {
+  if (from === null && to === null) return "Any Time";
+  if (from !== null && to === null) return `After ${formatHour(from)}`;
+  if (from === null && to !== null) return `Before ${formatHour(to + 1)}`;
+  if (from === to) return formatHour(from!);
+  return `${formatHour(from!)} - ${formatHour(to! + 1)}`;
+}
+
+// Check if a time range matches a preset
+export function matchesTimePreset(
+  from: number | null,
+  to: number | null,
+  preset: typeof TIME_PRESETS[number]
+): boolean {
+  return from === preset.from && to === preset.to;
+}

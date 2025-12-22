@@ -10,12 +10,6 @@ const nextConfig: NextConfig = {
         pathname: "/t/p/**",
       },
     ],
-    localPatterns: [
-      {
-        pathname: "/api/poster-placeholder",
-        search: "?title=*",
-      },
-    ],
   },
 };
 
