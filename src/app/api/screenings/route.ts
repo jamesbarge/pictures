@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
       .innerJoin(cinemas, eq(screenings.cinemaId, cinemas.id))
       .where(and(...conditions))
       .orderBy(screenings.datetime)
-      .limit(500); // Safety cap to prevent huge responses
+      .limit(1500); // Per-week fetch
 
     // Filter by repertory if requested
     let filtered = results;

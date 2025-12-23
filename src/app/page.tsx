@@ -52,7 +52,7 @@ export default async function Home() {
       )
     )
     .orderBy(screenings.datetime)
-    .limit(300); // Safety cap
+    .limit(1500); // Covers ~4-5 days of screenings
 
   // Get cinema count for stats
   const allCinemas = await db.select().from(cinemas);
