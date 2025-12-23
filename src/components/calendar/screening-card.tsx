@@ -12,8 +12,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { format } from "date-fns";
 import { cn } from "@/lib/cn";
-import { Heart, Eye } from "lucide-react";
-import { useFilmStatus } from "@/stores/film-status";
+import { Heart, X } from "lucide-react";
+import { useFilmStatus, type FilmStatus } from "@/stores/film-status";
 import { useState, useEffect } from "react";
 
 interface ScreeningCardProps {
@@ -47,20 +47,38 @@ export function ScreeningCard({ screening }: ScreeningCardProps) {
   const time = format(new Date(datetime), "HH:mm");
   const formattedDate = format(new Date(datetime), "EEEE d MMMM");
 
-  const { getStatus, setStatus } = useFilmStatus();
+  // Performance: Use selectors to only subscribe to this specific film's status
+  // This prevents all cards from re-rendering when any status changes
+  const filmId = film.id;
+  const rawStatus = useFilmStatus((state) => state.films[filmId]?.status ?? null);
+  const setStatus = useFilmStatus((state) => state.setStatus);
+
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  const status = mounted ? getStatus(film.id) : null;
+  // Apply mounted guard for hydration safety (localStorage not available during SSR)
+  const status = mounted ? rawStatus : null;
 
-  const handleStatusClick = (e: React.MouseEvent, newStatus: "want_to_see" | "seen") => {
+  const handleStatusClick = (e: React.MouseEvent, newStatus: FilmStatus) => {
     e.preventDefault();
     e.stopPropagation();
+
     // Toggle off if already set to this status
-    setStatus(film.id, status === newStatus ? null : newStatus);
+    if (status === newStatus) {
+      setStatus(film.id, null);
+      return;
+    }
+
+    // Always pass film metadata so it can be displayed in settings/lists
+    setStatus(film.id, newStatus, {
+      title: film.title,
+      year: film.year,
+      directors: film.directors,
+      posterUrl: film.posterUrl,
+    });
   };
 
   return (
@@ -77,88 +95,97 @@ export function ScreeningCard({ screening }: ScreeningCardProps) {
       )}
       aria-label={`${film.title} screening at ${cinema.name}, ${formattedDate} at ${time}`}
     >
-      {/* Poster - Full width, prominent */}
-      <Link
-        href={`/film/${film.id}`}
-        className="block relative aspect-[2/3] w-full overflow-hidden focus:outline-none"
-        tabIndex={-1}
-        aria-hidden="true"
-      >
-        {film.posterUrl && !film.posterUrl.includes('poster-placeholder') ? (
-          <Image
-            src={film.posterUrl}
-            alt=""
-            fill
-            className="object-cover transition-transform duration-500 group-hover:scale-110"
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
-          />
-        ) : (
-          /* eslint-disable-next-line @next/next/no-img-element */
-          <img
-            src={`/api/poster-placeholder?title=${encodeURIComponent(film.title)}${film.year ? `&year=${film.year}` : ""}`}
-            alt=""
-            className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-          />
-        )}
+      {/* Poster area - contains link and buttons */}
+      <div className="relative aspect-[2/3] w-full overflow-hidden">
+        {/* Poster link - decorative, not for keyboard nav */}
+        <Link
+          href={`/film/${film.id}`}
+          className="absolute inset-0 focus:outline-none"
+          tabIndex={-1}
+          aria-hidden="true"
+        >
+          {film.posterUrl && !film.posterUrl.includes('poster-placeholder') ? (
+            <Image
+              src={film.posterUrl}
+              alt=""
+              fill
+              className="object-cover transition-transform duration-500 group-hover:scale-110"
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
+            />
+          ) : (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={`/api/poster-placeholder?title=${encodeURIComponent(film.title)}${film.year ? `&year=${film.year}` : ""}`}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+            />
+          )}
 
-        {/* Gradient overlay for better text readability */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-50 group-hover:opacity-60 transition-opacity" />
+          {/* Gradient overlay for better text readability */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-50 group-hover:opacity-60 transition-opacity" />
+        </Link>
 
-        {/* Time badge - floating on poster */}
-        <div className="absolute top-3 right-3">
-          <time
-            dateTime={new Date(datetime).toISOString()}
-            className="inline-flex items-center px-2 py-1 rounded-md bg-accent-highlight font-mono text-xs font-semibold text-text-inverse shadow-sm"
-          >
-            {time}
-          </time>
-        </div>
-
-        {/* Status buttons - floating top left */}
+        {/* Status buttons - outside aria-hidden Link for accessibility */}
         {mounted && (
-          <div className="absolute top-3 left-3 flex items-center gap-1">
+          <div className={cn(
+            "absolute top-3 left-3 z-10 flex flex-col gap-1.5",
+            "opacity-0 group-hover:opacity-100 transition-opacity duration-200",
+            // Always show if a status is set
+            status && "opacity-100"
+          )}>
             <button
               onClick={(e) => handleStatusClick(e, "want_to_see")}
               className={cn(
-                "p-1.5 rounded-md backdrop-blur-sm transition-all",
+                "group/btn flex items-center gap-1.5 p-1.5 rounded-md backdrop-blur-sm transition-all",
                 status === "want_to_see"
                   ? "bg-accent-danger/40 text-accent-danger"
                   : "bg-black/50 text-white/70 hover:text-accent-danger hover:bg-accent-danger/20"
               )}
-              title={status === "want_to_see" ? "Remove from watchlist" : "Add to watchlist"}
               aria-label={status === "want_to_see" ? "Remove from watchlist" : "Add to watchlist"}
             >
-              <Heart className={cn("w-4 h-4", status === "want_to_see" && "fill-current")} />
+              <Heart className={cn("w-4 h-4 shrink-0", status === "want_to_see" && "fill-current")} />
+              <span className="text-[10px] font-medium whitespace-nowrap max-w-0 overflow-hidden group-hover/btn:max-w-[100px] transition-all duration-200">
+                Watchlist
+              </span>
             </button>
             <button
-              onClick={(e) => handleStatusClick(e, "seen")}
+              onClick={(e) => handleStatusClick(e, "not_interested")}
               className={cn(
-                "p-1.5 rounded-md backdrop-blur-sm transition-all",
-                status === "seen"
-                  ? "bg-accent-success/40 text-accent-success"
-                  : "bg-black/50 text-white/70 hover:text-accent-success hover:bg-accent-success/20"
+                "group/btn flex items-center gap-1.5 p-1.5 rounded-md backdrop-blur-sm transition-all",
+                status === "not_interested"
+                  ? "bg-black/60 text-white"
+                  : "bg-black/50 text-white/70 hover:text-white hover:bg-black/60"
               )}
-              title={status === "seen" ? "Unmark as seen" : "Mark as seen"}
-              aria-label={status === "seen" ? "Unmark as seen" : "Mark as seen"}
+              aria-label={status === "not_interested" ? "Show this film again" : "Not interested in this film"}
             >
-              <Eye className="w-4 h-4" />
+              <X className="w-4 h-4 shrink-0" />
+              <span className="text-[10px] font-medium whitespace-nowrap max-w-0 overflow-hidden group-hover/btn:max-w-[100px] transition-all duration-200">
+                Not interested
+              </span>
             </button>
           </div>
         )}
-
-        {/* Cinema badge - bottom of poster */}
-        <div className="absolute bottom-3 left-3 right-3">
-          <span className="inline-block px-2 py-1 rounded-md bg-accent-primary/90 backdrop-blur-sm text-xs font-medium text-text-inverse truncate max-w-full shadow-sm">
-            {cinema.shortName || cinema.name}
-          </span>
-        </div>
-      </Link>
+      </div>
 
       {/* Content - Compact below poster */}
       <Link
         href={`/film/${film.id}`}
         className="flex flex-col flex-1 p-2 focus:outline-none"
       >
+        {/* Time and Cinema row */}
+        <div className="flex items-center gap-2 mb-1">
+          <time
+            dateTime={new Date(datetime).toISOString()}
+            className="font-mono text-xs font-semibold text-accent-highlight"
+          >
+            {time}
+          </time>
+          <span className="text-[10px] text-text-tertiary">•</span>
+          <span className="text-[10px] text-text-secondary truncate">
+            {cinema.shortName || cinema.name}
+          </span>
+        </div>
+
         {/* Title */}
         <h3 className="font-display text-xs sm:text-sm text-text-primary group-hover:text-accent-primary transition-colors line-clamp-1 leading-tight">
           {film.title}

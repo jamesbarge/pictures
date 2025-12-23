@@ -72,7 +72,7 @@ const initialState: FilterState = {
   genres: [],
   timesOfDay: [],
   hideSeen: false,
-  hideNotInterested: false,
+  hideNotInterested: true, // Films marked "not interested" are hidden by default
 };
 
 export const useFilters = create<FilterState & FilterActions>()(
@@ -146,7 +146,8 @@ export const useFilters = create<FilterState & FilterActions>()(
         count += state.genres.length;
         count += state.timesOfDay.length;
         if (state.hideSeen) count++;
-        if (state.hideNotInterested) count++;
+        // Don't count hideNotInterested - it's the default behavior
+        // Users expect "not interested" films to be hidden automatically
         return count;
       },
     }),

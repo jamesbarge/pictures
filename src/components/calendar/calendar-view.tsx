@@ -47,7 +47,8 @@ interface CalendarViewProps {
 
 export function CalendarView({ screenings }: CalendarViewProps) {
   const filters = useFilters();
-  const { getStatus } = useFilmStatus();
+  // Subscribe to films object so useMemo recomputes when any status changes
+  const films = useFilmStatus((state) => state.films);
   const [mounted, setMounted] = useState(false);
 
   // Handle hydration - show all screenings until client mounts
@@ -157,14 +158,14 @@ export function CalendarView({ screenings }: CalendarViewProps) {
 
       // Personal status filters
       if (filters.hideSeen || filters.hideNotInterested) {
-        const status = getStatus(s.film.id);
+        const status = films[s.film.id]?.status ?? null;
         if (filters.hideSeen && status === "seen") return false;
         if (filters.hideNotInterested && status === "not_interested") return false;
       }
 
       return true;
     });
-  }, [screenings, filters, getStatus, mounted]);
+  }, [screenings, filters, films, mounted]);
 
   const activeFilterCount = mounted ? filters.getActiveFilterCount() : 0;
 

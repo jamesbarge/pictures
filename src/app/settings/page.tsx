@@ -8,6 +8,7 @@ import { cinemas } from "@/db/schema";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { CinemaSelector } from "@/components/cinema/cinema-selector";
+import { NotInterestedList } from "@/components/settings/not-interested-list";
 
 export default async function SettingsPage() {
   // Fetch all cinemas
@@ -48,8 +49,18 @@ export default async function SettingsPage() {
           <CinemaSelector cinemas={allCinemas} />
         </section>
 
-        {/* Future sections can be added here */}
-        {/* e.g., Display Preferences, Notification Settings, etc. */}
+        {/* Not Interested Section */}
+        <section className="mb-12">
+          <h2 className="text-xl font-display text-text-primary mb-4">
+            Hidden Films
+          </h2>
+          <p className="text-text-secondary text-sm mb-6">
+            Films you've marked as "not interested" are hidden from the calendar.
+            Restore them here to see their screenings again.
+          </p>
+
+          <NotInterestedList />
+        </section>
       </div>
     </div>
   );
