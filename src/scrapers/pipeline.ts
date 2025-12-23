@@ -5,7 +5,7 @@
 
 import { db } from "@/db";
 import { films, screenings, cinemas } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { matchFilmToTMDB, getTMDBClient, isRepertoryFilm, getDecade } from "@/lib/tmdb";
 import { getPosterService } from "@/lib/posters";
 import { extractFilmTitleCached, batchExtractTitles } from "@/lib/title-extractor";
@@ -497,18 +497,19 @@ async function insertScreening(
     }
   }
 
-  // Check for existing screening (same film, cinema, datetime)
-  const existing = await db
+  // Check for existing screening using exact composite key
+  // (Direct query is more efficient and doesn't have the .limit(100) bug)
+  const [duplicate] = await db
     .select()
     .from(screenings)
-    .where(eq(screenings.filmId, filmId))
-    .limit(100);
-
-  const duplicate = existing.find(
-    (s) =>
-      s.cinemaId === cinemaId &&
-      s.datetime.getTime() === screening.datetime.getTime()
-  );
+    .where(
+      and(
+        eq(screenings.filmId, filmId),
+        eq(screenings.cinemaId, cinemaId),
+        eq(screenings.datetime, screening.datetime)
+      )
+    )
+    .limit(1);
 
   if (duplicate) {
     // Update existing

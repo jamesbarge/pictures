@@ -4,6 +4,7 @@ import {
   boolean,
   timestamp,
   index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { films } from "./films";
 import { cinemas } from "./cinemas";
@@ -70,6 +71,8 @@ export const screenings = pgTable(
     index("idx_screenings_calendar").on(table.datetime, table.cinemaId),
     // Index for upcoming screenings query
     index("idx_screenings_upcoming").on(table.datetime, table.filmId),
+    // Unique constraint to prevent duplicate screenings
+    uniqueIndex("idx_screenings_unique").on(table.filmId, table.cinemaId, table.datetime),
   ]
 );
 
