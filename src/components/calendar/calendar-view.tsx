@@ -5,11 +5,12 @@
 
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo } from "react";
 import { startOfDay, endOfDay, format, isWithinInterval, getHours } from "date-fns";
 import { DaySection } from "./day-section";
 import { useFilters, getTimeOfDayFromHour } from "@/stores/filters";
 import { useFilmStatus } from "@/stores/film-status";
+import { useHydrated } from "@/hooks/useHydrated";
 import { EmptyState } from "@/components/ui";
 import { Button } from "@/components/ui";
 import { Film, Search } from "lucide-react";
@@ -49,12 +50,7 @@ export function CalendarView({ screenings }: CalendarViewProps) {
   const filters = useFilters();
   // Subscribe to films object so useMemo recomputes when any status changes
   const films = useFilmStatus((state) => state.films);
-  const [mounted, setMounted] = useState(false);
-
-  // Handle hydration - show all screenings until client mounts
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useHydrated();
 
   // Apply all filters (only after mount)
   const filteredScreenings = useMemo(() => {

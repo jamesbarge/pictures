@@ -3,6 +3,9 @@
  * Groups screenings by date with a sticky header
  */
 
+"use client";
+
+import { useMemo } from "react";
 import { format, isToday, isTomorrow, isThisWeek } from "date-fns";
 import { ScreeningCard } from "./screening-card";
 
@@ -60,8 +63,14 @@ function formatDateHeader(date: Date): { primary: string; secondary: string } {
 
 export function DaySection({ date, screenings }: DaySectionProps) {
   const { primary, secondary } = formatDateHeader(date);
-  const sortedScreenings = [...screenings].sort(
-    (a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime()
+
+  // Memoize sorting to prevent recalculation on every render
+  const sortedScreenings = useMemo(
+    () =>
+      [...screenings].sort(
+        (a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime()
+      ),
+    [screenings]
   );
 
   return (

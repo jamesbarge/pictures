@@ -314,6 +314,9 @@ body::before {
   opacity: 0.12;
   pointer-events: none;
   z-index: 9999;
+  /* GPU layer promotion for smoother scrolling */
+  will-change: transform;
+  transform: translateZ(0);
 }
 
 /* Paper fiber texture - secondary coarse layer for depth */
@@ -326,6 +329,17 @@ body::after {
   pointer-events: none;
   z-index: 9998;
   mix-blend-mode: multiply;
+  /* GPU layer promotion for smoother scrolling */
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+/* Disable textures for users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  body::before,
+  body::after {
+    display: none;
+  }
 }
 
 /* Film title styling - uses display font */

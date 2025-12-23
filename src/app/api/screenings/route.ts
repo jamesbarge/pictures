@@ -39,6 +39,13 @@ export async function GET(request: NextRequest) {
       conditions.push(inArray(screenings.format, formats as any));
     }
 
+    // Filter by repertory in SQL (much faster than JS filtering)
+    if (isRepertory === "true") {
+      conditions.push(eq(films.isRepertory, true));
+    } else if (isRepertory === "false") {
+      conditions.push(eq(films.isRepertory, false));
+    }
+
     // Fetch screenings with film and cinema data
     const results = await db
       .select({
@@ -71,19 +78,11 @@ export async function GET(request: NextRequest) {
       .orderBy(screenings.datetime)
       .limit(3000); // Per-week fetch (holiday periods can have 300+/day)
 
-    // Filter by repertory if requested
-    let filtered = results;
-    if (isRepertory === "true") {
-      filtered = results.filter((s) => s.film.isRepertory);
-    } else if (isRepertory === "false") {
-      filtered = results.filter((s) => !s.film.isRepertory);
-    }
-
     return NextResponse.json(
       {
-        screenings: filtered,
+        screenings: results,
         meta: {
-          total: filtered.length,
+          total: results.length,
           startDate: startDate.toISOString(),
           endDate: endDate.toISOString(),
         },

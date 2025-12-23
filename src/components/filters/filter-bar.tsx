@@ -6,6 +6,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useHydrated } from "@/hooks/useHydrated";
 import { X, ChevronDown, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/cn";
 import {
@@ -22,11 +23,7 @@ import { DateRangePicker } from "./date-range-picker";
 
 export function FilterBar() {
   const filters = useFilters();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useHydrated();
 
   // Compute activeCount by directly accessing state properties
   // This creates proper Zustand subscriptions so the component re-renders when filters clear

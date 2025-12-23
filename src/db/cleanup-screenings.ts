@@ -41,8 +41,9 @@ async function cleanupDuplicateScreenings() {
     WHERE rn > 1
   `);
 
-  // Drizzle returns result directly as array
-  const toDelete = (Array.isArray(duplicates) ? duplicates : duplicates.rows ?? []) as Array<{
+  // Drizzle execute returns QueryResult with rows property
+  const result = duplicates as unknown as { rows?: Array<Record<string, unknown>> };
+  const toDelete = (result.rows ?? []) as Array<{
     id: string;
     film_id: string;
     cinema_id: string;

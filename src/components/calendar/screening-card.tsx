@@ -14,7 +14,8 @@ import { format } from "date-fns";
 import { cn } from "@/lib/cn";
 import { Heart, X } from "lucide-react";
 import { useFilmStatus, type FilmStatus } from "@/stores/film-status";
-import { useState, useEffect } from "react";
+import { memo } from "react";
+import { useHydrated } from "@/hooks/useHydrated";
 
 interface ScreeningCardProps {
   screening: {
@@ -42,7 +43,7 @@ interface ScreeningCardProps {
   };
 }
 
-export function ScreeningCard({ screening }: ScreeningCardProps) {
+export const ScreeningCard = memo(function ScreeningCard({ screening }: ScreeningCardProps) {
   const { film, cinema, datetime } = screening;
   const time = format(new Date(datetime), "HH:mm");
   const formattedDate = format(new Date(datetime), "EEEE d MMMM");
@@ -53,11 +54,7 @@ export function ScreeningCard({ screening }: ScreeningCardProps) {
   const rawStatus = useFilmStatus((state) => state.films[filmId]?.status ?? null);
   const setStatus = useFilmStatus((state) => state.setStatus);
 
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useHydrated();
 
   // Apply mounted guard for hydration safety (localStorage not available during SSR)
   const status = mounted ? rawStatus : null;
@@ -205,4 +202,4 @@ export function ScreeningCard({ screening }: ScreeningCardProps) {
       </Link>
     </article>
   );
-}
+});

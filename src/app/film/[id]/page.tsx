@@ -3,6 +3,9 @@
  * Shows film information and all upcoming screenings
  */
 
+// ISR: Revalidate every 5 minutes - film data rarely changes
+export const revalidate = 300;
+
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";

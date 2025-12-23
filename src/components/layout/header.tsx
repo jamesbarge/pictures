@@ -7,6 +7,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useMemo } from "react";
+import { useHydrated } from "@/hooks/useHydrated";
 import Link from "next/link";
 import {
   Calendar,
@@ -36,11 +37,7 @@ interface HeaderProps {
 }
 
 export function Header({ cinemas }: HeaderProps) {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useHydrated();
 
   return (
     <header className="sticky top-0 z-50 bg-background-primary border-b border-border-subtle shadow-sm">

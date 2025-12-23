@@ -3,6 +3,9 @@
  * Allows users to select their preferred cinemas and configure preferences
  */
 
+// ISR: Revalidate every 10 minutes - cinema list rarely changes
+export const revalidate = 600;
+
 import { db } from "@/db";
 import { cinemas } from "@/db/schema";
 import Link from "next/link";

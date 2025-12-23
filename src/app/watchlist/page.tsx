@@ -4,6 +4,9 @@
  * Split into "Currently Showing" and "Not Currently Playing"
  */
 
+// ISR: Revalidate every 5 minutes - screening data changes infrequently
+export const revalidate = 300;
+
 import { db } from "@/db";
 import { films, screenings, cinemas } from "@/db/schema";
 import { eq, gte, sql } from "drizzle-orm";
