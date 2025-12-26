@@ -395,7 +395,7 @@ function DateFilter({ mounted, fullWidth }: { mounted: boolean; fullWidth?: bool
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 sm:left-0 right-0 sm:right-auto mt-2 z-50 w-[calc(100vw-2rem)] sm:w-auto bg-background-secondary border border-border-default rounded-xl shadow-elevated overflow-hidden">
+        <div className="absolute top-full left-0 mt-2 z-50 w-auto bg-background-secondary border border-border-default rounded-xl shadow-elevated overflow-hidden">
           {/* Date Section */}
           <div className="p-3 border-b border-border-subtle">
             <div className="flex items-center gap-2 mb-2">
@@ -464,9 +464,9 @@ function DateFilter({ mounted, fullWidth }: { mounted: boolean; fullWidth?: bool
                 month: "space-y-2",
                 month_caption: "flex justify-center relative items-center h-8 mb-2",
                 caption_label: "text-sm font-medium text-text-primary",
-                nav: "flex items-center gap-1 absolute inset-x-0 justify-between",
-                button_previous: "p-1.5 rounded-lg hover:bg-background-active text-text-secondary hover:text-text-primary transition-colors",
-                button_next: "p-1.5 rounded-lg hover:bg-background-active text-text-secondary hover:text-text-primary transition-colors",
+                nav: "flex items-center gap-1",
+                button_previous: "absolute left-0 p-1.5 rounded-lg hover:bg-background-active text-text-secondary hover:text-text-primary transition-colors",
+                button_next: "absolute right-0 p-1.5 rounded-lg hover:bg-background-active text-text-secondary hover:text-text-primary transition-colors",
                 month_grid: "w-full",
                 weekdays: "grid grid-cols-7 gap-1 mb-1",
                 weekday: "text-text-tertiary text-xs font-medium h-8 flex items-center justify-center",
