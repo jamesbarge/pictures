@@ -4,8 +4,9 @@
  * Split into "Currently Showing" and "Not Currently Playing"
  */
 
-// ISR: Revalidate every 5 minutes - screening data changes infrequently
-export const revalidate = 300;
+// Force dynamic rendering - the page reads user-specific localStorage data
+// and database queries can timeout during static generation
+export const dynamic = "force-dynamic";
 
 import { db } from "@/db";
 import { films, screenings, cinemas } from "@/db/schema";
