@@ -284,7 +284,12 @@ export class PicturehouseScraper implements ChainScraper {
         }
 
         // Build booking URL
-        const bookingUrl = `${this.chainConfig.baseUrl}/cinema/${venue.slug}/film/${movie.ScheduledFilmId}/times`;
+        // Format: https://www.picturehouses.com/movie-details/{cinema-id}/{film-id}/{film-slug}
+        const filmSlug = movie.Title
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, '');
+        const bookingUrl = `${this.chainConfig.baseUrl}/movie-details/${venue.chainVenueId}/${movie.ScheduledFilmId}/${filmSlug}`;
 
         screenings.push({
           filmTitle: movie.Title,

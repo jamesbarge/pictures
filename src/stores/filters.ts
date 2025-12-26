@@ -48,6 +48,7 @@ interface FilterActions {
   setTimeRange: (from: number | null, to: number | null) => void;
   toggleFormat: (format: string) => void;
   toggleProgrammingType: (type: ProgrammingType) => void;
+  setProgrammingTypes: (types: ProgrammingType[]) => void;
   toggleDecade: (decade: string) => void;
   setDecades: (decades: string[]) => void;
   toggleGenre: (genre: string) => void;
@@ -105,6 +106,8 @@ export const useFilters = create<FilterState & FilterActions>()(
           ? state.programmingTypes.filter((t) => t !== type)
           : [...state.programmingTypes, type],
       })),
+
+      setProgrammingTypes: (types) => set({ programmingTypes: types }),
 
       toggleDecade: (decade) => set((state) => ({
         decades: state.decades.includes(decade)

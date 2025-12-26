@@ -18,11 +18,15 @@ import {
   Settings,
   Check,
   Heart,
+  Film,
+  Sparkles,
+  History,
+  SlidersHorizontal,
 } from "lucide-react";
 import { format, addDays, startOfToday, isSameDay, startOfMonth, endOfMonth } from "date-fns";
 import { DayPicker } from "react-day-picker";
 import { cn } from "@/lib/cn";
-import { useFilters, TIME_PRESETS, formatTimeRange, formatHour } from "@/stores/filters";
+import { useFilters, TIME_PRESETS, formatTimeRange, formatHour, type ProgrammingType } from "@/stores/filters";
 import { Button, IconButton } from "@/components/ui";
 import { Clock } from "lucide-react";
 
@@ -38,6 +42,7 @@ interface HeaderProps {
 
 export function Header({ cinemas }: HeaderProps) {
   const mounted = useHydrated();
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   return (
     <header className="sticky top-0 z-50 bg-background-primary border-b border-border-subtle shadow-sm">
@@ -73,9 +78,66 @@ export function Header({ cinemas }: HeaderProps) {
         </div>
       </div>
 
-      {/* Filter Bar */}
-      <div className="px-4 sm:px-6 lg:px-8 py-3">
+      {/* Mobile Filter Bar - Search + Filters Button */}
+      <div className="sm:hidden px-4 py-3">
+        <div className="flex items-center gap-2">
+          {/* Search - Always visible on mobile */}
+          <div className="flex-1">
+            <FilmSearchFilter mounted={mounted} />
+          </div>
+
+          {/* Filters Toggle Button */}
+          <MobileFiltersButton
+            isOpen={filtersOpen}
+            onClick={() => setFiltersOpen(!filtersOpen)}
+            mounted={mounted}
+          />
+        </div>
+
+        {/* Active Filter Chips */}
+        {mounted && <ActiveFilterChips cinemas={cinemas} />}
+
+        {/* Collapsible Filter Panel */}
+        {filtersOpen && (
+          <div className="mt-3 p-4 bg-background-secondary rounded-xl border border-border-subtle divide-y divide-border-subtle">
+            {/* Film Type */}
+            <div className="pb-4">
+              <label className="block text-[11px] font-semibold text-text-tertiary uppercase tracking-wider mb-3">
+                Film Type
+              </label>
+              <FilmTypeFilter mounted={mounted} fullWidth />
+            </div>
+
+            {/* Date & Time */}
+            <div className="py-4">
+              <label className="block text-[11px] font-semibold text-text-tertiary uppercase tracking-wider mb-3">
+                When
+              </label>
+              <DateFilter mounted={mounted} fullWidth />
+            </div>
+
+            {/* Cinema */}
+            <div className="py-4">
+              <label className="block text-[11px] font-semibold text-text-tertiary uppercase tracking-wider mb-3">
+                Cinema
+              </label>
+              <CinemaFilter cinemas={cinemas} mounted={mounted} fullWidth />
+            </div>
+
+            {/* Clear All */}
+            <div className="pt-4">
+              {mounted && <ClearFiltersButton fullWidth />}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Desktop Filter Bar - All filters visible */}
+      <div className="hidden sm:block px-4 sm:px-6 lg:px-8 py-3">
         <div className="flex items-center gap-3">
+          {/* Film Type Filter */}
+          <FilmTypeFilter mounted={mounted} />
+
           {/* Date Picker */}
           <DateFilter mounted={mounted} />
 
@@ -93,8 +155,168 @@ export function Header({ cinemas }: HeaderProps) {
   );
 }
 
+// Mobile Filters Button with active count indicator
+function MobileFiltersButton({
+  isOpen,
+  onClick,
+  mounted
+}: {
+  isOpen: boolean;
+  onClick: () => void;
+  mounted: boolean;
+}) {
+  const { getActiveFilterCount } = useFilters();
+  const count = mounted ? getActiveFilterCount() : 0;
+
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-all",
+        isOpen || count > 0
+          ? "bg-accent-primary/10 border-accent-primary/30 text-accent-primary"
+          : "bg-background-secondary border-border-default text-text-secondary"
+      )}
+    >
+      <SlidersHorizontal className="w-4 h-4" />
+      <span>Filters</span>
+      {count > 0 && (
+        <span className="bg-accent-primary text-text-inverse text-xs px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+          {count}
+        </span>
+      )}
+      <ChevronDown className={cn("w-4 h-4 transition-transform", isOpen && "rotate-180")} />
+    </button>
+  );
+}
+
+// Active Filter Chips - Shows what's currently filtered
+function ActiveFilterChips({ cinemas }: { cinemas: Cinema[] }) {
+  const filters = useFilters();
+  const chips: { label: string; onRemove: () => void }[] = [];
+
+  // Film type chip
+  if (filters.programmingTypes.length > 0) {
+    const type = filters.programmingTypes[0];
+    const label = type === "repertory" ? "Repertory" : type === "new_release" ? "New Releases" : type;
+    chips.push({
+      label,
+      onRemove: () => filters.setProgrammingTypes([]),
+    });
+  }
+
+  // Date chip
+  if (filters.dateFrom || filters.dateTo) {
+    let label = "Date set";
+    if (filters.dateFrom && filters.dateTo && isSameDay(filters.dateFrom, filters.dateTo)) {
+      label = format(filters.dateFrom, "EEE d MMM");
+    } else if (filters.dateFrom && filters.dateTo) {
+      label = `${format(filters.dateFrom, "d MMM")} - ${format(filters.dateTo, "d MMM")}`;
+    }
+    chips.push({
+      label,
+      onRemove: () => filters.setDateRange(null, null),
+    });
+  }
+
+  // Time chip
+  if (filters.timeFrom !== null || filters.timeTo !== null) {
+    chips.push({
+      label: formatTimeRange(filters.timeFrom, filters.timeTo),
+      onRemove: () => filters.setTimeRange(null, null),
+    });
+  }
+
+  // Cinema chips
+  filters.cinemaIds.forEach((id) => {
+    const cinema = cinemas.find((c) => c.id === id);
+    if (cinema) {
+      chips.push({
+        label: cinema.shortName || cinema.name,
+        onRemove: () => filters.toggleCinema(id),
+      });
+    }
+  });
+
+  if (chips.length === 0) return null;
+
+  return (
+    <div className="flex flex-wrap gap-2 mt-2">
+      {chips.map((chip, i) => (
+        <button
+          key={i}
+          onClick={chip.onRemove}
+          className="flex items-center gap-1 px-2 py-1 bg-accent-primary/10 text-accent-primary text-xs font-medium rounded-full hover:bg-accent-primary/20 transition-colors"
+        >
+          <span>{chip.label}</span>
+          <X className="w-3 h-3" />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// Film Type Filter Component - All / New Releases / Repertory
+function FilmTypeFilter({ mounted, fullWidth }: { mounted: boolean; fullWidth?: boolean }) {
+  const { programmingTypes, setProgrammingTypes } = useFilters();
+
+  // Determine current selection
+  const currentType = mounted
+    ? programmingTypes.length === 0
+      ? "all"
+      : programmingTypes.includes("repertory")
+      ? "repertory"
+      : programmingTypes.includes("new_release")
+      ? "new_release"
+      : "all"
+    : "all";
+
+  const handleSelect = (type: "all" | "new_release" | "repertory") => {
+    if (type === "all") {
+      setProgrammingTypes([]);
+    } else {
+      setProgrammingTypes([type]);
+    }
+  };
+
+  const options = [
+    { value: "all", label: "All", icon: Film },
+    { value: "new_release", label: "New", icon: Sparkles },
+    { value: "repertory", label: "Repertory", icon: History },
+  ] as const;
+
+  return (
+    <div className={cn(
+      "flex rounded-lg border border-border-default bg-background-tertiary overflow-hidden",
+      fullWidth && "w-full"
+    )}>
+      {options.map((option) => {
+        const Icon = option.icon;
+        const isActive = currentType === option.value;
+        return (
+          <button
+            key={option.value}
+            onClick={() => handleSelect(option.value)}
+            className={cn(
+              "flex items-center justify-center gap-1.5 px-3 py-2.5 text-sm font-medium transition-all",
+              "border-r border-border-default last:border-r-0",
+              fullWidth && "flex-1",
+              isActive
+                ? "bg-accent-primary text-text-inverse"
+                : "text-text-secondary hover:text-text-primary hover:bg-background-hover"
+            )}
+          >
+            <Icon className="w-4 h-4" />
+            <span>{option.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 // Date & Time Filter Component
-function DateFilter({ mounted }: { mounted: boolean }) {
+function DateFilter({ mounted, fullWidth }: { mounted: boolean; fullWidth?: boolean }) {
   const [isOpen, setIsOpen] = useState(false);
   const [showTimeCustom, setShowTimeCustom] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -597,7 +819,7 @@ function FilmSearchFilter({ mounted }: { mounted: boolean }) {
 }
 
 // Cinema Filter Component
-function CinemaFilter({ cinemas, mounted }: { cinemas: Cinema[]; mounted: boolean }) {
+function CinemaFilter({ cinemas, mounted, fullWidth }: { cinemas: Cinema[]; mounted: boolean; fullWidth?: boolean }) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
@@ -760,7 +982,7 @@ function CinemaFilter({ cinemas, mounted }: { cinemas: Cinema[]; mounted: boolea
 }
 
 // Clear All Filters Button
-function ClearFiltersButton() {
+function ClearFiltersButton({ fullWidth }: { fullWidth?: boolean } = {}) {
   const { getActiveFilterCount, clearAllFilters } = useFilters();
   const count = getActiveFilterCount();
 
@@ -772,6 +994,7 @@ function ClearFiltersButton() {
       size="sm"
       onClick={clearAllFilters}
       leftIcon={<X className="w-4 h-4" />}
+      className={fullWidth ? "w-full justify-center" : undefined}
     >
       Clear ({count})
     </Button>
