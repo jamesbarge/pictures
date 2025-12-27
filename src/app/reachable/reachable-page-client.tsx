@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { ArrowLeft, MapPin, Clock, Loader2 } from "lucide-react";
+import { ArrowLeft, MapPin, Loader2 } from "lucide-react";
 import { useHydrated } from "@/hooks/useHydrated";
 import { useReachable, areTravelTimesFresh } from "@/stores/reachable";
 import { fetchTravelTimes, getReachableScreenings } from "@/lib/travel-time";
@@ -172,6 +172,18 @@ export function ReachablePageClient({
       {/* Main Content */}
       <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6">
         <div className="max-w-2xl mx-auto">
+          {/* Hero / Explainer Section */}
+          <div className="mb-8">
+            <h1 className="text-2xl sm:text-3xl font-display text-text-primary mb-2">
+              Find films that fit your schedule
+            </h1>
+            <p className="text-text-secondary text-sm sm:text-base">
+              Tell us where you are and when you need to be free. We&apos;ll
+              calculate travel times to {cinemas.length} London cinemas and show
+              you every screening you can catch.
+            </p>
+          </div>
+
           {/* Input Section */}
           <div className="space-y-6 mb-8">
             {/* Postcode Input */}
@@ -239,19 +251,6 @@ export function ReachablePageClient({
                 </div>
               )}
 
-              {/* Setup Prompt */}
-              {showSetup && !isCalculating && (
-                <div className="p-6 bg-background-secondary border border-border-subtle rounded-lg text-center">
-                  <Clock className="w-8 h-8 text-text-tertiary mx-auto mb-3" />
-                  <h2 className="text-lg font-medium text-text-primary mb-2">
-                    Set your constraints
-                  </h2>
-                  <p className="text-text-secondary text-sm">
-                    Enter your postcode and the time you need to be free by.
-                    We&apos;ll show you all the screenings you can catch.
-                  </p>
-                </div>
-              )}
             </>
           )}
 

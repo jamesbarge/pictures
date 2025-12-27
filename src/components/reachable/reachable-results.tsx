@@ -8,7 +8,7 @@
 import { useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Clock, MapPin, Train, Calendar, ExternalLink } from "lucide-react";
+import { Clock, MapPin, Train, Calendar, ExternalLink, Footprints, Bike } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/cn";
 import {
@@ -169,7 +169,13 @@ function ReachableScreeningCard({
 
           {/* Travel Time */}
           <span className="flex items-center gap-1 text-accent-primary">
-            <Train className="w-3.5 h-3.5" />
+            {screening.travelMode === "walking" ? (
+              <Footprints className="w-3.5 h-3.5" />
+            ) : screening.travelMode === "bicycling" ? (
+              <Bike className="w-3.5 h-3.5" />
+            ) : (
+              <Train className="w-3.5 h-3.5" />
+            )}
             {formatTravelTime(screening.travelMinutes)}
           </span>
 

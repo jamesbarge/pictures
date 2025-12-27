@@ -14,7 +14,7 @@ interface Cinema {
 }
 
 interface TravelTimesResponse {
-  travelTimes: Record<string, number>;
+  travelTimes: Record<string, { minutes: number; mode: string }>;
   calculatedAt: string;
   cached: boolean;
   error?: string;
@@ -28,7 +28,7 @@ export async function fetchTravelTimes(
   origin: Coordinates,
   cinemas: Cinema[],
   mode: TravelMode
-): Promise<Record<string, number>> {
+): Promise<Record<string, { minutes: number; mode: string }>> {
   // Filter to cinemas with valid coordinates
   const validCinemas = cinemas.filter((c) => c.coordinates !== null);
 
@@ -50,7 +50,7 @@ export async function fetchTravelTimes(
   );
 
   // Merge all results
-  const merged: Record<string, number> = {};
+  const merged: Record<string, { minutes: number; mode: string }> = {};
   for (const result of results) {
     Object.assign(merged, result);
   }
@@ -65,7 +65,7 @@ async function fetchTravelTimesBatch(
   origin: Coordinates,
   cinemas: Cinema[],
   mode: TravelMode
-): Promise<Record<string, number>> {
+): Promise<Record<string, { minutes: number; mode: string }>> {
   try {
     const response = await fetch("/api/travel-times", {
       method: "POST",
@@ -115,6 +115,7 @@ export interface Screening {
 
 export interface ReachableScreening extends Screening {
   travelMinutes: number;
+  travelMode: string;
   leaveBy: Date;
   minutesUntilLeave: number;
   screeningEnd: Date;
@@ -124,25 +125,27 @@ export interface ReachableScreening extends Screening {
  * Filter screenings to only those the user can reach and finish before their deadline
  *
  * @param screenings - All available screenings
- * @param travelTimes - Map of cinemaId → travel time in minutes
+ * @param travelTimes - Map of cinemaId → travel data
  * @param finishedByTime - User's deadline (when they need to be free)
  * @param currentTime - Current time (defaults to now, useful for testing)
  */
 export function getReachableScreenings(
   screenings: Screening[],
-  travelTimes: Record<string, number>,
+  travelTimes: Record<string, { minutes: number; mode: string }>,
   finishedByTime: Date,
   currentTime: Date = new Date()
 ): ReachableScreening[] {
   const reachable: ReachableScreening[] = [];
 
   for (const screening of screenings) {
-    const travelMinutes = travelTimes[screening.cinema.id];
+    const travelData = travelTimes[screening.cinema.id];
 
     // Skip if we don't have travel time for this cinema
-    if (travelMinutes === undefined) {
+    if (!travelData) {
       continue;
     }
+
+    const { minutes: travelMinutes, mode: travelMode } = travelData;
 
     // Use actual runtime or default to 120 minutes
     const runtime = screening.film.runtime ?? 120;
@@ -168,6 +171,7 @@ export function getReachableScreenings(
     reachable.push({
       ...screening,
       travelMinutes,
+      travelMode,
       leaveBy,
       minutesUntilLeave,
       screeningEnd,

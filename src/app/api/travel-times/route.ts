@@ -66,7 +66,7 @@ interface DistanceMatrixResponse {
 // Key: `${originLat},${originLng}:${mode}` → { times, timestamp }
 const cache = new Map<
   string,
-  { times: Record<string, number>; timestamp: number }
+  { times: Record<string, { minutes: number; mode: string }>; timestamp: number }
 >();
 const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
 
@@ -103,7 +103,8 @@ export async function POST(request: Request) {
     const cached = cache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
       // Return cached times for requested destinations
-      const filteredTimes: Record<string, number> = {};
+      const filteredTimes: Record<string, { minutes: number; mode: string }> =
+        {};
       for (const dest of destinations) {
         if (cached.times[dest.id] !== undefined) {
           filteredTimes[dest.id] = cached.times[dest.id];
@@ -157,7 +158,7 @@ export async function POST(request: Request) {
     }
 
     // Parse results
-    const travelTimes: Record<string, number> = {};
+    const travelTimes: Record<string, { minutes: number; mode: string }> = {};
     const elements = data.rows[0]?.elements || [];
     const failedIndices: number[] = [];
 
@@ -167,7 +168,10 @@ export async function POST(request: Request) {
 
       if (element?.status === "OK" && element.duration) {
         // Convert seconds to minutes, round up
-        travelTimes[destination.id] = Math.ceil(element.duration.value / 60);
+        travelTimes[destination.id] = {
+          minutes: Math.ceil(element.duration.value / 60),
+          mode: googleMode,
+        };
       } else {
         // Track failed destinations for potential fallback
         failedIndices.push(i);
@@ -199,9 +203,10 @@ export async function POST(request: Request) {
           const destination = fallbackDestinations[i];
 
           if (element?.status === "OK" && element.duration) {
-            travelTimes[destination.id] = Math.ceil(
-              element.duration.value / 60
-            );
+            travelTimes[destination.id] = {
+              minutes: Math.ceil(element.duration.value / 60),
+              mode: "walking",
+            };
           }
         }
       }

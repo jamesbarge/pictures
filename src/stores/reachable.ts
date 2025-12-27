@@ -26,8 +26,8 @@ export interface ReachableState {
   finishedByTime: Date | null;
   travelMode: TravelMode;
 
-  // Computed travel times (cinemaId → minutes)
-  travelTimes: Record<string, number>;
+  // Computed travel times (cinemaId → { minutes, mode })
+  travelTimes: Record<string, { minutes: number; mode: string }>;
   lastCalculatedAt: string | null;  // ISO timestamp
 
   // Loading/error state
@@ -43,7 +43,7 @@ interface ReachableActions {
   setTravelMode: (mode: TravelMode) => void;
 
   // Travel time management
-  setTravelTimes: (times: Record<string, number>) => void;
+  setTravelTimes: (times: Record<string, { minutes: number; mode: string }>) => void;
   setCalculating: (calculating: boolean) => void;
   setError: (error: string | null) => void;
 
@@ -144,7 +144,7 @@ export const useReachable = create<ReachableState & ReachableActions>()(
 
       getTravelTimeForCinema: (cinemaId) => {
         const times = get().travelTimes;
-        return times[cinemaId] ?? null;
+        return times[cinemaId]?.minutes ?? null;
       },
 
       hasValidInputs: () => {
