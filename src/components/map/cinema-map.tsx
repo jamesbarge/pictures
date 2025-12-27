@@ -10,8 +10,7 @@ import {
   Map,
   useMap,
   useMapsLibrary,
-  AdvancedMarker,
-  Pin,
+  Marker,
 } from "@vis.gl/react-google-maps";
 import { MapPin, Pencil, Trash2, Check, X } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -42,7 +41,6 @@ export function CinemaMap({ cinemas, mapArea, onAreaChange }: CinemaMapProps) {
   return (
     <div className="relative w-full h-full">
       <Map
-        mapId="cinema-map"
         defaultCenter={LONDON_CENTER}
         defaultZoom={DEFAULT_ZOOM}
         gestureHandling="greedy"
@@ -109,36 +107,14 @@ function CinemaMarker({
   cinema: Cinema;
   isInArea: boolean;
 }) {
-  const [showInfo, setShowInfo] = useState(false);
-
   if (!cinema.coordinates) return null;
 
   return (
-    <AdvancedMarker
+    <Marker
       position={cinema.coordinates}
-      onClick={() => setShowInfo(!showInfo)}
-    >
-      <div className="relative">
-        <Pin
-          background={isInArea ? "#6366f1" : "#9ca3af"}
-          borderColor={isInArea ? "#4f46e5" : "#6b7280"}
-          glyphColor="#ffffff"
-        >
-          <MapPin className="w-4 h-4" />
-        </Pin>
-
-        {/* Info Popup */}
-        {showInfo && (
-          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-10">
-            <div className="bg-background-primary border border-border-default rounded-lg shadow-elevated px-3 py-2 whitespace-nowrap">
-              <p className="text-sm font-medium text-text-primary">
-                {cinema.shortName || cinema.name}
-              </p>
-            </div>
-          </div>
-        )}
-      </div>
-    </AdvancedMarker>
+      title={cinema.shortName || cinema.name}
+      opacity={isInArea ? 1 : 0.5}
+    />
   );
 }
 
