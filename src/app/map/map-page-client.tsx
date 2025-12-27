@@ -12,6 +12,7 @@ import { ArrowLeft, MapPin, Check, X } from "lucide-react";
 import { MapProvider } from "@/components/map/map-provider";
 import { CinemaMap } from "@/components/map/cinema-map";
 import { usePreferences } from "@/stores/preferences";
+import { useFilters } from "@/stores/filters";
 import { useHydrated } from "@/hooks/useHydrated";
 import { getCinemasInArea } from "@/lib/geo-utils";
 import type { CinemaCoordinates } from "@/types/cinema";
@@ -32,6 +33,7 @@ export function MapPageClient({ cinemas }: MapPageClientProps) {
   const router = useRouter();
   const hydrated = useHydrated();
   const { mapArea, setMapArea, useMapFiltering } = usePreferences();
+  const { setCinemas } = useFilters();
 
   // Local state for editing (doesn't save until "Apply")
   const [localArea, setLocalArea] = useState<MapArea | null>(null);
@@ -54,7 +56,18 @@ export function MapPageClient({ cinemas }: MapPageClientProps) {
   }, [hydrated, localArea, mapArea]);
 
   const handleApply = () => {
+    // Save the map area for re-editing later
     setMapArea(localArea);
+
+    // Set cinema filter to only include cinemas within the drawn area
+    if (localArea) {
+      const cinemasInSelectedArea = getCinemasInArea(cinemas, localArea);
+      setCinemas(cinemasInSelectedArea.map((c) => c.id));
+    } else {
+      // No area = clear cinema filter (show all)
+      setCinemas([]);
+    }
+
     router.push("/");
   };
 
@@ -65,6 +78,8 @@ export function MapPageClient({ cinemas }: MapPageClientProps) {
   const handleClear = () => {
     setLocalArea(null);
     setMapArea(null);
+    // Also clear the cinema filter
+    setCinemas([]);
   };
 
   // Calculate cinemas in local area for preview
