@@ -8,6 +8,7 @@ import * as cheerio from "cheerio";
 import type { RawScreening, ScraperConfig } from "../types";
 import { getBrowser, closeBrowser, createPage } from "../utils/browser";
 import type { Page } from "playwright";
+import { parseFilmMetadata } from "../utils/metadata-parser";
 
 interface BFIVenueConfig {
   id: "bfi-southbank" | "bfi-imax";
@@ -394,6 +395,10 @@ export class BFIScraper {
       else if (/preview/i.test(title)) eventType = "preview";
       else if (/premiere/i.test(title)) eventType = "premiere";
 
+      // Extract director/year from the listing text
+      // BFI often includes "Dir. Name" and year in the description
+      const metadata = parseFilmMetadata(grandparentText);
+
       screenings.push({
         filmTitle: cleanTitle,
         datetime,
@@ -401,6 +406,9 @@ export class BFIScraper {
         bookingUrl,
         eventType,
         sourceId: `${this.config.cinemaId}-${cleanTitle.toLowerCase().replace(/\s+/g, "-")}-${datetime.toISOString()}`,
+        // Pass extracted metadata for better TMDB matching
+        year: metadata.year,
+        director: metadata.director,
       });
     });
 

@@ -130,6 +130,9 @@ export class RioScraper extends BaseScraper {
             screen: perf.AuditoriumName || undefined,
             bookingUrl,
             sourceId: `rio-dalston-${event.ID}-${datetime.toISOString()}`,
+            // Pass metadata from JSON for better TMDB matching
+            year: event.Year ? parseInt(event.Year, 10) : undefined,
+            director: event.Director || undefined,
           });
         }
       }

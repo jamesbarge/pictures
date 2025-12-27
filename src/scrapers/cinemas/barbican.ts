@@ -6,6 +6,7 @@
 import { BaseScraper } from "../base";
 import type { RawScreening, ScraperConfig } from "../types";
 import type { CheerioAPI } from "../utils/cheerio-types";
+import { parseFilmMetadata } from "../utils/metadata-parser";
 
 export class BarbicanScraper extends BaseScraper {
   config: ScraperConfig = {
@@ -70,14 +71,19 @@ export class BarbicanScraper extends BaseScraper {
         }
         processedNodeIds.add(nodeId);
 
+        // Extract metadata (director, year) from the film detail page
+        // Barbican often includes this in the page content
+        const pageText = film$("body").text();
+        const metadata = parseFilmMetadata(pageText);
+
         // Fetch performances page
         const performancesUrl = `${this.config.baseUrl}/whats-on/event/${nodeId}/performances`;
         console.log(`[${this.config.cinemaId}] Fetching performances for ${title}`);
 
         const performancesHtml = await this.fetchUrl(performancesUrl);
 
-        // Store both title and performances HTML for parsing
-        pages.push(JSON.stringify({ title, nodeId, html: performancesHtml }));
+        // Store title, metadata, and performances HTML for parsing
+        pages.push(JSON.stringify({ title, nodeId, html: performancesHtml, metadata }));
 
         await this.delay(this.config.delayBetweenRequests);
       } catch (error) {
@@ -93,10 +99,10 @@ export class BarbicanScraper extends BaseScraper {
 
     for (const page of htmlPages) {
       try {
-        const { title, nodeId, html } = JSON.parse(page);
+        const { title, nodeId, html, metadata } = JSON.parse(page);
         const $ = this.parseHtml(html);
 
-        const filmScreenings = this.parsePerformances($, title, nodeId);
+        const filmScreenings = this.parsePerformances($, title, nodeId, metadata);
         screenings.push(...filmScreenings);
 
         if (filmScreenings.length > 0) {
@@ -111,7 +117,12 @@ export class BarbicanScraper extends BaseScraper {
     return screenings;
   }
 
-  private parsePerformances($: CheerioAPI, title: string, nodeId: string): RawScreening[] {
+  private parsePerformances(
+    $: CheerioAPI,
+    title: string,
+    nodeId: string,
+    metadata?: { director?: string; year?: number }
+  ): RawScreening[] {
     const screenings: RawScreening[] = [];
     const now = new Date();
 
@@ -155,6 +166,9 @@ export class BarbicanScraper extends BaseScraper {
         screen: venue || undefined,
         bookingUrl,
         sourceId: `barbican-${nodeId}-${datetime.toISOString()}`,
+        // Pass extracted metadata for better TMDB matching
+        year: metadata?.year,
+        director: metadata?.director,
       });
     });
 

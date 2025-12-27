@@ -60,6 +60,14 @@ export const films = pgTable("films", {
   tmdbRating: real("tmdb_rating"),
   letterboxdUrl: text("letterboxd_url"),
 
+  // Match tracking - for auditing and reprocessing
+  // Confidence score from TMDB matching (0-1)
+  matchConfidence: real("match_confidence"),
+  // How the match was made: "auto-with-year", "auto-with-director", "auto-no-hints", "manual", "review"
+  matchStrategy: text("match_strategy"),
+  // When the TMDB match was performed
+  matchedAt: timestamp("matched_at", { withTimezone: true }),
+
   // AI-powered duplicate detection (commented out until pgvector extension is enabled)
   // Embedding of title + year + director for semantic similarity search
   // titleEmbedding: vector("title_embedding", { dimensions: EMBEDDING_DIMENSIONS }),
@@ -78,6 +86,8 @@ export const films = pgTable("films", {
   index("idx_films_repertory").on(table.isRepertory),
   // Index for decade/year filtering
   index("idx_films_year").on(table.year),
+  // Index for finding films by match strategy (for reprocessing)
+  index("idx_films_match_strategy").on(table.matchStrategy),
 ]);
 
 export type FilmInsert = typeof films.$inferInsert;

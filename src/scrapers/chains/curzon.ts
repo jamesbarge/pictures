@@ -12,6 +12,7 @@
 import * as cheerio from "cheerio";
 import type { ChainConfig, VenueConfig, RawScreening, ChainScraper } from "../types";
 import { getBrowser, closeBrowser, createPage } from "../utils/browser";
+import { parseFilmMetadata } from "../utils/metadata-parser";
 import type { Page } from "playwright";
 
 // ============================================================================
@@ -345,6 +346,11 @@ export class CurzonScraper implements ChainScraper {
       const title = $film.find('h3, h2[class*="title"], [class*="film-title"]').first().text().trim();
       if (!title || title.length < 2) return;
 
+      // Extract metadata (director, year) from film container text
+      // Curzon often shows film info in description or subtitle elements
+      const filmBlockText = $film.text();
+      const metadata = parseFilmMetadata(filmBlockText);
+
       // Find showtime links
       $film.find('a[href*="ticketing"], a[href*="seats"]').each((_, timeEl) => {
         const $time = $(timeEl);
@@ -393,6 +399,9 @@ export class CurzonScraper implements ChainScraper {
             : `${this.chainConfig.baseUrl}${bookingUrl}`,
           sourceId,
           eventDescription,
+          // Pass extracted metadata for better TMDB matching
+          year: metadata.year,
+          director: metadata.director,
         });
       });
     });

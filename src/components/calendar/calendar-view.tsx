@@ -10,10 +10,12 @@ import { startOfDay, endOfDay, format, isWithinInterval, getHours } from "date-f
 import { DaySection } from "./day-section";
 import { useFilters, getTimeOfDayFromHour } from "@/stores/filters";
 import { useFilmStatus } from "@/stores/film-status";
+import { usePreferences } from "@/stores/preferences";
 import { useHydrated } from "@/hooks/useHydrated";
 import { EmptyState } from "@/components/ui";
 import { Button } from "@/components/ui";
-import { Film, Search } from "lucide-react";
+import { Film, Search, MapPin } from "lucide-react";
+import { isCinemaInArea, type MapArea } from "@/lib/geo-utils";
 
 // Stable reference for empty set (prevents unnecessary re-renders)
 const EMPTY_SET = new Set<string>();
@@ -45,12 +47,21 @@ interface Screening {
   };
 }
 
-interface CalendarViewProps {
-  screenings: Screening[];
+interface CinemaWithCoords {
+  id: string;
+  name: string;
+  shortName: string | null;
+  coordinates: { lat: number; lng: number } | null;
 }
 
-export function CalendarView({ screenings }: CalendarViewProps) {
+interface CalendarViewProps {
+  screenings: Screening[];
+  cinemas: CinemaWithCoords[];
+}
+
+export function CalendarView({ screenings, cinemas }: CalendarViewProps) {
   const filters = useFilters();
+  const { mapArea, useMapFiltering } = usePreferences();
   const mounted = useHydrated();
 
   // Get hide filter values separately for stable selector
@@ -80,12 +91,33 @@ export function CalendarView({ screenings }: CalendarViewProps) {
     return hidden;
   }, [allFilmStatuses, hideSeen, hideNotInterested]);
 
+  // Compute cinema IDs within map area (when map filtering is active)
+  const mapFilteredCinemaIds = useMemo(() => {
+    if (!mounted || !useMapFiltering || !mapArea) {
+      return null; // null means no map filtering
+    }
+
+    const validIds = new Set<string>();
+    for (const cinema of cinemas) {
+      if (cinema.coordinates && isCinemaInArea(cinema.coordinates, mapArea)) {
+        validIds.add(cinema.id);
+      }
+    }
+    return validIds;
+  }, [mounted, useMapFiltering, mapArea, cinemas]);
+
   // Apply all filters (only after mount)
   const filteredScreenings = useMemo(() => {
     // Before mount, show all screenings
     if (!mounted) return screenings;
 
+    const now = new Date();
+
     return screenings.filter((s) => {
+      // Filter out past screenings (critical for ISR - server data may be up to 60s stale)
+      if (new Date(s.datetime) < now) {
+        return false;
+      }
       // Film search filter (dynamic text search)
       if (filters.filmSearch.trim()) {
         const searchTerm = filters.filmSearch.toLowerCase();
@@ -98,6 +130,11 @@ export function CalendarView({ screenings }: CalendarViewProps) {
 
       // Cinema filter
       if (filters.cinemaIds.length > 0 && !filters.cinemaIds.includes(s.cinema.id)) {
+        return false;
+      }
+
+      // Map area filter (only when map filtering is active)
+      if (mapFilteredCinemaIds !== null && !mapFilteredCinemaIds.has(s.cinema.id)) {
         return false;
       }
 
@@ -187,7 +224,7 @@ export function CalendarView({ screenings }: CalendarViewProps) {
 
       return true;
     });
-  }, [screenings, filters, hiddenFilmIds, mounted]);
+  }, [screenings, filters, hiddenFilmIds, mapFilteredCinemaIds, mounted]);
 
   const activeFilterCount = mounted ? filters.getActiveFilterCount() : 0;
 
@@ -213,11 +250,14 @@ export function CalendarView({ screenings }: CalendarViewProps) {
     );
   }, [filteredScreenings]);
 
+  const hasMapFilter = mounted && useMapFiltering && mapArea !== null;
+
   if (filteredScreenings.length === 0) {
     return (
       <CalendarEmptyState
         hasFilters={activeFilterCount > 0}
         hasSearch={!!filters.filmSearch.trim()}
+        hasMapFilter={hasMapFilter}
         onClearFilters={filters.clearAllFilters}
         onClearSearch={() => filters.setFilmSearch("")}
       />
@@ -240,14 +280,18 @@ export function CalendarView({ screenings }: CalendarViewProps) {
 function CalendarEmptyState({
   hasFilters,
   hasSearch,
+  hasMapFilter,
   onClearFilters,
   onClearSearch,
 }: {
   hasFilters: boolean;
   hasSearch: boolean;
+  hasMapFilter: boolean;
   onClearFilters: () => void;
   onClearSearch: () => void;
 }) {
+  const { clearMapArea } = usePreferences();
+
   // If searching, show search-specific empty state
   if (hasSearch) {
     return (
@@ -264,13 +308,29 @@ function CalendarEmptyState({
     );
   }
 
+  // If map filter is active and no results, show map-specific empty state
+  if (hasMapFilter && !hasFilters) {
+    return (
+      <EmptyState
+        icon={<MapPin className="w-10 h-10" />}
+        title="No cinemas in your selected area"
+        description="Try expanding your map area to include more cinemas."
+        action={
+          <Button variant="ghost" size="sm" onClick={clearMapArea}>
+            Clear map filter
+          </Button>
+        }
+      />
+    );
+  }
+
   // If filters active, show filter-specific empty state
-  if (hasFilters) {
+  if (hasFilters || hasMapFilter) {
     return (
       <EmptyState
         variant="no-screenings"
         title="No screenings match your filters"
-        description="Try adjusting your filters to find more screenings."
+        description={hasMapFilter ? "Try adjusting your filters or expanding your map area." : "Try adjusting your filters to find more screenings."}
         action={
           <Button variant="ghost" size="sm" onClick={onClearFilters}>
             Clear all filters

@@ -1,14 +1,23 @@
 /**
  * Film Matching Logic
  * Matches scraped film titles to TMDB entries with fuzzy matching
+ *
+ * Key improvements for ambiguous titles:
+ * - Reduced popularity bias (prevents blockbusters from matching art films)
+ * - Ambiguity detection for short/common titles
+ * - Match count penalty when multiple films have similar scores
+ * - Requires year/director hints for ambiguous titles
  */
 
 import { getTMDBClient } from "./client";
 import type { TMDBSearchResult } from "./types";
+import { analyzeTitleAmbiguity, hasSufficientMetadata } from "./ambiguity";
 
 interface MatchHints {
   year?: number;
   director?: string;
+  /** If true, skip ambiguity checks (for re-processing with known good metadata) */
+  skipAmbiguityCheck?: boolean;
 }
 
 interface MatchResult {
@@ -121,11 +130,30 @@ export function getDecade(year: number): string {
 /**
  * Match a scraped film title to TMDB
  * Returns the best match with confidence score
+ *
+ * For ambiguous titles (short, common words), requires year or director hints
+ * to prevent matching blockbusters instead of the intended art film
  */
 export async function matchFilmToTMDB(
   title: string,
   hints?: MatchHints
 ): Promise<MatchResult | null> {
+  // Check if title is ambiguous and requires metadata
+  if (!hints?.skipAmbiguityCheck) {
+    const hasYear = !!hints?.year;
+    const hasDirector = !!hints?.director;
+
+    if (!hasSufficientMetadata(title, hasYear, hasDirector)) {
+      const ambiguity = analyzeTitleAmbiguity(title);
+      console.warn(
+        `[tmdb-match] Skipping ambiguous title "${title}" - ` +
+          `score: ${ambiguity.score.toFixed(2)}, reasons: ${ambiguity.reasons.join(", ")}. ` +
+          `Provide year or director hint for better matching.`
+      );
+      return null;
+    }
+  }
+
   const client = getTMDBClient();
 
   // Search with year hint if provided
@@ -148,14 +176,24 @@ export async function matchFilmToTMDB(
 
 /**
  * Find the best match from search results
+ *
+ * Scoring breakdown:
+ * - Title similarity: 70% weight (0-0.7)
+ * - Year match: +0.2 for exact, +0.1 for ±1 year
+ * - Popularity: reduced to max 3% to prevent blockbuster bias
+ * - Match count penalty: reduces confidence when many films have similar scores
  */
 function findBestMatch(
   searchTitle: string,
   results: TMDBSearchResult[],
   hints?: MatchHints
 ): MatchResult | null {
-  let bestMatch: MatchResult | null = null;
-  let bestScore = 0;
+  // Calculate scores for all candidates
+  const scoredResults: Array<{
+    result: TMDBSearchResult;
+    titleSimilarity: number;
+    score: number;
+  }> = [];
 
   for (const result of results.slice(0, 10)) {
     // Calculate title similarity
@@ -163,6 +201,9 @@ function findBestMatch(
       calculateSimilarity(searchTitle, result.title),
       calculateSimilarity(searchTitle, result.original_title)
     );
+
+    // Skip if title similarity too low
+    if (titleSimilarity < 0.6) continue;
 
     // Year bonus - exact match or close
     let yearBonus = 0;
@@ -175,29 +216,66 @@ function findBestMatch(
       }
     }
 
-    // Popularity bonus (slight preference for well-known films)
-    const popularityBonus = Math.min(result.popularity / 1000, 0.1);
+    // Popularity bonus - REDUCED from 0.1 to 0.03 to prevent blockbuster bias
+    // A film with popularity 1000 gets only 3% boost, not 10%
+    const popularityBonus = Math.min(result.popularity / 1000, 0.03);
 
     // Calculate total score
     const score = titleSimilarity * 0.7 + yearBonus + popularityBonus;
 
-    if (score > bestScore && titleSimilarity >= 0.6) {
-      bestScore = score;
-      bestMatch = {
-        tmdbId: result.id,
-        confidence: Math.min(score, 1),
-        title: result.title,
-        year: result.release_date
-          ? parseInt(result.release_date.split("-")[0], 10)
-          : 0,
-        posterPath: result.poster_path,
-      };
+    scoredResults.push({ result, titleSimilarity, score });
+  }
+
+  if (scoredResults.length === 0) return null;
+
+  // Sort by score descending
+  scoredResults.sort((a, b) => b.score - a.score);
+
+  const best = scoredResults[0];
+
+  // Calculate match count penalty
+  // If many films have similar scores, reduce confidence
+  // This catches cases like "Ten" where 5 films all score 0.85
+  const competitorThreshold = best.score * 0.95; // Within 5% of best score
+  const closeCompetitors = scoredResults.filter(
+    (r) => r.score >= competitorThreshold
+  ).length;
+
+  let matchCountPenalty = 0;
+  if (closeCompetitors >= 4) {
+    matchCountPenalty = 0.15; // Many competitors - high uncertainty
+  } else if (closeCompetitors >= 2) {
+    matchCountPenalty = 0.08; // Some competitors - moderate uncertainty
+  }
+
+  // Apply penalty to confidence (not to score used for ranking)
+  const adjustedConfidence = Math.min(best.score - matchCountPenalty, 1);
+
+  // If we have year hint and it matches, boost confidence back up
+  // Year match is a strong signal even with competitors
+  let finalConfidence = adjustedConfidence;
+  if (hints?.year && best.result.release_date) {
+    const bestYear = parseInt(best.result.release_date.split("-")[0], 10);
+    if (bestYear === hints.year) {
+      // Recover half the penalty if year matches exactly
+      finalConfidence = Math.min(
+        adjustedConfidence + matchCountPenalty * 0.5,
+        1
+      );
     }
   }
 
   // Only return if confidence is above threshold
-  if (bestMatch && bestMatch.confidence >= 0.6) {
-    return bestMatch;
+  if (finalConfidence >= 0.6) {
+    return {
+      tmdbId: best.result.id,
+      confidence: finalConfidence,
+      title: best.result.title,
+      year: best.result.release_date
+        ? parseInt(best.result.release_date.split("-")[0], 10)
+        : 0,
+      posterPath: best.result.poster_path,
+    };
   }
 
   return null;

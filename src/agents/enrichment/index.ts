@@ -14,6 +14,7 @@
 import { query } from "@anthropic-ai/claude-agent-sdk";
 import { db, schema } from "@/db";
 import { eq, isNull, sql } from "drizzle-orm";
+import { analyzeTitleAmbiguity, hasSufficientMetadata } from "@/lib/tmdb/ambiguity";
 import {
   type TmdbMatchResult,
   type AgentResult,
@@ -358,6 +359,44 @@ Respond with JSON:
                     matchResult.shouldAutoApply &&
                     config.enableAutoFix
                   ) {
+                    // Check ambiguity - for ambiguous titles, require higher confidence or metadata
+                    const ambiguity = analyzeTitleAmbiguity(film.title);
+                    const hasYear = !!film.year;
+                    const hasDirector = film.directors && film.directors.length > 0;
+                    const hasMetadata = hasSufficientMetadata(film.title, hasYear, hasDirector);
+
+                    // For ambiguous titles without sufficient metadata, require 90% confidence
+                    const requiredConfidence = ambiguity.requiresReview && !hasMetadata ? 0.9 : 0.8;
+
+                    if (parsed.confidence < requiredConfidence) {
+                      console.log(
+                        `[${AGENT_NAME}] Skipping ambiguous title "${film.title}" ` +
+                          `(${(parsed.confidence * 100).toFixed(0)}% < ${(requiredConfidence * 100).toFixed(0)}% required, ` +
+                          `reasons: ${ambiguity.reasons.join(", ")})`
+                      );
+                      // Record that we skipped this for review
+                      await db
+                        .update(schema.films)
+                        .set({
+                          matchStrategy: "needs-review",
+                          matchConfidence: parsed.confidence,
+                          matchedAt: new Date(),
+                          updatedAt: new Date(),
+                        })
+                        .where(eq(schema.films.id, film.id));
+                      continue;
+                    }
+
+                    // Determine the match strategy for tracking
+                    let dbMatchStrategy = "auto-no-hints";
+                    if (hasYear && hasDirector) {
+                      dbMatchStrategy = "auto-with-both";
+                    } else if (hasYear) {
+                      dbMatchStrategy = "auto-with-year";
+                    } else if (hasDirector) {
+                      dbMatchStrategy = "auto-with-director";
+                    }
+
                     // Check if another film already has this TMDB ID
                     const existingFilm = await findFilmByTmdbId(bestMatch.id);
 
@@ -383,6 +422,9 @@ Respond with JSON:
                         .update(schema.films)
                         .set({
                           tmdbId: bestMatch.id,
+                          matchConfidence: parsed.confidence,
+                          matchStrategy: dbMatchStrategy,
+                          matchedAt: new Date(),
                           updatedAt: new Date(),
                         })
                         .where(eq(schema.films.id, film.id));

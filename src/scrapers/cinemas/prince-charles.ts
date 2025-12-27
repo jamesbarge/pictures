@@ -6,6 +6,7 @@
 import { BaseScraper } from "../base";
 import type { RawScreening, ScraperConfig } from "../types";
 import { parseScreeningDate, parseScreeningTime, combineDateAndTime } from "../utils/date-parser";
+import { parseFilmMetadata } from "../utils/metadata-parser";
 import type { CheerioAPI, CheerioSelection } from "../utils/cheerio-types";
 
 export class PrinceCharlesScraper extends BaseScraper {
@@ -55,6 +56,12 @@ export class PrinceCharlesScraper extends BaseScraper {
     const title = $film.find(".liveeventtitle").first().text().trim();
     if (!title) return screenings;
 
+    // Extract metadata (director, year) from film description
+    // PCC often has film info in .synopsis or the film block text
+    const synopsisText = $film.find(".synopsis, .film-info, .description").text().trim();
+    const filmBlockText = $film.text();
+    const metadata = parseFilmMetadata(synopsisText || filmBlockText);
+
     // Detect format from film classes
     const filmClasses = $film.attr("class") || "";
     let defaultFormat: string | undefined;
@@ -75,7 +82,7 @@ export class PrinceCharlesScraper extends BaseScraper {
         currentDate = parseScreeningDate(dateText);
       } else if (tagName === "li" && currentDate) {
         // Showtime entry
-        const screening = this.parseShowtimeLi($, $el, title, currentDate, defaultFormat);
+        const screening = this.parseShowtimeLi($, $el, title, currentDate, defaultFormat, metadata);
         if (screening) {
           screenings.push(screening);
         }
@@ -90,7 +97,8 @@ export class PrinceCharlesScraper extends BaseScraper {
     $li: CheerioSelection,
     filmTitle: string,
     date: Date,
-    defaultFormat?: string
+    defaultFormat?: string,
+    metadata?: { director?: string; year?: number }
   ): RawScreening | null {
     // Get the booking link
     const $bookLink = $li.find("a.film_book_button");
@@ -135,6 +143,9 @@ export class PrinceCharlesScraper extends BaseScraper {
       format,
       eventType,
       sourceId: bookingUrl.match(/booknow\/(\d+)/)?.[1],
+      // Pass extracted metadata for better TMDB matching
+      year: metadata?.year,
+      director: metadata?.director,
     };
   }
 }

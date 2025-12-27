@@ -190,6 +190,9 @@ export class ICAScraper extends BaseScraper {
           bookingUrl: bookingBase || fallbackUrl,
           screen: venue || undefined,
           sourceId: `ica-${filmInfo.title.toLowerCase().replace(/\s+/g, "-")}-${datetime.toISOString()}`,
+          // Pass extracted metadata for better TMDB matching
+          year: filmInfo.year,
+          director: filmInfo.director,
         });
       }
     });
