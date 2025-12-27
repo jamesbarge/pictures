@@ -9,6 +9,7 @@
  */
 
 import type { RawScreening, ScraperConfig, CinemaScraper } from "../types";
+import { parseUKLocalDateTime } from "../utils/date-parser";
 
 // ============================================================================
 // The Nickel Configuration
@@ -101,8 +102,9 @@ export class NickelScraper implements CinemaScraper {
 
   private convertToRawScreenings(data: NickelScreening[]): RawScreening[] {
     return data.map((item) => {
-      // Parse the ISO datetime string
-      const datetime = new Date(item.screeningDate);
+      // Parse the ISO datetime string as UK local time
+      // API returns "2025-12-27T20:30" without timezone indicator
+      const datetime = parseUKLocalDateTime(item.screeningDate);
 
       // Generate booking URL from screening ID
       const bookingUrl = `https://book.thenickel.co.uk/screening/${item.id}`;

@@ -420,6 +420,23 @@ Most sites use one of these patterns:
 - Use Playwright only when necessary (JS rendering, Cloudflare)
 - Simple fetch for static HTML sites
 
+### Timezone Handling - CRITICAL
+
+ISO datetime strings WITHOUT timezone indicators are ambiguous in JavaScript:
+- `new Date("2025-12-27T20:30")` (no seconds) → treated as **UTC**
+- `new Date("2025-12-27T20:30:00")` (with seconds) → treated as **LOCAL time**
+
+This inconsistency can cause 1-hour offset bugs depending on the server timezone.
+
+**Best Practice:** When an API returns UK local time without a timezone indicator (e.g., `"2025-12-27T20:30"`), use the `parseUKLocalDateTime()` helper from `src/scrapers/utils/date-parser.ts`:
+
+```typescript
+import { parseUKLocalDateTime } from '../utils/date-parser';
+const datetime = parseUKLocalDateTime(item.screeningDate);
+```
+
+This parses the datetime components directly, avoiding any timezone confusion regardless of where the scraper runs.
+
 ---
 
 ## Debugging Tips

@@ -6,6 +6,29 @@
 import { addYears, isAfter } from "date-fns";
 
 /**
+ * Parse an ISO-like datetime string that represents UK local time.
+ *
+ * IMPORTANT: Use this when an API returns "2025-12-27T20:30" meaning UK local time
+ * but WITHOUT a timezone indicator.
+ *
+ * JavaScript's new Date() behavior is inconsistent:
+ * - "2025-12-27T20:30" (no seconds) → treated as UTC
+ * - "2025-12-27T20:30:00" (with seconds) → treated as LOCAL time
+ *
+ * This function always parses the datetime components directly, avoiding
+ * any timezone confusion regardless of server timezone or JS quirks.
+ *
+ * @param isoString - ISO-like string e.g. "2025-12-27T20:30"
+ * @returns Date object representing that time in local timezone
+ */
+export function parseUKLocalDateTime(isoString: string): Date {
+  const [datePart, timePart] = isoString.split("T");
+  const [year, month, day] = datePart.split("-").map(Number);
+  const [hours, minutes] = (timePart || "00:00").split(":").map(Number);
+  return new Date(year, month - 1, day, hours, minutes);
+}
+
+/**
  * Parse a date string in various UK cinema formats
  * Examples:
  * - "Sun 22 Dec" (BFI style)
