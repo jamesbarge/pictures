@@ -9,7 +9,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Clock, Calendar, Globe, Star, ExternalLink } from "lucide-react";
+import { Clock, Calendar, Globe, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { getTmdbUrl, getImdbUrl, generateLetterboxdUrl } from "@/lib/external-urls";
 import { useFilters } from "@/stores/filters";
@@ -172,12 +172,6 @@ export function FilmHeader({ film }: FilmHeaderProps) {
                 {film.certification && (
                   <span className="px-2 py-0.5 border border-border-default rounded text-xs font-mono text-text-secondary">
                     {film.certification}
-                  </span>
-                )}
-                {film.tmdbRating && film.tmdbRating > 0 && (
-                  <span className="flex items-center gap-1.5">
-                    <Star className="w-4 h-4 text-accent-highlight fill-accent-highlight" />
-                    {film.tmdbRating.toFixed(1)}
                   </span>
                 )}
                 {film.countries.length > 0 && (
