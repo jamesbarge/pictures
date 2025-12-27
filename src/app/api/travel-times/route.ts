@@ -121,7 +121,9 @@ export async function POST(request: Request) {
     }
 
     // Get Google Maps API key
-    const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+    const apiKey =
+      process.env.GOOGLE_MAPS_API_KEY ||
+      process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
     if (!apiKey) {
       console.error("GOOGLE_MAPS_API_KEY not configured");
       return NextResponse.json(
@@ -131,7 +133,6 @@ export async function POST(request: Request) {
     }
 
     // Build Distance Matrix API request
-    // Format: origins and destinations as pipe-separated lat,lng pairs
     const originsParam = `${origin.lat},${origin.lng}`;
     const destinationsParam = destinations
       .map((d) => `${d.lat},${d.lng}`)
@@ -140,48 +141,17 @@ export async function POST(request: Request) {
     // Map our mode names to Google's
     const googleMode = mode === "bicycling" ? "bicycling" : mode;
 
-    const url = new URL(
-      "https://maps.googleapis.com/maps/api/distancematrix/json"
+    // Initial Fetch
+    let data = await fetchGoogleTimes(
+      originsParam,
+      destinationsParam,
+      googleMode,
+      apiKey
     );
-    url.searchParams.set("origins", originsParam);
-    url.searchParams.set("destinations", destinationsParam);
-    url.searchParams.set("mode", googleMode);
-    url.searchParams.set("units", "metric");
-    url.searchParams.set("key", apiKey);
 
-    // For transit, add departure_time for realistic estimates
-    if (mode === "transit") {
-      // Use current time for real-time transit estimates
-      url.searchParams.set(
-        "departure_time",
-        Math.floor(Date.now() / 1000).toString()
-      );
-    }
-
-    // Make API request
-    const response = await fetch(url.toString());
-
-    if (!response.ok) {
-      console.error(
-        "Google Distance Matrix API error:",
-        response.status,
-        await response.text()
-      );
+    if (!data) {
       return NextResponse.json(
         { error: "Failed to calculate travel times" },
-        { status: 502 }
-      );
-    }
-
-    const data: DistanceMatrixResponse = await response.json();
-
-    if (data.status !== "OK") {
-      console.error("Distance Matrix API status:", data.status, data.error_message);
-      return NextResponse.json(
-        {
-          error: "Travel time calculation failed",
-          details: data.error_message || data.status,
-        },
         { status: 502 }
       );
     }
@@ -189,6 +159,7 @@ export async function POST(request: Request) {
     // Parse results
     const travelTimes: Record<string, number> = {};
     const elements = data.rows[0]?.elements || [];
+    const failedIndices: number[] = [];
 
     for (let i = 0; i < destinations.length; i++) {
       const element = elements[i];
@@ -197,9 +168,43 @@ export async function POST(request: Request) {
       if (element?.status === "OK" && element.duration) {
         // Convert seconds to minutes, round up
         travelTimes[destination.id] = Math.ceil(element.duration.value / 60);
+      } else {
+        // Track failed destinations for potential fallback
+        failedIndices.push(i);
       }
-      // If status is not OK (e.g., ZERO_RESULTS for no route), we skip that destination
-      // The frontend will handle missing cinemas gracefully
+    }
+
+    // Fallback: If mode is transit and we have failures, try walking for those specific destinations
+    if (mode === "transit" && failedIndices.length > 0) {
+      const fallbackDestinations = failedIndices.map((i) => destinations[i]);
+      const fallbackDestinationsParam = fallbackDestinations
+        .map((d) => `${d.lat},${d.lng}`)
+        .join("|");
+
+      console.log(
+        `Attempting walking fallback for ${fallbackDestinations.length} destinations`
+      );
+
+      const fallbackData = await fetchGoogleTimes(
+        originsParam,
+        fallbackDestinationsParam,
+        "walking",
+        apiKey
+      );
+
+      if (fallbackData) {
+        const fallbackElements = fallbackData.rows[0]?.elements || [];
+        for (let i = 0; i < fallbackDestinations.length; i++) {
+          const element = fallbackElements[i];
+          const destination = fallbackDestinations[i];
+
+          if (element?.status === "OK" && element.duration) {
+            travelTimes[destination.id] = Math.ceil(
+              element.duration.value / 60
+            );
+          }
+        }
+      }
     }
 
     // Update cache
@@ -231,6 +236,54 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
+}
+
+async function fetchGoogleTimes(
+  originsParam: string,
+  destinationsParam: string,
+  mode: string,
+  apiKey: string
+): Promise<DistanceMatrixResponse | null> {
+  const url = new URL(
+    "https://maps.googleapis.com/maps/api/distancematrix/json"
+  );
+  url.searchParams.set("origins", originsParam);
+  url.searchParams.set("destinations", destinationsParam);
+  url.searchParams.set("mode", mode);
+  url.searchParams.set("units", "metric");
+  url.searchParams.set("key", apiKey);
+
+  // For transit, add departure_time for realistic estimates
+  if (mode === "transit") {
+    url.searchParams.set(
+      "departure_time",
+      Math.floor(Date.now() / 1000).toString()
+    );
+  }
+
+  const response = await fetch(url.toString());
+
+  if (!response.ok) {
+    console.error(
+      "Google Distance Matrix API error:",
+      response.status,
+      await response.text()
+    );
+    return null;
+  }
+
+  const data = await response.json();
+
+  if (data.status !== "OK") {
+    console.error(
+      "Distance Matrix API status:",
+      data.status,
+      data.error_message
+    );
+    return null;
+  }
+
+  return data;
 }
 
 // Also support GET for simple testing (limited to a few destinations)
