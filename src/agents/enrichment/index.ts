@@ -436,11 +436,13 @@ Respond with JSON:
  * Re-attempt enrichment for films with low-confidence matches
  */
 export async function improveWeakMatches(
-  _confidenceThreshold = 0.7,
+  confidenceThreshold = 0.7,
   limit = 10
 ): Promise<AgentResult<TmdbMatchResult[]>> {
   // This would query films with TMDB IDs but low match confidence
   // and try to find better matches or validate existing ones
   // For now, delegate to the main enrichment function
+  // TODO: Use confidenceThreshold to filter films for re-enrichment
+  void confidenceThreshold;
   return enrichUnmatchedFilms(limit);
 }

@@ -215,6 +215,7 @@ async function runPostScrapeAgents(
   screenings: RawScreening[],
   _result: PipelineResult
 ): Promise<void> {
+  void _result; // Reserved for future agent analysis
   // Dynamically import agents to avoid loading SDK if not needed
   const { analyzeScraperHealth } = await import("@/agents/scraper-health");
   const { verifyBookingLinks } = await import("@/agents/link-validator");

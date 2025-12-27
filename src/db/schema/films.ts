@@ -12,6 +12,7 @@ import {
 import type { CastMember, ReleaseStatus } from "@/types/film";
 
 // OpenAI text-embedding-3-small produces 1536-dimensional vectors
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const EMBEDDING_DIMENSIONS = 1536;
 
 /**

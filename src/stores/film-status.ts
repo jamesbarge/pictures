@@ -66,7 +66,8 @@ export const useFilmStatus = create<FilmStatusState>()(
       setStatus: (filmId, status, filmData) =>
         set((state) => {
           if (status === null) {
-            const { [filmId]: _, ...rest } = state.films;
+            const { [filmId]: _removed, ...rest } = state.films;
+            void _removed; // Explicit unused acknowledgment
             return { films: rest };
           }
 
@@ -119,7 +120,8 @@ export const useFilmStatus = create<FilmStatusState>()(
 
       removeFilm: (filmId) =>
         set((state) => {
-          const { [filmId]: _, ...rest } = state.films;
+          const { [filmId]: _removed, ...rest } = state.films;
+          void _removed; // Explicit unused acknowledgment
           return { films: rest };
         }),
 
@@ -129,7 +131,7 @@ export const useFilmStatus = create<FilmStatusState>()(
 
       getFilmsByStatus: (status) =>
         Object.entries(get().films)
-          .filter(([_, entry]) => entry.status === status)
+          .filter(([, entry]) => entry.status === status)
           .map(([id]) => id),
 
       getWatchlist: () => get().getFilmsByStatus("want_to_see"),
@@ -138,7 +140,7 @@ export const useFilmStatus = create<FilmStatusState>()(
 
       getNotInterestedFilms: () =>
         Object.entries(get().films)
-          .filter(([_, entry]) => entry.status === "not_interested")
+          .filter(([, entry]) => entry.status === "not_interested")
           .map(([filmId, entry]) => ({
             filmId,
             title: entry.filmTitle || "Unknown Film",
