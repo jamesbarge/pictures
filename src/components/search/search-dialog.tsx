@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Search, X, Film, Calendar, Loader2 } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { trackSearch, trackSearchResultClick } from "@/lib/analytics";
 
 interface SearchResult {
   id: string;
@@ -70,6 +71,8 @@ export function SearchDialog() {
           const data = await res.json();
           setResults(data.films);
           setSelectedIndex(0);
+          // Track search performed
+          trackSearch(query, data.films.length);
         }
       } catch (error) {
         console.error("Search error:", error);
@@ -81,10 +84,16 @@ export function SearchDialog() {
     return () => clearTimeout(timer);
   }, [query]);
 
-  const navigateToFilm = useCallback((filmId: string) => {
+  const navigateToFilm = useCallback((film: SearchResult, resultIndex: number) => {
+    // Track search result click
+    trackSearchResultClick(
+      query,
+      { filmId: film.id, filmTitle: film.title, filmYear: film.year },
+      resultIndex
+    );
     setIsOpen(false);
-    router.push(`/film/${filmId}`);
-  }, [router]);
+    router.push(`/film/${film.id}`);
+  }, [router, query]);
 
   // Handle keyboard navigation
   const handleKeyDown = useCallback(
@@ -97,7 +106,7 @@ export function SearchDialog() {
         setSelectedIndex((i) => Math.max(i - 1, 0));
       } else if (e.key === "Enter" && results[selectedIndex]) {
         e.preventDefault();
-        navigateToFilm(results[selectedIndex].id);
+        navigateToFilm(results[selectedIndex], selectedIndex);
       }
     },
     [results, selectedIndex, navigateToFilm]
@@ -148,7 +157,7 @@ export function SearchDialog() {
                 {results.map((film, index) => (
                   <button
                     key={film.id}
-                    onClick={() => navigateToFilm(film.id)}
+                    onClick={() => navigateToFilm(film, index)}
                     className={cn(
                       "w-full flex items-center gap-3 px-4 py-3 text-left transition-colors",
                       selectedIndex === index

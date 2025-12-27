@@ -9,11 +9,35 @@ import { useUser } from "@clerk/nextjs";
 // Initialize PostHog only on the client side
 if (typeof window !== "undefined") {
   posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY!, {
-    api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://us.i.posthog.com",
+    api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://eu.i.posthog.com",
     // Capture pageviews manually for App Router compatibility
     capture_pageview: false,
     // Capture pageleaves for session replay accuracy
     capture_pageleave: true,
+
+    // Session Replay - record user sessions
+    disable_session_recording: false,
+    session_recording: {
+      // Mask all text inputs for privacy
+      maskAllInputs: true,
+      // Mask sensitive text content
+      maskTextSelector: '[data-ph-mask]',
+    },
+
+    // Autocapture settings
+    autocapture: {
+      // Capture clicks, form submissions, etc.
+      dom_event_allowlist: ['click', 'submit', 'change'],
+      // Capture useful element attributes
+      element_allowlist: ['button', 'a', 'input', 'select', 'textarea'],
+    },
+
+    // Performance - capture web vitals
+    capture_performance: true,
+
+    // Error tracking - capture exceptions
+    capture_exceptions: true,
+
     // Enable debug mode in development
     loaded: (posthog) => {
       if (process.env.NODE_ENV === "development") {

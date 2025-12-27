@@ -5,6 +5,12 @@
 
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
+import {
+  trackWatchlistChange,
+  trackFilmMarkedSeen,
+  trackFilmMarkedNotInterested,
+  trackFilmStatusChange,
+} from "@/lib/analytics";
 
 export type FilmStatus = "want_to_see" | "seen" | "not_interested" | null;
 
@@ -16,7 +22,7 @@ export interface FilmMetadata {
   posterUrl?: string | null;
 }
 
-interface FilmStatusEntry {
+export interface FilmStatusEntry {
   status: FilmStatus;
   addedAt: string; // ISO date
   seenAt?: string; // ISO date when marked as seen
@@ -27,6 +33,8 @@ interface FilmStatusEntry {
   filmYear?: number | null;
   filmDirectors?: string[];
   filmPosterUrl?: string | null;
+  // Sync tracking
+  updatedAt: string; // ISO timestamp for conflict resolution
 }
 
 // Return type for getNotInterestedFilms
@@ -50,6 +58,10 @@ interface FilmStatusState {
   removeFilm: (filmId: string) => void;
   clearAll: () => void;
 
+  // Sync actions
+  bulkSet: (films: Record<string, FilmStatusEntry>) => void;
+  getAllFilms: () => Record<string, FilmStatusEntry>;
+
   // Selectors
   getStatus: (filmId: string) => FilmStatus;
   getFilmsByStatus: (status: FilmStatus) => string[];
@@ -65,21 +77,55 @@ export const useFilmStatus = create<FilmStatusState>()(
 
       setStatus: (filmId, status, filmData) =>
         set((state) => {
+          const existing = state.films[filmId];
+          const previousStatus = existing?.status ?? null;
+          const filmContext = {
+            filmId,
+            filmTitle: filmData?.title || existing?.filmTitle || "Unknown",
+            filmYear: filmData?.year || existing?.filmYear,
+            isRepertory: undefined, // Not available in this context
+          };
+
+          // Track analytics events
+          if (status !== previousStatus) {
+            // Track adding to watchlist
+            if (status === "want_to_see") {
+              trackWatchlistChange(filmContext, "added");
+            }
+
+            // Track removing from watchlist (was want_to_see, now something else or null)
+            if (previousStatus === "want_to_see") {
+              trackWatchlistChange(filmContext, "removed");
+            }
+
+            if (status === "seen") {
+              trackFilmMarkedSeen(filmContext);
+            }
+
+            if (status === "not_interested") {
+              trackFilmMarkedNotInterested(filmContext);
+            }
+
+            // Track general status change
+            trackFilmStatusChange(filmContext, previousStatus, status);
+          }
+
           if (status === null) {
             const { [filmId]: _removed, ...rest } = state.films;
             void _removed; // Explicit unused acknowledgment
             return { films: rest };
           }
 
-          const existing = state.films[filmId];
+          const now = new Date().toISOString();
           return {
             films: {
               ...state.films,
               [filmId]: {
                 ...existing,
                 status,
-                addedAt: existing?.addedAt || new Date().toISOString(),
-                seenAt: status === "seen" ? new Date().toISOString() : existing?.seenAt,
+                addedAt: existing?.addedAt || now,
+                seenAt: status === "seen" ? now : existing?.seenAt,
+                updatedAt: now,
                 // Store film metadata if provided
                 ...(filmData && {
                   filmTitle: filmData.title,
@@ -100,7 +146,7 @@ export const useFilmStatus = create<FilmStatusState>()(
           return {
             films: {
               ...state.films,
-              [filmId]: { ...existing, rating },
+              [filmId]: { ...existing, rating, updatedAt: new Date().toISOString() },
             },
           };
         }),
@@ -113,7 +159,7 @@ export const useFilmStatus = create<FilmStatusState>()(
           return {
             films: {
               ...state.films,
-              [filmId]: { ...existing, notes },
+              [filmId]: { ...existing, notes, updatedAt: new Date().toISOString() },
             },
           };
         }),
@@ -126,6 +172,11 @@ export const useFilmStatus = create<FilmStatusState>()(
         }),
 
       clearAll: () => set({ films: {} }),
+
+      // Sync actions - replace all films with merged data from server
+      bulkSet: (films) => set({ films }),
+
+      getAllFilms: () => get().films,
 
       getStatus: (filmId) => get().films[filmId]?.status ?? null,
 

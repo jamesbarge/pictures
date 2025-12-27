@@ -15,6 +15,7 @@ import { eq, gte, and } from "drizzle-orm";
 import { FilmHeader } from "@/components/film/film-header";
 import { FilmScreenings } from "@/components/film/film-screenings";
 import { StatusToggle } from "@/components/film/status-toggle";
+import { FilmViewTracker } from "@/components/film/film-view-tracker";
 
 interface FilmPageProps {
   params: Promise<{ id: string }>;
@@ -61,6 +62,16 @@ export default async function FilmPage({ params }: FilmPageProps) {
 
   return (
     <div className="min-h-screen bg-background-primary pb-8">
+      {/* Analytics - track film view */}
+      <FilmViewTracker
+        filmId={filmData.id}
+        filmTitle={filmData.title}
+        filmYear={filmData.year}
+        isRepertory={filmData.isRepertory ?? undefined}
+        genres={filmData.genres}
+        directors={filmData.directors}
+      />
+
       {/* Back Navigation */}
       <div className="sticky top-0 z-50 bg-background-primary/95 backdrop-blur-sm border-b border-border-subtle">
         <div className="max-w-4xl mx-auto px-4 py-3">
