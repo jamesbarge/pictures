@@ -16,7 +16,7 @@ This document describes how each cinema website is scraped, including the approa
 | **Rio** | Embedded JSON | No | Homepage `var Events` | Working |
 | **Genesis** | Multi-page | No | `/whats-on/` + `/event/{slug}` | Working |
 | **Peckhamplex** | Multi-page | No | `/film/{slug}` | Working |
-| **Nickel** | page.evaluate | Playwright | `book.thenickel.co.uk` | Working |
+| **Nickel** | API | No | `thenickel.co.uk/api/screenings/upcoming` | Working |
 | **Everyman** | Date tabs | Playwright | `/venues-list/{code}-everyman-{slug}/` | Working |
 | **Lexi** | Single page | Playwright | `/TheLexiCinema.dll/Home` | Broken |
 | **Garden Cinema** | Single page | No | `thegardencinema.co.uk` homepage | Working |
@@ -175,13 +175,49 @@ west_norwood: 10099, ealing: 10107
 
 ### 10. The Nickel
 
-**File:** `src/scrapers/cinemas/nickel.ts`
+**File:** `src/scrapers/cinemas/the-nickel.ts`
 
 **Approach:**
-- Uses `page.evaluate()` to extract data from JS-rendered page
-- Playwright required
+- Direct API call to `/api/screenings/upcoming` - **no browser needed**
+- One of the fastest scrapers - single HTTP request
+- Returns clean, structured JSON with film metadata
 
-**Date Format:** `"Sunday 21.12"` + `"8.30pm"`
+**API Endpoint:** `https://thenickel.co.uk/api/screenings/upcoming?limit=100`
+
+**Response Format:**
+```javascript
+{
+  id: 18,                           // Screening ID (used for booking URL)
+  screeningDate: "2025-12-27T20:30", // ISO datetime
+  doorsTime: "8pm",                 // Display text for doors
+  filmTime: "8.30pm",               // Display text for film start
+  capacity: 29,
+  ticketsSold: 28,
+  price: 1100,                      // In pence (£11.00)
+  format: "Digital",
+  film: {
+    id: 6,
+    title: "WAKE IN FRIGHT",
+    description: "...",
+    runtime: 114,
+    year: 1971,
+    country: "Australia",
+    director: "Ted Kotcheff",
+    imageUrl: "https://..."         // Poster image
+  }
+}
+```
+
+**Date Format:** ISO datetime `"2025-12-27T20:30"` - unambiguous, no parsing needed
+
+**Booking URL Pattern:** `https://book.thenickel.co.uk/screening/{id}`
+
+**Notes:**
+- 37-seat micro-cinema in Clerkenwell specializing in cult/grindhouse films
+- API is public and requires no authentication
+- Returns complete film metadata including year, director, and poster
+- Format can be: Digital, 35mm, 16mm
+- Previously used Playwright but switched to API (Dec 2025)
 
 ---
 
@@ -380,7 +416,7 @@ Most sites use one of these patterns:
 **Shared utility:** Use `src/scrapers/utils/date-parser.ts` which handles these cases.
 
 ### API vs Scraping
-- Prefer APIs when available (Picturehouse is fastest)
+- Prefer APIs when available (Picturehouse, The Nickel are fastest)
 - Use Playwright only when necessary (JS rendering, Cloudflare)
 - Simple fetch for static HTML sites
 
