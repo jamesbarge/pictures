@@ -6,8 +6,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { screenings, films, cinemas } from "@/db/schema";
-import { eq, gte, lte, and, inArray, sql } from "drizzle-orm";
+import { eq, gte, lte, and, inArray } from "drizzle-orm";
 import { startOfDay, endOfDay, addDays } from "date-fns";
+import type { ScreeningFormat } from "@/types/screening";
 
 export async function GET(request: NextRequest) {
   try {
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (formats && formats.length > 0) {
-      conditions.push(inArray(screenings.format, formats as any));
+      conditions.push(inArray(screenings.format, formats as ScreeningFormat[]));
     }
 
     // Filter by repertory in SQL (much faster than JS filtering)

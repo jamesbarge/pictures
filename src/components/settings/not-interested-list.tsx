@@ -16,6 +16,7 @@ export function NotInterestedList() {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Standard hydration pattern
     setMounted(true);
   }, []);
 
@@ -49,7 +50,7 @@ export function NotInterestedList() {
           No hidden films
         </p>
         <p className="text-text-tertiary text-xs mt-1">
-          Films you mark as "not interested" will appear here
+          Films you mark as &quot;not interested&quot; will appear here
         </p>
       </div>
     );

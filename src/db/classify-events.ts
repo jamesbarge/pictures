@@ -12,11 +12,10 @@
 
 import { db } from "./index";
 import { films, screenings } from "./schema";
-import { sql, eq, isNull, or } from "drizzle-orm";
+import { sql, eq } from "drizzle-orm";
 import {
   classifyEvent,
   likelyNeedsClassification,
-  type EventClassification,
 } from "@/lib/event-classifier";
 
 // Batch size for processing (smaller = more frequent progress updates)
@@ -79,7 +78,7 @@ async function classifyEvents() {
           classification.season
         ) {
           // Update all screenings for this film
-          const updateResult = await db
+          await db
             .update(screenings)
             .set({
               isSpecialEvent: classification.isSpecialEvent,

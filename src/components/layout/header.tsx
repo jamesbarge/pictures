@@ -6,7 +6,7 @@
 
 "use client";
 
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useHydrated } from "@/hooks/useHydrated";
 import Link from "next/link";
 import {
@@ -30,10 +30,10 @@ import {
   SignedOut,
   UserButton,
 } from "@clerk/nextjs";
-import { format, addDays, startOfToday, isSameDay, startOfMonth, endOfMonth } from "date-fns";
+import { format, addDays, startOfToday, isSameDay } from "date-fns";
 import { DayPicker } from "react-day-picker";
 import { cn } from "@/lib/cn";
-import { useFilters, TIME_PRESETS, formatTimeRange, formatHour, type ProgrammingType } from "@/stores/filters";
+import { useFilters, TIME_PRESETS, formatTimeRange, formatHour } from "@/stores/filters";
 import { Button, IconButton } from "@/components/ui";
 import { Clock } from "lucide-react";
 
@@ -346,7 +346,7 @@ function FilmTypeFilter({ mounted, fullWidth }: { mounted: boolean; fullWidth?: 
 }
 
 // Date & Time Filter Component
-function DateFilter({ mounted, fullWidth }: { mounted: boolean; fullWidth?: boolean }) {
+function DateFilter({ mounted }: { mounted: boolean; fullWidth?: boolean }) {
   const [isOpen, setIsOpen] = useState(false);
   const [showTimeCustom, setShowTimeCustom] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -689,6 +689,13 @@ function FilmSearchFilter({ mounted }: { mounted: boolean }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const handleSelectFilm = useCallback((film: FilmSuggestion) => {
+    setFilmSearch(film.title);
+    setSuggestions([]);
+    setIsFocused(false);
+    inputRef.current?.blur();
+  }, [setFilmSearch]);
+
   // Keyboard navigation
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -716,19 +723,12 @@ function FilmSearchFilter({ mounted }: { mounted: boolean }) {
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [setFilmSearch, displayList, selectedIndex]);
+  }, [setFilmSearch, displayList, selectedIndex, handleSelectFilm]);
 
   // Reset selection when display list changes
   useEffect(() => {
     setSelectedIndex(-1);
   }, [displayList]);
-
-  const handleSelectFilm = (film: FilmSuggestion) => {
-    setFilmSearch(film.title);
-    setSuggestions([]);
-    setIsFocused(false);
-    inputRef.current?.blur();
-  };
 
   const hasValue = mounted && filmSearch.trim();
   const showShortcutHint = !isFocused && !hasValue;
@@ -745,7 +745,9 @@ function FilmSearchFilter({ mounted }: { mounted: boolean }) {
         onFocus={() => setIsFocused(true)}
         placeholder="Search films..."
         aria-label="Search films"
+        role="combobox"
         aria-expanded={showDropdown}
+        aria-controls="film-search-listbox"
         aria-autocomplete="list"
         autoComplete="off"
         className={cn(
@@ -791,7 +793,7 @@ function FilmSearchFilter({ mounted }: { mounted: boolean }) {
           {isLoading ? (
             <div className="px-4 py-3 text-sm text-text-tertiary">Searching...</div>
           ) : (
-            <ul role="listbox" className="max-h-96 overflow-y-auto">
+            <ul id="film-search-listbox" role="listbox" className="max-h-96 overflow-y-auto">
               {displayList.map((film, index) => (
                 <li key={film.id} role="option" aria-selected={index === selectedIndex}>
                   <button
@@ -810,6 +812,7 @@ function FilmSearchFilter({ mounted }: { mounted: boolean }) {
                     {/* Mini Poster */}
                     <div className="w-8 h-12 rounded overflow-hidden bg-background-tertiary shrink-0">
                       {film.posterUrl && !film.posterUrl.includes('poster-placeholder') ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
                         <img
                           src={film.posterUrl}
                           alt=""
@@ -849,7 +852,7 @@ function FilmSearchFilter({ mounted }: { mounted: boolean }) {
 }
 
 // Cinema Filter Component
-function CinemaFilter({ cinemas, mounted, fullWidth }: { cinemas: Cinema[]; mounted: boolean; fullWidth?: boolean }) {
+function CinemaFilter({ cinemas, mounted }: { cinemas: Cinema[]; mounted: boolean; fullWidth?: boolean }) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);

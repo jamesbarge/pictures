@@ -34,14 +34,19 @@ export function CinemaSelector({ cinemas }: CinemaSelectorProps) {
   const { cinemaIds, toggleCinema, setCinemas } = useFilters();
 
   // Handle hydration mismatch by only rendering after mount
-  const [mounted, setMounted] = useState(false);
+  const [mounted, setMounted] = useState(() => {
+    // Initialize as true on client after first render
+    return typeof window !== "undefined";
+  });
   const [searchTerm, setSearchTerm] = useState("");
   const [groupByArea, setGroupByArea] = useState(true);
   const [collapsedAreas, setCollapsedAreas] = useState<Set<string>>(new Set());
 
+  // Ensure mounted updates after hydration
   useEffect(() => {
-    setMounted(true);
-  }, []);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Standard hydration pattern
+    if (!mounted) setMounted(true);
+  }, [mounted]);
 
   // Filter cinemas by search term
   const filteredCinemas = useMemo(() => {
@@ -307,7 +312,7 @@ export function CinemaSelector({ cinemas }: CinemaSelectorProps) {
       {filteredCinemas.length === 0 && searchTerm && (
         <div className="text-center py-12">
           <Search className="w-12 h-12 text-text-tertiary mx-auto mb-4" />
-          <p className="text-text-secondary">No cinemas match "{searchTerm}"</p>
+          <p className="text-text-secondary">No cinemas match &quot;{searchTerm}&quot;</p>
           <button
             onClick={() => setSearchTerm("")}
             className="text-accent-primary hover:text-accent-primary-hover text-sm mt-2 transition-colors"

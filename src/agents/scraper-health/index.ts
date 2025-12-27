@@ -11,7 +11,7 @@
 
 import { query } from "@anthropic-ai/claude-agent-sdk";
 import { db, schema } from "@/db";
-import { eq, gte, lte, and, count, sql } from "drizzle-orm";
+import { eq, gte, and, count, sql } from "drizzle-orm";
 import { subDays } from "date-fns";
 import {
   type ScraperHealthReport,

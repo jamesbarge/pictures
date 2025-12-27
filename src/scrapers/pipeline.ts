@@ -19,6 +19,7 @@ import {
   likelyNeedsClassification,
 } from "@/lib/event-classifier";
 import type { RawScreening } from "./types";
+import type { EventType, ScreeningFormat } from "@/types/screening";
 import { v4 as uuidv4 } from "uuid";
 import { validateScreenings, printValidationSummary } from "./utils/screening-validator";
 import { generateScrapeDiff, printDiffReport, shouldBlockScrape } from "./utils/scrape-diff";
@@ -212,7 +213,7 @@ export async function processScreenings(
 async function runPostScrapeAgents(
   cinemaId: string,
   screenings: RawScreening[],
-  result: PipelineResult
+  _result: PipelineResult
 ): Promise<void> {
   // Dynamically import agents to avoid loading SDK if not needed
   const { analyzeScraperHealth } = await import("@/agents/scraper-health");
@@ -560,9 +561,9 @@ async function insertScreening(
   screening: RawScreening
 ): Promise<boolean> {
   // Determine screening metadata - use scraper-provided data or classify
-  let eventType = screening.eventType as any;
+  let eventType = screening.eventType as EventType | undefined;
   let eventDescription = screening.eventDescription;
-  let format = screening.format as any;
+  let format = screening.format as ScreeningFormat | undefined;
   let isSpecialEvent = false;
   let is3D = false;
   let hasSubtitles = false;
@@ -848,7 +849,7 @@ export async function ensureCinemaExists(cinema: CinemaInput): Promise<void> {
         chain: cinema.chain,
         website: cinema.website,
         // Cast address to schema type - scrapers provide partial data
-        address: cinema.address as any,
+        address: cinema.address as typeof cinemas.$inferInsert["address"],
         features: cinema.features || [],
         updatedAt: new Date(),
       })
@@ -864,7 +865,7 @@ export async function ensureCinemaExists(cinema: CinemaInput): Promise<void> {
     chain: cinema.chain,
     website: cinema.website,
     // Cast address to schema type - scrapers provide partial data
-    address: cinema.address as any,
+    address: cinema.address as typeof cinemas.$inferInsert["address"],
     features: cinema.features || [],
     isActive: true,
   });

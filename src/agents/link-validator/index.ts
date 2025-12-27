@@ -211,7 +211,6 @@ export async function verifyLinksForCinema(
   limit = 20
 ): Promise<AgentResult<LinkVerificationResult[]>> {
   // Get upcoming screenings for this cinema
-  const now = new Date();
   const screenings = await db
     .select({ id: schema.screenings.id })
     .from(schema.screenings)
@@ -229,8 +228,6 @@ export async function verifyLinksForCinema(
 export async function verifySampleOfUpcomingLinks(
   sampleSize = 50
 ): Promise<AgentResult<LinkVerificationResult[]>> {
-  const now = new Date();
-
   // Get random sample of upcoming screenings
   const screenings = await db
     .select({ id: schema.screenings.id })

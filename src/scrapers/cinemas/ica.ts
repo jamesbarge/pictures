@@ -6,7 +6,7 @@
 import { BaseScraper } from "../base";
 import type { RawScreening, ScraperConfig } from "../types";
 import { parseScreeningDate, parseScreeningTime, combineDateAndTime } from "../utils/date-parser";
-import type { CheerioAPI, CheerioSelection } from "../utils/cheerio-types";
+import type { CheerioAPI } from "../utils/cheerio-types";
 
 interface FilmInfo {
   title: string;

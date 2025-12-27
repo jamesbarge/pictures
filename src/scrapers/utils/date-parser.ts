@@ -3,7 +3,7 @@
  * Handles various date formats used by UK cinemas
  */
 
-import { parse, setYear, addYears, isAfter } from "date-fns";
+import { addYears, isAfter } from "date-fns";
 
 /**
  * Parse a date string in various UK cinema formats
@@ -40,7 +40,7 @@ export function parseScreeningDate(dateStr: string, referenceDate = new Date()):
 
     // Check if year is included
     const yearMatch = cleaned.match(/(\d{4})/);
-    let year = yearMatch ? parseInt(yearMatch[1], 10) : referenceDate.getFullYear();
+    const year = yearMatch ? parseInt(yearMatch[1], 10) : referenceDate.getFullYear();
 
     const monthMap: Record<string, number> = {
       jan: 0, january: 0,

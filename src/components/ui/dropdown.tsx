@@ -196,6 +196,7 @@ export function Select({
   useEffect(() => {
     if (isOpen && value) {
       const index = options.findIndex((o) => o.value === value);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Sync highlight with value when dropdown opens
       if (index >= 0) setHighlightedIndex(index);
     }
   }, [isOpen, value, options]);

@@ -64,6 +64,7 @@ export function WatchlistView({ films, screeningsByFilm }: WatchlistViewProps) {
   const [expandedFilms, setExpandedFilms] = useState<Set<string>>(new Set());
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Standard hydration pattern
     setMounted(true);
   }, []);
 
@@ -71,7 +72,7 @@ export function WatchlistView({ films, screeningsByFilm }: WatchlistViewProps) {
   const watchlistIds = useMemo(() => {
     if (!mounted) return [];
     return getWatchlist();
-  }, [mounted, getWatchlist, filmStatuses]);
+  }, [mounted, getWatchlist]);
 
   // Filter and enrich films that are on the watchlist
   const watchlistFilms = useMemo(() => {
@@ -262,6 +263,7 @@ function WatchlistFilmCard({
         <Link href={`/film/${film.id}`} className="shrink-0">
           <div className="w-16 h-24 rounded-lg overflow-hidden bg-background-tertiary">
             {film.posterUrl ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
               <img
                 src={film.posterUrl}
                 alt={film.title}
@@ -412,7 +414,7 @@ function EmptyWatchlist() {
         Your watchlist is empty
       </h2>
       <p className="text-text-secondary mb-6 max-w-md mx-auto">
-        Browse the calendar and mark films you want to see. They'll appear here
+        Browse the calendar and mark films you want to see. They&apos;ll appear here
         so you never miss a screening.
       </p>
       <Link href="/">

@@ -8,7 +8,6 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Clock, Calendar, Globe, Star, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -152,7 +151,7 @@ export function FilmHeader({ film }: FilmHeaderProps) {
               {/* Tagline */}
               {film.tagline && (
                 <p className="text-text-secondary italic mt-2">
-                  "{film.tagline}"
+                  &quot;{film.tagline}&quot;
                 </p>
               )}
 

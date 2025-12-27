@@ -15,7 +15,7 @@ export default function FilmNotFound() {
       </h1>
 
       <p className="text-text-secondary text-center max-w-sm mb-8">
-        The film you're looking for doesn't exist or may have been removed.
+        The film you&apos;re looking for doesn&apos;t exist or may have been removed.
       </p>
 
       <Link

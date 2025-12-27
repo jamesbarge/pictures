@@ -147,6 +147,11 @@ function SearchDialogContent({ onClose }: { onClose: () => void }) {
     return () => clearTimeout(timer);
   }, [query]);
 
+  const navigateToFilm = useCallback((filmId: string) => {
+    onClose();
+    router.push(`/film/${filmId}`);
+  }, [onClose, router]);
+
   // Handle keyboard navigation
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -161,13 +166,8 @@ function SearchDialogContent({ onClose }: { onClose: () => void }) {
         navigateToFilm(results[selectedIndex].id);
       }
     },
-    [results, selectedIndex]
+    [results, selectedIndex, navigateToFilm]
   );
-
-  const navigateToFilm = (filmId: string) => {
-    onClose();
-    router.push(`/film/${filmId}`);
-  };
 
   return (
     <>

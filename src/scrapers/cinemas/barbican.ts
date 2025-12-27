@@ -7,12 +7,6 @@ import { BaseScraper } from "../base";
 import type { RawScreening, ScraperConfig } from "../types";
 import type { CheerioAPI } from "../utils/cheerio-types";
 
-interface FilmInfo {
-  title: string;
-  url: string;
-  nodeId: string;
-}
-
 export class BarbicanScraper extends BaseScraper {
   config: ScraperConfig = {
     cinemaId: "barbican",

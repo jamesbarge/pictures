@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 // @ts-nocheck
 /**
  * Genesis Cinema Scraper (Mile End)
@@ -234,7 +235,7 @@ export class GenesisScraper implements CinemaScraper {
 
       const day = parseInt(dateMatch[1]);
       const monthName = dateMatch[2];
-      let year = dateMatch[3] ? parseInt(dateMatch[3]) : new Date().getFullYear();
+      const year = dateMatch[3] ? parseInt(dateMatch[3]) : new Date().getFullYear();
 
       const months: Record<string, number> = {
         january: 0, february: 1, march: 2, april: 3,

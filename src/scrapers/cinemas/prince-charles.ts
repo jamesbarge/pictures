@@ -55,9 +55,6 @@ export class PrinceCharlesScraper extends BaseScraper {
     const title = $film.find(".liveeventtitle").first().text().trim();
     if (!title) return screenings;
 
-    // Get film page URL
-    const filmUrl = $film.find(".liveeventtitle").attr("href") || "";
-
     // Detect format from film classes
     const filmClasses = $film.attr("class") || "";
     let defaultFormat: string | undefined;
@@ -130,9 +127,6 @@ export class PrinceCharlesScraper extends BaseScraper {
     if (liClasses.includes("sing-along")) eventType = "singalong";
     else if (liClasses.includes("q-and-a")) eventType = "q_and_a";
     else if (liClasses.includes("unreserved")) eventType = undefined; // Not really an event type
-
-    // Get tags for additional info
-    const tags = $li.find(".tag").map((_: number, tag: CheerioSelection) => $(tag).text().trim()).get();
 
     return {
       filmTitle,

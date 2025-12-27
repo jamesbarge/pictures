@@ -13,7 +13,7 @@
 
 import { query } from "@anthropic-ai/claude-agent-sdk";
 import { db, schema } from "@/db";
-import { eq, isNull, and, sql } from "drizzle-orm";
+import { eq, isNull, sql } from "drizzle-orm";
 import {
   type TmdbMatchResult,
   type AgentResult,
@@ -23,7 +23,6 @@ import { CINEMA_AGENT_SYSTEM_PROMPT, calculateCost } from "../config";
 import {
   extractFilmTitle,
   generateSearchVariations,
-  type TitleExtractionResult,
 } from "./title-extractor";
 
 const AGENT_NAME = "enrichment";
@@ -57,7 +56,7 @@ async function mergeDuplicateFilm(
   canonicalTitle: string
 ): Promise<{ screeningsMoved: number }> {
   // Move all screenings from duplicate to canonical
-  const updateResult = await db
+  await db
     .update(schema.screenings)
     .set({ filmId: canonicalId })
     .where(eq(schema.screenings.filmId, duplicateId));
@@ -437,7 +436,7 @@ Respond with JSON:
  * Re-attempt enrichment for films with low-confidence matches
  */
 export async function improveWeakMatches(
-  confidenceThreshold = 0.7,
+  _confidenceThreshold = 0.7,
   limit = 10
 ): Promise<AgentResult<TmdbMatchResult[]>> {
   // This would query films with TMDB IDs but low match confidence

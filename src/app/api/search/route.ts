@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { films, screenings } from "@/db/schema";
-import { ilike, sql, gte, eq, count } from "drizzle-orm";
+import { ilike, sql, count } from "drizzle-orm";
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;

@@ -317,7 +317,7 @@ export class CurzonScraper implements ChainScraper {
         jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
       };
       const month = months[monthStr];
-      let year = now.getFullYear();
+      const year = now.getFullYear();
 
       // If the date is in the past, assume next year
       const date = new Date(year, month, day);

@@ -7,7 +7,7 @@
  * Website: https://book.thenickel.co.uk
  */
 
-import { chromium, type Browser, type Page } from "playwright";
+import { chromium, type Browser } from "playwright";
 import type { RawScreening, ScraperConfig, CinemaScraper } from "../types";
 
 // ============================================================================

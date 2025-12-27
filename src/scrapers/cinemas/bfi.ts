@@ -180,7 +180,7 @@ export class BFIScraper {
         '[class*="day"]',
       ];
 
-      let dateCells: any[] = [];
+      let dateCells: Awaited<ReturnType<typeof this.page.$$>>  = [];
       let usedSelector = "";
       for (const selector of cellSelectors) {
         const cells = await this.page.$$(selector);

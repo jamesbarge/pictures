@@ -11,7 +11,7 @@
 
 import { db } from "./index";
 import { films, screenings } from "./schema";
-import { eq, sql, isNull, or } from "drizzle-orm";
+import { eq, isNull } from "drizzle-orm";
 import { matchFilmToTMDB, getTMDBClient, isRepertoryFilm, getDecade } from "@/lib/tmdb";
 
 // Same cleaning logic as pipeline
@@ -63,7 +63,7 @@ async function cleanup() {
 
   // Find duplicates (normalized title appears more than once)
   const duplicateGroups = Array.from(filmsByNormalized.entries())
-    .filter(([_, films]) => films.length > 1);
+    .filter(([, films]) => films.length > 1);
 
   console.log(`\nFound ${duplicateGroups.length} groups of duplicate films:\n`);
 
@@ -93,7 +93,7 @@ async function cleanup() {
 
     // Update screenings to point to primary film
     for (const dup of toMerge) {
-      const updated = await db
+      await db
         .update(screenings)
         .set({ filmId: primary.id })
         .where(eq(screenings.filmId, dup.id));
@@ -121,7 +121,7 @@ async function cleanup() {
   // Step 3: Clean non-duplicate dirty titles
   for (const film of dirtyFilms) {
     // Skip if already processed as duplicate
-    if (duplicateGroups.some(([_, dups]) => dups.some(d => d.id === film.id))) {
+    if (duplicateGroups.some(([, dups]) => dups.some(d => d.id === film.id))) {
       continue;
     }
 

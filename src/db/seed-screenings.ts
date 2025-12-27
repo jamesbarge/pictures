@@ -6,7 +6,8 @@
 import { db } from "./index";
 import { films, screenings, cinemas } from "./schema";
 import { v4 as uuidv4 } from "uuid";
-import { addDays, addHours, setHours, setMinutes } from "date-fns";
+import { addDays, setHours, setMinutes } from "date-fns";
+import type { ScreeningFormat, EventType } from "@/types/screening";
 
 // Sample films with real TMDB-style data
 const sampleFilms = [
@@ -201,9 +202,9 @@ async function seedScreenings() {
           filmId: filmIds[filmIndex],
           cinemaId: cinema.id,
           datetime,
-          format: format as any,
+          format: format as ScreeningFormat | null,
           screen: `Screen ${Math.floor(Math.random() * 4) + 1}`,
-          eventType: eventType as any,
+          eventType: eventType as EventType | null,
           bookingUrl: `${cinema.website}/book/${filmIds[filmIndex]}`,
           scrapedAt: new Date(),
         });

@@ -81,6 +81,11 @@ export function SearchDialog() {
     return () => clearTimeout(timer);
   }, [query]);
 
+  const navigateToFilm = useCallback((filmId: string) => {
+    setIsOpen(false);
+    router.push(`/film/${filmId}`);
+  }, [router]);
+
   // Handle keyboard navigation
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -95,13 +100,8 @@ export function SearchDialog() {
         navigateToFilm(results[selectedIndex].id);
       }
     },
-    [results, selectedIndex]
+    [results, selectedIndex, navigateToFilm]
   );
-
-  const navigateToFilm = (filmId: string) => {
-    setIsOpen(false);
-    router.push(`/film/${filmId}`);
-  };
 
   if (!isOpen) {
     return null;
@@ -265,8 +265,9 @@ export function SearchTrigger() {
   );
 }
 
-function SearchDialogPortal({ onClose }: { onClose: () => void }) {
+function SearchDialogPortal(_: { onClose: () => void }) {
   // This is a simplified version - in practice you'd use a portal
   // For now, the SearchDialog handles its own open state
+  void _; // Acknowledge unused parameter
   return null;
 }

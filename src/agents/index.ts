@@ -20,10 +20,10 @@ export * from "./enrichment";
 export * from "./types";
 export * from "./config";
 
-// Convenience imports
-import { verifyBookingLinks, verifySampleOfUpcomingLinks } from "./link-validator";
-import { analyzeScraperHealth, runHealthCheckAllCinemas } from "./scraper-health";
-import { enrichUnmatchedFilms, improveWeakMatches } from "./enrichment";
+// Convenience imports for internal usage
+import { verifySampleOfUpcomingLinks } from "./link-validator";
+import { runHealthCheckAllCinemas } from "./scraper-health";
+import { enrichUnmatchedFilms } from "./enrichment";
 
 /**
  * Run all agents in a comprehensive data quality check

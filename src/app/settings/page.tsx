@@ -58,7 +58,7 @@ export default async function SettingsPage() {
             Hidden Films
           </h2>
           <p className="text-text-secondary text-sm mb-6">
-            Films you've marked as "not interested" are hidden from the calendar.
+            Films you&apos;ve marked as &quot;not interested&quot; are hidden from the calendar.
             Restore them here to see their screenings again.
           </p>
 

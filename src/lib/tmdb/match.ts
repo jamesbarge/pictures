@@ -3,7 +3,7 @@
  * Matches scraped film titles to TMDB entries with fuzzy matching
  */
 
-import { getTMDBClient, TMDBClient } from "./client";
+import { getTMDBClient } from "./client";
 import type { TMDBSearchResult } from "./types";
 
 interface MatchHints {

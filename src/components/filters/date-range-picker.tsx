@@ -19,12 +19,14 @@ interface DateRangePickerProps {
 export function DateRangePicker({ className }: DateRangePickerProps) {
   const { dateFrom, dateTo, setDateRange } = useFilters();
   const [isOpen, setIsOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const [mounted, setMounted] = useState(() => typeof window !== "undefined");
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Ensure mounted updates after hydration
   useEffect(() => {
-    setMounted(true);
-  }, []);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Standard hydration pattern
+    if (!mounted) setMounted(true);
+  }, [mounted]);
 
   // Close on click outside
   useEffect(() => {
@@ -148,7 +150,7 @@ export function DateRangePicker({ className }: DateRangePickerProps) {
               ].map(({ key, label }) => (
                 <button
                   key={key}
-                  onClick={() => handleQuickSelect(key as any)}
+                  onClick={() => handleQuickSelect(key as "today" | "tomorrow" | "week" | "weekend")}
                   className="w-full text-left px-2 py-1.5 rounded text-sm text-text-secondary hover:bg-surface-overlay-hover hover:text-text-primary transition-colors"
                 >
                   {label}
