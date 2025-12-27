@@ -53,26 +53,32 @@ export function CalendarView({ screenings }: CalendarViewProps) {
   const filters = useFilters();
   const mounted = useHydrated();
 
-  // Optimized selector: Only subscribe to hidden film IDs when hide filters are active
-  // This prevents re-renders when film statuses change but hide filters are off
-  const hiddenFilmIds = useFilmStatus((state) => {
+  // Get hide filter values separately for stable selector
+  const hideSeen = filters.hideSeen;
+  const hideNotInterested = filters.hideNotInterested;
+
+  // Get all film statuses - only used when hide filters are active
+  const allFilmStatuses = useFilmStatus((state) => state.films);
+
+  // Compute hidden film IDs with proper memoization
+  const hiddenFilmIds = useMemo(() => {
     // If no hide filters are active, return empty set (stable reference)
-    if (!filters.hideSeen && !filters.hideNotInterested) {
+    if (!hideSeen && !hideNotInterested) {
       return EMPTY_SET;
     }
 
     // Build set of film IDs that should be hidden
     const hidden = new Set<string>();
-    for (const [filmId, entry] of Object.entries(state.films)) {
-      if (filters.hideSeen && entry.status === "seen") {
+    for (const [filmId, entry] of Object.entries(allFilmStatuses)) {
+      if (hideSeen && entry.status === "seen") {
         hidden.add(filmId);
       }
-      if (filters.hideNotInterested && entry.status === "not_interested") {
+      if (hideNotInterested && entry.status === "not_interested") {
         hidden.add(filmId);
       }
     }
     return hidden;
-  });
+  }, [allFilmStatuses, hideSeen, hideNotInterested]);
 
   // Apply all filters (only after mount)
   const filteredScreenings = useMemo(() => {

@@ -176,6 +176,27 @@ const londonCinemas = [
     description:
       "A beautiful single-screen independent cinema in North London. Thoughtfully curated programming with a focus on repertory, arthouse, and special events.",
   },
+  {
+    id: "close-up-cinema",
+    name: "Close-Up Cinema",
+    shortName: "Close-Up",
+    chain: null,
+    address: {
+      street: "97 Sclater Street",
+      area: "Shoreditch",
+      postcode: "E1 6HR",
+      borough: "Tower Hamlets",
+    },
+    coordinates: { lat: 51.5233, lng: -0.0718 },
+    screens: 1,
+    features: ["bar", "accessible"],
+    programmingFocus: ["repertory", "arthouse", "documentary", "events"],
+    website: "https://www.closeupfilmcentre.com",
+    bookingUrl: "https://www.closeupfilmcentre.com",
+    dataSourceType: "scrape" as const,
+    description:
+      "An intimate single-screen cinema in Shoreditch specializing in repertory programming, filmmaker retrospectives, and curated seasons. Known for its thoughtful curation and community events.",
+  },
 ];
 
 async function seed() {
