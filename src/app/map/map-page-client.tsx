@@ -115,24 +115,26 @@ export function MapPageClient({ cinemas }: MapPageClientProps) {
         </div>
       </header>
 
-      {/* Map Container */}
-      <main className="flex-1 relative">
-        {hydrated ? (
-          <MapProvider>
-            <CinemaMap
-              cinemas={cinemas}
-              mapArea={localArea}
-              onAreaChange={setLocalArea}
-            />
-          </MapProvider>
-        ) : (
-          <div className="flex items-center justify-center h-full bg-background-secondary">
-            <div className="text-center">
-              <MapPin className="w-8 h-8 text-text-tertiary mx-auto mb-2 animate-pulse" />
-              <p className="text-text-secondary">Loading map...</p>
+      {/* Map Container - needs explicit height for Google Maps */}
+      <main className="flex-1 relative min-h-0">
+        <div className="absolute inset-0">
+          {hydrated ? (
+            <MapProvider>
+              <CinemaMap
+                cinemas={cinemas}
+                mapArea={localArea}
+                onAreaChange={setLocalArea}
+              />
+            </MapProvider>
+          ) : (
+            <div className="flex items-center justify-center h-full bg-background-secondary">
+              <div className="text-center">
+                <MapPin className="w-8 h-8 text-text-tertiary mx-auto mb-2 animate-pulse" />
+                <p className="text-text-secondary">Loading map...</p>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </main>
 
       {/* Footer Status Bar */}
