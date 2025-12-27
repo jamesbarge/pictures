@@ -60,9 +60,13 @@ export function Header({ cinemas }: HeaderProps) {
       <div className="border-b border-border-subtle">
         <div className="px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="group">
-            <span className="font-display text-2xl text-text-primary tracking-tight hover:text-accent-primary transition-colors">
+          <Link href="/" className="group flex items-center gap-2">
+            <span className="font-display text-2xl text-text-primary tracking-tight group-hover:text-accent-primary transition-colors">
               Postboxd
+            </span>
+            <span className="text-text-muted/40 text-lg font-light">|</span>
+            <span className="text-sm text-text-tertiary font-normal hidden sm:inline">
+              London Cinema Calendar
             </span>
           </Link>
 
