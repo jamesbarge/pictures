@@ -3,9 +3,10 @@
 import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { addDays, format, differenceInDays, startOfDay } from "date-fns";
+import { useSearchParams } from "next/navigation";
 import { CalendarView } from "./calendar-view";
 import { ErrorBoundary } from "@/components/error-boundary";
-import { Loader2, ChevronDown } from "lucide-react";
+import { Loader2, ChevronDown, X, Sparkles } from "lucide-react";
 import { useFilters } from "@/stores/filters";
 
 interface Screening {
@@ -47,7 +48,19 @@ interface CalendarViewWithLoaderProps {
   cinemas: CinemaWithCoords[];
 }
 
-async function fetchMoreScreenings(startDay: number, endDay: number): Promise<Screening[]> {
+interface FetchOptions {
+  startDay: number;
+  endDay: number;
+  festivalSlug?: string | null;
+  festivalOnly?: boolean;
+}
+
+async function fetchMoreScreenings({
+  startDay,
+  endDay,
+  festivalSlug,
+  festivalOnly,
+}: FetchOptions): Promise<Screening[]> {
   const now = new Date();
   const startDate = addDays(now, startDay);
   const endDate = addDays(now, endDay);
@@ -56,6 +69,14 @@ async function fetchMoreScreenings(startDay: number, endDay: number): Promise<Sc
     startDate: startDate.toISOString(),
     endDate: endDate.toISOString(),
   });
+
+  // Add festival filter if specified
+  if (festivalSlug) {
+    params.set("festival", festivalSlug);
+  }
+  if (festivalOnly) {
+    params.set("festivalOnly", "true");
+  }
 
   const res = await fetch(`/api/screenings?${params}`);
   if (!res.ok) throw new Error("Failed to fetch screenings");
@@ -71,6 +92,21 @@ export function CalendarViewWithLoader({ initialScreenings, cinemas }: CalendarV
 
   // Get date filter from store to auto-load when user selects future dates
   const dateTo = useFilters((state) => state.dateTo);
+
+  // Festival filter from store
+  const festivalSlug = useFilters((state) => state.festivalSlug);
+  const festivalOnly = useFilters((state) => state.festivalOnly);
+  const setFestivalFilter = useFilters((state) => state.setFestivalFilter);
+  const clearFestivalFilter = useFilters((state) => state.clearFestivalFilter);
+
+  // Sync URL ?festival= param to store on mount
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const urlFestival = searchParams.get("festival");
+    if (urlFestival && urlFestival !== festivalSlug) {
+      setFestivalFilter(urlFestival);
+    }
+  }, [searchParams, festivalSlug, setFestivalFilter]);
 
   // Auto-load more weeks when dateTo extends beyond currently loaded data
   useEffect(() => {
@@ -100,41 +136,59 @@ export function CalendarViewWithLoader({ initialScreenings, cinemas }: CalendarV
     }
   }, [dateTo, loadState, maxLoadState]);
 
+  // Include festival in query key so React Query refetches when filter changes
+  const festivalKey = festivalSlug || "all";
+
+  // When festival filter is active, fetch initial 3 days with filter (server data is unfiltered)
+  const initialFestivalQuery = useQuery({
+    queryKey: ["screenings", "initial-festival", festivalSlug],
+    queryFn: () => fetchMoreScreenings({ startDay: 0, endDay: 3, festivalSlug, festivalOnly }),
+    enabled: !!festivalSlug, // Only fetch when festival filter is active
+    staleTime: 5 * 60 * 1000,
+  });
+
   // Fetch rest of week 1 (days 4-7) - server only sends 3 days for fast initial load
   const week1RestQuery = useQuery({
-    queryKey: ["screenings", "week1-rest"],
-    queryFn: () => fetchMoreScreenings(3, 7),
+    queryKey: ["screenings", "week1-rest", festivalKey],
+    queryFn: () => fetchMoreScreenings({ startDay: 3, endDay: 7, festivalSlug, festivalOnly }),
     enabled: loadState >= 1,
     staleTime: 5 * 60 * 1000,
   });
 
   // Fetch week 2 (days 8-14)
   const week2Query = useQuery({
-    queryKey: ["screenings", "week2"],
-    queryFn: () => fetchMoreScreenings(7, 14),
+    queryKey: ["screenings", "week2", festivalKey],
+    queryFn: () => fetchMoreScreenings({ startDay: 7, endDay: 14, festivalSlug, festivalOnly }),
     enabled: loadState >= 2,
     staleTime: 5 * 60 * 1000,
   });
 
   // Fetch week 3 (days 15-21)
   const week3Query = useQuery({
-    queryKey: ["screenings", "week3"],
-    queryFn: () => fetchMoreScreenings(14, 21),
+    queryKey: ["screenings", "week3", festivalKey],
+    queryFn: () => fetchMoreScreenings({ startDay: 14, endDay: 21, festivalSlug, festivalOnly }),
     enabled: loadState >= 3,
     staleTime: 5 * 60 * 1000,
   });
 
   // Fetch week 4 (days 22-28)
   const week4Query = useQuery({
-    queryKey: ["screenings", "week4"],
-    queryFn: () => fetchMoreScreenings(21, 28),
+    queryKey: ["screenings", "week4", festivalKey],
+    queryFn: () => fetchMoreScreenings({ startDay: 21, endDay: 28, festivalSlug, festivalOnly }),
     enabled: loadState >= 4,
     staleTime: 5 * 60 * 1000,
   });
 
   // Merge all loaded screenings
   const allScreenings = useMemo(() => {
-    const screenings = [...initialScreenings];
+    // Use festival-filtered initial data when filter is active, otherwise use server data
+    const baseScreenings = festivalSlug && initialFestivalQuery.data
+      ? initialFestivalQuery.data
+      : festivalSlug
+        ? [] // Loading festival data
+        : initialScreenings;
+
+    const screenings = [...baseScreenings];
 
     if (week1RestQuery.data) {
       screenings.push(...week1RestQuery.data);
@@ -158,9 +212,10 @@ export function CalendarViewWithLoader({ initialScreenings, cinemas }: CalendarV
     return Array.from(uniqueMap.values()).sort(
       (a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime()
     );
-  }, [initialScreenings, week1RestQuery.data, week2Query.data, week3Query.data, week4Query.data]);
+  }, [initialScreenings, festivalSlug, initialFestivalQuery.data, week1RestQuery.data, week2Query.data, week3Query.data, week4Query.data]);
 
   const isLoading =
+    (festivalSlug && initialFestivalQuery.isLoading) ||
     (loadState >= 1 && week1RestQuery.isLoading) ||
     (loadState >= 2 && week2Query.isLoading) ||
     (loadState >= 3 && week3Query.isLoading) ||
@@ -180,8 +235,48 @@ export function CalendarViewWithLoader({ initialScreenings, cinemas }: CalendarV
   const endDate = addDays(new Date(), daysShowing);
   const dateLabel = format(endDate, "d MMMM");
 
+  // Format festival slug for display (bfi-lff-2026 -> BFI LFF 2026)
+  const formatFestivalName = (slug: string) => {
+    return slug
+      .split("-")
+      .map((word) => (word.length <= 3 ? word.toUpperCase() : word.charAt(0).toUpperCase() + word.slice(1)))
+      .join(" ");
+  };
+
   return (
     <div>
+      {/* Festival Filter Banner */}
+      {festivalSlug && (
+        <div className="mb-6 p-4 bg-accent-gold/10 border border-accent-gold/30 rounded-lg flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Sparkles className="w-5 h-5 text-accent-gold" />
+            <span className="text-text-primary font-medium">
+              Showing screenings from{" "}
+              <span className="text-accent-gold">{formatFestivalName(festivalSlug)}</span>
+            </span>
+          </div>
+          <button
+            onClick={() => {
+              clearFestivalFilter();
+              // Also clear URL param
+              window.history.replaceState({}, "", "/");
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors rounded-lg hover:bg-background-hover"
+          >
+            <X className="w-4 h-4" />
+            <span>Clear filter</span>
+          </button>
+        </div>
+      )}
+
+      {/* Loading state for festival filter */}
+      {festivalSlug && initialFestivalQuery.isLoading && (
+        <div className="flex items-center justify-center py-12 gap-3 text-text-secondary">
+          <Loader2 className="w-5 h-5 animate-spin" />
+          <span>Loading festival screenings...</span>
+        </div>
+      )}
+
       <ErrorBoundary>
         <CalendarView screenings={allScreenings} cinemas={cinemas} />
       </ErrorBoundary>
