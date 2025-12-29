@@ -1,18 +1,14 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment */
-// @ts-nocheck
 /**
  * Electric Cinema Scraper
  *
  * Luxury cinema chain with two London locations
  * Website: https://www.electriccinema.co.uk
  *
- * Uses Playwright due to WordPress/JS rendering
+ * Uses their public JSON API for clean, structured data
+ * API: https://electriccinema.co.uk/data/data.json
  */
 
-import * as cheerio from "cheerio";
 import type { RawScreening, ScraperConfig, CinemaScraper, VenueConfig } from "../types";
-import { getBrowser, closeBrowser, createPage } from "../utils/browser";
-import type { Page } from "playwright";
 
 // ============================================================================
 // Electric Cinema Configuration
@@ -27,6 +23,7 @@ export const ELECTRIC_VENUES: VenueConfig[] = [
     area: "Notting Hill",
     postcode: "W11 2ED",
     address: "191 Portobello Road",
+    chainVenueId: "603", // API cinema ID
     features: ["luxury", "historic", "bar", "beds"],
     active: true,
   },
@@ -38,6 +35,7 @@ export const ELECTRIC_VENUES: VenueConfig[] = [
     area: "White City",
     postcode: "W12 7SL",
     address: "Television Centre",
+    chainVenueId: "602", // API cinema ID
     features: ["luxury", "bar", "beds"],
     active: true,
   },
@@ -46,9 +44,77 @@ export const ELECTRIC_VENUES: VenueConfig[] = [
 export const ELECTRIC_CONFIG: ScraperConfig = {
   cinemaId: "electric",
   baseUrl: "https://www.electriccinema.co.uk",
-  requestsPerMinute: 10,
-  delayBetweenRequests: 3000,
+  requestsPerMinute: 60, // API is fast, no need for rate limiting
+  delayBetweenRequests: 100,
 };
+
+// ============================================================================
+// API Response Types
+// ============================================================================
+
+interface ElectricCinema {
+  id: number;
+  vistaId: string;
+  title: string;
+  address: string;
+  image: boolean;
+  link: string;
+  url: string;
+  areas: Record<string, {
+    id: string;
+    label: string;
+    isSofa: boolean;
+  }>;
+  home: boolean;
+}
+
+interface ElectricFilm {
+  vistaId: string;
+  title: string;
+  image: string;
+  link: string;
+  rating: string;
+  short_synopsis: string;
+  premiere: string;
+  director: string;
+  screeningCinemas: number[];
+  screeningTypes: string[];
+  screenings: {
+    byCinema: Record<string, Record<string, number[]>>;
+    byDateCinemaTime: Record<string, Record<string, number[]>>;
+  };
+  cinemas: Record<string, number>;
+}
+
+interface ElectricScreening {
+  id: number;
+  film: number;
+  d: string; // Date: YYYY-MM-DD
+  t: string; // Time: HH:MM
+  cinema: number;
+  st: string; // Screening type
+  sn: string; // Screening number
+  r: string; // Remaining seats
+  bookable: boolean;
+  link: string | false;
+  message: string;
+  a?: string[]; // Attributes (e.g., ["Kids Club"])
+}
+
+interface ElectricApiResponse {
+  cinemas: Record<string, ElectricCinema>;
+  films: Record<string, ElectricFilm>;
+  screenings: Record<string, ElectricScreening>;
+  screeningsByDate: Record<string, number[]>;
+  filmOrder: Record<string, number[]>;
+  screeningTypes: Record<string, {
+    title: string;
+    color: string;
+    confirm: string;
+  }>;
+  isMember: boolean;
+  attributeNotes: unknown[];
+}
 
 // ============================================================================
 // Electric Cinema Scraper Implementation
@@ -56,190 +122,132 @@ export const ELECTRIC_CONFIG: ScraperConfig = {
 
 export class ElectricScraper implements CinemaScraper {
   config = ELECTRIC_CONFIG;
-  private page: Page | null = null;
+  private apiUrl = "https://electriccinema.co.uk/data/data.json";
+
+  // Map API cinema IDs to our venue IDs
+  private cinemaIdMap: Record<string, string> = {
+    "603": "electric-portobello",
+    "602": "electric-white-city",
+  };
 
   async scrape(): Promise<RawScreening[]> {
-    console.log(`[electric] Starting scrape...`);
+    console.log(`[electric] Fetching from API...`);
 
     try {
-      await this.initialize();
-      const allScreenings: RawScreening[] = [];
+      const response = await fetch(this.apiUrl, {
+        headers: {
+          "Accept": "application/json",
+          "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+          "Referer": "https://www.electriccinema.co.uk/",
+        },
+      });
 
-      for (const venue of ELECTRIC_VENUES.filter(v => v.active)) {
-        const venueScreenings = await this.scrapeVenue(venue);
-        allScreenings.push(...venueScreenings);
-        await new Promise(r => setTimeout(r, this.config.delayBetweenRequests));
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status} ${response.statusText}`);
       }
 
-      await this.cleanup();
+      const data: ElectricApiResponse = await response.json();
 
-      const validated = this.validate(allScreenings);
-      console.log(`[electric] Total: ${validated.length} valid screenings`);
+      // Count screenings and films
+      const screeningCount = Object.keys(data.screenings).length;
+      const filmCount = Object.keys(data.films).length;
+      console.log(`[electric] API returned ${screeningCount} screenings for ${filmCount} films`);
+
+      const screenings = this.convertToRawScreenings(data);
+      const validated = this.validate(screenings);
+
+      console.log(`[electric] ${validated.length} valid screenings after filtering`);
 
       return validated;
     } catch (error) {
       console.error(`[electric] Scrape failed:`, error);
-      await this.cleanup();
       throw error;
     }
   }
 
-  private async scrapeVenue(venue: VenueConfig): Promise<RawScreening[]> {
-    if (!this.page) throw new Error("Browser not initialized");
-
-    const url = `${this.config.baseUrl}/programme/list/${venue.slug}/`;
-    console.log(`[electric] Scraping ${venue.name}...`);
-
-    try {
-      await this.page.goto(url, { waitUntil: "networkidle", timeout: 30000 });
-      await this.page.waitForTimeout(2000);
-
-      const html = await this.page.content();
-      return this.parseScreenings(html, venue);
-    } catch (error) {
-      console.error(`[electric] Error scraping ${venue.name}:`, error);
-      return [];
-    }
-  }
-
-  private async initialize(): Promise<void> {
-    console.log(`[electric] Launching browser...`);
-    await getBrowser();
-    this.page = await createPage();
-  }
-
-  private async cleanup(): Promise<void> {
-    if (this.page) {
-      await this.page.close();
-      this.page = null;
-    }
-    await closeBrowser();
-  }
-
-  private parseScreenings(html: string, venue: VenueConfig): RawScreening[] {
-    const $ = cheerio.load(html);
+  private convertToRawScreenings(data: ElectricApiResponse): RawScreening[] {
     const screenings: RawScreening[] = [];
 
-    // Electric uses WordPress with custom blocks
-    // Look for film entries and showtime data
-    $(".film-item, .programme-item, article, [class*='film']").each((_, el) => {
-      const $film = $(el);
+    for (const [screeningId, screening] of Object.entries(data.screenings)) {
+      // Get venue ID from cinema ID
+      const venueId = this.cinemaIdMap[String(screening.cinema)];
+      if (!venueId) {
+        // Skip screenings from unknown cinemas
+        continue;
+      }
 
-      // Extract title
-      const title = $film.find("h2, h3, .film-title, [class*='title']").first().text().trim();
-      if (!title || title.length < 2) return;
+      // Get film data
+      const film = data.films[String(screening.film)];
+      if (!film) {
+        console.warn(`[electric] Film not found for screening ${screeningId}`);
+        continue;
+      }
 
-      // Look for date/time info
-      const dateTimeText = $film.text();
+      // Parse date and time
+      // API returns d: "YYYY-MM-DD" and t: "HH:MM"
+      const datetime = this.parseDateTime(screening.d, screening.t);
+      if (!datetime) {
+        console.warn(`[electric] Invalid datetime for screening ${screeningId}: ${screening.d} ${screening.t}`);
+        continue;
+      }
 
-      // Find showtime links
-      $film.find("a[href*='book'], a[href*='tickets'], .showtime").each((_, timeEl) => {
-        const $time = $(timeEl);
-        const timeText = $time.text().trim();
-        const bookingUrl = $time.attr("href") || "";
+      // Build booking URL
+      const bookingUrl = screening.link
+        ? `${this.config.baseUrl}${screening.link}`
+        : `${this.config.baseUrl}/programme/`;
 
-        const datetime = this.extractDateTime(dateTimeText, timeText);
-        if (!datetime) return;
+      // Build source ID for deduplication
+      const sourceId = `electric-${screeningId}`;
 
-        screenings.push({
-          filmTitle: title,
-          datetime,
-          bookingUrl: bookingUrl.startsWith("http")
-            ? bookingUrl
-            : `${this.config.baseUrl}${bookingUrl}`,
-          sourceId: `electric-${venue.id}-${title.toLowerCase().replace(/\s+/g, "-")}-${datetime.toISOString()}`,
-        });
-      });
-    });
+      // Get screening type info
+      const screeningType = data.screeningTypes[screening.st];
+      let eventDescription: string | undefined;
 
-    // Also try parsing from general content
-    if (screenings.length === 0) {
-      return this.parseFromContent($ as cheerio.CheerioAPI, venue);
-    }
-
-    console.log(`[electric] ${venue.name}: ${screenings.length} screenings`);
-    return screenings;
-  }
-
-  private parseFromContent($: cheerio.CheerioAPI, venue: VenueConfig): RawScreening[] {
-    const screenings: RawScreening[] = [];
-    const content = $("main, .content, article").text();
-
-    // Look for patterns like "Film Title - 14:30" or dated sections
-    const filmPattern = /([A-Z][A-Za-z\s:'-]+)\s*[-–]\s*(\d{1,2}):(\d{2})/g;
-    let match;
-
-    while ((match = filmPattern.exec(content)) !== null) {
-      const title = match[1].trim();
-      const hours = parseInt(match[2]);
-      const minutes = parseInt(match[3]);
-
-      if (title.length < 3 || title.length > 100) continue;
-
-      // Create datetime (assume today or next occurrence)
-      const now = new Date();
-      const datetime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes);
-
-      if (datetime < now) {
-        datetime.setDate(datetime.getDate() + 1);
+      // Check for special attributes
+      if (screening.a && screening.a.length > 0) {
+        eventDescription = screening.a.join(", ");
+      } else if (screeningType && screeningType.title !== "Main Feature") {
+        eventDescription = screeningType.title;
       }
 
       screenings.push({
-        filmTitle: title,
+        filmTitle: film.title,
         datetime,
-        bookingUrl: `${this.config.baseUrl}/programme/list/${venue.slug}/`,
-        sourceId: `electric-${venue.id}-${title.toLowerCase().replace(/\s+/g, "-")}-${datetime.toISOString()}`,
+        bookingUrl,
+        sourceId,
+        year: film.premiere ? parseInt(film.premiere.substring(0, 4)) : undefined,
+        director: film.director || undefined,
+        posterUrl: film.image ? `${this.config.baseUrl}${film.image}` : undefined,
+        eventDescription,
       });
     }
 
     return screenings;
   }
 
-  private extractDateTime(contextText: string, timeText: string): Date | null {
-    // Extract time
-    const timeMatch = timeText.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i) ||
-                      contextText.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
-    if (!timeMatch) return null;
+  private parseDateTime(dateStr: string, timeStr: string): Date | null {
+    try {
+      // dateStr: "YYYY-MM-DD"
+      // timeStr: "HH:MM"
+      const [year, month, day] = dateStr.split("-").map(Number);
+      const [hours, minutes] = timeStr.split(":").map(Number);
 
-    // Extract date
-    const dateMatch = contextText.match(
-      /(\d{1,2})\s*(January|February|March|April|May|June|July|August|September|October|November|December)/i
-    );
+      if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hours) || isNaN(minutes)) {
+        return null;
+      }
 
-    const months: Record<string, number> = {
-      january: 0, february: 1, march: 2, april: 3,
-      may: 4, june: 5, july: 6, august: 7,
-      september: 8, october: 9, november: 10, december: 11,
-    };
+      // Create date in local time (UK timezone)
+      const date = new Date(year, month - 1, day, hours, minutes, 0, 0);
 
-    let day: number;
-    let month: number;
-    const year = new Date().getFullYear();
+      // Validate the date
+      if (isNaN(date.getTime())) {
+        return null;
+      }
 
-    if (dateMatch) {
-      day = parseInt(dateMatch[1]);
-      month = months[dateMatch[2].toLowerCase()];
-    } else {
-      // Default to today
-      const now = new Date();
-      day = now.getDate();
-      month = now.getMonth();
+      return date;
+    } catch {
+      return null;
     }
-
-    let hours = parseInt(timeMatch[1]);
-    const minutes = parseInt(timeMatch[2]);
-    const ampm = timeMatch[3]?.toLowerCase();
-
-    if (ampm === "pm" && hours < 12) hours += 12;
-    if (ampm === "am" && hours === 12) hours = 0;
-
-    const datetime = new Date(year, month, day, hours, minutes);
-
-    if (datetime < new Date()) {
-      datetime.setFullYear(year + 1);
-    }
-
-    return datetime;
   }
 
   private validate(screenings: RawScreening[]): RawScreening[] {
@@ -247,10 +255,14 @@ export class ElectricScraper implements CinemaScraper {
     const seen = new Set<string>();
 
     return screenings.filter((s) => {
+      // Skip invalid entries
       if (!s.filmTitle || s.filmTitle.trim() === "") return false;
       if (!s.datetime || isNaN(s.datetime.getTime())) return false;
+
+      // Skip past screenings
       if (s.datetime < now) return false;
 
+      // Deduplicate by sourceId
       if (s.sourceId && seen.has(s.sourceId)) return false;
       if (s.sourceId) seen.add(s.sourceId);
 
@@ -260,7 +272,7 @@ export class ElectricScraper implements CinemaScraper {
 
   async healthCheck(): Promise<boolean> {
     try {
-      const response = await fetch(this.config.baseUrl, { method: "HEAD" });
+      const response = await fetch(this.apiUrl, { method: "HEAD" });
       return response.ok;
     } catch {
       return false;
@@ -268,6 +280,7 @@ export class ElectricScraper implements CinemaScraper {
   }
 }
 
+// Factory function
 export function createElectricScraper(): ElectricScraper {
   return new ElectricScraper();
 }
