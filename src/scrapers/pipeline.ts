@@ -4,7 +4,7 @@
  */
 
 import { db } from "@/db";
-import { films, screenings as screeningsTable, cinemas } from "@/db/schema";
+import { films, screenings as screeningsTable, cinemas, festivals, festivalScreenings } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { matchFilmToTMDB, getTMDBClient, isRepertoryFilm, getDecade } from "@/lib/tmdb";
 import { getPosterService } from "@/lib/posters";
@@ -706,7 +706,51 @@ async function insertScreening(
     bookingUrl: screening.bookingUrl,
     sourceId: screening.sourceId,
     scrapedAt: new Date(),
+    // Set festival flag
+    isFestivalScreening: !!screening.festivalSlug,
   });
+
+  // Handle festival linking
+  if (screening.festivalSlug) {
+    const [festival] = await db
+      .select({ id: festivals.id })
+      .from(festivals)
+      .where(eq(festivals.slug, screening.festivalSlug))
+      .limit(1);
+
+    if (festival) {
+      // Get the newly created/updated screening ID
+      const [savedScreening] = await db
+        .select({ id: screeningsTable.id })
+        .from(screeningsTable)
+        .where(
+          and(
+            eq(screeningsTable.filmId, filmId),
+            eq(screeningsTable.cinemaId, cinemaId),
+            eq(screeningsTable.datetime, screening.datetime)
+          )
+        )
+        .limit(1);
+
+      if (savedScreening) {
+        // Create festival association
+        await db
+          .insert(festivalScreenings)
+          .values({
+            festivalId: festival.id,
+            screeningId: savedScreening.id,
+            festivalSection: screening.festivalSection,
+            isPremiere: screening.eventType === "premiere",
+            premiereType: null, // Scrapers don't reliably provide this yet
+          })
+          .onConflictDoNothing();
+
+        console.log(`[Pipeline] Linked screening to festival: ${screening.festivalSlug}`);
+      }
+    } else {
+      console.warn(`[Pipeline] Festival not found: ${screening.festivalSlug}`);
+    }
+  }
 
   return true; // Added
 }

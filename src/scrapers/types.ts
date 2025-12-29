@@ -22,6 +22,10 @@ export interface RawScreening {
   year?: number;
   /** Director name (if available from source) */
   director?: string;
+  /** Slug of the festival this screening belongs to (e.g., "bfi-lff-2025") */
+  festivalSlug?: string;
+  /** Section within the festival (e.g., "Galas", "Competition") */
+  festivalSection?: string;
 }
 
 // ============================================================================

@@ -17,6 +17,7 @@ import { FestivalHeader } from "@/components/festivals/festival-header";
 import { FestivalKeyDates } from "@/components/festivals/festival-key-dates";
 import { FestivalVenues } from "@/components/festivals/festival-venues";
 import { FollowButton } from "@/components/festivals/follow-button";
+import { FestivalProgramme } from "@/components/festivals/festival-programme";
 
 interface FestivalPageProps {
   params: Promise<{ slug: string }>;
@@ -175,28 +176,29 @@ export default async function FestivalPage({ params }: FestivalPageProps) {
         </div>
       )}
 
-      {/* Programme Placeholder */}
+      {/* Programme */}
       <div className="max-w-4xl mx-auto px-4 mt-10">
-        <h2 className="text-xl font-display text-text-primary mb-4">
-          Programme
-        </h2>
-        <div className="bg-background-secondary border border-border-subtle rounded-lg p-8 text-center">
-          <p className="text-text-secondary">
-            {status === "upcoming"
-              ? "Programme coming soon. Follow this festival to get notified when it's announced."
-              : status === "ongoing"
-              ? "Browse screenings in the main calendar filtered by this festival."
-              : "This festival has ended. Check back next year!"}
-          </p>
-          {status !== "past" && (
-            <Link
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-display text-text-primary">
+            Programme
+          </h2>
+          {status === "ongoing" && (
+             <Link
               href={`/?festival=${festival.slug}`}
-              className="inline-flex items-center gap-1 mt-4 text-accent-primary hover:text-accent-primary-hover transition-colors"
+              className="text-sm text-accent-primary hover:text-accent-primary-hover flex items-center gap-1"
             >
-              View in Calendar
+              View in Calendar <ExternalLink className="w-3 h-3" />
             </Link>
           )}
         </div>
+        
+        {status === "upcoming" && !festival.programmAnnouncedDate ? (
+           <div className="bg-background-secondary border border-border-subtle rounded-lg p-8 text-center text-text-secondary">
+              Programme coming soon. Follow this festival to get notified when it's announced.
+           </div>
+        ) : (
+          <FestivalProgramme festivalId={festival.id} />
+        )}
       </div>
     </div>
   );

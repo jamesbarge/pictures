@@ -409,6 +409,8 @@ export class BFIScraper {
         // Pass extracted metadata for better TMDB matching
         year: metadata.year,
         director: metadata.director,
+        // Detect festival based on title/date
+        ...this.detectFestival(cleanTitle, datetime),
       });
     });
 
@@ -508,6 +510,24 @@ export class BFIScraper {
       await closeBrowser();
       return false;
     }
+  }
+
+  private detectFestival(title: string, date: Date): { festivalSlug?: string; festivalSection?: string } {
+    const month = date.getMonth(); // 0-indexed
+    const year = date.getFullYear();
+
+    // BFI Flare: March
+    if (month === 2 && (title.includes("Flare") || title.includes("BFI Flare"))) {
+      return { festivalSlug: `bfi-flare-${year}` };
+    }
+
+    // BFI LFF: October
+    if (month === 9 && (title.includes("LFF") || title.includes("London Film Festival"))) {
+      return { festivalSlug: `bfi-lff-${year}` };
+    }
+    
+    // Future: Specific data-driven rules
+    return {};
   }
 }
 
