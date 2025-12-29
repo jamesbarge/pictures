@@ -20,9 +20,12 @@ import {
   Film,
   Eye,
   Trash2,
+  Cloud,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui";
+import { SignInButton, SignedOut } from "@clerk/nextjs";
 
 interface Film {
   id: string;
@@ -62,6 +65,7 @@ export function WatchlistView({ films, screeningsByFilm }: WatchlistViewProps) {
   const [mounted, setMounted] = useState(false);
   const [sortBy, setSortBy] = useState<SortOption>("next_screening");
   const [expandedFilms, setExpandedFilms] = useState<Set<string>>(new Set());
+  const [syncBannerDismissed, setSyncBannerDismissed] = useState(false);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Standard hydration pattern
@@ -160,6 +164,13 @@ export function WatchlistView({ films, screeningsByFilm }: WatchlistViewProps) {
 
   return (
     <div className="space-y-8">
+      {/* Sign in to sync banner */}
+      {mounted && !syncBannerDismissed && (
+        <SignedOut>
+          <SyncBanner onDismiss={() => setSyncBannerDismissed(true)} />
+        </SignedOut>
+      )}
+
       {/* Sort Controls */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-text-tertiary">
@@ -402,6 +413,36 @@ function WatchlistFilmCard({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function SyncBanner({ onDismiss }: { onDismiss: () => void }) {
+  return (
+    <div className="relative flex items-center gap-4 p-4 rounded-xl bg-gradient-to-r from-accent-primary/10 to-accent-secondary/10 border border-accent-primary/20">
+      <div className="flex-shrink-0 w-10 h-10 rounded-full bg-accent-primary/20 flex items-center justify-center">
+        <Cloud className="w-5 h-5 text-accent-primary" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-text-primary">
+          Sign in to sync your watchlist
+        </p>
+        <p className="text-xs text-text-secondary mt-0.5">
+          Access your watchlist on any device and never lose your saved films
+        </p>
+      </div>
+      <SignInButton mode="modal">
+        <button className="flex-shrink-0 px-4 py-2 text-sm font-medium text-white bg-accent-primary hover:bg-accent-primary-hover rounded-lg transition-colors">
+          Sign In
+        </button>
+      </SignInButton>
+      <button
+        onClick={onDismiss}
+        className="absolute top-2 right-2 p-1 text-text-tertiary hover:text-text-secondary transition-colors"
+        aria-label="Dismiss"
+      >
+        <X className="w-4 h-4" />
+      </button>
     </div>
   );
 }

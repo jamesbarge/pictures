@@ -68,6 +68,15 @@ export const screenings = pgTable(
     //   "verified" | "broken" | "redirect" | "sold_out" | "wrong_film" | "unchecked"
     // >(),
     // linkLastChecked: timestamp("link_last_checked", { withTimezone: true }),
+
+    // Festival tracking
+    // Note: Festival relationship is in festival_screenings join table
+    // These fields are for quick filtering without joins
+    isFestivalScreening: boolean("is_festival_screening").notNull().default(false),
+    availabilityStatus: text("availability_status").$type<
+      "available" | "low" | "sold_out" | "returns" | "unknown"
+    >(),
+    availabilityCheckedAt: timestamp("availability_checked_at", { withTimezone: true }),
   },
   (table) => [
     // Primary datetime index for range scans (most queries filter by date)

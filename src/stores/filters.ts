@@ -47,6 +47,10 @@ export interface FilterState {
   // Time of day (legacy, kept for compatibility)
   timesOfDay: TimeOfDay[];
 
+  // Festival filtering
+  festivalSlug: string | null; // Filter by specific festival
+  festivalOnly: boolean; // Only show festival screenings
+
   // Personal
   hideSeen: boolean;
   hideNotInterested: boolean;
@@ -63,6 +67,8 @@ export interface PersistedFilters {
   decades: string[];
   genres: string[];
   timesOfDay: TimeOfDay[];
+  festivalSlug: string | null;
+  festivalOnly: boolean;
   hideSeen: boolean;
   hideNotInterested: boolean;
   updatedAt: string;
@@ -82,6 +88,11 @@ interface FilterActions {
   toggleGenre: (genre: string) => void;
   setGenres: (genres: string[]) => void;
   toggleTimeOfDay: (time: TimeOfDay) => void;
+  // Festival filters
+  setFestivalFilter: (slug: string | null) => void;
+  setFestivalOnly: (festivalOnly: boolean) => void;
+  clearFestivalFilter: () => void;
+  // Personal
   setHideSeen: (hide: boolean) => void;
   setHideNotInterested: (hide: boolean) => void;
   clearAllFilters: () => void;
@@ -104,6 +115,8 @@ const initialState: FilterState = {
   decades: [],
   genres: [],
   timesOfDay: [],
+  festivalSlug: null,
+  festivalOnly: false,
   hideSeen: false,
   hideNotInterested: true, // Films marked "not interested" are hidden by default
   updatedAt: new Date().toISOString(),
@@ -217,6 +230,22 @@ export const useFilters = create<FilterState & FilterActions>()(
         };
       }),
 
+      // Festival filter actions
+      setFestivalFilter: (slug) => {
+        trackFilterChange("festival", slug, slug ? "set" : "cleared");
+        set({ festivalSlug: slug, updatedAt: new Date().toISOString() });
+      },
+
+      setFestivalOnly: (festivalOnly) => {
+        trackFilterChange("festival_only", festivalOnly, "set");
+        set({ festivalOnly, updatedAt: new Date().toISOString() });
+      },
+
+      clearFestivalFilter: () => {
+        trackFilterChange("festival", null, "cleared");
+        set({ festivalSlug: null, festivalOnly: false, updatedAt: new Date().toISOString() });
+      },
+
       setHideSeen: (hide) => {
         trackFilterChange("hide_seen", hide, "set");
         set({ hideSeen: hide, updatedAt: new Date().toISOString() });
@@ -245,6 +274,9 @@ export const useFilters = create<FilterState & FilterActions>()(
         count += state.decades.length;
         count += state.genres.length;
         count += state.timesOfDay.length;
+        // Festival filters
+        if (state.festivalSlug) count++;
+        if (state.festivalOnly) count++;
         if (state.hideSeen) count++;
         // Don't count hideNotInterested - it's the default behavior
         // Users expect "not interested" films to be hidden automatically
@@ -266,6 +298,8 @@ export const useFilters = create<FilterState & FilterActions>()(
           decades: state.decades,
           genres: state.genres,
           timesOfDay: state.timesOfDay,
+          festivalSlug: state.festivalSlug,
+          festivalOnly: state.festivalOnly,
           hideSeen: state.hideSeen,
           hideNotInterested: state.hideNotInterested,
           updatedAt: state.updatedAt,
@@ -282,6 +316,8 @@ export const useFilters = create<FilterState & FilterActions>()(
         decades: state.decades,
         genres: state.genres,
         timesOfDay: state.timesOfDay,
+        festivalSlug: state.festivalSlug,
+        festivalOnly: state.festivalOnly,
         hideSeen: state.hideSeen,
         hideNotInterested: state.hideNotInterested,
         updatedAt: state.updatedAt,

@@ -5,8 +5,8 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { screenings, films, cinemas } from "@/db/schema";
-import { eq, gte, lte, and, inArray } from "drizzle-orm";
+import { screenings, films, cinemas, festivalScreenings, festivals } from "@/db/schema";
+import { eq, gte, lte, and, inArray, sql } from "drizzle-orm";
 import { startOfDay, endOfDay, addDays } from "date-fns";
 import { z } from "zod";
 import type { ScreeningFormat } from "@/types/screening";
@@ -19,6 +19,9 @@ const querySchema = z.object({
   cinemas: z.string().max(500).optional(), // comma-separated UUIDs
   formats: z.string().max(200).optional(),
   repertory: z.enum(["true", "false"]).optional(),
+  // Festival filtering
+  festival: z.string().max(100).optional(), // festival slug
+  festivalOnly: z.enum(["true", "false"]).optional(), // only show festival screenings
 });
 
 export async function GET(request: NextRequest) {
@@ -32,6 +35,8 @@ export async function GET(request: NextRequest) {
       cinemas: searchParams.get("cinemas") || undefined,
       formats: searchParams.get("formats") || undefined,
       repertory: searchParams.get("repertory") || undefined,
+      festival: searchParams.get("festival") || undefined,
+      festivalOnly: searchParams.get("festivalOnly") || undefined,
     });
 
     if (!parseResult.success) {
@@ -54,6 +59,8 @@ export async function GET(request: NextRequest) {
     const cinemaIds = params.cinemas?.split(",").filter(Boolean);
     const formats = params.formats?.split(",").filter(Boolean);
     const isRepertory = params.repertory;
+    const festivalSlug = params.festival;
+    const festivalOnly = params.festivalOnly === "true";
 
     // Build query conditions
     const conditions = [
@@ -76,7 +83,82 @@ export async function GET(request: NextRequest) {
       conditions.push(eq(films.isRepertory, false));
     }
 
-    // Fetch screenings with film and cinema data
+    // Filter by festival only (screenings marked as festival)
+    if (festivalOnly) {
+      conditions.push(eq(screenings.isFestivalScreening, true));
+    }
+
+    // If filtering by specific festival, we need a different query with join
+    if (festivalSlug) {
+      // First, get the festival ID
+      const [festival] = await db
+        .select({ id: festivals.id })
+        .from(festivals)
+        .where(eq(festivals.slug, festivalSlug))
+        .limit(1);
+
+      if (!festival) {
+        throw new BadRequestError(`Festival not found: ${festivalSlug}`);
+      }
+
+      // Query with festival join
+      const results = await db
+        .select({
+          id: screenings.id,
+          datetime: screenings.datetime,
+          format: screenings.format,
+          screen: screenings.screen,
+          eventType: screenings.eventType,
+          eventDescription: screenings.eventDescription,
+          bookingUrl: screenings.bookingUrl,
+          isFestivalScreening: screenings.isFestivalScreening,
+          availabilityStatus: screenings.availabilityStatus,
+          // Festival-specific metadata
+          festivalSection: festivalScreenings.festivalSection,
+          isPremiere: festivalScreenings.isPremiere,
+          premiereType: festivalScreenings.premiereType,
+          film: {
+            id: films.id,
+            title: films.title,
+            year: films.year,
+            directors: films.directors,
+            posterUrl: films.posterUrl,
+            runtime: films.runtime,
+            isRepertory: films.isRepertory,
+          },
+          cinema: {
+            id: cinemas.id,
+            name: cinemas.name,
+            shortName: cinemas.shortName,
+          },
+        })
+        .from(festivalScreenings)
+        .innerJoin(screenings, eq(festivalScreenings.screeningId, screenings.id))
+        .innerJoin(films, eq(screenings.filmId, films.id))
+        .innerJoin(cinemas, eq(screenings.cinemaId, cinemas.id))
+        .where(and(eq(festivalScreenings.festivalId, festival.id), ...conditions))
+        .orderBy(screenings.datetime)
+        .limit(3000);
+
+      return NextResponse.json(
+        {
+          screenings: results,
+          meta: {
+            total: results.length,
+            startDate: startDate.toISOString(),
+            endDate: endDate.toISOString(),
+            festival: festivalSlug,
+          },
+        },
+        {
+          headers: {
+            "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+          },
+        }
+      );
+    }
+
+    // Standard query (no specific festival filter)
     const results = await db
       .select({
         id: screenings.id,
@@ -86,6 +168,8 @@ export async function GET(request: NextRequest) {
         eventType: screenings.eventType,
         eventDescription: screenings.eventDescription,
         bookingUrl: screenings.bookingUrl,
+        isFestivalScreening: screenings.isFestivalScreening,
+        availabilityStatus: screenings.availabilityStatus,
         film: {
           id: films.id,
           title: films.title,

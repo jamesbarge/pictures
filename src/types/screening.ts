@@ -30,6 +30,13 @@ export type EventType =
   | "members_only"
   | "relaxed";
 
+export type AvailabilityStatus =
+  | "available"
+  | "low"
+  | "sold_out"
+  | "returns"
+  | "unknown";
+
 export interface Screening {
   id: string;
   filmId: string;
@@ -51,6 +58,10 @@ export interface Screening {
   sourceId: string | null;
   scrapedAt: Date;
   updatedAt: Date;
+  // Festival fields
+  isFestivalScreening: boolean;
+  availabilityStatus: AvailabilityStatus | null;
+  availabilityCheckedAt: Date | null;
 }
 
 /**

@@ -7,14 +7,16 @@
  */
 
 import { useUserSync } from "@/hooks/useUserSync";
+import { useUserFestivals } from "@/hooks/useUserFestivals";
 
 interface UserSyncProviderProps {
   children: React.ReactNode;
 }
 
 export function UserSyncProvider({ children }: UserSyncProviderProps) {
-  // Initialize sync hook - handles all sync logic
+  // Initialize sync hooks - handle all sync logic
   useUserSync();
+  useUserFestivals();
 
   // This provider is purely for side effects (sync)
   // It doesn't provide any context values

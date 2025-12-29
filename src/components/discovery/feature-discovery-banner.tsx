@@ -93,7 +93,7 @@ export function FeatureDiscoveryBanner() {
           href="/reachable"
           icon={<Navigation className="w-5 h-5" />}
           title="What Can I Catch?"
-          description="Find films that fit your schedule. Enter your location and deadline — we'll show you what you can reach in time."
+          description="Find films that fit your schedule. Enter your location and deadline, and we'll show you what you can reach in time."
           feature="reachable"
         />
       </div>
