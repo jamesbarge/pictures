@@ -28,6 +28,7 @@ This document describes how each cinema website is scraped, including the approa
 | **Phoenix Cinema** | GraphQL (INDY) | Playwright | `phoenixcinema.co.uk/graphql` | Working |
 | **Rich Mix** | JSON API | No | `richmix.org.uk/whats-on/cinema/?ajax=1&json=1` | Working |
 | **Regent Street Cinema** | GraphQL (INDY) | Playwright | `regentstreetcinema.com/graphql` | Working |
+| **Riverside Studios** | AJAX API | No | `riversidestudios.co.uk/ajax/filter_stream/` | Working |
 
 ---
 
