@@ -5,12 +5,12 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { useUser } from "@clerk/nextjs";
 import { useFilmStatus } from "@/stores/film-status";
 import { Button } from "@/components/ui";
-import { RotateCcw, Film } from "lucide-react";
+import { RotateCcw, Film, Loader2 } from "lucide-react";
 import { deleteFilmStatus } from "@/lib/sync/user-sync-service";
 
 // Blur placeholder for poster images to prevent CLS
@@ -20,12 +20,39 @@ const POSTER_BLUR =
 export function NotInterestedList() {
   const { getNotInterestedFilms, removeFilm } = useFilmStatus();
   const [mounted, setMounted] = useState(false);
+  const [restoringIds, setRestoringIds] = useState<Set<string>>(new Set());
   const { isSignedIn } = useUser();
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Standard hydration pattern
     setMounted(true);
   }, []);
+
+  // Must define all hooks before any conditional returns (React rules of hooks)
+  const handleRestore = useCallback(async (filmId: string) => {
+    // Show loading state (also prevents double-clicks via disabled button)
+    setRestoringIds(prev => new Set(prev).add(filmId));
+
+    try {
+      // If signed in, delete from server FIRST to prevent sync from re-adding it
+      if (isSignedIn) {
+        await deleteFilmStatus(filmId);
+      }
+
+      // Then remove from local state
+      removeFilm(filmId);
+    } catch (error) {
+      console.error("[Restore] Failed to delete film status:", error);
+      // Still remove locally even if server delete fails - user can try again
+      removeFilm(filmId);
+    } finally {
+      // Clean up loading state (film should be gone, but just in case)
+      setRestoringIds(prev => {
+        const next = new Set(prev);
+        next.delete(filmId);
+        return next;
+      });
+    }
+  }, [isSignedIn, removeFilm]);
 
   // Don't render until mounted to avoid hydration mismatch
   // Skeleton dimensions match actual content to prevent CLS
@@ -64,16 +91,6 @@ export function NotInterestedList() {
       </div>
     );
   }
-
-  const handleRestore = (filmId: string) => {
-    // Optimistically remove locally
-    removeFilm(filmId);
-
-    // If signed in, also delete from server so it doesn't reappear after sync
-    if (isSignedIn) {
-      void deleteFilmStatus(filmId);
-    }
-  };
 
   return (
     <div className="space-y-2">
@@ -123,10 +140,20 @@ export function NotInterestedList() {
             variant="ghost"
             size="sm"
             onClick={() => handleRestore(film.filmId)}
+            disabled={restoringIds.has(film.filmId)}
             className="shrink-0"
           >
-            <RotateCcw className="w-4 h-4 mr-1.5" />
-            Restore
+            {restoringIds.has(film.filmId) ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                Restoring...
+              </>
+            ) : (
+              <>
+                <RotateCcw className="w-4 h-4 mr-1.5" />
+                Restore
+              </>
+            )}
           </Button>
         </div>
       ))}
