@@ -1,6 +1,7 @@
 /**
  * Film Detail Page
  * Shows film information and all upcoming screenings
+ * Enhanced with Movie schema and SEO optimizations for GEO
  */
 
 // ISR: Revalidate every 5 minutes - film data rarely changes
@@ -16,6 +17,8 @@ import { FilmHeader } from "@/components/film/film-header";
 import { FilmScreenings } from "@/components/film/film-screenings";
 import { StatusToggle } from "@/components/film/status-toggle";
 import { FilmViewTracker } from "@/components/film/film-view-tracker";
+import { MovieSchema, FAQSchema, BreadcrumbSchema } from "@/components/seo/json-ld";
+import type { Film } from "@/types/film";
 
 interface FilmPageProps {
   params: Promise<{ id: string }>;
@@ -60,8 +63,53 @@ export default async function FilmPage({ params }: FilmPageProps) {
     )
     .orderBy(screenings.datetime);
 
+  // Get unique cinema names for FAQ
+  const uniqueCinemas = [
+    ...new Set(upcomingScreenings.map((s) => s.cinema.name)),
+  ];
+
+  // Convert filmData to Film type for schema
+  const filmForSchema: Film = {
+    ...filmData,
+    cast: filmData.cast || [],
+    genres: filmData.genres as Film["genres"],
+    countries: filmData.countries || [],
+    languages: filmData.languages || [],
+    isRepertory: filmData.isRepertory ?? false,
+    releaseStatus: filmData.releaseStatus as Film["releaseStatus"],
+    createdAt: filmData.createdAt,
+    updatedAt: filmData.updatedAt,
+  };
+
+  // Generate FAQ items for GEO (AI citations)
+  const faqItems = [
+    {
+      question: `Where can I watch ${filmData.title} in London?`,
+      answer:
+        upcomingScreenings.length > 0
+          ? `${filmData.title} is currently showing at ${uniqueCinemas.slice(0, 5).join(", ")}${uniqueCinemas.length > 5 ? ` and ${uniqueCinemas.length - 5} more cinemas` : ""} in London. There are ${upcomingScreenings.length} upcoming screenings.`
+          : `${filmData.title} does not have any upcoming screenings in London at the moment. Check back later for new listings.`,
+    },
+    {
+      question: `How many screenings of ${filmData.title} are there?`,
+      answer: `There are ${upcomingScreenings.length} upcoming screenings of ${filmData.title} at London's independent cinemas.`,
+    },
+  ];
+
+  // Breadcrumb data
+  const breadcrumbs = [
+    { name: "Home", url: "/" },
+    { name: "Films", url: "/" },
+    { name: filmData.title, url: `/film/${filmData.id}` },
+  ];
+
   return (
     <div className="min-h-screen bg-background-primary pb-8">
+      {/* Structured Data for SEO */}
+      <MovieSchema film={filmForSchema} />
+      <FAQSchema items={faqItems} />
+      <BreadcrumbSchema items={breadcrumbs} />
+
       {/* Analytics - track film view */}
       <FilmViewTracker
         filmId={filmData.id}
@@ -93,6 +141,19 @@ export default async function FilmPage({ params }: FilmPageProps) {
         <StatusToggle filmId={id} />
       </div>
 
+      {/* Answer-first summary for GEO */}
+      {upcomingScreenings.length > 0 && (
+        <div className="max-w-4xl mx-auto px-4 mt-8">
+          <p className="text-text-secondary text-sm">
+            <strong>{filmData.title}</strong> is showing at{" "}
+            {uniqueCinemas.length} London cinema
+            {uniqueCinemas.length !== 1 ? "s" : ""} with{" "}
+            {upcomingScreenings.length} upcoming screening
+            {upcomingScreenings.length !== 1 ? "s" : ""}.
+          </p>
+        </div>
+      )}
+
       {/* Screenings Section */}
       <div className="max-w-4xl mx-auto px-4 mt-12">
         <h2 className="text-xl font-display text-text-primary mb-6 flex items-center gap-2">
@@ -104,13 +165,31 @@ export default async function FilmPage({ params }: FilmPageProps) {
 
         <FilmScreenings screenings={upcomingScreenings} film={{ id: filmData.id, title: filmData.title }} />
       </div>
+
+      {/* FAQ Section for SEO/GEO */}
+      <div className="max-w-4xl mx-auto px-4 mt-12">
+        <h2 className="text-lg font-display text-text-primary mb-4">
+          Frequently Asked Questions
+        </h2>
+        <div className="space-y-4">
+          {faqItems.map((faq, index) => (
+            <div key={index} className="border-b border-border-subtle pb-4">
+              <h3 className="font-medium text-text-primary mb-2">
+                {faq.question}
+              </h3>
+              <p className="text-text-secondary text-sm">{faq.answer}</p>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
 
-// Generate metadata
+// Generate metadata with OG tags for rich sharing
 export async function generateMetadata({ params }: FilmPageProps) {
   const { id } = await params;
+  const BASE_URL = "https://postboxd.co.uk";
 
   const film = await db.select().from(films).where(eq(films.id, id)).limit(1);
 
@@ -119,8 +198,47 @@ export async function generateMetadata({ params }: FilmPageProps) {
   }
 
   const f = film[0];
+  const title = `${f.title}${f.year ? ` (${f.year})` : ""}`;
+
+  // Build a rich description including directors and synopsis
+  let description = `Find screenings of ${f.title}`;
+  if (f.directors && f.directors.length > 0) {
+    description += ` directed by ${f.directors.slice(0, 2).join(" and ")}`;
+  }
+  description += ` at London's independent cinemas.`;
+  if (f.synopsis) {
+    // Truncate synopsis for description
+    const synopsisPreview = f.synopsis.slice(0, 150);
+    description += ` ${synopsisPreview}${f.synopsis.length > 150 ? "..." : ""}`;
+  }
+
   return {
-    title: `${f.title}${f.year ? ` (${f.year})` : ""} | Postboxd`,
-    description: f.synopsis || `Screenings for ${f.title} at London cinemas`,
+    title,
+    description,
+    alternates: {
+      canonical: `/film/${id}`,
+    },
+    openGraph: {
+      title,
+      description,
+      url: `${BASE_URL}/film/${id}`,
+      type: "video.movie",
+      images: f.posterUrl
+        ? [
+            {
+              url: f.posterUrl,
+              width: 500,
+              height: 750,
+              alt: `${f.title} poster`,
+            },
+          ]
+        : undefined,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: f.posterUrl ? [f.posterUrl] : undefined,
+    },
   };
 }

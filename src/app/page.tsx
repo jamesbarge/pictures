@@ -1,11 +1,12 @@
 import { db } from "@/db";
 import { screenings, films, cinemas, festivals } from "@/db/schema";
-import { eq, gte, lte, and } from "drizzle-orm";
+import { eq, gte, lte, and, countDistinct, count } from "drizzle-orm";
 import { endOfDay, addDays, startOfDay, format } from "date-fns";
 import { unstable_cache } from "next/cache";
 import { CalendarViewWithLoader } from "@/components/calendar/calendar-view-loader";
 import { Header } from "@/components/layout/header";
 import { FeatureDiscoveryBanner } from "@/components/discovery/feature-discovery-banner";
+import { WebSiteSchema, FAQSchema } from "@/components/seo/json-ld";
 
 // Dynamic rendering with data-layer caching
 // Force-dynamic prevents build timeout, unstable_cache provides 60s data caching
@@ -75,15 +76,43 @@ const getCachedActiveFestivals = unstable_cache(
   { revalidate: 3600, tags: ["festivals"] }
 );
 
+// Cache stats for SEO display (how many screenings, films, cinemas)
+const getCachedStats = unstable_cache(
+  async () => {
+    const now = new Date();
+    const [screeningStats, cinemaCount] = await Promise.all([
+      db
+        .select({
+          totalScreenings: count(screenings.id),
+          uniqueFilms: countDistinct(screenings.filmId),
+        })
+        .from(screenings)
+        .where(gte(screenings.datetime, now)),
+      db
+        .select({ count: count(cinemas.id) })
+        .from(cinemas)
+        .where(eq(cinemas.isActive, true)),
+    ]);
+    return {
+      totalScreenings: screeningStats[0]?.totalScreenings || 0,
+      uniqueFilms: screeningStats[0]?.uniqueFilms || 0,
+      cinemaCount: cinemaCount[0]?.count || 0,
+    };
+  },
+  ["home-stats"],
+  { revalidate: 300, tags: ["screenings", "cinemas"] }
+);
+
 export default async function Home() {
   // Use date key to bust cache at midnight (ensures fresh data each day)
   const dateKey = format(new Date(), "yyyy-MM-dd");
 
-  // Fetch cached data (60s cache for screenings, 1hr for cinemas)
-  const [initialScreenings, allCinemas, activeFestivals] = await Promise.all([
+  // Fetch cached data (60s cache for screenings, 1hr for cinemas, 5min for stats)
+  const [initialScreenings, allCinemas, activeFestivals, stats] = await Promise.all([
     getCachedScreenings(dateKey),
     getCachedCinemas(),
     getCachedActiveFestivals(),
+    getCachedStats(),
   ]);
 
   // Prepare cinemas with coordinates for map filtering
@@ -94,19 +123,52 @@ export default async function Home() {
     coordinates: c.coordinates,
   }));
 
+  // Generate FAQ items for GEO (AI citations)
+  const faqItems = [
+    {
+      question: "What independent cinemas are in London?",
+      answer: `London has ${stats.cinemaCount} major independent cinemas tracked by Postboxd, including BFI Southbank, Prince Charles Cinema, Curzon, Picturehouse, ICA, Barbican, and more. These venues show art house, repertory, and independent films.`,
+    },
+    {
+      question: "How do I find film screenings in London?",
+      answer: `Postboxd aggregates listings from ${stats.cinemaCount} London cinemas into one calendar. Currently showing ${stats.uniqueFilms} films with ${stats.totalScreenings} upcoming screenings. Filter by cinema, date, format, or use the map to find screenings near you.`,
+    },
+    {
+      question: "What films are showing in London today?",
+      answer: `Postboxd shows ${stats.uniqueFilms} unique films currently screening at London's independent cinemas. Check the calendar above for today's listings, filtered by your preferred cinemas.`,
+    },
+  ];
+
   return (
     <div className="min-h-screen bg-background-primary">
+      {/* Structured Data for SEO */}
+      <WebSiteSchema />
+      <FAQSchema items={faqItems} />
+
       {/* Unified Header with Filters */}
-      <Header 
-        cinemas={allCinemas.map(c => ({ id: c.id, name: c.name, shortName: c.shortName }))} 
+      <Header
+        cinemas={allCinemas.map(c => ({ id: c.id, name: c.name, shortName: c.shortName }))}
         festivals={activeFestivals}
       />
 
       {/* Feature Discovery Banner - dismissible once features are visited */}
       <FeatureDiscoveryBanner />
 
+      {/* SEO H1 and Answer-First Summary */}
+      <div className="px-4 sm:px-6 lg:px-8 pt-6">
+        <h1 className="sr-only">
+          London Cinema Listings - Independent & Art House Films
+        </h1>
+        {/* Answer-first summary for GEO - visible but subtle */}
+        <p className="text-sm text-text-tertiary mb-4 max-w-2xl">
+          Find screenings at {stats.cinemaCount} London independent cinemas.{" "}
+          {stats.uniqueFilms} films with {stats.totalScreenings} upcoming
+          screenings. Updated daily.
+        </p>
+      </div>
+
       {/* Main Content - Full Width */}
-      <main className="px-4 sm:px-6 lg:px-8 py-6">
+      <main className="px-4 sm:px-6 lg:px-8 pb-6">
         {/* Calendar View with Load More */}
         <CalendarViewWithLoader initialScreenings={initialScreenings} cinemas={cinemasWithCoords} />
 
@@ -122,8 +184,24 @@ export default async function Home() {
             </code>
           </div>
         )}
-      </main>
 
+        {/* FAQ Section - helps with GEO */}
+        <section className="mt-12 pt-8 border-t border-border-subtle">
+          <h2 className="text-lg font-display text-text-primary mb-6">
+            Frequently Asked Questions
+          </h2>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {faqItems.map((faq, index) => (
+              <div key={index} className="space-y-2">
+                <h3 className="font-medium text-text-primary text-sm">
+                  {faq.question}
+                </h3>
+                <p className="text-text-tertiary text-sm">{faq.answer}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      </main>
     </div>
   );
 }
