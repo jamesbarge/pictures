@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { startOfDay, endOfDay, format, isWithinInterval, getHours } from "date-fns";
 import { DaySection } from "./day-section";
 import { useFilters, getTimeOfDayFromHour, isIndependentCinema } from "@/stores/filters";
@@ -64,6 +64,21 @@ export function CalendarView({ screenings, cinemas }: CalendarViewProps) {
   const filters = useFilters();
   const { mapArea } = usePreferences();
   const mounted = useHydrated();
+  const filmStatusPersist = useFilmStatus.persist;
+  const [filmStatusesHydrated, setFilmStatusesHydrated] = useState(
+    () => filmStatusPersist?.hasHydrated?.() ?? false
+  );
+
+  // Track when film status storage has rehydrated so we can safely apply hide filters without flashing
+  useEffect(() => {
+    if (!filmStatusPersist?.onFinishHydration) return;
+    // Ensure we capture already-hydrated state
+    setFilmStatusesHydrated(filmStatusPersist.hasHydrated?.() ?? false);
+    const unsub = filmStatusPersist.onFinishHydration(() => {
+      setFilmStatusesHydrated(true);
+    });
+    return unsub;
+  }, [filmStatusPersist]);
 
   // Get hide filter values separately for stable selector
   const hideSeen = filters.hideSeen;
@@ -94,8 +109,10 @@ export function CalendarView({ screenings, cinemas }: CalendarViewProps) {
 
   // Apply all filters (only after mount)
   const filteredScreenings = useMemo(() => {
-    // Before mount, show all screenings
-    if (!mounted) return screenings;
+    // Before mount, show nothing to avoid flashes; wait for hydration when hide filters rely on user data
+    if (!mounted) return [];
+    // If personal hide filters are enabled but film statuses haven't rehydrated yet, wait
+    if ((hideSeen || hideNotInterested) && !filmStatusesHydrated) return [];
 
     const now = new Date();
 
@@ -220,6 +237,15 @@ export function CalendarView({ screenings, cinemas }: CalendarViewProps) {
   }, [screenings, filters, hiddenFilmIds, mounted, cinemas]);
 
   const activeFilterCount = mounted ? filters.getActiveFilterCount() : 0;
+
+  // Avoid flashing hidden films before film status storage hydrates
+  if (!mounted || ((hideSeen || hideNotInterested) && !filmStatusesHydrated)) {
+    return (
+      <div className="py-8 text-center text-text-tertiary text-sm">
+        Loading your filters…
+      </div>
+    );
+  }
 
   // Group screenings by date
   const groupedByDate = useMemo(() => {
