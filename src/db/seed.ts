@@ -218,6 +218,27 @@ const londonCinemas = [
     description:
       "The cinema at Institut Francais in South Kensington. Specializes in French and European arthouse cinema, classic repertory screenings, and cultural film events.",
   },
+  {
+    id: "phoenix-east-finchley",
+    name: "Phoenix Cinema",
+    shortName: "Phoenix",
+    chain: null,
+    address: {
+      street: "52 High Rd",
+      area: "East Finchley",
+      postcode: "N2 9PJ",
+      borough: "Barnet",
+    },
+    coordinates: { lat: 51.5871, lng: -0.1642 },
+    screens: 2,
+    features: ["accessible", "bar", "cafe"],
+    programmingFocus: ["repertory", "arthouse", "mainstream", "events"],
+    website: "https://phoenixcinema.co.uk",
+    bookingUrl: "https://phoenixcinema.co.uk/whats-on/",
+    dataSourceType: "scrape" as const,
+    description:
+      "One of the oldest purpose-built cinemas in the UK (1910). A community-owned arthouse in East Finchley showing a mix of new releases, classics, and special events.",
+  },
 ];
 
 async function seed() {

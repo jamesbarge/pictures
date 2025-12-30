@@ -25,6 +25,7 @@ This document describes how each cinema website is scraped, including the approa
 | **Cine Lumiere** | Single page | No | `cinelumiere.savoysystems.co.uk/CineLumiere.dll/` | Working |
 | **Castle Cinema** | JSON-LD | No | `thecastlecinema.com` homepage | Working |
 | **ArtHouse Crouch End** | HTML (Savoy) | No | `arthousecrouchend.savoysystems.co.uk/.dll/` | Working |
+| **Phoenix Cinema** | GraphQL (INDY) | Playwright | `phoenixcinema.co.uk/graphql` | Working |
 
 ---
 
@@ -582,6 +583,42 @@ west_norwood: 10099, ealing: 10107
 - Time format includes AM/PM (unlike Ciné Lumière which uses 24-hour)
 - `TcsProgramme_` links = film info pages, `TcsPerformance_` links = booking pages
 - Some films have multiple dates with multiple showtimes per date
+
+---
+
+### 18. Phoenix Cinema
+
+**File:** `src/scrapers/cinemas/phoenix.ts`
+
+**Approach:**
+- Uses Playwright to establish session, then intercepts GraphQL responses
+- INDY Systems platform (cloud-based cinema management)
+- GraphQL API at `/graphql` requires browser session (permission error without)
+- Intercepts `movies` and `showingsForDate` responses during page navigation
+
+**GraphQL Queries Used:**
+- `movies`: Returns all movies with filter `type: "now-playing-and-coming-soon"`
+- `showingsForDate`: Returns screenings for a movie (use `date: null` for all dates)
+
+**Response Structure:**
+```javascript
+// Movies query
+{ data: { movies: { data: [{ id, name, urlSlug, showingStatus, ... }] } } }
+
+// Showings query
+{ data: { showingsForDate: { data: [{ id, time, screenId, movie: {...} }] } } }
+```
+
+**Date/Time Format:** ISO datetime UTC `"2025-12-30T13:15:00Z"`
+
+**Booking URL Pattern:** `https://www.phoenixcinema.co.uk/showing/{id}`
+
+**Notes:**
+- London's oldest continuously-open cinema (1912), East Finchley
+- 3 screens, community-owned charitable trust
+- INDY Systems platform (same as other independent cinemas using their software)
+- Response interception uses Promise to wait for data before continuing
+- `showingStatus` values: "Now Playing", "Previews", "Coming Soon"
 
 ---
 
