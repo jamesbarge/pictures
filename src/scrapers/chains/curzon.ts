@@ -481,6 +481,8 @@ export class CurzonScraper implements ChainScraper {
         year,
         director,
         eventDescription: eventDescriptions.length > 0 ? eventDescriptions.join(", ") : undefined,
+        // Availability status from Vista API
+        availabilityStatus: showtime.isSoldOut ? "sold_out" : "available",
       });
     }
 

@@ -32,6 +32,7 @@ interface ScreeningCardProps {
     eventType?: string | null;
     eventDescription?: string | null;
     bookingUrl: string;
+    availabilityStatus?: "available" | "low" | "sold_out" | "returns" | "unknown" | null;
     film: {
       id: string;
       title: string;
@@ -198,6 +199,29 @@ export const ScreeningCard = memo(function ScreeningCard({ screening }: Screenin
                 Not interested
               </span>
             </button>
+          </div>
+        )}
+
+        {/* Availability badge - shows sold out or low availability */}
+        {screening.availabilityStatus === "sold_out" && (
+          <div className="absolute top-3 right-3 z-10">
+            <span className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide rounded bg-accent-danger/90 text-white backdrop-blur-sm">
+              Sold Out
+            </span>
+          </div>
+        )}
+        {screening.availabilityStatus === "low" && (
+          <div className="absolute top-3 right-3 z-10">
+            <span className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide rounded bg-amber-500/90 text-white backdrop-blur-sm">
+              Low Availability
+            </span>
+          </div>
+        )}
+        {screening.availabilityStatus === "returns" && (
+          <div className="absolute top-3 right-3 z-10">
+            <span className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide rounded bg-accent-gold/90 text-black backdrop-blur-sm">
+              Returns Only
+            </span>
           </div>
         )}
       </div>

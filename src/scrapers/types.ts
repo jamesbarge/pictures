@@ -26,6 +26,8 @@ export interface RawScreening {
   festivalSlug?: string;
   /** Section within the festival (e.g., "Galas", "Competition") */
   festivalSection?: string;
+  /** Ticket availability status from the booking system */
+  availabilityStatus?: "available" | "low" | "sold_out" | "returns" | "unknown";
 }
 
 // ============================================================================

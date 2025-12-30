@@ -300,6 +300,8 @@ export class PicturehouseScraper implements ChainScraper {
           eventType,
           eventDescription,
           sourceId: `picturehouse-${venue.id}-${showTime.SessionId}`,
+          // Availability status from API: 0 = available, 1 = sold out
+          availabilityStatus: showTime.SoldoutStatus === 1 ? "sold_out" : "available",
         });
       }
     }

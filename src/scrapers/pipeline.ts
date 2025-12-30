@@ -663,6 +663,7 @@ async function insertScreening(
 
   if (duplicate) {
     // Update existing
+    const now = new Date();
     await db
       .update(screeningsTable)
       .set({
@@ -678,8 +679,13 @@ async function insertScreening(
         isRelaxedScreening,
         season,
         bookingUrl: screening.bookingUrl,
-        scrapedAt: new Date(),
-        updatedAt: new Date(),
+        // Update availability if provided by scraper
+        ...(screening.availabilityStatus && {
+          availabilityStatus: screening.availabilityStatus,
+          availabilityCheckedAt: now,
+        }),
+        scrapedAt: now,
+        updatedAt: now,
       })
       .where(eq(screeningsTable.id, duplicate.id));
 
@@ -687,6 +693,7 @@ async function insertScreening(
   }
 
   // Insert new screening
+  const now = new Date();
   await db.insert(screeningsTable).values({
     id: uuidv4(),
     filmId,
@@ -705,9 +712,12 @@ async function insertScreening(
     season,
     bookingUrl: screening.bookingUrl,
     sourceId: screening.sourceId,
-    scrapedAt: new Date(),
+    scrapedAt: now,
     // Set festival flag
     isFestivalScreening: !!screening.festivalSlug,
+    // Availability status from scraper
+    availabilityStatus: screening.availabilityStatus ?? null,
+    availabilityCheckedAt: screening.availabilityStatus ? now : null,
   });
 
   // Handle festival linking

@@ -100,14 +100,17 @@ export class PrinceCharlesScraper extends BaseScraper {
     defaultFormat?: string,
     metadata?: { director?: string; year?: number }
   ): RawScreening | null {
-    // Get the booking link
-    const $bookLink = $li.find("a.film_book_button");
+    // Get the booking link (could be film_book_button or soldfilm_book_button)
+    const $bookLink = $li.find("a.film_book_button, a.soldfilm_book_button").first();
     let bookingUrl = $bookLink.attr("href");
 
-    // Skip sold out shows (they have class soldfilm_book_button)
-    if ($bookLink.hasClass("soldfilm_book_button") || !bookingUrl) {
+    // Skip if no booking URL at all
+    if (!bookingUrl) {
       return null;
     }
+
+    // Check if sold out (has class soldfilm_book_button)
+    const isSoldOut = $bookLink.hasClass("soldfilm_book_button");
 
     // Ensure booking URL is absolute
     if (!bookingUrl.startsWith("http")) {
@@ -146,6 +149,8 @@ export class PrinceCharlesScraper extends BaseScraper {
       // Pass extracted metadata for better TMDB matching
       year: metadata?.year,
       director: metadata?.director,
+      // Availability status from CSS class
+      availabilityStatus: isSoldOut ? "sold_out" : "available",
     };
   }
 }
