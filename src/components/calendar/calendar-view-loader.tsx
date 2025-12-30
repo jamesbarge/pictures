@@ -6,7 +6,7 @@ import { addDays, differenceInDays, startOfDay } from "date-fns";
 import { useSearchParams } from "next/navigation";
 import { CalendarView } from "./calendar-view";
 import { ErrorBoundary } from "@/components/error-boundary";
-import { Loader2, X, Sparkles } from "lucide-react";
+import { Loader2, X, Clapperboard } from "lucide-react";
 import { useFilters } from "@/stores/filters";
 
 interface Screening {
@@ -273,7 +273,7 @@ export function CalendarViewWithLoader({ initialScreenings, cinemas }: CalendarV
       {festivalSlug && (
         <div className="mb-6 p-4 bg-accent-gold/10 border border-accent-gold/30 rounded-lg flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Sparkles className="w-5 h-5 text-accent-gold" />
+            <Clapperboard className="w-5 h-5 text-accent-gold" />
             <span className="text-text-primary font-medium">
               Showing screenings from{" "}
               <span className="text-accent-gold">{formatFestivalName(festivalSlug)}</span>

@@ -6,7 +6,7 @@
 "use client";
 
 import Link from "next/link";
-import { Navigation, Heart, MapPin, Settings, User, Sparkles } from "lucide-react";
+import { Navigation, Heart, MapPin, Settings, User, Clapperboard } from "lucide-react";
 import { SignInButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import { cn } from "@/lib/cn";
 import { usePreferences } from "@/stores/preferences";
@@ -95,7 +95,7 @@ export function HeaderNavButtons({ mounted }: HeaderNavButtonsProps) {
       {/* Festivals - Key Feature with Label */}
       <LabeledNavButton
         href="/festivals"
-        icon={<Sparkles className="w-4 h-4 sm:w-4 sm:h-4" />}
+        icon={<Clapperboard className="w-4 h-4 sm:w-4 sm:h-4" />}
         label="Festivals"
       />
 
