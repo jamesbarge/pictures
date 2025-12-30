@@ -165,13 +165,15 @@ export function ReachablePageClient({
             <span className="font-display text-lg">What Can I Catch?</span>
           </Link>
 
-          {/* Status indicator */}
-          {hydrated && coordinates && (
-            <div className="flex items-center gap-2 text-sm text-text-secondary">
-              <MapPin className="w-4 h-4 text-accent-primary" />
-              <span className="hidden sm:inline">{postcode}</span>
-            </div>
-          )}
+          {/* Status indicator - reserve space to prevent CLS */}
+          <div className="flex items-center gap-2 text-sm text-text-secondary min-w-[80px] justify-end">
+            {hydrated && coordinates && (
+              <>
+                <MapPin className="w-4 h-4 text-accent-primary" />
+                <span className="hidden sm:inline">{postcode}</span>
+              </>
+            )}
+          </div>
         </div>
       </header>
 
@@ -271,26 +273,28 @@ export function ReachablePageClient({
         </div>
       </main>
 
-      {/* Footer Stats */}
-      {hydrated && !showSetup && (
-        <footer className="sticky bottom-0 bg-background-primary border-t border-border-subtle">
-          <div className="px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between text-sm">
-            <div className="flex items-center gap-2">
-              <span className="text-text-primary font-medium">
-                {reachableScreenings.length}
-              </span>
-              <span className="text-text-secondary">
-                screenings you can catch
-              </span>
-            </div>
-            {Object.keys(travelTimes).length > 0 && (
-              <div className="text-text-tertiary">
-                {Object.keys(travelTimes).length} cinemas reachable
+      {/* Footer Stats - always render container to prevent CLS */}
+      <footer className="sticky bottom-0 bg-background-primary border-t border-border-subtle">
+        <div className="px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between text-sm min-h-[44px]">
+          {hydrated && !showSetup && (
+            <>
+              <div className="flex items-center gap-2">
+                <span className="text-text-primary font-medium">
+                  {reachableScreenings.length}
+                </span>
+                <span className="text-text-secondary">
+                  screenings you can catch
+                </span>
               </div>
-            )}
-          </div>
-        </footer>
-      )}
+              {Object.keys(travelTimes).length > 0 && (
+                <div className="text-text-tertiary">
+                  {Object.keys(travelTimes).length} cinemas reachable
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </footer>
     </div>
   );
 }
