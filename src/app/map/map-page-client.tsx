@@ -107,17 +107,19 @@ export function MapPageClient({ cinemas }: MapPageClientProps) {
             <span className="font-display text-lg">Cinema Map</span>
           </Link>
 
-          {/* Actions */}
+          {/* Actions - reserve space for Clear button to prevent CLS */}
           <div className="flex items-center gap-2">
-            {localArea && (
-              <button
-                onClick={handleClear}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-text-secondary hover:text-error-text transition-colors"
-              >
-                <X className="w-4 h-4" />
-                <span className="hidden sm:inline">Clear</span>
-              </button>
-            )}
+            <div className="w-[70px] sm:w-[85px]">
+              {localArea && (
+                <button
+                  onClick={handleClear}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-text-secondary hover:text-error-text transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                  <span className="hidden sm:inline">Clear</span>
+                </button>
+              )}
+            </div>
             <button
               onClick={handleCancel}
               className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-text-secondary hover:text-text-primary bg-background-secondary rounded-lg border border-border-default transition-colors"
@@ -158,9 +160,9 @@ export function MapPageClient({ cinemas }: MapPageClientProps) {
         </div>
       </main>
 
-      {/* Footer Status Bar */}
+      {/* Footer Status Bar - reserve space for filter status to prevent CLS */}
       <footer className="sticky bottom-0 bg-background-primary border-t border-border-subtle">
-        <div className="px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
+        <div className="px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between min-h-[52px]">
           <div className="flex items-center gap-2 text-sm">
             <MapPin className="w-4 h-4 text-accent-primary" />
             <span className="text-text-primary font-medium">
@@ -171,13 +173,15 @@ export function MapPageClient({ cinemas }: MapPageClientProps) {
             )}
           </div>
 
-          {/* Current filter status */}
-          {hydrated && useMapFiltering && mapArea && (
-            <div className="flex items-center gap-2 text-sm text-accent-primary">
-              <Check className="w-4 h-4" />
-              <span>Map filter active</span>
-            </div>
-          )}
+          {/* Current filter status - reserve space to prevent CLS */}
+          <div className="min-w-[140px] flex justify-end">
+            {hydrated && useMapFiltering && mapArea && (
+              <div className="flex items-center gap-2 text-sm text-accent-primary">
+                <Check className="w-4 h-4" />
+                <span>Map filter active</span>
+              </div>
+            )}
+          </div>
         </div>
       </footer>
     </div>
