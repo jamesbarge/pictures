@@ -155,13 +155,6 @@ export function FestivalCard({ festival }: FestivalCardProps) {
 
       {/* Footer with follow button */}
       <CardFooter>
-        <div className="flex items-center gap-2">
-          {festival.genreFocus?.slice(0, 3).map((genre) => (
-            <Badge key={genre} variant="outline" size="sm" className="capitalize">
-              {genre}
-            </Badge>
-          ))}
-        </div>
         <FollowButton
           festivalId={festival.id}
           festivalName={festival.name}
