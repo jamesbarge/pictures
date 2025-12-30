@@ -8,7 +8,7 @@
 import { useState, useRef, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useHydrated } from "@/hooks/useHydrated";
-import { X, ChevronDown, RotateCcw, Ticket } from "lucide-react";
+import { X, ChevronDown, RotateCcw, Ticket, CalendarClock } from "lucide-react";
 import { cn } from "@/lib/cn";
 import {
   useFilters,
@@ -60,7 +60,8 @@ function FilterBarContent({ festivals }: { festivals: { id: string; name: string
       filters.genres.length +
       filters.timesOfDay.length +
       (filters.hideSeen ? 1 : 0) +
-      (filters.hideNotInterested ? 1 : 0)
+      (filters.hideNotInterested ? 1 : 0) +
+      (filters.onlySingleShowings ? 1 : 0)
     : 0;
 
   return (
@@ -138,6 +139,21 @@ function FilterBarContent({ festivals }: { festivals: { id: string; name: string
             selected={mounted ? filters.timesOfDay : []}
             onToggle={(v) => filters.toggleTimeOfDay(v as TimeOfDay)}
           />
+
+          {/* Single showing (once per day) */}
+          <button
+            onClick={() => filters.setOnlySingleShowings(!filters.onlySingleShowings)}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-2 rounded-lg border transition-colors text-sm",
+              filters.onlySingleShowings
+                ? "bg-accent-primary/10 border-accent-primary/30 text-accent-primary"
+                : "bg-background-secondary border-border-subtle text-text-secondary hover:border-border-default hover:text-text-primary"
+            )}
+            title="Show films that screen only once per day across London"
+          >
+            <CalendarClock className="w-4 h-4" />
+            <span>Single showing (today)</span>
+          </button>
 
           {/* Spacer */}
           <div className="flex-1" />
@@ -336,6 +352,14 @@ function ActiveFilterPills({ festivals = [] }: { festivals?: { id: string; name:
           label: festival ? festival.name : "Festival",
           onRemove: () => filters.setFestivalFilter(null),
       });
+  }
+
+  // Single showing
+  if (filters.onlySingleShowings) {
+    pills.push({
+      label: "Single showing today",
+      onRemove: () => filters.setOnlySingleShowings(false),
+    });
   }
 
   return (

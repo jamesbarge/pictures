@@ -58,6 +58,7 @@ export interface FilterState {
   // Personal
   hideSeen: boolean;
   hideNotInterested: boolean;
+  onlySingleShowings: boolean;
 
   // Sync tracking (for persisted fields only)
   updatedAt: string; // ISO timestamp for conflict resolution
@@ -76,6 +77,7 @@ export interface PersistedFilters {
   venueType: VenueType;
   hideSeen: boolean;
   hideNotInterested: boolean;
+   onlySingleShowings: boolean;
   updatedAt: string;
 }
 
@@ -102,6 +104,7 @@ interface FilterActions {
   // Personal
   setHideSeen: (hide: boolean) => void;
   setHideNotInterested: (hide: boolean) => void;
+  setOnlySingleShowings: (enabled: boolean) => void;
   clearAllFilters: () => void;
   getActiveFilterCount: () => number;
 
@@ -127,6 +130,7 @@ const initialState: FilterState = {
   venueType: "all",
   hideSeen: false,
   hideNotInterested: true, // Films marked "not interested" are hidden by default
+  onlySingleShowings: false,
   updatedAt: new Date().toISOString(),
 };
 
@@ -270,6 +274,16 @@ export const useFilters = create<FilterState & FilterActions>()(
         set({ hideNotInterested: hide, updatedAt: new Date().toISOString() });
       },
 
+      setOnlySingleShowings: (enabled) => {
+        trackFilterChange("single_showings", enabled, "set");
+        set({ onlySingleShowings: enabled, updatedAt: new Date().toISOString() });
+      },
+
+      setOnlySingleShowings: (enabled) => {
+        trackFilterChange("single_showings", enabled, "set");
+        set({ onlySingleShowings: enabled, updatedAt: new Date().toISOString() });
+      },
+
       clearAllFilters: () => {
         trackFilterChange("all", null, "cleared");
         set({ ...initialState, updatedAt: new Date().toISOString() });
@@ -294,6 +308,7 @@ export const useFilters = create<FilterState & FilterActions>()(
         // Venue type (only count if not "all")
         if (state.venueType !== "all") count++;
         if (state.hideSeen) count++;
+        if (state.onlySingleShowings) count++;
         // Don't count hideNotInterested - it's the default behavior
         // Users expect "not interested" films to be hidden automatically
         return count;
@@ -319,6 +334,7 @@ export const useFilters = create<FilterState & FilterActions>()(
           venueType: state.venueType,
           hideSeen: state.hideSeen,
           hideNotInterested: state.hideNotInterested,
+          onlySingleShowings: state.onlySingleShowings,
           updatedAt: state.updatedAt,
         };
       },
@@ -338,6 +354,7 @@ export const useFilters = create<FilterState & FilterActions>()(
         venueType: state.venueType,
         hideSeen: state.hideSeen,
         hideNotInterested: state.hideNotInterested,
+        onlySingleShowings: state.onlySingleShowings,
         updatedAt: state.updatedAt,
       }),
     }

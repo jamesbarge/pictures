@@ -83,6 +83,7 @@ export function CalendarView({ screenings, cinemas }: CalendarViewProps) {
   // Get hide filter values separately for stable selector
   const hideSeen = filters.hideSeen;
   const hideNotInterested = filters.hideNotInterested;
+  const onlySingleShowings = filters.onlySingleShowings;
 
   // Get all film statuses - only used when hide filters are active
   const allFilmStatuses = useFilmStatus((state) => state.films);
@@ -106,6 +107,22 @@ export function CalendarView({ screenings, cinemas }: CalendarViewProps) {
     }
     return hidden;
   }, [allFilmStatuses, hideSeen, hideNotInterested]);
+
+  // Precompute films that appear only once per day across London
+  const singleShowingSet = useMemo(() => {
+    if (!onlySingleShowings) return null;
+    const counts = new Map<string, number>();
+    for (const screening of screenings) {
+      const dateKey = format(startOfDay(new Date(screening.datetime)), "yyyy-MM-dd");
+      const key = `${dateKey}|${screening.film.id}`;
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+    const singles = new Set<string>();
+    for (const [key, count] of counts.entries()) {
+      if (count === 1) singles.add(key);
+    }
+    return singles;
+  }, [onlySingleShowings, screenings]);
 
   // Apply all filters (only after mount)
   const filteredScreenings = useMemo(() => {
@@ -223,6 +240,15 @@ export function CalendarView({ screenings, cinemas }: CalendarViewProps) {
         const hour = getHours(new Date(s.datetime));
         const timeOfDay = getTimeOfDayFromHour(hour);
         if (!filters.timesOfDay.includes(timeOfDay)) {
+          return false;
+        }
+      }
+
+      // Only single showings per day across London
+      if (filters.onlySingleShowings && singleShowingSet) {
+        const dateKey = format(startOfDay(new Date(s.datetime)), "yyyy-MM-dd");
+        const key = `${dateKey}|${s.film.id}`;
+        if (!singleShowingSet.has(key)) {
           return false;
         }
       }
