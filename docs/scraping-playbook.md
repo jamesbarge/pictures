@@ -19,7 +19,7 @@ This document describes how each cinema website is scraped, including the approa
 | **Peckhamplex** | Multi-page | No | `/film/{slug}` | Working |
 | **Nickel** | API | No | `thenickel.co.uk/api/screenings/upcoming` | Working |
 | **Everyman** | Date tabs | Playwright | `/venues-list/{code}-everyman-{slug}/` | Working |
-| **Lexi** | Single page | Playwright | `/TheLexiCinema.dll/Home` | Broken |
+| **Lexi** | Embedded JSON | No | `/TheLexiCinema.dll/Home` | Working |
 | **Garden Cinema** | Single page | No | `thegardencinema.co.uk` homepage | Working |
 | **Close-Up Cinema** | Embedded JSON | No | `closeupfilmcentre.com` homepage | Working |
 | **Cine Lumiere** | Single page | No | `cinelumiere.savoysystems.co.uk/CineLumiere.dll/` | Working |
@@ -381,15 +381,26 @@ west_norwood: 10099, ealing: 10107
 
 **File:** `src/scrapers/cinemas/lexi.ts`
 
-**Status:** Currently broken - cannot extract dates from page
+**Status:** Working (switched to embedded JSON)
 
 **Approach:**
-- Uses Playwright for JS-rendered page
-- Legacy ASP.NET site (`.dll` URLs)
+- Single fetch of homepage; parse embedded `var Events = {...}` JSON (no Playwright)
+- JSON contains all films and performances
 
 **URL Pattern:** `/TheLexiCinema.dll/Home`
 
-**Known Issue:** Film cards found but date text extraction fails
+**Date/Time Format:**
+- `StartDate`: `"YYYY-MM-DD"`
+- `StartTime`: `"HHMM"` or `"HMM"` (24-hour, no timezone) — parsed directly into UK local time
+
+**Filters:**
+- TypeDescription === "Film"
+- Skip sold-out (`IsSoldOut === "Y"`) and closed (`!IsOpenForSale`)
+- Deduped via `sourceId`
+
+**Notes:**
+- Booking URLs come from `URL` field; prepend base when relative
+- Titles cleaned of years/ratings and “+ Q&A” suffixes
 
 ---
 
