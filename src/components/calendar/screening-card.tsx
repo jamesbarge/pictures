@@ -11,6 +11,11 @@
 import Link from "next/link";
 import Image from "next/image";
 import { format } from "date-fns";
+
+// Tiny 10x15 dark gray placeholder for blur effect during image load
+// This matches the 2:3 aspect ratio of movie posters
+const POSTER_BLUR_PLACEHOLDER =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAPCAYAAADd/14OAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAKklEQVQoz2Nk+M/AQAxgZGBg+M9AB2BkYGBgZGRgYGCgF2D4T7wexAAGABPmAhHXnXDuAAAAAElFTkSuQmCC";
 import { cn } from "@/lib/cn";
 import { Heart, X } from "lucide-react";
 import { useFilmStatus, type FilmStatus } from "@/stores/film-status";
@@ -138,7 +143,9 @@ export const ScreeningCard = memo(function ScreeningCard({ screening }: Screenin
               alt=""
               fill
               className="object-cover transition-transform duration-500 group-hover:scale-110"
-              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 20vw, 15vw"
+              placeholder="blur"
+              blurDataURL={POSTER_BLUR_PLACEHOLDER}
             />
           ) : (
             /* eslint-disable-next-line @next/next/no-img-element */

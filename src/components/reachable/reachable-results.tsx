@@ -8,6 +8,9 @@
 import { useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
+
+// Tiny placeholder for blur effect during image load
+const POSTER_BLUR = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAPCAYAAADd/14OAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAKklEQVQoz2Nk+M/AQAxgZGBg+M9AB2BkYGBgZGRgYGCgF2D4T7wexAAGABPmAhHXnXDuAAAAAElFTkSuQmCC";
 import { Clock, MapPin, Train, Calendar, ExternalLink, Footprints, Bike } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/cn";
@@ -119,6 +122,8 @@ function ReachableScreeningCard({
             width={80}
             height={120}
             className="w-full aspect-[2/3] object-cover rounded"
+            placeholder="blur"
+            blurDataURL={POSTER_BLUR}
           />
         ) : (
           <div className="w-full aspect-[2/3] bg-background-tertiary rounded flex items-center justify-center">

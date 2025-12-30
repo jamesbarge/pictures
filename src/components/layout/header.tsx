@@ -89,8 +89,8 @@ export function Header({ cinemas, festivals }: HeaderProps) {
           />
         </div>
 
-        {/* Active Filter Chips */}
-        {mounted && <ActiveFilterChips cinemas={cinemas} />}
+        {/* Active Filter Chips - always render container to prevent CLS */}
+        <ActiveFilterChips cinemas={cinemas} mounted={mounted} />
 
         {/* Collapsible Filter Panel */}
         {filtersOpen && (
@@ -186,57 +186,66 @@ function MobileFiltersButton({
 }
 
 // Active Filter Chips - Shows what's currently filtered
-function ActiveFilterChips({ cinemas }: { cinemas: Cinema[] }) {
+// Always renders container to prevent CLS, content only after hydration
+function ActiveFilterChips({ cinemas, mounted }: { cinemas: Cinema[]; mounted: boolean }) {
   const filters = useFilters();
+
+  // Only compute chips after hydration (localStorage not available during SSR)
   const chips: { label: string; onRemove: () => void }[] = [];
 
-  // Film type chip
-  if (filters.programmingTypes.length > 0) {
-    const type = filters.programmingTypes[0];
-    const label = type === "repertory" ? "Repertory" : type === "new_release" ? "New Releases" : type;
-    chips.push({
-      label,
-      onRemove: () => filters.setProgrammingTypes([]),
-    });
-  }
-
-  // Date chip
-  if (filters.dateFrom || filters.dateTo) {
-    let label = "Date set";
-    if (filters.dateFrom && filters.dateTo && isSameDay(filters.dateFrom, filters.dateTo)) {
-      label = format(filters.dateFrom, "EEE d MMM");
-    } else if (filters.dateFrom && filters.dateTo) {
-      label = `${format(filters.dateFrom, "d MMM")} - ${format(filters.dateTo, "d MMM")}`;
+  if (mounted) {
+    // Film type chip
+    if (filters.programmingTypes.length > 0) {
+      const type = filters.programmingTypes[0];
+      const label = type === "repertory" ? "Repertory" : type === "new_release" ? "New Releases" : type;
+      chips.push({
+        label,
+        onRemove: () => filters.setProgrammingTypes([]),
+      });
     }
-    chips.push({
-      label,
-      onRemove: () => filters.setDateRange(null, null),
-    });
+
+    // Date chip
+    if (filters.dateFrom || filters.dateTo) {
+      let label = "Date set";
+      if (filters.dateFrom && filters.dateTo && isSameDay(filters.dateFrom, filters.dateTo)) {
+        label = format(filters.dateFrom, "EEE d MMM");
+      } else if (filters.dateFrom && filters.dateTo) {
+        label = `${format(filters.dateFrom, "d MMM")} - ${format(filters.dateTo, "d MMM")}`;
+      }
+      chips.push({
+        label,
+        onRemove: () => filters.setDateRange(null, null),
+      });
+    }
+
+    // Time chip
+    if (filters.timeFrom !== null || filters.timeTo !== null) {
+      chips.push({
+        label: formatTimeRange(filters.timeFrom, filters.timeTo),
+        onRemove: () => filters.setTimeRange(null, null),
+      });
+    }
+
+    // Cinema chip (single chip for all selected cinemas)
+    if (filters.cinemaIds.length > 0) {
+      const count = filters.cinemaIds.length;
+      chips.push({
+        label: count === 1
+          ? cinemas.find(c => c.id === filters.cinemaIds[0])?.shortName || "1 Cinema"
+          : `${count} Cinemas`,
+        onRemove: () => filters.setCinemas([]),
+      });
+    }
   }
 
-  // Time chip
-  if (filters.timeFrom !== null || filters.timeTo !== null) {
-    chips.push({
-      label: formatTimeRange(filters.timeFrom, filters.timeTo),
-      onRemove: () => filters.setTimeRange(null, null),
-    });
+  // Always render container with min-height to prevent CLS
+  // Height matches one row of chips (28px) + margin (8px)
+  if (chips.length === 0) {
+    return null; // No chips = no space needed
   }
-
-  // Cinema chip (single chip for all selected cinemas)
-  if (filters.cinemaIds.length > 0) {
-    const count = filters.cinemaIds.length;
-    chips.push({
-      label: count === 1
-        ? cinemas.find(c => c.id === filters.cinemaIds[0])?.shortName || "1 Cinema"
-        : `${count} Cinemas`,
-      onRemove: () => filters.setCinemas([]),
-    });
-  }
-
-  if (chips.length === 0) return null;
 
   return (
-    <div className="flex flex-wrap gap-2 mt-2">
+    <div className="flex flex-wrap gap-2 mt-2 min-h-[28px]">
       {chips.map((chip, i) => (
         <button
           key={i}

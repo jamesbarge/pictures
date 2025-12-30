@@ -9,6 +9,10 @@
 import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+
+// Tiny placeholder images for blur effect during load
+const POSTER_BLUR = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAPCAYAAADd/14OAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAKklEQVQoz2Nk+M/AQAxgZGBg+M9AB2BkYGBgZGRgYGCgF2D4T7wexAAGABPmAhHXnXDuAAAAAElFTkSuQmCC";
+const BACKDROP_BLUR = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAGCAYAAAD68A/GAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAIklEQVQY02Nk+M/AQAxgZGBg+M9AB2BkYGBgZGRgYGCgFwAAT+4CEbE+FlYAAAAASUVORK5CYII=";
 import { Clock, Calendar, Globe, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { getTmdbUrl, getImdbUrl, generateLetterboxdUrl } from "@/lib/external-urls";
@@ -76,6 +80,8 @@ export function FilmHeader({ film }: FilmHeaderProps) {
               backdropLoaded ? "opacity-30 scale-100" : "opacity-0 scale-105"
             )}
             priority
+            placeholder="blur"
+            blurDataURL={BACKDROP_BLUR}
             onLoad={() => setBackdropLoaded(true)}
           />
           {/* Gradient overlays for light theme */}
@@ -104,6 +110,8 @@ export function FilmHeader({ film }: FilmHeaderProps) {
                       posterLoaded ? "opacity-100 scale-100" : "opacity-0 scale-105"
                     )}
                     priority
+                    placeholder="blur"
+                    blurDataURL={POSTER_BLUR}
                     onLoad={() => setPosterLoaded(true)}
                   />
                 ) : (
