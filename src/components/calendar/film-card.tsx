@@ -1,0 +1,236 @@
+/**
+ * Film Card Component
+ * Displays a single film with aggregated screening count for the day
+ * Used in "film view" mode to show one card per film instead of per screening
+ *
+ * Accessibility: Proper aria-labels, focus states, and keyboard navigation
+ */
+
+"use client";
+
+import Link from "next/link";
+import Image from "next/image";
+
+// Tiny 10x15 dark gray placeholder for blur effect during image load
+// This matches the 2:3 aspect ratio of movie posters
+const POSTER_BLUR_PLACEHOLDER =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAPCAYAAADd/14OAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAKklEQVQoz2Nk+M/AQAxgZGBg+M9AB2BkYGBgZGRgYGCgF2D4T7wexAAGABPmAhHXnXDuAAAAAElFTkSuQmCC";
+import { cn } from "@/lib/cn";
+import { Heart, X } from "lucide-react";
+import { useFilmStatus, type FilmStatus } from "@/stores/film-status";
+import { memo } from "react";
+import { useHydrated } from "@/hooks/useHydrated";
+import { usePostHog } from "posthog-js/react";
+
+interface FilmCardProps {
+  film: {
+    id: string;
+    title: string;
+    year?: number | null;
+    directors: string[];
+    posterUrl?: string | null;
+  };
+  screeningCount: number;
+  cinemaCount: number;
+  earliestTime: Date;
+  hasSpecialFormats: boolean;
+}
+
+export const FilmCard = memo(function FilmCard({
+  film,
+  screeningCount,
+  cinemaCount,
+  hasSpecialFormats,
+}: FilmCardProps) {
+  const posthog = usePostHog();
+
+  // Performance: Use selectors to only subscribe to this specific film's status
+  // This prevents all cards from re-rendering when any status changes
+  const filmId = film.id;
+  const rawStatus = useFilmStatus((state) => state.films[filmId]?.status ?? null);
+  const setStatus = useFilmStatus((state) => state.setStatus);
+
+  const mounted = useHydrated();
+
+  // Track film card clicks
+  const trackCardClick = () => {
+    posthog.capture("film_card_clicked", {
+      film_id: film.id,
+      film_title: film.title,
+      film_year: film.year,
+      screening_count: screeningCount,
+      cinema_count: cinemaCount,
+      has_special_formats: hasSpecialFormats,
+    });
+  };
+
+  // Apply mounted guard for hydration safety (localStorage not available during SSR)
+  const status = mounted ? rawStatus : null;
+
+  const handleStatusClick = (e: React.MouseEvent, newStatus: FilmStatus) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Toggle off if already set to this status
+    if (status === newStatus) {
+      posthog.capture("film_status_removed", {
+        film_id: film.id,
+        film_title: film.title,
+        previous_status: newStatus,
+      });
+      setStatus(film.id, null);
+      return;
+    }
+
+    // Track status change
+    posthog.capture("film_status_set", {
+      film_id: film.id,
+      film_title: film.title,
+      status: newStatus,
+    });
+
+    // Always pass film metadata so it can be displayed in settings/lists
+    setStatus(film.id, newStatus, {
+      title: film.title,
+      year: film.year,
+      directors: film.directors,
+      posterUrl: film.posterUrl,
+    });
+  };
+
+  const screeningLabel = screeningCount === 1 ? "screening" : "screenings";
+  const cinemaLabel = cinemaCount === 1 ? "cinema" : "cinemas";
+
+  return (
+    <article
+      className={cn(
+        "group relative flex flex-col rounded overflow-hidden cursor-pointer h-full",
+        "bg-background-secondary border border-border-subtle",
+        // Refined hover state - subtle lift with warm shadow
+        "hover:border-accent-primary/30 hover:shadow-card-hover",
+        "hover:-translate-y-0.5 transform-gpu",
+        "transition-all duration-300 ease-out",
+        // Focus-within for keyboard navigation
+        "focus-within:ring-2 focus-within:ring-accent-primary/40 focus-within:ring-offset-2 focus-within:ring-offset-background-primary"
+      )}
+      aria-label={`${film.title} - ${screeningCount} ${screeningLabel} at ${cinemaCount} ${cinemaLabel}`}
+    >
+      {/* Poster area - contains link and buttons */}
+      <div className="relative aspect-[2/3] w-full overflow-hidden">
+        {/* Poster link - decorative, not for keyboard nav */}
+        <Link
+          href={`/film/${film.id}`}
+          className="absolute inset-0 focus:outline-none"
+          tabIndex={-1}
+          aria-hidden="true"
+          onClick={trackCardClick}
+        >
+          {film.posterUrl && !film.posterUrl.includes("poster-placeholder") ? (
+            <Image
+              src={film.posterUrl}
+              alt=""
+              fill
+              className="object-cover"
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 20vw, 15vw"
+              placeholder="blur"
+              blurDataURL={POSTER_BLUR_PLACEHOLDER}
+            />
+          ) : (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={`/api/poster-placeholder?title=${encodeURIComponent(film.title)}${film.year ? `&year=${film.year}` : ""}`}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          )}
+
+          {/* Gradient overlay for better text readability */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-50 group-hover:opacity-60 transition-opacity" />
+        </Link>
+
+        {/* Status buttons - outside aria-hidden Link for accessibility */}
+        {mounted && (
+          <div
+            className={cn(
+              "absolute top-3 left-3 z-10 flex flex-col gap-1.5",
+              "opacity-0 group-hover:opacity-100 transition-opacity duration-200",
+              // Always show if a status is set
+              status && "opacity-100"
+            )}
+          >
+            <button
+              onClick={(e) => handleStatusClick(e, "want_to_see")}
+              className={cn(
+                "group/btn flex items-center gap-1.5 p-1.5 rounded-md backdrop-blur-sm transition-all",
+                status === "want_to_see"
+                  ? "bg-accent-danger/40 text-accent-danger"
+                  : "bg-black/50 text-white/70 hover:text-accent-danger hover:bg-accent-danger/20"
+              )}
+              aria-label={status === "want_to_see" ? "Remove from watchlist" : "Add to watchlist"}
+            >
+              <Heart
+                className={cn("w-4 h-4 shrink-0", status === "want_to_see" && "fill-current")}
+              />
+              <span className="text-[10px] font-medium whitespace-nowrap max-w-0 overflow-hidden group-hover/btn:max-w-[100px] transition-all duration-200">
+                Watchlist
+              </span>
+            </button>
+            <button
+              onClick={(e) => handleStatusClick(e, "not_interested")}
+              className={cn(
+                "group/btn flex items-center gap-1.5 p-1.5 rounded-md backdrop-blur-sm transition-all",
+                status === "not_interested"
+                  ? "bg-black/60 text-white"
+                  : "bg-black/50 text-white/70 hover:text-white hover:bg-black/60"
+              )}
+              aria-label={
+                status === "not_interested" ? "Show this film again" : "Not interested in this film"
+              }
+            >
+              <X className="w-4 h-4 shrink-0" />
+              <span className="text-[10px] font-medium whitespace-nowrap max-w-0 overflow-hidden group-hover/btn:max-w-[100px] transition-all duration-200">
+                Not interested
+              </span>
+            </button>
+          </div>
+        )}
+
+        {/* Special format badge - shows if 35mm/70mm/IMAX available */}
+        {hasSpecialFormats && (
+          <div className="absolute top-3 right-3 z-10">
+            <span className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide rounded bg-accent-gold/90 text-black backdrop-blur-sm">
+              Special Format
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Content - Compact below poster */}
+      <Link
+        href={`/film/${film.id}`}
+        className="flex flex-col flex-1 p-2 focus:outline-none"
+        onClick={trackCardClick}
+      >
+        {/* Title */}
+        <h3 className="font-display text-xs sm:text-sm text-text-primary group-hover:text-accent-primary transition-colors line-clamp-1 leading-tight">
+          {film.title}
+          {film.year && (
+            <span className="text-text-tertiary font-body text-[10px] ml-1">({film.year})</span>
+          )}
+        </h3>
+
+        {/* Director */}
+        {film.directors.length > 0 && (
+          <p className="text-[10px] text-text-secondary mt-0.5 line-clamp-1">
+            {film.directors[0]}
+          </p>
+        )}
+
+        {/* Screening summary */}
+        <p className="text-[10px] text-text-tertiary mt-auto pt-1">
+          {screeningCount} {screeningLabel} at {cinemaCount} {cinemaLabel}
+        </p>
+      </Link>
+    </article>
+  );
+});

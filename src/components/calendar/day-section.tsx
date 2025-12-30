@@ -1,6 +1,7 @@
 /**
  * Day Section Component
  * Groups screenings by date with a sticky header
+ * Supports both screening view (one card per screening) and film view (one card per film)
  */
 
 "use client";
@@ -8,6 +9,21 @@
 import { useMemo } from "react";
 import { format, isToday, isTomorrow, isThisWeek } from "date-fns";
 import { ScreeningCard } from "./screening-card";
+import { FilmCard } from "./film-card";
+
+interface FilmGroup {
+  film: {
+    id: string;
+    title: string;
+    year?: number | null;
+    directors: string[];
+    posterUrl?: string | null;
+  };
+  screeningCount: number;
+  cinemaCount: number;
+  earliestTime: Date;
+  hasSpecialFormats: boolean;
+}
 
 interface DaySectionProps {
   date: Date;
@@ -34,6 +50,8 @@ interface DaySectionProps {
       shortName?: string | null;
     };
   }>;
+  filmGroups?: FilmGroup[];
+  viewMode: "films" | "screenings";
 }
 
 function formatDateHeader(date: Date): { primary: string; secondary: string } {
@@ -61,10 +79,10 @@ function formatDateHeader(date: Date): { primary: string; secondary: string } {
   };
 }
 
-export function DaySection({ date, screenings }: DaySectionProps) {
+export function DaySection({ date, screenings, filmGroups, viewMode }: DaySectionProps) {
   const { primary, secondary } = formatDateHeader(date);
 
-  // Memoize sorting to prevent recalculation on every render
+  // Memoize sorting to prevent recalculation on every render (for screening view)
   const sortedScreenings = useMemo(
     () =>
       [...screenings].sort(
@@ -72,6 +90,13 @@ export function DaySection({ date, screenings }: DaySectionProps) {
       ),
     [screenings]
   );
+
+  // Determine count label based on view mode
+  const isFilmView = viewMode === "films" && filmGroups;
+  const count = isFilmView ? filmGroups.length : screenings.length;
+  const countLabel = isFilmView
+    ? `${count} ${count === 1 ? "film" : "films"}`
+    : `${count} ${count === 1 ? "screening" : "screenings"}`;
 
   return (
     <section className="relative">
@@ -83,16 +108,31 @@ export function DaySection({ date, screenings }: DaySectionProps) {
           </h2>
           <span className="text-sm sm:text-base text-text-secondary font-light">{secondary}</span>
           <span className="ml-auto text-sm text-text-tertiary font-mono tabular-nums">
-            {screenings.length} {screenings.length === 1 ? "screening" : "screenings"}
+            {countLabel}
           </span>
         </div>
       </header>
 
-      {/* Screenings Grid - Compact Letterboxd-style layout */}
+      {/* Grid - Compact Letterboxd-style layout */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3 py-6">
-        {sortedScreenings.map((screening) => (
-          <ScreeningCard key={screening.id} screening={screening} />
-        ))}
+        {isFilmView ? (
+          // Film view: render FilmCard components
+          filmGroups.map((group) => (
+            <FilmCard
+              key={group.film.id}
+              film={group.film}
+              screeningCount={group.screeningCount}
+              cinemaCount={group.cinemaCount}
+              earliestTime={group.earliestTime}
+              hasSpecialFormats={group.hasSpecialFormats}
+            />
+          ))
+        ) : (
+          // Screening view: render ScreeningCard components
+          sortedScreenings.map((screening) => (
+            <ScreeningCard key={screening.id} screening={screening} />
+          ))
+        )}
       </div>
     </section>
   );

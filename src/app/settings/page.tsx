@@ -6,6 +6,7 @@
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { NotInterestedList } from "@/components/settings/not-interested-list";
+import { CalendarViewSetting } from "@/components/settings/calendar-view-setting";
 
 export default function SettingsPage() {
   return (
@@ -29,6 +30,18 @@ export default function SettingsPage() {
         <p className="text-text-secondary mb-8">
           Customize your Postboxd experience
         </p>
+
+        {/* Calendar View Section */}
+        <section className="mb-12">
+          <h2 className="text-xl font-display text-text-primary mb-4">
+            Calendar Display
+          </h2>
+          <p className="text-text-secondary text-sm mb-6">
+            Choose how screenings are displayed on the main calendar.
+          </p>
+
+          <CalendarViewSetting />
+        </section>
 
         {/* Not Interested Section */}
         <section className="mb-12">

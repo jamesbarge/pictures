@@ -27,6 +27,7 @@ import {
 import { HeaderNavButtons } from "@/components/layout/header-nav-buttons";
 import { format, addDays, startOfToday, isSameDay, isSaturday, isSunday, differenceInDays } from "date-fns";
 import { MobileDatePickerModal } from "@/components/filters/mobile-date-picker-modal";
+import { MobileCinemaPickerModal } from "@/components/filters/mobile-cinema-picker-modal";
 import { DayPicker } from "react-day-picker";
 import { cn } from "@/lib/cn";
 import { useFilters, TIME_PRESETS, formatTimeRange, formatHour, isIndependentCinema, type VenueType } from "@/stores/filters";
@@ -1031,6 +1032,7 @@ function FilmSearchFilter({ mounted }: { mounted: boolean }) {
 // Cinema Filter Component
 function CinemaFilter({ cinemas, mounted }: { cinemas: Cinema[]; mounted: boolean; fullWidth?: boolean }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isMobileModalOpen, setIsMobileModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -1084,10 +1086,19 @@ function CinemaFilter({ cinemas, mounted }: { cinemas: Cinema[]; mounted: boolea
 
   const hasSelection = mounted && cinemaIds.length > 0;
 
+  const handleButtonClick = () => {
+    // On mobile (< 640px), open full-screen modal instead of dropdown
+    if (typeof window !== "undefined" && window.innerWidth < 640) {
+      setIsMobileModalOpen(true);
+    } else {
+      setIsOpen(!isOpen);
+    }
+  };
+
   return (
     <div ref={containerRef} className="relative">
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={handleButtonClick}
         className={cn(
           "flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-all min-w-[140px]",
           hasSelection
@@ -1197,6 +1208,13 @@ function CinemaFilter({ cinemas, mounted }: { cinemas: Cinema[]; mounted: boolea
           )}
         </div>
       )}
+
+      {/* Mobile Full-Screen Modal */}
+      <MobileCinemaPickerModal
+        isOpen={isMobileModalOpen}
+        onClose={() => setIsMobileModalOpen(false)}
+        cinemas={cinemas}
+      />
     </div>
   );
 }

@@ -60,9 +60,24 @@ interface CalendarViewProps {
   cinemas: CinemaWithCoords[];
 }
 
+// Film group structure for film view mode
+interface FilmGroup {
+  film: {
+    id: string;
+    title: string;
+    year?: number | null;
+    directors: string[];
+    posterUrl?: string | null;
+  };
+  screeningCount: number;
+  cinemaCount: number;
+  earliestTime: Date;
+  hasSpecialFormats: boolean;
+}
+
 export function CalendarView({ screenings, cinemas }: CalendarViewProps) {
   const filters = useFilters();
-  const { mapArea } = usePreferences();
+  const { mapArea, calendarViewMode } = usePreferences();
   const mounted = useHydrated();
   const filmStatusPersist = useFilmStatus.persist;
   const [filmStatusesHydrated, setFilmStatusesHydrated] = useState(
@@ -264,16 +279,7 @@ export function CalendarView({ screenings, cinemas }: CalendarViewProps) {
 
   const activeFilterCount = mounted ? filters.getActiveFilterCount() : 0;
 
-  // Avoid flashing hidden films before film status storage hydrates
-  if (!mounted || ((hideSeen || hideNotInterested) && !filmStatusesHydrated)) {
-    return (
-      <div className="py-8 text-center text-text-tertiary text-sm">
-        Loading your filters…
-      </div>
-    );
-  }
-
-  // Group screenings by date
+  // Group screenings by date - must be before any conditional returns (React hooks rules)
   const groupedByDate = useMemo(() => {
     const groups = new Map<string, { date: Date; screenings: Screening[] }>();
 
@@ -295,8 +301,55 @@ export function CalendarView({ screenings, cinemas }: CalendarViewProps) {
     );
   }, [filteredScreenings]);
 
+  // Group screenings by film within each date (for film view mode)
+  const groupedByDateThenFilm = useMemo(() => {
+    if (calendarViewMode !== "films") return null;
+
+    return groupedByDate.map(({ date, screenings }) => {
+      // Group by film.id
+      const filmMap = new Map<string, { film: Screening["film"]; screenings: Screening[] }>();
+      for (const screening of screenings) {
+        if (!filmMap.has(screening.film.id)) {
+          filmMap.set(screening.film.id, {
+            film: screening.film,
+            screenings: [],
+          });
+        }
+        filmMap.get(screening.film.id)!.screenings.push(screening);
+      }
+
+      // Compute film groups with counts
+      const filmGroups: FilmGroup[] = Array.from(filmMap.values()).map((g) => ({
+        film: g.film,
+        screeningCount: g.screenings.length,
+        cinemaCount: new Set(g.screenings.map((s) => s.cinema.id)).size,
+        earliestTime: new Date(
+          Math.min(...g.screenings.map((s) => new Date(s.datetime).getTime()))
+        ),
+        hasSpecialFormats: g.screenings.some((s) =>
+          ["35mm", "70mm", "imax", "4k"].includes(s.format?.toLowerCase() || "")
+        ),
+      }));
+
+      // Sort by earliest screening time
+      filmGroups.sort((a, b) => a.earliestTime.getTime() - b.earliestTime.getTime());
+
+      return { date, screenings, filmGroups };
+    });
+  }, [groupedByDate, calendarViewMode]);
+
   // Map filter is active if user drew an area on the map (synced to cinemaIds)
   const hasMapFilter = mounted && mapArea !== null;
+
+  // Avoid flashing hidden films before film status storage hydrates
+  // Must be AFTER all useMemo hooks (React hooks rules)
+  if (!mounted || ((hideSeen || hideNotInterested) && !filmStatusesHydrated)) {
+    return (
+      <div className="py-8 text-center text-text-tertiary text-sm">
+        Loading your filters…
+      </div>
+    );
+  }
 
   if (filteredScreenings.length === 0) {
     return (
@@ -310,13 +363,20 @@ export function CalendarView({ screenings, cinemas }: CalendarViewProps) {
     );
   }
 
+  // Choose data source based on view mode
+  const displayData = calendarViewMode === "films" && groupedByDateThenFilm
+    ? groupedByDateThenFilm
+    : groupedByDate.map(g => ({ ...g, filmGroups: undefined }));
+
   return (
     <div className="space-y-2">
-      {groupedByDate.map(({ date, screenings }) => (
+      {displayData.map(({ date, screenings, filmGroups }) => (
         <DaySection
           key={format(date, "yyyy-MM-dd")}
           date={date}
           screenings={screenings}
+          filmGroups={filmGroups}
+          viewMode={calendarViewMode}
         />
       ))}
     </div>

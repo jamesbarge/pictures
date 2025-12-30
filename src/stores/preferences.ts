@@ -13,6 +13,7 @@ export interface PreferencesState {
 
   // View preferences
   defaultView: "list" | "grid";
+  calendarViewMode: "films" | "screenings";
   showRepertoryOnly: boolean;
   hidePastScreenings: boolean;
 
@@ -33,6 +34,7 @@ export interface PreferencesState {
   selectAllCinemas: (cinemaIds: string[]) => void;
   clearCinemas: () => void;
   setDefaultView: (view: "list" | "grid") => void;
+  setCalendarViewMode: (mode: "films" | "screenings") => void;
   setShowRepertoryOnly: (show: boolean) => void;
   setHidePastScreenings: (hide: boolean) => void;
   setDefaultDateRange: (range: PreferencesState["defaultDateRange"]) => void;
@@ -46,12 +48,13 @@ export interface PreferencesState {
 
   // Sync actions
   bulkSet: (prefs: Partial<PreferencesState>) => void;
-  getAll: () => Omit<PreferencesState, "toggleCinema" | "setCinemas" | "selectAllCinemas" | "clearCinemas" | "setDefaultView" | "setShowRepertoryOnly" | "setHidePastScreenings" | "setDefaultDateRange" | "togglePreferredFormat" | "reset" | "setMapArea" | "toggleMapFiltering" | "clearMapArea" | "bulkSet" | "getAll">;
+  getAll: () => Omit<PreferencesState, "toggleCinema" | "setCinemas" | "selectAllCinemas" | "clearCinemas" | "setDefaultView" | "setCalendarViewMode" | "setShowRepertoryOnly" | "setHidePastScreenings" | "setDefaultDateRange" | "togglePreferredFormat" | "reset" | "setMapArea" | "toggleMapFiltering" | "clearMapArea" | "bulkSet" | "getAll">;
 }
 
 const DEFAULT_STATE = {
   selectedCinemas: [] as string[],
   defaultView: "list" as const,
+  calendarViewMode: "films" as const,
   showRepertoryOnly: false,
   hidePastScreenings: true,
   defaultDateRange: "all" as const,
@@ -85,6 +88,9 @@ export const usePreferences = create<PreferencesState>()(
 
       setDefaultView: (view) =>
         set({ defaultView: view, updatedAt: new Date().toISOString() }),
+
+      setCalendarViewMode: (mode) =>
+        set({ calendarViewMode: mode, updatedAt: new Date().toISOString() }),
 
       setShowRepertoryOnly: (show) =>
         set({ showRepertoryOnly: show, updatedAt: new Date().toISOString() }),
@@ -134,6 +140,7 @@ export const usePreferences = create<PreferencesState>()(
         return {
           selectedCinemas: state.selectedCinemas,
           defaultView: state.defaultView,
+          calendarViewMode: state.calendarViewMode,
           showRepertoryOnly: state.showRepertoryOnly,
           hidePastScreenings: state.hidePastScreenings,
           defaultDateRange: state.defaultDateRange,

@@ -279,11 +279,6 @@ export const useFilters = create<FilterState & FilterActions>()(
         set({ onlySingleShowings: enabled, updatedAt: new Date().toISOString() });
       },
 
-      setOnlySingleShowings: (enabled) => {
-        trackFilterChange("single_showings", enabled, "set");
-        set({ onlySingleShowings: enabled, updatedAt: new Date().toISOString() });
-      },
-
       clearAllFilters: () => {
         trackFilterChange("all", null, "cleared");
         set({ ...initialState, updatedAt: new Date().toISOString() });
