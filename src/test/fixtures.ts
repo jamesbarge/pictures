@@ -4,7 +4,7 @@
  */
 
 import type { FilmStatus, FilmStatusEntry } from "@/stores/film-status";
-import type { FilterState, TimeOfDay, ProgrammingType, VenueType } from "@/stores/filters";
+import type { FilterState, TimeOfDay, ProgrammingType } from "@/stores/filters";
 
 // =============================================================================
 // Date Fixtures
@@ -319,7 +319,6 @@ export function createFilterState(overrides: Partial<FilterState> = {}): FilterS
     timesOfDay: [],
     festivalSlug: null,
     festivalOnly: false,
-    venueType: "all",
     hideSeen: false,
     hideNotInterested: true,
     onlySingleShowings: false,

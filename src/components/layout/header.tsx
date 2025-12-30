@@ -21,8 +21,6 @@ import {
   Sparkles,
   History,
   SlidersHorizontal,
-  Store,
-  Building2,
 } from "lucide-react";
 import { HeaderNavButtons } from "@/components/layout/header-nav-buttons";
 import { format, addDays, startOfToday, isSameDay, isSaturday, isSunday, differenceInDays } from "date-fns";
@@ -30,7 +28,7 @@ import { MobileDatePickerModal } from "@/components/filters/mobile-date-picker-m
 import { MobileCinemaPickerModal } from "@/components/filters/mobile-cinema-picker-modal";
 import { DayPicker } from "react-day-picker";
 import { cn } from "@/lib/cn";
-import { useFilters, TIME_PRESETS, formatTimeRange, formatHour, isIndependentCinema, type VenueType } from "@/stores/filters";
+import { useFilters, TIME_PRESETS, formatTimeRange, formatHour, isIndependentCinema } from "@/stores/filters";
 import { usePreferences } from "@/stores/preferences";
 import { Button, IconButton } from "@/components/ui";
 import { Clock } from "lucide-react";
@@ -108,14 +106,6 @@ export function Header({ cinemas, festivals }: HeaderProps) {
               <FilmTypeFilter mounted={mounted} fullWidth />
             </div>
 
-            {/* Venue Type */}
-            <div className="py-4">
-              <label className="block text-[11px] font-semibold text-text-tertiary uppercase tracking-wider mb-3">
-                Venue Type
-              </label>
-              <VenueTypeFilter mounted={mounted} fullWidth />
-            </div>
-
             {/* Date & Time */}
             <div className="py-4">
               <label className="block text-[11px] font-semibold text-text-tertiary uppercase tracking-wider mb-3">
@@ -145,9 +135,6 @@ export function Header({ cinemas, festivals }: HeaderProps) {
         <div className="flex items-center gap-3">
           {/* Film Type Filter */}
           <FilmTypeFilter mounted={mounted} />
-
-          {/* Venue Type Filter */}
-          <VenueTypeFilter mounted={mounted} />
 
           {/* Date Picker */}
           <DateFilter mounted={mounted} />
@@ -242,14 +229,6 @@ function ActiveFilterChips({ cinemas, mounted }: { cinemas: Cinema[]; mounted: b
       });
     }
 
-    // Venue type chip
-    if (filters.venueType !== "all") {
-      chips.push({
-        label: filters.venueType === "independent" ? "Indie" : "Chains",
-        onRemove: () => filters.setVenueType("all"),
-      });
-    }
-
     // Cinema chip (single chip for all selected cinemas)
     if (filters.cinemaIds.length > 0) {
       const count = filters.cinemaIds.length;
@@ -312,52 +291,6 @@ function FilmTypeFilter({ mounted, fullWidth }: { mounted: boolean; fullWidth?: 
     { value: "new_release", label: "New", icon: Sparkles },
     { value: "repertory", label: "Repertory", icon: History },
   ] as const;
-
-  return (
-    <div className={cn(
-      "flex rounded-lg border border-border-default bg-background-tertiary overflow-hidden",
-      fullWidth && "w-full"
-    )}>
-      {options.map((option) => {
-        const Icon = option.icon;
-        const isActive = currentType === option.value;
-        return (
-          <button
-            key={option.value}
-            onClick={() => handleSelect(option.value)}
-            className={cn(
-              "flex items-center justify-center gap-1.5 px-3 py-2.5 text-sm font-medium transition-all",
-              "border-r border-border-default last:border-r-0",
-              fullWidth && "flex-1",
-              isActive
-                ? "bg-accent-primary text-text-inverse"
-                : "text-text-secondary hover:text-text-primary hover:bg-background-hover"
-            )}
-          >
-            <Icon className="w-4 h-4" />
-            <span>{option.label}</span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-// Venue Type Filter Component - All / Independent / Chains
-function VenueTypeFilter({ mounted, fullWidth }: { mounted: boolean; fullWidth?: boolean }) {
-  const { venueType, setVenueType } = useFilters();
-
-  const currentType: VenueType = mounted ? venueType : "all";
-
-  const handleSelect = (type: VenueType) => {
-    setVenueType(type);
-  };
-
-  const options: { value: VenueType; label: string; icon: typeof Film }[] = [
-    { value: "all", label: "All", icon: MapPin },
-    { value: "independent", label: "Indie", icon: Store },
-    { value: "chain", label: "Chains", icon: Building2 },
-  ];
 
   return (
     <div className={cn(
@@ -1036,7 +969,7 @@ function CinemaFilter({ cinemas, mounted }: { cinemas: Cinema[]; mounted: boolea
   const [searchTerm, setSearchTerm] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const { cinemaIds, toggleCinema, setCinemas, venueType } = useFilters();
+  const { cinemaIds, toggleCinema, setCinemas } = useFilters();
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -1055,25 +988,16 @@ function CinemaFilter({ cinemas, mounted }: { cinemas: Cinema[]; mounted: boolea
     }
   }, [isOpen]);
 
-  // Filter cinemas by venue type first, then by search term
+  // Filter cinemas by search term
   const filteredCinemas = useMemo(() => {
-    // First filter by venue type
-    let filtered = cinemas;
-    if (venueType === "independent") {
-      filtered = cinemas.filter(c => isIndependentCinema(c.chain));
-    } else if (venueType === "chain") {
-      filtered = cinemas.filter(c => !isIndependentCinema(c.chain));
-    }
-
-    // Then filter by search term
-    if (!searchTerm.trim()) return filtered;
+    if (!searchTerm.trim()) return cinemas;
     const term = searchTerm.toLowerCase();
-    return filtered.filter(
+    return cinemas.filter(
       (c) =>
         c.name.toLowerCase().includes(term) ||
         c.shortName?.toLowerCase().includes(term)
     );
-  }, [cinemas, searchTerm, venueType]);
+  }, [cinemas, searchTerm]);
 
   const displayText = useMemo(() => {
     if (!mounted || cinemaIds.length === 0) return "All Cinemas";

@@ -13,7 +13,6 @@ import {
   isIndependentCinema,
   getTimeOfDayLabel,
   getProgrammingTypeLabel,
-  getVenueTypeLabel,
   TIME_PRESETS,
 } from "./filters";
 
@@ -32,7 +31,6 @@ const initialStateValues = {
   timesOfDay: [] as ("morning" | "afternoon" | "evening" | "late_night")[],
   festivalSlug: null as string | null,
   festivalOnly: false,
-  venueType: "all" as const,
   hideSeen: false,
   hideNotInterested: true,
   onlySingleShowings: false,
@@ -195,13 +193,6 @@ describe("useFilters store", () => {
     });
   });
 
-  describe("setVenueType", () => {
-    it("should set venue type", () => {
-      useFilters.getState().setVenueType("independent");
-      expect(useFilters.getState().venueType).toBe("independent");
-    });
-  });
-
   describe("personal filters", () => {
     it("should set hide seen", () => {
       useFilters.getState().setHideSeen(true);
@@ -291,14 +282,6 @@ describe("useFilters store", () => {
       expect(useFilters.getState().getActiveFilterCount()).toBe(1);
     });
 
-    it("should count venueType only when not 'all'", () => {
-      useFilters.setState({ venueType: "all" });
-      expect(useFilters.getState().getActiveFilterCount()).toBe(0);
-
-      useFilters.setState({ venueType: "independent" });
-      expect(useFilters.getState().getActiveFilterCount()).toBe(1);
-    });
-
     it("should count festival filters", () => {
       useFilters.setState({ festivalSlug: "lff" });
       expect(useFilters.getState().getActiveFilterCount()).toBe(1);
@@ -322,10 +305,9 @@ describe("useFilters store", () => {
         genres: ["Horror"],        // +1
         hideSeen: true,            // +1
         festivalSlug: "lff",       // +1
-        venueType: "independent",  // +1
         onlySingleShowings: true,  // +1
       });
-      expect(useFilters.getState().getActiveFilterCount()).toBe(11);
+      expect(useFilters.getState().getActiveFilterCount()).toBe(10);
     });
   });
 
@@ -490,14 +472,6 @@ describe("label helper functions", () => {
       expect(getProgrammingTypeLabel("new_release")).toBe("New Release");
       expect(getProgrammingTypeLabel("special_event")).toBe("Special Event");
       expect(getProgrammingTypeLabel("preview")).toBe("Preview / Premiere");
-    });
-  });
-
-  describe("getVenueTypeLabel", () => {
-    it("should return correct labels", () => {
-      expect(getVenueTypeLabel("all")).toBe("All Venues");
-      expect(getVenueTypeLabel("independent")).toBe("Independent");
-      expect(getVenueTypeLabel("chain")).toBe("Chains");
     });
   });
 });

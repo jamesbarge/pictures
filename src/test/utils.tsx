@@ -31,7 +31,6 @@ const initialFiltersState = {
   timesOfDay: [],
   festivalSlug: null,
   festivalOnly: false,
-  venueType: "all" as const,
   hideSeen: false,
   hideNotInterested: true,
   onlySingleShowings: false,

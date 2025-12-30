@@ -174,18 +174,6 @@ export function CalendarView({ screenings, cinemas }: CalendarViewProps) {
         return false;
       }
 
-      // Venue type filter (independent vs chain)
-      if (filters.venueType !== "all") {
-        const cinema = cinemas.find(c => c.id === s.cinema.id);
-        const isIndependent = cinema ? isIndependentCinema(cinema.chain) : true;
-        if (filters.venueType === "independent" && !isIndependent) {
-          return false;
-        }
-        if (filters.venueType === "chain" && isIndependent) {
-          return false;
-        }
-      }
-
       // Date range filter
       if (filters.dateFrom || filters.dateTo) {
         const screeningDate = new Date(s.datetime);

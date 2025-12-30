@@ -20,7 +20,6 @@ function trackFilterChange(filterType: string, value: unknown, action: "added" |
 
 export type TimeOfDay = "morning" | "afternoon" | "evening" | "late_night";
 export type ProgrammingType = "repertory" | "new_release" | "special_event" | "preview";
-export type VenueType = "all" | "independent" | "chain";
 
 export interface FilterState {
   // Search
@@ -52,9 +51,6 @@ export interface FilterState {
   festivalSlug: string | null; // Filter by specific festival
   festivalOnly: boolean; // Only show festival screenings
 
-  // Venue type (chain vs independent)
-  venueType: VenueType;
-
   // Personal
   hideSeen: boolean;
   hideNotInterested: boolean;
@@ -74,10 +70,9 @@ export interface PersistedFilters {
   timesOfDay: TimeOfDay[];
   festivalSlug: string | null;
   festivalOnly: boolean;
-  venueType: VenueType;
   hideSeen: boolean;
   hideNotInterested: boolean;
-   onlySingleShowings: boolean;
+  onlySingleShowings: boolean;
   updatedAt: string;
 }
 
@@ -99,8 +94,6 @@ interface FilterActions {
   setFestivalFilter: (slug: string | null) => void;
   setFestivalOnly: (festivalOnly: boolean) => void;
   clearFestivalFilter: () => void;
-  // Venue type
-  setVenueType: (type: VenueType) => void;
   // Personal
   setHideSeen: (hide: boolean) => void;
   setHideNotInterested: (hide: boolean) => void;
@@ -127,7 +120,6 @@ const initialState: FilterState = {
   timesOfDay: [],
   festivalSlug: null,
   festivalOnly: false,
-  venueType: "all",
   hideSeen: false,
   hideNotInterested: true, // Films marked "not interested" are hidden by default
   onlySingleShowings: false,
@@ -258,12 +250,6 @@ export const useFilters = create<FilterState & FilterActions>()(
         set({ festivalSlug: null, festivalOnly: false, updatedAt: new Date().toISOString() });
       },
 
-      // Venue type actions
-      setVenueType: (type) => {
-        trackFilterChange("venue_type", type, "set");
-        set({ venueType: type, updatedAt: new Date().toISOString() });
-      },
-
       setHideSeen: (hide) => {
         trackFilterChange("hide_seen", hide, "set");
         set({ hideSeen: hide, updatedAt: new Date().toISOString() });
@@ -300,8 +286,6 @@ export const useFilters = create<FilterState & FilterActions>()(
         // Festival filters
         if (state.festivalSlug) count++;
         if (state.festivalOnly) count++;
-        // Venue type (only count if not "all")
-        if (state.venueType !== "all") count++;
         if (state.hideSeen) count++;
         if (state.onlySingleShowings) count++;
         // Don't count hideNotInterested - it's the default behavior
@@ -326,7 +310,6 @@ export const useFilters = create<FilterState & FilterActions>()(
           timesOfDay: state.timesOfDay,
           festivalSlug: state.festivalSlug,
           festivalOnly: state.festivalOnly,
-          venueType: state.venueType,
           hideSeen: state.hideSeen,
           hideNotInterested: state.hideNotInterested,
           onlySingleShowings: state.onlySingleShowings,
@@ -346,7 +329,6 @@ export const useFilters = create<FilterState & FilterActions>()(
         timesOfDay: state.timesOfDay,
         festivalSlug: state.festivalSlug,
         festivalOnly: state.festivalOnly,
-        venueType: state.venueType,
         hideSeen: state.hideSeen,
         hideNotInterested: state.hideNotInterested,
         onlySingleShowings: state.onlySingleShowings,
@@ -380,15 +362,6 @@ export function getProgrammingTypeLabel(type: ProgrammingType): string {
     new_release: "New Release",
     special_event: "Special Event",
     preview: "Preview / Premiere",
-  };
-  return labels[type];
-}
-
-export function getVenueTypeLabel(type: VenueType): string {
-  const labels: Record<VenueType, string> = {
-    all: "All Venues",
-    independent: "Independent",
-    chain: "Chains",
   };
   return labels[type];
 }

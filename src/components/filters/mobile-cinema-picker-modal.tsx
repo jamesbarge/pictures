@@ -26,7 +26,7 @@ interface MobileCinemaPickerModalProps {
 }
 
 export function MobileCinemaPickerModal({ isOpen, onClose, cinemas }: MobileCinemaPickerModalProps) {
-  const { cinemaIds, toggleCinema, setCinemas, venueType } = useFilters();
+  const { cinemaIds, toggleCinema, setCinemas } = useFilters();
   const [searchTerm, setSearchTerm] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -51,25 +51,16 @@ export function MobileCinemaPickerModal({ isOpen, onClose, cinemas }: MobileCine
     }
   }, [isOpen]);
 
-  // Filter cinemas by venue type first, then by search term
+  // Filter cinemas by search term
   const filteredCinemas = useMemo(() => {
-    // First filter by venue type
-    let filtered = cinemas;
-    if (venueType === "independent") {
-      filtered = cinemas.filter(c => isIndependentCinema(c.chain));
-    } else if (venueType === "chain") {
-      filtered = cinemas.filter(c => !isIndependentCinema(c.chain));
-    }
-
-    // Then filter by search term
-    if (!searchTerm.trim()) return filtered;
+    if (!searchTerm.trim()) return cinemas;
     const term = searchTerm.toLowerCase();
-    return filtered.filter(
+    return cinemas.filter(
       (c) =>
         c.name.toLowerCase().includes(term) ||
         c.shortName?.toLowerCase().includes(term)
     );
-  }, [cinemas, searchTerm, venueType]);
+  }, [cinemas, searchTerm]);
 
   // Group cinemas by chain vs independent
   const { chainCinemas, independentCinemas } = useMemo(() => {
