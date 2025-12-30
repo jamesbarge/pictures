@@ -4,12 +4,40 @@ import path from "path";
 export default defineConfig({
   test: {
     globals: true,
-    environment: "node",
-    include: ["src/**/*.test.ts"],
+    // Use jsdom for component tests, node for pure logic
+    environment: "jsdom",
+    // Include both .ts and .tsx test files
+    include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
+    // Exclude E2E tests (those are run by Playwright)
+    exclude: ["e2e/**", "node_modules/**"],
+    // Setup files run before each test file
+    setupFiles: ["./src/test/setup.ts"],
+    // Coverage configuration
     coverage: {
-      reporter: ["text", "html"],
-      include: ["src/lib/**", "src/scrapers/utils/**"],
+      reporter: ["text", "html", "json-summary"],
+      include: [
+        "src/lib/**",
+        "src/scrapers/utils/**",
+        "src/stores/**",
+        "src/app/api/**",
+        "src/components/**",
+      ],
+      exclude: [
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "**/test/**",
+        "**/*.d.ts",
+      ],
+      // Coverage thresholds - fail if below these
+      thresholds: {
+        lines: 60,
+        functions: 60,
+        branches: 55,
+        statements: 60,
+      },
     },
+    // Timeout for slow tests
+    testTimeout: 10000,
   },
   resolve: {
     alias: {

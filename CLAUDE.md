@@ -168,3 +168,70 @@ npm run agents:enrich    # Enrich film metadata
 - Cinema IDs are slugs (e.g., "bfi-southbank", "curzon-soho")
 - All times stored in UTC in database, displayed in UK timezone
 - PostHog analytics: track meaningful user actions, not every click
+
+## Testing Rules
+
+### Test Requirements
+- **All new code must include tests** - PRs adding functionality without tests should include tests
+- **Maintain coverage thresholds** - Target: 60% lines, 60% functions (enforced in CI)
+- **Run tests before committing** - Use `npm run test:run` to verify changes don't break existing tests
+
+### Test File Locations
+- **Unit tests**: Co-located with source files (`foo.ts` -> `foo.test.ts`)
+- **E2E tests**: `e2e/` directory
+- **Test utilities**: `src/test/` directory (setup, fixtures, helpers)
+
+### Testing Patterns
+
+#### Store Tests (Zustand)
+```typescript
+// Reset state values before each test (don't use replace: true)
+beforeEach(() => {
+  useStoreName.setState(initialStateValues);
+});
+
+// Call actions via getState()
+useStoreName.getState().toggleSomething();
+expect(useStoreName.getState().someValue).toBe(expected);
+```
+
+#### API Route Tests
+```typescript
+// Use NextRequest for testing API routes
+const request = new NextRequest('http://localhost/api/endpoint?param=value');
+const response = await GET(request);
+expect(response.status).toBe(200);
+
+const data = await response.json();
+expect(data.field).toBeDefined();
+```
+
+#### Component Tests (React Testing Library)
+```typescript
+import { renderWithProviders, screen, userEvent } from "@/test/utils";
+
+it("should handle user interaction", async () => {
+  renderWithProviders(<Component />);
+  await userEvent.click(screen.getByRole('button', { name: /submit/i }));
+  expect(screen.getByText(/success/i)).toBeInTheDocument();
+});
+```
+
+### Test Commands
+```bash
+npm run test           # Watch mode (development)
+npm run test:run       # Single run (CI/pre-commit)
+npm run test:coverage  # With coverage report
+npm run test:e2e       # Playwright E2E tests
+npm run test:e2e:ui    # Playwright UI mode (debugging)
+```
+
+### What to Test
+- **Always test**: Zustand stores (state mutations, selectors), utility functions, API routes
+- **Test when complex**: React components with significant logic, data transformations
+- **Skip testing**: Simple presentational components, third-party library wrappers
+
+### Test Database
+- Integration tests that need a database should use `DATABASE_URL_TEST` environment variable
+- Test database is a separate Supabase project to avoid polluting production data
+- Each test should clean up its own data or use isolated test fixtures
