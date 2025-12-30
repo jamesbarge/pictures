@@ -1,4 +1,3 @@
-import Script from "next/script";
 import type { Film } from "@/types/film";
 import type { Cinema } from "@/types/cinema";
 import type { Screening } from "@/types/screening";
@@ -15,7 +14,8 @@ const BASE_URL = "https://postboxd.co.uk";
  * - Proper Movie/Event schema enables rich snippets
  * - Organization schema builds brand authority
  *
- * Uses Next.js Script component for safe JSON-LD injection
+ * Uses regular script tags for server-side rendering (critical for SEO)
+ * Next.js Script with afterInteractive doesn't include JSON-LD in initial HTML
  */
 
 interface JsonLdProps {
@@ -24,21 +24,20 @@ interface JsonLdProps {
 }
 
 /**
- * Safe JSON-LD component using Next.js Script
- * The data is serialized server-side and embedded safely
+ * Server-rendered JSON-LD component
+ * Uses dangerouslySetInnerHTML to ensure JSON-LD appears in initial HTML
+ * This is critical for Google and AI crawlers to see structured data
  */
 function JsonLd({ id, data }: JsonLdProps) {
   // Serialize to JSON string - JSON.stringify handles escaping
   const jsonString = JSON.stringify(data);
 
   return (
-    <Script
+    <script
       id={id}
       type="application/ld+json"
-      strategy="afterInteractive"
-    >
-      {jsonString}
-    </Script>
+      dangerouslySetInnerHTML={{ __html: jsonString }}
+    />
   );
 }
 
