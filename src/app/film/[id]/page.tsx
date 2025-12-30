@@ -17,7 +17,7 @@ import { FilmHeader } from "@/components/film/film-header";
 import { FilmScreenings } from "@/components/film/film-screenings";
 import { StatusToggle } from "@/components/film/status-toggle";
 import { FilmViewTracker } from "@/components/film/film-view-tracker";
-import { MovieSchema, FAQSchema, BreadcrumbSchema } from "@/components/seo/json-ld";
+import { MovieSchema, BreadcrumbSchema } from "@/components/seo/json-ld";
 import type { Film } from "@/types/film";
 
 interface FilmPageProps {
@@ -81,21 +81,6 @@ export default async function FilmPage({ params }: FilmPageProps) {
     updatedAt: filmData.updatedAt,
   };
 
-  // Generate FAQ items for GEO (AI citations)
-  const faqItems = [
-    {
-      question: `Where can I watch ${filmData.title} in London?`,
-      answer:
-        upcomingScreenings.length > 0
-          ? `${filmData.title} is currently showing at ${uniqueCinemas.slice(0, 5).join(", ")}${uniqueCinemas.length > 5 ? ` and ${uniqueCinemas.length - 5} more cinemas` : ""} in London. There are ${upcomingScreenings.length} upcoming screenings.`
-          : `${filmData.title} does not have any upcoming screenings in London at the moment. Check back later for new listings.`,
-    },
-    {
-      question: `How many screenings of ${filmData.title} are there?`,
-      answer: `There are ${upcomingScreenings.length} upcoming screenings of ${filmData.title} at London's independent cinemas.`,
-    },
-  ];
-
   // Breadcrumb data
   const breadcrumbs = [
     { name: "Home", url: "/" },
@@ -107,7 +92,6 @@ export default async function FilmPage({ params }: FilmPageProps) {
     <div className="min-h-screen bg-background-primary pb-8">
       {/* Structured Data for SEO */}
       <MovieSchema film={filmForSchema} />
-      <FAQSchema items={faqItems} />
       <BreadcrumbSchema items={breadcrumbs} />
 
       {/* Analytics - track film view */}
@@ -164,23 +148,6 @@ export default async function FilmPage({ params }: FilmPageProps) {
         </h2>
 
         <FilmScreenings screenings={upcomingScreenings} film={{ id: filmData.id, title: filmData.title }} />
-      </div>
-
-      {/* FAQ Section for SEO/GEO */}
-      <div className="max-w-4xl mx-auto px-4 mt-12">
-        <h2 className="text-lg font-display text-text-primary mb-4">
-          Frequently Asked Questions
-        </h2>
-        <div className="space-y-4">
-          {faqItems.map((faq, index) => (
-            <div key={index} className="border-b border-border-subtle pb-4">
-              <h3 className="font-medium text-text-primary mb-2">
-                {faq.question}
-              </h3>
-              <p className="text-text-secondary text-sm">{faq.answer}</p>
-            </div>
-          ))}
-        </div>
       </div>
     </div>
   );

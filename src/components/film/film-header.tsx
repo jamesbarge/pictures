@@ -98,7 +98,7 @@ export function FilmHeader({ film }: FilmHeaderProps) {
           <div className="flex flex-col sm:flex-row gap-6">
             {/* Poster */}
             <div className="shrink-0 mx-auto sm:mx-0">
-              <div className="relative w-48 h-72 sm:w-56 sm:h-84 rounded-lg overflow-hidden shadow-elevated bg-background-secondary border border-border-subtle">
+              <div className="relative w-48 h-72 sm:w-56 sm:h-84 rounded overflow-hidden shadow-elevated bg-background-secondary border border-border-subtle">
                 {/* Use poster URL or fall back to generated placeholder */}
                 {film.posterUrl && !film.posterUrl.includes('poster-placeholder') ? (
                   <Image
@@ -140,7 +140,7 @@ export function FilmHeader({ film }: FilmHeaderProps) {
                 )}
 
                 {/* Subtle poster border on hover */}
-                <div className="absolute inset-0 rounded-lg ring-1 ring-inset ring-border-subtle pointer-events-none" />
+                <div className="absolute inset-0 rounded ring-1 ring-inset ring-border-subtle pointer-events-none" />
               </div>
             </div>
 

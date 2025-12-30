@@ -117,7 +117,7 @@ export const ScreeningCard = memo(function ScreeningCard({ screening }: Screenin
   return (
     <article
       className={cn(
-        "group relative flex flex-col rounded-lg overflow-hidden cursor-pointer h-full",
+        "group relative flex flex-col rounded overflow-hidden cursor-pointer h-full",
         "bg-background-secondary border border-border-subtle",
         // Refined hover state - subtle lift with warm shadow
         "hover:border-accent-primary/30 hover:shadow-card-hover",
@@ -143,7 +143,7 @@ export const ScreeningCard = memo(function ScreeningCard({ screening }: Screenin
               src={film.posterUrl}
               alt=""
               fill
-              className="object-cover transition-transform duration-500 group-hover:scale-110"
+              className="object-cover"
               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 20vw, 15vw"
               placeholder="blur"
               blurDataURL={POSTER_BLUR_PLACEHOLDER}
@@ -153,7 +153,7 @@ export const ScreeningCard = memo(function ScreeningCard({ screening }: Screenin
             <img
               src={`/api/poster-placeholder?title=${encodeURIComponent(film.title)}${film.year ? `&year=${film.year}` : ""}`}
               alt=""
-              className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+              className="absolute inset-0 w-full h-full object-cover"
             />
           )}
 

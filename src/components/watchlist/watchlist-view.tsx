@@ -277,7 +277,7 @@ function WatchlistFilmCard({
       <div className="flex gap-4 p-4">
         {/* Poster */}
         <Link href={`/film/${film.id}`} className="shrink-0">
-          <div className="relative w-16 h-24 rounded-lg overflow-hidden bg-background-tertiary">
+          <div className="relative w-16 h-24 rounded overflow-hidden bg-background-tertiary">
             {film.posterUrl ? (
               <Image
                 src={film.posterUrl}
@@ -493,7 +493,7 @@ function WatchlistSkeleton() {
             className="border border-border-subtle rounded-xl p-4 bg-background-secondary/50"
           >
             <div className="flex gap-4">
-              <div className="w-16 h-24 bg-background-tertiary rounded-lg animate-pulse" />
+              <div className="w-16 h-24 bg-background-tertiary rounded animate-pulse" />
               <div className="flex-1 space-y-2">
                 <div className="h-5 w-48 bg-background-tertiary rounded animate-pulse" />
                 <div className="h-4 w-32 bg-surface-muted rounded animate-pulse" />
