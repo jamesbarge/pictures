@@ -6,7 +6,7 @@
 
 import * as cheerio from "cheerio";
 import type { RawScreening, ScraperConfig } from "../types";
-import { getBrowser, closeBrowser, createPage } from "../utils/browser";
+import { getBrowser, closeBrowser, createPage, waitForCloudflare } from "../utils/browser";
 import type { Page } from "playwright";
 import { parseFilmMetadata } from "../utils/metadata-parser";
 
@@ -64,7 +64,7 @@ export class BFIScraper {
   }
 
   private async initialize(): Promise<void> {
-    console.log(`[${this.config.cinemaId}] Launching browser with stealth mode...`);
+    console.log(`[${this.config.cinemaId}] Launching browser with enhanced stealth mode...`);
     await getBrowser();
     this.page = await createPage();
 
@@ -75,29 +75,15 @@ export class BFIScraper {
       timeout: 60000,
     });
 
-    // Wait for Cloudflare challenge if present
-    await this.waitForCloudflare();
+    // Wait for Cloudflare challenge if present (uses enhanced human-like behavior)
+    const passed = await waitForCloudflare(this.page, 60);
+    if (!passed) {
+      console.log(`[${this.config.cinemaId}] Cloudflare challenge timeout, continuing anyway...`);
+    }
 
     // Wait for page to settle
-    await this.page.waitForTimeout(3000);
+    await this.page.waitForTimeout(2000);
     console.log(`[${this.config.cinemaId}] Session established`);
-  }
-
-  private async waitForCloudflare(maxWaitSeconds = 45): Promise<boolean> {
-    if (!this.page) return false;
-
-    for (let i = 0; i < maxWaitSeconds; i++) {
-      const html = await this.page.content();
-      if (!html.includes("challenge-platform") && !html.includes("Checking your browser")) {
-        return true;
-      }
-      if (i === 0) {
-        console.log(`[${this.config.cinemaId}] Cloudflare challenge detected, waiting...`);
-      }
-      await this.page.waitForTimeout(1000);
-    }
-    console.log(`[${this.config.cinemaId}] Cloudflare challenge timeout after ${maxWaitSeconds}s`);
-    return false;
   }
 
   private async cleanup(): Promise<void> {
@@ -124,7 +110,7 @@ export class BFIScraper {
         timeout: 60000,
       });
 
-      const cloudflareCleared = await this.waitForCloudflare(45);
+      const cloudflareCleared = await waitForCloudflare(this.page!,45);
       if (!cloudflareCleared) {
         console.log(`[${this.config.cinemaId}] Cloudflare did not clear, trying anyway...`);
       }
@@ -214,7 +200,7 @@ export class BFIScraper {
           await this.page.waitForTimeout(2000);
 
           // Wait for content to load
-          await this.waitForCloudflare(10);
+          await waitForCloudflare(this.page!,10);
 
           try {
             await this.page.waitForSelector("main", { timeout: 5000 });
@@ -249,7 +235,7 @@ export class BFIScraper {
             waitUntil: "domcontentloaded",
             timeout: 30000,
           });
-          await this.waitForCloudflare(10);
+          await waitForCloudflare(this.page!,10);
           await this.page.waitForTimeout(1500);
 
         } catch (error) {
