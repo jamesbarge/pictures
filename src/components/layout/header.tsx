@@ -769,8 +769,8 @@ function FilmSearchFilter({ mounted }: { mounted: boolean }) {
   // Get display lists: search results if searching, all data if browsing
   const displayFilms = filmSearch.trim() ? suggestions : allFilms;
   const displayCinemas = filmSearch.trim() ? cinemaSuggestions : allCinemas;
-  // Combined list for keyboard navigation: cinemas first, then films
-  const displayList = [...displayCinemas.map(c => ({ type: 'cinema' as const, item: c })), ...displayFilms.map(f => ({ type: 'film' as const, item: f }))];
+  // Combined list for keyboard navigation: films first, then cinemas
+  const displayList = [...displayFilms.map(f => ({ type: 'film' as const, item: f })), ...displayCinemas.map(c => ({ type: 'cinema' as const, item: c }))];
 
   // Close on click outside
   useEffect(() => {
@@ -900,27 +900,27 @@ function FilmSearchFilter({ mounted }: { mounted: boolean }) {
           {/* Header showing counts in browse mode */}
           {!filmSearch.trim() && (displayCinemas.length > 0 || displayFilms.length > 0) && (
             <div className="px-3 py-2 border-b border-border-subtle text-xs text-text-tertiary">
-              {displayCinemas.length} cinemas, {displayFilms.length} films • scroll to browse
+              {displayFilms.length} films, {displayCinemas.length} cinemas • scroll to browse
             </div>
           )}
           {isLoading ? (
             <div className="px-4 py-3 text-sm text-text-tertiary">Searching...</div>
           ) : (
             <ul id="film-search-listbox" role="listbox" className="max-h-96 overflow-y-auto">
-              {/* Cinema Results */}
-              {displayCinemas.length > 0 && (
+              {/* Film Results - shown first */}
+              {displayFilms.length > 0 && (
                 <>
                   {filmSearch.trim() && (
                     <li className="px-3 py-1.5 text-[11px] font-semibold text-text-tertiary uppercase tracking-wider bg-background-tertiary/50">
-                      Cinemas
+                      Films
                     </li>
                   )}
-                  {displayCinemas.map((cinema, index) => (
-                    <li key={`cinema-${cinema.id}`} role="option" aria-selected={index === selectedIndex}>
+                  {displayFilms.map((film, index) => (
+                    <li key={`film-${film.id}`} role="option" aria-selected={index === selectedIndex}>
                       <button
                         onMouseDown={(e) => {
                           e.preventDefault();
-                          handleSelectCinema(cinema);
+                          handleSelectFilm(film);
                         }}
                         onMouseEnter={() => setSelectedIndex(index)}
                         className={cn(
@@ -930,18 +930,34 @@ function FilmSearchFilter({ mounted }: { mounted: boolean }) {
                             : "text-text-secondary hover:bg-background-hover"
                         )}
                       >
-                        {/* Cinema Icon */}
-                        <div className="w-8 h-8 rounded-lg overflow-hidden bg-accent-primary/10 shrink-0 flex items-center justify-center">
-                          <MapPin className="w-4 h-4 text-accent-primary" />
+                        {/* Mini Poster */}
+                        <div className="w-8 h-12 rounded overflow-hidden bg-background-tertiary shrink-0">
+                          {film.posterUrl && !film.posterUrl.includes('poster-placeholder') ? (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img
+                              src={film.posterUrl}
+                              alt=""
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-text-tertiary">
+                              <Film className="w-3 h-3" />
+                            </div>
+                          )}
                         </div>
-                        {/* Cinema Info */}
+                        {/* Film Info */}
                         <div className="flex-1 min-w-0">
                           <div className="font-medium text-sm truncate">
-                            {cinema.name}
+                            {film.title}
+                            {film.year && (
+                              <span className="text-text-tertiary font-normal ml-1">
+                                ({film.year})
+                              </span>
+                            )}
                           </div>
-                          {cinema.address && (
+                          {film.directors.length > 0 && (
                             <div className="text-xs text-text-tertiary truncate">
-                              {cinema.address}
+                              {film.directors.slice(0, 2).join(", ")}
                             </div>
                           )}
                         </div>
@@ -951,22 +967,22 @@ function FilmSearchFilter({ mounted }: { mounted: boolean }) {
                 </>
               )}
 
-              {/* Film Results */}
-              {displayFilms.length > 0 && (
+              {/* Cinema Results - shown after films */}
+              {displayCinemas.length > 0 && (
                 <>
                   {filmSearch.trim() && (
                     <li className="px-3 py-1.5 text-[11px] font-semibold text-text-tertiary uppercase tracking-wider bg-background-tertiary/50">
-                      Films
+                      Cinemas
                     </li>
                   )}
-                  {displayFilms.map((film, index) => {
-                    const globalIndex = displayCinemas.length + index;
+                  {displayCinemas.map((cinema, index) => {
+                    const globalIndex = displayFilms.length + index;
                     return (
-                      <li key={`film-${film.id}`} role="option" aria-selected={globalIndex === selectedIndex}>
+                      <li key={`cinema-${cinema.id}`} role="option" aria-selected={globalIndex === selectedIndex}>
                         <button
                           onMouseDown={(e) => {
                             e.preventDefault();
-                            handleSelectFilm(film);
+                            handleSelectCinema(cinema);
                           }}
                           onMouseEnter={() => setSelectedIndex(globalIndex)}
                           className={cn(
@@ -976,34 +992,18 @@ function FilmSearchFilter({ mounted }: { mounted: boolean }) {
                               : "text-text-secondary hover:bg-background-hover"
                           )}
                         >
-                          {/* Mini Poster */}
-                          <div className="w-8 h-12 rounded overflow-hidden bg-background-tertiary shrink-0">
-                            {film.posterUrl && !film.posterUrl.includes('poster-placeholder') ? (
-                              /* eslint-disable-next-line @next/next/no-img-element */
-                              <img
-                                src={film.posterUrl}
-                                alt=""
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center text-text-tertiary">
-                                <Film className="w-3 h-3" />
-                              </div>
-                            )}
+                          {/* Cinema Icon */}
+                          <div className="w-8 h-8 rounded-lg overflow-hidden bg-accent-primary/10 shrink-0 flex items-center justify-center">
+                            <MapPin className="w-4 h-4 text-accent-primary" />
                           </div>
-                          {/* Film Info */}
+                          {/* Cinema Info */}
                           <div className="flex-1 min-w-0">
                             <div className="font-medium text-sm truncate">
-                              {film.title}
-                              {film.year && (
-                                <span className="text-text-tertiary font-normal ml-1">
-                                  ({film.year})
-                                </span>
-                              )}
+                              {cinema.name}
                             </div>
-                            {film.directors.length > 0 && (
+                            {cinema.address && (
                               <div className="text-xs text-text-tertiary truncate">
-                                {film.directors.slice(0, 2).join(", ")}
+                                {cinema.address}
                               </div>
                             )}
                           </div>
