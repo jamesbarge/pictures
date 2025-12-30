@@ -868,12 +868,12 @@ function FilmSearchFilter({ mounted }: { mounted: boolean }) {
           "focus:outline-none focus:ring-2 focus:ring-accent-primary/30 focus:border-accent-primary",
           hasValue
             ? "border-accent-primary/40 pr-8"
-            : "border-border-default hover:border-border-emphasis pr-3"
+            : "border-border-default hover:border-border-emphasis pr-16"
         )}
       />
-      {/* Keyboard shortcut hint - centered */}
+      {/* Keyboard shortcut hint - right side, vertically centered */}
       {showShortcutHint && (
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
           <kbd className="hidden sm:inline-flex items-center justify-center gap-0.5 px-1.5 py-0.5 text-[11px] font-mono text-text-muted bg-background-tertiary rounded border border-border-subtle leading-none">
             <span>⌘</span><span>K</span>
           </kbd>
