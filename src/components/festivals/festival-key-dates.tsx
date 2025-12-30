@@ -30,11 +30,12 @@ interface DateItemProps {
   icon: React.ReactNode;
   label: string;
   date: Date | null;
+  endDate?: Date | null;
   isPassed: boolean;
   showTime?: boolean;
 }
 
-function DateItem({ icon, label, date, isPassed, showTime = false }: DateItemProps) {
+function DateItem({ icon, label, date, endDate, isPassed, showTime = false }: DateItemProps) {
   if (!date) {
     return (
       <div className="flex items-start gap-3 p-4 rounded-lg bg-background-tertiary/50">
@@ -47,9 +48,25 @@ function DateItem({ icon, label, date, isPassed, showTime = false }: DateItemPro
     );
   }
 
-  const formattedDate = showTime
-    ? format(date, "EEE d MMM, h:mm a")
-    : format(date, "EEE d MMMM yyyy");
+  let formattedDate: string;
+  if (endDate) {
+    // Format date range
+    const startMonth = format(date, "MMM");
+    const endMonth = format(endDate, "MMM");
+    const startDay = format(date, "d");
+    const endDay = format(endDate, "d");
+    const year = format(date, "yyyy");
+
+    if (startMonth === endMonth) {
+      formattedDate = `${startMonth} ${startDay}-${endDay}, ${year}`;
+    } else {
+      formattedDate = `${startMonth} ${startDay} - ${endMonth} ${endDay}, ${year}`;
+    }
+  } else {
+    formattedDate = showTime
+      ? format(date, "EEE d MMM, h:mm a")
+      : format(date, "EEE d MMMM yyyy");
+  }
 
   return (
     <div
@@ -110,6 +127,7 @@ export function FestivalKeyDates({
           icon={<Calendar className="w-5 h-5" />}
           label="Festival Dates"
           date={start}
+          endDate={end}
           isPassed={isPast(end)}
         />
 
