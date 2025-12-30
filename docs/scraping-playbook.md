@@ -24,6 +24,7 @@ This document describes how each cinema website is scraped, including the approa
 | **Close-Up Cinema** | Embedded JSON | No | `closeupfilmcentre.com` homepage | Working |
 | **Cine Lumiere** | Single page | No | `cinelumiere.savoysystems.co.uk/CineLumiere.dll/` | Working |
 | **Castle Cinema** | JSON-LD | No | `thecastlecinema.com` homepage | Working |
+| **Castle Sidcup** | JSON-LD | No | `castlesidcup.com` homepage | Working |
 | **ArtHouse Crouch End** | HTML (Savoy) | No | `arthousecrouchend.savoysystems.co.uk/.dll/` | Working |
 | **Phoenix Cinema** | GraphQL (INDY) | Playwright | `phoenixcinema.co.uk/graphql` | Working |
 | **Rich Mix** | JSON API | No | `richmix.org.uk/whats-on/cinema/?ajax=1&json=1` | Working |
