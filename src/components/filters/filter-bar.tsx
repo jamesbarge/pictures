@@ -5,9 +5,10 @@
 
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { useHydrated } from "@/hooks/useHydrated";
-import { X, ChevronDown, RotateCcw } from "lucide-react";
+import { X, ChevronDown, RotateCcw, Ticket } from "lucide-react";
 import { cn } from "@/lib/cn";
 import {
   useFilters,
@@ -21,9 +22,30 @@ import {
 } from "@/stores/filters";
 import { DateRangePicker } from "./date-range-picker";
 
-export function FilterBar() {
+interface FilterBarProps {
+  festivals?: { id: string; name: string; slug: string }[];
+}
+
+export function FilterBar({ festivals = [] }: FilterBarProps) {
+  return (
+    <Suspense fallback={<FilterBarContent festivals={festivals} />}>
+      <FilterBarContent festivals={festivals} />
+    </Suspense>
+  );
+}
+
+function FilterBarContent({ festivals }: { festivals: { id: string; name: string; slug: string }[] }) {
   const filters = useFilters();
   const mounted = useHydrated();
+  const searchParams = useSearchParams();
+
+  // Sync URL params to store
+  useEffect(() => {
+    const festivalSlug = searchParams.get("festival");
+    if (festivalSlug && festivalSlug !== filters.festivalSlug) {
+      filters.setFestivalFilter(festivalSlug);
+    }
+  }, [searchParams, filters]);
 
   // Compute activeCount by directly accessing state properties
   // This creates proper Zustand subscriptions so the component re-renders when filters clear
@@ -47,6 +69,25 @@ export function FilterBar() {
         <div className="flex items-center gap-2 flex-wrap">
           {/* Date Range Picker */}
           <DateRangePicker />
+
+          {/* Festival Filter (conditional) */}
+          {(festivals.length > 0 || filters.festivalSlug) && (
+            <FilterDropdown
+              label="Festival"
+              options={festivals.map(f => ({ value: f.slug, label: f.name }))}
+              selected={mounted && filters.festivalSlug ? [filters.festivalSlug] : []}
+              onToggle={(slug) => {
+                // Toggle off if already selected, otherwise set new
+                if (filters.festivalSlug === slug) {
+                  filters.setFestivalFilter(null);
+                } else {
+                  filters.setFestivalFilter(slug);
+                }
+              }}
+              icon={<Ticket className="w-4 h-4" />}
+              singleSelect
+            />
+          )}
 
           {/* Format Filter */}
           <FilterDropdown
@@ -117,7 +158,7 @@ export function FilterBar() {
         {mounted && activeCount > 0 && (
           <div className="flex items-center gap-2 mt-3 flex-wrap">
             <span className="text-xs text-text-tertiary">Active:</span>
-            <ActiveFilterPills />
+            <ActiveFilterPills festivals={festivals} />
           </div>
         )}
       </div>
@@ -131,9 +172,11 @@ interface FilterDropdownProps {
   options: { value: string; label: string }[];
   selected: string[];
   onToggle: (value: string) => void;
+  icon?: React.ReactNode;
+  singleSelect?: boolean;
 }
 
-function FilterDropdown({ label, options, selected, onToggle }: FilterDropdownProps) {
+function FilterDropdown({ label, options, selected, onToggle, icon, singleSelect }: FilterDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -177,7 +220,15 @@ function FilterDropdown({ label, options, selected, onToggle }: FilterDropdownPr
               return (
                 <button
                   key={value}
-                  onClick={() => onToggle(value)}
+                  onClick={() => {
+                      if (singleSelect) {
+                          // For single select, if clicking other option, switch to it. 
+                          // If clicking selected, toggle it off (handled by parent logic typically, but here we just call onToggle)
+                          onToggle(value);
+                      } else {
+                         onToggle(value);
+                      }
+                  }}
                   className={cn(
                     "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-2",
                     isSelected
@@ -222,7 +273,7 @@ function FilterDropdown({ label, options, selected, onToggle }: FilterDropdownPr
 }
 
 // Active Filter Pills Display
-function ActiveFilterPills() {
+function ActiveFilterPills({ festivals = [] }: { festivals?: { id: string; name: string; slug: string }[] }) {
   const filters = useFilters();
 
   const pills: { label: string; onRemove: () => void }[] = [];
@@ -277,6 +328,15 @@ function ActiveFilterPills() {
       onRemove: () => filters.toggleTimeOfDay(t),
     });
   });
+
+  // Festival
+  if (filters.festivalSlug) {
+      const festival = festivals.find(f => f.slug === filters.festivalSlug);
+      pills.push({
+          label: festival ? festival.name : "Festival",
+          onRemove: () => filters.setFestivalFilter(null),
+      });
+  }
 
   return (
     <>

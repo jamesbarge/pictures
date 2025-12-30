@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { screenings, films, cinemas } from "@/db/schema";
+import { screenings, films, cinemas, festivals } from "@/db/schema";
 import { eq, gte, lte, and } from "drizzle-orm";
 import { endOfDay, addDays, startOfDay, format } from "date-fns";
 import { unstable_cache } from "next/cache";
@@ -68,14 +68,22 @@ const getCachedCinemas = unstable_cache(
   { revalidate: 3600, tags: ["cinemas"] }
 );
 
+// Cache active festivals
+const getCachedActiveFestivals = unstable_cache(
+  async () => db.select({ id: festivals.id, name: festivals.name, slug: festivals.slug }).from(festivals).where(eq(festivals.isActive, true)),
+  ["active-festivals"],
+  { revalidate: 3600, tags: ["festivals"] }
+);
+
 export default async function Home() {
   // Use date key to bust cache at midnight (ensures fresh data each day)
   const dateKey = format(new Date(), "yyyy-MM-dd");
 
   // Fetch cached data (60s cache for screenings, 1hr for cinemas)
-  const [initialScreenings, allCinemas] = await Promise.all([
+  const [initialScreenings, allCinemas, activeFestivals] = await Promise.all([
     getCachedScreenings(dateKey),
     getCachedCinemas(),
+    getCachedActiveFestivals(),
   ]);
 
   // Prepare cinemas with coordinates for map filtering
@@ -89,7 +97,10 @@ export default async function Home() {
   return (
     <div className="min-h-screen bg-background-primary">
       {/* Unified Header with Filters */}
-      <Header cinemas={allCinemas.map(c => ({ id: c.id, name: c.name, shortName: c.shortName }))} />
+      <Header 
+        cinemas={allCinemas.map(c => ({ id: c.id, name: c.name, shortName: c.shortName }))} 
+        festivals={activeFestivals}
+      />
 
       {/* Feature Discovery Banner - dismissible once features are visited */}
       <FeatureDiscoveryBanner />

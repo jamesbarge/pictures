@@ -37,11 +37,18 @@ interface Cinema {
   shortName: string | null;
 }
 
-interface HeaderProps {
-  cinemas: Cinema[];
+interface Festival {
+  id: string;
+  name: string;
+  slug: string;
 }
 
-export function Header({ cinemas }: HeaderProps) {
+interface HeaderProps {
+  cinemas: Cinema[];
+  festivals: Festival[];
+}
+
+export function Header({ cinemas, festivals }: HeaderProps) {
   const mounted = useHydrated();
   const [filtersOpen, setFiltersOpen] = useState(false);
 
