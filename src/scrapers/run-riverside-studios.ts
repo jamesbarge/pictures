@@ -37,7 +37,7 @@ async function main() {
       name: VENUE.name,
       shortName: VENUE.shortName,
       website: VENUE.website,
-      address: `${VENUE.address.street}, ${VENUE.address.area}, ${VENUE.address.postcode}`,
+      address: VENUE.address,
       features: VENUE.features,
     });
 
