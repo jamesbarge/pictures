@@ -33,57 +33,115 @@ jobs:
         run: npx playwright install chromium --with-deps
 
       # Run each scraper individually so failures don't stop the pipeline
+      # Timeouts prevent stuck scrapers from blocking the entire workflow
+
+      # Playwright-based scrapers (slower, need more time)
       - name: Scrape BFI
         continue-on-error: true
+        timeout-minutes: 10
         run: npm run scrape:bfi
 
+      - name: Scrape Curzon (all venues)
+        continue-on-error: true
+        timeout-minutes: 20
+        run: npm run scrape:curzon
+
+      - name: Scrape Lexi
+        continue-on-error: true
+        timeout-minutes: 10
+        run: npm run scrape:lexi
+
+      - name: Scrape Phoenix
+        continue-on-error: true
+        timeout-minutes: 10
+        run: npm run scrape:phoenix
+
+      # API-based scrapers (fast and reliable)
+      - name: Scrape Everyman (all venues)
+        continue-on-error: true
+        timeout-minutes: 5
+        run: npm run scrape:everyman
+
+      - name: Scrape Picturehouse (all venues)
+        continue-on-error: true
+        timeout-minutes: 5
+        run: npm run scrape:picturehouse
+
+      # Cheerio-based scrapers (HTML parsing, moderately fast)
       - name: Scrape Prince Charles Cinema
         continue-on-error: true
+        timeout-minutes: 5
         run: npm run scrape:pcc
 
       - name: Scrape ICA
         continue-on-error: true
+        timeout-minutes: 5
         run: npm run scrape:ica
 
       - name: Scrape Barbican
         continue-on-error: true
+        timeout-minutes: 10
         run: npm run scrape:barbican
 
       - name: Scrape Rio
         continue-on-error: true
+        timeout-minutes: 5
         run: npm run scrape:rio
-
-      - name: Scrape Curzon (all venues)
-        continue-on-error: true
-        run: npm run scrape:curzon
-
-      - name: Scrape Picturehouse (all venues)
-        continue-on-error: true
-        run: npm run scrape:picturehouse
-
-      - name: Scrape Everyman (all venues)
-        continue-on-error: true
-        run: npm run scrape:everyman
 
       - name: Scrape Genesis
         continue-on-error: true
+        timeout-minutes: 5
         run: npm run scrape:genesis
 
       - name: Scrape Peckhamplex
         continue-on-error: true
+        timeout-minutes: 5
         run: npm run scrape:peckhamplex
 
       - name: Scrape The Nickel
         continue-on-error: true
+        timeout-minutes: 5
         run: npm run scrape:nickel
 
       - name: Scrape Electric
         continue-on-error: true
+        timeout-minutes: 5
         run: npm run scrape:electric
 
-      - name: Scrape Lexi
+      - name: Scrape Garden Cinema
         continue-on-error: true
-        run: npm run scrape:lexi
+        timeout-minutes: 5
+        run: npm run scrape:garden
+
+      - name: Scrape Close-Up Cinema
+        continue-on-error: true
+        timeout-minutes: 5
+        run: npm run scrape:close-up
+
+      - name: Scrape Cine Lumiere
+        continue-on-error: true
+        timeout-minutes: 5
+        run: npm run scrape:cine-lumiere
+
+      - name: Scrape Castle Cinema
+        continue-on-error: true
+        timeout-minutes: 5
+        run: npm run scrape:castle
+
+      - name: Scrape ArtHouse Crouch End
+        continue-on-error: true
+        timeout-minutes: 5
+        run: npm run scrape:arthouse
+
+      - name: Scrape Rich Mix
+        continue-on-error: true
+        timeout-minutes: 5
+        run: npm run scrape:rich-mix
+
+      - name: Scrape Regent Street Cinema
+        continue-on-error: true
+        timeout-minutes: 5
+        run: npm run scrape:regent-street
 
       - name: Scraping complete
         run: echo "All scrapers have run. Check individual steps for any failures."
