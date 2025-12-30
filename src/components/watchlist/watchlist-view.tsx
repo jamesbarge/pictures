@@ -9,6 +9,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useFilmStatus } from "@/stores/film-status";
 import { format } from "date-fns";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Heart,
   Calendar,
@@ -59,6 +60,10 @@ interface WatchlistViewProps {
 }
 
 type SortOption = "next_screening" | "date_added" | "alphabetical";
+
+// Blur placeholder for poster images to prevent CLS
+const POSTER_BLUR =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAPCAYAAADd/14OAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAKklEQVQoz2Nk+M/AQAxgZGBg+M9AB2BkYGBgZGRgYGCgF2D4T7wexAAGABPmAhHXnXDuAAAAAElFTkSuQmCC";
 
 export function WatchlistView({ films, screeningsByFilm }: WatchlistViewProps) {
   const { films: filmStatuses, getWatchlist, setStatus } = useFilmStatus();
@@ -272,13 +277,16 @@ function WatchlistFilmCard({
       <div className="flex gap-4 p-4">
         {/* Poster */}
         <Link href={`/film/${film.id}`} className="shrink-0">
-          <div className="w-16 h-24 rounded-lg overflow-hidden bg-background-tertiary">
+          <div className="relative w-16 h-24 rounded-lg overflow-hidden bg-background-tertiary">
             {film.posterUrl ? (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img
+              <Image
                 src={film.posterUrl}
                 alt={film.title}
-                className="w-full h-full object-cover"
+                fill
+                className="object-cover"
+                sizes="64px"
+                placeholder="blur"
+                blurDataURL={POSTER_BLUR}
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
@@ -468,6 +476,9 @@ function EmptyWatchlist() {
 function WatchlistSkeleton() {
   return (
     <div className="space-y-8">
+      {/* SyncBanner Placeholder - reserve space to prevent CLS when banner appears */}
+      <div className="h-[76px] rounded-xl bg-background-tertiary/30 animate-pulse" />
+
       {/* Sort Controls Skeleton */}
       <div className="flex items-center justify-between">
         <div className="h-5 w-32 bg-background-tertiary rounded animate-pulse" />
