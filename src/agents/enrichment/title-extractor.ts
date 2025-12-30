@@ -10,20 +10,32 @@
 
 // Event prefixes that wrap actual film titles (colon-separated)
 const EVENT_PREFIXES = [
-  // Cinema club/series
+  // Dining/drinking events
+  "DRINK & DINE",
+  "Drink & Dine",
+  "Drink and Dine",
+  "DINE & DRINK",
+
+  // Cinema clubs/series
+  "Arabic Cinema Club",
   "Saturday Morning Picture Club",
   "Classic Matinee",
   "Varda Film Club",
   "Artist's Film Picks",
+  "Films For Workers",
+  "Reclaim the Frame presents",
+  "Sonic Cinema",
+  "The Liberated Film Club",
+  "Underscore Cinema",
+  "Dub Me Always",
   "Carers & Babies",
   "Carers and Babies",
 
   // Special screenings
   "Queer Horror Nights",
   "A FESTIVE FEAST",
-  "DRINK & DINE",
-  "Drink & Dine",
-  "Drink and Dine",
+  "Funeral Parade presents",
+  "UK PREMIERE",
 
   // Live broadcasts
   "Met Opera Live",
@@ -34,6 +46,7 @@ const EVENT_PREFIXES = [
   "ROH Live",
   "Royal Ballet",
   "Bolshoi Ballet",
+  "Berliner Philharmoniker Live",
 
   // Documentaries/exhibitions
   "EXHIBITION ON SCREEN",
@@ -45,6 +58,12 @@ const EVENT_PREFIXES = [
   "LSFF",
   "LFF",
   "BFI Flare",
+
+  // Format-based
+  "35mm",
+  "70mm",
+  "4K",
+  "IMAX",
 ];
 
 // Suffixes to strip from titles
@@ -66,33 +85,73 @@ const TITLE_SUFFIXES = [
   // Format/restoration markers
   /\s*\(4K\s+Restoration\)$/i,
   /\s*\(4K\s+Remaster(?:ed)?\)$/i,
+  /\s*\(4K\s+Re-?release\)$/i,
   /\s*\(Restored\)$/i,
   /\s*\(Digital\s+Restoration\)$/i,
   /\s*\(Director'?s?\s+Cut\)$/i,
   /\s*\(Extended\s+(?:Edition|Cut)\)$/i,
+  /\s*\(Original\s+Cut\)$/i,
   /\s*\(Theatrical\s+Cut\)$/i,
+  /\s*4K$/i,
+  /\s*\(35mm\)$/i,
 
   // Anniversary editions
-  /\s*-\s*\d+(?:th|st|nd|rd)?\s+Anniversary.*$/i,
+  /\s*[-•]\s*\d+(?:th|st|nd|rd)?\s+Anniversary.*$/i,
+  /\s*\(\d+(?:th|st|nd|rd)?\s+Anniversary\)$/i,
 
-  // Preview screenings
+  // Preview/encore screenings
   /\s*-\s*Preview$/i,
   /\s*\(Preview\)$/i,
-
-  // Double bills (complex - extract first film)
-  /\s*Double[- ]?Bill$/i,
-  /\s*\+\s+.+Double[- ]?Bill$/i,
-
-  // Encore screenings
   /\s*\(\d{4}\s+Encore\)$/i,
   /\s*Encore$/i,
 
-  // Future year markers (2026, etc.) - but keep actual release years
+  // Double bills
+  /\s*Double[- ]?Bill$/i,
+  /\s*\+\s+.+Double[- ]?Bill$/i,
+
+  // Future year markers (screening year, not release year)
   /\s*\(202[5-9]\)$/,
   /\s*\(203\d\)$/,
 
   // TBC markers
   /\s*TBC$/i,
+
+  // Sing-along suffix
+  /\s+Sing-?A?-?Long!?$/i,
+
+  // Special edition markers
+  /:\s*Extended\s+Edition$/i,
+  /\s+-\s+Original\s+Cut$/i,
+
+  // Drink add-ons
+  /\s*\+\s*(?:Prosecco|Mulled\s+Wine).*$/i,
+];
+
+/**
+ * Patterns that indicate this is NOT a film (don't try to match)
+ */
+const NON_FILM_PATTERNS = [
+  /\bQuiz\b/i,
+  /\bReading\s+[Gg]roup\b/i,
+  /\bCafé\s+Philo\b/i,
+  /\bCafe\s+Philo\b/i,
+  /\bCafés\s+philo\b/i,
+  /\bCompetition\b/i,
+  /\bStory\s+Time\b/i,
+  /\bBaby\s+Comptines\b/i,
+  /\bLanguage\s+Activity\b/i,
+  /\bIn\s+conversation\s+with\b/i,
+  /\bCome\s+and\s+Sing\b/i,
+  /\bMarathon$/i,
+  /\bOrgan\s+Trio\b/i,
+  /\bBlues\s+at\b/i,
+  /\bFunky\s+Stuff\b/i,
+  /\bMusic\s+Video\s+Preservation\b/i,
+  /\bComedy:/i,
+  /\bClub\s+Room\s+Comedy\b/i,
+  /\bVinyl\s+Reggae\b/i,
+  /\bVinyl\s+Sisters\b/i,
+  /\bAnimated\s+Shorts\s+for\b/i,
 ];
 
 // Pattern for "Presenter presents \"Film Title\""
@@ -109,6 +168,7 @@ export interface TitleExtractionResult {
   extractedTitle: string;
   isCompilation: boolean;  // True for festival compilations
   isLiveBroadcast: boolean;  // True for NT Live, Met Opera, etc.
+  isNonFilm: boolean;  // True for quizzes, reading groups, etc.
   confidence: number;
   extractionMethod: string;
 }
@@ -121,8 +181,24 @@ export function extractFilmTitle(title: string): TitleExtractionResult {
   let extracted = title.trim();
   let isCompilation = false;
   let isLiveBroadcast = false;
+  let isNonFilm = false;
   let method = "none";
   let confidence = 1.0;
+
+  // Check for non-film events early
+  for (const pattern of NON_FILM_PATTERNS) {
+    if (pattern.test(extracted)) {
+      return {
+        originalTitle: original,
+        extractedTitle: extracted,
+        isCompilation: false,
+        isLiveBroadcast: false,
+        isNonFilm: true,
+        confidence: 0,
+        extractionMethod: "non_film_detected",
+      };
+    }
+  }
 
   // Decode HTML entities
   extracted = extracted
@@ -207,6 +283,7 @@ export function extractFilmTitle(title: string): TitleExtractionResult {
       extractedTitle: extracted,
       isCompilation,
       isLiveBroadcast,
+      isNonFilm: false,
       confidence,
       extractionMethod: method,
     };
@@ -218,6 +295,7 @@ export function extractFilmTitle(title: string): TitleExtractionResult {
     extractedTitle: original,
     isCompilation: false,
     isLiveBroadcast: false,
+    isNonFilm: false,
     confidence: 1.0,
     extractionMethod: "none",
   };
