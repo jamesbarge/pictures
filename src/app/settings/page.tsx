@@ -1,22 +1,13 @@
 /**
  * Settings Page
- * Allows users to select their preferred cinemas and configure preferences
+ * User preferences and hidden films management
  */
 
-// ISR: Revalidate every 10 minutes - cinema list rarely changes
-export const revalidate = 600;
-
-import { db } from "@/db";
-import { cinemas } from "@/db/schema";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
-import { CinemaSelector } from "@/components/cinema/cinema-selector";
 import { NotInterestedList } from "@/components/settings/not-interested-list";
 
-export default async function SettingsPage() {
-  // Fetch all cinemas
-  const allCinemas = await db.select().from(cinemas).orderBy(cinemas.name);
-
+export default function SettingsPage() {
   return (
     <div className="min-h-screen bg-background-primary pb-24">
       {/* Header */}
@@ -38,19 +29,6 @@ export default async function SettingsPage() {
         <p className="text-text-secondary mb-8">
           Customize your Postboxd experience
         </p>
-
-        {/* Cinema Selection Section */}
-        <section className="mb-12">
-          <h2 className="text-xl font-display text-text-primary mb-4">
-            My Cinemas
-          </h2>
-          <p className="text-text-secondary text-sm mb-6">
-            Select the cinemas you want to see screenings from. Your selection
-            syncs with the cinema filter in the header.
-          </p>
-
-          <CinemaSelector cinemas={allCinemas} />
-        </section>
 
         {/* Not Interested Section */}
         <section className="mb-12">
