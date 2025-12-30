@@ -1,40 +1,43 @@
 /**
  * Everyman Cinemas Scraper
  *
- * Everyman uses a similar system to other chains
+ * Uses Everyman's internal API (gatsby-source-boxofficeapi) for reliable data extraction.
  * Website: https://www.everymancinema.com
+ *
+ * API Endpoints:
+ * - /api/gatsby-source-boxofficeapi/scheduledMovies?theaterId=X0712
+ * - /api/gatsby-source-boxofficeapi/schedule?from=...&to=...&theaters=...
+ * - /api/gatsby-source-boxofficeapi/movies?ids=...
  *
  * To add a new Everyman venue:
  * 1. Add venue config to EVERYMAN_VENUES array below
- * 2. Find the venue's slug from their website
+ * 2. Find the venue's theater ID from the website (format: X0712, G011I, etc.)
  */
 
-import * as cheerio from "cheerio";
 import type { ChainConfig, VenueConfig, RawScreening, ChainScraper } from "../types";
-import { getBrowser, closeBrowser, createPage } from "../utils/browser";
-import type { Page } from "playwright";
+import { addDays, format } from "date-fns";
 
 // ============================================================================
 // Everyman Venue Configurations - London Locations
 // ============================================================================
 
-// Venue codes discovered from Everyman website - required for new URL pattern
-const VENUE_CODES: Record<string, string> = {
-  "baker-street": "x0712",
-  "barnet": "x06si",
-  "belsize-park": "x077p",
-  "borough-yards": "g011i",
-  "broadgate": "x11nt",
-  "canary-wharf": "x0vpb",
-  "chelsea": "x078x",
-  "crystal-palace": "x11dr",
-  "hampstead": "x06zw",
-  "kings-cross": "x0x5p",
-  "maida-vale": "x0lwi",
-  "muswell-hill": "x06sn",
-  "screen-on-the-green": "x077o",
-  "stratford-international": "g029x",
-  "walthamstow": "x0wt1", // Estimated code
+// Theater IDs from Everyman's API (uppercase format)
+const THEATER_IDS: Record<string, string> = {
+  "baker-street": "X0712",
+  "barnet": "X06SI",
+  "belsize-park": "X077P",
+  "borough-yards": "G011I",
+  "broadgate": "X11NT",
+  "canary-wharf": "X0VPB",
+  "chelsea": "X078X",
+  "crystal-palace": "X11DR",
+  "hampstead": "X06ZW",
+  "kings-cross": "X0X5P",
+  "maida-vale": "X0LWI",
+  "muswell-hill": "X06SN",
+  "screen-on-the-green": "X077O",
+  "stratford-international": "G029X",
+  "walthamstow": "X0WT1",
 };
 
 export const EVERYMAN_VENUES: VenueConfig[] = [
@@ -219,12 +222,56 @@ export const EVERYMAN_CONFIG: ChainConfig = {
 };
 
 // ============================================================================
-// Everyman Scraper Implementation (uses Playwright due to JS rendering)
+// API Types
+// ============================================================================
+
+interface ScheduledMoviesResponse {
+  movieIds: {
+    titleAsc: string[];
+    releaseAsc: string[];
+    releaseDesc: string[];
+  };
+  scheduledDays: Record<string, string[]>;
+}
+
+interface MovieInfo {
+  id: string;
+  title: string;
+  originalTitle?: string;
+  rating?: string;
+}
+
+interface ShowtimeData {
+  id: string;
+  startsAt: string;
+  tags: string[];
+  isExpired: boolean;
+  data: {
+    ticketing: Array<{
+      urls: string[];
+      type: string;
+      provider: string;
+    }>;
+  };
+}
+
+interface ScheduleResponse {
+  [theaterId: string]: {
+    schedule: {
+      [movieId: string]: {
+        [date: string]: ShowtimeData[];
+      };
+    };
+  };
+}
+
+// ============================================================================
+// Everyman Scraper Implementation (API-based)
 // ============================================================================
 
 export class EverymanScraper implements ChainScraper {
   chainConfig = EVERYMAN_CONFIG;
-  private page: Page | null = null;
+  private movieCache = new Map<string, MovieInfo>();
 
   /**
    * Scrape all active venues
@@ -240,32 +287,32 @@ export class EverymanScraper implements ChainScraper {
   async scrapeVenues(venueIds: string[]): Promise<Map<string, RawScreening[]>> {
     const results = new Map<string, RawScreening[]>();
 
-    try {
-      await this.initialize();
+    for (const venueId of venueIds) {
+      const venue = this.chainConfig.venues.find(v => v.id === venueId);
+      if (!venue) {
+        console.warn(`[everyman] Unknown venue: ${venueId}`);
+        continue;
+      }
 
-      for (const venueId of venueIds) {
-        const venue = this.chainConfig.venues.find(v => v.id === venueId);
-        if (!venue) {
-          console.warn(`[everyman] Unknown venue: ${venueId}`);
-          continue;
-        }
+      console.log(`[everyman] Scraping ${venue.name}...`);
 
-        console.log(`[everyman] Scraping ${venue.name}...`);
+      try {
         const screenings = await this.scrapeVenue(venueId);
         results.set(venueId, screenings);
-
-        // Rate limiting
-        await new Promise(r => setTimeout(r, this.chainConfig.delayBetweenRequests));
+      } catch (error) {
+        console.error(`[everyman] Error scraping ${venue.name}:`, error);
+        results.set(venueId, []);
       }
-    } finally {
-      await this.cleanup();
+
+      // Rate limiting
+      await new Promise(r => setTimeout(r, this.chainConfig.delayBetweenRequests));
     }
 
     return results;
   }
 
   /**
-   * Scrape single venue
+   * Scrape single venue using API
    */
   async scrapeVenue(venueId: string): Promise<RawScreening[]> {
     const venue = this.chainConfig.venues.find(v => v.id === venueId);
@@ -274,206 +321,166 @@ export class EverymanScraper implements ChainScraper {
       return [];
     }
 
-    if (!this.page) {
-      await this.initialize();
+    const theaterId = THEATER_IDS[venue.slug];
+    if (!theaterId) {
+      console.error(`[everyman] No theater ID for: ${venue.slug}`);
+      return [];
     }
 
     try {
-      // New URL pattern: /venues-list/{code}-everyman-{slug}/
-      // Special case for Screen on the Green which doesn't have "everyman" in the slug
-      const venueCode = VENUE_CODES[venue.slug];
-      if (!venueCode) {
-        console.error(`[everyman] No venue code for: ${venue.slug}`);
+      // Step 1: Get scheduled movies for this venue
+      const scheduledMovies = await this.fetchScheduledMovies(theaterId);
+      if (!scheduledMovies || !scheduledMovies.movieIds.titleAsc.length) {
+        console.log(`[everyman] ${venue.name}: No scheduled movies found`);
         return [];
       }
 
-      let url: string;
-      if (venue.slug === "screen-on-the-green") {
-        url = `${this.chainConfig.baseUrl}/venues-list/${venueCode}-screen-on-the-green/`;
-      } else {
-        url = `${this.chainConfig.baseUrl}/venues-list/${venueCode}-everyman-${venue.slug}/`;
+      const movieIds = scheduledMovies.movieIds.titleAsc;
+
+      // Step 2: Fetch movie details
+      await this.fetchMovieDetails(movieIds);
+
+      // Step 3: Fetch schedule for the next 30 days
+      const now = new Date();
+      const fromDate = format(now, "yyyy-MM-dd'T'HH:mm:ss");
+      const toDate = format(addDays(now, 30), "yyyy-MM-dd'T'23:59:59");
+
+      const schedule = await this.fetchSchedule(theaterId, fromDate, toDate);
+      if (!schedule || !schedule[theaterId]) {
+        console.log(`[everyman] ${venue.name}: No schedule data found`);
+        return [];
       }
 
-      await this.page!.goto(url, { waitUntil: "networkidle", timeout: 30000 });
+      // Step 4: Transform schedule into screenings
+      const screenings = this.transformSchedule(schedule[theaterId].schedule, venue);
 
-      // Wait for content to load
-      await this.page!.waitForTimeout(2000);
-
-      // Click through date tabs to get all screenings
-      const allScreenings: RawScreening[] = [];
-
-      // Get initial screenings from current view
-      let html = await this.page!.content();
-      let screenings = this.parseScreenings(html, venue);
-      allScreenings.push(...screenings);
-
-      // Try to click date tabs to get more screenings
-      const dateTabs = await this.page!.$$('[class*="date"], [class*="day"], button[data-date]');
-      for (let i = 1; i < Math.min(dateTabs.length, 14); i++) {
-        try {
-          const tabs = await this.page!.$$('[class*="date"], [class*="day"], button[data-date]');
-          if (i >= tabs.length) break;
-
-          await tabs[i].click();
-          await this.page!.waitForTimeout(1500);
-
-          html = await this.page!.content();
-          screenings = this.parseScreenings(html, venue);
-          allScreenings.push(...screenings);
-        } catch {
-          // Continue on tab click errors
-        }
-      }
-
-      // Dedupe screenings by sourceId
-      const seen = new Set<string>();
-      const uniqueScreenings = allScreenings.filter(s => {
-        if (s.sourceId && seen.has(s.sourceId)) return false;
-        if (s.sourceId) seen.add(s.sourceId);
-        return true;
-      });
-
-      console.log(`[everyman] ${venue.name}: ${uniqueScreenings.length} screenings`);
-      return uniqueScreenings;
+      console.log(`[everyman] ${venue.name}: ${screenings.length} screenings`);
+      return screenings;
     } catch (error) {
       console.error(`[everyman] Error scraping ${venue.name}:`, error);
       return [];
     }
   }
 
-  private async initialize(): Promise<void> {
-    console.log(`[everyman] Launching browser...`);
-    await getBrowser();
-    this.page = await createPage();
-  }
-
-  private async cleanup(): Promise<void> {
-    if (this.page) {
-      await this.page.close();
-      this.page = null;
-    }
-    await closeBrowser();
-    console.log(`[everyman] Browser closed`);
-  }
-
-  private parseScreenings(html: string, venue: VenueConfig): RawScreening[] {
-    const $ = cheerio.load(html);
-    const screenings: RawScreening[] = [];
-
-    // Everyman typically lists films with showtimes
-    // Look for film containers and showtime elements
-    $("[class*='film'], [class*='movie'], article").each((_, filmEl) => {
-      const $film = $(filmEl);
-
-      // Extract film title
-      const title = $film.find("h2, h3, [class*='title']").first().text().trim();
-      if (!title || title.length < 2) return;
-
-      // Find showtimes within this film container
-      $film.find("[class*='showtime'], [class*='session'], a[href*='book']").each((_, timeEl) => {
-        const $time = $(timeEl);
-        const timeText = $time.text().trim();
-        const bookingUrl = $time.attr("href") || "";
-
-        // Try to parse datetime
-        const datetime = this.parseShowtime(timeText, $film.text());
-        if (!datetime) return;
-
-        const sourceId = `everyman-${venue.id}-${title.toLowerCase().replace(/\s+/g, "-")}-${datetime.toISOString()}`;
-
-        screenings.push({
-          filmTitle: title,
-          datetime,
-          bookingUrl: bookingUrl.startsWith("http")
-            ? bookingUrl
-            : `${this.chainConfig.baseUrl}${bookingUrl}`,
-          sourceId,
-        });
+  private async fetchScheduledMovies(theaterId: string): Promise<ScheduledMoviesResponse | null> {
+    try {
+      const url = `${this.chainConfig.baseUrl}/api/gatsby-source-boxofficeapi/scheduledMovies?theaterId=${theaterId}`;
+      const response = await fetch(url, {
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+        },
       });
-    });
 
-    return this.validate(screenings);
-  }
+      if (!response.ok) {
+        console.error(`[everyman] Failed to fetch scheduled movies: ${response.status}`);
+        return null;
+      }
 
-  private parseShowtime(timeText: string, contextText: string): Date | null {
-    // Try to extract time like "14:30" or "2:30pm"
-    const timeMatch = timeText.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
-    if (!timeMatch) return null;
-
-    // Look for date in context
-    const dateMatch = contextText.match(
-      /(\d{1,2})\s*(January|February|March|April|May|June|July|August|September|October|November|December)/i
-    ) || contextText.match(
-      /(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\s+(\d{1,2})/i
-    );
-
-    if (!dateMatch) {
-      // Assume today if no date found
-      const now = new Date();
-      let hours = parseInt(timeMatch[1]);
-      const minutes = parseInt(timeMatch[2]);
-      const ampm = timeMatch[3]?.toLowerCase();
-
-      if (ampm === "pm" && hours < 12) hours += 12;
-      if (ampm === "am" && hours === 12) hours = 0;
-
-      return new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes);
-    }
-
-    // Parse full date
-    const months: Record<string, number> = {
-      january: 0, february: 1, march: 2, april: 3,
-      may: 4, june: 5, july: 6, august: 7,
-      september: 8, october: 9, november: 10, december: 11,
-    };
-
-    let day: number;
-    let month: number;
-
-    if (dateMatch[2] && months[dateMatch[2].toLowerCase()] !== undefined) {
-      day = parseInt(dateMatch[1]);
-      month = months[dateMatch[2].toLowerCase()];
-    } else {
+      return await response.json();
+    } catch (error) {
+      console.error(`[everyman] Error fetching scheduled movies:`, error);
       return null;
     }
-
-    let hours = parseInt(timeMatch[1]);
-    const minutes = parseInt(timeMatch[2]);
-    const ampm = timeMatch[3]?.toLowerCase();
-
-    if (ampm === "pm" && hours < 12) hours += 12;
-    if (ampm === "am" && hours === 12) hours = 0;
-
-    const year = new Date().getFullYear();
-    const date = new Date(year, month, day, hours, minutes);
-
-    // If date is in past, assume next year
-    if (date < new Date()) {
-      date.setFullYear(year + 1);
-    }
-
-    return date;
   }
 
-  private validate(screenings: RawScreening[]): RawScreening[] {
+  private async fetchMovieDetails(movieIds: string[]): Promise<void> {
+    // Only fetch movies we don't have cached
+    const uncachedIds = movieIds.filter(id => !this.movieCache.has(id));
+    if (uncachedIds.length === 0) return;
+
+    try {
+      const params = uncachedIds.map(id => `ids=${id}`).join('&');
+      const url = `${this.chainConfig.baseUrl}/api/gatsby-source-boxofficeapi/movies?basic=false&castingLimit=0&${params}`;
+
+      const response = await fetch(url, {
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+        },
+      });
+
+      if (!response.ok) {
+        console.error(`[everyman] Failed to fetch movie details: ${response.status}`);
+        return;
+      }
+
+      const movies = await response.json() as MovieInfo[];
+      for (const movie of movies) {
+        this.movieCache.set(movie.id, movie);
+      }
+    } catch (error) {
+      console.error(`[everyman] Error fetching movie details:`, error);
+    }
+  }
+
+  private async fetchSchedule(theaterId: string, fromDate: string, toDate: string): Promise<ScheduleResponse | null> {
+    try {
+      const theatersParam = encodeURIComponent(JSON.stringify({ id: theaterId, timeZone: "Europe/London" }));
+      const url = `${this.chainConfig.baseUrl}/api/gatsby-source-boxofficeapi/schedule?from=${encodeURIComponent(fromDate)}&to=${encodeURIComponent(toDate)}&theaters=${theatersParam}`;
+
+      const response = await fetch(url, {
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+        },
+      });
+
+      if (!response.ok) {
+        console.error(`[everyman] Failed to fetch schedule: ${response.status}`);
+        return null;
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error(`[everyman] Error fetching schedule:`, error);
+      return null;
+    }
+  }
+
+  private transformSchedule(
+    schedule: Record<string, Record<string, ShowtimeData[]>>,
+    venue: VenueConfig
+  ): RawScreening[] {
+    const screenings: RawScreening[] = [];
     const now = new Date();
-    const seen = new Set<string>();
 
-    return screenings.filter((s) => {
-      if (!s.filmTitle || s.filmTitle.trim() === "") return false;
-      if (!s.datetime || isNaN(s.datetime.getTime())) return false;
-      if (s.datetime < now) return false;
+    for (const [movieId, dateSchedule] of Object.entries(schedule)) {
+      const movie = this.movieCache.get(movieId);
+      const filmTitle = movie?.title || `Unknown Film (${movieId})`;
 
-      if (s.sourceId && seen.has(s.sourceId)) return false;
-      if (s.sourceId) seen.add(s.sourceId);
+      for (const [date, showtimes] of Object.entries(dateSchedule)) {
+        for (const showtime of showtimes) {
+          if (showtime.isExpired) continue;
 
-      return true;
-    });
+          const datetime = new Date(showtime.startsAt);
+          if (datetime < now) continue;
+
+          // Get booking URL (prefer DESKTOP provider)
+          const ticketing = showtime.data?.ticketing?.find(t => t.type === 'DESKTOP' && t.provider === 'default');
+          const bookingUrl = ticketing?.urls?.[0] || '';
+
+          const sourceId = `everyman-${venue.id}-${showtime.id}`;
+
+          screenings.push({
+            filmTitle,
+            datetime,
+            bookingUrl,
+            sourceId,
+          });
+        }
+      }
+    }
+
+    return screenings;
   }
 
   async healthCheck(): Promise<boolean> {
     try {
-      const response = await fetch(this.chainConfig.baseUrl, { method: "HEAD" });
+      const response = await fetch(
+        `${this.chainConfig.baseUrl}/api/gatsby-source-boxofficeapi/scheduledMovies?theaterId=X0712`,
+        { method: "GET" }
+      );
       return response.ok;
     } catch {
       return false;
