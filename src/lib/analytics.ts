@@ -316,3 +316,126 @@ export function startTimer(category: string, variable: string) {
     },
   };
 }
+
+// ============================================
+// SYNC LIFECYCLE EVENTS
+// ============================================
+
+export type SyncSource = "sign_in" | "store_change" | "manual";
+
+export interface SyncStats {
+  durationMs: number;
+  itemsSynced: number;
+  conflictsResolved: number;
+  serverWins: number;
+  clientWins: number;
+  isNewUser: boolean;
+}
+
+/** Track when a sync operation starts */
+export function trackSyncInitiated(source: SyncSource, itemsToSync: number) {
+  if (typeof window === "undefined") return;
+  posthog.capture("sync_initiated", {
+    source,
+    items_to_sync: itemsToSync,
+  });
+}
+
+/** Track when a sync operation completes successfully */
+export function trackSyncCompleted(stats: SyncStats) {
+  if (typeof window === "undefined") return;
+  posthog.capture("sync_completed", {
+    duration_ms: stats.durationMs,
+    items_synced: stats.itemsSynced,
+    conflicts_resolved: stats.conflictsResolved,
+    server_wins: stats.serverWins,
+    client_wins: stats.clientWins,
+    is_new_user: stats.isNewUser,
+  });
+}
+
+/** Track when a sync operation fails */
+export function trackSyncFailed(error: string, phase: string) {
+  if (typeof window === "undefined") return;
+  posthog.capture("sync_failed", {
+    error,
+    phase,
+  });
+}
+
+// ============================================
+// USER LIFECYCLE EVENTS
+// ============================================
+
+/** Track when a user authenticates (sign-in completes) */
+export function trackUserAuthenticated(
+  userId: string,
+  isNewUser: boolean,
+  hadAnonymousActivity: boolean
+) {
+  if (typeof window === "undefined") return;
+  posthog.capture("user_authenticated", {
+    user_id: userId,
+    is_new_user: isNewUser,
+    had_anonymous_activity: hadAnonymousActivity,
+  });
+}
+
+/** Track anonymous to authenticated user correlation */
+export function trackAnonymousToAuthenticated(
+  anonymousId: string,
+  userId: string,
+  eventsBeforeSignup: number
+) {
+  if (typeof window === "undefined") return;
+
+  // Alias links the anonymous ID to the authenticated user
+  posthog.alias(anonymousId, userId);
+
+  posthog.capture("anonymous_to_authenticated", {
+    anonymous_id: anonymousId,
+    user_id: userId,
+    events_before_signup: eventsBeforeSignup,
+  });
+}
+
+/** Get the current PostHog distinct ID (anonymous ID before sign-in) */
+export function getDistinctId(): string | undefined {
+  if (typeof window === "undefined") return undefined;
+  return posthog.get_distinct_id();
+}
+
+// ============================================
+// USER ENGAGEMENT PROPERTIES
+// ============================================
+
+export interface UserEngagementData {
+  watchlistCount: number;
+  seenCount: number;
+  notInterestedCount: number;
+  totalStatuses: number;
+  favoriteCinemas: string[];
+  lastSyncAt: string;
+  firstFilmAddedAt?: string | null;
+}
+
+/** Sync user engagement properties to PostHog after a successful sync */
+export function syncUserEngagementProperties(data: UserEngagementData) {
+  if (typeof window === "undefined") return;
+
+  posthog.people.set({
+    watchlist_count: data.watchlistCount,
+    seen_count: data.seenCount,
+    not_interested_count: data.notInterestedCount,
+    total_statuses: data.totalStatuses,
+    favorite_cinemas: data.favoriteCinemas,
+    last_sync_at: data.lastSyncAt,
+  });
+
+  // Only set first_film_added_at once (never overwrite)
+  if (data.firstFilmAddedAt) {
+    posthog.people.set_once({
+      first_film_added_at: data.firstFilmAddedAt,
+    });
+  }
+}

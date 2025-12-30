@@ -7,6 +7,7 @@ import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
 import { currentUser } from "@clerk/nextjs/server";
 import type { StoredPreferences, StoredFilters } from "@/db/schema/user-preferences";
 import { RateLimitError, handleApiError } from "@/lib/api-errors";
+import { captureServerEvent, setServerUserProperties } from "@/lib/posthog-server";
 
 interface FilmStatusPayload {
   filmId: string;
@@ -59,7 +60,10 @@ export async function POST(request: NextRequest) {
       where: eq(users.id, userId),
     });
 
+    let isNewUser = false;
+
     if (!user) {
+      isNewUser = true;
       const [newUser] = await db
         .insert(users)
         .values({
@@ -71,6 +75,21 @@ export async function POST(request: NextRequest) {
         })
         .returning();
       user = newUser;
+
+      // Track user creation server-side
+      captureServerEvent(userId, "user_created", {
+        source: "sync",
+        email_domain: clerkUser?.emailAddresses[0]?.emailAddress?.split("@")[1],
+        has_name: !!clerkUser?.firstName,
+      });
+
+      // Set initial user properties
+      setServerUserProperties(userId, {
+        created_at: new Date().toISOString(),
+        signup_source: "sync",
+        email: clerkUser?.emailAddresses[0]?.emailAddress,
+        name: clerkUser?.fullName,
+      });
     }
 
     // 2. Merge film statuses
@@ -219,6 +238,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      isNewUser,
       filmStatuses: mergedStatuses,
       preferences: mergedPreferences,
       persistedFilters: mergedFilters,

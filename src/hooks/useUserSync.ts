@@ -6,6 +6,7 @@
  * - Initial sync on sign-in
  * - Debounced sync on store changes
  * - Online/offline awareness
+ * - Anonymous-to-authenticated tracking
  */
 
 import { useEffect, useRef, useCallback } from "react";
@@ -18,9 +19,17 @@ import {
   pushFilmStatuses,
   pushPreferences,
 } from "@/lib/sync/user-sync-service";
+import {
+  trackUserAuthenticated,
+  trackAnonymousToAuthenticated,
+  getDistinctId,
+} from "@/lib/analytics";
 
 // Debounce delay for sync (500ms)
 const SYNC_DEBOUNCE_MS = 500;
+
+// Store anonymous ID before sign-in (survives re-renders)
+let storedAnonymousId: string | null = null;
 
 export function useUserSync() {
   const { isSignedIn, isLoaded } = useUser();
@@ -54,6 +63,19 @@ export function useUserSync() {
     }, SYNC_DEBOUNCE_MS);
   }, []);
 
+  // Capture anonymous ID before sign-in
+  useEffect(() => {
+    if (!isLoaded) return;
+
+    // Store the anonymous ID when not signed in
+    if (!isSignedIn && !storedAnonymousId) {
+      storedAnonymousId = getDistinctId() || null;
+      if (storedAnonymousId) {
+        console.log("[Sync] Captured anonymous ID:", storedAnonymousId.slice(0, 8) + "...");
+      }
+    }
+  }, [isLoaded, isSignedIn]);
+
   // Initial sync on sign-in
   useEffect(() => {
     if (!isLoaded) return;
@@ -63,8 +85,32 @@ export function useUserSync() {
       isSyncingRef.current = true;
       initialSyncPerformedRef.current = true;
 
-      performFullSync().finally(() => {
+      performFullSync("sign_in").then((success) => {
         isSyncingRef.current = false;
+
+        // Track anonymous-to-authenticated conversion
+        if (success && storedAnonymousId) {
+          const currentId = getDistinctId();
+
+          // Only alias if the IDs are different (user was anonymous before)
+          if (currentId && storedAnonymousId !== currentId) {
+            // Check if user had any pre-signup activity
+            const filmCount = Object.keys(useFilmStatus.getState().getAllFilms()).length;
+            const hadAnonymousActivity = filmCount > 0;
+
+            trackAnonymousToAuthenticated(storedAnonymousId, currentId, filmCount);
+            trackUserAuthenticated(currentId, false, hadAnonymousActivity);
+
+            console.log("[Sync] Linked anonymous activity:", {
+              anonymousId: storedAnonymousId.slice(0, 8) + "...",
+              userId: currentId.slice(0, 8) + "...",
+              filmsBeforeSignup: filmCount,
+            });
+          }
+
+          // Clear stored anonymous ID
+          storedAnonymousId = null;
+        }
       });
     }
 
@@ -144,7 +190,7 @@ export function useUserSync() {
 
     const handleOnline = () => {
       console.log("[Sync] Back online, performing sync...");
-      performFullSync();
+      performFullSync("manual");
     };
 
     window.addEventListener("online", handleOnline);

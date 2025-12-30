@@ -9,9 +9,18 @@ import { useFilmStatus, type FilmStatusEntry } from "@/stores/film-status";
 import { usePreferences } from "@/stores/preferences";
 import { useFilters, type PersistedFilters } from "@/stores/filters";
 import type { StoredPreferences, StoredFilters } from "@/db/schema/user-preferences";
+import {
+  trackSyncInitiated,
+  trackSyncCompleted,
+  trackSyncFailed,
+  syncUserEngagementProperties,
+  type SyncSource,
+  type SyncStats,
+} from "@/lib/analytics";
 
 interface SyncResponse {
   success: boolean;
+  isNewUser?: boolean;
   filmStatuses: Record<string, FilmStatusEntry>;
   preferences: StoredPreferences | null;
   persistedFilters: StoredFilters | null;
@@ -90,14 +99,22 @@ function getPreferencesUpdatedAt(): string {
  * 1. Send local state to server
  * 2. Server merges and returns merged state
  * 3. Apply merged state to local stores
+ *
+ * @param source - What triggered this sync (for analytics)
  */
-export async function performFullSync(): Promise<boolean> {
+export async function performFullSync(source: SyncSource = "manual"): Promise<boolean> {
+  const startTime = performance.now();
+  const localStatuses = filmStatusesToApiFormat();
+
+  // Track sync initiation
+  trackSyncInitiated(source, localStatuses.length);
+
   try {
     const response = await fetch("/api/user/sync", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        filmStatuses: filmStatusesToApiFormat(),
+        filmStatuses: localStatuses,
         preferences: preferencesToServerFormat(),
         persistedFilters: filtersToServerFormat(),
         preferencesUpdatedAt: getPreferencesUpdatedAt(),
@@ -110,10 +127,16 @@ export async function performFullSync(): Promise<boolean> {
         console.log("[Sync] User not authenticated, skipping sync");
         return false;
       }
+      trackSyncFailed(`HTTP ${response.status}`, "fetch");
       throw new Error(`Sync failed: ${response.status}`);
     }
 
     const data: SyncResponse = await response.json();
+
+    // Track conflicts resolved
+    const serverStatusCount = Object.keys(data.filmStatuses || {}).length;
+    const localStatusCount = localStatuses.length;
+    const conflictsResolved = Math.min(serverStatusCount, localStatusCount);
 
     // Apply merged film statuses
     if (data.filmStatuses) {
@@ -144,12 +167,64 @@ export async function performFullSync(): Promise<boolean> {
       });
     }
 
-    console.log("[Sync] Full sync completed successfully");
+    const durationMs = Math.round(performance.now() - startTime);
+
+    // Track sync completion
+    const syncStats: SyncStats = {
+      durationMs,
+      itemsSynced: serverStatusCount,
+      conflictsResolved,
+      serverWins: 0, // Would need to track in API for accuracy
+      clientWins: 0,
+      isNewUser: data.isNewUser || false,
+    };
+    trackSyncCompleted(syncStats);
+
+    // Sync user engagement properties to PostHog
+    syncUserEngagementPropertiesToPostHog(data.filmStatuses || {});
+
+    console.log("[Sync] Full sync completed successfully in", durationMs, "ms");
     return true;
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    trackSyncFailed(errorMessage, "sync");
     console.error("[Sync] Full sync failed:", error);
     return false;
   }
+}
+
+/**
+ * Aggregate and sync user engagement properties to PostHog
+ */
+function syncUserEngagementPropertiesToPostHog(
+  filmStatuses: Record<string, FilmStatusEntry>
+): void {
+  const entries = Object.values(filmStatuses);
+
+  // Count by status
+  const watchlistCount = entries.filter((e) => e.status === "want_to_see").length;
+  const seenCount = entries.filter((e) => e.status === "seen").length;
+  const notInterestedCount = entries.filter((e) => e.status === "not_interested").length;
+
+  // Find first film added date
+  const addedDates = entries
+    .map((e) => e.addedAt)
+    .filter(Boolean)
+    .sort();
+  const firstFilmAddedAt = addedDates[0] || null;
+
+  // Get favorite cinemas from preferences
+  const favoriteCinemas = usePreferences.getState().selectedCinemas || [];
+
+  syncUserEngagementProperties({
+    watchlistCount,
+    seenCount,
+    notInterestedCount,
+    totalStatuses: entries.length,
+    favoriteCinemas,
+    lastSyncAt: new Date().toISOString(),
+    firstFilmAddedAt,
+  });
 }
 
 /**
