@@ -21,6 +21,11 @@ interface FilmGroup {
   };
   screeningCount: number;
   cinemaCount: number;
+  singleCinema?: {
+    id: string;
+    name: string;
+    shortName?: string | null;
+  };
   earliestTime: Date;
   hasSpecialFormats: boolean;
 }
@@ -123,6 +128,7 @@ export function DaySection({ date, screenings, filmGroups, viewMode }: DaySectio
               film={group.film}
               screeningCount={group.screeningCount}
               cinemaCount={group.cinemaCount}
+              singleCinema={group.singleCinema}
               earliestTime={group.earliestTime}
               hasSpecialFormats={group.hasSpecialFormats}
             />

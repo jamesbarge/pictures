@@ -32,6 +32,11 @@ interface FilmCardProps {
   };
   screeningCount: number;
   cinemaCount: number;
+  singleCinema?: {
+    id: string;
+    name: string;
+    shortName?: string | null;
+  };
   earliestTime: Date;
   hasSpecialFormats: boolean;
 }
@@ -40,6 +45,7 @@ export const FilmCard = memo(function FilmCard({
   film,
   screeningCount,
   cinemaCount,
+  singleCinema,
   hasSpecialFormats,
 }: FilmCardProps) {
   const posthog = usePostHog();
@@ -98,8 +104,11 @@ export const FilmCard = memo(function FilmCard({
     });
   };
 
-  const screeningLabel = screeningCount === 1 ? "screening" : "screenings";
-  const cinemaLabel = cinemaCount === 1 ? "cinema" : "cinemas";
+  const screeningLabel = screeningCount === 1 ? "showing" : "showings";
+  // Use cinema name when there's only one, otherwise use count
+  const cinemaDisplay = singleCinema
+    ? singleCinema.shortName || singleCinema.name
+    : `${cinemaCount} ${cinemaCount === 1 ? "cinema" : "cinemas"}`;
 
   return (
     <article
@@ -113,7 +122,7 @@ export const FilmCard = memo(function FilmCard({
         // Focus-within for keyboard navigation
         "focus-within:ring-2 focus-within:ring-accent-primary/40 focus-within:ring-offset-2 focus-within:ring-offset-background-primary"
       )}
-      aria-label={`${film.title} - ${screeningCount} ${screeningLabel} at ${cinemaCount} ${cinemaLabel}`}
+      aria-label={`${film.title} - ${screeningCount} ${screeningLabel} at ${cinemaDisplay}`}
     >
       {/* Poster area - contains link and buttons */}
       <div className="relative aspect-[2/3] w-full overflow-hidden">
@@ -228,7 +237,7 @@ export const FilmCard = memo(function FilmCard({
 
         {/* Screening summary */}
         <p className="text-[10px] text-text-tertiary mt-auto pt-1">
-          {screeningCount} {screeningLabel} at {cinemaCount} {cinemaLabel}
+          {screeningCount} {screeningLabel} at {cinemaDisplay}
         </p>
       </Link>
     </article>

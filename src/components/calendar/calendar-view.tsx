@@ -71,6 +71,12 @@ interface FilmGroup {
   };
   screeningCount: number;
   cinemaCount: number;
+  // When there's only one cinema, include its info for display
+  singleCinema?: {
+    id: string;
+    name: string;
+    shortName?: string | null;
+  };
   earliestTime: Date;
   hasSpecialFormats: boolean;
 }
@@ -319,17 +325,31 @@ export function CalendarView({ screenings, cinemas }: CalendarViewProps) {
       }
 
       // Compute film groups with counts
-      const filmGroups: FilmGroup[] = Array.from(filmMap.values()).map((g) => ({
-        film: g.film,
-        screeningCount: g.screenings.length,
-        cinemaCount: new Set(g.screenings.map((s) => s.cinema.id)).size,
-        earliestTime: new Date(
-          Math.min(...g.screenings.map((s) => new Date(s.datetime).getTime()))
-        ),
-        hasSpecialFormats: g.screenings.some((s) =>
-          ["35mm", "70mm", "imax", "4k"].includes(s.format?.toLowerCase() || "")
-        ),
-      }));
+      const filmGroups: FilmGroup[] = Array.from(filmMap.values()).map((g) => {
+        const uniqueCinemas = new Map(g.screenings.map((s) => [s.cinema.id, s.cinema]));
+        const cinemaCount = uniqueCinemas.size;
+        // If only one cinema, include its info for display
+        const singleCinema = cinemaCount === 1
+          ? {
+              id: g.screenings[0].cinema.id,
+              name: g.screenings[0].cinema.name,
+              shortName: g.screenings[0].cinema.shortName,
+            }
+          : undefined;
+
+        return {
+          film: g.film,
+          screeningCount: g.screenings.length,
+          cinemaCount,
+          singleCinema,
+          earliestTime: new Date(
+            Math.min(...g.screenings.map((s) => new Date(s.datetime).getTime()))
+          ),
+          hasSpecialFormats: g.screenings.some((s) =>
+            ["35mm", "70mm", "imax", "4k"].includes(s.format?.toLowerCase() || "")
+          ),
+        };
+      });
 
       // Sort by earliest screening time
       filmGroups.sort((a, b) => a.earliestTime.getTime() - b.earliestTime.getTime());
