@@ -4,7 +4,7 @@
  * Peckhamplex Cinema Scraper
  *
  * Affordable independent cinema in Peckham
- * Website: https://peckhamplex.london
+ * Website: https://www.peckhamplex.london
  *
  * No public API - scrapes HTML listings
  */
@@ -18,7 +18,7 @@ import type { RawScreening, ScraperConfig, CinemaScraper } from "../types";
 
 export const PECKHAMPLEX_CONFIG: ScraperConfig = {
   cinemaId: "peckhamplex",
-  baseUrl: "https://peckhamplex.london",
+  baseUrl: "https://www.peckhamplex.london",
   requestsPerMinute: 10,
   delayBetweenRequests: 2500,
 };
@@ -31,7 +31,7 @@ export const PECKHAMPLEX_VENUE = {
   postcode: "SE15 5JR",
   address: "95A Rye Lane",
   features: ["independent", "affordable", "repertory"],
-  website: "https://peckhamplex.london",
+  website: "https://www.peckhamplex.london",
 };
 
 // ============================================================================
