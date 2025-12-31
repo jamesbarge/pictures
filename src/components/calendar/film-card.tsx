@@ -168,7 +168,7 @@ export const FilmCard = memo(function FilmCard({
         {mounted && (
           <div
             className={cn(
-              "absolute top-3 left-3 z-10 flex flex-col gap-1.5",
+              "absolute top-2 left-2 z-10 flex flex-col gap-1",
               "opacity-0 group-hover:opacity-100 transition-opacity duration-200",
               // Always show if a status is set
               status && "opacity-100"
@@ -177,36 +177,30 @@ export const FilmCard = memo(function FilmCard({
             <button
               onClick={(e) => handleStatusClick(e, "want_to_see")}
               className={cn(
-                "group/btn flex items-center gap-1.5 p-1.5 rounded-md backdrop-blur-sm transition-all",
+                "w-7 h-7 flex items-center justify-center rounded-full transition-all shadow-sm",
                 status === "want_to_see"
-                  ? "bg-accent-danger/40 text-accent-danger"
-                  : "bg-black/50 text-white/70 hover:text-accent-danger hover:bg-accent-danger/20"
+                  ? "bg-accent-danger text-white"
+                  : "bg-black/60 text-white/80 hover:bg-accent-danger hover:text-white"
               )}
               aria-label={status === "want_to_see" ? "Remove from watchlist" : "Add to watchlist"}
             >
               <Heart
-                className={cn("w-4 h-4 shrink-0", status === "want_to_see" && "fill-current")}
+                className={cn("w-3.5 h-3.5", status === "want_to_see" && "fill-current")}
               />
-              <span className="text-[10px] font-medium whitespace-nowrap max-w-0 overflow-hidden group-hover/btn:max-w-[100px] transition-all duration-200">
-                Watchlist
-              </span>
             </button>
             <button
               onClick={(e) => handleStatusClick(e, "not_interested")}
               className={cn(
-                "group/btn flex items-center gap-1.5 p-1.5 rounded-md backdrop-blur-sm transition-all",
+                "w-7 h-7 flex items-center justify-center rounded-full transition-all shadow-sm",
                 status === "not_interested"
-                  ? "bg-black/60 text-white"
-                  : "bg-black/50 text-white/70 hover:text-white hover:bg-black/60"
+                  ? "bg-neutral-700 text-white"
+                  : "bg-black/60 text-white/80 hover:bg-neutral-600 hover:text-white"
               )}
               aria-label={
                 status === "not_interested" ? "Show this film again" : "Not interested in this film"
               }
             >
-              <X className="w-4 h-4 shrink-0" />
-              <span className="text-[10px] font-medium whitespace-nowrap max-w-0 overflow-hidden group-hover/btn:max-w-[100px] transition-all duration-200">
-                Not interested
-              </span>
+              <X className="w-3.5 h-3.5" />
             </button>
           </div>
         )}
