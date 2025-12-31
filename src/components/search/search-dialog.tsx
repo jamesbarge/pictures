@@ -28,6 +28,7 @@ export function SearchDialog() {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const router = useRouter();
 
   // Handle keyboard shortcut to open
@@ -56,7 +57,7 @@ export function SearchDialog() {
     }
   }, [isOpen]);
 
-  // Search debounce
+  // Search debounce with abort controller to prevent race conditions
   useEffect(() => {
     if (!query.trim()) {
       setResults([]);
@@ -64,9 +65,16 @@ export function SearchDialog() {
     }
 
     const timer = setTimeout(async () => {
+      // Abort any in-flight request before starting a new one
+      abortControllerRef.current?.abort();
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
       setIsLoading(true);
       try {
-        const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+        const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`, {
+          signal: controller.signal,
+        });
         if (res.ok) {
           const data = await res.json();
           setResults(data.films);
@@ -75,13 +83,24 @@ export function SearchDialog() {
           trackSearch(query, data.films.length);
         }
       } catch (error) {
+        // Ignore abort errors - they're expected when user types quickly
+        if (error instanceof Error && error.name === "AbortError") {
+          return;
+        }
         console.error("Search error:", error);
       } finally {
-        setIsLoading(false);
+        // Only clear loading if this request wasn't aborted
+        if (!controller.signal.aborted) {
+          setIsLoading(false);
+        }
       }
     }, 200);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      // Also abort on cleanup (e.g., dialog closes mid-request)
+      abortControllerRef.current?.abort();
+    };
   }, [query]);
 
   const navigateToFilm = useCallback((film: SearchResult, resultIndex: number) => {

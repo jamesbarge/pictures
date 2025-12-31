@@ -9,7 +9,7 @@ import Link from "next/link";
 import { MapPin, ExternalLink, Film } from "lucide-react";
 import { db } from "@/db";
 import { cinemas, screenings } from "@/db/schema";
-import { eq, gte, count } from "drizzle-orm";
+import { eq, gte, count, and, sql } from "drizzle-orm";
 import {
   ItemListSchema,
   FAQSchema,
@@ -39,8 +39,9 @@ export const metadata: Metadata = {
 export default async function CinemasPage() {
   const now = new Date();
 
-  // Fetch all active cinemas
-  const allCinemas = await db
+  // Fetch all active cinemas with screening counts in a single query
+  // Uses LEFT JOIN to include cinemas with zero screenings
+  const cinemasWithStats = await db
     .select({
       id: cinemas.id,
       name: cinemas.name,
@@ -52,31 +53,20 @@ export default async function CinemasPage() {
       programmingFocus: cinemas.programmingFocus,
       website: cinemas.website,
       description: cinemas.description,
+      // Count upcoming screenings - LEFT JOIN means we get 0 for cinemas with no screenings
+      screeningCount: count(screenings.id),
     })
     .from(cinemas)
+    .leftJoin(
+      screenings,
+      and(
+        eq(screenings.cinemaId, cinemas.id),
+        gte(screenings.datetime, now)
+      )
+    )
     .where(eq(cinemas.isActive, true))
+    .groupBy(cinemas.id)
     .orderBy(cinemas.name);
-
-  // Fetch screening counts per cinema
-  const screeningCounts = await db
-    .select({
-      cinemaId: screenings.cinemaId,
-      count: count(screenings.id),
-    })
-    .from(screenings)
-    .where(gte(screenings.datetime, now))
-    .groupBy(screenings.cinemaId);
-
-  // Create a map of cinema ID to screening count
-  const countMap = new Map(
-    screeningCounts.map((sc) => [sc.cinemaId, sc.count])
-  );
-
-  // Combine cinemas with their counts
-  const cinemasWithStats = allCinemas.map((cinema) => ({
-    ...cinema,
-    screeningCount: countMap.get(cinema.id) || 0,
-  }));
 
   // ItemList schema for search engines
   const listItems = cinemasWithStats.map((cinema, index) => ({

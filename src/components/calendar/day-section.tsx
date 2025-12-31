@@ -6,7 +6,7 @@
 
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, memo } from "react";
 import { format, isToday, isTomorrow, isThisWeek } from "date-fns";
 import { ScreeningCard } from "./screening-card";
 import { FilmCard } from "./film-card";
@@ -84,15 +84,22 @@ function formatDateHeader(date: Date): { primary: string; secondary: string } {
   };
 }
 
-export function DaySection({ date, screenings, filmGroups, viewMode }: DaySectionProps) {
+// Memoize DaySection to prevent re-renders when parent updates but props haven't changed
+export const DaySection = memo(function DaySection({ date, screenings, filmGroups, viewMode }: DaySectionProps) {
   const { primary, secondary } = formatDateHeader(date);
 
   // Memoize sorting to prevent recalculation on every render (for screening view)
+  // Uses pre-parsed datetime if available, falls back to parsing
   const sortedScreenings = useMemo(
     () =>
-      [...screenings].sort(
-        (a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime()
-      ),
+      [...screenings].sort((a, b) => {
+        // Use pre-parsed datetime if available (from CalendarView optimization)
+        const aTime = (a as typeof a & { _parsedDatetime?: Date })._parsedDatetime?.getTime()
+          ?? new Date(a.datetime).getTime();
+        const bTime = (b as typeof b & { _parsedDatetime?: Date })._parsedDatetime?.getTime()
+          ?? new Date(b.datetime).getTime();
+        return aTime - bTime;
+      }),
     [screenings]
   );
 
@@ -142,4 +149,4 @@ export function DaySection({ date, screenings, filmGroups, viewMode }: DaySectio
       </div>
     </section>
   );
-}
+});

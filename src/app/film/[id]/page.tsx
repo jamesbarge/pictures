@@ -26,42 +26,43 @@ interface FilmPageProps {
 
 export default async function FilmPage({ params }: FilmPageProps) {
   const { id } = await params;
+  const now = new Date();
 
-  // Fetch film
-  const film = await db.select().from(films).where(eq(films.id, id)).limit(1);
+  // Fetch film and screenings in parallel for better performance
+  // Both queries are independent - we can run them simultaneously
+  const [film, upcomingScreenings] = await Promise.all([
+    db.select().from(films).where(eq(films.id, id)).limit(1),
+    db
+      .select({
+        id: screenings.id,
+        datetime: screenings.datetime,
+        format: screenings.format,
+        screen: screenings.screen,
+        eventType: screenings.eventType,
+        bookingUrl: screenings.bookingUrl,
+        cinema: {
+          id: cinemas.id,
+          name: cinemas.name,
+          shortName: cinemas.shortName,
+          address: cinemas.address,
+        },
+      })
+      .from(screenings)
+      .innerJoin(cinemas, eq(screenings.cinemaId, cinemas.id))
+      .where(
+        and(
+          eq(screenings.filmId, id),
+          gte(screenings.datetime, now)
+        )
+      )
+      .orderBy(screenings.datetime),
+  ]);
 
   if (film.length === 0) {
     notFound();
   }
 
   const filmData = film[0];
-
-  // Fetch upcoming screenings
-  const now = new Date();
-  const upcomingScreenings = await db
-    .select({
-      id: screenings.id,
-      datetime: screenings.datetime,
-      format: screenings.format,
-      screen: screenings.screen,
-      eventType: screenings.eventType,
-      bookingUrl: screenings.bookingUrl,
-      cinema: {
-        id: cinemas.id,
-        name: cinemas.name,
-        shortName: cinemas.shortName,
-        address: cinemas.address,
-      },
-    })
-    .from(screenings)
-    .innerJoin(cinemas, eq(screenings.cinemaId, cinemas.id))
-    .where(
-      and(
-        eq(screenings.filmId, id),
-        gte(screenings.datetime, now)
-      )
-    )
-    .orderBy(screenings.datetime);
 
   // Get unique cinema names for FAQ
   const uniqueCinemas = [

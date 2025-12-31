@@ -9,8 +9,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, MapPin, Check, X } from "lucide-react";
-import { MapProvider } from "@/components/map/map-provider";
-import { CinemaMap } from "@/components/map/cinema-map";
+import { CinemaMapLazy } from "@/components/map/cinema-map-lazy";
 import { usePreferences } from "@/stores/preferences";
 import { useFilters } from "@/stores/filters";
 import { useHydrated } from "@/hooks/useHydrated";
@@ -142,13 +141,11 @@ export function MapPageClient({ cinemas }: MapPageClientProps) {
       <main className="flex-1 relative min-h-0">
         <div className="absolute inset-0">
           {hydrated ? (
-            <MapProvider>
-              <CinemaMap
-                cinemas={cinemas}
-                mapArea={localArea}
-                onAreaChange={setLocalArea}
-              />
-            </MapProvider>
+            <CinemaMapLazy
+              cinemas={cinemas}
+              mapArea={localArea}
+              onAreaChange={setLocalArea}
+            />
           ) : (
             <div className="flex items-center justify-center h-full bg-background-secondary">
               <div className="text-center">
