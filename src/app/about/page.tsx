@@ -14,17 +14,17 @@ import { OrganizationSchema, FAQSchema, BreadcrumbSchema } from "@/components/se
 
 export const revalidate = 3600; // Revalidate hourly
 
-const BASE_URL = "https://postboxd.co.uk";
+const BASE_URL = "https://pictures.london";
 
 export const metadata: Metadata = {
-  title: "About Postboxd - London Cinema Calendar",
+  title: "About Pictures - London Cinema Calendar",
   description:
-    "Postboxd aggregates film listings from 15+ independent London cinemas into one calendar. Find screenings at BFI, Prince Charles, Curzon, Picturehouse, and more.",
+    "Pictures aggregates film listings from 20+ independent London cinemas into one calendar. Find screenings at BFI, Prince Charles, Curzon, Picturehouse, and more.",
   alternates: {
     canonical: "/about",
   },
   openGraph: {
-    title: "About Postboxd - London Cinema Calendar",
+    title: "About Pictures - London Cinema Calendar",
     description:
       "The definitive cinema calendar for London cinephiles. Updated daily with listings from independent venues.",
     url: `${BASE_URL}/about`,
@@ -66,25 +66,25 @@ export default async function AboutPage() {
   // FAQ items
   const faqItems = [
     {
-      question: "What is Postboxd?",
-      answer: `Postboxd is a cinema calendar that aggregates film listings from ${stats.cinemaCount} independent London cinemas. We update daily with the latest showtimes from venues like BFI Southbank, Prince Charles Cinema, Curzon, and more.`,
+      question: "What is Pictures?",
+      answer: `Pictures is a cinema calendar that aggregates film listings from ${stats.cinemaCount} independent London cinemas. We update daily with the latest showtimes from venues like BFI Southbank, Prince Charles Cinema, Curzon, and more.`,
     },
     {
-      question: "Which cinemas does Postboxd cover?",
+      question: "Which cinemas does Pictures cover?",
       answer: `We cover ${stats.cinemaCount} independent cinemas including ${allCinemas
         .slice(0, 6)
         .map((c) => c.name)
         .join(", ")}, and more.`,
     },
     {
-      question: "How often is Postboxd updated?",
+      question: "How often is Pictures updated?",
       answer:
-        "Postboxd updates daily, scraping the latest listings from each cinema. Screenings are typically available 2-4 weeks in advance.",
+        "Pictures updates daily, scraping the latest listings from each cinema. Screenings are typically available 2-4 weeks in advance.",
     },
     {
-      question: "Is Postboxd free to use?",
+      question: "Is Pictures free to use?",
       answer:
-        "Yes, Postboxd is completely free. We aggregate listings to help film lovers discover screenings across London's independent cinema scene.",
+        "Yes, Pictures is completely free. We aggregate listings to help film lovers discover screenings across London's independent cinema scene.",
     },
   ];
 
@@ -118,12 +118,12 @@ export default async function AboutPage() {
       <div className="max-w-3xl mx-auto px-4 py-8">
         {/* Header */}
         <h1 className="text-3xl font-display text-text-primary mb-4">
-          About Postboxd
+          About Pictures
         </h1>
 
         {/* Answer-first summary */}
         <p className="text-lg text-text-secondary mb-8">
-          Postboxd is the definitive cinema calendar for London cinephiles. We
+          Pictures is the definitive cinema calendar for London cinephiles. We
           aggregate listings from {stats.cinemaCount} independent cinemas into
           one unified view, helping you discover screenings you might otherwise
           miss.
@@ -173,7 +173,7 @@ export default async function AboutPage() {
               presenting information.
             </p>
             <p>
-              Postboxd solves this by aggregating listings from {stats.cinemaCount}{" "}
+              Pictures solves this by aggregating listings from {stats.cinemaCount}{" "}
               cinemas into one searchable, filterable calendar. Whether
               you&apos;re looking for a specific film, browsing repertory
               screenings, or just seeing what&apos;s on near you tonight, we make

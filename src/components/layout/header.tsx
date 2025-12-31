@@ -1,5 +1,5 @@
 /**
- * Postboxd Unified Header
+ * Pictures Unified Header
  * Single filter bar with date, film search, and cinema selection
  * Uses design system primitives for consistent styling
  */
@@ -64,7 +64,7 @@ export function Header({ cinemas, festivals, availableFormats }: HeaderProps) {
           {/* Logo */}
           <Link href="/" className="group flex items-center gap-2">
             <span className="font-display text-2xl text-text-primary tracking-tight group-hover:text-accent-primary transition-colors">
-              Postboxd
+              Pictures
             </span>
             <span className="text-text-muted/40 text-lg font-light">|</span>
             <span className="text-sm text-text-tertiary font-normal hidden sm:inline">

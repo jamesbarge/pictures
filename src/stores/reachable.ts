@@ -169,7 +169,7 @@ export const useReachable = create<ReachableState & ReachableActions>()(
       },
     }),
     {
-      name: "postboxd-reachable",
+      name: "pictures-reachable",
       storage: createJSONStorage(() => localStorage),
       // Only persist user preferences, not transient state
       partialize: (state) => ({

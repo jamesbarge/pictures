@@ -203,7 +203,7 @@ export const useFilmStatus = create<FilmStatusState>()(
           .sort((a, b) => new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime()),
     }),
     {
-      name: "postboxd-film-status",
+      name: "pictures-film-status",
       storage: createJSONStorage(() => localStorage),
     }
   )

@@ -318,7 +318,7 @@ export const useFilters = create<FilterState & FilterActions>()(
       },
     }),
     {
-      name: "postboxd-filters",
+      name: "pictures-filters",
       // Don't persist search terms or date range - they should reset each session
       partialize: (state) => ({
         cinemaIds: state.cinemaIds,

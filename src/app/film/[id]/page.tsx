@@ -157,7 +157,7 @@ export default async function FilmPage({ params }: FilmPageProps) {
 // Generate metadata with OG tags for rich sharing
 export async function generateMetadata({ params }: FilmPageProps) {
   const { id } = await params;
-  const BASE_URL = "https://postboxd.co.uk";
+  const BASE_URL = "https://pictures.london";
 
   const film = await db.select().from(films).where(eq(films.id, id)).limit(1);
 

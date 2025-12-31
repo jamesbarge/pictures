@@ -27,7 +27,7 @@ const cormorant = Cormorant({
   style: ["normal", "italic"],
 });
 
-const BASE_URL = "https://postboxd.co.uk";
+const BASE_URL = "https://pictures.london";
 
 /**
  * Comprehensive metadata for SEO and social sharing
@@ -41,8 +41,8 @@ export async function generateMetadata(): Promise<Metadata> {
     },
   // Basic metadata
   title: {
-    default: "Postboxd - London Cinema Calendar",
-    template: "%s | Postboxd",
+    default: "Pictures - London Cinema Calendar",
+    template: "%s | Pictures",
   },
   description:
     "Find screenings at London's independent cinemas. Daily updated listings from BFI Southbank, Prince Charles Cinema, Curzon, Picturehouse, ICA, Barbican, and 15+ venues.",
@@ -70,8 +70,8 @@ export async function generateMetadata(): Promise<Metadata> {
     type: "website",
     locale: "en_GB",
     url: BASE_URL,
-    siteName: "Postboxd",
-    title: "Postboxd - London Cinema Calendar",
+    siteName: "Pictures",
+    title: "Pictures - London Cinema Calendar",
     description:
       "Find screenings at London's independent cinemas. BFI, Prince Charles, Curzon, Picturehouse, ICA, and more. Updated daily.",
     images: [
@@ -79,7 +79,7 @@ export async function generateMetadata(): Promise<Metadata> {
         url: `${BASE_URL}/og-image.png`,
         width: 1200,
         height: 630,
-        alt: "Postboxd - London Cinema Calendar",
+        alt: "Pictures - London Cinema Calendar",
       },
     ],
   },
@@ -87,11 +87,11 @@ export async function generateMetadata(): Promise<Metadata> {
   // Twitter Card
   twitter: {
     card: "summary_large_image",
-    title: "Postboxd - London Cinema Calendar",
+    title: "Pictures - London Cinema Calendar",
     description:
-      "Find screenings at London's independent cinemas. Updated daily with showtimes from 15+ venues.",
+      "Find screenings at London's independent cinemas. Updated daily with showtimes from 20+ venues.",
     images: [`${BASE_URL}/og-image.png`],
-    creator: "@postboxd",
+    creator: "@pictureslondon",
   },
 
   // Robots directives
@@ -122,8 +122,8 @@ export async function generateMetadata(): Promise<Metadata> {
   // },
 
     // App info
-    applicationName: "Postboxd",
-    authors: [{ name: "Postboxd" }],
+    applicationName: "Pictures",
+    authors: [{ name: "Pictures" }],
     generator: "Next.js",
     category: "Entertainment",
   };

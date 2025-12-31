@@ -7,20 +7,20 @@ import { Metadata } from "next";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 
-const BASE_URL = "https://postboxd.co.uk";
+const BASE_URL = "https://pictures.london";
 const CONTACT_EMAIL = "jdwbarge@gmail.com";
 const LAST_UPDATED = "31 December 2024";
 
 export const metadata: Metadata = {
-  title: "Terms of Service - Postboxd",
+  title: "Terms of Service - Pictures",
   description:
-    "Terms of service for Postboxd, the London cinema calendar. Read our terms and conditions.",
+    "Terms of service for Pictures, the London cinema calendar. Read our terms and conditions.",
   alternates: {
     canonical: "/terms",
   },
   openGraph: {
-    title: "Terms of Service - Postboxd",
-    description: "Terms of service for Postboxd, the London cinema calendar.",
+    title: "Terms of Service - Pictures",
+    description: "Terms of service for Pictures, the London cinema calendar.",
     url: `${BASE_URL}/terms`,
     type: "website",
   },
@@ -58,15 +58,15 @@ export default function TermsOfServicePage() {
               1. Introduction
             </h2>
             <p className="text-text-secondary mb-4">
-              Welcome to Postboxd. These Terms of Service (&quot;Terms&quot;)
-              govern your use of the Postboxd website at{" "}
+              Welcome to Pictures. These Terms of Service (&quot;Terms&quot;)
+              govern your use of the Pictures website at{" "}
               <a
                 href={BASE_URL}
                 className="text-accent-primary hover:underline"
               >
-                postboxd.co.uk
+                pictures.london
               </a>{" "}
-              (&quot;Service&quot;), operated by Postboxd (&quot;we&quot;,
+              (&quot;Service&quot;), operated by Pictures (&quot;we&quot;,
               &quot;our&quot;, or &quot;us&quot;).
             </p>
             <p className="text-text-secondary">
@@ -82,7 +82,7 @@ export default function TermsOfServicePage() {
               2. Description of Service
             </h2>
             <p className="text-text-secondary mb-4">
-              Postboxd is a cinema calendar that aggregates film screening
+              Pictures is a cinema calendar that aggregates film screening
               information from independent cinemas in London. The Service
               provides:
             </p>
@@ -179,7 +179,7 @@ export default function TermsOfServicePage() {
             </h2>
             <p className="text-text-secondary mb-4">
               The Service and its original content (excluding user-generated
-              content and third-party data) are owned by Postboxd and are
+              content and third-party data) are owned by Pictures and are
               protected by copyright, trademark, and other intellectual property
               laws.
             </p>
@@ -222,7 +222,7 @@ export default function TermsOfServicePage() {
               8. Limitation of Liability
             </h2>
             <p className="text-text-secondary mb-4">
-              To the maximum extent permitted by law, Postboxd shall not be
+              To the maximum extent permitted by law, Pictures shall not be
               liable for any indirect, incidental, special, consequential, or
               punitive damages, including but not limited to:
             </p>
@@ -251,7 +251,7 @@ export default function TermsOfServicePage() {
               9. Indemnification
             </h2>
             <p className="text-text-secondary">
-              You agree to defend, indemnify, and hold harmless Postboxd and its
+              You agree to defend, indemnify, and hold harmless Pictures and its
               operators from any claims, damages, losses, or expenses (including
               legal fees) arising from your use of the Service or violation of
               these Terms.

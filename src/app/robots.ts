@@ -1,9 +1,9 @@
 import { MetadataRoute } from "next";
 
-const BASE_URL = "https://postboxd.co.uk";
+const BASE_URL = "https://pictures.london";
 
 /**
- * Robots.txt configuration for Postboxd
+ * Robots.txt configuration for Pictures
  *
  * CRITICAL FOR GEO (Generative Engine Optimization):
  * - Explicitly allows AI crawler bots (GPTBot, Claude-Web, Google-Extended)

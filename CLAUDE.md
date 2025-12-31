@@ -3,7 +3,7 @@
 ## Project Overview
 London cinema calendar app that scrapes screening data from independent cinemas and displays them in a unified calendar view.
 
-**Production URL: https://postboxd.co.uk**
+**Production URL: https://pictures.london**
 
 ## Scraping Rules
 

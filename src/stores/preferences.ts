@@ -152,7 +152,7 @@ export const usePreferences = create<PreferencesState>()(
       },
     }),
     {
-      name: "postboxd-preferences",
+      name: "pictures-preferences",
       storage: createJSONStorage(() => localStorage),
     }
   )

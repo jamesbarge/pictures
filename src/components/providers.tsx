@@ -1,12 +1,18 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PostHogProvider } from "./posthog-provider";
 import { UserSyncProvider } from "./user-sync-provider";
 import { CookieConsentBanner } from "./cookie-consent-banner";
+import { runAllStorageMigrations } from "@/stores/utils/migrate-storage";
 
 export function Providers({ children }: { children: React.ReactNode }) {
+  // Run storage migrations on first load (Postboxd -> Pictures rebrand)
+  useEffect(() => {
+    runAllStorageMigrations();
+  }, []);
+
   const [queryClient] = useState(
     () =>
       new QueryClient({

@@ -70,7 +70,7 @@ export const useDiscovery = create<DiscoveryState>()(
       },
     }),
     {
-      name: "postboxd-discovery",
+      name: "pictures-discovery",
       storage: createJSONStorage(() => localStorage),
       // Don't persist the methods
       partialize: (state) => ({

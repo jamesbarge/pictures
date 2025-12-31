@@ -57,7 +57,7 @@ export const useCookieConsent = create<CookieConsentState>()(
       canTrack: () => get().analyticsConsent === "accepted",
     }),
     {
-      name: "postboxd-cookie-consent",
+      name: "pictures-cookie-consent",
       storage: createJSONStorage(() => localStorage),
     }
   )

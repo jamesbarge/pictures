@@ -475,7 +475,7 @@ export const useFestivalStore = create<FestivalState & FestivalActions>()(
       reset: () => set({ ...DEFAULT_STATE, updatedAt: new Date().toISOString() }),
     }),
     {
-      name: "postboxd-festivals",
+      name: "pictures-festivals",
       storage: createJSONStorage(() => localStorage),
     }
   )

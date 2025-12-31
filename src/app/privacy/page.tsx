@@ -39,7 +39,7 @@ export default function PrivacyPage() {
               Introduction
             </h2>
             <p className="text-text-secondary leading-relaxed">
-              Postboxd is a cinema listings service that helps you find film
+              Pictures is a cinema listings service that helps you find film
               screenings at independent cinemas across London. We respect your
               privacy and are committed to protecting your personal data. This
               policy explains how we collect, use, and protect your information
@@ -133,7 +133,7 @@ export default function PrivacyPage() {
               Analytics cookies (your choice)
             </h3>
             <p className="text-text-secondary mb-2">
-              These help us improve Postboxd but are only set with your consent:
+              These help us improve Pictures but are only set with your consent:
             </p>
             <ul className="list-disc list-inside text-text-secondary space-y-1">
               <li>
@@ -178,7 +178,7 @@ export default function PrivacyPage() {
               Third-Party Services
             </h2>
             <p className="text-text-secondary mb-3">
-              We use the following services to operate Postboxd:
+              We use the following services to operate Pictures:
             </p>
             <ul className="list-disc list-inside text-text-secondary space-y-1">
               <li>
@@ -289,10 +289,10 @@ export default function PrivacyPage() {
               For privacy-related questions or to exercise your rights, contact
               us at:{" "}
               <a
-                href="mailto:privacy@postboxd.co.uk"
+                href="mailto:hello@pictures.london"
                 className="text-accent-primary hover:underline"
               >
-                privacy@postboxd.co.uk
+                hello@pictures.london
               </a>
             </p>
             <p className="text-text-secondary mt-3">
@@ -318,7 +318,7 @@ export default function PrivacyPage() {
             <p className="text-text-secondary">
               We may update this policy from time to time. Significant changes
               will be communicated via a notice on the site. Your continued use
-              of Postboxd after changes constitutes acceptance of the updated
+              of Pictures after changes constitutes acceptance of the updated
               policy.
             </p>
           </section>
@@ -329,7 +329,7 @@ export default function PrivacyPage() {
 }
 
 export const metadata = {
-  title: "Privacy Policy | Postboxd",
+  title: "Privacy Policy | Pictures",
   description:
-    "How Postboxd collects, uses, and protects your personal data. UK GDPR compliant.",
+    "How Pictures collects, uses, and protects your personal data. UK GDPR compliant.",
 };

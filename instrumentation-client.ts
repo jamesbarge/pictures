@@ -10,7 +10,7 @@ Sentry.init({
   // Configure which URLs receive trace headers for distributed tracing
   tracePropagationTargets: [
     "localhost",
-    /^https:\/\/postboxd\.co\.uk/,
+    /^https:\/\/pictures\.london/,
   ],
 
   // Enable browser tracing integration (automatic in @sentry/nextjs)

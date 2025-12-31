@@ -1,14 +1,14 @@
-# Postboxd
+# Pictures
 
 **The London Cinema Calendar** — Aggregating screenings from 20+ independent cinemas into one unified view.
 
-**Live at [postboxd.co.uk](https://postboxd.co.uk)**
+**Live at [pictures.london](https://pictures.london)**
 
 ---
 
 ## What is this?
 
-London has an incredible independent cinema scene, but finding what's showing means checking 20 different websites. Postboxd solves this by scraping listings from venues like BFI Southbank, Prince Charles Cinema, Curzon, Picturehouse, ICA, Barbican, and more — presenting everything in one filterable calendar.
+London has an incredible independent cinema scene, but finding what's showing means checking 20 different websites. Pictures solves this by scraping listings from venues like BFI Southbank, Prince Charles Cinema, Curzon, Picturehouse, ICA, Barbican, and more — presenting everything in one filterable calendar.
 
 ### Features
 
@@ -55,8 +55,8 @@ London has an incredible independent cinema scene, but finding what's showing me
 
 ```bash
 # Clone the repo
-git clone https://github.com/jamesbarge/postboxd.git
-cd postboxd
+git clone https://github.com/jamesbarge/pictures.git
+cd pictures
 
 # Install dependencies
 npm install

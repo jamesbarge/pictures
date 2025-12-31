@@ -3,10 +3,10 @@ import { db } from "@/db";
 import { films, cinemas, festivals } from "@/db/schema";
 import { eq, isNotNull } from "drizzle-orm";
 
-const BASE_URL = "https://postboxd.co.uk";
+const BASE_URL = "https://pictures.london";
 
 /**
- * Dynamic sitemap for Postboxd
+ * Dynamic sitemap for Pictures
  *
  * Includes:
  * - Static pages (home, map, festivals, watchlist)

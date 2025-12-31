@@ -3,7 +3,7 @@ import type { Cinema } from "@/types/cinema";
 import type { Screening } from "@/types/screening";
 import type { FestivalSelect } from "@/db/schema/festivals";
 
-const BASE_URL = "https://postboxd.co.uk";
+const BASE_URL = "https://pictures.london";
 
 /**
  * JSON-LD Schema Components for SEO and GEO
@@ -42,14 +42,14 @@ function JsonLd({ id, data }: JsonLdProps) {
 }
 
 /**
- * Organization schema for Postboxd brand
+ * Organization schema for Pictures brand
  * Used in root layout
  */
 export function OrganizationSchema() {
   const data = {
     "@context": "https://schema.org",
     "@type": "Organization",
-    name: "Postboxd",
+    name: "Pictures",
     url: BASE_URL,
     logo: `${BASE_URL}/logo.png`,
     description:
@@ -73,8 +73,8 @@ export function WebSiteSchema() {
   const data = {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    name: "Postboxd",
-    alternateName: "Postboxd London Cinema Calendar",
+    name: "Pictures",
+    alternateName: "Pictures London Cinema Calendar",
     url: BASE_URL,
     description:
       "Find and track film screenings at London's independent cinemas. Updated daily with showtimes from BFI, Prince Charles, Curzon, Picturehouse, and more.",
