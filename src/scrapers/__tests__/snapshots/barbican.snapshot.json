@@ -1,0 +1,444 @@
+{
+  "cinemaId": "barbican",
+  "capturedAt": "2026-01-02T02:57:54.742Z",
+  "screeningCount": 71,
+  "uniqueFilms": 7,
+  "dateRange": {
+    "earliest": "2026-01-02T14:30:00.000Z",
+    "latest": "2026-01-15T20:45:00.000Z"
+  },
+  "screenings": [
+    {
+      "filmTitle": "Marty Supreme",
+      "datetime": "2026-01-02T14:30:00.000Z",
+      "screen": "Cinema 2",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Zootropolis 2",
+      "datetime": "2026-01-02T15:00:00.000Z",
+      "screen": "Cinema 3",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sentimental Value",
+      "datetime": "2026-01-02T17:30:00.000Z",
+      "screen": "Cinema 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Marty Supreme",
+      "datetime": "2026-01-02T17:45:00.000Z",
+      "screen": "Cinema 3",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Peter Hujar's Day",
+      "datetime": "2026-01-02T18:20:00.000Z",
+      "screen": "Cinema 2",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Marty Supreme",
+      "datetime": "2026-01-02T20:20:00.000Z",
+      "screen": "Cinema 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sentimental Value",
+      "datetime": "2026-01-02T20:20:00.000Z",
+      "screen": "Cinema 2",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Peter Hujar's Day",
+      "datetime": "2026-01-02T21:00:00.000Z",
+      "screen": "Cinema 3",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Menus-Plaisirs Les Troisgros",
+      "datetime": "2026-01-03T13:30:00.000Z",
+      "screen": "Cinema 2",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Marty Supreme",
+      "datetime": "2026-01-03T14:00:00.000Z",
+      "screen": "Cinema 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Zootropolis 2",
+      "datetime": "2026-01-03T15:00:00.000Z",
+      "screen": "Cinema 3",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Marty Supreme",
+      "datetime": "2026-01-03T17:10:00.000Z",
+      "screen": "Cinema 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sentimental Value",
+      "datetime": "2026-01-03T18:10:00.000Z",
+      "screen": "Cinema 3",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Peter Hujar's Day",
+      "datetime": "2026-01-03T18:20:00.000Z",
+      "screen": "Cinema 2",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Marty Supreme",
+      "datetime": "2026-01-03T20:20:00.000Z",
+      "screen": "Cinema 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sentimental Value",
+      "datetime": "2026-01-03T20:20:00.000Z",
+      "screen": "Cinema 2",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Peter Hujar's Day",
+      "datetime": "2026-01-03T21:00:00.000Z",
+      "screen": "Cinema 3",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sentimental Value",
+      "datetime": "2026-01-04T13:20:00.000Z",
+      "screen": "Cinema 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Zootropolis 2",
+      "datetime": "2026-01-04T14:30:00.000Z",
+      "screen": "Cinema 2",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "BLKNWS: Terms & Conditions",
+      "datetime": "2026-01-04T14:45:00.000Z",
+      "screen": "Cinema 3",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Marty Supreme",
+      "datetime": "2026-01-04T16:15:00.000Z",
+      "screen": "Cinema 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Peter Hujar's Day",
+      "datetime": "2026-01-04T17:00:00.000Z",
+      "screen": "Cinema 2",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Zootropolis 2",
+      "datetime": "2026-01-04T17:15:00.000Z",
+      "screen": "Cinema 3",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Marty Supreme",
+      "datetime": "2026-01-04T19:15:00.000Z",
+      "screen": "Cinema 2",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sentimental Value",
+      "datetime": "2026-01-04T19:25:00.000Z",
+      "screen": "Cinema 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Peter Hujar's Day",
+      "datetime": "2026-01-04T19:45:00.000Z",
+      "screen": "Cinema 3",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Marty Supreme",
+      "datetime": "2026-01-05T14:20:00.000Z",
+      "screen": "Cinema 2",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Peter Hujar's Day",
+      "datetime": "2026-01-05T15:00:00.000Z",
+      "screen": "Cinema 3",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Marty Supreme",
+      "datetime": "2026-01-05T17:30:00.000Z",
+      "screen": "Cinema 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Zootropolis 2",
+      "datetime": "2026-01-05T17:35:00.000Z",
+      "screen": "Cinema 3",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sentimental Value",
+      "datetime": "2026-01-05T18:10:00.000Z",
+      "screen": "Cinema 2",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Marty Supreme",
+      "datetime": "2026-01-05T20:10:00.000Z",
+      "screen": "Cinema 3",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sentimental Value",
+      "datetime": "2026-01-05T20:40:00.000Z",
+      "screen": "Cinema 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Peter Hujar's Day",
+      "datetime": "2026-01-05T21:00:00.000Z",
+      "screen": "Cinema 2",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Marty Supreme",
+      "datetime": "2026-01-06T17:45:00.000Z",
+      "screen": "Cinema 3",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sentimental Value",
+      "datetime": "2026-01-06T17:45:00.000Z",
+      "screen": "Cinema 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Peter Hujar's Day",
+      "datetime": "2026-01-06T18:20:00.000Z",
+      "screen": "Cinema 2",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sentimental Value",
+      "datetime": "2026-01-06T20:20:00.000Z",
+      "screen": "Cinema 2",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Marty Supreme",
+      "datetime": "2026-01-06T20:35:00.000Z",
+      "screen": "Cinema 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Peter Hujar's Day",
+      "datetime": "2026-01-06T21:00:00.000Z",
+      "screen": "Cinema 3",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Marty Supreme",
+      "datetime": "2026-01-07T17:30:00.000Z",
+      "screen": "Cinema 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sentimental Value",
+      "datetime": "2026-01-07T18:00:00.000Z",
+      "screen": "Cinema 3",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Peter Hujar's Day",
+      "datetime": "2026-01-07T18:20:00.000Z",
+      "screen": "Cinema 2",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Marty Supreme",
+      "datetime": "2026-01-07T20:10:00.000Z",
+      "screen": "Cinema 2",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sentimental Value",
+      "datetime": "2026-01-07T20:40:00.000Z",
+      "screen": "Cinema 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Peter Hujar's Day",
+      "datetime": "2026-01-07T21:00:00.000Z",
+      "screen": "Cinema 3",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Marty Supreme",
+      "datetime": "2026-01-08T14:30:00.000Z",
+      "screen": "Cinema 2",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Zootropolis 2",
+      "datetime": "2026-01-08T15:00:00.000Z",
+      "screen": "Cinema 3",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Marty Supreme",
+      "datetime": "2026-01-08T17:45:00.000Z",
+      "screen": "Cinema 3",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sentimental Value",
+      "datetime": "2026-01-08T17:45:00.000Z",
+      "screen": "Cinema 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Peter Hujar's Day",
+      "datetime": "2026-01-08T18:20:00.000Z",
+      "screen": "Cinema 2",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sentimental Value",
+      "datetime": "2026-01-08T20:20:00.000Z",
+      "screen": "Cinema 2",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Marty Supreme",
+      "datetime": "2026-01-08T20:35:00.000Z",
+      "screen": "Cinema 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Peter Hujar's Day",
+      "datetime": "2026-01-08T21:00:00.000Z",
+      "screen": "Cinema 3",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Hamnet",
+      "datetime": "2026-01-09T15:00:00.000Z",
+      "screen": "Cinema 2",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Hamnet",
+      "datetime": "2026-01-09T18:00:00.000Z",
+      "screen": "Cinema 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Hamnet",
+      "datetime": "2026-01-09T20:45:00.000Z",
+      "screen": "Cinema 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Hamnet",
+      "datetime": "2026-01-10T15:00:00.000Z",
+      "screen": "Cinema 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Hamnet",
+      "datetime": "2026-01-10T18:00:00.000Z",
+      "screen": "Cinema 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Hamnet",
+      "datetime": "2026-01-10T20:45:00.000Z",
+      "screen": "Cinema 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Hamnet",
+      "datetime": "2026-01-11T14:00:00.000Z",
+      "screen": "Cinema 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Hamnet",
+      "datetime": "2026-01-11T17:00:00.000Z",
+      "screen": "Cinema 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Hamnet",
+      "datetime": "2026-01-11T19:45:00.000Z",
+      "screen": "Cinema 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Hamnet",
+      "datetime": "2026-01-12T18:00:00.000Z",
+      "screen": "Cinema 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Hamnet",
+      "datetime": "2026-01-12T20:45:00.000Z",
+      "screen": "Cinema 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Hamnet",
+      "datetime": "2026-01-13T18:00:00.000Z",
+      "screen": "Cinema 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Hamnet",
+      "datetime": "2026-01-13T20:45:00.000Z",
+      "screen": "Cinema 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Hamnet",
+      "datetime": "2026-01-14T20:50:00.000Z",
+      "screen": "Cinema 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Hamnet",
+      "datetime": "2026-01-15T15:00:00.000Z",
+      "screen": "Cinema 2",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Hamnet",
+      "datetime": "2026-01-15T18:00:00.000Z",
+      "screen": "Cinema 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Hamnet",
+      "datetime": "2026-01-15T20:45:00.000Z",
+      "screen": "Cinema 1",
+      "hasBookingUrl": true
+    }
+  ],
+  "formats": [],
+  "screens": [
+    "Cinema 1",
+    "Cinema 2",
+    "Cinema 3"
+  ]
+}

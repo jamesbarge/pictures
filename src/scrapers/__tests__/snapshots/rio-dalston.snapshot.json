@@ -1,0 +1,456 @@
+{
+  "cinemaId": "rio-dalston",
+  "capturedAt": "2026-01-02T02:49:07.936Z",
+  "screeningCount": 73,
+  "uniqueFilms": 34,
+  "dateRange": {
+    "earliest": "2026-01-02T17:40:00.000Z",
+    "latest": "2026-04-25T22:00:00.000Z"
+  },
+  "screenings": [
+    {
+      "filmTitle": "Sentimental Value",
+      "datetime": "2026-01-02T17:40:00.000Z",
+      "screen": "Screen 2",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Peter Hujar's Day",
+      "datetime": "2026-01-02T18:15:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Marty Supreme",
+      "datetime": "2026-01-02T20:15:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sentimental Value",
+      "datetime": "2026-01-02T20:30:00.000Z",
+      "screen": "Screen 2",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Marty Supreme",
+      "datetime": "2026-01-03T15:00:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Peter Hujar's Day",
+      "datetime": "2026-01-03T15:35:00.000Z",
+      "screen": "Screen 2",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sentimental Value",
+      "datetime": "2026-01-03T17:35:00.000Z",
+      "screen": "Screen 2",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Peter Hujar's Day",
+      "datetime": "2026-01-03T18:15:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Marty Supreme",
+      "datetime": "2026-01-03T20:15:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sentimental Value",
+      "datetime": "2026-01-03T20:30:00.000Z",
+      "screen": "Screen 2",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Varda Film Club: La Pointe Courte",
+      "datetime": "2026-01-04T13:30:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Peter Hujar's Day",
+      "datetime": "2026-01-04T14:30:00.000Z",
+      "screen": "Screen 2",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sentimental Value",
+      "datetime": "2026-01-04T15:30:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Marty Supreme",
+      "datetime": "2026-01-04T16:40:00.000Z",
+      "screen": "Screen 2",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Peter Hujar's Day",
+      "datetime": "2026-01-04T18:20:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sentimental Value",
+      "datetime": "2026-01-04T20:00:00.000Z",
+      "screen": "Screen 2",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Marty Supreme",
+      "datetime": "2026-01-04T20:15:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Carers &amp; Babies: Marty Supreme",
+      "datetime": "2026-01-05T11:00:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sentimental Value",
+      "datetime": "2026-01-05T12:45:00.000Z",
+      "screen": "Screen 2",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Marty Supreme",
+      "datetime": "2026-01-05T15:00:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Peter Hujar's Day",
+      "datetime": "2026-01-05T15:35:00.000Z",
+      "screen": "Screen 2",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sentimental Value",
+      "datetime": "2026-01-05T17:35:00.000Z",
+      "screen": "Screen 2",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Peter Hujar's Day",
+      "datetime": "2026-01-05T18:15:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Marty Supreme",
+      "datetime": "2026-01-05T20:15:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sentimental Value",
+      "datetime": "2026-01-05T20:30:00.000Z",
+      "screen": "Screen 2",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sentimental Value",
+      "datetime": "2026-01-06T17:40:00.000Z",
+      "screen": "Screen 2",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Peter Hujar's Day",
+      "datetime": "2026-01-06T18:15:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Marty Supreme",
+      "datetime": "2026-01-06T20:15:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sentimental Value",
+      "datetime": "2026-01-06T20:30:00.000Z",
+      "screen": "Screen 2",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sentimental Value",
+      "datetime": "2026-01-07T17:40:00.000Z",
+      "screen": "Screen 2",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Peter Hujar's Day",
+      "datetime": "2026-01-07T18:15:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Marty Supreme",
+      "datetime": "2026-01-07T20:15:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sentimental Value",
+      "datetime": "2026-01-07T20:30:00.000Z",
+      "screen": "Screen 2",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sentimental Value",
+      "datetime": "2026-01-08T17:40:00.000Z",
+      "screen": "Screen 2",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Peter Hujar's Day",
+      "datetime": "2026-01-08T18:15:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Marty Supreme",
+      "datetime": "2026-01-08T20:15:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sentimental Value",
+      "datetime": "2026-01-08T20:30:00.000Z",
+      "screen": "Screen 2",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Hamnet",
+      "datetime": "2026-01-09T17:45:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Hamnet",
+      "datetime": "2026-01-09T20:30:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Hamnet",
+      "datetime": "2026-01-10T15:00:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Hamnet",
+      "datetime": "2026-01-10T17:45:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Hamnet",
+      "datetime": "2026-01-10T20:30:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Hamnet",
+      "datetime": "2026-01-11T14:30:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Hamnet",
+      "datetime": "2026-01-11T17:15:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Hamnet",
+      "datetime": "2026-01-11T20:00:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Carers &amp; Babies: HAMNET",
+      "datetime": "2026-01-12T11:00:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Classic Matinee: Eleanor The Great",
+      "datetime": "2026-01-12T14:30:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Pink Palace: Taxi Zum Klo",
+      "datetime": "2026-01-15T19:30:00.000Z",
+      "screen": "Ludski",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Saturday Morning Picture Club: Song of the Sea",
+      "datetime": "2026-01-17T10:15:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Healers, Midwives, Witches + Q&amp;A",
+      "datetime": "2026-01-17T13:30:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Films For Workers: Killer of Sheep",
+      "datetime": "2026-01-18T15:30:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Arabic Cinema Club curated by Hany Abu Assad",
+      "datetime": "2026-01-20T18:30:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Coming Up – LSD: Dream Emulator and the rest of Osamo Sato’s Lovely Sweet Dream",
+      "datetime": "2026-01-22T23:00:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Films For Workers: Bread and Roses + Panel",
+      "datetime": "2026-01-25T15:30:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "LSFF: Lo-Budget Mayhem",
+      "datetime": "2026-01-26T18:30:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "LSFF: Uncanny Sally ",
+      "datetime": "2026-01-28T18:30:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "LSFF: Palestine Looks Back",
+      "datetime": "2026-01-29T20:45:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "LSFF: Midnight Movies",
+      "datetime": "2026-01-30T23:30:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "LSFF: WTF?! ",
+      "datetime": "2026-01-31T15:00:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Underscore Cinema 2026: A Working-Class Film Festival",
+      "datetime": "2026-02-07T13:00:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Classic Matinee: Guess Who's Coming To Dinner",
+      "datetime": "2026-02-09T14:30:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Films For Workers: Behind the Rent Strike + Panel",
+      "datetime": "2026-02-11T18:30:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Queer Horror Nights: THE ROCKY HORROR PICTURE SHOW with Shadow Cast",
+      "datetime": "2026-02-14T23:30:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "NEUROSPICY! + Q&amp;A",
+      "datetime": "2026-02-15T14:00:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Dyke TV: the early naughties + discussion",
+      "datetime": "2026-02-18T18:45:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Peaking – Euphoric Psychedelia in our Digital Imaginations",
+      "datetime": "2026-02-19T23:00:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Saturday Morning Picture Club: The Princess and The Frog",
+      "datetime": "2026-02-21T10:15:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Films For Workers: Dessert For Constance",
+      "datetime": "2026-02-25T18:30:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Classic Matinee: Sunset Boulevard",
+      "datetime": "2026-03-16T14:30:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Bad Trip – Horror Psychedelia and Nightmarescapes in the Digital Sphere",
+      "datetime": "2026-03-19T23:00:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Doc 'N Roll: RAVE CULTURE: A NEW ERA + Q&amp;A",
+      "datetime": "2026-03-27T21:00:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Classic Matinee: Sister Act",
+      "datetime": "2026-04-13T13:30:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Ego Death: An LSD Dream Emulator Rave",
+      "datetime": "2026-04-25T22:00:00.000Z",
+      "screen": "Screen 1",
+      "hasBookingUrl": true
+    }
+  ],
+  "formats": [],
+  "screens": [
+    "Ludski",
+    "Screen 1",
+    "Screen 2"
+  ]
+}
