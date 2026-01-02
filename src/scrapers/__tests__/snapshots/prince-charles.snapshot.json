@@ -1,0 +1,3080 @@
+{
+  "cinemaId": "prince-charles",
+  "capturedAt": "2026-01-02T02:51:15.829Z",
+  "screeningCount": 573,
+  "uniqueFilms": 311,
+  "dateRange": {
+    "earliest": "2026-01-03T12:00:00.000Z",
+    "latest": "2027-01-02T20:45:00.000Z"
+  },
+  "screenings": [
+    {
+      "filmTitle": "Paper Moon",
+      "datetime": "2026-01-03T12:00:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "In The Mood For Love",
+      "datetime": "2026-01-03T12:15:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Playtime",
+      "datetime": "2026-01-03T14:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "One Flew Over The Cuckoo's Nest",
+      "datetime": "2026-01-03T14:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Age of Innocence",
+      "datetime": "2026-01-03T17:20:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "This Is Spinal Tap",
+      "datetime": "2026-01-03T17:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Barry Lyndon",
+      "datetime": "2026-01-03T20:00:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "300",
+      "datetime": "2026-01-03T20:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Perfect Blue",
+      "datetime": "2026-01-04T12:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Emperor's New Groove",
+      "datetime": "2026-01-04T12:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "One Battle After Another",
+      "datetime": "2026-01-04T14:15:00.000Z",
+      "format": "70mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Persona",
+      "datetime": "2026-01-04T14:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Pickpocket",
+      "datetime": "2026-01-04T16:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Eternal Sunshine of the Spotless Mind",
+      "datetime": "2026-01-04T17:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "In a Lonely Place",
+      "datetime": "2026-01-04T18:15:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Dreams",
+      "datetime": "2026-01-04T20:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Whiplash",
+      "datetime": "2026-01-04T20:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Gummo",
+      "datetime": "2026-01-05T11:45:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Muppet Treasure Island",
+      "datetime": "2026-01-05T12:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Apocalypse Now : Final Cut",
+      "datetime": "2026-01-05T14:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Everything Everywhere All At Once",
+      "datetime": "2026-01-05T14:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Cure",
+      "datetime": "2026-01-05T20:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Silence of the Lambs",
+      "datetime": "2026-01-06T11:50:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Harakiri",
+      "datetime": "2026-01-06T12:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "One Battle After Another",
+      "datetime": "2026-01-06T14:25:00.000Z",
+      "format": "70mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Hiroshima Mon Amour",
+      "datetime": "2026-01-06T15:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Oldboy [Oldeuboi]",
+      "datetime": "2026-01-06T17:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Mystery Movie",
+      "datetime": "2026-01-06T18:00:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Funeral Parade presents \"A Star Is Born (1954)\"",
+      "datetime": "2026-01-06T20:05:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Once Upon a Time in the West",
+      "datetime": "2026-01-06T20:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Battle Royale [Batoru rowaiaru]",
+      "datetime": "2026-01-07T11:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Chungking Express",
+      "datetime": "2026-01-07T12:05:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Magnolia",
+      "datetime": "2026-01-07T14:15:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Godfather",
+      "datetime": "2026-01-07T14:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Ghost in the Shell",
+      "datetime": "2026-01-07T18:05:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Assault on Precinct 13",
+      "datetime": "2026-01-07T18:20:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "La Dolce Vita",
+      "datetime": "2026-01-07T20:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Best Years of Our Lives",
+      "datetime": "2026-01-07T20:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sinners",
+      "datetime": "2026-01-08T12:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Yi Yi",
+      "datetime": "2026-01-08T14:05:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Bram Stoker's Dracula",
+      "datetime": "2026-01-08T15:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Big Lebowski",
+      "datetime": "2026-01-08T17:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "As Tears Go By",
+      "datetime": "2026-01-08T18:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "One Battle After Another",
+      "datetime": "2026-01-08T20:30:00.000Z",
+      "format": "70mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Marathon Man",
+      "datetime": "2026-01-08T20:45:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Wages of Fear [Le Salaire de la peur]",
+      "datetime": "2026-01-09T11:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Mystery Movie",
+      "datetime": "2026-01-09T12:00:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Shawshank Redemption",
+      "datetime": "2026-01-09T14:30:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sorcerer",
+      "datetime": "2026-01-09T14:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Goodfellas",
+      "datetime": "2026-01-09T17:30:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Hundreds Of Beavers",
+      "datetime": "2026-01-09T18:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Boogie Nights",
+      "datetime": "2026-01-09T20:35:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Get Out",
+      "datetime": "2026-01-09T20:50:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Playtime",
+      "datetime": "2026-01-10T12:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Labyrinth - 40th Anniversary",
+      "datetime": "2026-01-10T12:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Dead Poets Society",
+      "datetime": "2026-01-10T14:45:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Red Shoes",
+      "datetime": "2026-01-10T15:00:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Taste of Cherry",
+      "datetime": "2026-01-10T17:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Showgirls",
+      "datetime": "2026-01-10T18:00:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sorcerer",
+      "datetime": "2026-01-10T20:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Speed Racer",
+      "datetime": "2026-01-10T20:45:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "In The Mood For Love",
+      "datetime": "2026-01-11T11:45:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Days Of Heaven",
+      "datetime": "2026-01-11T12:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Singin' in the Rain",
+      "datetime": "2026-01-11T14:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Darjeeling Limited + Hotel Chevalier",
+      "datetime": "2026-01-11T14:30:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sorcerer",
+      "datetime": "2026-01-11T16:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "No Country For Old Men",
+      "datetime": "2026-01-11T17:00:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "One Battle After Another",
+      "datetime": "2026-01-11T19:30:00.000Z",
+      "format": "70mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Assassination of Jesse James by the Coward Robert Ford",
+      "datetime": "2026-01-11T19:45:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sorcerer",
+      "datetime": "2026-01-12T12:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Goodbye, Dragon Inn",
+      "datetime": "2026-01-12T12:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Dog Day Afternoon",
+      "datetime": "2026-01-12T14:30:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "One Battle After Another",
+      "datetime": "2026-01-12T14:45:00.000Z",
+      "format": "70mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Running Scared",
+      "datetime": "2026-01-12T18:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Paprika",
+      "datetime": "2026-01-12T18:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Inception",
+      "datetime": "2026-01-12T20:30:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Stop Making Sense",
+      "datetime": "2026-01-12T20:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Le Samourai",
+      "datetime": "2026-01-13T12:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "True Romance",
+      "datetime": "2026-01-13T13:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sorcerer",
+      "datetime": "2026-01-13T15:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Badlands",
+      "datetime": "2026-01-13T15:40:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Kill Bill: The Whole Bloody Affair",
+      "datetime": "2026-01-13T18:00:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Reprise",
+      "datetime": "2026-01-13T18:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Mystery Movie",
+      "datetime": "2026-01-13T20:45:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Virgin Suicides",
+      "datetime": "2026-01-14T12:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Your Name [Kimi no Na wa.]",
+      "datetime": "2026-01-14T12:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Amadeus: Director's Cut",
+      "datetime": "2026-01-14T14:20:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Matrix",
+      "datetime": "2026-01-14T14:45:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sinners",
+      "datetime": "2026-01-14T17:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Fallen Angels",
+      "datetime": "2026-01-14T18:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Flowers of Shanghai [Hai shang hua]",
+      "datetime": "2026-01-14T20:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "On the Waterfront",
+      "datetime": "2026-01-14T20:45:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Eraserhead",
+      "datetime": "2026-01-15T12:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Elephant Man",
+      "datetime": "2026-01-15T12:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Inland Empire",
+      "datetime": "2026-01-15T14:10:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Wild at Heart",
+      "datetime": "2026-01-15T15:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Lost Highway",
+      "datetime": "2026-01-15T17:50:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Blue Velvet",
+      "datetime": "2026-01-15T18:15:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Mulholland Dr.",
+      "datetime": "2026-01-15T20:45:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Twin Peaks: Fire Walk With Me",
+      "datetime": "2026-01-15T21:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "2001 : A Space Odyssey",
+      "datetime": "2026-01-16T11:45:00.000Z",
+      "format": "70mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Mystery Movie",
+      "datetime": "2026-01-16T12:00:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "One Battle After Another",
+      "datetime": "2026-01-16T14:25:00.000Z",
+      "format": "70mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "One Flew Over The Cuckoo's Nest",
+      "datetime": "2026-01-16T15:10:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "House [Hausu]",
+      "datetime": "2026-01-16T17:50:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Kill Bill: The Whole Bloody Affair",
+      "datetime": "2026-01-16T18:15:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Magnolia",
+      "datetime": "2026-01-16T20:00:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Fall",
+      "datetime": "2026-01-17T12:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Taipei Story",
+      "datetime": "2026-01-17T12:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Harakiri",
+      "datetime": "2026-01-17T14:40:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "In The Mood For Love",
+      "datetime": "2026-01-17T15:00:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Matrix",
+      "datetime": "2026-01-17T17:30:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Vampire Hunter D: Bloodlust",
+      "datetime": "2026-01-17T17:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Heat",
+      "datetime": "2026-01-17T20:15:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Memories of Murder [Salinui chueok]",
+      "datetime": "2026-01-17T20:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Spider-Man: Into the Spider-Verse",
+      "datetime": "2026-01-18T11:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Beau Travail",
+      "datetime": "2026-01-18T12:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Goodbye, Dragon Inn",
+      "datetime": "2026-01-18T14:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Handmaiden [Theatrical Cut]",
+      "datetime": "2026-01-18T14:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Interstellar",
+      "datetime": "2026-01-18T16:15:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "North By Northwest",
+      "datetime": "2026-01-18T17:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "2001 : A Space Odyssey",
+      "datetime": "2026-01-18T19:45:00.000Z",
+      "format": "70mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "After Hours",
+      "datetime": "2026-01-18T20:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Barry Lyndon",
+      "datetime": "2026-01-19T11:45:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Nashville",
+      "datetime": "2026-01-19T12:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Wild at Heart",
+      "datetime": "2026-01-19T15:25:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "12 Angry Men",
+      "datetime": "2026-01-19T15:40:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Perfect Blue",
+      "datetime": "2026-01-19T18:10:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Fruitvale Station",
+      "datetime": "2026-01-19T18:25:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Yi Yi",
+      "datetime": "2026-01-19T20:10:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sinners",
+      "datetime": "2026-01-19T20:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "As Tears Go By",
+      "datetime": "2026-01-20T12:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Aguirre, Wrath of God",
+      "datetime": "2026-01-20T12:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Cinema Paradiso [Nuovo Cinema Paradiso]",
+      "datetime": "2026-01-20T15:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Blue Velvet",
+      "datetime": "2026-01-20T15:15:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Duck, You Sucker! [aka Once Upon a Time...the Revolution]",
+      "datetime": "2026-01-20T17:45:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Oslo, August 31st",
+      "datetime": "2026-01-20T18:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Practical Magic",
+      "datetime": "2026-01-20T20:30:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Mystery Movie",
+      "datetime": "2026-01-20T20:45:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Tetsuo : The Iron Man",
+      "datetime": "2026-01-21T12:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Colour of Pomegranates [Sayat Nova]",
+      "datetime": "2026-01-21T12:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Twin Peaks: Fire Walk With Me",
+      "datetime": "2026-01-21T15:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Princess Bride",
+      "datetime": "2026-01-21T17:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Certified Copy [Copie conforme]",
+      "datetime": "2026-01-21T18:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Apocalypse Now : Final Cut",
+      "datetime": "2026-01-21T20:05:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The American Friend [Der amerikanische Freund]",
+      "datetime": "2026-01-21T20:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Treasure of the Sierra Madre",
+      "datetime": "2026-01-22T12:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "La Haine",
+      "datetime": "2026-01-22T12:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Boogie Nights",
+      "datetime": "2026-01-22T14:30:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Mulholland Dr.",
+      "datetime": "2026-01-22T14:45:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Serpico",
+      "datetime": "2026-01-22T17:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Chungking Express",
+      "datetime": "2026-01-22T18:05:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Godzilla Minus One",
+      "datetime": "2026-01-22T20:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Solve Along A Murder She Wrote",
+      "datetime": "2026-01-22T20:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Yi Yi",
+      "datetime": "2026-01-23T12:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Mystery Movie",
+      "datetime": "2026-01-23T12:30:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Duel",
+      "datetime": "2026-01-23T15:35:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Millennium Actress",
+      "datetime": "2026-01-23T15:50:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Rear Window",
+      "datetime": "2026-01-23T18:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Punch-Drunk Love",
+      "datetime": "2026-01-23T18:15:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "In The Mood For Love",
+      "datetime": "2026-01-23T20:30:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sleepaway Camp",
+      "datetime": "2026-01-23T20:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Master and Commander : The Far Side of the World",
+      "datetime": "2026-01-24T11:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Tampopo",
+      "datetime": "2026-01-24T12:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Come and See",
+      "datetime": "2026-01-24T14:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Fargo",
+      "datetime": "2026-01-24T15:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Pan's Labyrinth [El Laberinto del Fauno]",
+      "datetime": "2026-01-24T17:35:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Your Name [Kimi no Na wa.]",
+      "datetime": "2026-01-24T17:50:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "2001 : A Space Odyssey",
+      "datetime": "2026-01-24T20:20:00.000Z",
+      "format": "70mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "La La Land",
+      "datetime": "2026-01-24T20:35:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "One Battle After Another",
+      "datetime": "2026-01-25T11:45:00.000Z",
+      "format": "70mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Citizen Kane",
+      "datetime": "2026-01-25T12:15:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Duel",
+      "datetime": "2026-01-25T14:50:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Godzilla Minus One",
+      "datetime": "2026-01-25T15:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Stalker",
+      "datetime": "2026-01-25T17:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Days Of Heaven",
+      "datetime": "2026-01-25T18:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Vertigo",
+      "datetime": "2026-01-25T20:25:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Badlands",
+      "datetime": "2026-01-25T20:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Paprika",
+      "datetime": "2026-01-26T12:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Robocop - Director's Cut",
+      "datetime": "2026-01-26T13:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Battle Royale [Batoru rowaiaru]",
+      "datetime": "2026-01-26T15:10:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sunset Boulevard",
+      "datetime": "2026-01-26T15:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "John Carpenter's Vampires",
+      "datetime": "2026-01-26T18:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Kill Bill: The Whole Bloody Affair",
+      "datetime": "2026-01-26T18:15:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sinners",
+      "datetime": "2026-01-26T20:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Fallen Angels",
+      "datetime": "2026-01-27T12:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Mishima : A Life in Four Chapters",
+      "datetime": "2026-01-27T12:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "2001 : A Space Odyssey",
+      "datetime": "2026-01-27T14:35:00.000Z",
+      "format": "70mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Taste of Cherry",
+      "datetime": "2026-01-27T15:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Colour of Pomegranates [Sayat Nova]",
+      "datetime": "2026-01-27T18:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Purple Noon [Plein soleil]",
+      "datetime": "2026-01-27T18:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Prince Charles Cinema Film Quiz",
+      "datetime": "2026-01-27T20:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Mystery Movie",
+      "datetime": "2026-01-27T20:50:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Ghost in the Shell",
+      "datetime": "2026-01-28T12:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Breathless [À bout de souffle]",
+      "datetime": "2026-01-28T12:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Pulp Fiction",
+      "datetime": "2026-01-28T14:30:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sinners",
+      "datetime": "2026-01-28T14:55:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Oldboy [Oldeuboi]",
+      "datetime": "2026-01-28T17:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Worst Person in the World",
+      "datetime": "2026-01-28T18:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Enter The Void",
+      "datetime": "2026-01-28T20:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Worst Person in the World",
+      "datetime": "2026-01-28T20:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "American Psycho",
+      "datetime": "2026-01-29T12:45:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Duel",
+      "datetime": "2026-01-29T13:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Looking for Mr. Goodbar",
+      "datetime": "2026-01-29T15:00:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Jaws",
+      "datetime": "2026-01-29T15:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Days Of Being Wild",
+      "datetime": "2026-01-29T18:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Beau Travail",
+      "datetime": "2026-01-29T18:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "One Battle After Another",
+      "datetime": "2026-01-29T20:15:00.000Z",
+      "format": "70mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Inside Llewyn Davis",
+      "datetime": "2026-01-29T20:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "All That Jazz",
+      "datetime": "2026-01-30T11:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Mystery Movie",
+      "datetime": "2026-01-30T12:00:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Magnolia",
+      "datetime": "2026-01-30T14:10:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "2001 : A Space Odyssey",
+      "datetime": "2026-01-30T14:25:00.000Z",
+      "format": "70mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Thing",
+      "datetime": "2026-01-30T17:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sentimental Value",
+      "datetime": "2026-01-30T18:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sing-A-Long-A Rocky Horror Picture Show",
+      "datetime": "2026-01-30T20:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Room",
+      "datetime": "2026-01-30T21:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "12 Angry Men",
+      "datetime": "2026-01-31T11:40:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "In The Mood For Love",
+      "datetime": "2026-01-31T11:55:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "A Confucian Confusion",
+      "datetime": "2026-01-31T14:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Paprika",
+      "datetime": "2026-01-31T14:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Casablanca",
+      "datetime": "2026-01-31T16:25:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Virgin Suicides",
+      "datetime": "2026-01-31T16:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Mulholland Dr.",
+      "datetime": "2026-01-31T18:50:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "There Will Be Blood",
+      "datetime": "2026-01-31T19:10:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Twilight Saga",
+      "datetime": "2026-01-31T22:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Mystery Movie Marathon",
+      "datetime": "2026-01-31T22:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Barry Lyndon",
+      "datetime": "2026-02-01T11:30:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Breakfast Club",
+      "datetime": "2026-02-01T12:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Chungking Express",
+      "datetime": "2026-02-01T15:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Millennium Actress",
+      "datetime": "2026-02-01T15:25:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Tree of Life",
+      "datetime": "2026-02-01T17:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "La Haine",
+      "datetime": "2026-02-01T17:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "2001 : A Space Odyssey",
+      "datetime": "2026-02-01T19:50:00.000Z",
+      "format": "70mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Gummo",
+      "datetime": "2026-02-01T20:30:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Lost Highway",
+      "datetime": "2026-02-02T12:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Perfect Blue",
+      "datetime": "2026-02-02T12:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sentimental Value",
+      "datetime": "2026-02-02T14:35:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Master",
+      "datetime": "2026-02-02T14:55:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Cure",
+      "datetime": "2026-02-02T18:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Caddyshack",
+      "datetime": "2026-02-02T18:20:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Perfect Days",
+      "datetime": "2026-02-02T20:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Groundhog Day",
+      "datetime": "2026-02-02T20:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Persona",
+      "datetime": "2026-02-03T12:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sinners",
+      "datetime": "2026-02-03T12:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Boogie Nights",
+      "datetime": "2026-02-03T14:30:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Vampire Hunter D: Bloodlust",
+      "datetime": "2026-02-03T15:35:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Run Lola Run [Lola rennt]",
+      "datetime": "2026-02-03T18:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Funeral Parade presents \"Caravaggio\"",
+      "datetime": "2026-02-03T18:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "One Battle After Another",
+      "datetime": "2026-02-03T20:20:00.000Z",
+      "format": "70mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Mystery Movie",
+      "datetime": "2026-02-03T20:45:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Punch-Drunk Love",
+      "datetime": "2026-02-04T12:15:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Singin' in the Rain",
+      "datetime": "2026-02-04T12:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "North By Northwest",
+      "datetime": "2026-02-04T14:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Inception",
+      "datetime": "2026-02-04T15:00:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Labyrinth - 40th Anniversary",
+      "datetime": "2026-02-04T17:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Stunt Man",
+      "datetime": "2026-02-04T18:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Barry Lyndon",
+      "datetime": "2026-02-04T20:05:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sentimental Value",
+      "datetime": "2026-02-04T20:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "8 1/2",
+      "datetime": "2026-02-05T12:00:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Blow Out",
+      "datetime": "2026-02-05T12:15:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sentimental Value",
+      "datetime": "2026-02-05T14:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Mulholland Dr.",
+      "datetime": "2026-02-05T15:00:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Goodbye, Dragon Inn",
+      "datetime": "2026-02-05T18:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Kill Bill: The Whole Bloody Affair",
+      "datetime": "2026-02-05T18:15:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Master",
+      "datetime": "2026-02-05T20:15:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Mystery Movie",
+      "datetime": "2026-02-06T12:15:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Seventh Seal",
+      "datetime": "2026-02-06T12:30:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "To Live and Die in L.A.",
+      "datetime": "2026-02-06T15:00:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Eternal Sunshine of the Spotless Mind",
+      "datetime": "2026-02-06T15:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "I Saw the TV Glow",
+      "datetime": "2026-02-06T17:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Bring Me The Head Of Alfredo Garcia",
+      "datetime": "2026-02-06T18:00:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "One Battle After Another",
+      "datetime": "2026-02-06T20:15:00.000Z",
+      "format": "70mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Twinless",
+      "datetime": "2026-02-06T20:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Yi Yi",
+      "datetime": "2026-02-07T11:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Ghost in the Shell",
+      "datetime": "2026-02-07T12:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Total Recall (1990)",
+      "datetime": "2026-02-07T15:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "In The Mood For Love",
+      "datetime": "2026-02-07T15:20:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Blade Runner : The Final Cut",
+      "datetime": "2026-02-07T17:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Robocop - Director's Cut",
+      "datetime": "2026-02-07T18:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "There Will Be Blood",
+      "datetime": "2026-02-07T20:30:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Starship Troopers",
+      "datetime": "2026-02-07T20:45:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Mirai [Mirai no Mirai]",
+      "datetime": "2026-02-08T11:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Punch-Drunk Love",
+      "datetime": "2026-02-08T12:00:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "One Battle After Another",
+      "datetime": "2026-02-08T14:05:00.000Z",
+      "format": "70mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Mahjong",
+      "datetime": "2026-02-08T14:20:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Cinema Paradiso [Nuovo Cinema Paradiso]",
+      "datetime": "2026-02-08T17:05:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Koyaanisqatsi : Life Out of Balance",
+      "datetime": "2026-02-08T17:35:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Zodiac",
+      "datetime": "2026-02-08T19:45:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sinners",
+      "datetime": "2026-02-08T20:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "La Dolce Vita",
+      "datetime": "2026-02-09T12:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Blue Velvet",
+      "datetime": "2026-02-09T12:15:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Lost in Translation",
+      "datetime": "2026-02-09T15:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sunset Boulevard",
+      "datetime": "2026-02-09T15:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Parent Trap",
+      "datetime": "2026-02-09T17:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Tampopo",
+      "datetime": "2026-02-09T18:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sentimental Value",
+      "datetime": "2026-02-09T20:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Mishima : A Life in Four Chapters",
+      "datetime": "2026-02-09T20:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Some Like It Hot",
+      "datetime": "2026-02-10T12:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Pretty Woman",
+      "datetime": "2026-02-10T15:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "One Battle After Another",
+      "datetime": "2026-02-10T17:30:00.000Z",
+      "format": "70mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Twinless",
+      "datetime": "2026-02-10T18:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Shawshank Redemption",
+      "datetime": "2026-02-10T20:30:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Fallen Angels",
+      "datetime": "2026-02-10T21:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "A Clockwork Orange",
+      "datetime": "2026-02-11T11:45:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Dead Poets Society",
+      "datetime": "2026-02-11T12:00:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Solaris (1972)",
+      "datetime": "2026-02-11T14:45:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Harold and Maude",
+      "datetime": "2026-02-11T15:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Assassin [Cìkè Niè Yinniáng]",
+      "datetime": "2026-02-11T18:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "10 Things I Hate About You",
+      "datetime": "2026-02-11T18:15:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Mystery Movie",
+      "datetime": "2026-02-11T20:30:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Wings of Desire [Der Himmel über Berlin]",
+      "datetime": "2026-02-11T20:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Paris, Texas",
+      "datetime": "2026-02-12T12:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Dog Day Afternoon",
+      "datetime": "2026-02-12T12:15:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "One Flew Over The Cuckoo's Nest",
+      "datetime": "2026-02-12T15:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Wild at Heart",
+      "datetime": "2026-02-12T15:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Her",
+      "datetime": "2026-02-12T18:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "In The Mood For Love",
+      "datetime": "2026-02-12T18:15:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "2046",
+      "datetime": "2026-02-12T20:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "High Fidelity",
+      "datetime": "2026-02-12T20:45:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Eternal Sunshine of the Spotless Mind",
+      "datetime": "2026-02-13T12:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Mystery Movie",
+      "datetime": "2026-02-13T12:15:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "One Battle After Another",
+      "datetime": "2026-02-13T14:30:00.000Z",
+      "format": "70mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sentimental Value",
+      "datetime": "2026-02-13T15:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Before Trilogy",
+      "datetime": "2026-02-13T18:00:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Frances Ha",
+      "datetime": "2026-02-13T18:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "My Bloody Valentine (1981)",
+      "datetime": "2026-02-13T21:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Before Sunrise",
+      "datetime": "2026-02-14T10:30:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Casablanca",
+      "datetime": "2026-02-14T10:45:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Pride and Prejudice",
+      "datetime": "2026-02-14T12:50:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Princess Bride",
+      "datetime": "2026-02-14T13:25:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Portrait of a Lady on Fire",
+      "datetime": "2026-02-14T15:35:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "When Harry Met Sally",
+      "datetime": "2026-02-14T16:05:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Phantom Thread",
+      "datetime": "2026-02-14T18:15:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "In The Mood For Love",
+      "datetime": "2026-02-14T18:35:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "True Romance",
+      "datetime": "2026-02-14T21:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Hot Fuzz • 19th Anniversary",
+      "datetime": "2026-02-14T21:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "In The Mood For Love",
+      "datetime": "2026-02-15T12:15:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Brief Encounter",
+      "datetime": "2026-02-15T12:45:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Umbrellas of Cherbourg [Les parapluies de Cherbourg]",
+      "datetime": "2026-02-15T14:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Bridget Jones's Diary",
+      "datetime": "2026-02-15T15:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Chungking Express",
+      "datetime": "2026-02-15T17:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Moonlight",
+      "datetime": "2026-02-15T17:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Mulholland Dr.",
+      "datetime": "2026-02-15T19:45:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Love Witch",
+      "datetime": "2026-02-15T20:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Arrival",
+      "datetime": "2026-02-16T12:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Andrei Rublev",
+      "datetime": "2026-02-16T12:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Twin Peaks: Fire Walk With Me",
+      "datetime": "2026-02-16T14:35:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "It Was Just an Accident",
+      "datetime": "2026-02-16T16:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Vertigo",
+      "datetime": "2026-02-16T17:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Lars and the Real Girl",
+      "datetime": "2026-02-16T18:20:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "One Battle After Another",
+      "datetime": "2026-02-16T20:20:00.000Z",
+      "format": "70mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Blue Valentine",
+      "datetime": "2026-02-16T20:45:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The American Friend [Der amerikanische Freund]",
+      "datetime": "2026-02-17T11:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Harakiri",
+      "datetime": "2026-02-17T12:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sinners",
+      "datetime": "2026-02-17T14:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Your Name [Kimi no Na wa.]",
+      "datetime": "2026-02-17T15:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "La Haine",
+      "datetime": "2026-02-17T17:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "True Stories",
+      "datetime": "2026-02-17T18:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Barry Lyndon",
+      "datetime": "2026-02-17T19:50:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Mystery Movie",
+      "datetime": "2026-02-17T20:15:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Barton Fink",
+      "datetime": "2026-02-18T11:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Boogie Nights",
+      "datetime": "2026-02-18T12:00:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Mulholland Dr.",
+      "datetime": "2026-02-18T14:20:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Player",
+      "datetime": "2026-02-18T15:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "8 1/2",
+      "datetime": "2026-02-18T17:30:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "It Was Just an Accident",
+      "datetime": "2026-02-18T18:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Once Upon A Time in Hollywood",
+      "datetime": "2026-02-18T20:30:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sentimental Value",
+      "datetime": "2026-02-18T20:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Assassination of Jesse James by the Coward Robert Ford",
+      "datetime": "2026-02-19T12:00:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Godzilla [Gojira]",
+      "datetime": "2026-02-19T12:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "One Battle After Another",
+      "datetime": "2026-02-19T14:30:00.000Z",
+      "format": "70mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Stop Making Sense",
+      "datetime": "2026-02-19T15:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Platoon",
+      "datetime": "2026-02-19T17:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Fantastic Planet",
+      "datetime": "2026-02-19T18:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Apocalypse Now : Final Cut",
+      "datetime": "2026-02-19T20:05:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sinners",
+      "datetime": "2026-02-19T20:25:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "When Harry Met Sally",
+      "datetime": "2026-02-20T12:00:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Mystery Movie",
+      "datetime": "2026-02-20T12:30:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Interstellar",
+      "datetime": "2026-02-20T14:15:00.000Z",
+      "format": "70mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Princess Mononoke",
+      "datetime": "2026-02-20T15:05:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Millennium Mambo",
+      "datetime": "2026-02-20T17:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Wake in Fright",
+      "datetime": "2026-02-20T18:05:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Grandmaster (Extended Cut)",
+      "datetime": "2026-02-20T20:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sentimental Value",
+      "datetime": "2026-02-20T20:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Jurassic Park",
+      "datetime": "2026-02-21T12:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Robin Hood (1973)",
+      "datetime": "2026-02-21T12:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Daisies (Sedmikrásky)",
+      "datetime": "2026-02-21T14:25:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "In The Mood For Love",
+      "datetime": "2026-02-21T14:50:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Shiva Baby",
+      "datetime": "2026-02-21T16:20:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Paris, Texas",
+      "datetime": "2026-02-21T17:10:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Charlie's Angels - 25th Anniversary",
+      "datetime": "2026-02-21T18:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Interstellar",
+      "datetime": "2026-02-21T20:15:00.000Z",
+      "format": "70mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sinners",
+      "datetime": "2026-02-21T20:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sing-A-Long-A The Greatest Showman",
+      "datetime": "2026-02-22T12:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "My Neighbor Totoro",
+      "datetime": "2026-02-22T13:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Planes, Trains & Automobiles",
+      "datetime": "2026-02-22T15:20:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Colour of Pomegranates [Sayat Nova]",
+      "datetime": "2026-02-22T15:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Hamnet",
+      "datetime": "2026-02-22T17:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Redline",
+      "datetime": "2026-02-22T17:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "To Live and Die in L.A.",
+      "datetime": "2026-02-22T20:15:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Battleship Potemkin [Bronenosets Potyomkin]",
+      "datetime": "2026-02-22T20:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Grandmaster (Extended Cut)",
+      "datetime": "2026-02-23T11:55:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Millennium Mambo",
+      "datetime": "2026-02-23T12:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Eyes Wide Shut",
+      "datetime": "2026-02-23T14:45:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Stalker",
+      "datetime": "2026-02-23T15:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Before Sunrise",
+      "datetime": "2026-02-23T18:00:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Flight of the Navigator",
+      "datetime": "2026-02-23T18:20:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "One Battle After Another",
+      "datetime": "2026-02-23T20:20:00.000Z",
+      "format": "70mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Contact",
+      "datetime": "2026-02-23T20:40:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Hiroshima Mon Amour",
+      "datetime": "2026-02-24T11:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "A Clockwork Orange",
+      "datetime": "2026-02-24T12:00:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Jeanne Dielman, 23, quai du Commerce, 1080 Bruxelles",
+      "datetime": "2026-02-24T13:55:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sentimental Value",
+      "datetime": "2026-02-24T15:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Grandmaster (Extended Cut)",
+      "datetime": "2026-02-24T18:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "A Hard Day's Night",
+      "datetime": "2026-02-24T18:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Prince Charles Cinema Film Quiz",
+      "datetime": "2026-02-24T20:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Millennium Mambo",
+      "datetime": "2026-02-24T20:50:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Cinema Paradiso [Nuovo Cinema Paradiso]",
+      "datetime": "2026-02-25T11:55:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Dressed to Kill",
+      "datetime": "2026-02-25T12:25:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Yi Yi",
+      "datetime": "2026-02-25T14:40:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Hamnet",
+      "datetime": "2026-02-25T15:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Twin Peaks : Pilot - Northwest Passage",
+      "datetime": "2026-02-25T18:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Swingers",
+      "datetime": "2026-02-25T18:30:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Twin Peaks: Fire Walk With Me",
+      "datetime": "2026-02-25T20:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Mystery Movie",
+      "datetime": "2026-02-25T20:45:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Gummo",
+      "datetime": "2026-02-26T12:00:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Discreet Charm of the Bourgeoisie",
+      "datetime": "2026-02-26T12:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Heat",
+      "datetime": "2026-02-26T14:15:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Grandmaster (Extended Cut)",
+      "datetime": "2026-02-26T14:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Terminator",
+      "datetime": "2026-02-26T17:45:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "It Was Just an Accident",
+      "datetime": "2026-02-26T18:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Interstellar",
+      "datetime": "2026-02-26T20:15:00.000Z",
+      "format": "70mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Nashville",
+      "datetime": "2026-02-26T20:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Mystery Movie",
+      "datetime": "2026-02-27T12:00:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Paprika",
+      "datetime": "2026-02-27T12:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Night of the Juggler",
+      "datetime": "2026-02-27T14:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Battle of Algiers",
+      "datetime": "2026-02-27T15:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "One Battle After Another",
+      "datetime": "2026-02-27T17:00:00.000Z",
+      "format": "70mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Angel Heart",
+      "datetime": "2026-02-27T18:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sing-A-Long-A Rocky Horror Picture Show",
+      "datetime": "2026-02-27T20:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Room",
+      "datetime": "2026-02-27T21:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Lion King (1994)",
+      "datetime": "2026-02-28T12:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Eternal Sunshine of the Spotless Mind",
+      "datetime": "2026-02-28T12:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Catch Me If You Can",
+      "datetime": "2026-02-28T14:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Perfect Blue",
+      "datetime": "2026-02-28T15:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sentimental Value",
+      "datetime": "2026-02-28T17:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "In The Mood For Love",
+      "datetime": "2026-02-28T17:30:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Lord of the Rings Trilogy - Extended Editions",
+      "datetime": "2026-02-28T20:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Stop Making Sense",
+      "datetime": "2026-02-28T20:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Mystery Movie Marathon",
+      "datetime": "2026-02-28T22:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Dr. Strangelove",
+      "datetime": "2026-03-01T11:30:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Lost Boys",
+      "datetime": "2026-03-01T12:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Princess Mononoke",
+      "datetime": "2026-03-01T14:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sinners",
+      "datetime": "2026-03-01T14:25:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Woman In The Dunes",
+      "datetime": "2026-03-01T17:10:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Hamnet",
+      "datetime": "2026-03-01T17:35:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Possession",
+      "datetime": "2026-03-01T20:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Fargo",
+      "datetime": "2026-03-01T20:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "My Own Private Idaho",
+      "datetime": "2026-03-02T12:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Long Goodbye",
+      "datetime": "2026-03-02T12:45:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Dancer in the Dark",
+      "datetime": "2026-03-02T15:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Fallen Angels",
+      "datetime": "2026-03-02T15:20:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Onibaba",
+      "datetime": "2026-03-02T17:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Golden Child",
+      "datetime": "2026-03-02T18:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Heat",
+      "datetime": "2026-03-02T20:10:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "La Haine",
+      "datetime": "2026-03-03T12:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Dazed and Confused",
+      "datetime": "2026-03-03T12:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Mulholland Dr.",
+      "datetime": "2026-03-03T14:20:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Hamnet",
+      "datetime": "2026-03-03T15:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Spirit of the Beehive",
+      "datetime": "2026-03-03T17:35:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Spider-Man: Into the Spider-Verse",
+      "datetime": "2026-03-03T18:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Good, The Bad and The Ugly",
+      "datetime": "2026-03-03T20:00:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Spider-Man: Across the Spider-Verse",
+      "datetime": "2026-03-03T20:35:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Children of Men",
+      "datetime": "2026-03-04T12:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Naked",
+      "datetime": "2026-03-04T12:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "One Battle After Another",
+      "datetime": "2026-03-04T14:25:00.000Z",
+      "format": "70mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Ikiru",
+      "datetime": "2026-03-04T15:00:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Dog Day Afternoon",
+      "datetime": "2026-03-04T17:45:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "It Was Just an Accident",
+      "datetime": "2026-03-04T18:20:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Inglourious Basterds",
+      "datetime": "2026-03-04T20:30:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Mystery Movie",
+      "datetime": "2026-03-04T20:45:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "It Was Just an Accident",
+      "datetime": "2026-03-05T12:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Oldboy [Oldeuboi]",
+      "datetime": "2026-03-05T12:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Devil's Advocate",
+      "datetime": "2026-03-05T14:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Jurassic Park",
+      "datetime": "2026-03-05T15:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Bram Stoker's Dracula",
+      "datetime": "2026-03-05T17:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Before Sunset",
+      "datetime": "2026-03-05T18:00:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sinners",
+      "datetime": "2026-03-05T20:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Music Video Preservation Society",
+      "datetime": "2026-03-05T20:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Wild Bunch",
+      "datetime": "2026-03-06T11:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Hard Boiled",
+      "datetime": "2026-03-06T15:00:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sentimental Value",
+      "datetime": "2026-03-06T15:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "In The Mood For Love",
+      "datetime": "2026-03-06T17:55:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Mystery Train",
+      "datetime": "2026-03-06T18:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Yi Yi",
+      "datetime": "2026-03-06T20:20:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Jacob's Ladder",
+      "datetime": "2026-03-06T20:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Seven Samurai [Shichinin no samurai]",
+      "datetime": "2026-03-07T11:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "My Neighbor Totoro",
+      "datetime": "2026-03-07T11:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Network",
+      "datetime": "2026-03-07T13:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Close-Up",
+      "datetime": "2026-03-07T15:10:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Hard Boiled",
+      "datetime": "2026-03-07T17:30:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Jaws",
+      "datetime": "2026-03-07T20:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Little Shop of Horrors : Directors Cut",
+      "datetime": "2026-03-08T11:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "A New Leaf",
+      "datetime": "2026-03-08T12:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Angus, Thongs and Perfect Snogging",
+      "datetime": "2026-03-08T14:25:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Hamnet",
+      "datetime": "2026-03-08T14:35:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Matrix",
+      "datetime": "2026-03-08T17:00:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Daughters of the Dust",
+      "datetime": "2026-03-08T17:35:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Hard Boiled",
+      "datetime": "2026-03-08T20:15:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Titane",
+      "datetime": "2026-03-08T20:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Hard Boiled",
+      "datetime": "2026-03-09T15:15:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Big Lebowski",
+      "datetime": "2026-03-09T17:20:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "One Battle After Another",
+      "datetime": "2026-03-09T20:10:00.000Z",
+      "format": "70mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Hard Boiled",
+      "datetime": "2026-03-10T12:00:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "A Clockwork Orange",
+      "datetime": "2026-03-10T15:10:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Ashes of Time Redux",
+      "datetime": "2026-03-10T18:10:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Come and See",
+      "datetime": "2026-03-10T20:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Hard Boiled",
+      "datetime": "2026-03-11T20:30:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Hard Boiled",
+      "datetime": "2026-03-12T15:00:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Big Shark",
+      "datetime": "2026-03-12T21:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Friday The 13th",
+      "datetime": "2026-03-13T11:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "One Battle After Another",
+      "datetime": "2026-03-13T14:00:00.000Z",
+      "format": "70mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Hard Boiled",
+      "datetime": "2026-03-13T17:30:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Master",
+      "datetime": "2026-03-13T17:45:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sing-A-Long-A Dirty Dancing",
+      "datetime": "2026-03-13T20:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Licorice Pizza",
+      "datetime": "2026-03-13T20:45:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "In The Mood For Love",
+      "datetime": "2026-03-14T11:00:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Boogie Nights",
+      "datetime": "2026-03-14T13:25:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Hook",
+      "datetime": "2026-03-14T14:45:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Magnolia",
+      "datetime": "2026-03-14T16:50:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "There Will Be Blood",
+      "datetime": "2026-03-14T20:45:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Punch-Drunk Love",
+      "datetime": "2026-03-15T11:30:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Phantom Thread",
+      "datetime": "2026-03-15T13:45:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Inherent Vice",
+      "datetime": "2026-03-15T16:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "One Battle After Another",
+      "datetime": "2026-03-15T20:00:00.000Z",
+      "format": "70mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Killer (1989)",
+      "datetime": "2026-03-20T15:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Close Encounters of the Third Kind [Director's Cut]",
+      "datetime": "2026-03-21T14:45:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Killer (1989)",
+      "datetime": "2026-03-21T17:45:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Killer (1989)",
+      "datetime": "2026-03-23T15:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Ascent [Voskhozhdenie]",
+      "datetime": "2026-03-25T18:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Killer (1989)",
+      "datetime": "2026-03-25T20:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Killer (1989)",
+      "datetime": "2026-03-26T15:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sing-A-Long-A Rocky Horror Picture Show",
+      "datetime": "2026-03-27T20:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Room",
+      "datetime": "2026-03-27T21:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "2010: The Year We Make Contact",
+      "datetime": "2026-04-01T17:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Amistad",
+      "datetime": "2026-04-04T13:30:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Minority Report",
+      "datetime": "2026-04-11T13:25:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Saving Private Ryan",
+      "datetime": "2026-04-18T13:15:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sing-A-Long-A Grease",
+      "datetime": "2026-04-24T19:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Room",
+      "datetime": "2026-04-24T20:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Raiders of the Lost Ark",
+      "datetime": "2026-04-25T11:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Indiana Jones and the Temple of Doom",
+      "datetime": "2026-05-02T11:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Indiana Jones and the Last Crusade",
+      "datetime": "2026-05-09T11:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Sing-A-Long-A Rocky Horror Picture Show",
+      "datetime": "2026-05-15T19:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "A.I. Artificial Intelligence",
+      "datetime": "2026-05-16T16:30:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "E.T. The Extra Terrestrial",
+      "datetime": "2026-05-23T11:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Bullet in the Head",
+      "datetime": "2026-05-29T16:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Munich",
+      "datetime": "2026-05-30T13:30:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Bullet in the Head",
+      "datetime": "2026-06-01T14:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Bullet in the Head",
+      "datetime": "2026-06-04T19:30:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "A Better Tomorrow",
+      "datetime": "2026-06-26T17:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "A Better Tomorrow",
+      "datetime": "2026-06-29T14:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "A Better Tomorrow",
+      "datetime": "2026-07-02T17:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "O Brother, Where Art Thou?",
+      "datetime": "2026-07-17T17:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Midnight Run",
+      "datetime": "2027-01-02T11:45:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Mystery Movie",
+      "datetime": "2027-01-02T12:00:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "One Battle After Another",
+      "datetime": "2027-01-02T14:45:00.000Z",
+      "format": "70mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Aftersun",
+      "datetime": "2027-01-02T15:00:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "When Harry Met Sally",
+      "datetime": "2027-01-02T18:00:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Rashomon [Rashômon]",
+      "datetime": "2027-01-02T18:15:00.000Z",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "Pulp Fiction",
+      "datetime": "2027-01-02T20:30:00.000Z",
+      "format": "35mm",
+      "hasBookingUrl": true
+    },
+    {
+      "filmTitle": "The Vanishing (Spoorloos)",
+      "datetime": "2027-01-02T20:45:00.000Z",
+      "hasBookingUrl": true
+    }
+  ],
+  "formats": [
+    "35mm",
+    "70mm"
+  ],
+  "screens": []
+}
