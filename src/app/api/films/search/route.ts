@@ -5,6 +5,7 @@ import { ilike, or, sql, asc, gte, lte, eq, and } from "drizzle-orm";
 import { startOfDay, addDays } from "date-fns";
 import { z } from "zod";
 import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
+import type { CinemaAddress } from "@/types/cinema";
 
 // Input validation schema
 const querySchema = z.object({
@@ -48,6 +49,12 @@ export async function GET(request: NextRequest) {
   const startDate = startOfDay(new Date());
   const endDate = addDays(startDate, 30);
 
+  const formatCinemaAddress = (address: CinemaAddress | null) => {
+    if (!address) return null;
+    const parts = [address.street, address.area, address.postcode].filter(Boolean);
+    return parts.length > 0 ? parts.join(", ") : null;
+  };
+
   try {
     // Browse mode: return films with upcoming screenings, alphabetically
     if (browse && !query) {
@@ -82,8 +89,13 @@ export async function GET(request: NextRequest) {
           .orderBy(asc(cinemas.name)),
       ]);
 
+      const formattedCinemas = cinemaResults.map((cinema) => ({
+        ...cinema,
+        address: formatCinemaAddress(cinema.address),
+      }));
+
       return NextResponse.json(
-        { results: filmResults, cinemas: cinemaResults },
+        { results: filmResults, cinemas: formattedCinemas },
         {
           headers: {
             // Cache browse results for 10 minutes (very stable data)
@@ -144,8 +156,13 @@ export async function GET(request: NextRequest) {
         .limit(10),
     ]);
 
+    const formattedCinemas = cinemaResults.map((cinema) => ({
+      ...cinema,
+      address: formatCinemaAddress(cinema.address),
+    }));
+
     return NextResponse.json(
-      { results: filmResults, cinemas: cinemaResults },
+      { results: filmResults, cinemas: formattedCinemas },
       {
         headers: {
           // Cache search results for 5 minutes

@@ -954,6 +954,7 @@ function FilmSearchFilter({ mounted }: { mounted: boolean }) {
                   )}
                   {displayCinemas.map((cinema, index) => {
                     const globalIndex = displayFilms.length + index;
+                    const addressText = typeof cinema.address === "string" ? cinema.address : null;
                     return (
                       <li key={`cinema-${cinema.id}`} role="option" aria-selected={globalIndex === selectedIndex}>
                         <button
@@ -978,9 +979,9 @@ function FilmSearchFilter({ mounted }: { mounted: boolean }) {
                             <div className="font-medium text-sm truncate">
                               {cinema.name}
                             </div>
-                            {cinema.address && (
+                            {addressText && (
                               <div className="text-xs text-text-tertiary truncate">
-                                {cinema.address}
+                                {addressText}
                               </div>
                             )}
                           </div>
