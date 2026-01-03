@@ -132,7 +132,7 @@ export const FilmCard = memo(function FilmCard({
       onTouchStart={prefetch.onTouchStart}
     >
       {/* Poster area - contains link and buttons */}
-      <div className="relative aspect-[2/3] w-full overflow-hidden">
+      <div className="relative aspect-[2/3] w-full overflow-hidden poster-glow poster-glow-hover transition-shadow duration-300">
         {/* Poster link - decorative, not for keyboard nav */}
         <Link
           href={`/film/${film.id}`}

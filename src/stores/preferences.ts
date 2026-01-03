@@ -57,7 +57,7 @@ export interface PreferencesState {
 
 const DEFAULT_STATE = {
   selectedCinemas: [] as string[],
-  theme: "system" as const,
+  theme: "dark" as const,
   defaultView: "list" as const,
   calendarViewMode: "films" as const,
   showRepertoryOnly: false,

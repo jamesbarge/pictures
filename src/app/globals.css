@@ -418,6 +418,21 @@ body,
   scrollbar-color: var(--border-default) var(--background-secondary);
 }
 
+/* Dark mode poster glow - cinema screen in darkness effect */
+.dark .poster-glow {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 0 20px rgba(255, 255, 255, 0.04),
+    0 0 40px rgba(255, 255, 255, 0.02);
+}
+
+.dark .poster-glow-hover:hover {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 0 24px rgba(255, 255, 255, 0.06),
+    0 0 48px rgba(255, 255, 255, 0.03);
+}
+
 /* Film title styling - uses display font */
 .font-display {
   font-family: var(--font-display);
