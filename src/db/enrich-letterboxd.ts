@@ -4,8 +4,8 @@
  */
 
 import { db } from "./index";
-import { films } from "./schema";
-import { eq, isNull, isNotNull } from "drizzle-orm";
+import { films, screenings } from "./schema";
+import { eq, isNull, isNotNull, gte, and } from "drizzle-orm";
 import * as cheerio from "cheerio";
 
 // Convert title to Letterboxd URL slug
@@ -103,8 +103,30 @@ function parseRating(
 async function enrichLetterboxdRatings() {
   console.log("🎬 Enriching films with Letterboxd ratings...\n");
 
-  // Get films without Letterboxd ratings (prioritize those with upcoming screenings)
-  const filmsToEnrich = await db
+  const now = new Date();
+
+  // FIRST: Get films with upcoming screenings that need ratings (highest priority)
+  const filmsWithScreenings = await db
+    .selectDistinct({
+      id: films.id,
+      title: films.title,
+      year: films.year,
+    })
+    .from(films)
+    .innerJoin(screenings, eq(films.id, screenings.filmId))
+    .where(
+      and(
+        isNull(films.letterboxdRating),
+        gte(screenings.datetime, now)
+      )
+    );
+
+  console.log(
+    `Found ${filmsWithScreenings.length} films with upcoming screenings needing ratings\n`
+  );
+
+  // THEN: Get remaining films without ratings (lower priority)
+  const otherFilms = await db
     .select({
       id: films.id,
       title: films.title,
@@ -113,7 +135,14 @@ async function enrichLetterboxdRatings() {
     .from(films)
     .where(isNull(films.letterboxdRating));
 
-  console.log(`Found ${filmsToEnrich.length} films without Letterboxd ratings\n`);
+  // Combine with priority films first, deduplicate
+  const priorityIds = new Set(filmsWithScreenings.map((f) => f.id));
+  const remainingFilms = otherFilms.filter((f) => !priorityIds.has(f.id));
+
+  const filmsToEnrich = [...filmsWithScreenings, ...remainingFilms];
+  console.log(
+    `Total: ${filmsToEnrich.length} films (${filmsWithScreenings.length} with screenings first)\n`
+  );
 
   let enriched = 0;
   let failed = 0;

@@ -1,15 +1,28 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <!-- London Pillar Box / Postbox -->
-  <!-- Main body -->
-  <rect x="6" y="8" width="20" height="20" rx="2" fill="#E41B17"/>
-  <!-- Domed top -->
-  <ellipse cx="16" cy="8" rx="10" ry="4" fill="#E41B17"/>
-  <!-- Crown/finial -->
-  <circle cx="16" cy="4" r="2.5" fill="#E41B17"/>
-  <!-- Letter slot -->
-  <rect x="9" y="14" width="14" height="3" rx="1" fill="#1a1a1a"/>
-  <!-- Royal cipher band -->
-  <rect x="6" y="19" width="20" height="4" fill="#C41E3A"/>
-  <!-- Collection times panel -->
-  <rect x="10" y="24" width="12" height="3" rx="0.5" fill="#fff" opacity="0.9"/>
+  <!-- Pictures Logo - Inner Frame Variant -->
+  <!-- Cinema screen / aperture gate concept -->
+
+  <!-- Outer filled rectangle - Criterion Blue -->
+  <rect
+    x="2"
+    y="7"
+    width="28"
+    height="18"
+    rx="3"
+    ry="3"
+    fill="#1E3A5F"
+  />
+
+  <!-- Inner frame line - creates the aperture gate effect -->
+  <rect
+    x="5.5"
+    y="10.5"
+    width="21"
+    height="11"
+    rx="1.5"
+    ry="1.5"
+    fill="none"
+    stroke="#F7F4ED"
+    stroke-width="1.5"
+  />
 </svg>

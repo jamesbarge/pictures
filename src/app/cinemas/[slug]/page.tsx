@@ -19,7 +19,7 @@ import {
 } from "@/components/seo/json-ld";
 import type { Cinema } from "@/types/cinema";
 
-export const revalidate = 300; // Revalidate every 5 minutes
+export const dynamic = "force-dynamic"; // Avoid build timeout on DB connection
 
 interface CinemaPageProps {
   params: Promise<{ slug: string }>;
@@ -374,14 +374,5 @@ export async function generateMetadata({
   };
 }
 
-// Generate static params for all cinemas
-export async function generateStaticParams() {
-  const allCinemas = await db
-    .select({ id: cinemas.id })
-    .from(cinemas)
-    .where(eq(cinemas.isActive, true));
-
-  return allCinemas.map((cinema) => ({
-    slug: cinema.id,
-  }));
-}
+// Note: generateStaticParams removed to avoid build timeout on DB connection
+// Pages are now rendered dynamically with caching at the edge

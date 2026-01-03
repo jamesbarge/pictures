@@ -16,7 +16,7 @@ import {
   BreadcrumbSchema,
 } from "@/components/seo/json-ld";
 
-export const revalidate = 3600; // Revalidate hourly
+export const dynamic = "force-dynamic"; // Avoid build timeout on DB connection
 
 const BASE_URL = "https://postboxd.co.uk";
 
