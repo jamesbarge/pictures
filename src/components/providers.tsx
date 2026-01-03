@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { PostHogProvider } from "./posthog-provider";
 import { UserSyncProvider } from "./user-sync-provider";
+import { ThemeProvider } from "./theme-provider";
 import { CookieConsentBanner } from "./cookie-consent-banner";
 import { runAllStorageMigrations } from "@/stores/utils/migrate-storage";
 
@@ -33,8 +34,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <PostHogProvider>
       <QueryClientProvider client={queryClient}>
         <UserSyncProvider>
-          {children}
-          <CookieConsentBanner />
+          <ThemeProvider>
+            {children}
+            <CookieConsentBanner />
+          </ThemeProvider>
         </UserSyncProvider>
       </QueryClientProvider>
     </PostHogProvider>

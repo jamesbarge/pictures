@@ -48,7 +48,7 @@ interface DaySectionProps {
       posterUrl?: string | null;
       runtime?: number | null;
       isRepertory: boolean;
-      tmdbRating?: number | null;
+      letterboxdRating?: number | null;
     };
     cinema: {
       id: string;
@@ -90,13 +90,13 @@ export const DaySection = memo(function DaySection({ date, screenings, filmGroup
   const { primary, secondary } = formatDateHeader(date);
 
   // Memoize sorting to prevent recalculation on every render (for screening view)
-  // Primary sort: TMDB rating (descending), Secondary: time (ascending)
+  // Primary sort: Letterboxd rating (descending), Secondary: time (ascending)
   const sortedScreenings = useMemo(
     () =>
       [...screenings].sort((a, b) => {
-        // Primary sort: by rating (higher first, nulls last)
-        const aRating = a.film.tmdbRating ?? 0;
-        const bRating = b.film.tmdbRating ?? 0;
+        // Primary sort: by Letterboxd rating (higher first, nulls last)
+        const aRating = a.film.letterboxdRating ?? 0;
+        const bRating = b.film.letterboxdRating ?? 0;
         if (aRating !== bRating) {
           return bRating - aRating; // Descending (higher rating first)
         }

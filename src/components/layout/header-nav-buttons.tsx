@@ -11,6 +11,7 @@ import { SignInButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import { cn } from "@/lib/cn";
 import { usePreferences } from "@/stores/preferences";
 import { IconButton } from "@/components/ui";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 
 interface HeaderNavButtonsProps {
   mounted: boolean;
@@ -121,6 +122,9 @@ export function HeaderNavButtons({ mounted }: HeaderNavButtonsProps) {
         icon={<Settings className="w-5 h-5" />}
         label="Settings"
       />
+
+      {/* Theme Toggle */}
+      <ThemeToggle />
 
       {/* Auth UI - reserve space to prevent CLS during hydration */}
       <div className="w-8 h-8 flex items-center justify-center">

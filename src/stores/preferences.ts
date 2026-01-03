@@ -11,6 +11,9 @@ export interface PreferencesState {
   // Selected cinemas (IDs of cinemas the user wants to see)
   selectedCinemas: string[];
 
+  // Appearance
+  theme: "light" | "dark" | "system";
+
   // View preferences
   defaultView: "list" | "grid";
   calendarViewMode: "films" | "screenings";
@@ -29,6 +32,7 @@ export interface PreferencesState {
   updatedAt: string; // ISO timestamp for conflict resolution
 
   // Actions
+  setTheme: (theme: "light" | "dark" | "system") => void;
   toggleCinema: (cinemaId: string) => void;
   setCinemas: (cinemaIds: string[]) => void;
   selectAllCinemas: (cinemaIds: string[]) => void;
@@ -48,11 +52,12 @@ export interface PreferencesState {
 
   // Sync actions
   bulkSet: (prefs: Partial<PreferencesState>) => void;
-  getAll: () => Omit<PreferencesState, "toggleCinema" | "setCinemas" | "selectAllCinemas" | "clearCinemas" | "setDefaultView" | "setCalendarViewMode" | "setShowRepertoryOnly" | "setHidePastScreenings" | "setDefaultDateRange" | "togglePreferredFormat" | "reset" | "setMapArea" | "toggleMapFiltering" | "clearMapArea" | "bulkSet" | "getAll">;
+  getAll: () => Omit<PreferencesState, "setTheme" | "toggleCinema" | "setCinemas" | "selectAllCinemas" | "clearCinemas" | "setDefaultView" | "setCalendarViewMode" | "setShowRepertoryOnly" | "setHidePastScreenings" | "setDefaultDateRange" | "togglePreferredFormat" | "reset" | "setMapArea" | "toggleMapFiltering" | "clearMapArea" | "bulkSet" | "getAll">;
 }
 
 const DEFAULT_STATE = {
   selectedCinemas: [] as string[],
+  theme: "system" as const,
   defaultView: "list" as const,
   calendarViewMode: "films" as const,
   showRepertoryOnly: false,
@@ -68,6 +73,9 @@ export const usePreferences = create<PreferencesState>()(
   persist(
     (set, get) => ({
       ...DEFAULT_STATE,
+
+      setTheme: (theme) =>
+        set({ theme, updatedAt: new Date().toISOString() }),
 
       toggleCinema: (cinemaId) =>
         set((state) => ({
@@ -139,6 +147,7 @@ export const usePreferences = create<PreferencesState>()(
         const state = get();
         return {
           selectedCinemas: state.selectedCinemas,
+          theme: state.theme,
           defaultView: state.defaultView,
           calendarViewMode: state.calendarViewMode,
           showRepertoryOnly: state.showRepertoryOnly,

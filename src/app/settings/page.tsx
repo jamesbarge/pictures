@@ -5,6 +5,7 @@
 
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
+import { ThemeSetting } from "@/components/settings/theme-setting";
 import { NotInterestedList } from "@/components/settings/not-interested-list";
 import { CalendarViewSetting } from "@/components/settings/calendar-view-setting";
 import { CookieConsentSettings } from "@/components/cookie-consent-banner";
@@ -29,8 +30,20 @@ export default function SettingsPage() {
       <div className="max-w-4xl mx-auto px-4 py-8">
         <h1 className="text-3xl font-display text-text-primary mb-2">Settings</h1>
         <p className="text-text-secondary mb-8">
-          Customize your Postboxd experience
+          Customize your Pictures experience
         </p>
+
+        {/* Appearance Section - First */}
+        <section className="mb-12">
+          <h2 className="text-xl font-display text-text-primary mb-4">
+            Appearance
+          </h2>
+          <p className="text-text-secondary text-sm mb-6">
+            Choose how Pictures looks.
+          </p>
+
+          <ThemeSetting />
+        </section>
 
         {/* Calendar View Section */}
         <section className="mb-12">
@@ -74,6 +87,6 @@ export default function SettingsPage() {
 }
 
 export const metadata = {
-  title: "Settings | Postboxd",
-  description: "Customize your Postboxd experience",
+  title: "Settings | Pictures",
+  description: "Customize your Pictures experience",
 };

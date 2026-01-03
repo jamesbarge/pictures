@@ -59,6 +59,7 @@ export const films = pgTable("films", {
   // External ratings
   tmdbRating: real("tmdb_rating"),
   letterboxdUrl: text("letterboxd_url"),
+  letterboxdRating: real("letterboxd_rating"), // 0-5 scale
 
   // Match tracking - for auditing and reprocessing
   // Confidence score from TMDB matching (0-1)

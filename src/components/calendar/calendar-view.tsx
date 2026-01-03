@@ -39,7 +39,7 @@ interface Screening {
     isRepertory: boolean;
     genres?: string[];
     decade?: string | null;
-    tmdbRating?: number | null;
+    letterboxdRating?: number | null;
   };
   cinema: {
     id: string;
@@ -69,7 +69,7 @@ interface FilmGroup {
     year?: number | null;
     directors: string[];
     posterUrl?: string | null;
-    tmdbRating?: number | null;
+    letterboxdRating?: number | null;
   };
   screeningCount: number;
   cinemaCount: number;
@@ -345,7 +345,7 @@ export function CalendarView({ screenings, cinemas }: CalendarViewProps) {
             year: g.film.year,
             directors: g.film.directors,
             posterUrl: g.film.posterUrl,
-            tmdbRating: g.film.tmdbRating,
+            letterboxdRating: g.film.letterboxdRating,
           },
           screeningCount: g.screenings.length,
           cinemaCount,
@@ -360,10 +360,10 @@ export function CalendarView({ screenings, cinemas }: CalendarViewProps) {
         };
       });
 
-      // Sort by TMDB rating (descending), then earliest screening time
+      // Sort by Letterboxd rating (descending), then earliest screening time
       filmGroups.sort((a, b) => {
-        const aRating = a.film.tmdbRating ?? 0;
-        const bRating = b.film.tmdbRating ?? 0;
+        const aRating = a.film.letterboxdRating ?? 0;
+        const bRating = b.film.letterboxdRating ?? 0;
         if (aRating !== bRating) {
           return bRating - aRating; // Higher rating first
         }
