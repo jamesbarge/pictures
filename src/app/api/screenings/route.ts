@@ -179,6 +179,7 @@ export async function GET(request: NextRequest) {
           posterUrl: films.posterUrl,
           runtime: films.runtime,
           isRepertory: films.isRepertory,
+          tmdbRating: films.tmdbRating,
         },
         cinema: {
           id: cinemas.id,
