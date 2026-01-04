@@ -11,7 +11,8 @@ import {
   Film,
   Building2,
   AlertCircle,
-  Settings,
+  BarChart3,
+  Bot,
   ChevronLeft,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -31,6 +32,12 @@ const navItems: NavItem[] = [
     description: "Cinema status and scraper health",
   },
   {
+    href: "/admin/analytics",
+    label: "Analytics",
+    icon: <BarChart3 className="w-5 h-5" />,
+    description: "User behavior and engagement",
+  },
+  {
     href: "/admin/screenings",
     label: "Screenings",
     icon: <Film className="w-5 h-5" />,
@@ -47,6 +54,12 @@ const navItems: NavItem[] = [
     label: "Anomalies",
     icon: <AlertCircle className="w-5 h-5" />,
     description: "Review and resolve data issues",
+  },
+  {
+    href: "/admin/agents",
+    label: "AI Agents",
+    icon: <Bot className="w-5 h-5" />,
+    description: "Run data quality agents",
   },
 ];
 
