@@ -230,27 +230,19 @@ export const FilmCard = memo(function FilmCard({
         )}
 
         {/* Screening summary */}
-        <p className="text-[10px] text-text-tertiary mt-auto pt-1">
-          {screeningCount} {screeningLabel} at {cinemaDisplay}
+        <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-text-tertiary mt-auto pt-1">
+          <span>{screeningCount} {screeningLabel} at {cinemaDisplay}</span>
           {film.isRepertory && (
-            <>
-              {" "}
-              <span className="text-[10px] text-text-tertiary">•</span>{" "}
-              <span className="font-semibold text-accent-gold uppercase tracking-wide">
-                rep
-              </span>
-            </>
+            <span className="px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide rounded bg-white/10 text-text-secondary">
+              rep
+            </span>
           )}
           {specialFormats.length > 0 && (
-            <>
-              {" "}
-              <span className="text-[10px] text-text-tertiary">•</span>{" "}
-              <span className="font-semibold text-accent-gold uppercase tracking-wide">
-                {specialFormats.join(" / ")}
-              </span>
-            </>
+            <span className="px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide rounded bg-white/10 text-text-secondary">
+              {specialFormats.join(" / ")}
+            </span>
           )}
-        </p>
+        </div>
       </Link>
     </article>
   );

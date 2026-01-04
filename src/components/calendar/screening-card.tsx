@@ -266,20 +266,14 @@ export const ScreeningCard = memo(function ScreeningCard({ screening }: Screenin
             {cinema.shortName || cinema.name}
           </span>
           {film.isRepertory && (
-            <>
-              <span className="text-[10px] text-text-tertiary">•</span>
-              <span className="text-[10px] font-semibold text-accent-gold uppercase tracking-wide">
-                rep
-              </span>
-            </>
+            <span className="px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide rounded bg-white/10 text-text-secondary">
+              rep
+            </span>
           )}
           {specialFormat && (
-            <>
-              <span className="text-[10px] text-text-tertiary">•</span>
-              <span className="text-[10px] font-semibold text-accent-gold uppercase tracking-wide">
-                {specialFormat}
-              </span>
-            </>
+            <span className="px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide rounded bg-white/10 text-text-secondary">
+              {specialFormat}
+            </span>
           )}
         </div>
 
