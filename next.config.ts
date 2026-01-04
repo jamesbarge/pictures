@@ -5,6 +5,10 @@ const nextConfig: NextConfig = {
   reactCompiler: true,
   // Increase timeout for ISR static generation (querying 3000 screenings)
   staticPageGenerationTimeout: 120,
+  // Fix Turbopack root detection (stray lockfile in home directory)
+  turbopack: {
+    root: __dirname,
+  },
   // Exclude Playwright/Puppeteer from webpack bundling (used by scrapers via Inngest)
   serverExternalPackages: [
     "playwright",
