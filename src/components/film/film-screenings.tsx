@@ -2,17 +2,21 @@
  * Film Screenings Component
  * Shows upcoming screenings for a film, grouped by cinema
  * Includes filters for cinema search, time range, and date selection
+ *
+ * IMPORTANT: Reads initial filter values from global store to persist
+ * filters applied on homepage when navigating to film detail.
  */
 
 "use client";
 
-import { useState, useMemo } from "react";
-import { format, isToday, isTomorrow, isSameDay, getHours, startOfDay } from "date-fns";
-import { MapPin, ExternalLink, Search } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import { format, isToday, isTomorrow, isSameDay, getHours, startOfDay, isWithinInterval, startOfHour, endOfDay } from "date-fns";
+import { MapPin, ExternalLink, Search, Filter } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { usePostHog } from "posthog-js/react";
 import { ScreeningFilters, type FilmScreeningFilters } from "./screening-filters";
 import { EmptyState } from "@/components/ui";
+import { useFilters } from "@/stores/filters";
 
 interface Screening {
   id: string;
@@ -64,13 +68,50 @@ const FILTER_THRESHOLD = 5;
 export function FilmScreenings({ screenings, film }: FilmScreeningsProps) {
   const posthog = usePostHog();
 
-  // Local filter state (resets when leaving page)
+  // Read global filters from homepage
+  const globalFilters = useFilters();
+
+  // Local filter state - initialized from global filters for persistence
   const [filters, setFilters] = useState<FilmScreeningFilters>({
     cinemaSearch: "",
-    timeFrom: null,
-    timeTo: null,
+    timeFrom: globalFilters.timeFrom,
+    timeTo: globalFilters.timeTo,
     selectedDates: null,
   });
+
+  // Initialize date filter from global date range
+  // This runs once when component mounts and converts dateFrom/dateTo to selectedDates
+  const [hasInitializedDates, setHasInitializedDates] = useState(false);
+  useEffect(() => {
+    if (!hasInitializedDates && (globalFilters.dateFrom || globalFilters.dateTo)) {
+      // Get available dates for this film
+      const filmDates = screenings.map((s) => startOfDay(new Date(s.datetime)));
+      const uniqueDates = Array.from(
+        new Set(filmDates.map((d) => d.getTime()))
+      ).map((t) => new Date(t));
+
+      // Filter to dates within the global range
+      const datesInRange = uniqueDates.filter((date) => {
+        if (globalFilters.dateFrom && date < startOfDay(globalFilters.dateFrom)) return false;
+        if (globalFilters.dateTo && date > endOfDay(globalFilters.dateTo)) return false;
+        return true;
+      });
+
+      if (datesInRange.length > 0 && datesInRange.length < uniqueDates.length) {
+        // Only set filter if it actually restricts the dates
+        setFilters((prev) => ({ ...prev, selectedDates: datesInRange }));
+      }
+      setHasInitializedDates(true);
+    }
+  }, [hasInitializedDates, globalFilters.dateFrom, globalFilters.dateTo, screenings]);
+
+  // Track if user wants to ignore global filters on this page
+  const [ignoreGlobalFilters, setIgnoreGlobalFilters] = useState(false);
+
+  // Check if any global filters are set (for showing the indicator)
+  const hasGlobalFiltersSet = useMemo(() => {
+    return globalFilters.cinemaIds.length > 0 || globalFilters.formats.length > 0;
+  }, [globalFilters.cinemaIds, globalFilters.formats]);
 
   const trackBookingClick = (screening: Screening) => {
     posthog.capture("booking_link_clicked", {
@@ -114,10 +155,28 @@ export function FilmScreenings({ screenings, film }: FilmScreeningsProps) {
     return screenings.map((s) => startOfDay(new Date(s.datetime)));
   }, [screenings]);
 
-  // Apply filters
+  // Apply filters (both global from homepage and local from this page)
   const filteredScreenings = useMemo(() => {
     return screenings.filter((screening) => {
-      // Cinema search filter
+      // GLOBAL FILTER: Cinema IDs from homepage
+      // If user selected specific cinemas on homepage, only show those
+      // (unless user clicked "Show all" to ignore global filters)
+      if (!ignoreGlobalFilters && globalFilters.cinemaIds.length > 0) {
+        if (!globalFilters.cinemaIds.includes(screening.cinema.id)) {
+          return false;
+        }
+      }
+
+      // GLOBAL FILTER: Formats from homepage
+      // If user selected specific formats (35mm, IMAX, etc.), only show those
+      if (!ignoreGlobalFilters && globalFilters.formats.length > 0) {
+        const screeningFormat = screening.format?.toLowerCase() || "";
+        if (!globalFilters.formats.some((f) => screeningFormat.includes(f.toLowerCase()))) {
+          return false;
+        }
+      }
+
+      // LOCAL FILTER: Cinema search (text-based, for additional filtering)
       if (filters.cinemaSearch.trim()) {
         const search = filters.cinemaSearch.toLowerCase();
         const cinemaName = screening.cinema.name.toLowerCase();
@@ -128,7 +187,7 @@ export function FilmScreenings({ screenings, film }: FilmScreeningsProps) {
         }
       }
 
-      // Time range filter
+      // Time range filter (initialized from global, can be modified locally)
       const hour = getHours(new Date(screening.datetime));
       if (filters.timeFrom !== null && hour < filters.timeFrom) {
         return false;
@@ -137,7 +196,7 @@ export function FilmScreenings({ screenings, film }: FilmScreeningsProps) {
         return false;
       }
 
-      // Date filter
+      // Date filter (initialized from global range, shown as date pills)
       if (filters.selectedDates && filters.selectedDates.length > 0) {
         const screeningDate = new Date(screening.datetime);
         if (!filters.selectedDates.some((d) => isSameDay(d, screeningDate))) {
@@ -147,7 +206,7 @@ export function FilmScreenings({ screenings, film }: FilmScreeningsProps) {
 
       return true;
     });
-  }, [screenings, filters]);
+  }, [screenings, filters, globalFilters.cinemaIds, globalFilters.formats, ignoreGlobalFilters]);
 
   // Show filters only if there are enough screenings
   const showFilters = screenings.length >= FILTER_THRESHOLD;
@@ -177,8 +236,69 @@ export function FilmScreenings({ screenings, film }: FilmScreeningsProps) {
     return aNext - bNext;
   });
 
+  // Build description of active global filters
+  const globalFilterDescriptions: string[] = [];
+  if (globalFilters.cinemaIds.length > 0) {
+    globalFilterDescriptions.push(
+      globalFilters.cinemaIds.length === 1
+        ? "1 cinema"
+        : `${globalFilters.cinemaIds.length} cinemas`
+    );
+  }
+  if (globalFilters.formats.length > 0) {
+    globalFilterDescriptions.push(globalFilters.formats.join(", "));
+  }
+  if (filters.timeFrom !== null || filters.timeTo !== null) {
+    const from = filters.timeFrom !== null ? `${filters.timeFrom}:00` : "any";
+    const to = filters.timeTo !== null ? `${filters.timeTo}:00` : "any";
+    if (from !== "any" || to !== "any") {
+      globalFilterDescriptions.push(`${from} – ${to}`);
+    }
+  }
+
   return (
     <div>
+      {/* Global filter indicator - shows filters applied from homepage */}
+      {hasGlobalFiltersSet && (
+        <div className={cn(
+          "mb-4 px-3 py-2 rounded-lg flex items-center justify-between gap-2",
+          ignoreGlobalFilters
+            ? "bg-background-secondary border border-border-subtle"
+            : "bg-accent-primary/10 border border-accent-primary/20"
+        )}>
+          <div className="flex items-center gap-2 text-sm">
+            <Filter className={cn(
+              "w-4 h-4 shrink-0",
+              ignoreGlobalFilters ? "text-text-tertiary" : "text-accent-primary"
+            )} />
+            {ignoreGlobalFilters ? (
+              <span className="text-text-secondary">
+                Showing all screenings
+              </span>
+            ) : (
+              <span className="text-text-secondary">
+                Filtered by:{" "}
+                <span className="text-text-primary font-medium">
+                  {globalFilterDescriptions.join(" · ")}
+                </span>
+              </span>
+            )}
+          </div>
+          <button
+            onClick={() => {
+              setIgnoreGlobalFilters(!ignoreGlobalFilters);
+              posthog.capture("film_detail_filter_toggle", {
+                film_id: film.id,
+                action: ignoreGlobalFilters ? "apply_global_filters" : "show_all",
+              });
+            }}
+            className="text-xs text-accent-primary hover:text-accent-primary-hover font-medium shrink-0"
+          >
+            {ignoreGlobalFilters ? "Apply filters" : "Show all"}
+          </button>
+        </div>
+      )}
+
       {/* Filters */}
       {showFilters && (
         <ScreeningFilters
