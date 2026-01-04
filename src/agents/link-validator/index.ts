@@ -9,7 +9,7 @@
  * Uses aggressive auto-fix: automatically marks broken links.
  */
 
-import { query } from "@anthropic-ai/claude-agent-sdk";
+import Anthropic from "@anthropic-ai/sdk";
 import { db, schema } from "@/db";
 import { eq, inArray } from "drizzle-orm";
 import {
@@ -100,56 +100,51 @@ ${screeningList}
 
 Respond with a JSON array of verification results.`;
 
-    // Run the agent
+    // Run direct API call
+    const client = new Anthropic();
     let tokensUsed = 0;
     let results: LinkVerificationResult[] = [];
 
-    for await (const message of query({
-      prompt,
-      options: {
-        systemPrompt: CINEMA_AGENT_SYSTEM_PROMPT,
-        model: config.model,
-        maxTurns: config.maxTurns,
-        allowedTools: [], // No tools needed for URL analysis
-      },
-    })) {
-      if (message.type === "result" && message.subtype === "success") {
-        tokensUsed =
-          (message.usage?.input_tokens || 0) + (message.usage?.output_tokens || 0);
+    const response = await client.messages.create({
+      model: config.model,
+      max_tokens: 4096,
+      system: CINEMA_AGENT_SYSTEM_PROMPT,
+      messages: [{ role: "user", content: prompt }],
+    });
 
-        // Parse the agent's response
-        try {
-          const responseText =
-            typeof message.result === "string"
-              ? message.result
-              : JSON.stringify(message.result);
+    tokensUsed = (response.usage?.input_tokens || 0) + (response.usage?.output_tokens || 0);
 
-          // Extract JSON from response
-          const jsonMatch = responseText.match(/\[[\s\S]*\]/);
-          if (jsonMatch) {
-            const parsed = JSON.parse(jsonMatch[0]);
-            results = parsed.map(
-              (r: {
-                screeningId: string;
-                status: LinkStatus;
-                confidence: number;
-                reason: string;
-              }) => ({
-                screeningId: r.screeningId,
-                url:
-                  screenings.find((s) => s.id === r.screeningId)?.bookingUrl ||
-                  "",
-                status: r.status as LinkStatus,
-                confidence: r.confidence,
-                checkedAt: new Date(),
-                error: r.status === "broken" ? r.reason : undefined,
-              })
-            );
-          }
-        } catch (parseError) {
-          console.error("Failed to parse agent response:", parseError);
-        }
+    // Parse the response
+    try {
+      const responseText = response.content
+        .filter((block): block is Anthropic.TextBlock => block.type === "text")
+        .map((block) => block.text)
+        .join("");
+
+      // Extract JSON from response
+      const jsonMatch = responseText.match(/\[[\s\S]*\]/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        results = parsed.map(
+          (r: {
+            screeningId: string;
+            status: LinkStatus;
+            confidence: number;
+            reason: string;
+          }) => ({
+            screeningId: r.screeningId,
+            url:
+              screenings.find((s) => s.id === r.screeningId)?.bookingUrl ||
+              "",
+            status: r.status as LinkStatus,
+            confidence: r.confidence,
+            checkedAt: new Date(),
+            error: r.status === "broken" ? r.reason : undefined,
+          })
+        );
       }
+    } catch (parseError) {
+      console.error("Failed to parse agent response:", parseError);
     }
 
     // Apply results to database if not dry run

@@ -9,7 +9,7 @@
  * Uses aggressive auto-fix: automatically blocks bad scrapes.
  */
 
-import { query } from "@anthropic-ai/claude-agent-sdk";
+import Anthropic from "@anthropic-ai/sdk";
 import { db, schema } from "@/db";
 import { eq, gte, and, count, sql } from "drizzle-orm";
 import { subDays } from "date-fns";
@@ -115,6 +115,8 @@ Respond with JSON:
   "recommendation": "brief action recommendation"
 }`;
 
+    // Run direct API call
+    const client = new Anthropic();
     let tokensUsed = 0;
     let report: ScraperHealthReport = {
       cinemaId,
@@ -130,41 +132,35 @@ Respond with JSON:
       recommendation: "",
     };
 
-    for await (const message of query({
-      prompt,
-      options: {
-        systemPrompt: CINEMA_AGENT_SYSTEM_PROMPT,
-        model: config.model,
-        maxTurns: config.maxTurns,
-        allowedTools: [],
-      },
-    })) {
-      if (message.type === "result" && message.subtype === "success") {
-        tokensUsed =
-          (message.usage?.input_tokens || 0) + (message.usage?.output_tokens || 0);
+    const response = await client.messages.create({
+      model: config.model,
+      max_tokens: 1024,
+      system: CINEMA_AGENT_SYSTEM_PROMPT,
+      messages: [{ role: "user", content: prompt }],
+    });
 
-        try {
-          const responseText =
-            typeof message.result === "string"
-              ? message.result
-              : JSON.stringify(message.result);
+    tokensUsed = (response.usage?.input_tokens || 0) + (response.usage?.output_tokens || 0);
 
-          const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            const parsed = JSON.parse(jsonMatch[0]);
-            report = {
-              ...report,
-              anomalyScore: parsed.anomalyScore || 0,
-              anomalyDetected: parsed.anomalyDetected || false,
-              shouldBlockScrape: parsed.shouldBlockScrape || false,
-              warnings: parsed.warnings || [],
-              recommendation: parsed.recommendation || "",
-            };
-          }
-        } catch (parseError) {
-          console.error("Failed to parse agent response:", parseError);
-        }
+    try {
+      const responseText = response.content
+        .filter((block): block is Anthropic.TextBlock => block.type === "text")
+        .map((block) => block.text)
+        .join("");
+
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        report = {
+          ...report,
+          anomalyScore: parsed.anomalyScore || 0,
+          anomalyDetected: parsed.anomalyDetected || false,
+          shouldBlockScrape: parsed.shouldBlockScrape || false,
+          warnings: parsed.warnings || [],
+          recommendation: parsed.recommendation || "",
+        };
       }
+    } catch (parseError) {
+      console.error("Failed to parse agent response:", parseError);
     }
 
     // Quick heuristic checks that don't need AI

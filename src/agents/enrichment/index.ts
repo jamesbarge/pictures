@@ -11,7 +11,7 @@
  * Uses aggressive auto-fix: automatically applies matches with confidence > 0.8
  */
 
-import { query } from "@anthropic-ai/claude-agent-sdk";
+import Anthropic from "@anthropic-ai/sdk";
 import { db, schema } from "@/db";
 import { eq, isNull, sql } from "drizzle-orm";
 import { analyzeTitleAmbiguity, hasSufficientMetadata } from "@/lib/tmdb/ambiguity";
@@ -229,44 +229,40 @@ Respond with JSON:
   "notes": "brief explanation"
 }`;
 
-        for await (const message of query({
-          prompt,
-          options: {
-            systemPrompt: CINEMA_AGENT_SYSTEM_PROMPT,
-            model: config.model,
-            maxTurns: 5,
-            allowedTools: [],
-          },
-        })) {
-          if (message.type === "result" && message.subtype === "success") {
-            totalTokens +=
-              (message.usage?.input_tokens || 0) + (message.usage?.output_tokens || 0);
+        // Run direct API call for alternative search
+        const client = new Anthropic();
+        const response = await client.messages.create({
+          model: config.model,
+          max_tokens: 1024,
+          system: CINEMA_AGENT_SYSTEM_PROMPT,
+          messages: [{ role: "user", content: prompt }],
+        });
 
-            try {
-              const responseText =
-                typeof message.result === "string"
-                  ? message.result
-                  : JSON.stringify(message.result);
+        totalTokens += (response.usage?.input_tokens || 0) + (response.usage?.output_tokens || 0);
 
-              const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-              if (jsonMatch) {
-                const parsed = JSON.parse(jsonMatch[0]);
+        try {
+          const responseText = response.content
+            .filter((block): block is Anthropic.TextBlock => block.type === "text")
+            .map((block) => block.text)
+            .join("");
 
-                // Try each alternative title
-                for (const altTitle of parsed.alternativeTitles || []) {
-                  const altResults = await searchTmdb(altTitle, {
-                    year: parsed.possibleYear || film.year || undefined,
-                  });
-                  if (altResults.length > 0) {
-                    tmdbResults = altResults;
-                    break;
-                  }
-                }
+          const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+
+            // Try each alternative title
+            for (const altTitle of parsed.alternativeTitles || []) {
+              const altResults = await searchTmdb(altTitle, {
+                year: parsed.possibleYear || film.year || undefined,
+              });
+              if (altResults.length > 0) {
+                tmdbResults = altResults;
+                break;
               }
-            } catch (parseError) {
-              console.error("Failed to parse agent response:", parseError);
             }
           }
+        } catch (parseError) {
+          console.error("Failed to parse agent response:", parseError);
         }
       }
 
@@ -307,135 +303,131 @@ Respond with JSON:
   "reasoning": "brief explanation"
 }`;
 
-        for await (const message of query({
-          prompt: matchPrompt,
-          options: {
-            systemPrompt: CINEMA_AGENT_SYSTEM_PROMPT,
-            model: config.model,
-            maxTurns: 5,
-            allowedTools: [],
-          },
-        })) {
-          if (message.type === "result" && message.subtype === "success") {
-            totalTokens +=
-              (message.usage?.input_tokens || 0) + (message.usage?.output_tokens || 0);
+        // Run direct API call for matching
+        const matchClient = new Anthropic();
+        const matchResponse = await matchClient.messages.create({
+          model: config.model,
+          max_tokens: 1024,
+          system: CINEMA_AGENT_SYSTEM_PROMPT,
+          messages: [{ role: "user", content: matchPrompt }],
+        });
 
-            try {
-              const responseText =
-                typeof message.result === "string"
-                  ? message.result
-                  : JSON.stringify(message.result);
+        totalTokens += (matchResponse.usage?.input_tokens || 0) + (matchResponse.usage?.output_tokens || 0);
 
-              const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-              if (jsonMatch) {
-                const parsed = JSON.parse(jsonMatch[0]);
+        try {
+          const responseText = matchResponse.content
+            .filter((block): block is Anthropic.TextBlock => block.type === "text")
+            .map((block) => block.text)
+            .join("");
 
-                if (parsed.bestMatchIndex > 0 && parsed.confidence > 0) {
-                  const bestMatch = topResults[parsed.bestMatchIndex - 1];
+          const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
 
-                  // Determine match strategy based on extraction
-                  let matchStrategy: "exact" | "fuzzy" | "extracted" | "agent" = "fuzzy";
-                  if (parsed.confidence > 0.9) {
-                    matchStrategy = "exact";
-                  } else if (extraction.extractionMethod !== "none") {
-                    matchStrategy = "extracted";
-                  }
+            if (parsed.bestMatchIndex > 0 && parsed.confidence > 0) {
+              const bestMatch = topResults[parsed.bestMatchIndex - 1];
 
-                  const matchResult: TmdbMatchResult = {
-                    filmId: film.id,
-                    originalTitle: film.title,
-                    tmdbId: bestMatch.id,
-                    matchedTitle: bestMatch.title,
-                    confidence: parsed.confidence,
-                    matchStrategy,
-                    shouldAutoApply:
-                      parsed.confidence >= config.confidenceThreshold,
-                  };
+              // Determine match strategy based on extraction
+              let matchStrategy: "exact" | "fuzzy" | "extracted" | "agent" = "fuzzy";
+              if (parsed.confidence > 0.9) {
+                matchStrategy = "exact";
+              } else if (extraction.extractionMethod !== "none") {
+                matchStrategy = "extracted";
+              }
 
-                  results.push(matchResult);
+              const matchResult: TmdbMatchResult = {
+                filmId: film.id,
+                originalTitle: film.title,
+                tmdbId: bestMatch.id,
+                matchedTitle: bestMatch.title,
+                confidence: parsed.confidence,
+                matchStrategy,
+                shouldAutoApply:
+                  parsed.confidence >= config.confidenceThreshold,
+              };
 
-                  // Auto-apply if confidence is high enough
-                  if (
-                    matchResult.shouldAutoApply &&
-                    config.enableAutoFix
-                  ) {
-                    // Check ambiguity - for ambiguous titles, require higher confidence or metadata
-                    const ambiguity = analyzeTitleAmbiguity(film.title);
-                    const hasYear = !!film.year;
-                    const hasDirector = film.directors && film.directors.length > 0;
-                    const hasMetadata = hasSufficientMetadata(film.title, hasYear, hasDirector);
+              results.push(matchResult);
 
-                    // For ambiguous titles without sufficient metadata, require 90% confidence
-                    const requiredConfidence = ambiguity.requiresReview && !hasMetadata ? 0.9 : 0.8;
+              // Auto-apply if confidence is high enough
+              if (
+                matchResult.shouldAutoApply &&
+                config.enableAutoFix
+              ) {
+                // Check ambiguity - for ambiguous titles, require higher confidence or metadata
+                const ambiguity = analyzeTitleAmbiguity(film.title);
+                const hasYear = !!film.year;
+                const hasDirector = film.directors && film.directors.length > 0;
+                const hasMetadata = hasSufficientMetadata(film.title, hasYear, hasDirector);
 
-                    if (parsed.confidence < requiredConfidence) {
-                      console.log(
-                        `[${AGENT_NAME}] Skipping ambiguous title "${film.title}" ` +
-                          `(${(parsed.confidence * 100).toFixed(0)}% < ${(requiredConfidence * 100).toFixed(0)}% required, ` +
-                          `reasons: ${ambiguity.reasons.join(", ")})`
-                      );
-                      // Record that we skipped this for review
-                      await db
-                        .update(schema.films)
-                        .set({
-                          matchStrategy: "needs-review",
-                          matchConfidence: parsed.confidence,
-                          matchedAt: new Date(),
-                          updatedAt: new Date(),
-                        })
-                        .where(eq(schema.films.id, film.id));
-                      continue;
-                    }
+                // For ambiguous titles without sufficient metadata, require 90% confidence
+                const requiredConfidence = ambiguity.requiresReview && !hasMetadata ? 0.9 : 0.8;
 
-                    // Determine the match strategy for tracking
-                    let dbMatchStrategy = "auto-no-hints";
-                    if (hasYear && hasDirector) {
-                      dbMatchStrategy = "auto-with-both";
-                    } else if (hasYear) {
-                      dbMatchStrategy = "auto-with-year";
-                    } else if (hasDirector) {
-                      dbMatchStrategy = "auto-with-director";
-                    }
+                if (parsed.confidence < requiredConfidence) {
+                  console.log(
+                    `[${AGENT_NAME}] Skipping ambiguous title "${film.title}" ` +
+                      `(${(parsed.confidence * 100).toFixed(0)}% < ${(requiredConfidence * 100).toFixed(0)}% required, ` +
+                      `reasons: ${ambiguity.reasons.join(", ")})`
+                  );
+                  // Record that we skipped this for review
+                  await db
+                    .update(schema.films)
+                    .set({
+                      matchStrategy: "needs-review",
+                      matchConfidence: parsed.confidence,
+                      matchedAt: new Date(),
+                      updatedAt: new Date(),
+                    })
+                    .where(eq(schema.films.id, film.id));
+                  continue;
+                }
 
-                    // Check if another film already has this TMDB ID
-                    const existingFilm = await findFilmByTmdbId(bestMatch.id);
+                // Determine the match strategy for tracking
+                let dbMatchStrategy = "auto-no-hints";
+                if (hasYear && hasDirector) {
+                  dbMatchStrategy = "auto-with-both";
+                } else if (hasYear) {
+                  dbMatchStrategy = "auto-with-year";
+                } else if (hasDirector) {
+                  dbMatchStrategy = "auto-with-director";
+                }
 
-                    if (existingFilm) {
-                      // This is a duplicate - merge into the canonical film
-                      console.log(
-                        `[${AGENT_NAME}] Duplicate detected: "${film.title}" -> merging with "${existingFilm.title}" (TMDB ${bestMatch.id})`
-                      );
-                      await mergeDuplicateFilm(
-                        film.id,
-                        existingFilm.id,
-                        film.title,
-                        existingFilm.title
-                      );
-                      matchResult.matchStrategy = "extracted"; // Mark as deduplicated
-                    } else {
-                      // No existing film - safe to update
-                      console.log(
-                        `[${AGENT_NAME}] Auto-applying TMDB match: "${film.title}" -> ${bestMatch.id} (${(parsed.confidence * 100).toFixed(0)}%)`
-                      );
+                // Check if another film already has this TMDB ID
+                const existingFilm = await findFilmByTmdbId(bestMatch.id);
 
-                      await db
-                        .update(schema.films)
-                        .set({
-                          tmdbId: bestMatch.id,
-                          matchConfidence: parsed.confidence,
-                          matchStrategy: dbMatchStrategy,
-                          matchedAt: new Date(),
-                          updatedAt: new Date(),
-                        })
-                        .where(eq(schema.films.id, film.id));
-                    }
-                  }
+                if (existingFilm) {
+                  // This is a duplicate - merge into the canonical film
+                  console.log(
+                    `[${AGENT_NAME}] Duplicate detected: "${film.title}" -> merging with "${existingFilm.title}" (TMDB ${bestMatch.id})`
+                  );
+                  await mergeDuplicateFilm(
+                    film.id,
+                    existingFilm.id,
+                    film.title,
+                    existingFilm.title
+                  );
+                  matchResult.matchStrategy = "extracted"; // Mark as deduplicated
+                } else {
+                  // No existing film - safe to update
+                  console.log(
+                    `[${AGENT_NAME}] Auto-applying TMDB match: "${film.title}" -> ${bestMatch.id} (${(parsed.confidence * 100).toFixed(0)}%)`
+                  );
+
+                  await db
+                    .update(schema.films)
+                    .set({
+                      tmdbId: bestMatch.id,
+                      matchConfidence: parsed.confidence,
+                      matchStrategy: dbMatchStrategy,
+                      matchedAt: new Date(),
+                      updatedAt: new Date(),
+                    })
+                    .where(eq(schema.films.id, film.id));
                 }
               }
-            } catch (parseError) {
-              console.error("Failed to parse match response:", parseError);
             }
           }
+        } catch (parseError) {
+          console.error("Failed to parse match response:", parseError);
         }
       }
 
