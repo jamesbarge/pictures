@@ -17,6 +17,7 @@ import { Clock, Calendar, Globe, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { getTmdbUrl, getImdbUrl, generateLetterboxdUrl } from "@/lib/external-urls";
 import { useFilters } from "@/stores/filters";
+import { LetterboxdRatingReveal } from "./letterboxd-rating-reveal";
 import type { CastMember } from "@/types/film";
 
 interface FilmHeaderProps {
@@ -42,6 +43,7 @@ interface FilmHeaderProps {
     tmdbId?: number | null;
     imdbId?: string | null;
     letterboxdUrl?: string | null;
+    letterboxdRating?: number | null;
   };
 }
 
@@ -318,6 +320,14 @@ export function FilmHeader({ film }: FilmHeaderProps) {
               <span className="font-medium">Letterboxd</span>
               <ExternalLink className="w-3.5 h-3.5" />
             </a>
+
+            {/* Letterboxd Rating Reveal - only show if we have a rating */}
+            {film.letterboxdRating && film.letterboxdRating > 0 && (
+              <LetterboxdRatingReveal
+                rating={film.letterboxdRating}
+                filmId={film.id}
+              />
+            )}
           </div>
         </div>
       </div>

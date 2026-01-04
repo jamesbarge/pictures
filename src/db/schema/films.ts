@@ -9,7 +9,7 @@ import {
   index,
   // vector,
 } from "drizzle-orm/pg-core";
-import type { CastMember, ReleaseStatus } from "@/types/film";
+import type { CastMember, ReleaseStatus, ContentType } from "@/types/film";
 
 // OpenAI text-embedding-3-small produces 1536-dimensional vectors
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -56,6 +56,11 @@ export const films = pgTable("films", {
   releaseStatus: text("release_status").$type<ReleaseStatus>(),
   decade: text("decade"), // "1970s", "1980s", etc.
 
+  // Content classification (AI-determined)
+  contentType: text("content_type").$type<ContentType>().notNull().default("film"),
+  // Original image URL from cinema website (fallback for non-film content)
+  sourceImageUrl: text("source_image_url"),
+
   // External ratings
   tmdbRating: real("tmdb_rating"),
   letterboxdUrl: text("letterboxd_url"),
@@ -89,6 +94,8 @@ export const films = pgTable("films", {
   index("idx_films_year").on(table.year),
   // Index for finding films by match strategy (for reprocessing)
   index("idx_films_match_strategy").on(table.matchStrategy),
+  // Index for content type filtering
+  index("idx_films_content_type").on(table.contentType),
 ]);
 
 export type FilmInsert = typeof films.$inferInsert;
