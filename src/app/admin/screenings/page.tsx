@@ -1,18 +1,18 @@
 /**
  * Admin Screenings Page
  * Browse and manage all screenings with full CRUD capabilities
- * Phase 1: Basic listing with filters
  */
 
 import { db } from "@/db";
 import { screenings, films, cinemas } from "@/db/schema";
-import { eq, gte, lte, and, desc, asc, ilike, or } from "drizzle-orm";
+import { eq, gte, lte, and, asc } from "drizzle-orm";
 import { startOfDay, endOfDay, addDays, format, parseISO } from "date-fns";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Film, Calendar, MapPin, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
+import { Film, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
+import { ScreeningsHeader } from "./components/screenings-header";
+import { ScreeningRow } from "./components/screening-row";
 
 export const dynamic = "force-dynamic";
 
@@ -36,7 +36,6 @@ export default async function AdminScreeningsPage({
   // Parse filters
   const selectedCinema = params.cinema || null;
   const selectedDate = params.date ? parseISO(params.date) : null;
-  const searchQuery = params.search || null;
   const page = parseInt(params.page || "1", 10);
   const offset = (page - 1) * PAGE_SIZE;
 
@@ -62,6 +61,7 @@ export default async function AdminScreeningsPage({
       format: screenings.format,
       screen: screenings.screen,
       eventType: screenings.eventType,
+      eventDescription: screenings.eventDescription,
       bookingUrl: screenings.bookingUrl,
       film: {
         id: films.id,
@@ -83,7 +83,7 @@ export default async function AdminScreeningsPage({
     .limit(PAGE_SIZE)
     .offset(offset);
 
-  // Fetch cinema list for filter
+  // Fetch cinema list for filter and modal
   const allCinemas = await db
     .select({ id: cinemas.id, name: cinemas.name, shortName: cinemas.shortName })
     .from(cinemas)
@@ -108,20 +108,16 @@ export default async function AdminScreeningsPage({
     return `/admin/screenings?${searchParamsObj.toString()}`;
   };
 
+  // Serialize screening data for client components
+  const serializedResults = results.map(r => ({
+    ...r,
+    datetime: r.datetime.toISOString(),
+  }));
+
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-display text-text-primary">Screenings</h1>
-          <p className="text-text-secondary mt-1">
-            Browse and manage all screenings
-          </p>
-        </div>
-        <Button variant="primary" size="sm">
-          + Add Screening
-        </Button>
-      </div>
+      {/* Header with Add button */}
+      <ScreeningsHeader cinemas={allCinemas} />
 
       {/* Filters */}
       <Card padding="sm">
@@ -180,8 +176,12 @@ export default async function AdminScreeningsPage({
         </p>
 
         <div className="space-y-2">
-          {results.map((screening) => (
-            <ScreeningRow key={screening.id} screening={screening} />
+          {serializedResults.map((screening) => (
+            <ScreeningRow
+              key={screening.id}
+              screening={screening}
+              cinemas={allCinemas}
+            />
           ))}
         </div>
 
@@ -243,99 +243,5 @@ function FilterLink({
     >
       {children}
     </Link>
-  );
-}
-
-// Screening Row Component
-function ScreeningRow({
-  screening,
-}: {
-  screening: {
-    id: string;
-    datetime: Date;
-    format: string | null;
-    screen: string | null;
-    eventType: string | null;
-    bookingUrl: string | null;
-    film: {
-      id: string;
-      title: string;
-      year: number | null;
-      posterUrl: string | null;
-    };
-    cinema: {
-      id: string;
-      name: string;
-      shortName: string | null;
-    };
-  };
-}) {
-  return (
-    <Card padding="sm" className="hover:border-border-default transition-colors">
-      <div className="flex items-center gap-4">
-        {/* Poster thumbnail */}
-        <div className="w-12 h-16 bg-background-tertiary rounded overflow-hidden shrink-0">
-          {screening.film.posterUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={screening.film.posterUrl}
-              alt=""
-              className="w-full h-full object-cover"
-            />
-          )}
-        </div>
-
-        {/* Info */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-baseline gap-2">
-            <h3 className="font-medium text-text-primary truncate">
-              {screening.film.title}
-            </h3>
-            {screening.film.year && (
-              <span className="text-sm text-text-tertiary">
-                ({screening.film.year})
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-4 mt-1 text-sm text-text-secondary">
-            <span className="flex items-center gap-1">
-              <Calendar className="w-3.5 h-3.5" />
-              {format(screening.datetime, "EEE d MMM, HH:mm")}
-            </span>
-            <span className="flex items-center gap-1">
-              <MapPin className="w-3.5 h-3.5" />
-              {screening.cinema.shortName || screening.cinema.name}
-            </span>
-            {screening.format && (
-              <span className="text-xs px-1.5 py-0.5 bg-background-tertiary rounded">
-                {screening.format}
-              </span>
-            )}
-            {screening.eventType && screening.eventType !== "standard" && (
-              <span className="text-xs px-1.5 py-0.5 bg-accent-primary/10 text-accent-primary rounded">
-                {screening.eventType}
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="flex items-center gap-2 shrink-0">
-          {screening.bookingUrl && (
-            <a
-              href={screening.bookingUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-2 text-text-tertiary hover:text-text-primary"
-            >
-              <ExternalLink className="w-4 h-4" />
-            </a>
-          )}
-          <Button variant="ghost" size="sm">
-            Edit
-          </Button>
-        </div>
-      </div>
-    </Card>
   );
 }
