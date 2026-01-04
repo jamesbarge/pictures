@@ -1,21 +1,16 @@
 /**
  * Letterboxd Rating Reveal Component
  *
- * A delightful cinema-themed interaction that reveals the Letterboxd rating
- * through parting theater curtains. Rating is hidden by default to respect
- * users who prefer not to see ratings before watching a film.
- *
- * Features:
- * - Theatrical curtain animation using CSS transforms
- * - Letterboxd-branded colors for authenticity
- * - Responsive star display with half-star precision
- * - Remembers reveal state per film for the session
+ * A simple button that reveals the Letterboxd rating on click.
+ * Rating is hidden by default to respect users who prefer not
+ * to see ratings before watching a film.
  */
 
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { cn } from "@/lib/cn";
+import { Eye } from "lucide-react";
 
 interface LetterboxdRatingRevealProps {
   rating: number; // 0-5 scale
@@ -41,23 +36,13 @@ export function LetterboxdRatingReveal({
     return sessionStorage.getItem(getRevealedKey(filmId)) === "true";
   });
 
-  const [isAnimating, setIsAnimating] = useState(false);
-
-  const handleReveal = useCallback(() => {
-    if (isRevealed || isAnimating) return;
-
-    setIsAnimating(true);
-
-    // Small delay for the curtain animation to complete
-    setTimeout(() => {
-      setIsRevealed(true);
-      setIsAnimating(false);
-      // Remember for this session
-      if (typeof window !== "undefined") {
-        sessionStorage.setItem(getRevealedKey(filmId), "true");
-      }
-    }, 600);
-  }, [isRevealed, isAnimating, filmId]);
+  const handleReveal = () => {
+    if (isRevealed) return;
+    setIsRevealed(true);
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem(getRevealedKey(filmId), "true");
+    }
+  };
 
   // Generate star display
   const fullStars = Math.floor(rating);
@@ -66,173 +51,65 @@ export function LetterboxdRatingReveal({
   const displayStars = roundedUp ? fullStars + 1 : fullStars;
   const emptyStars = 5 - displayStars - (hasHalfStar ? 1 : 0);
 
-  return (
-    <div className={cn("relative inline-flex", className)}>
-      {/* The reveal button / curtain container */}
-      <button
-        onClick={handleReveal}
-        disabled={isRevealed}
+  if (isRevealed) {
+    // Show the rating inline
+    return (
+      <div
         className={cn(
-          "relative overflow-hidden rounded-lg transition-all",
-          "focus:outline-none focus:ring-2 focus:ring-accent-primary/40",
-          isRevealed
-            ? "cursor-default bg-[#1a1a1a]/95 px-3 py-1.5"
-            : "cursor-pointer hover:scale-[1.02] active:scale-[0.98] px-4 py-2"
+          "inline-flex items-center gap-2 px-3 py-1.5 rounded-lg",
+          "text-sm",
+          "bg-background-tertiary",
+          "border border-border-subtle",
+          className
         )}
-        aria-label={isRevealed ? `Letterboxd rating: ${rating.toFixed(1)} out of 5` : "Reveal Letterboxd rating"}
       >
-        {/* Curtain backdrop (dark theater) */}
-        {!isRevealed && (
-          <div className="absolute inset-0 bg-[#1a1a1a]" />
-        )}
-
-        {/* Left curtain */}
-        <div
-          className={cn(
-            "absolute top-0 bottom-0 left-0 w-1/2 z-10",
-            "bg-gradient-to-r from-[#6B1E28] via-[#8B2E3B] to-[#7A2632]",
-            "shadow-[inset_-8px_0_16px_rgba(0,0,0,0.3)]",
-            "transition-transform duration-500",
-            (isAnimating || isRevealed) ? "-translate-x-full" : "translate-x-0"
-          )}
-          style={{
-            transitionTimingFunction: "cubic-bezier(0.175, 0.885, 0.32, 1.275)",
-          }}
-        >
-          {/* Curtain fold texture */}
-          <div className="absolute inset-0 opacity-30">
-            {[...Array(3)].map((_, i) => (
-              <div
-                key={i}
-                className="absolute top-0 bottom-0 w-px bg-gradient-to-b from-white/20 via-transparent to-white/10"
-                style={{ left: `${25 + i * 25}%` }}
-              />
-            ))}
-          </div>
-          {/* Gold trim on edge */}
-          <div className="absolute top-0 bottom-0 right-0 w-1 bg-gradient-to-b from-[#D4AF37] via-[#C9A96E] to-[#D4AF37] opacity-60" />
+        {/* Stars */}
+        <div className="flex items-center gap-0.5">
+          {[...Array(displayStars)].map((_, i) => (
+            <StarIcon key={`full-${i}`} filled className="w-3.5 h-3.5" />
+          ))}
+          {hasHalfStar && <HalfStarIcon className="w-3.5 h-3.5" />}
+          {[...Array(emptyStars)].map((_, i) => (
+            <StarIcon key={`empty-${i}`} filled={false} className="w-3.5 h-3.5" />
+          ))}
         </div>
-
-        {/* Right curtain */}
-        <div
-          className={cn(
-            "absolute top-0 bottom-0 right-0 w-1/2 z-10",
-            "bg-gradient-to-l from-[#6B1E28] via-[#8B2E3B] to-[#7A2632]",
-            "shadow-[inset_8px_0_16px_rgba(0,0,0,0.3)]",
-            "transition-transform duration-500",
-            (isAnimating || isRevealed) ? "translate-x-full" : "translate-x-0"
-          )}
-          style={{
-            transitionTimingFunction: "cubic-bezier(0.175, 0.885, 0.32, 1.275)",
-          }}
+        {/* Numeric rating */}
+        <span
+          className="font-medium tabular-nums"
+          style={{ color: LETTERBOXD_GREEN }}
         >
-          {/* Curtain fold texture */}
-          <div className="absolute inset-0 opacity-30">
-            {[...Array(3)].map((_, i) => (
-              <div
-                key={i}
-                className="absolute top-0 bottom-0 w-px bg-gradient-to-b from-white/20 via-transparent to-white/10"
-                style={{ right: `${25 + i * 25}%` }}
-              />
-            ))}
-          </div>
-          {/* Gold trim on edge */}
-          <div className="absolute top-0 bottom-0 left-0 w-1 bg-gradient-to-b from-[#D4AF37] via-[#C9A96E] to-[#D4AF37] opacity-60" />
-        </div>
+          {rating.toFixed(1)}
+        </span>
+      </div>
+    );
+  }
 
-        {/* Content behind curtains */}
-        <div
-          className={cn(
-            "relative z-0 flex items-center gap-2 transition-all duration-500",
-            isRevealed
-              ? "opacity-100 scale-100"
-              : "opacity-0 scale-90"
-          )}
-          style={{
-            transitionDelay: isRevealed ? "200ms" : "0ms",
-          }}
-        >
-          {/* Stars */}
-          <div className="flex items-center gap-0.5">
-            {/* Full stars */}
-            {[...Array(displayStars)].map((_, i) => (
-              <StarIcon
-                key={`full-${i}`}
-                filled
-                className="w-4 h-4"
-                style={{
-                  animationDelay: isRevealed ? `${400 + i * 80}ms` : "0ms",
-                }}
-                animate={isRevealed}
-              />
-            ))}
-            {/* Half star */}
-            {hasHalfStar && (
-              <HalfStarIcon
-                className="w-4 h-4"
-                style={{
-                  animationDelay: isRevealed ? `${400 + displayStars * 80}ms` : "0ms",
-                }}
-                animate={isRevealed}
-              />
-            )}
-            {/* Empty stars */}
-            {[...Array(emptyStars)].map((_, i) => (
-              <StarIcon
-                key={`empty-${i}`}
-                filled={false}
-                className="w-4 h-4"
-              />
-            ))}
-          </div>
-          {/* Numeric rating */}
-          <span
-            className={cn(
-              "text-sm font-medium tabular-nums transition-all",
-              isRevealed && "animate-pulse"
-            )}
-            style={{
-              color: LETTERBOXD_GREEN,
-              animationDuration: "1s",
-              animationIterationCount: "1",
-            }}
-          >
-            {rating.toFixed(1)}
-          </span>
-        </div>
-
-        {/* "Peek at rating" text when curtains closed */}
-        {!isRevealed && !isAnimating && (
-          <span className="relative z-20 text-sm font-medium text-[#F5E6C8] flex items-center gap-2">
-            <span className="text-base" role="img" aria-hidden="true">🎭</span>
-            Peek at rating
-          </span>
-        )}
-      </button>
-    </div>
+  return (
+    <button
+      onClick={handleReveal}
+      className={cn(
+        "inline-flex items-center gap-2 px-3 py-1.5 rounded-lg",
+        "text-sm text-text-tertiary hover:text-text-primary",
+        "bg-background-tertiary hover:bg-surface-overlay-hover",
+        "border border-border-subtle hover:border-border-default",
+        "transition-all cursor-pointer",
+        "focus:outline-none focus:ring-2 focus:ring-accent-primary/40",
+        className
+      )}
+      aria-label="Show Letterboxd rating"
+    >
+      <Eye className="w-3.5 h-3.5" />
+      <span className="font-medium">Show rating</span>
+    </button>
   );
 }
 
-// Star SVG components for the rating display
-function StarIcon({
-  filled,
-  className,
-  style,
-  animate
-}: {
-  filled: boolean;
-  className?: string;
-  style?: React.CSSProperties;
-  animate?: boolean;
-}) {
+// Star SVG components
+function StarIcon({ filled, className }: { filled: boolean; className?: string }) {
   return (
     <svg
       viewBox="0 0 24 24"
-      className={cn(
-        className,
-        animate && filled && "animate-star-pop"
-      )}
-      style={style}
+      className={className}
       fill={filled ? LETTERBOXD_ORANGE : "transparent"}
       stroke={filled ? LETTERBOXD_ORANGE : "#666"}
       strokeWidth={1.5}
@@ -246,21 +123,9 @@ function StarIcon({
   );
 }
 
-function HalfStarIcon({
-  className,
-  style,
-  animate
-}: {
-  className?: string;
-  style?: React.CSSProperties;
-  animate?: boolean;
-}) {
+function HalfStarIcon({ className }: { className?: string }) {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      className={cn(className, animate && "animate-star-pop")}
-      style={style}
-    >
+    <svg viewBox="0 0 24 24" className={className}>
       <defs>
         <linearGradient id="halfStarGradient">
           <stop offset="50%" stopColor={LETTERBOXD_ORANGE} />
