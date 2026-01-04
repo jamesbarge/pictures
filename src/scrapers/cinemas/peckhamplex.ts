@@ -12,6 +12,7 @@
 
 import * as cheerio from "cheerio";
 import type { RawScreening, ScraperConfig, CinemaScraper } from "../types";
+import type { CheerioAPI } from "../utils/cheerio-types";
 
 // ============================================================================
 // Peckhamplex Configuration
