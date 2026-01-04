@@ -18,6 +18,7 @@ const POSTER_BLUR_PLACEHOLDER =
 import { cn } from "@/lib/cn";
 import { Heart, X } from "lucide-react";
 import { useFilmStatus, type FilmStatus } from "@/stores/film-status";
+import { useFilters } from "@/stores/filters";
 import { memo } from "react";
 import { useHydrated } from "@/hooks/useHydrated";
 import { usePostHog } from "posthog-js/react";
@@ -57,6 +58,9 @@ export const FilmCard = memo(function FilmCard({
   const filmId = film.id;
   const rawStatus = useFilmStatus((state) => state.films[filmId]?.status ?? null);
   const setStatus = useFilmStatus((state) => state.setStatus);
+
+  // Check if repertory filter is active - if so, don't show "rep" badge (redundant)
+  const isRepertoryFilterActive = useFilters((state) => state.programmingTypes.includes("repertory"));
 
   const mounted = useHydrated();
 
@@ -232,7 +236,7 @@ export const FilmCard = memo(function FilmCard({
         {/* Screening summary */}
         <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-text-tertiary mt-auto pt-1">
           <span>{screeningCount} {screeningLabel} at {cinemaDisplay}</span>
-          {film.isRepertory && (
+          {film.isRepertory && !isRepertoryFilterActive && (
             <span className="px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide rounded bg-white/10 text-text-secondary">
               rep
             </span>
