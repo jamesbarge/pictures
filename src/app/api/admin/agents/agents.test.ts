@@ -25,12 +25,18 @@ import {
 } from "@/agents";
 
 describe("Agent API Routes", () => {
+  const originalEnv = process.env.ANTHROPIC_API_KEY;
+
   beforeEach(() => {
     vi.clearAllMocks();
+    // Set API key so routes don't return "not configured" error
+    process.env.ANTHROPIC_API_KEY = "test-api-key";
   });
 
   afterEach(() => {
     vi.resetModules();
+    // Restore original env
+    process.env.ANTHROPIC_API_KEY = originalEnv;
   });
 
   describe("POST /api/admin/agents/links", () => {

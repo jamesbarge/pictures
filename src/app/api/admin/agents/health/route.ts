@@ -6,7 +6,6 @@
  */
 
 import { auth } from "@clerk/nextjs/server";
-import { runHealthCheckAllCinemas } from "@/agents";
 
 export const maxDuration = 60;
 
@@ -17,7 +16,19 @@ export async function POST() {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // Check for API key before importing agent
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return Response.json({
+      success: false,
+      summary: "Agent not configured",
+      error: "ANTHROPIC_API_KEY environment variable is not set. Add it in Vercel project settings.",
+    });
+  }
+
   try {
+    // Dynamic import to avoid loading SDK if API key missing
+    const { runHealthCheckAllCinemas } = await import("@/agents");
+
     const result = await runHealthCheckAllCinemas();
 
     if (!result.success) {
