@@ -100,12 +100,17 @@ export class GenesisScraper extends BaseScraper {
     // Extract film title from page
     const filmTitle = this.extractFilmTitle($);
     if (!filmTitle) {
+      console.log(`[genesis] Could not extract title`);
       return [];
     }
 
+    // Find showtime links - look inside whatson_panel divs
+    const bookingLinks = $(".whatson_panel a[href*='admit-one.co.uk/seats']");
+    console.log(`[genesis] "${filmTitle}": found ${bookingLinks.length} booking links in panels`);
+
     // Find all showtime links
     // Genesis format: <a href="https://genesis.admit-one.co.uk/seats/?perfCode=XXXX">HH:MM</a>
-    $("a[href*='admit-one.co.uk/seats']").each((_, el) => {
+    bookingLinks.each((_, el) => {
       const $link = $(el);
       const bookingUrl = $link.attr("href") || "";
       const timeText = $link.text().trim();
@@ -114,11 +119,18 @@ export class GenesisScraper extends BaseScraper {
       const perfCodeMatch = bookingUrl.match(/perfCode=(\d+)/);
       const perfCode = perfCodeMatch ? perfCodeMatch[1] : null;
 
-      if (!perfCode || !timeText) return;
+      if (!perfCode || !timeText) {
+        console.log(`[genesis] Skipping link: no perfCode or timeText`);
+        return;
+      }
 
       // Find the date context - Genesis typically shows dates as section headers
       const dateContext = this.findDateContext($, $link);
-      if (!dateContext) return;
+      if (!dateContext) {
+        console.log(`[genesis] No date context found for ${timeText}`);
+        return;
+      }
+      console.log(`[genesis] Found: ${timeText} on ${dateContext}`);
 
       const datetime = this.parseDateTime(dateContext, timeText);
       if (!datetime) return;
@@ -175,11 +187,30 @@ export class GenesisScraper extends BaseScraper {
     $: CheerioAPI,
     $link: CheerioSelection
   ): string | null {
-    // Look for date in parent elements or preceding headers
-    // Genesis often has dates as section headers like "Friday 20 December"
-
-    // Check parent and grandparent for date strings
+    // NEW: Genesis now uses tabbed panels with IDs like panel_20250104 (YYYYMMDD)
+    // Look for parent panel with date in ID
     let $current = $link.parent();
+    for (let i = 0; i < 10; i++) {
+      const id = $current.attr("id") || "";
+
+      // Check for panel_YYYYMMDD format
+      const panelMatch = id.match(/panel_(\d{8})/);
+      if (panelMatch) {
+        return panelMatch[1]; // Return YYYYMMDD format
+      }
+
+      // Also check for data-target attribute on parent elements
+      const dataTarget = $current.attr("data-target");
+      if (dataTarget && /^\d{8}$/.test(dataTarget)) {
+        return dataTarget;
+      }
+
+      $current = $current.parent();
+      if ($current.length === 0) break;
+    }
+
+    // FALLBACK: Also check for traditional text-based date patterns
+    $current = $link.parent();
     for (let i = 0; i < 5; i++) {
       const text = $current.text();
       const dateMatch = text.match(
@@ -218,33 +249,44 @@ export class GenesisScraper extends BaseScraper {
 
   private parseDateTime(dateStr: string, timeStr: string): Date | null {
     try {
-      // Parse date like "20 December" or "Friday 20 December"
-      const dateMatch = dateStr.match(
-        /(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s*(\d{4})?/i
-      );
-      if (!dateMatch) return null;
+      let year: number;
+      let month: number;
+      let day: number;
 
-      const day = parseInt(dateMatch[1]);
-      const monthName = dateMatch[2];
-      const year = dateMatch[3] ? parseInt(dateMatch[3]) : new Date().getFullYear();
+      // NEW: Check for YYYYMMDD format (from panel IDs)
+      if (/^\d{8}$/.test(dateStr)) {
+        year = parseInt(dateStr.slice(0, 4));
+        month = parseInt(dateStr.slice(4, 6)) - 1; // JS months are 0-indexed
+        day = parseInt(dateStr.slice(6, 8));
+      } else {
+        // FALLBACK: Parse date like "20 December" or "Friday 20 December"
+        const dateMatch = dateStr.match(
+          /(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s*(\d{4})?/i
+        );
+        if (!dateMatch) return null;
 
-      const months: Record<string, number> = {
-        january: 0,
-        february: 1,
-        march: 2,
-        april: 3,
-        may: 4,
-        june: 5,
-        july: 6,
-        august: 7,
-        september: 8,
-        october: 9,
-        november: 10,
-        december: 11,
-      };
+        day = parseInt(dateMatch[1]);
+        const monthName = dateMatch[2];
+        year = dateMatch[3] ? parseInt(dateMatch[3]) : new Date().getFullYear();
 
-      const month = months[monthName.toLowerCase()];
-      if (month === undefined) return null;
+        const months: Record<string, number> = {
+          january: 0,
+          february: 1,
+          march: 2,
+          april: 3,
+          may: 4,
+          june: 5,
+          july: 6,
+          august: 7,
+          september: 8,
+          october: 9,
+          november: 10,
+          december: 11,
+        };
+
+        month = months[monthName.toLowerCase()];
+        if (month === undefined) return null;
+      }
 
       // Parse time like "19:30" or "7:30pm"
       const timeMatch = timeStr.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
@@ -257,10 +299,15 @@ export class GenesisScraper extends BaseScraper {
       if (ampm === "pm" && hours < 12) hours += 12;
       if (ampm === "am" && hours === 12) hours = 0;
 
+      // Cinema heuristic: times 1-9 without AM/PM are likely PM
+      if (!ampm && hours >= 1 && hours <= 9) {
+        hours += 12;
+      }
+
       const date = new Date(year, month, day, hours, minutes);
 
-      // If date is in the past, assume next year
-      if (date < new Date()) {
+      // If date is in the past, assume next year (only for text-based dates without explicit year)
+      if (date < new Date() && !/^\d{8}$/.test(dateStr)) {
         date.setFullYear(date.getFullYear() + 1);
       }
 

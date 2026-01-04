@@ -21,6 +21,8 @@ import {
   Sparkles,
   History,
   SlidersHorizontal,
+  Share2,
+  CheckCircle,
 } from "lucide-react";
 import { HeaderNavButtons } from "@/components/layout/header-nav-buttons";
 import { format, addDays, startOfToday, isSameDay, isSaturday, isSunday, differenceInDays } from "date-fns";
@@ -32,6 +34,7 @@ import { useFilters, TIME_PRESETS, FORMAT_OPTIONS, formatTimeRange, formatHour, 
 import { usePreferences } from "@/stores/preferences";
 import { Button, IconButton } from "@/components/ui";
 import { Clock } from "lucide-react";
+import { useUrlFilters } from "@/hooks/useUrlFilters";
 
 interface Cinema {
   id: string;
@@ -133,8 +136,9 @@ export function Header({ cinemas, festivals, availableFormats }: HeaderProps) {
               </div>
             )}
 
-            {/* Clear All */}
-            <div className="pt-4">
+            {/* Actions */}
+            <div className="pt-4 flex gap-2">
+              {mounted && <ShareFiltersButton fullWidth />}
               {mounted && <ClearFiltersButton fullWidth />}
             </div>
           </div>
@@ -159,7 +163,8 @@ export function Header({ cinemas, festivals, availableFormats }: HeaderProps) {
           {/* Format Filter */}
           <FormatFilter mounted={mounted} availableFormats={availableFormats} />
 
-          {/* Clear All */}
+          {/* Share & Clear */}
+          {mounted && <ShareFiltersButton />}
           {mounted && <ClearFiltersButton />}
         </div>
       </div>
@@ -1341,6 +1346,55 @@ function ClearFiltersButton({ fullWidth }: { fullWidth?: boolean } = {}) {
       className={fullWidth ? "w-full justify-center" : undefined}
     >
       Clear ({count})
+    </Button>
+  );
+}
+
+// Share Filters Button - copies shareable URL to clipboard
+function ShareFiltersButton({ fullWidth }: { fullWidth?: boolean } = {}) {
+  const [copied, setCopied] = useState(false);
+  const { copyShareableUrl } = useUrlFilters();
+  const filters = useFilters();
+
+  // Calculate filter count (same logic as ClearFiltersButton)
+  const count =
+    (filters.filmSearch.trim() ? 1 : 0) +
+    (filters.cinemaIds.length > 0 ? 1 : 0) +
+    (filters.dateFrom || filters.dateTo ? 1 : 0) +
+    (filters.timeFrom !== null || filters.timeTo !== null ? 1 : 0) +
+    filters.formats.length +
+    filters.programmingTypes.length +
+    filters.decades.length +
+    filters.genres.length +
+    filters.timesOfDay.length +
+    (filters.festivalSlug ? 1 : 0) +
+    (filters.festivalOnly ? 1 : 0) +
+    (filters.hideSeen ? 1 : 0) +
+    (filters.onlySingleShowings ? 1 : 0);
+
+  // Don't show if no filters are active
+  if (count === 0) return null;
+
+  const handleShare = async () => {
+    const success = await copyShareableUrl();
+    if (success) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={handleShare}
+      leftIcon={copied ? <CheckCircle className="w-4 h-4 text-status-success" /> : <Share2 className="w-4 h-4" />}
+      className={cn(
+        fullWidth ? "w-full justify-center" : undefined,
+        copied && "text-status-success"
+      )}
+    >
+      {copied ? "Copied!" : "Share"}
     </Button>
   );
 }

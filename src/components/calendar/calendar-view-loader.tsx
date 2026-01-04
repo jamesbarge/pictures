@@ -3,11 +3,11 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { addDays, differenceInDays, startOfDay } from "date-fns";
-import { useSearchParams } from "next/navigation";
 import { CalendarView } from "./calendar-view";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { Loader2, X, Clapperboard } from "lucide-react";
 import { useFilters } from "@/stores/filters";
+import { useUrlFilters } from "@/hooks/useUrlFilters";
 
 interface Screening {
   id: string;
@@ -100,17 +100,10 @@ export function CalendarViewWithLoader({ initialScreenings, cinemas }: CalendarV
   // Festival filter from store
   const festivalSlug = useFilters((state) => state.festivalSlug);
   const festivalOnly = useFilters((state) => state.festivalOnly);
-  const setFestivalFilter = useFilters((state) => state.setFestivalFilter);
   const clearFestivalFilter = useFilters((state) => state.clearFestivalFilter);
 
-  // Sync URL ?festival= param to store on mount
-  const searchParams = useSearchParams();
-  useEffect(() => {
-    const urlFestival = searchParams.get("festival");
-    if (urlFestival && urlFestival !== festivalSlug) {
-      setFestivalFilter(urlFestival);
-    }
-  }, [searchParams, festivalSlug, setFestivalFilter]);
+  // URL filter sync - handles all filter params including festival
+  useUrlFilters();
 
   // Auto-load more weeks when dateTo extends beyond currently loaded data
   useEffect(() => {
@@ -280,11 +273,7 @@ export function CalendarViewWithLoader({ initialScreenings, cinemas }: CalendarV
             </span>
           </div>
           <button
-            onClick={() => {
-              clearFestivalFilter();
-              // Also clear URL param
-              window.history.replaceState({}, "", "/");
-            }}
+            onClick={clearFestivalFilter}
             className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors rounded-lg hover:bg-background-hover"
           >
             <X className="w-4 h-4" />
