@@ -409,6 +409,18 @@ body::after {
   mix-blend-mode: overlay;
 }
 
+/*
+ * Fix for lazy-loaded images not rendering with fixed pseudo-element overlays.
+ * The paper grain overlays (body::before/after) create compositing issues where
+ * lazy-loaded images are marked as complete but not visually painted until scroll.
+ * isolation: isolate creates a new stacking context that resolves this.
+ */
+main {
+  isolation: isolate;
+  position: relative;
+  z-index: 1;
+}
+
 /* Theme transition - theatrical 300ms fade */
 html {
   transition: background-color 300ms ease, color 300ms ease;
