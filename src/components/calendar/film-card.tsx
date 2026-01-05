@@ -146,26 +146,15 @@ export const FilmCard = memo(function FilmCard({
           aria-hidden="true"
           onClick={trackCardClick}
         >
-          {film.posterUrl && !film.posterUrl.includes("poster-placeholder") ? (
-            <Image
-              src={film.posterUrl}
-              alt=""
-              fill
-              className="object-cover"
-              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 20vw, 15vw"
-              placeholder="blur"
-              blurDataURL={POSTER_BLUR_PLACEHOLDER}
-              unoptimized
-              loading="eager"
-            />
-          ) : (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img
-              src={`/api/poster-placeholder?title=${encodeURIComponent(film.title)}${film.year ? `&year=${film.year}` : ""}`}
-              alt=""
-              className="absolute inset-0 w-full h-full object-cover"
-            />
-          )}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={film.posterUrl && !film.posterUrl.includes("poster-placeholder")
+              ? film.posterUrl
+              : `/api/poster-placeholder?title=${encodeURIComponent(film.title)}${film.year ? `&year=${film.year}` : ""}`}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover"
+            loading="eager"
+          />
 
           {/* Gradient overlay for better text readability */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-50 group-hover:opacity-60 transition-opacity" />
