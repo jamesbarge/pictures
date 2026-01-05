@@ -187,6 +187,21 @@ const LONDON_CINEMAS = [
     dataSourceType: "scrape" as const,
     description: "One of the oldest purpose-built cinemas in the UK (1910).",
   },
+  {
+    id: "coldharbour-blue",
+    name: "Coldharbour Blue",
+    shortName: "Coldharbour",
+    chain: null,
+    address: { street: "259-260 Hardess Street", area: "Loughborough Junction", postcode: "SE24 0HN", borough: "Lambeth" },
+    coordinates: { lat: 51.4630, lng: -0.1010 },
+    screens: 1,
+    features: ["bar", "accessible", "community"],
+    programmingFocus: ["arthouse", "repertory", "documentary", "events"],
+    website: "https://www.coldharbourblue.com",
+    bookingUrl: "https://www.coldharbourblue.com/screenings/",
+    dataSourceType: "scrape" as const,
+    description: "Independent cinema in Brixton. New releases, art-house, classics and documentaries.",
+  },
 ];
 
 // ============================================================================
