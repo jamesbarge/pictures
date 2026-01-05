@@ -586,6 +586,8 @@ async function backfillPosters(): Promise<void> {
           year: yearHint,
           tmdbId: newTmdbId,
           imdbId: film.imdbId ?? undefined,
+          contentType: film.contentType ?? "film",
+          scraperPosterUrl: film.sourceImageUrl ?? undefined,
         });
 
         if (posterResult.source !== "placeholder") {
@@ -609,6 +611,8 @@ async function backfillPosters(): Promise<void> {
         const posterResult = await posterService.findPoster({
           title: processed.cleanedTitle,
           year: yearHint,
+          contentType: "live_broadcast",
+          scraperPosterUrl: film.sourceImageUrl ?? undefined,
         });
 
         if (posterResult.source !== "placeholder") {

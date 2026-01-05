@@ -7,6 +7,7 @@ export type PosterSource =
   | "omdb"
   | "fanart"
   | "scraper"
+  | "source_image"  // Scraped image for non-film content (concerts, events)
   | "placeholder";
 
 export interface PosterResult {
@@ -25,6 +26,8 @@ export interface PosterSearchParams {
   director?: string;
   // Poster URL extracted from scraper (cinema website)
   scraperPosterUrl?: string;
+  // Content type for routing - non-films skip TMDB lookup
+  contentType?: "film" | "concert" | "live_broadcast" | "event";
 }
 
 export interface OMDBSearchResult {

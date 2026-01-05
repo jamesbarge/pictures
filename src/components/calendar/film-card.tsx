@@ -155,6 +155,7 @@ export const FilmCard = memo(function FilmCard({
               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 20vw, 15vw"
               placeholder="blur"
               blurDataURL={POSTER_BLUR_PLACEHOLDER}
+              unoptimized
             />
           ) : (
             /* eslint-disable-next-line @next/next/no-img-element */

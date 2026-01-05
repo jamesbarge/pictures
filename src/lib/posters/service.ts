@@ -7,13 +7,18 @@
  * 3. Fanart.tv - Artistic posters, good for cult films
  * 4. Scraper-provided - Extracted from cinema websites
  * 5. Generated placeholder - Stylized SVG fallback
+ *
+ * Content-aware routing:
+ * - Films: Full fallback chain (TMDB → OMDB → Fanart → Scraper → Placeholder)
+ * - Non-films: Skip film databases, use scraper image directly
  */
 
 import { getTMDBClient } from "@/lib/tmdb";
 import { getOMDBClient } from "./omdb";
 import { getFanartClient } from "./fanart";
 import { getPosterPlaceholderUrl } from "./placeholder";
-import { extractFilmTitle } from "@/lib/title-extractor";
+import { classifyContentCached } from "@/lib/content-classifier";
+import { isImageAccessible } from "@/lib/image-processor";
 import type { PosterResult, PosterSearchParams, PosterSource } from "./types";
 
 export class PosterService {
@@ -22,14 +27,39 @@ export class PosterService {
   private fanart = getFanartClient();
 
   /**
-   * Find the best available poster for a film
+   * Find the best available poster for a film or other content
    * Tries sources in order until one succeeds
+   *
+   * For films: TMDB → OMDB → Fanart → Scraper → Placeholder
+   * For non-films (concerts, events, live broadcasts): Scraper → Placeholder
    */
   async findPoster(params: PosterSearchParams): Promise<PosterResult> {
-    const { title, year, imdbId, tmdbId, scraperPosterUrl } = params;
+    const { title, year, imdbId, tmdbId, scraperPosterUrl, contentType = "film" } = params;
 
     // Track attempted sources for logging
     const attempted: PosterSource[] = [];
+
+    // For non-film content (concerts, events, live broadcasts):
+    // Skip all film databases and go straight to scraper image
+    if (contentType !== "film") {
+      if (scraperPosterUrl && await isImageAccessible(scraperPosterUrl)) {
+        return {
+          url: scraperPosterUrl,
+          source: "source_image",
+          quality: "medium",
+        };
+      }
+
+      // No image available - use placeholder
+      console.log(`No image found for ${contentType}: "${title}"`);
+      return {
+        url: getPosterPlaceholderUrl(title, year),
+        source: "placeholder",
+        quality: "placeholder",
+      };
+    }
+
+    // === Film content: Try full fallback chain ===
 
     // 1. Try TMDB first (if we have a TMDB ID)
     if (tmdbId) {
@@ -86,7 +116,7 @@ export class PosterService {
     }
 
     // 5. Use scraper-provided poster if available
-    if (scraperPosterUrl && await this.validateImageUrl(scraperPosterUrl)) {
+    if (scraperPosterUrl && await isImageAccessible(scraperPosterUrl)) {
       return {
         url: scraperPosterUrl,
         source: "scraper",
@@ -166,12 +196,12 @@ export class PosterService {
         }
       }
 
-      // If no results, try AI-powered title cleaning
+      // If no results, try AI-powered content classification
       // This extracts the actual film title from event names like "Classic Matinee: Sunset Boulevard"
-      const extraction = await extractFilmTitle(title);
-      if (extraction.filmTitle !== title && extraction.confidence !== "low") {
-        console.log(`  → AI cleaned title: "${title}" → "${extraction.filmTitle}"`);
-        const cleanedResults = await this.tmdb.searchFilms(extraction.filmTitle, year);
+      const classification = await classifyContentCached(title);
+      if (classification.cleanTitle !== title && classification.confidence !== "low") {
+        console.log(`  -> AI cleaned title: "${title}" -> "${classification.cleanTitle}"`);
+        const cleanedResults = await this.tmdb.searchFilms(classification.cleanTitle, year);
         if (cleanedResults.results.length > 0) {
           const best = cleanedResults.results[0];
           if (best.poster_path) {
@@ -205,10 +235,10 @@ export class PosterService {
         return result.Poster;
       }
 
-      // If no results, try AI-powered title cleaning
-      const extraction = await extractFilmTitle(title);
-      if (extraction.filmTitle !== title && extraction.confidence !== "low") {
-        const cleanedResult = await this.omdb.searchByTitle(extraction.filmTitle, year);
+      // If no results, try AI-powered content classification
+      const classification = await classifyContentCached(title);
+      if (classification.cleanTitle !== title && classification.confidence !== "low") {
+        const cleanedResult = await this.omdb.searchByTitle(classification.cleanTitle, year);
         if (cleanedResult?.Poster && cleanedResult.Poster !== "N/A") {
           return cleanedResult.Poster;
         }
@@ -233,19 +263,6 @@ export class PosterService {
       console.error("Fanart.tv lookup error:", error);
     }
     return null;
-  }
-
-  /**
-   * Validate that an image URL is accessible
-   */
-  private async validateImageUrl(url: string): Promise<boolean> {
-    try {
-      const response = await fetch(url, { method: "HEAD" });
-      const contentType = response.headers.get("content-type") || "";
-      return response.ok && contentType.startsWith("image/");
-    } catch {
-      return false;
-    }
   }
 
   private delay(ms: number): Promise<void> {

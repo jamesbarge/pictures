@@ -44,6 +44,7 @@ async function enrichPosters() {
     omdb: 0,
     fanart: 0,
     scraper: 0,
+    source_image: 0,  // Scraped images for non-film content
     placeholder: 0,
     failed: 0,
   };
@@ -57,6 +58,8 @@ async function enrichPosters() {
         year: film.year ?? undefined,
         imdbId: film.imdbId ?? undefined,
         tmdbId: film.tmdbId ?? undefined,
+        contentType: film.contentType ?? "film",
+        scraperPosterUrl: film.sourceImageUrl ?? undefined,
       });
 
       // Update the film with the found poster
@@ -87,12 +90,13 @@ async function enrichPosters() {
 
   console.log("\n" + "=".repeat(50));
   console.log("Results:");
-  console.log(`  TMDB:        ${stats.tmdb}`);
-  console.log(`  OMDB:        ${stats.omdb}`);
-  console.log(`  Fanart.tv:   ${stats.fanart}`);
-  console.log(`  Scraper:     ${stats.scraper}`);
-  console.log(`  Placeholder: ${stats.placeholder}`);
-  console.log(`  Failed:      ${stats.failed}`);
+  console.log(`  TMDB:         ${stats.tmdb}`);
+  console.log(`  OMDB:         ${stats.omdb}`);
+  console.log(`  Fanart.tv:    ${stats.fanart}`);
+  console.log(`  Scraper:      ${stats.scraper}`);
+  console.log(`  Source Image: ${stats.source_image}`);
+  console.log(`  Placeholder:  ${stats.placeholder}`);
+  console.log(`  Failed:       ${stats.failed}`);
   console.log("=".repeat(50));
 }
 
@@ -121,6 +125,8 @@ async function recheckPlaceholders() {
         year: film.year ?? undefined,
         imdbId: film.imdbId ?? undefined,
         tmdbId: film.tmdbId ?? undefined,
+        contentType: film.contentType ?? "film",
+        scraperPosterUrl: film.sourceImageUrl ?? undefined,
       });
 
       // Only update if we found a real poster (not a placeholder)

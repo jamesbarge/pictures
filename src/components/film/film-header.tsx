@@ -86,6 +86,7 @@ export function FilmHeader({ film }: FilmHeaderProps) {
             placeholder="blur"
             blurDataURL={BACKDROP_BLUR}
             onLoad={() => setBackdropLoaded(true)}
+            unoptimized
           />
           {/* Gradient overlays for light theme */}
           <div className="absolute inset-0 bg-gradient-to-b from-background-primary/30 via-background-primary/70 to-background-primary" />
@@ -117,6 +118,7 @@ export function FilmHeader({ film }: FilmHeaderProps) {
                     placeholder="blur"
                     blurDataURL={POSTER_BLUR}
                     onLoad={() => setPosterLoaded(true)}
+                    unoptimized
                   />
                 ) : (
                   /* eslint-disable-next-line @next/next/no-img-element */
