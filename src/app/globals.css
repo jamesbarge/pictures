@@ -365,60 +365,37 @@ h2, .h2 {
   letter-spacing: -0.01em;
 }
 
-/* Paper grain texture overlay - primary fine grain */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='5' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-  opacity: 0.12;
-  pointer-events: none;
-  /* Low z-index to avoid GPU compositing issues with lazy-loaded images */
-  z-index: 1;
-}
-
-/* Paper fiber texture - secondary coarse layer for depth */
-body::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 300 300' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='paper'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.03' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23paper)'/%3E%3C/svg%3E");
-  opacity: 0.08;
-  pointer-events: none;
-  /* Low z-index to avoid GPU compositing issues with lazy-loaded images */
-  z-index: 0;
-  mix-blend-mode: multiply;
+/*
+ * Paper grain texture - applied directly to body background
+ * Using background-attachment: fixed instead of position: fixed pseudo-elements
+ * to avoid GPU compositing issues with lazy-loaded images.
+ *
+ * Note: We layer multiple backgrounds for depth effect.
+ */
+body {
+  background-image:
+    /* Fine grain noise layer */
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='5' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' fill-opacity='0.12'/%3E%3C/svg%3E"),
+    /* Coarse fiber layer */
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 300 300' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='paper'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.03' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23paper)' fill-opacity='0.08'/%3E%3C/svg%3E");
+  background-attachment: fixed;
+  background-size: 512px 512px, 300px 300px;
 }
 
 /* Disable textures for users who prefer reduced motion */
 @media (prefers-reduced-motion: reduce) {
-  body::before,
-  body::after {
-    display: none;
+  body {
+    background-image: none;
   }
 }
 
-/* Dark mode grain adjustments - subtractive texture at editorial grit level */
-.dark body::before {
-  opacity: 0.08;
-  mix-blend-mode: overlay;
-}
-
-.dark body::after {
-  opacity: 0.06;
-  mix-blend-mode: overlay;
-}
-
-/*
- * Fix for lazy-loaded images not rendering with fixed pseudo-element overlays.
- * The paper grain overlays (body::before/after) create compositing issues where
- * lazy-loaded images are marked as complete but not visually painted until scroll.
- * isolation: isolate creates a new stacking context that resolves this.
- */
-main {
-  isolation: isolate;
-  position: relative;
-  z-index: 1;
+/* Dark mode grain adjustments - lighter grain for dark backgrounds */
+.dark body {
+  background-image:
+    /* Fine grain noise layer - reduced opacity for dark mode */
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='5' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' fill-opacity='0.06'/%3E%3C/svg%3E"),
+    /* Coarse fiber layer - reduced for dark mode */
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 300 300' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='paper'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.03' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23paper)' fill-opacity='0.04'/%3E%3C/svg%3E");
 }
 
 /* Theme transition - theatrical 300ms fade */
