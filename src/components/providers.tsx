@@ -14,33 +14,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
     runAllStorageMigrations();
   }, []);
 
-  // Force repaint after hydration to fix image compositing issues
-  // Images load but don't paint until a repaint is triggered
-  useEffect(() => {
-    // Wait for images to load, then force repaint
-    const forceRepaint = () => {
-      document.body.style.transform = 'translateZ(0)';
-      requestAnimationFrame(() => {
-        document.body.style.transform = '';
-      });
-    };
-
-    // Trigger repaint at multiple intervals to catch all images
-    const timers = [
-      setTimeout(forceRepaint, 100),
-      setTimeout(forceRepaint, 500),
-      setTimeout(forceRepaint, 1000),
-    ];
-
-    // Also trigger on window load
-    window.addEventListener('load', forceRepaint);
-
-    return () => {
-      timers.forEach(clearTimeout);
-      window.removeEventListener('load', forceRepaint);
-    };
-  }, []);
-
   const [queryClient] = useState(
     () =>
       new QueryClient({
