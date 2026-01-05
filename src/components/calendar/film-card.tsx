@@ -156,6 +156,7 @@ export const FilmCard = memo(function FilmCard({
               placeholder="blur"
               blurDataURL={POSTER_BLUR_PLACEHOLDER}
               unoptimized
+              loading="eager"
             />
           ) : (
             /* eslint-disable-next-line @next/next/no-img-element */
