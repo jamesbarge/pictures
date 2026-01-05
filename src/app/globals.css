@@ -366,11 +366,8 @@ h2, .h2 {
 }
 
 /*
- * Paper grain texture - applied directly to body background
- * Using background-attachment: fixed instead of position: fixed pseudo-elements
- * to avoid GPU compositing issues with lazy-loaded images.
- *
- * Note: We layer multiple backgrounds for depth effect.
+ * Paper grain texture - using repeating background (no fixed attachment)
+ * Fixed attachment causes GPU compositing layer conflicts with lazy-loaded images.
  */
 body {
   background-image:
@@ -378,8 +375,8 @@ body {
     url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='5' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' fill-opacity='0.12'/%3E%3C/svg%3E"),
     /* Coarse fiber layer */
     url("data:image/svg+xml,%3Csvg viewBox='0 0 300 300' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='paper'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.03' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23paper)' fill-opacity='0.08'/%3E%3C/svg%3E");
-  background-attachment: fixed;
   background-size: 512px 512px, 300px 300px;
+  background-repeat: repeat;
 }
 
 /* Disable textures for users who prefer reduced motion */
