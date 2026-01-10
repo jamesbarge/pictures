@@ -4,54 +4,41 @@
 
 See: .planning/PROJECT.md (updated 2026-01-10)
 
-**Core value:** Accurate data extraction — reliably getting the right accessibility info from cinema websites.
-**Current focus:** Phase 1 — Research & Discovery
+**Core value:** Ensure users can see complete cinema listings through end of February.
+**Current focus:** Milestone complete
 
 ## Current Position
 
-Phase: 1 of 10 (Research & Discovery)
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-01-10 — Project initialized
+Phase: 2 of 2 (Run High-Priority Scrapers)
+Plan: All complete
+Status: **v1.0 SHIPPED**
+Last activity: 2026-01-10 — v1.0 milestone complete
 
-Progress: ░░░░░░░░░░ 0%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 0
-- Average duration: —
-- Total execution time: 0 hours
-
-**By Phase:**
-
-| Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| — | — | — | — |
-
-**Recent Trend:**
-- Last 5 plans: —
-- Trend: —
+- Total plans completed: 2
+- Average duration: ~20 min
+- Total execution time: ~43 min
 
 ## Accumulated Context
 
 ### Decisions
 
 Decisions are logged in PROJECT.md Key Decisions table.
-Recent decisions affecting current work:
-
-(None yet)
 
 ### Deferred Issues
 
-None yet.
+None.
 
 ### Blockers/Concerns
 
-None yet.
+None - project complete.
 
 ## Session Continuity
 
 Last session: 2026-01-10
-Stopped at: Project initialization complete
+Stopped at: v1.0 milestone complete
 Resume file: None

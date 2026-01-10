@@ -1,77 +1,76 @@
-# Project: Director Seasons
+# Project: Fix Scrapers and Populate February Data
 
-## What This Is
+## Overview
 
-A feature for pictures.london that lets users discover and browse director seasons running at London cinemas. Seasons are curated collections of films by a single director (e.g., "Kurosawa at BFI") that cinemas run over a period of time. The feature scrapes season info from cinema websites, displays them in a dedicated browse experience, and integrates with the existing calendar.
+Fix broken cinema scrapers and run all high-priority scrapers to populate screening data through end of February 2026.
 
 ## Core Value
 
-Season discovery — helping users find what seasons are currently running so they don't discover them too late and miss films.
+Ensure users can see complete cinema listings for all London venues through end of February.
+
+## Current State (v1.0 Shipped)
+
+- **Total future screenings**: 5,981
+- **Date coverage**: Through April 6, 2026
+- **All scrapers operational**: Genesis, Lexi, Phoenix, Castle Sidcup fixed
 
 ## Requirements
 
 ### Validated
 
-- ✓ Web scraping from 15+ London cinemas — existing
-- ✓ Film data with TMDB enrichment — existing
-- ✓ Calendar view of screenings — existing
-- ✓ User preferences (cinema selection) — existing
-- ✓ Film status tracking (watchlist, seen) — existing
-- ✓ Cloud sync with Clerk auth — existing
-- ✓ Multi-venue chain support (Curzon, Picturehouse, Everyman) — existing
+- Fix Genesis Cinema scraper (no data) — v1.0
+- Fix The Lexi Cinema scraper (no data) — v1.0
+- Fix Phoenix Cinema scraper (no data) — v1.0
+- Fix Castle Cinema Sidcup scraper (no data) — v1.0
+- Run Curzon scraper (10 venues) — v1.0
+- Run Everyman scraper (14 venues) — v1.0
+- Run BFI scraper (2 venues) — v1.0
+- Run Barbican scraper — v1.0
+- Run Electric scraper — v1.0
+- Run Picturehouse scraper (11 venues) — v1.0
 
 ### Active
 
-- [ ] Season data model (Season → Films → Screenings)
-- [ ] Scrape season information from cinema websites (all cinemas equally)
-- [ ] Dedicated /seasons page with season cards
-- [ ] Director pages to explore a director's work
-- [ ] Calendar integration (seasons as filters/tags)
-- [ ] Rich season metadata (poster, description, director bio, film synopses, related seasons)
+(None - milestone complete)
 
 ### Out of Scope
 
-- User-created seasons — only scraped/detected seasons in v1
-- Historical seasons — only current/upcoming seasons displayed
-- User tracking on seasons — no watchlist/seen progress per season (view-only)
-
-## Context
-
-### Motivation
-
-Users often discover seasons too late and miss films. A Kurosawa season at BFI might be half over before you hear about it. This feature surfaces what's running so users can plan ahead.
-
-### Technical Environment
-
-- Next.js 16 with App Router
-- Drizzle ORM with PostgreSQL (Supabase)
-- Existing scraper infrastructure (Playwright for JS-heavy sites, Cheerio for static)
-- TMDB integration for film metadata
-- Zustand for client state, TanStack Query for server state
-
-### Data Model Decision
-
-Season → Films → Screenings hierarchy:
-- A season groups films by director/theme
-- Each film links to its screenings (existing relationship)
-- Seasons can span multiple cinemas if the source indicates this
-
-### Key Cinemas for Seasons
-
-BFI and Barbican are the most prolific season runners, but all cinemas with season data should be captured equally.
-
-## Constraints
-
-None specified. All existing tech stack constraints apply.
+- Adding new cinemas not already in the system
+- Scraper performance optimization
+- UI changes
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Season → Films → Screenings model | Matches how seasons work IRL; leverages existing film-screening relationship | — Pending |
-| Scrape seasons from cinema sites | BFI, Barbican, etc. explicitly label seasons; more reliable than auto-detection | — Pending |
-| View-only (no user tracking) | Keep v1 scope focused on discovery; can add tracking later | — Pending |
-| Dedicated /seasons page | Clear entry point for discovery; homepage integration can come later | — Pending |
+| Fix broken scrapers first | No point running a scraper that doesn't work | Good - found DB schema issue |
+| Prioritize high-traffic venues | Curzon/Everyman/BFI are most popular | Good - major venues now have data |
+| Use bracket-matching for Lexi JSON | Non-greedy regex was failing | Good - 103 screenings extracted |
+| Parse panel IDs for Genesis dates | Text-based date extraction unreliable | Good - 104 screenings extracted |
+
+## Technical Context
+
+### Scraper Types
+- **Playwright**: BFI, Curzon, Everyman (JS-heavy sites)
+- **Cheerio/Fetch**: Most independents (static HTML)
+- **API-based**: Picturehouse, Electric (fastest)
+
+### Fixes Applied
+- Database: Added `manually_edited` and `edited_at` columns
+- Genesis: Extract dates from panel IDs (`panel_20260113` → date)
+- Lexi: Bracket-matching JSON extraction
+
+### Database State (after v1.0)
+- Total future screenings: 5,981
+- Previously broken cinemas: 4 (all fixed)
+- Date coverage: Through April 6, 2026
+
+## Success Criteria
+
+- [x] All 4 broken scrapers fixed and producing data
+- [x] All high-priority scrapers run successfully
+- [x] Screening data available through Feb 28, 2026
+- [x] No regressions in working scrapers
 
 ---
-*Last updated: 2026-01-10 after initialization*
+*Last updated: 2026-01-10 after v1.0 milestone*

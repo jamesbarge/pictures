@@ -1,138 +1,29 @@
-# Roadmap: Director Seasons
+# Roadmap: Fix Scrapers and Populate February Data
 
 ## Overview
 
-Build a director seasons feature that scrapes season information from London cinema websites, stores it in a structured data model, and presents it through a dedicated browse experience with director pages and calendar integration.
+Fix 4 broken cinema scrapers and run all high-priority scrapers to populate screening data through end of February 2026.
 
 ## Domain Expertise
 
-Cinema web scraping — HTML parsing, API integration, Playwright automation (existing patterns in codebase)
+Cinema web scraping - HTML parsing, API integration, Playwright automation
 
-## Phases
+## Completed Milestones
 
-**Phase Numbering:**
-- Integer phases (1-10): Planned milestone work
-- Decimal phases (e.g., 2.1): Urgent insertions if needed
+- [v1.0 Scraper Fix](milestones/v1.0-ROADMAP.md) (Phases 1-2) — SHIPPED 2026-01-10
 
-- [ ] **Phase 1: Database Schema** — Season data model with Drizzle
-- [ ] **Phase 2: Season Scraper Research** — Analyze cinema website structures
-- [ ] **Phase 3: Scraper Infrastructure** — Base season scraper pattern
-- [ ] **Phase 4: BFI Season Scraper** — First implementation
-- [ ] **Phase 5: Additional Cinema Scrapers** — Barbican, Curzon, others
-- [ ] **Phase 6: Director Enrichment** — TMDB integration for director data
-- [ ] **Phase 7: /seasons Page** — Season cards and detail views
-- [ ] **Phase 8: Director Pages** — Browse by director
-- [ ] **Phase 9: Calendar Integration** — Seasons as filters/tags
-- [ ] **Phase 10: Polish & Metadata** — Related seasons, UI refinement
+## Milestone Status
 
-## Phase Details
+**v1.0 Scraper Fix:** COMPLETE
 
-### Phase 1: Database Schema
-**Goal**: Create seasons table and relationships in Drizzle ORM
-**Depends on**: Nothing (first phase)
-**Research**: Unlikely (Drizzle patterns established)
-**Plans**: TBD
-
-Plans:
-- [ ] 01-01: Create seasons schema and migrations
-
-### Phase 2: Season Scraper Research
-**Goal**: Document how BFI, Barbican, and other cinemas structure season data on their websites
-**Depends on**: Phase 1
-**Research**: Likely (external cinema websites)
-**Research topics**: BFI season page structure, Barbican event series, Curzon curated collections
-**Plans**: TBD
-
-Plans:
-- [ ] 02-01: Research cinema season page structures
-
-### Phase 3: Scraper Infrastructure
-**Goal**: Create reusable base pattern for season scrapers
-**Depends on**: Phase 2
-**Research**: Unlikely (extending existing BaseScraper pattern)
-**Plans**: TBD
-
-Plans:
-- [ ] 03-01: Create season scraper base and utilities
-
-### Phase 4: BFI Season Scraper
-**Goal**: Implement working season scraper for BFI (most prolific season runner)
-**Depends on**: Phase 3
-**Research**: Likely (BFI-specific implementation details)
-**Research topics**: BFI season page selectors, date ranges, film associations
-**Plans**: TBD
-
-Plans:
-- [ ] 04-01: Implement BFI season scraper
-
-### Phase 5: Additional Cinema Scrapers
-**Goal**: Extend season scraping to Barbican, Curzon, and other cinemas with seasons
-**Depends on**: Phase 4
-**Research**: Likely (per-cinema variations)
-**Research topics**: Barbican event structure, Curzon curated sections, other independents
-**Plans**: TBD
-
-Plans:
-- [ ] 05-01: Implement additional season scrapers
-
-### Phase 6: Director Enrichment
-**Goal**: Integrate TMDB for director bios, photos, and filmography data
-**Depends on**: Phase 1
-**Research**: Likely (TMDB API for directors)
-**Research topics**: TMDB person API, director credits, images endpoint
-**Plans**: TBD
-
-Plans:
-- [ ] 06-01: Add TMDB director enrichment
-
-### Phase 7: /seasons Page
-**Goal**: Create dedicated page for browsing all current seasons with cards
-**Depends on**: Phase 4 (need data to display)
-**Research**: Unlikely (internal UI patterns)
-**Plans**: TBD
-
-Plans:
-- [ ] 07-01: Create seasons browse page
-- [ ] 07-02: Create season detail page
-
-### Phase 8: Director Pages
-**Goal**: Create director detail pages showing their seasons and screenings
-**Depends on**: Phase 6, Phase 7
-**Research**: Unlikely (internal UI patterns)
-**Plans**: TBD
-
-Plans:
-- [ ] 08-01: Create director pages
-
-### Phase 9: Calendar Integration
-**Goal**: Add seasons as filters/tags on existing calendar view
-**Depends on**: Phase 7
-**Research**: Unlikely (extending existing filter system)
-**Plans**: TBD
-
-Plans:
-- [ ] 09-01: Add season filters to calendar
-
-### Phase 10: Polish & Metadata
-**Goal**: Add related seasons, refine UI, handle edge cases
-**Depends on**: Phase 9
-**Research**: Unlikely (refinement work)
-**Plans**: TBD
-
-Plans:
-- [ ] 10-01: Polish and final refinements
+All objectives achieved:
+- **Total future screenings**: 5,981 (up from 2,872)
+- **Date coverage**: Through April 6, 2026
+- **All 4 broken scrapers**: Now producing data
 
 ## Progress
 
-| Phase | Plans Complete | Status | Completed |
-|-------|----------------|--------|-----------|
-| 1. Database Schema | 0/1 | Not started | - |
-| 2. Season Scraper Research | 0/1 | Not started | - |
-| 3. Scraper Infrastructure | 0/1 | Not started | - |
-| 4. BFI Season Scraper | 0/1 | Not started | - |
-| 5. Additional Cinema Scrapers | 0/1 | Not started | - |
-| 6. Director Enrichment | 0/1 | Not started | - |
-| 7. /seasons Page | 0/2 | Not started | - |
-| 8. Director Pages | 0/1 | Not started | - |
-| 9. Calendar Integration | 0/1 | Not started | - |
-| 10. Polish & Metadata | 0/1 | Not started | - |
+| Phase | Milestone | Plans Complete | Status | Completed |
+|-------|-----------|----------------|--------|-----------|
+| 1. Diagnose & Fix Scrapers | v1.0 | 1/1 | Complete | 2026-01-10 |
+| 2. Run High-Priority Scrapers | v1.0 | 1/1 | Complete | 2026-01-10 |
