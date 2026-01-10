@@ -442,6 +442,43 @@ describe("extractFilmTitle - API extraction", () => {
     expect(result.confidence).toBe("low");
     expect(result.filmTitle).toBeTruthy();
   });
+
+  it("should handle invalid JSON response gracefully", async () => {
+    // When Claude returns non-JSON text, JSON.parse should throw,
+    // but the outer try-catch should catch it and fallback gracefully
+    mockCreate.mockResolvedValueOnce({
+      content: [
+        {
+          type: "text",
+          text: "Sorry, I cannot extract the title from this.",
+        },
+      ],
+    });
+
+    const result = await extractFilmTitle("35mm: Some Film");
+
+    // Should fall back to basic cleaning with low confidence
+    expect(result.confidence).toBe("low");
+    expect(result.filmTitle).toBeTruthy();
+  });
+
+  it("should handle malformed JSON response gracefully", async () => {
+    // Partially valid JSON that will fail parsing
+    mockCreate.mockResolvedValueOnce({
+      content: [
+        {
+          type: "text",
+          text: '{"title": "Incomplete JSON',
+        },
+      ],
+    });
+
+    const result = await extractFilmTitle("Kids Club: Toy Story");
+
+    // Should fall back without throwing
+    expect(result.confidence).toBe("low");
+    expect(result.filmTitle).toBeTruthy();
+  });
 });
 
 // =============================================================================
