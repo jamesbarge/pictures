@@ -14,84 +14,57 @@ Cinema web scraping - HTML parsing, API integration, Playwright automation
 - Integer phases (1, 2, 3): Planned milestone work
 - Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
 
-- [ ] **Phase 1: Diagnose Broken Scrapers** - Investigate why 4 scrapers produce no data
-- [ ] **Phase 2: Fix Genesis Cinema** - Repair Genesis scraper (multi-page HTML)
-- [ ] **Phase 3: Fix The Lexi Cinema** - Repair Lexi scraper (simple HTML)
-- [ ] **Phase 4: Fix Phoenix Cinema** - Repair Phoenix scraper
-- [ ] **Phase 5: Fix Castle Sidcup** - Repair Castle Sidcup scraper
-- [ ] **Phase 6: Run High-Priority Scrapers** - Execute Curzon, Everyman, BFI, Barbican, Electric
-- [ ] **Phase 7: Run Remaining Scrapers** - Execute all other scrapers for February data
+- [x] **Phase 1: Diagnose & Fix Scrapers** - Found root cause (DB schema mismatch) and fixed all issues
+- [x] **Phase 2: Run High-Priority Scrapers** - Executed all major chain scrapers
 
 ## Phase Details
 
-### Phase 1: Diagnose Broken Scrapers
-**Goal**: Understand why Genesis, Lexi, Phoenix, and Castle Sidcup scrapers fail
+### Phase 1: Diagnose & Fix Scrapers
+**Goal**: Find and fix why 4 scrapers produce no data
 **Depends on**: Nothing (first phase)
-**Research**: Yes - need to inspect websites and compare to current scrapers
-**Plans**: TBD
+**Research**: Yes - inspected websites and traced errors
+**Plans**: 1/1 complete
 
-Target files:
-- `src/scrapers/cinemas/genesis.ts`
-- `src/scrapers/cinemas/lexi.ts`
-- `src/scrapers/cinemas/phoenix.ts`
-- `src/scrapers/cinemas/castle.ts`
+**Findings:**
+- Root cause: Database schema missing `manually_edited` and `edited_at` columns
+- Genesis: Date extraction needed to parse panel IDs instead of text
+- Lexi: JSON regex needed bracket-matching instead of non-greedy pattern
+- Phoenix & Castle Sidcup: Were working, just blocked by DB schema
 
-### Phase 2: Fix Genesis Cinema
-**Goal**: Repair Genesis scraper to produce valid screening data
-**Depends on**: Phase 1 (diagnosis)
-**Research**: Unlikely (will know issue from diagnosis)
-**Plans**: TBD
-
-### Phase 3: Fix The Lexi Cinema
-**Goal**: Repair Lexi scraper to produce valid screening data
-**Depends on**: Phase 1 (diagnosis)
-**Research**: Unlikely
-**Plans**: TBD
-
-### Phase 4: Fix Phoenix Cinema
-**Goal**: Repair Phoenix scraper to produce valid screening data
-**Depends on**: Phase 1 (diagnosis)
-**Research**: Unlikely
-**Plans**: TBD
-
-### Phase 5: Fix Castle Sidcup
-**Goal**: Repair Castle Sidcup scraper to produce valid screening data
-**Depends on**: Phase 1 (diagnosis)
-**Research**: Unlikely
-**Plans**: TBD
-
-### Phase 6: Run High-Priority Scrapers
+### Phase 2: Run High-Priority Scrapers
 **Goal**: Execute main chain scrapers to populate February data
-**Depends on**: Phases 2-5 (all fixes complete)
+**Depends on**: Phase 1
 **Research**: No
-**Plans**: TBD
+**Plans**: 1/1 complete
 
-Target commands:
-- `npm run scrape:curzon`
-- `npm run scrape:everyman`
-- `npm run scrape:bfi`
-- `npm run scrape:barbican`
-- `npm run scrape:electric`
-
-### Phase 7: Run Remaining Scrapers
-**Goal**: Execute all other scrapers for comprehensive February coverage
-**Depends on**: Phase 6
-**Research**: No
-**Plans**: TBD
+**Results:**
+| Scraper | Screenings | Venues |
+|---------|------------|--------|
+| Genesis | 104 | 1 |
+| Lexi | 103 | 1 |
+| Phoenix | 25 | 1 |
+| Castle Sidcup | 66 | 1 |
+| Curzon | 990 | 10 |
+| Everyman | 1048 | 14 |
+| Picturehouse | 1668 | 11 |
+| BFI | 424 | 2 |
+| Barbican | 41 | 1 |
+| Electric | 60 | 1 |
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
+Phases executed: 1 → 2 (consolidated from 7 planned phases)
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Diagnose Broken Scrapers | 0/? | Not Started | — |
-| 2. Fix Genesis Cinema | 0/? | Not Started | — |
-| 3. Fix The Lexi Cinema | 0/? | Not Started | — |
-| 4. Fix Phoenix Cinema | 0/? | Not Started | — |
-| 5. Fix Castle Sidcup | 0/? | Not Started | — |
-| 6. Run High-Priority Scrapers | 0/? | Not Started | — |
-| 7. Run Remaining Scrapers | 0/? | Not Started | — |
+| 1. Diagnose & Fix Scrapers | 1/1 | Complete | 2026-01-10 |
+| 2. Run High-Priority Scrapers | 1/1 | Complete | 2026-01-10 |
 
-**Milestone Status:** 0% complete
+**Milestone Status:** ✅ COMPLETE
+
+## Final Results
+
+- **Total future screenings**: 5,981 (up from 2,872)
+- **Date coverage**: Through April 6, 2026
+- **All 4 broken scrapers**: Now producing data
