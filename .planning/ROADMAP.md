@@ -15,7 +15,7 @@ Cinema web scraping — HTML parsing, API integration, Playwright automation (ex
 - Decimal phases (e.g., 2.1): Urgent insertions if needed
 
 - [x] **Phase 1: Database Schema** — Season data model with Drizzle ✓
-- [ ] **Phase 2: Season Scraper Research** — Analyze cinema website structures
+- [x] **Phase 2: Season Scraper Research** — Analyze cinema website structures ✓
 - [ ] **Phase 3: Scraper Infrastructure** — Base season scraper pattern
 - [ ] **Phase 4: BFI Season Scraper** — First implementation
 - [ ] **Phase 5: Additional Cinema Scrapers** — Barbican, Curzon, others
@@ -37,15 +37,24 @@ Cinema web scraping — HTML parsing, API integration, Playwright automation (ex
 Plans:
 - [x] 01-01: Create seasons schema and migrations
 
-### Phase 2: Season Scraper Research
+### Phase 2: Season Scraper Research ✓
 **Goal**: Document how BFI, Barbican, and other cinemas structure season data on their websites
 **Depends on**: Phase 1
 **Research**: Likely (external cinema websites)
 **Research topics**: BFI season page structure, Barbican event series, Curzon curated collections
-**Plans**: TBD
+**Plans**: Complete
+**Completed**: 2026-01-10
 
 Plans:
-- [ ] 02-01: Research cinema season page structures
+- [x] 02-01: Research cinema season page structures
+
+**Key Findings:**
+- BFI: Dedicated seasons page at `whatson.bfi.org.uk/.../permalink=seasons`, Cloudflare protected
+- Barbican: Series at `/whats-on/series/[name]`, clean HTML
+- Prince Charles: `/seasons-events/[slug]/` dedicated section
+- ICA: Strands at `/films/[strand-slug]`
+- Close-Up: Season info embedded in existing JSON `film_url` field
+- Implementation order: BFI → Close-Up → Barbican → PCC → ICA
 
 ### Phase 3: Scraper Infrastructure
 **Goal**: Create reusable base pattern for season scrapers
@@ -128,7 +137,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Database Schema | 1/1 | Complete | 2026-01-10 |
-| 2. Season Scraper Research | 0/1 | Not started | - |
+| 2. Season Scraper Research | 1/1 | Complete | 2026-01-10 |
 | 3. Scraper Infrastructure | 0/1 | Not started | - |
 | 4. BFI Season Scraper | 0/1 | Not started | - |
 | 5. Additional Cinema Scrapers | 0/1 | Not started | - |

@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-01-10)
 
 **Core value:** Season discovery — helping users find what seasons are currently running.
-**Current focus:** Phase 1 — Database Schema
+**Current focus:** Phase 2 — Season Scraper Research (complete)
 
 ## Current Position
 
-Phase: 1 of 10 (Database Schema)
-Plan: 1 of 1 in current phase
+Phase: 2 of 10 (Season Scraper Research)
+Plan: Research complete
 Status: Phase complete
-Last activity: 2026-01-10 — Completed 01-01-PLAN.md
+Last activity: 2026-01-10 — Completed research, created RESEARCH.md
 
-Progress: █░░░░░░░░░ 10%
+Progress: ██░░░░░░░░ 20%
 
 ## Performance Metrics
 
@@ -45,6 +45,8 @@ Recent decisions affecting current work:
 | 1 | Season → Films (not Screenings) | Seasons group films which already link to screenings |
 | 1 | Cross-cinema via sourceCinemas array | Seasons can span multiple venues |
 | 1 | Director fields for enrichment | directorName + directorTmdbId for Phase 6 TMDB |
+| 2 | BFI first, then Close-Up/Barbican/PCC | BFI has highest volume and richest data |
+| 2 | Complement existing pipeline | Season scrapers create entities; pipeline still extracts text |
 
 ### Deferred Issues
 
@@ -57,5 +59,6 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-01-10
-Stopped at: Completed 01-01-PLAN.md
+Stopped at: Completed Phase 2 research
 Resume file: None
+Next: Phase 3 (Scraper Infrastructure) — create BaseSeasonScraper class
