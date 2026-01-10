@@ -14,7 +14,7 @@ Cinema web scraping — HTML parsing, API integration, Playwright automation (ex
 - Integer phases (1-10): Planned milestone work
 - Decimal phases (e.g., 2.1): Urgent insertions if needed
 
-- [ ] **Phase 1: Database Schema** — Season data model with Drizzle
+- [x] **Phase 1: Database Schema** — Season data model with Drizzle ✓
 - [ ] **Phase 2: Season Scraper Research** — Analyze cinema website structures
 - [ ] **Phase 3: Scraper Infrastructure** — Base season scraper pattern
 - [ ] **Phase 4: BFI Season Scraper** — First implementation
@@ -27,14 +27,15 @@ Cinema web scraping — HTML parsing, API integration, Playwright automation (ex
 
 ## Phase Details
 
-### Phase 1: Database Schema
+### Phase 1: Database Schema ✓
 **Goal**: Create seasons table and relationships in Drizzle ORM
 **Depends on**: Nothing (first phase)
 **Research**: Unlikely (Drizzle patterns established)
-**Plans**: TBD
+**Plans**: Complete
+**Completed**: 2026-01-10
 
 Plans:
-- [ ] 01-01: Create seasons schema and migrations
+- [x] 01-01: Create seasons schema and migrations
 
 ### Phase 2: Season Scraper Research
 **Goal**: Document how BFI, Barbican, and other cinemas structure season data on their websites
@@ -126,7 +127,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Database Schema | 0/1 | Not started | - |
+| 1. Database Schema | 1/1 | Complete | 2026-01-10 |
 | 2. Season Scraper Research | 0/1 | Not started | - |
 | 3. Scraper Infrastructure | 0/1 | Not started | - |
 | 4. BFI Season Scraper | 0/1 | Not started | - |
