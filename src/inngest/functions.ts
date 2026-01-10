@@ -1,7 +1,7 @@
 import { inngest } from "./client";
 import { saveScreenings, ensureCinemaExists } from "@/scrapers/pipeline";
 import type { RawScreening } from "@/scrapers/types";
-import * as Sentry from "@sentry/nextjs";
+import { captureServerException } from "@/lib/posthog-server";
 
 // Venue definition with required website for Inngest scrapers
 interface InnggestVenueDefinition {
@@ -481,7 +481,7 @@ export const scheduledScrapeAll = inngest.createFunction(
  * Inngest Function: Handle Function Failures
  *
  * Global handler for all Inngest function failures.
- * Reports to Sentry and optionally sends Slack notifications.
+ * Reports to PostHog and optionally sends Slack notifications.
  */
 export const handleFunctionFailure = inngest.createFunction(
   {
@@ -506,18 +506,20 @@ export const handleFunctionFailure = inngest.createFunction(
       originalEvent,
     });
 
-    // Step 1: Report to Sentry
-    await step.run("report-to-sentry", async () => {
-      Sentry.captureException(new Error(`Inngest function failed: ${function_id}`), {
-        tags: {
+    // Step 1: Report to PostHog
+    await step.run("report-to-posthog", async () => {
+      captureServerException(
+        new Error(`Inngest function failed: ${function_id}`),
+        undefined, // No distinct_id for background jobs
+        {
           inngest_function: function_id,
           inngest_run_id: run_id,
-        },
-        extra: {
-          error,
-          originalEvent,
-        },
-      });
+          error_message: error?.message,
+          error_stack: error?.stack,
+          original_event: originalEvent,
+          source: "inngest-failure-handler",
+        }
+      );
     });
 
     // Step 2: Send Slack notification (if configured)
@@ -600,7 +602,7 @@ export const handleFunctionFailure = inngest.createFunction(
       handled: true,
       function_id,
       run_id,
-      reportedToSentry: true,
+      reportedToPostHog: true,
       slackNotified: !!slackWebhookUrl,
     };
   }

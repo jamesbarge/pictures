@@ -1,5 +1,4 @@
 import type { NextConfig } from "next";
-import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
@@ -54,24 +53,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withSentryConfig(nextConfig, {
-  // Suppresses source map upload logs during build
-  silent: true,
-
-  // Upload source maps to Sentry for better stack traces
-  org: process.env.SENTRY_ORG,
-  project: process.env.SENTRY_PROJECT,
-
-  // Route browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers
-  tunnelRoute: "/monitoring",
-
-  // Source maps configuration - hide from client bundles
-  sourcemaps: {
-    deleteSourcemapsAfterUpload: true,
-  },
-
-  // Automatically tree-shake Sentry debug logging to reduce bundle size
-  bundleSizeOptimizations: {
-    excludeDebugStatements: true,
-  },
-});
+export default nextConfig;

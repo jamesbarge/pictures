@@ -5,7 +5,6 @@ import Script from "next/script";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { ClerkProvider } from "@clerk/nextjs";
-import * as Sentry from "@sentry/nextjs";
 import { Providers } from "@/components/providers";
 import { OrganizationSchema } from "@/components/seo/json-ld";
 import { Footer } from "@/components/layout/footer";
@@ -50,15 +49,11 @@ const BASE_URL = "https://pictures.london";
 
 /**
  * Comprehensive metadata for SEO and social sharing
- * Includes Open Graph, Twitter Cards, verification tags, and Sentry trace data
+ * Includes Open Graph, Twitter Cards, and verification tags
  */
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    // Sentry distributed tracing - propagates trace context to client
-    other: {
-      ...Sentry.getTraceData(),
-    },
-  // Basic metadata
+    // Basic metadata
   title: {
     default: "Pictures - London Cinema Listings | Showtimes | Festivals",
     template: "%s | Pictures",
