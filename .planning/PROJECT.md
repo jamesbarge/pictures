@@ -1,76 +1,68 @@
-# Project: Fix Scrapers and Populate February Data
+# Accessibility Screening Flags
 
-## Overview
+## What This Is
 
-Fix broken cinema scrapers and run all high-priority scrapers to populate screening data through end of February 2026.
+A feature for pictures.london that extracts and surfaces accessibility information for cinema screenings — baby-friendly, carer screenings, relaxed/autism-friendly, audio described, and subtitled showings. Makes it easy for parents, carers, and people with accessibility needs to find screenings that work for them.
 
 ## Core Value
 
-Ensure users can see complete cinema listings for all London venues through end of February.
-
-## Current State (v1.0 Shipped)
-
-- **Total future screenings**: 5,981
-- **Date coverage**: Through April 6, 2026
-- **All scrapers operational**: Genesis, Lexi, Phoenix, Castle Sidcup fixed
+Accurate data extraction — reliably getting the right accessibility info from cinema websites.
 
 ## Requirements
 
 ### Validated
 
-- Fix Genesis Cinema scraper (no data) — v1.0
-- Fix The Lexi Cinema scraper (no data) — v1.0
-- Fix Phoenix Cinema scraper (no data) — v1.0
-- Fix Castle Cinema Sidcup scraper (no data) — v1.0
-- Run Curzon scraper (10 venues) — v1.0
-- Run Everyman scraper (14 venues) — v1.0
-- Run BFI scraper (2 venues) — v1.0
-- Run Barbican scraper — v1.0
-- Run Electric scraper — v1.0
-- Run Picturehouse scraper (11 venues) — v1.0
+- ✓ Scraper infrastructure (BaseScraper, pipeline, validators) — existing
+- ✓ Screening database schema with film, cinema, datetime — existing
+- ✓ Calendar view with filtering capability — existing
+- ✓ Zustand stores for user preferences — existing
+- ✓ 54 London cinemas with active scrapers — existing
 
 ### Active
 
-(None - milestone complete)
+- [ ] Extract accessibility flags from cinema websites during scraping
+- [ ] Database schema for accessibility types (baby-friendly, carer, relaxed, AD, subtitled)
+- [ ] Filter in calendar view for accessibility screening types
+- [ ] Badges on screening cards showing accessibility features
+- [ ] Badges on individual screening listing pages
 
 ### Out of Scope
 
-- Adding new cinemas not already in the system
-- Scraper performance optimization
-- UI changes
+- User preferences/profiles for preferred accessibility types — future v2
+- Notifications for new accessible screenings — future v2
+- Manual tagging interface — scraped data only for v1
+
+## Context
+
+London cinemas publish accessibility screening information on their websites but in inconsistent formats:
+- Some use text labels ("Parent & Baby", "Relaxed Screening")
+- Some use icons or badges
+- Some have dedicated accessibility pages
+- Information placement varies by cinema chain
+
+Existing scraper architecture extracts screenings but doesn't currently capture accessibility metadata. This feature extends scrapers to extract this additional data.
+
+**Accessibility types to capture:**
+- Baby/parent-friendly (lights dimmed, lower volume)
+- Carer screenings (free companion ticket)
+- Relaxed/autism-friendly (sensory adjustments)
+- Audio described (AD)
+- Subtitled/captioned (HOH)
+- Hearing loop available
+
+## Constraints
+
+- **Tech stack**: Must extend existing scraper architecture (BaseScraper pattern)
+- **Database**: Use Drizzle ORM with existing PostgreSQL schema
+- **UI**: Use existing Base UI components and Tailwind
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Fix broken scrapers first | No point running a scraper that doesn't work | Good - found DB schema issue |
-| Prioritize high-traffic venues | Curzon/Everyman/BFI are most popular | Good - major venues now have data |
-| Use bracket-matching for Lexi JSON | Non-greedy regex was failing | Good - 103 screenings extracted |
-| Parse panel IDs for Genesis dates | Text-based date extraction unreliable | Good - 104 screenings extracted |
-
-## Technical Context
-
-### Scraper Types
-- **Playwright**: BFI, Curzon, Everyman (JS-heavy sites)
-- **Cheerio/Fetch**: Most independents (static HTML)
-- **API-based**: Picturehouse, Electric (fastest)
-
-### Fixes Applied
-- Database: Added `manually_edited` and `edited_at` columns
-- Genesis: Extract dates from panel IDs (`panel_20260113` → date)
-- Lexi: Bracket-matching JSON extraction
-
-### Database State (after v1.0)
-- Total future screenings: 5,981
-- Previously broken cinemas: 4 (all fixed)
-- Date coverage: Through April 6, 2026
-
-## Success Criteria
-
-- [x] All 4 broken scrapers fixed and producing data
-- [x] All high-priority scrapers run successfully
-- [x] Screening data available through Feb 28, 2026
-- [x] No regressions in working scrapers
+| Scrape accessibility data, don't manually tag | Sustainable at scale, already have scraper infra | — Pending |
+| Capture all accessibility types | Different users have different needs | — Pending |
+| Filter + badges (not just one) | Filter to narrow, badges for quick scanning | — Pending |
 
 ---
-*Last updated: 2026-01-10 after v1.0 milestone*
+*Last updated: 2026-01-10 after initialization*
