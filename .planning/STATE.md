@@ -4,12 +4,12 @@
 
 See: .planning/PROJECT.md (updated 2026-01-10)
 
-**Core value:** Season discovery — helping users find what seasons are currently running
-**Current focus:** Phase 1 — Database Schema
+**Core value:** Accurate data extraction — reliably getting the right accessibility info from cinema websites.
+**Current focus:** Phase 1 — Research & Discovery
 
 ## Current Position
 
-Phase: 1 of 10 (Database Schema)
+Phase: 1 of 10 (Research & Discovery)
 Plan: Not started
 Status: Ready to plan
 Last activity: 2026-01-10 — Project initialized
@@ -40,9 +40,7 @@ Progress: ░░░░░░░░░░ 0%
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
-- Season → Films → Screenings data model chosen
-- Scraping from cinema sites (not auto-detection)
-- View-only for v1 (no user tracking on seasons)
+(None yet)
 
 ### Deferred Issues
 
