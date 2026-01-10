@@ -192,36 +192,49 @@ export class GenesisScraper implements CinemaScraper {
   }
 
   private findDateContext($: cheerio.CheerioAPI, $link: cheerio.Cheerio<cheerio.Element>): string | null {
-    // Look for date in parent elements or preceding headers
-    // Genesis often has dates as section headers like "Friday 20 December"
+    // Genesis embeds dates in panel IDs: id="panel_20260113" -> 2026-01-13
+    // Look for panel IDs in parent elements
 
-    // Check parent and grandparent for date strings
     let $current = $link.parent();
-    for (let i = 0; i < 5; i++) {
-      const text = $current.text();
-      const dateMatch = text.match(/(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s*(\d{4})?/i);
-      if (dateMatch) {
-        return dateMatch[0];
-      }
-
-      // Also check for day name + date pattern
-      const dayDateMatch = text.match(/(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\s+(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)/i);
-      if (dayDateMatch) {
-        return dayDateMatch[0];
+    for (let i = 0; i < 10; i++) {
+      const id = $current.attr("id");
+      if (id) {
+        // Check for panel_YYYYMMDD pattern
+        const panelMatch = id.match(/panel_(\d{4})(\d{2})(\d{2})/);
+        if (panelMatch) {
+          // Return as "13 Jan 2026" format for parseDateTime
+          const year = panelMatch[1];
+          const month = parseInt(panelMatch[2], 10);
+          const day = panelMatch[3];
+          const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+          return `${parseInt(day, 10)} ${monthNames[month - 1]} ${year}`;
+        }
       }
 
       $current = $current.parent();
       if ($current.length === 0) break;
     }
 
-    // Look for preceding sibling headers
-    const $precedingHeaders = $link.parents().prevAll("h2, h3, h4, .date-header");
-    for (let i = 0; i < $precedingHeaders.length; i++) {
-      const headerText = $precedingHeaders.eq(i).text();
-      const match = headerText.match(/(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)/i);
-      if (match) {
-        return match[0];
+    // Fallback: look for text-based date patterns
+    const abbrevMonthPattern = /(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b/i;
+    const fullMonthPattern = /(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s*(\d{4})?/i;
+
+    $current = $link.parent();
+    for (let i = 0; i < 5; i++) {
+      const text = $current.text();
+
+      const abbrevMatch = text.match(abbrevMonthPattern);
+      if (abbrevMatch) {
+        return abbrevMatch[0];
       }
+
+      const fullMatch = text.match(fullMonthPattern);
+      if (fullMatch) {
+        return fullMatch[0];
+      }
+
+      $current = $current.parent();
+      if ($current.length === 0) break;
     }
 
     return null;
@@ -229,21 +242,28 @@ export class GenesisScraper implements CinemaScraper {
 
   private parseDateTime(dateStr: string, timeStr: string): Date | null {
     try {
-      // Parse date like "20 December" or "Friday 20 December"
-      const dateMatch = dateStr.match(/(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s*(\d{4})?/i);
+      // Parse date - supports both "20 December" and "13 Jan" formats
+      // Also handles "Tue 13 Jan" or "Friday 20 December"
+      const dateMatch = dateStr.match(/(\d{1,2})\s+(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s*(\d{4})?/i);
       if (!dateMatch) return null;
 
       const day = parseInt(dateMatch[1]);
-      const monthName = dateMatch[2];
+      const monthName = dateMatch[2].toLowerCase();
       const year = dateMatch[3] ? parseInt(dateMatch[3]) : new Date().getFullYear();
 
+      // Map both abbreviated and full month names to month index
       const months: Record<string, number> = {
+        // Full names
         january: 0, february: 1, march: 2, april: 3,
         may: 4, june: 5, july: 6, august: 7,
         september: 8, october: 9, november: 10, december: 11,
+        // Abbreviated names
+        jan: 0, feb: 1, mar: 2, apr: 3,
+        jun: 5, jul: 6, aug: 7,
+        sep: 8, sept: 8, oct: 9, nov: 10, dec: 11,
       };
 
-      const month = months[monthName.toLowerCase()];
+      const month = months[monthName];
       if (month === undefined) return null;
 
       // Parse time like "19:30" or "7:30pm"

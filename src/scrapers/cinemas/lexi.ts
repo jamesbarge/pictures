@@ -112,18 +112,69 @@ export class LexiScraper implements CinemaScraper {
   /**
    * Extract the Events JSON from the page HTML
    * Pattern: var Events = {"Events":[...]}
+   *
+   * Uses bracket matching instead of regex to handle nested structures correctly.
    */
   private extractEventsJson(html: string): LexiEventsData | null {
-    // Find the var Events = {...} pattern
-    const match = html.match(/var Events\s*=\s*(\{[\s\S]*?\});/);
-    if (!match) {
-      console.error("[lexi] Could not find Events JSON in page");
+    // Find the start of var Events =
+    const startMatch = html.match(/var Events\s*=\s*/);
+    if (!startMatch || startMatch.index === undefined) {
+      console.error("[lexi] Could not find 'var Events' in page");
       return null;
     }
 
+    const startIndex = startMatch.index + startMatch[0].length;
+
+    // Verify we're starting at a brace
+    if (html[startIndex] !== "{") {
+      console.error("[lexi] Expected '{' after 'var Events =', got:", html[startIndex]);
+      return null;
+    }
+
+    // Use bracket matching to find the complete JSON object
+    let depth = 0;
+    let inString = false;
+    let escape = false;
+    let endIndex = startIndex;
+
+    for (let i = startIndex; i < html.length; i++) {
+      const char = html[i];
+
+      if (escape) {
+        escape = false;
+        continue;
+      }
+
+      if (char === "\\") {
+        escape = true;
+        continue;
+      }
+
+      if (char === '"' && !escape) {
+        inString = !inString;
+        continue;
+      }
+
+      if (!inString) {
+        if (char === "{") depth++;
+        if (char === "}") {
+          depth--;
+          if (depth === 0) {
+            endIndex = i + 1;
+            break;
+          }
+        }
+      }
+    }
+
+    if (depth !== 0) {
+      console.error("[lexi] Could not find matching closing brace for Events JSON");
+      return null;
+    }
+
+    const jsonStr = html.substring(startIndex, endIndex);
+
     try {
-      // The JSON might be very long, parse it carefully
-      const jsonStr = match[1];
       const data = JSON.parse(jsonStr) as LexiEventsData;
       return data;
     } catch (error) {
