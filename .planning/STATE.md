@@ -4,41 +4,56 @@
 
 See: .planning/PROJECT.md (updated 2026-01-10)
 
-**Core value:** Ensure users can see complete cinema listings through end of February.
-**Current focus:** Milestone complete
+**Core value:** Season discovery — helping users find what seasons are currently running
+**Current focus:** Phase 1 — Database Schema
 
 ## Current Position
 
-Phase: 2 of 2 (Run High-Priority Scrapers)
-Plan: All complete
-Status: **v1.0 SHIPPED**
-Last activity: 2026-01-10 — v1.0 milestone complete
+Phase: 1 of 10 (Database Schema)
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-01-10 — Project initialized
 
-Progress: [██████████] 100%
+Progress: ░░░░░░░░░░ 0%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 2
-- Average duration: ~20 min
-- Total execution time: ~43 min
+- Total plans completed: 0
+- Average duration: —
+- Total execution time: 0 hours
+
+**By Phase:**
+
+| Phase | Plans | Total | Avg/Plan |
+|-------|-------|-------|----------|
+| — | — | — | — |
+
+**Recent Trend:**
+- Last 5 plans: —
+- Trend: —
 
 ## Accumulated Context
 
 ### Decisions
 
 Decisions are logged in PROJECT.md Key Decisions table.
+Recent decisions affecting current work:
+
+- Season → Films → Screenings data model chosen
+- Scraping from cinema sites (not auto-detection)
+- View-only for v1 (no user tracking on seasons)
 
 ### Deferred Issues
 
-None.
+None yet.
 
 ### Blockers/Concerns
 
-None - project complete.
+None yet.
 
 ## Session Continuity
 
 Last session: 2026-01-10
-Stopped at: v1.0 milestone complete
+Stopped at: Project initialization complete
 Resume file: None
