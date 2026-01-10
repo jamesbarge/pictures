@@ -16,7 +16,7 @@ Cinema web scraping — HTML parsing, API integration, Playwright automation (ex
 
 - [x] **Phase 1: Database Schema** — Season data model with Drizzle ✓
 - [x] **Phase 2: Season Scraper Research** — Analyze cinema website structures ✓
-- [ ] **Phase 3: Scraper Infrastructure** — Base season scraper pattern
+- [x] **Phase 3: Scraper Infrastructure** — Base season scraper pattern ✓
 - [ ] **Phase 4: BFI Season Scraper** — First implementation
 - [ ] **Phase 5: Additional Cinema Scrapers** — Barbican, Curzon, others
 - [ ] **Phase 6: Director Enrichment** — TMDB integration for director data
@@ -56,14 +56,21 @@ Plans:
 - Close-Up: Season info embedded in existing JSON `film_url` field
 - Implementation order: BFI → Close-Up → Barbican → PCC → ICA
 
-### Phase 3: Scraper Infrastructure
+### Phase 3: Scraper Infrastructure ✓
 **Goal**: Create reusable base pattern for season scrapers
 **Depends on**: Phase 2
 **Research**: Unlikely (extending existing BaseScraper pattern)
-**Plans**: TBD
+**Plans**: Complete
+**Completed**: 2026-01-10
 
 Plans:
-- [ ] 03-01: Create season scraper base and utilities
+- [x] 03-01: Create season scraper base and utilities
+
+**Key Deliverables:**
+- `src/scrapers/seasons/types.ts` - RawSeason, RawSeasonFilm, SeasonScraperConfig types
+- `src/scrapers/seasons/base.ts` - BaseSeasonScraper class with template method pattern
+- `src/scrapers/seasons/pipeline.ts` - processSeasons() for saving to database with film matching
+- Film matching strategies: exact title, year+title, director+title, fuzzy Levenshtein
 
 ### Phase 4: BFI Season Scraper
 **Goal**: Implement working season scraper for BFI (most prolific season runner)
@@ -138,7 +145,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. Database Schema | 1/1 | Complete | 2026-01-10 |
 | 2. Season Scraper Research | 1/1 | Complete | 2026-01-10 |
-| 3. Scraper Infrastructure | 0/1 | Not started | - |
+| 3. Scraper Infrastructure | 1/1 | Complete | 2026-01-10 |
 | 4. BFI Season Scraper | 0/1 | Not started | - |
 | 5. Additional Cinema Scrapers | 0/1 | Not started | - |
 | 6. Director Enrichment | 0/1 | Not started | - |
