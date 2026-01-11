@@ -28,7 +28,7 @@ async function proxyFetch(url: string, options: RequestInit = {}): Promise<Respo
     const proxyUrl = new URL("https://api.scraperapi.com/");
     proxyUrl.searchParams.set("api_key", scraperApiKey);
     proxyUrl.searchParams.set("url", url);
-    proxyUrl.searchParams.set("render", "false"); // Don't need JS rendering for PDFs
+    proxyUrl.searchParams.set("render", "true"); // Need JS rendering to bypass Cloudflare
 
     console.log(`[BFI-PDF] Using ScraperAPI proxy for: ${url.slice(0, 60)}...`);
 
@@ -94,8 +94,14 @@ export async function discoverPDFs(): Promise<PDFInfo[]> {
 
   const html = await response.text();
 
-  // Check for Cloudflare challenge
-  if (html.includes("challenge-platform") || html.includes("Checking your browser")) {
+  // Check for actual Cloudflare challenge (not just script references)
+  // The page may contain challenge-platform scripts as part of normal operation
+  const isActualChallenge =
+    (html.includes("Checking your browser") && html.includes("before accessing")) ||
+    (html.includes("Just a moment") && html.includes("Enable JavaScript")) ||
+    (!html.includes("<title>BFI") && html.includes("challenge-platform"));
+
+  if (isActualChallenge) {
     throw new Error("BFI guide page is behind Cloudflare challenge - consider using Playwright fallback");
   }
 

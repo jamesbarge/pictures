@@ -30,7 +30,7 @@ async function proxyFetch(url: string): Promise<Response> {
     const proxyUrl = new URL("https://api.scraperapi.com/");
     proxyUrl.searchParams.set("api_key", scraperApiKey);
     proxyUrl.searchParams.set("url", url);
-    proxyUrl.searchParams.set("render", "false");
+    proxyUrl.searchParams.set("render", "true"); // Need JS rendering to bypass Cloudflare
 
     console.log(`[BFI-Changes] Using ScraperAPI proxy for: ${url.slice(0, 60)}...`);
     return fetch(proxyUrl.toString());
@@ -114,8 +114,13 @@ export async function fetchProgrammeChanges(): Promise<ProgrammeChangesResult> {
 
   const html = await response.text();
 
-  // Check for Cloudflare
-  if (html.includes("challenge-platform") || html.includes("Checking your browser")) {
+  // Check for actual Cloudflare challenge (not just script references)
+  const isActualChallenge =
+    (html.includes("Checking your browser") && html.includes("before accessing")) ||
+    (html.includes("Just a moment") && html.includes("Enable JavaScript")) ||
+    (!html.includes("<title>") && html.includes("challenge-platform"));
+
+  if (isActualChallenge) {
     throw new Error("Programme changes page is behind Cloudflare challenge");
   }
 
