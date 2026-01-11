@@ -5,6 +5,26 @@ London cinema listings app that scrapes screening data from cinemas across Londo
 
 **Production URL: https://pictures.london**
 
+## Git Workflow
+
+### Branch Strategy
+- **Never commit directly to `main`** - always use feature branches
+- Create a new branch for each feature or fix: `git checkout -b fix/scraper-issue` or `feat/new-feature`
+- Push the branch and create a Pull Request for review
+- Merge PRs into `main` after review
+
+### Commit Messages
+- Use conventional commit format: `fix:`, `feat:`, `chore:`, `docs:`
+- Keep commits focused and atomic
+- Include `Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>` when AI-assisted
+
+### PR Process
+1. Create feature branch from `main`
+2. Make changes and commit
+3. Push branch: `git push -u origin branch-name`
+4. Create PR: `gh pr create --title "..." --body "..."`
+5. Wait for review before merging
+
 ## Scraping Rules
 
 ### Time Parsing - CRITICAL
