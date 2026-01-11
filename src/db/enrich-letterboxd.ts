@@ -100,7 +100,21 @@ function parseRating(
   return { rating, url };
 }
 
-async function enrichLetterboxdRatings() {
+export interface EnrichmentResult {
+  enriched: number;
+  failed: number;
+  total: number;
+}
+
+/**
+ * Enrich films with Letterboxd ratings
+ * @param limit - Optional limit on number of films to process (for scheduled jobs)
+ * @param onlyWithScreenings - If true, only enrich films with upcoming screenings
+ */
+export async function enrichLetterboxdRatings(
+  limit?: number,
+  onlyWithScreenings = false
+): Promise<EnrichmentResult> {
   console.log("🎬 Enriching films with Letterboxd ratings...\n");
 
   const now = new Date();
@@ -125,28 +139,36 @@ async function enrichLetterboxdRatings() {
     `Found ${filmsWithScreenings.length} films with upcoming screenings needing ratings\n`
   );
 
-  // THEN: Get remaining films without ratings (lower priority)
-  const otherFilms = await db
-    .select({
-      id: films.id,
-      title: films.title,
-      year: films.year,
-    })
-    .from(films)
-    .where(isNull(films.letterboxdRating));
+  let filmsToEnrich = filmsWithScreenings;
 
-  // Combine with priority films first, deduplicate
-  const priorityIds = new Set(filmsWithScreenings.map((f) => f.id));
-  const remainingFilms = otherFilms.filter((f) => !priorityIds.has(f.id));
+  // If not limiting to screenings only, also get other films
+  if (!onlyWithScreenings) {
+    const otherFilms = await db
+      .select({
+        id: films.id,
+        title: films.title,
+        year: films.year,
+      })
+      .from(films)
+      .where(isNull(films.letterboxdRating));
 
-  const filmsToEnrich = [...filmsWithScreenings, ...remainingFilms];
+    // Combine with priority films first, deduplicate
+    const priorityIds = new Set(filmsWithScreenings.map((f) => f.id));
+    const remainingFilms = otherFilms.filter((f) => !priorityIds.has(f.id));
+    filmsToEnrich = [...filmsWithScreenings, ...remainingFilms];
+  }
+
+  // Apply limit if specified
+  if (limit && limit > 0) {
+    filmsToEnrich = filmsToEnrich.slice(0, limit);
+  }
+
   console.log(
-    `Total: ${filmsToEnrich.length} films (${filmsWithScreenings.length} with screenings first)\n`
+    `Processing ${filmsToEnrich.length} films${limit ? ` (limited to ${limit})` : ""}\n`
   );
 
   let enriched = 0;
   let failed = 0;
-  let skipped = 0;
 
   for (const film of filmsToEnrich) {
     try {
@@ -184,7 +206,8 @@ async function enrichLetterboxdRatings() {
   console.log("\n📊 Summary:");
   console.log(`  ✓ Enriched: ${enriched}`);
   console.log(`  ✗ Not found: ${failed}`);
-  if (skipped > 0) console.log(`  ⊘ Skipped: ${skipped}`);
+
+  return { enriched, failed, total: filmsToEnrich.length };
 }
 
 // Run if called directly

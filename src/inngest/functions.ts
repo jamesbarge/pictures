@@ -812,6 +812,39 @@ export const scheduledBFIChanges = inngest.createFunction(
   }
 );
 
+/**
+ * Inngest Function: Scheduled Letterboxd Enrichment
+ *
+ * Runs daily at 8:00 AM UTC (after scrapers complete) to enrich films with Letterboxd ratings.
+ * Processes films with upcoming screenings that don't have ratings yet.
+ * Limited to 100 films per run to avoid hitting rate limits.
+ */
+export const scheduledLetterboxdEnrichment = inngest.createFunction(
+  {
+    id: "scheduled-letterboxd-enrichment",
+    retries: 1,
+  },
+  { cron: "0 8 * * *" }, // 8:00 AM UTC daily (2 hours after scrapers)
+  async ({ step }) => {
+    console.log("[Inngest] Starting scheduled Letterboxd enrichment...");
+
+    const result = await step.run("enrich-letterboxd", async () => {
+      const { enrichLetterboxdRatings } = await import("@/db/enrich-letterboxd");
+      // Process up to 100 films per run, prioritizing those with upcoming screenings
+      return enrichLetterboxdRatings(100, true);
+    });
+
+    console.log("[Inngest] Letterboxd enrichment complete:", result);
+
+    return {
+      success: true,
+      enriched: result.enriched,
+      failed: result.failed,
+      total: result.total,
+    };
+  }
+);
+
 // Export all functions for the serve handler
 export const functions = [
   runCinemaScraper,
@@ -819,4 +852,5 @@ export const functions = [
   handleFunctionFailure,
   scheduledBFIPDFImport,
   scheduledBFIChanges,
+  scheduledLetterboxdEnrichment,
 ];
