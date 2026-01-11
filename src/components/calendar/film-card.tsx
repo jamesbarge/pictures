@@ -108,17 +108,28 @@ export const FilmCard = memo(function FilmCard({
           aria-hidden="true"
           onClick={trackCardClick}
         >
-          <Image
-            src={film.posterUrl && !film.posterUrl.includes("poster-placeholder")
-              ? film.posterUrl
-              : `/api/poster-placeholder?title=${encodeURIComponent(film.title)}${film.year ? `&year=${film.year}` : ""}`}
-            alt=""
-            fill
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 200px"
-            className="object-cover"
-            placeholder="blur"
-            blurDataURL={POSTER_BLUR_PLACEHOLDER}
-          />
+          {/* Use placeholder SVG route for films without posters */}
+          {film.posterUrl && !film.posterUrl.includes("poster-placeholder") ? (
+            <Image
+              src={film.posterUrl}
+              alt=""
+              fill
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 200px"
+              className="object-cover"
+              placeholder="blur"
+              blurDataURL={POSTER_BLUR_PLACEHOLDER}
+            />
+          ) : (
+            /* SVG placeholders must be unoptimized - Next.js Image optimization fails on SVGs */
+            <Image
+              src={`/api/poster-placeholder?title=${encodeURIComponent(film.title)}${film.year ? `&year=${film.year}` : ""}`}
+              alt=""
+              fill
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 200px"
+              className="object-cover"
+              unoptimized
+            />
+          )}
 
           {/* Gradient overlay for better text readability */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-50 group-hover:opacity-60 transition-opacity" />
