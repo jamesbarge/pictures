@@ -67,6 +67,9 @@ export interface FilterState {
   festivalSlug: string | null; // Filter by specific festival
   festivalOnly: boolean; // Only show festival screenings
 
+  // Season filtering
+  seasonSlug: string | null; // Filter by specific director season
+
   // Personal
   hideSeen: boolean;
   hideNotInterested: boolean;
@@ -86,6 +89,7 @@ export interface PersistedFilters {
   timesOfDay: TimeOfDay[];
   festivalSlug: string | null;
   festivalOnly: boolean;
+  seasonSlug: string | null;
   hideSeen: boolean;
   hideNotInterested: boolean;
   onlySingleShowings: boolean;
@@ -110,6 +114,9 @@ interface FilterActions {
   setFestivalFilter: (slug: string | null) => void;
   setFestivalOnly: (festivalOnly: boolean) => void;
   clearFestivalFilter: () => void;
+  // Season filters
+  setSeasonFilter: (slug: string | null) => void;
+  clearSeasonFilter: () => void;
   // Personal
   setHideSeen: (hide: boolean) => void;
   setHideNotInterested: (hide: boolean) => void;
@@ -136,6 +143,7 @@ const initialState: FilterState = {
   timesOfDay: [],
   festivalSlug: null,
   festivalOnly: false,
+  seasonSlug: null,
   hideSeen: false,
   hideNotInterested: true, // Films marked "not interested" are hidden by default
   onlySingleShowings: false,
@@ -266,6 +274,17 @@ export const useFilters = create<FilterState & FilterActions>()(
         set({ festivalSlug: null, festivalOnly: false, updatedAt: new Date().toISOString() });
       },
 
+      // Season filter actions
+      setSeasonFilter: (slug) => {
+        trackFilterChange("season", slug, slug ? "set" : "cleared");
+        set({ seasonSlug: slug, updatedAt: new Date().toISOString() });
+      },
+
+      clearSeasonFilter: () => {
+        trackFilterChange("season", null, "cleared");
+        set({ seasonSlug: null, updatedAt: new Date().toISOString() });
+      },
+
       setHideSeen: (hide) => {
         trackFilterChange("hide_seen", hide, "set");
         set({ hideSeen: hide, updatedAt: new Date().toISOString() });
@@ -302,6 +321,8 @@ export const useFilters = create<FilterState & FilterActions>()(
         // Festival filters
         if (state.festivalSlug) count++;
         if (state.festivalOnly) count++;
+        // Season filters
+        if (state.seasonSlug) count++;
         if (state.hideSeen) count++;
         if (state.onlySingleShowings) count++;
         // Don't count hideNotInterested - it's the default behavior
@@ -326,6 +347,7 @@ export const useFilters = create<FilterState & FilterActions>()(
           timesOfDay: state.timesOfDay,
           festivalSlug: state.festivalSlug,
           festivalOnly: state.festivalOnly,
+          seasonSlug: state.seasonSlug,
           hideSeen: state.hideSeen,
           hideNotInterested: state.hideNotInterested,
           onlySingleShowings: state.onlySingleShowings,
@@ -345,6 +367,7 @@ export const useFilters = create<FilterState & FilterActions>()(
         timesOfDay: state.timesOfDay,
         festivalSlug: state.festivalSlug,
         festivalOnly: state.festivalOnly,
+        seasonSlug: state.seasonSlug,
         hideSeen: state.hideSeen,
         hideNotInterested: state.hideNotInterested,
         onlySingleShowings: state.onlySingleShowings,

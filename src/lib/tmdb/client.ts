@@ -9,6 +9,9 @@ import type {
   TMDBCredits,
   TMDBVideosResponse,
   TMDBReleaseDates,
+  TMDBPersonSearchResponse,
+  TMDBPersonDetails,
+  TMDBPersonCredits,
 } from "./types";
 
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
@@ -132,6 +135,90 @@ export class TMDBClient {
     };
   }
 
+  // ============================================
+  // Person (Director) Methods
+  // ============================================
+
+  /**
+   * Search for a person by name
+   */
+  async searchPerson(query: string): Promise<TMDBPersonSearchResponse> {
+    return this.fetch<TMDBPersonSearchResponse>("/search/person", { query });
+  }
+
+  /**
+   * Get full details for a person by TMDB ID
+   */
+  async getPersonDetails(personId: number): Promise<TMDBPersonDetails> {
+    return this.fetch<TMDBPersonDetails>(`/person/${personId}`);
+  }
+
+  /**
+   * Get a person's movie credits (filmography)
+   */
+  async getPersonCredits(personId: number): Promise<TMDBPersonCredits> {
+    return this.fetch<TMDBPersonCredits>(`/person/${personId}/movie_credits`);
+  }
+
+  /**
+   * Find a director's TMDB ID by name
+   * Returns the best match who is known for directing
+   */
+  async findDirectorId(name: string): Promise<number | null> {
+    const results = await this.searchPerson(name);
+
+    if (results.total_results === 0) {
+      return null;
+    }
+
+    // Prioritize people known for directing
+    const director = results.results.find(
+      (p) => p.known_for_department === "Directing"
+    );
+
+    if (director) {
+      return director.id;
+    }
+
+    // Fall back to first result if no explicit director found
+    // (some directors are listed as "Production" etc.)
+    return results.results[0].id;
+  }
+
+  /**
+   * Get director data including bio and filmography
+   */
+  async getDirectorData(personId: number) {
+    const [details, credits] = await Promise.all([
+      this.getPersonDetails(personId),
+      this.getPersonCredits(personId),
+    ]);
+
+    // Filter to directed films only
+    const directedFilms = credits.crew
+      .filter((c) => c.job === "Director")
+      .sort((a, b) => {
+        // Sort by release date descending
+        const dateA = a.release_date || "";
+        const dateB = b.release_date || "";
+        return dateB.localeCompare(dateA);
+      })
+      .map((film) => ({
+        tmdbId: film.id,
+        title: film.title,
+        originalTitle: film.original_title,
+        releaseDate: film.release_date,
+        posterPath: film.poster_path,
+        voteAverage: film.vote_average,
+      }));
+
+    return {
+      details,
+      directedFilms,
+      totalFilms: directedFilms.length,
+    };
+  }
+
   // Static methods for image URLs
 
   /**
@@ -158,6 +245,19 @@ export class TMDBClient {
   ): string | null {
     if (!backdropPath) return null;
     return `${TMDB_IMAGE_BASE}/${size}${backdropPath}`;
+  }
+
+  /**
+   * Get profile image URL for a person
+   * @param profilePath - The profile_path from TMDB
+   * @param size - Image size: w45, w185, h632, original
+   */
+  static getProfileUrl(
+    profilePath: string | null,
+    size: "w45" | "w185" | "h632" | "original" = "w185"
+  ): string | null {
+    if (!profilePath) return null;
+    return `${TMDB_IMAGE_BASE}/${size}${profilePath}`;
   }
 }
 

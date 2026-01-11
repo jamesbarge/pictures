@@ -3,6 +3,7 @@
 import { Component, ReactNode } from "react";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui";
+import posthog from "posthog-js";
 
 interface Props {
   children: ReactNode;
@@ -33,8 +34,11 @@ export class ErrorBoundary extends Component<Props, State> {
     // Log error to console in development
     console.error("ErrorBoundary caught an error:", error, errorInfo);
 
-    // In production, you might want to send this to an error tracking service
-    // e.g., Sentry, LogRocket, etc.
+    // Report error to PostHog
+    posthog.captureException(error, {
+      error_boundary: "component",
+      component_stack: errorInfo.componentStack,
+    });
   }
 
   handleRetry = () => {

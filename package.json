@@ -21,6 +21,7 @@
     "db:seed:festivals": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/db/seed-cli.ts --festivals",
     "db:seed:screenings": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/db/seed-cli.ts --screenings",
     "db:enrich": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/db/enrich-films.ts",
+    "db:enrich-directors": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/db/enrich-directors.ts",
     "db:enrich-letterboxd": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/db/enrich-letterboxd.ts",
     "db:enrich-posters": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/db/enrich-posters.ts",
     "db:recheck-posters": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/db/enrich-posters.ts recheck",
@@ -87,14 +88,18 @@
     "scrape:castle-sidcup-v2": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/run-castle-sidcup-v2.ts",
     "scrape:olympic-v2": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/run-olympic-v2.ts",
     "scrape:david-lean-v2": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/run-david-lean-v2.ts",
-    "scrape": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/cli.ts"
+    "scrape": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/cli.ts",
+    "scrape:bfi-seasons": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/seasons/run-bfi-seasons.ts",
+    "scrape:close-up-seasons": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/seasons/run-close-up-seasons.ts",
+    "scrape:barbican-seasons": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/seasons/run-barbican-seasons.ts",
+    "scrape:pcc-seasons": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/seasons/run-pcc-seasons.ts",
+    "scrape:ica-seasons": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/seasons/run-ica-seasons.ts"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.1.76",
     "@base-ui/react": "^1.0.0",
     "@clerk/nextjs": "^6.36.5",
     "@posthog/ai": "^7.3.0",
-    "@sentry/nextjs": "^10.32.1",
     "@tanstack/react-query": "^5.90.12",
     "@turf/boolean-point-in-polygon": "^7.3.1",
     "@turf/turf": "^7.3.1",

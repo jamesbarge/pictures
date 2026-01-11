@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { screenings, films, cinemas, festivals } from "@/db/schema";
+import { screenings, films, cinemas, festivals, seasons } from "@/db/schema";
 import { eq, gte, lte, and, countDistinct, count } from "drizzle-orm";
 import { endOfDay, addDays, startOfDay, format } from "date-fns";
 import { unstable_cache } from "next/cache";
@@ -77,6 +77,29 @@ const getCachedActiveFestivals = unstable_cache(
   { revalidate: 3600, tags: ["festivals"] }
 );
 
+// Cache active seasons (ongoing and upcoming)
+const getCachedActiveSeasons = unstable_cache(
+  async () => {
+    const today = new Date().toISOString().split("T")[0];
+    return db
+      .select({
+        id: seasons.id,
+        name: seasons.name,
+        slug: seasons.slug,
+        directorName: seasons.directorName,
+      })
+      .from(seasons)
+      .where(
+        and(
+          eq(seasons.isActive, true),
+          gte(seasons.endDate, today) // Only seasons that haven't ended
+        )
+      );
+  },
+  ["active-seasons"],
+  { revalidate: 3600, tags: ["seasons"] }
+);
+
 // Cache stats for SEO display (how many screenings, films, cinemas)
 const getCachedStats = unstable_cache(
   async () => {
@@ -108,11 +131,12 @@ export default async function Home() {
   // Use date key to bust cache at midnight (ensures fresh data each day)
   const dateKey = format(new Date(), "yyyy-MM-dd");
 
-  // Fetch cached data (60s cache for screenings, 1hr for cinemas, 5min for stats)
-  const [initialScreenings, allCinemas, activeFestivals, stats] = await Promise.all([
+  // Fetch cached data (60s cache for screenings, 1hr for cinemas/seasons, 5min for stats)
+  const [initialScreenings, allCinemas, activeFestivals, activeSeasons, stats] = await Promise.all([
     getCachedScreenings(dateKey),
     getCachedCinemas(),
     getCachedActiveFestivals(),
+    getCachedActiveSeasons(),
     getCachedStats(),
   ]);
 
@@ -158,6 +182,7 @@ export default async function Home() {
       <Header
         cinemas={allCinemas.map(c => ({ id: c.id, name: c.name, shortName: c.shortName, chain: c.chain }))}
         festivals={activeFestivals}
+        seasons={activeSeasons}
         availableFormats={availableFormats}
       />
 

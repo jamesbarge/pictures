@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { screenings, films, cinemas, festivalScreenings, festivals } from "@/db/schema";
+import { screenings, films, cinemas, festivalScreenings, festivals, seasons, seasonFilms } from "@/db/schema";
 import { eq, gte, lte, and, inArray, sql } from "drizzle-orm";
 import { startOfDay, endOfDay, addDays } from "date-fns";
 import { z } from "zod";
@@ -23,6 +23,8 @@ const querySchema = z.object({
   // Festival filtering
   festival: z.string().max(100).optional(), // festival slug
   festivalOnly: z.enum(["true", "false"]).optional(), // only show festival screenings
+  // Season filtering
+  season: z.string().max(100).optional(), // season slug (director retrospectives)
 });
 
 export async function GET(request: NextRequest) {
@@ -51,6 +53,7 @@ export async function GET(request: NextRequest) {
       repertory: searchParams.get("repertory") || undefined,
       festival: searchParams.get("festival") || undefined,
       festivalOnly: searchParams.get("festivalOnly") || undefined,
+      season: searchParams.get("season") || undefined,
     });
 
     if (!parseResult.success) {
@@ -75,6 +78,7 @@ export async function GET(request: NextRequest) {
     const isRepertory = params.repertory;
     const festivalSlug = params.festival;
     const festivalOnly = params.festivalOnly === "true";
+    const seasonSlug = params.season;
 
     // Build query conditions
     const conditions = [
@@ -173,7 +177,106 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Standard query (no specific festival filter)
+    // If filtering by specific season, get film IDs first then filter
+    if (seasonSlug) {
+      // First, get the season by slug
+      const [season] = await db
+        .select({ id: seasons.id, name: seasons.name })
+        .from(seasons)
+        .where(eq(seasons.slug, seasonSlug))
+        .limit(1);
+
+      if (!season) {
+        throw new BadRequestError(`Season not found: ${seasonSlug}`);
+      }
+
+      // Get all film IDs in this season
+      const seasonFilmIds = await db
+        .select({ filmId: seasonFilms.filmId })
+        .from(seasonFilms)
+        .where(eq(seasonFilms.seasonId, season.id));
+
+      const filmIds = seasonFilmIds.map((sf) => sf.filmId);
+
+      if (filmIds.length === 0) {
+        // No films in season, return empty results
+        return NextResponse.json(
+          {
+            screenings: [],
+            meta: {
+              total: 0,
+              startDate: startDate.toISOString(),
+              endDate: endDate.toISOString(),
+              season: seasonSlug,
+              seasonName: season.name,
+            },
+          },
+          {
+            headers: {
+              "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+            },
+          }
+        );
+      }
+
+      // Add film ID filter to conditions
+      conditions.push(inArray(screenings.filmId, filmIds));
+
+      // Query screenings for films in this season
+      const results = await db
+        .select({
+          id: screenings.id,
+          datetime: screenings.datetime,
+          format: screenings.format,
+          screen: screenings.screen,
+          eventType: screenings.eventType,
+          eventDescription: screenings.eventDescription,
+          bookingUrl: screenings.bookingUrl,
+          isFestivalScreening: screenings.isFestivalScreening,
+          availabilityStatus: screenings.availabilityStatus,
+          film: {
+            id: films.id,
+            title: films.title,
+            year: films.year,
+            directors: films.directors,
+            posterUrl: films.posterUrl,
+            runtime: films.runtime,
+            isRepertory: films.isRepertory,
+            letterboxdRating: films.letterboxdRating,
+          },
+          cinema: {
+            id: cinemas.id,
+            name: cinemas.name,
+            shortName: cinemas.shortName,
+          },
+        })
+        .from(screenings)
+        .innerJoin(films, eq(screenings.filmId, films.id))
+        .innerJoin(cinemas, eq(screenings.cinemaId, cinemas.id))
+        .where(and(...conditions))
+        .orderBy(screenings.datetime)
+        .limit(3000);
+
+      return NextResponse.json(
+        {
+          screenings: results,
+          meta: {
+            total: results.length,
+            startDate: startDate.toISOString(),
+            endDate: endDate.toISOString(),
+            season: seasonSlug,
+            seasonName: season.name,
+          },
+        },
+        {
+          headers: {
+            "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+          },
+        }
+      );
+    }
+
+    // Standard query (no specific festival or season filter)
     const results = await db
       .select({
         id: screenings.id,

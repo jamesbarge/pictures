@@ -15,6 +15,13 @@
       "when": 1767043659305,
       "tag": "0001_dusty_rawhide_kid",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1768067178060,
+      "tag": "0002_aberrant_black_widow",
+      "breakpoints": true
     }
   ]
 }
