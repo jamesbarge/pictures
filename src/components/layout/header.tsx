@@ -144,15 +144,7 @@ export function Header({ cinemas, festivals, seasons, availableFormats }: Header
               </div>
             )}
 
-            {/* Season - only show if seasons are available */}
-            {seasons.length > 0 && (
-              <div className="py-4">
-                <label className="block text-[11px] font-semibold text-text-tertiary uppercase tracking-wider mb-3">
-                  Director Season
-                </label>
-                <SeasonFilter seasons={seasons} mounted={mounted} fullWidth />
-              </div>
-            )}
+
 
             {/* Actions */}
             <div className="pt-4 flex gap-2">
@@ -181,8 +173,7 @@ export function Header({ cinemas, festivals, seasons, availableFormats }: Header
           {/* Format Filter */}
           <FormatFilter mounted={mounted} availableFormats={availableFormats} />
 
-          {/* Season Filter */}
-          <SeasonFilter seasons={seasons} mounted={mounted} />
+
 
           {/* Share & Clear */}
           {mounted && <ShareFiltersButton />}
@@ -1433,169 +1424,7 @@ function ShareFiltersButton({ fullWidth }: { fullWidth?: boolean } = {}) {
 }
 
 // Season Filter Component - Director retrospectives
-interface SeasonFilterProps {
-  seasons: { id: string; name: string; slug: string; directorName: string | null }[];
-  mounted: boolean;
-  fullWidth?: boolean;
-}
 
-function SeasonFilter({ seasons, mounted, fullWidth }: SeasonFilterProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const { seasonSlug, setSeasonFilter, clearSeasonFilter } = useFilters();
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const selectedSeason = mounted && seasonSlug
-    ? seasons.find((s) => s.slug === seasonSlug)
-    : null;
-
-  const displayText = selectedSeason
-    ? selectedSeason.directorName || selectedSeason.name
-    : "Season";
-
-  const hasSelection = mounted && !!seasonSlug;
-
-  // Don't render if no active seasons
-  if (seasons.length === 0 && !seasonSlug) {
-    return null;
-  }
-
-  return (
-    <div ref={containerRef} className={cn("relative", fullWidth && "w-full")}>
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className={cn(
-          "flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-all",
-          fullWidth ? "w-full" : "min-w-[120px]",
-          hasSelection
-            ? "bg-accent-primary/10 border-accent-primary/30 text-accent-primary"
-            : "bg-background-secondary border-border-default text-text-secondary hover:border-border-emphasis hover:text-text-primary"
-        )}
-      >
-        <History className="w-4 h-4 shrink-0" />
-        <span className="flex-1 text-left truncate">{displayText}</span>
-        <ChevronDown className={cn("w-4 h-4 shrink-0 transition-transform", isOpen && "rotate-180")} />
-      </button>
-
-      {isOpen && (
-        <div className={cn(
-          "absolute top-full mt-2 z-50 bg-background-secondary border border-border-default rounded-xl shadow-elevated overflow-hidden",
-          fullWidth ? "left-0 right-0" : "left-0 w-64"
-        )}>
-          {/* Header */}
-          <div className="p-3 border-b border-border-subtle">
-            <p className="text-xs text-text-tertiary">
-              Filter by director retrospective or film season running at London cinemas.
-            </p>
-          </div>
-
-          {/* Season Options */}
-          <div className="max-h-64 overflow-y-auto p-2">
-            {/* Clear / All option */}
-            <button
-              onClick={() => {
-                clearSeasonFilter();
-                setIsOpen(false);
-              }}
-              className={cn(
-                "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-2",
-                !seasonSlug
-                  ? "bg-accent-primary/10 text-accent-primary"
-                  : "text-text-secondary hover:bg-background-hover hover:text-text-primary"
-              )}
-            >
-              <div
-                className={cn(
-                  "w-4 h-4 rounded border flex items-center justify-center shrink-0",
-                  !seasonSlug ? "bg-accent-primary border-accent-primary" : "border-border-default"
-                )}
-              >
-                {!seasonSlug && <Check className="w-3 h-3 text-text-inverse" />}
-              </div>
-              All Films
-            </button>
-
-            {/* Divider */}
-            {seasons.length > 0 && <div className="h-px bg-border-subtle my-2" />}
-
-            {/* Individual Seasons */}
-            {seasons.map((season) => {
-              const isSelected = seasonSlug === season.slug;
-              return (
-                <button
-                  key={season.id}
-                  onClick={() => {
-                    if (isSelected) {
-                      clearSeasonFilter();
-                    } else {
-                      setSeasonFilter(season.slug);
-                    }
-                    setIsOpen(false);
-                  }}
-                  className={cn(
-                    "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-2",
-                    isSelected
-                      ? "bg-accent-primary/10 text-accent-primary"
-                      : "text-text-secondary hover:bg-background-hover hover:text-text-primary"
-                  )}
-                >
-                  <div
-                    className={cn(
-                      "w-4 h-4 rounded border flex items-center justify-center shrink-0",
-                      isSelected ? "bg-accent-primary border-accent-primary" : "border-border-default"
-                    )}
-                  >
-                    {isSelected && <Check className="w-3 h-3 text-text-inverse" />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="truncate font-medium">
-                      {season.directorName || season.name}
-                    </div>
-                    {season.directorName && season.directorName !== season.name && (
-                      <div className="text-xs text-text-tertiary truncate">
-                        {season.name}
-                      </div>
-                    )}
-                  </div>
-                </button>
-              );
-            })}
-
-            {seasons.length === 0 && (
-              <p className="px-3 py-4 text-sm text-text-tertiary text-center">
-                No active seasons
-              </p>
-            )}
-          </div>
-
-          {/* Clear Selection */}
-          {seasonSlug && (
-            <div className="border-t border-border-subtle p-2">
-              <button
-                onClick={() => {
-                  clearSeasonFilter();
-                  setIsOpen(false);
-                }}
-                className="w-full text-left px-3 py-2 rounded-lg text-sm text-text-tertiary hover:bg-background-hover hover:text-text-primary transition-colors"
-              >
-                Clear selection
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
 
 // Helper function to get next weekend
 function getNextWeekend(): Date {

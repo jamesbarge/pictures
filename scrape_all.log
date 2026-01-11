@@ -1,0 +1,289 @@
+
+> pictures@0.1.0 scrape:all
+> npm run scrape:bfi && npm run scrape:pcc && npm run scrape:ica && npm run scrape:barbican && npm run scrape:rio && npm run scrape:chains && npm run scrape:independents
+
+
+> pictures@0.1.0 scrape:bfi
+> dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/run-bfi.ts
+
+🎬 Starting BFI scraper...
+
+==================================================
+Scraping BFI Southbank...
+==================================================
+[bfi-southbank] Running health check...
+Health check: ✓ OK
+[bfi-southbank] Starting scrape with Playwright stealth mode...
+[bfi-southbank] Launching browser with enhanced stealth mode...
+[bfi-southbank] Warming up session on homepage...
+[bfi-southbank] Cloudflare challenge timeout, continuing anyway...
+[bfi-southbank] Session established
+[bfi-southbank] Opening calendar...
+[bfi-southbank] Only 1 active dates (need 5+), advancing...
+[bfi-southbank] Clicking Next month...
+[bfi-southbank] Found 21 active dates in current month view
+[bfi-southbank] Scraping month 1...
+[bfi-southbank] Found 21 active dates
+[bfi-southbank] Clicking: See events for January 11...
+[bfi-southbank] Found 3 loadArticle links
+[bfi-southbank] Link 0: title="Marty Supreme", href contains loadArticle
+[bfi-southbank] Processing "Marty Supreme...": container="Marty Supreme..."
+[bfi-southbank] Link 1: title="Black Panther", href contains loadArticle
+[bfi-southbank] Processing "Black Panther...": container="Black Panther..."
+[bfi-southbank] Link 2: title="Hamnet", href contains loadArticle
+[bfi-southbank] Processing "Hamnet...": container="Hamnet..."
+[bfi-southbank] See events for January 11: 3 screenings
+[bfi-southbank] Clicking: See events for January 12...
+[bfi-southbank] Found 12 loadArticle links
+[bfi-southbank] Link 0: title="Seniors’ Free Matinee: Bonjour Tristesse + intro b", href contains loadArticle
+[bfi-southbank] Processing "Seniors’ Free Matinee: Bonjour...": container="Seniors’ Free Matinee: Bonjour Tristesse + intro by Foster Hirsch..."
+[bfi-southbank] Link 1: title="Hamnet", href contains loadArticle
+[bfi-southbank] Processing "Hamnet...": container="Hamnet..."
+[bfi-southbank] Link 2: title="Marty Supreme", href contains loadArticle
+[bfi-southbank] Processing "Marty Supreme...": container="Marty Supreme..."
+[bfi-southbank] See events for January 12: 12 screenings
+[bfi-southbank] Clicking: See events for January 13...
+[bfi-southbank] Found 11 loadArticle links
+[bfi-southbank] Link 0: title="Library Research Session", href contains loadArticle
+[bfi-southbank] Link 1: title="Hamnet", href contains loadArticle
+[bfi-southbank] Processing "Hamnet...": container="Hamnet..."
+[bfi-southbank] Link 2: title="Sentimental Value", href contains loadArticle
+[bfi-southbank] Processing "Sentimental Value...": container="Sentimental Value..."
+[bfi-southbank] Processing "Twin Peaks: Fire Walk with Me ...": container="Twin Peaks: Fire Walk with Me + discussion hosted by Sarah Cleary..."
+[bfi-southbank] See events for January 13: 10 screenings
+[bfi-southbank] Clicking: See events for January 14...
+[bfi-southbank] Found 11 loadArticle links
+[bfi-southbank] Link 0: title="Library Research Session", href contains loadArticle
+[bfi-southbank] Link 1: title="Sentimental Value", href contains loadArticle
+[bfi-southbank] Processing "Sentimental Value...": container="Sentimental Value..."
+[bfi-southbank] Link 2: title="Hamnet", href contains loadArticle
+[bfi-southbank] Processing "Hamnet...": container="Hamnet..."
+[bfi-southbank] Processing "Marty Supreme...": container="Marty Supreme..."
+[bfi-southbank] See events for January 14: 10 screenings
+[bfi-southbank] Clicking: See events for January 15...
+[bfi-southbank] Found 12 loadArticle links
+[bfi-southbank] Link 0: title="Member Exclusive: Archive Tour", href contains loadArticle
+[bfi-southbank] Processing "Member Exclusive: Archive Tour...": container="Member Exclusive: Archive Tour..."
+[bfi-southbank] Link 1: title="Library Research Session", href contains loadArticle
+[bfi-southbank] Link 2: title="It Was Just an Accident", href contains loadArticle
+[bfi-southbank] Processing "It Was Just an Accident...": container="It Was Just an Accident..."
+[bfi-southbank] Processing "Hamnet...": container="Hamnet..."
+[bfi-southbank] See events for January 15: 10 screenings
+[bfi-southbank] Clicking: See events for January 16...
+[bfi-southbank] Found 9 loadArticle links
+[bfi-southbank] Link 0: title="Library Research Session", href contains loadArticle
+[bfi-southbank] Link 1: title="The Voice of Hind Rajab", href contains loadArticle
+[bfi-southbank] Processing "The Voice of Hind Rajab...": container="The Voice of Hind Rajab..."
+[bfi-southbank] Link 2: title="Eraserhead", href contains loadArticle
+[bfi-southbank] Processing "Eraserhead...": container="Eraserhead..."
+[bfi-southbank] Processing "TV Preview: A Knight of the Se...": container="TV Preview: A Knight of the Seven Kingdoms + Cast Q&A..."
+[bfi-southbank] See events for January 16: 8 screenings
+[bfi-southbank] Clicking: See events for January 17...
+[bfi-southbank] Found 11 loadArticle links
+[bfi-southbank] Link 0: title="Library Research Session", href contains loadArticle
+[bfi-southbank] Link 1: title="Le Bonheur", href contains loadArticle
+[bfi-southbank] Processing "Le Bonheur...": container="Le Bonheur..."
+[bfi-southbank] Link 2: title="La Danse: Le Ballet de l’Opera de Paris + intro", href contains loadArticle
+[bfi-southbank] Processing "La Danse: Le Ballet de l’Opera...": container="La Danse: Le Ballet de l’Opera de Paris + intro..."
+[bfi-southbank] Processing "Ran...": container="Ran..."
+[bfi-southbank] See events for January 17: 10 screenings
+[bfi-southbank] Clicking: See events for January 18...
+[bfi-southbank] Found 10 loadArticle links
+[bfi-southbank] Link 0: title="The Water Babies", href contains loadArticle
+[bfi-southbank] Processing "The Water Babies...": container="The Water Babies..."
+[bfi-southbank] Link 1: title="Le Quai des brumes", href contains loadArticle
+[bfi-southbank] Processing "Le Quai des brumes...": container="Le Quai des brumes..."
+[bfi-southbank] Link 2: title="The Voice of Hind Rajab", href contains loadArticle
+[bfi-southbank] Processing "The Voice of Hind Rajab...": container="The Voice of Hind Rajab..."
+[bfi-southbank] See events for January 18: 10 screenings
+[bfi-southbank] Clicking: See events for January 19...
+[bfi-southbank] Found 9 loadArticle links
+[bfi-southbank] Link 0: title="The Voice of Hind Rajab", href contains loadArticle
+[bfi-southbank] Processing "The Voice of Hind Rajab...": container="The Voice of Hind Rajab..."
+[bfi-southbank] Link 1: title="The Short Films of Tina Gharavi + intro by Chantel", href contains loadArticle
+[bfi-southbank] Processing "The Short Films of Tina Gharav...": container="The Short Films of Tina Gharavi + intro by Chantelle Boyea, BFI Assistant Curator of Television..."
+[bfi-southbank] Link 2: title="Mark Kermode Live in 3D at the BFI", href contains loadArticle
+[bfi-southbank] Processing "Mark Kermode Live in 3D at the...": container="Mark Kermode Live in 3D at the BFI..."
+[bfi-southbank] See events for January 19: 8 screenings
+[bfi-southbank] Clicking: See events for January 20...
+[bfi-southbank] Found 5 loadArticle links
+[bfi-southbank] Link 0: title="Library Research Session", href contains loadArticle
+[bfi-southbank] Link 1: title="The Leopard", href contains loadArticle
+[bfi-southbank] Processing "The Leopard...": container="The Leopard..."
+[bfi-southbank] Link 2: title="The Voice of Hind Rajab", href contains loadArticle
+[bfi-southbank] Processing "The Voice of Hind Rajab...": container="The Voice of Hind Rajab..."
+[bfi-southbank] Processing "The Voice of Hind Rajab...": container="The Voice of Hind Rajab..."
+[bfi-southbank] See events for January 20: 4 screenings
+[bfi-southbank] Clicking: See events for January 21...
+[bfi-southbank] Found 6 loadArticle links
+[bfi-southbank] Link 0: title="Library Research Session", href contains loadArticle
+[bfi-southbank] Link 1: title="Menus-Plaisirs – Les Troisgros", href contains loadArticle
+[bfi-southbank] Processing "Menus-Plaisirs – Les Troisgros...": container="Menus-Plaisirs – Les Troisgros..."
+[bfi-southbank] Link 2: title="The Voice of Hind Rajab", href contains loadArticle
+[bfi-southbank] Processing "The Voice of Hind Rajab...": container="The Voice of Hind Rajab..."
+[bfi-southbank] Processing "Preview: All That’s Left of Yo...": container="Preview: All That’s Left of You..."
+[bfi-southbank] See events for January 21: 5 screenings
+[bfi-southbank] Clicking: See events for January 22...
+[bfi-southbank] Found 9 loadArticle links
+[bfi-southbank] Link 0: title="Library Research Session", href contains loadArticle
+[bfi-southbank] Link 1: title="The Voice of Hind Rajab", href contains loadArticle
+[bfi-southbank] Processing "The Voice of Hind Rajab...": container="The Voice of Hind Rajab..."
+[bfi-southbank] Link 2: title="Mudlarking and Metamorphosis + Chris Newby in conv", href contains loadArticle
+[bfi-southbank] Processing "Mudlarking and Metamorphosis +...": container="Mudlarking and Metamorphosis + Chris Newby in conversation with Dr Noni Stacey..."
+[bfi-southbank] Processing "Preview: Scarlet...": container="Preview: Scarlet..."
+[bfi-southbank] See events for January 22: 8 screenings
+[bfi-southbank] Clicking: See events for January 23...
+[bfi-southbank] Found 9 loadArticle links
+[bfi-southbank] Link 0: title="Library Research Session", href contains loadArticle
+[bfi-southbank] Link 1: title="Nouvelle Vague (Preview screenings)", href contains loadArticle
+[bfi-southbank] Processing "Nouvelle Vague (Preview screen...": container="Nouvelle Vague (Preview screenings)..."
+[bfi-southbank] Link 2: title="Nouvelle Vague (Preview screenings)", href contains loadArticle
+[bfi-southbank] Processing "Nouvelle Vague (Preview screen...": container="Nouvelle Vague (Preview screenings)..."
+[bfi-southbank] Processing "I Am Nasrine + intro by Wendy ...": container="I Am Nasrine + intro by Wendy Russell, BFI Screencraft Archivist..."
+[bfi-southbank] See events for January 23: 8 screenings
+[bfi-southbank] Clicking: See events for January 24...
+[bfi-southbank] Found 10 loadArticle links
+[bfi-southbank] Link 0: title="Woman with a Movie Camera Summit 2026", href contains loadArticle
+[bfi-southbank] Processing "Woman with a Movie Camera Summ...": container="Woman with a Movie Camera Summit 2026..."
+[bfi-southbank] Link 1: title="Library Research Session", href contains loadArticle
+[bfi-southbank] Link 2: title="Breathless", href contains loadArticle
+[bfi-southbank] Processing "Breathless...": container="Breathless..."
+[bfi-southbank] Processing "Nouvelle Vague (Preview screen...": container="Nouvelle Vague (Preview screenings)..."
+[bfi-southbank] See events for January 24: 9 screenings
+[bfi-southbank] Clicking: See events for January 25...
+[bfi-southbank] Found 10 loadArticle links
+[bfi-southbank] Link 0: title="Funday Preview: Kangaroo", href contains loadArticle
+[bfi-southbank] Processing "Funday Preview: Kangaroo...": container="Funday Preview: Kangaroo..."
+[bfi-southbank] Link 1: title="Ran", href contains loadArticle
+[bfi-southbank] Processing "Ran...": container="Ran..."
+[bfi-southbank] Link 2: title="Nouvelle Vague (Preview screenings)", href contains loadArticle
+[bfi-southbank] Processing "Nouvelle Vague (Preview screen...": container="Nouvelle Vague (Preview screenings)..."
+[bfi-southbank] See events for January 25: 10 screenings
+[bfi-southbank] Clicking: See events for January 26...
+[bfi-southbank] Found 9 loadArticle links
+[bfi-southbank] Link 0: title="In the Mood for Love", href contains loadArticle
+[bfi-southbank] Processing "In the Mood for Love...": container="In the Mood for Love..."
+[bfi-southbank] Link 1: title="Nouvelle Vague (Preview screenings)", href contains loadArticle
+[bfi-southbank] Processing "Nouvelle Vague (Preview screen...": container="Nouvelle Vague (Preview screenings)..."
+[bfi-southbank] Link 2: title="Nouvelle Vague (Preview screenings)", href contains loadArticle
+[bfi-southbank] Processing "Nouvelle Vague (Preview screen...": container="Nouvelle Vague (Preview screenings)..."
+[bfi-southbank] See events for January 26: 9 screenings
+[bfi-southbank] Clicking: See events for January 27...
+[bfi-southbank] Found 8 loadArticle links
+[bfi-southbank] Link 0: title="Library Research Session", href contains loadArticle
+[bfi-southbank] Link 1: title="Nouvelle Vague (Preview screenings)", href contains loadArticle
+[bfi-southbank] Processing "Nouvelle Vague (Preview screen...": container="Nouvelle Vague (Preview screenings)..."
+[bfi-southbank] Link 2: title="The Elephant Man + Q&A with actor Dexter Fletcher", href contains loadArticle
+[bfi-southbank] Processing "The Elephant Man + Q&A with ac...": container="The Elephant Man + Q&A with actor Dexter Fletcher..."
+[bfi-southbank] Processing "Nouvelle Vague (Preview screen...": container="Nouvelle Vague (Preview screenings)..."
+[bfi-southbank] See events for January 27: 7 screenings
+[bfi-southbank] Clicking: See events for January 28...
+[bfi-southbank] Found 8 loadArticle links
+[bfi-southbank] Link 0: title="Library Research Session", href contains loadArticle
+[bfi-southbank] Link 1: title="Seniors’ Paid Matinee: Nouvelle Vague + intro", href contains loadArticle
+[bfi-southbank] Processing "Seniors’ Paid Matinee: Nouvell...": container="Seniors’ Paid Matinee: Nouvelle Vague + intro..."
+[bfi-southbank] Link 2: title="The Grand Budapest Hotel + intro by Alice Sage", href contains loadArticle
+[bfi-southbank] Processing "The Grand Budapest Hotel + int...": container="The Grand Budapest Hotel + intro by Alice Sage..."
+[bfi-southbank] Processing "Pickpocket + intro by Muriel Z...": container="Pickpocket + intro by Muriel Zagha..."
+[bfi-southbank] See events for January 28: 7 screenings
+[bfi-southbank] Clicking: See events for January 29...
+[bfi-southbank] Found 7 loadArticle links
+[bfi-southbank] Link 0: title="Library Research Session", href contains loadArticle
+[bfi-southbank] Link 1: title="Nouvelle Vague (Preview screenings)", href contains loadArticle
+[bfi-southbank] Processing "Nouvelle Vague (Preview screen...": container="Nouvelle Vague (Preview screenings)..."
+[bfi-southbank] Link 2: title="My Beautiful Laundrette", href contains loadArticle
+[bfi-southbank] Processing "My Beautiful Laundrette...": container="My Beautiful Laundrette..."
+[bfi-southbank] Processing "Slacker...": container="Slacker..."
+[bfi-southbank] See events for January 29: 6 screenings
+[bfi-southbank] Clicking: See events for January 30...
+[bfi-southbank] Found 10 loadArticle links
+[bfi-southbank] Link 0: title="Library Research Session", href contains loadArticle
+[bfi-southbank] Link 1: title="Ran", href contains loadArticle
+[bfi-southbank] Processing "Ran...": container="Ran..."
+[bfi-southbank] Link 2: title="Nouvelle Vague", href contains loadArticle
+[bfi-southbank] Processing "Nouvelle Vague...": container="Nouvelle Vague..."
+[bfi-southbank] Processing "The 400 Blows...": container="The 400 Blows..."
+[bfi-southbank] See events for January 30: 9 screenings
+[bfi-southbank] Clicking: See events for January 31...
+[bfi-southbank] Found 14 loadArticle links
+[bfi-southbank] Link 0: title="Library Research Session", href contains loadArticle
+[bfi-southbank] Link 1: title="LSFF: Am I Still Young? Can I Dream for a Few Mont", href contains loadArticle
+[bfi-southbank] Processing "LSFF: Am I Still Young? Can I ...": container="LSFF: Am I Still Young? Can I Dream for a Few Months More? + Q&A..."
+[bfi-southbank] Link 2: title="The Elephant Man", href contains loadArticle
+[bfi-southbank] Processing "The Elephant Man...": container="The Elephant Man..."
+[bfi-southbank] Processing "Nouvelle Vague...": container="Nouvelle Vague..."
+[bfi-southbank] See events for January 31: 13 screenings
+[bfi-southbank] Scraping month 2...
+[bfi-southbank] Found 28 active dates
+[bfi-southbank] Clicking: See events for February 1...
+[bfi-southbank] Found 8 loadArticle links
+[bfi-southbank] Link 0: title="Nouvelle Vague", href contains loadArticle
+[bfi-southbank] Processing "Nouvelle Vague...": container="Nouvelle Vague..."
+[bfi-southbank] Link 1: title="Strongroom", href contains loadArticle
+[bfi-southbank] Processing "Strongroom...": container="Strongroom..."
+[bfi-southbank] Link 2: title="Strongroom", href contains loadArticle
+[bfi-southbank] Processing "Strongroom...": container="Strongroom..."
+[bfi-southbank] See events for February 1: 8 screenings
+[bfi-southbank] Clicking: See events for February 2...
+[bfi-southbank] Found 9 loadArticle links
+[bfi-southbank] Link 0: title="Member Exclusive: BFI Southbank and BFI IMAX Tour", href contains loadArticle
+[bfi-southbank] Processing "Member Exclusive: BFI Southban...": container="Member Exclusive: BFI Southbank and BFI IMAX Tour..."
+[bfi-southbank] Link 1: title="Nouvelle Vague", href contains loadArticle
+[bfi-southbank] Processing "Nouvelle Vague...": container="Nouvelle Vague..."
+[bfi-southbank] Link 2: title="Kes", href contains loadArticle
+[bfi-southbank] Processing "Kes...": container="Kes..."
+[bfi-southbank] See events for February 2: 9 screenings
+[bfi-southbank] Clicking: See events for February 3...
+[bfi-southbank] Found 10 loadArticle links
+[bfi-southbank] Link 0: title="Library Research Session", href contains loadArticle
+[bfi-southbank] Link 1: title="Nouvelle Vague", href contains loadArticle
+[bfi-southbank] Processing "Nouvelle Vague...": container="Nouvelle Vague..."
+[bfi-southbank] Link 2: title="Strongroom", href contains loadArticle
+[bfi-southbank] Processing "Strongroom...": container="Strongroom..."
+[bfi-southbank] Processing "Nouvelle Vague...": container="Nouvelle Vague..."
+[bfi-southbank] See events for February 3: 9 screenings
+[bfi-southbank] Clicking: See events for February 4...
+[bfi-southbank] Found 8 loadArticle links
+[bfi-southbank] Link 0: title="Library Research Session", href contains loadArticle
+[bfi-southbank] Link 1: title="Strongroom", href contains loadArticle
+[bfi-southbank] Processing "Strongroom...": container="Strongroom..."
+[bfi-southbank] Link 2: title="Nouvelle Vague", href contains loadArticle
+[bfi-southbank] Processing "Nouvelle Vague...": container="Nouvelle Vague..."
+[bfi-southbank] Processing "The War Trilogy: Ashes and Dia...": container="The War Trilogy: Ashes and Diamonds + KINOTEKA Polish Film Festival Opening + extended intro..."
+[bfi-southbank] See events for February 4: 7 screenings
+[bfi-southbank] Clicking: See events for February 5...
+[bfi-southbank] Found 10 loadArticle links
+[bfi-southbank] Link 0: title="Library Research Session", href contains loadArticle
+[bfi-southbank] Link 1: title="Nouvelle Vague", href contains loadArticle
+[bfi-southbank] Processing "Nouvelle Vague...": container="Nouvelle Vague..."
+[bfi-southbank] Link 2: title="Bringing Up Baby", href contains loadArticle
+[bfi-southbank] Processing "Bringing Up Baby...": container="Bringing Up Baby..."
+[bfi-southbank] Processing "Strongroom...": container="Strongroom..."
+[bfi-southbank] See events for February 5: 9 screenings
+[bfi-southbank] Clicking: See events for February 6...
+[bfi-southbank] Found 7 loadArticle links
+[bfi-southbank] Link 0: title="Library Research Session", href contains loadArticle
+[bfi-southbank] Link 1: title="Seniors’ Free Matinee: Mandabi + intro", href contains loadArticle
+[bfi-southbank] Processing "Seniors’ Free Matinee: Mandabi...": container="Seniors’ Free Matinee: Mandabi + intro..."
+[bfi-southbank] Link 2: title="The Chronology of Water", href contains loadArticle
+[bfi-southbank] Processing "The Chronology of Water...": container="The Chronology of Water..."
+[bfi-southbank] Processing "The Chronology of Water...": container="The Chronology of Water..."
+[bfi-southbank] See events for February 6: 6 screenings
+[bfi-southbank] Clicking: See events for February 7...
+[bfi-southbank] Found 12 loadArticle links
+[bfi-southbank] Link 0: title="Library Research Session", href contains loadArticle
+[bfi-southbank] Link 1: title="Kes", href contains loadArticle
+[bfi-southbank] Processing "Kes...": container="Kes..."
+[bfi-southbank] Link 2: title="The Chronology of Water", href contains loadArticle
+[bfi-southbank] Processing "The Chronology of Water...": container="The Chronology of Water..."
+[bfi-southbank] Processing "The Ashes...": container="The Ashes..."
+[bfi-southbank] See events for February 7: 11 screenings
+[bfi-southbank] Clicking: See events for February 8...
+[bfi-southbank] Found 9 loadArticle links
+[bfi-southbank] Link 0: title="Family Funday Preview: Stitch Head + Q&A with dire", href contains loadArticle
+[bfi-southbank] Processing "Family Funday Preview: Stitch ...": container="Family Funday Preview: Stitch Head + Q&A with director Steve Hudson and author Guy Bass..."
+[bfi-southbank] Link 1: title="The Chronology of Water", href contains loadArticle
+[bfi-southbank] Processing "The Chronology of Water...": container="The Chronology of Water..."
+[bfi-southbank] Link 2: title="Open Door", href contains loadArticle
+[bfi-southbank] Processing "Open Door...": container="Open Door..."
+[bfi-southbank] See events for February 8: 9 screenings

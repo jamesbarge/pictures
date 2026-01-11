@@ -9,7 +9,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Navigation, Heart, MapPin, Settings, User, Clapperboard, Menu, X } from "lucide-react";
+import { Navigation, Heart, MapPin, Settings, User, Clapperboard, Menu, X, History } from "lucide-react";
 import { SignInButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import { cn } from "@/lib/cn";
 import { usePreferences } from "@/stores/preferences";
@@ -23,6 +23,7 @@ interface HeaderNavButtonsProps {
 const NAV_ITEMS = [
   { href: "/reachable", icon: Navigation, label: "What Can I Catch?" },
   { href: "/festivals", icon: Clapperboard, label: "Festivals" },
+  { href: "/seasons", icon: History, label: "Seasons" },
   { href: "/map", icon: MapPin, label: "Map" },
   { href: "/watchlist", icon: Heart, label: "Watchlist" },
   { href: "/settings", icon: Settings, label: "Settings" },
@@ -236,6 +237,13 @@ export function HeaderNavButtons({ mounted }: HeaderNavButtonsProps) {
           href="/festivals"
           icon={<Clapperboard className="w-4 h-4" />}
           label="Festivals"
+        />
+
+        {/* Seasons */}
+        <DesktopNavButton
+          href="/seasons"
+          icon={<History className="w-4 h-4" />}
+          label="Seasons"
         />
 
         {/* Map */}
