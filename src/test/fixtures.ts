@@ -319,6 +319,7 @@ export function createFilterState(overrides: Partial<FilterState> = {}): FilterS
     timesOfDay: [],
     festivalSlug: null,
     festivalOnly: false,
+    seasonSlug: null,
     hideSeen: false,
     hideNotInterested: true,
     onlySingleShowings: false,
