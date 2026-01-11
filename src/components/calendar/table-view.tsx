@@ -8,7 +8,7 @@
 
 import { useMemo, useState, useCallback, memo } from "react";
 import { format, differenceInDays, startOfDay, isSameDay } from "date-fns";
-import { ChevronUp, ChevronDown, ChevronRight, Star } from "lucide-react";
+import { ChevronUp, ChevronDown, ChevronRight, Star, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
 
@@ -58,6 +58,7 @@ export const TableView = memo(function TableView({ screenings }: TableViewProps)
   const [sortColumn, setSortColumn] = useState<SortColumn>("rating");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [expandedFilmId, setExpandedFilmId] = useState<string | null>(null);
+  const [ratingsHidden, setRatingsHidden] = useState(false);
 
   // Aggregate screenings by film (across ALL dates)
   const aggregatedFilms = useMemo(() => {
@@ -181,14 +182,35 @@ export const TableView = memo(function TableView({ screenings }: TableViewProps)
               onSort={handleSort}
               className="hidden sm:table-cell"
             />
-            <SortableHeader
-              column="rating"
-              label="Rating"
-              currentColumn={sortColumn}
-              direction={sortDirection}
-              onSort={handleSort}
-              className="w-16 sm:w-20"
-            />
+            <th className="w-16 sm:w-20">
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => handleSort("rating")}
+                  className={cn(
+                    "inline-flex items-center gap-1 select-none whitespace-nowrap",
+                    sortColumn === "rating" && "text-text-primary"
+                  )}
+                >
+                  Rating
+                  {sortColumn === "rating" && (
+                    sortDirection === "asc"
+                      ? <ChevronUp className="w-3 h-3" />
+                      : <ChevronDown className="w-3 h-3" />
+                  )}
+                </button>
+                <button
+                  onClick={() => setRatingsHidden(h => !h)}
+                  className="p-0.5 rounded hover:bg-background-tertiary transition-colors"
+                  title={ratingsHidden ? "Show ratings" : "Hide ratings"}
+                >
+                  {ratingsHidden ? (
+                    <EyeOff className="w-3.5 h-3.5 text-text-tertiary" />
+                  ) : (
+                    <Eye className="w-3.5 h-3.5 text-text-tertiary hover:text-text-secondary" />
+                  )}
+                </button>
+              </div>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -198,6 +220,7 @@ export const TableView = memo(function TableView({ screenings }: TableViewProps)
               row={row}
               isExpanded={expandedFilmId === row.film.id}
               onToggleExpand={() => toggleExpanded(row.film.id)}
+              ratingsHidden={ratingsHidden}
             />
           ))}
         </tbody>
@@ -270,9 +293,10 @@ interface TableRowProps {
   row: TableFilmRow;
   isExpanded: boolean;
   onToggleExpand: () => void;
+  ratingsHidden: boolean;
 }
 
-const TableRow = memo(function TableRow({ row, isExpanded, onToggleExpand }: TableRowProps) {
+const TableRow = memo(function TableRow({ row, isExpanded, onToggleExpand, ratingsHidden }: TableRowProps) {
   const cinemaDisplay = row.primaryCinema.shortName || row.primaryCinema.name;
   const showingText = formatShowingDates(row.firstDate, row.lastDate, row.uniqueDates);
   const rating = row.film.letterboxdRating;
@@ -323,7 +347,9 @@ const TableRow = memo(function TableRow({ row, isExpanded, onToggleExpand }: Tab
 
         {/* Letterboxd Rating */}
         <td className="table-view-rating">
-          {rating ? (
+          {ratingsHidden ? (
+            <span className="text-text-tertiary">•••</span>
+          ) : rating ? (
             <span className="inline-flex items-center gap-0.5">
               <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
               <span>{rating.toFixed(1)}</span>
