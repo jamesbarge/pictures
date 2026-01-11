@@ -91,7 +91,8 @@
     "scrape:bfi-seasons": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/seasons/run-bfi-seasons.ts",
     "scrape:close-up-seasons": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/seasons/run-close-up-seasons.ts",
     "scrape:barbican-seasons": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/seasons/run-barbican-seasons.ts",
-    "scrape:pcc-seasons": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/seasons/run-pcc-seasons.ts"
+    "scrape:pcc-seasons": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/seasons/run-pcc-seasons.ts",
+    "scrape:ica-seasons": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/seasons/run-ica-seasons.ts"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.1.76",
