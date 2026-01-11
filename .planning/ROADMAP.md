@@ -18,7 +18,7 @@ Cinema web scraping — HTML parsing, API integration, Playwright automation (ex
 - [x] **Phase 2: Season Scraper Research** — Analyze cinema website structures ✓
 - [x] **Phase 3: Scraper Infrastructure** — Base season scraper pattern ✓
 - [x] **Phase 4: BFI Season Scraper** — First implementation ✓
-- [ ] **Phase 5: Additional Cinema Scrapers** — Barbican, Curzon, others
+- [x] **Phase 5: Additional Cinema Scrapers** — Barbican, Close-Up, PCC, ICA ✓
 - [ ] **Phase 6: Director Enrichment** — TMDB integration for director data
 - [ ] **Phase 7: /seasons Page** — Season cards and detail views
 - [ ] **Phase 8: Director Pages** — Browse by director
@@ -95,15 +95,28 @@ Plans:
 - Filters section headings (months, "Programme", etc.) from film results
 - Successfully tested: finds season cards, extracts films, saves via pipeline
 
-### Phase 5: Additional Cinema Scrapers
-**Goal**: Extend season scraping to Barbican, Curzon, and other cinemas with seasons
+### Phase 5: Additional Cinema Scrapers ✓
+**Goal**: Extend season scraping to Barbican, Close-Up, PCC, and ICA
 **Depends on**: Phase 4
 **Research**: Likely (per-cinema variations)
-**Research topics**: Barbican event structure, Curzon curated sections, other independents
-**Plans**: TBD
+**Research topics**: Barbican event structure, Close-Up JSON, PCC seasons section, ICA strands
+**Plans**: Complete
+**Completed**: 2026-01-11
 
 Plans:
-- [ ] 05-01: Implement additional season scrapers
+- [x] 05-01: Implement additional season scrapers
+
+**Key Deliverables:**
+- `src/scrapers/seasons/close-up.ts` - Extracts from embedded JSON film_url field
+- `src/scrapers/seasons/barbican.ts` - Discovers series from /whats-on/series/
+- `src/scrapers/seasons/pcc.ts` - Scrapes /seasons-events/ section
+- `src/scrapers/seasons/ica.ts` - Pattern matches strand pages
+
+**npm scripts added:**
+- `scrape:close-up-seasons`
+- `scrape:barbican-seasons`
+- `scrape:pcc-seasons`
+- `scrape:ica-seasons`
 
 ### Phase 6: Director Enrichment
 **Goal**: Integrate TMDB for director bios, photos, and filmography data
@@ -160,7 +173,7 @@ Plans:
 | 2. Season Scraper Research | 1/1 | Complete | 2026-01-10 |
 | 3. Scraper Infrastructure | 1/1 | Complete | 2026-01-10 |
 | 4. BFI Season Scraper | 1/1 | Complete | 2026-01-11 |
-| 5. Additional Cinema Scrapers | 0/1 | Not started | - |
+| 5. Additional Cinema Scrapers | 1/1 | Complete | 2026-01-11 |
 | 6. Director Enrichment | 0/1 | Not started | - |
 | 7. /seasons Page | 0/2 | Not started | - |
 | 8. Director Pages | 0/1 | Not started | - |
