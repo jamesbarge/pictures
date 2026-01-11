@@ -72,7 +72,16 @@ const CHEERIO_CINEMAS = [
   "garden",
   "castle",
   "rich-mix",
-  // Note: "phoenix" removed - it uses Playwright
+  // Additional Cheerio-based cinemas
+  "close-up-cinema",
+  "cine-lumiere",
+  "castle-sidcup",
+  "arthouse-crouch-end",
+  "coldharbour-blue",
+  "olympic-studios",
+  "david-lean-cinema",
+  "riverside-studios",
+  // Note: "phoenix" and "regent-street" removed - they use Playwright
 ];
 
 // Lazy-loaded scraper registry
@@ -237,6 +246,134 @@ const getScraperRegistry = (): Record<string, () => Promise<ScraperEntry>> => ({
       },
       false,
       async () => createRichMixScraper()
+    );
+  },
+
+  "close-up-cinema": async () => {
+    const { CloseUpCinemaScraper } = await import("@/scrapers/cinemas/close-up");
+    return createIndependentEntry(
+      {
+        id: "close-up-cinema",
+        name: "Close-Up Cinema",
+        shortName: "Close-Up",
+        website: "https://www.closeupfilmcentre.com",
+        address: { street: "97 Sclater Street", area: "Shoreditch", postcode: "E1 6HR" },
+        features: ["independent", "repertory", "filmmaker-seasons"],
+      },
+      false,
+      async () => new CloseUpCinemaScraper()
+    );
+  },
+
+  "cine-lumiere": async () => {
+    const { CineLumiereScraper } = await import("@/scrapers/cinemas/cine-lumiere");
+    return createIndependentEntry(
+      {
+        id: "cine-lumiere",
+        name: "Cine Lumiere",
+        shortName: "Cine Lumiere",
+        website: "https://www.institut-francais.org.uk/cine-lumiere/",
+        address: { street: "17 Queensberry Place", area: "South Kensington", postcode: "SW7 2DT" },
+        features: ["independent", "french-cinema", "world-cinema"],
+      },
+      false,
+      async () => new CineLumiereScraper()
+    );
+  },
+
+  "castle-sidcup": async () => {
+    const { createCastleSidcupScraper } = await import("@/scrapers/cinemas/castle-sidcup");
+    return createIndependentEntry(
+      {
+        id: "castle-sidcup",
+        name: "Castle Sidcup",
+        shortName: "Castle Sidcup",
+        website: "https://thecastlecinema.com/sidcup",
+        address: { street: "44 Main Road", area: "Sidcup", postcode: "DA14 6NJ" },
+        features: ["independent", "community"],
+      },
+      false,
+      async () => createCastleSidcupScraper()
+    );
+  },
+
+  "arthouse-crouch-end": async () => {
+    const { createArtHouseCrouchEndScraper } = await import("@/scrapers/cinemas/arthouse-crouch-end");
+    return createIndependentEntry(
+      {
+        id: "arthouse-crouch-end",
+        name: "ArtHouse Crouch End",
+        shortName: "ArtHouse",
+        website: "https://arthousecrouchend.co.uk",
+        address: { street: "159a Tottenham Lane", area: "Crouch End", postcode: "N8 9BT" },
+        features: ["independent", "community", "single-screen"],
+      },
+      false,
+      async () => createArtHouseCrouchEndScraper()
+    );
+  },
+
+  "coldharbour-blue": async () => {
+    const { createColdharbourBlueScraper } = await import("@/scrapers/cinemas/coldharbour-blue");
+    return createIndependentEntry(
+      {
+        id: "coldharbour-blue",
+        name: "Coldharbour Blue",
+        shortName: "Coldharbour",
+        website: "https://www.coldharbourblue.com",
+        address: { street: "259-260 Hardess Street", area: "Loughborough Junction", postcode: "SE24 0HN" },
+        features: ["independent", "community", "bar"],
+      },
+      false,
+      async () => createColdharbourBlueScraper()
+    );
+  },
+
+  "olympic-studios": async () => {
+    const { createOlympicScraper } = await import("@/scrapers/cinemas/olympic");
+    return createIndependentEntry(
+      {
+        id: "olympic-studios",
+        name: "Olympic Studios",
+        shortName: "Olympic",
+        website: "https://olympiccinema.co.uk",
+        address: { street: "117-123 Church Road", area: "Barnes", postcode: "SW13 9HL" },
+        features: ["independent", "luxury", "bar", "restaurant"],
+      },
+      false,
+      async () => createOlympicScraper()
+    );
+  },
+
+  "david-lean-cinema": async () => {
+    const { createDavidLeanScraper } = await import("@/scrapers/cinemas/david-lean");
+    return createIndependentEntry(
+      {
+        id: "david-lean-cinema",
+        name: "The David Lean Cinema",
+        shortName: "David Lean",
+        website: "https://www.davidleancinema.org.uk",
+        address: { street: "Croydon Clocktower", area: "Croydon", postcode: "CR9 1ET" },
+        features: ["independent", "community", "repertory"],
+      },
+      false,
+      async () => createDavidLeanScraper()
+    );
+  },
+
+  "riverside-studios": async () => {
+    const { createRiversideStudiosScraper } = await import("@/scrapers/cinemas/riverside-studios");
+    return createIndependentEntry(
+      {
+        id: "riverside-studios",
+        name: "Riverside Studios",
+        shortName: "Riverside",
+        website: "https://riversidestudios.co.uk",
+        address: { street: "101 Queen Caroline Street", area: "Hammersmith", postcode: "W6 9BN" },
+        features: ["arts-centre", "independent", "theatre"],
+      },
+      false,
+      async () => createRiversideStudiosScraper()
     );
   },
 

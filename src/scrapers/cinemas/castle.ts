@@ -16,14 +16,14 @@ import type { RawScreening, ScraperConfig, CinemaScraper } from "../types";
 // ============================================================================
 
 export const CASTLE_CONFIG: ScraperConfig = {
-  cinemaId: "castle-cinema",
+  cinemaId: "castle",
   baseUrl: "https://thecastlecinema.com",
   requestsPerMinute: 30,
   delayBetweenRequests: 500,
 };
 
 export const CASTLE_VENUE = {
-  id: "castle-cinema",
+  id: "castle",
   name: "The Castle Cinema",
   shortName: "Castle",
   area: "Hackney",

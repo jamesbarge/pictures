@@ -1,0 +1,163 @@
+name: Playwright Scrapers
+
+on:
+  schedule:
+    # Run every Sunday at 10 PM UTC (11 PM UK winter / 12 AM UK summer)
+    - cron: '0 22 * * 0'
+  workflow_dispatch:
+    # Allow manual triggers from GitHub Actions UI
+    inputs:
+      scraper:
+        description: 'Specific scraper to run (leave empty for all)'
+        required: false
+        default: ''
+        type: choice
+        options:
+          - ''
+          - 'curzon'
+          - 'picturehouse'
+          - 'everyman'
+          - 'bfi'
+          - 'barbican'
+          - 'phoenix'
+          - 'electric'
+          - 'lexi'
+          - 'regent-street'
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  scrape-chains:
+    name: Scrape Chain Cinemas
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    if: github.event.inputs.scraper == '' || github.event.inputs.scraper == 'curzon' || github.event.inputs.scraper == 'picturehouse' || github.event.inputs.scraper == 'everyman'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+
+      - name: Scrape Curzon
+        if: github.event.inputs.scraper == '' || github.event.inputs.scraper == 'curzon'
+        run: npm run scrape:curzon
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+          TMDB_READ_ACCESS_TOKEN: ${{ secrets.TMDB_READ_ACCESS_TOKEN }}
+
+      - name: Scrape Picturehouse
+        if: github.event.inputs.scraper == '' || github.event.inputs.scraper == 'picturehouse'
+        run: npm run scrape:picturehouse
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+          TMDB_READ_ACCESS_TOKEN: ${{ secrets.TMDB_READ_ACCESS_TOKEN }}
+
+      - name: Scrape Everyman
+        if: github.event.inputs.scraper == '' || github.event.inputs.scraper == 'everyman'
+        run: npm run scrape:everyman
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+          TMDB_READ_ACCESS_TOKEN: ${{ secrets.TMDB_READ_ACCESS_TOKEN }}
+
+  scrape-independents:
+    name: Scrape Playwright Independents
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    if: github.event.inputs.scraper == '' || github.event.inputs.scraper == 'bfi' || github.event.inputs.scraper == 'barbican' || github.event.inputs.scraper == 'phoenix' || github.event.inputs.scraper == 'electric' || github.event.inputs.scraper == 'lexi' || github.event.inputs.scraper == 'regent-street'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+
+      - name: Scrape BFI (backup to PDF import)
+        if: github.event.inputs.scraper == '' || github.event.inputs.scraper == 'bfi'
+        run: npm run scrape:bfi
+        continue-on-error: true
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+          TMDB_READ_ACCESS_TOKEN: ${{ secrets.TMDB_READ_ACCESS_TOKEN }}
+
+      - name: Scrape Barbican
+        if: github.event.inputs.scraper == '' || github.event.inputs.scraper == 'barbican'
+        run: npm run scrape:barbican
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+          TMDB_READ_ACCESS_TOKEN: ${{ secrets.TMDB_READ_ACCESS_TOKEN }}
+
+      - name: Scrape Phoenix
+        if: github.event.inputs.scraper == '' || github.event.inputs.scraper == 'phoenix'
+        run: npm run scrape:phoenix
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+          TMDB_READ_ACCESS_TOKEN: ${{ secrets.TMDB_READ_ACCESS_TOKEN }}
+
+      - name: Scrape Electric
+        if: github.event.inputs.scraper == '' || github.event.inputs.scraper == 'electric'
+        run: npm run scrape:electric
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+          TMDB_READ_ACCESS_TOKEN: ${{ secrets.TMDB_READ_ACCESS_TOKEN }}
+
+      - name: Scrape Lexi
+        if: github.event.inputs.scraper == '' || github.event.inputs.scraper == 'lexi'
+        run: npm run scrape:lexi
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+          TMDB_READ_ACCESS_TOKEN: ${{ secrets.TMDB_READ_ACCESS_TOKEN }}
+
+      - name: Scrape Regent Street
+        if: github.event.inputs.scraper == '' || github.event.inputs.scraper == 'regent-street'
+        run: npm run scrape:regent-street
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+          TMDB_READ_ACCESS_TOKEN: ${{ secrets.TMDB_READ_ACCESS_TOKEN }}
+
+  notify-on-failure:
+    name: Notify on Failure
+    runs-on: ubuntu-latest
+    needs: [scrape-chains, scrape-independents]
+    if: failure()
+
+    steps:
+      - name: Notify Slack on failure
+        if: env.SLACK_WEBHOOK_URL != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+            --data "{\"text\":\"Playwright scrapers workflow failed! Check GitHub Actions: $RUN_URL\"}" \
+            "$SLACK_WEBHOOK_URL"
