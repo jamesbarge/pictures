@@ -19,6 +19,7 @@ export function CalendarViewSetting() {
       <div className="space-y-3 animate-pulse">
         <div className="h-20 rounded-lg bg-background-secondary" />
         <div className="h-20 rounded-lg bg-background-secondary" />
+        <div className="h-20 rounded-lg bg-background-secondary" />
       </div>
     );
   }
@@ -70,6 +71,30 @@ export function CalendarViewSetting() {
           <span className="text-text-primary font-medium">Screening view</span>
           <p className="text-text-secondary text-sm mt-1">
             One card per screening — see all showtimes at a glance
+          </p>
+        </div>
+      </label>
+
+      <label
+        className={cn(
+          "flex items-start gap-3 p-4 rounded-lg border cursor-pointer transition-colors",
+          calendarViewMode === "table"
+            ? "border-accent-primary bg-accent-primary/5"
+            : "border-border-subtle hover:bg-background-secondary"
+        )}
+      >
+        <input
+          type="radio"
+          name="calendarViewMode"
+          value="table"
+          checked={calendarViewMode === "table"}
+          onChange={() => setCalendarViewMode("table")}
+          className="mt-1 accent-accent-primary"
+        />
+        <div>
+          <span className="text-text-primary font-medium">Table view</span>
+          <p className="text-text-secondary text-sm mt-1">
+            Dense text-only list — see all films at a glance, no images
           </p>
         </div>
       </label>

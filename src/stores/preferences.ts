@@ -16,7 +16,7 @@ export interface PreferencesState {
 
   // View preferences
   defaultView: "list" | "grid";
-  calendarViewMode: "films" | "screenings";
+  calendarViewMode: "films" | "screenings" | "table";
   showRepertoryOnly: boolean;
   hidePastScreenings: boolean;
 
@@ -38,7 +38,7 @@ export interface PreferencesState {
   selectAllCinemas: (cinemaIds: string[]) => void;
   clearCinemas: () => void;
   setDefaultView: (view: "list" | "grid") => void;
-  setCalendarViewMode: (mode: "films" | "screenings") => void;
+  setCalendarViewMode: (mode: "films" | "screenings" | "table") => void;
   setShowRepertoryOnly: (show: boolean) => void;
   setHidePastScreenings: (hide: boolean) => void;
   setDefaultDateRange: (range: PreferencesState["defaultDateRange"]) => void;

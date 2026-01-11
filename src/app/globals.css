@@ -634,3 +634,111 @@ body,
   padding-right: 0.1em;
   color: var(--accent-primary);
 }
+
+/* ============================================
+ * TABLE VIEW - Newspaper Listings Style
+ * Dense, text-only film listings inspired by
+ * newspaper cinema listings and Criterion booklets
+ * ============================================ */
+
+.table-view-container {
+  @apply overflow-x-auto -mx-4 px-4;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-view {
+  @apply w-full text-sm;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.table-view-header th {
+  @apply font-display text-xs uppercase tracking-wider text-text-secondary;
+  @apply py-2 px-3 text-left border-b-2 border-border-emphasis;
+  @apply cursor-pointer select-none transition-colors;
+}
+
+.table-view-header th:hover {
+  @apply text-text-primary;
+}
+
+.table-view-row {
+  @apply border-b border-border-subtle transition-colors;
+  @apply cursor-pointer;
+}
+
+.table-view-row:hover {
+  @apply bg-background-secondary/50;
+}
+
+.table-view-row-expanded {
+  @apply bg-background-secondary/30;
+}
+
+.table-view-row td {
+  @apply py-2.5 px-3 align-top;
+}
+
+/* Column rules for newspaper feel */
+.table-view-row td:not(:last-child) {
+  @apply border-r border-border-subtle;
+}
+
+.table-view-title {
+  @apply font-display font-semibold text-text-primary;
+}
+
+.table-view-year {
+  @apply text-text-tertiary text-xs ml-1;
+}
+
+.table-view-director {
+  @apply text-text-secondary text-sm;
+}
+
+.table-view-cinema {
+  @apply text-text-secondary text-sm whitespace-nowrap;
+}
+
+.table-view-cinema-count {
+  @apply text-text-tertiary text-xs ml-1;
+}
+
+.table-view-times {
+  @apply flex flex-wrap gap-1.5;
+}
+
+.table-view-time {
+  @apply font-mono text-xs px-1.5 py-0.5 rounded;
+  @apply bg-background-tertiary text-text-primary;
+  @apply hover:bg-accent-primary hover:text-text-inverse transition-colors;
+  @apply no-underline;
+}
+
+/* Mobile sticky title column */
+@media (max-width: 640px) {
+  .table-view-row td:first-child {
+    @apply sticky left-0 bg-background-primary z-10;
+  }
+
+  .table-view-row:hover td:first-child {
+    @apply bg-background-secondary;
+  }
+
+  .table-view-header th:first-child {
+    @apply sticky left-0 bg-background-primary z-10;
+  }
+}
+
+/* Expanded detail row */
+.table-expanded {
+  @apply bg-background-secondary/30 border-l-2 border-accent-primary;
+}
+
+.table-expanded td {
+  @apply p-0;
+}
+
+.table-expanded-inner {
+  @apply py-3 px-4;
+}

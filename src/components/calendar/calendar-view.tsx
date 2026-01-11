@@ -8,6 +8,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { startOfDay, endOfDay, format, isWithinInterval, getHours } from "date-fns";
 import { DaySection } from "./day-section";
+import { TableView } from "./table-view";
 import { useFilters, getTimeOfDayFromHour, isIndependentCinema } from "@/stores/filters";
 import { useFilmStatus } from "@/stores/film-status";
 import { usePreferences } from "@/stores/preferences";
@@ -409,7 +410,12 @@ export function CalendarView({ screenings, cinemas }: CalendarViewProps) {
     );
   }
 
-  // Choose data source based on view mode
+  // Table view gets all filtered screenings as a flat list
+  if (calendarViewMode === "table") {
+    return <TableView screenings={filteredScreenings} />;
+  }
+
+  // Choose data source based on view mode (films vs screenings)
   const displayData = calendarViewMode === "films" && groupedByDateThenFilm
     ? groupedByDateThenFilm
     : groupedByDate.map(g => ({ ...g, filmGroups: undefined }));
