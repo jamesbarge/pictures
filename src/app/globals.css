@@ -648,13 +648,12 @@ body,
 
 .table-view {
   @apply w-full text-sm;
-  border-collapse: separate;
-  border-spacing: 0;
+  border-collapse: collapse;
 }
 
 .table-view-header th {
-  @apply font-display text-xs uppercase tracking-wider text-text-secondary;
-  @apply py-2 px-3 text-left border-b-2 border-border-emphasis;
+  @apply text-xs uppercase tracking-wide text-text-tertiary font-medium;
+  @apply py-2 px-2 text-left border-b border-border-subtle;
   @apply cursor-pointer select-none transition-colors;
 }
 
@@ -663,7 +662,7 @@ body,
 }
 
 .table-view-row {
-  @apply border-b border-border-subtle transition-colors;
+  @apply border-b border-border-subtle/50 transition-colors;
   @apply cursor-pointer;
 }
 
@@ -676,46 +675,30 @@ body,
 }
 
 .table-view-row td {
-  @apply py-2.5 px-3 align-top;
+  @apply py-1.5 px-2 align-middle;
 }
 
-/* Column rules for newspaper feel */
-.table-view-row td:not(:last-child) {
-  @apply border-r border-border-subtle;
+/* Film column - takes available space */
+.table-view-film {
+  @apply text-text-primary;
 }
 
-.table-view-title {
-  @apply font-display font-semibold text-text-primary;
+/* Rating column - compact */
+.table-view-rating {
+  @apply text-sm whitespace-nowrap;
 }
 
-.table-view-year {
-  @apply text-text-tertiary text-xs ml-1;
-}
-
-.table-view-director {
-  @apply text-text-secondary text-sm;
-}
-
+/* Cinema column - compact */
 .table-view-cinema {
   @apply text-text-secondary text-sm whitespace-nowrap;
 }
 
-.table-view-cinema-count {
-  @apply text-text-tertiary text-xs ml-1;
+/* Showing column - compact */
+.table-view-showing {
+  @apply text-text-secondary text-sm;
 }
 
-.table-view-times {
-  @apply flex flex-wrap gap-1.5;
-}
-
-.table-view-time {
-  @apply font-mono text-xs px-1.5 py-0.5 rounded;
-  @apply bg-background-tertiary text-text-primary;
-  @apply hover:bg-accent-primary hover:text-text-inverse transition-colors;
-  @apply no-underline;
-}
-
-/* Mobile sticky title column */
+/* Mobile: sticky first column */
 @media (max-width: 640px) {
   .table-view-row td:first-child {
     @apply sticky left-0 bg-background-primary z-10;
@@ -725,6 +708,10 @@ body,
     @apply bg-background-secondary;
   }
 
+  .table-view-row-expanded td:first-child {
+    @apply bg-background-secondary/30;
+  }
+
   .table-view-header th:first-child {
     @apply sticky left-0 bg-background-primary z-10;
   }
@@ -732,11 +719,11 @@ body,
 
 /* Expanded detail row */
 .table-expanded {
-  @apply bg-background-secondary/30 border-l-2 border-accent-primary;
+  @apply bg-background-secondary/20;
 }
 
 .table-expanded td {
-  @apply p-0;
+  @apply p-0 border-b-0;
 }
 
 .table-expanded-inner {

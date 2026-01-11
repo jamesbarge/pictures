@@ -1,14 +1,14 @@
 /**
  * Table View Component
- * Dense newspaper-style listing of all films across all dates
+ * Dense text-only listing of all films across all dates
  * Sortable columns, expandable rows for full screening details
  */
 
 "use client";
 
 import { useMemo, useState, useCallback, memo } from "react";
-import { format } from "date-fns";
-import { ChevronUp, ChevronDown } from "lucide-react";
+import { format, differenceInDays, startOfDay, isSameDay } from "date-fns";
+import { ChevronUp, ChevronDown, ChevronRight, Star } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
 
@@ -22,6 +22,7 @@ interface Screening {
     title: string;
     year?: number | null;
     directors: string[];
+    letterboxdRating?: number | null;
   };
   cinema: {
     id: string;
@@ -35,21 +36,18 @@ interface TableFilmRow {
     id: string;
     title: string;
     year?: number | null;
-    directors: string[];
+    letterboxdRating?: number | null;
   };
   primaryCinema: { id: string; name: string; shortName?: string | null };
   additionalCinemaCount: number;
-  upcomingTimes: Array<{
-    datetime: Date;
-    bookingUrl: string;
-    cinema: { id: string; name: string; shortName?: string | null };
-  }>;
   allScreenings: Screening[];
   screeningCount: number;
-  nextTime: Date;
+  firstDate: Date;
+  lastDate: Date;
+  uniqueDates: Date[];
 }
 
-type SortColumn = "title" | "director" | "cinema" | "time";
+type SortColumn = "title" | "rating" | "cinema" | "showing";
 type SortDirection = "asc" | "desc";
 
 interface TableViewProps {
@@ -57,8 +55,8 @@ interface TableViewProps {
 }
 
 export const TableView = memo(function TableView({ screenings }: TableViewProps) {
-  const [sortColumn, setSortColumn] = useState<SortColumn>("title");
-  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const [sortColumn, setSortColumn] = useState<SortColumn>("rating");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [expandedFilmId, setExpandedFilmId] = useState<string | null>(null);
 
   // Aggregate screenings by film (across ALL dates)
@@ -67,6 +65,7 @@ export const TableView = memo(function TableView({ screenings }: TableViewProps)
       film: Screening["film"];
       screenings: Screening[];
       cinemas: Map<string, Screening["cinema"]>;
+      dates: Set<string>;
     }>();
 
     for (const screening of screenings) {
@@ -76,32 +75,32 @@ export const TableView = memo(function TableView({ screenings }: TableViewProps)
           film: screening.film,
           screenings: [],
           cinemas: new Map(),
+          dates: new Set(),
         });
       }
       const entry = filmMap.get(filmId)!;
       entry.screenings.push(screening);
       entry.cinemas.set(screening.cinema.id, screening.cinema);
+      entry.dates.add(format(new Date(screening.datetime), "yyyy-MM-dd"));
     }
 
     // Transform to TableFilmRow array
-    return Array.from(filmMap.values()).map(({ film, screenings, cinemas }): TableFilmRow => {
+    return Array.from(filmMap.values()).map(({ film, screenings, cinemas, dates }): TableFilmRow => {
       const sortedScreenings = [...screenings].sort(
         (a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime()
       );
       const cinemaArray = Array.from(cinemas.values());
+      const sortedDates = Array.from(dates).sort().map(d => new Date(d));
 
       return {
         film,
         primaryCinema: cinemaArray[0],
         additionalCinemaCount: cinemaArray.length - 1,
-        upcomingTimes: sortedScreenings.slice(0, 5).map(s => ({
-          datetime: new Date(s.datetime),
-          bookingUrl: s.bookingUrl,
-          cinema: s.cinema,
-        })),
         allScreenings: sortedScreenings,
         screeningCount: screenings.length,
-        nextTime: new Date(sortedScreenings[0].datetime),
+        firstDate: sortedDates[0],
+        lastDate: sortedDates[sortedDates.length - 1],
+        uniqueDates: sortedDates,
       };
     });
   }, [screenings]);
@@ -117,18 +116,19 @@ export const TableView = memo(function TableView({ screenings }: TableViewProps)
         case "title":
           comparison = a.film.title.localeCompare(b.film.title);
           break;
-        case "director":
-          const dirA = a.film.directors[0] || "";
-          const dirB = b.film.directors[0] || "";
-          comparison = dirA.localeCompare(dirB);
+        case "rating":
+          // Sort by rating, nulls last
+          const aRating = a.film.letterboxdRating ?? -1;
+          const bRating = b.film.letterboxdRating ?? -1;
+          comparison = aRating - bRating;
           break;
         case "cinema":
           const cinemaA = a.primaryCinema.shortName || a.primaryCinema.name;
           const cinemaB = b.primaryCinema.shortName || b.primaryCinema.name;
           comparison = cinemaA.localeCompare(cinemaB);
           break;
-        case "time":
-          comparison = a.nextTime.getTime() - b.nextTime.getTime();
+        case "showing":
+          comparison = a.firstDate.getTime() - b.firstDate.getTime();
           break;
       }
 
@@ -144,7 +144,8 @@ export const TableView = memo(function TableView({ screenings }: TableViewProps)
       setSortDirection(d => d === "asc" ? "desc" : "asc");
     } else {
       setSortColumn(column);
-      setSortDirection("asc");
+      // Default to desc for rating, asc for others
+      setSortDirection(column === "rating" ? "desc" : "asc");
     }
   }, [sortColumn]);
 
@@ -166,11 +167,12 @@ export const TableView = memo(function TableView({ screenings }: TableViewProps)
               onSort={handleSort}
             />
             <SortableHeader
-              column="director"
-              label="Director"
+              column="rating"
+              label="Rating"
               currentColumn={sortColumn}
               direction={sortDirection}
               onSort={handleSort}
+              className="w-20"
             />
             <SortableHeader
               column="cinema"
@@ -180,11 +182,12 @@ export const TableView = memo(function TableView({ screenings }: TableViewProps)
               onSort={handleSort}
             />
             <SortableHeader
-              column="time"
-              label="Times"
+              column="showing"
+              label="Showing"
               currentColumn={sortColumn}
               direction={sortDirection}
               onSort={handleSort}
+              className="hidden sm:table-cell"
             />
           </tr>
         </thead>
@@ -199,6 +202,11 @@ export const TableView = memo(function TableView({ screenings }: TableViewProps)
           ))}
         </tbody>
       </table>
+
+      {/* Film count footer */}
+      <div className="text-text-tertiary text-xs text-center py-3 border-t border-border-subtle">
+        {sortedFilms.length} films
+      </div>
     </div>
   );
 });
@@ -210,17 +218,19 @@ interface SortableHeaderProps {
   currentColumn: SortColumn;
   direction: SortDirection;
   onSort: (column: SortColumn) => void;
+  className?: string;
 }
 
-function SortableHeader({ column, label, currentColumn, direction, onSort }: SortableHeaderProps) {
+function SortableHeader({ column, label, currentColumn, direction, onSort, className }: SortableHeaderProps) {
   const isActive = currentColumn === column;
 
   return (
     <th
       onClick={() => onSort(column)}
       className={cn(
-        "select-none",
-        isActive && "text-text-primary"
+        "select-none whitespace-nowrap",
+        isActive && "text-text-primary",
+        className
       )}
     >
       <span className="inline-flex items-center gap-1">
@@ -235,6 +245,26 @@ function SortableHeader({ column, label, currentColumn, direction, onSort }: Sor
   );
 }
 
+// Format the "Showing" dates in a compact way
+function formatShowingDates(firstDate: Date, lastDate: Date, uniqueDates: Date[]): string {
+  const today = startOfDay(new Date());
+  const isToday = isSameDay(firstDate, today);
+  const daySpan = differenceInDays(lastDate, firstDate);
+
+  if (uniqueDates.length === 1) {
+    // Single date
+    return isToday ? "Today" : format(firstDate, "EEE d");
+  }
+
+  if (daySpan <= 6) {
+    // Show day abbreviations for short runs
+    return `${format(firstDate, "EEE")}-${format(lastDate, "EEE")}`;
+  }
+
+  // Longer runs: show date range
+  return `${format(firstDate, "d MMM")} - ${format(lastDate, "d MMM")}`;
+}
+
 // Individual table row
 interface TableRowProps {
   row: TableFilmRow;
@@ -244,6 +274,8 @@ interface TableRowProps {
 
 const TableRow = memo(function TableRow({ row, isExpanded, onToggleExpand }: TableRowProps) {
   const cinemaDisplay = row.primaryCinema.shortName || row.primaryCinema.name;
+  const showingText = formatShowingDates(row.firstDate, row.lastDate, row.uniqueDates);
+  const rating = row.film.letterboxdRating;
 
   return (
     <>
@@ -251,50 +283,58 @@ const TableRow = memo(function TableRow({ row, isExpanded, onToggleExpand }: Tab
         className={cn("table-view-row", isExpanded && "table-view-row-expanded")}
         onClick={onToggleExpand}
       >
-        <td>
-          <Link
-            href={`/film/${row.film.id}`}
-            onClick={(e) => e.stopPropagation()}
-            className="hover:text-accent-primary transition-colors"
-          >
-            <span className="table-view-title">{row.film.title}</span>
-            {row.film.year && (
-              <span className="table-view-year">({row.film.year})</span>
-            )}
-          </Link>
+        {/* Film title with year */}
+        <td className="table-view-film">
+          <div className="flex items-center gap-1.5">
+            <ChevronRight
+              className={cn(
+                "w-3.5 h-3.5 text-text-tertiary transition-transform flex-shrink-0",
+                isExpanded && "rotate-90"
+              )}
+            />
+            <Link
+              href={`/film/${row.film.id}`}
+              onClick={(e) => e.stopPropagation()}
+              className="hover:text-accent-primary transition-colors truncate"
+            >
+              <span className="font-medium">{row.film.title}</span>
+              {row.film.year && (
+                <span className="text-text-tertiary ml-1">({row.film.year})</span>
+              )}
+            </Link>
+          </div>
         </td>
-        <td className="table-view-director">
-          {row.film.directors[0] || "—"}
+
+        {/* Letterboxd Rating */}
+        <td className="table-view-rating">
+          {rating ? (
+            <span className="inline-flex items-center gap-0.5">
+              <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+              <span>{rating.toFixed(1)}</span>
+            </span>
+          ) : (
+            <span className="text-text-tertiary">—</span>
+          )}
         </td>
+
+        {/* Cinema */}
         <td className="table-view-cinema">
           {cinemaDisplay}
           {row.additionalCinemaCount > 0 && (
-            <span className="table-view-cinema-count">+{row.additionalCinemaCount}</span>
+            <span className="text-text-tertiary ml-1">+{row.additionalCinemaCount}</span>
           )}
         </td>
-        <td>
-          <div className="table-view-times">
-            {row.upcomingTimes.slice(0, 4).map((t, i) => (
-              <a
-                key={i}
-                href={t.bookingUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="table-view-time"
-                title={`${format(t.datetime, "EEE d MMM")} at ${t.cinema.shortName || t.cinema.name}`}
-              >
-                {format(t.datetime, "HH:mm")}
-              </a>
-            ))}
-            {row.screeningCount > 4 && (
-              <span className="text-text-tertiary text-xs">
-                +{row.screeningCount - 4}
-              </span>
-            )}
-          </div>
+
+        {/* Showing dates */}
+        <td className="table-view-showing hidden sm:table-cell">
+          <span className="whitespace-nowrap">{showingText}</span>
+          {row.screeningCount > 1 && (
+            <span className="text-text-tertiary ml-1">({row.screeningCount})</span>
+          )}
         </td>
       </tr>
+
+      {/* Expanded detail */}
       {isExpanded && (
         <tr className="table-expanded">
           <td colSpan={4}>
@@ -336,43 +376,37 @@ function ExpandedDetail({ screenings }: ExpandedDetailProps) {
 
   return (
     <div className="table-expanded-inner">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="text-text-tertiary text-xs uppercase tracking-wider">
-            <th className="text-left py-1 pr-4">Date</th>
-            <th className="text-left py-1 pr-4">Time</th>
-            <th className="text-left py-1 pr-4">Cinema</th>
-            <th className="text-left py-1">Book</th>
-          </tr>
-        </thead>
-        <tbody>
-          {groupedByDate.map(({ date, screenings }) => (
-            screenings.map((s, i) => (
-              <tr key={s.id} className="border-t border-border-subtle/50">
-                <td className="py-1.5 pr-4 text-text-secondary">
-                  {i === 0 ? format(date, "EEE d MMM") : ""}
-                </td>
-                <td className="py-1.5 pr-4 font-mono text-text-primary">
+      {groupedByDate.map(({ date, screenings }) => (
+        <div key={date.toISOString()} className="mb-3 last:mb-0">
+          <div className="text-xs font-medium text-text-secondary mb-1">
+            {format(date, "EEEE d MMMM")}
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {screenings.map((s) => (
+              <a
+                key={s.id}
+                href={s.bookingUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs bg-background-tertiary hover:bg-accent-primary hover:text-text-inverse transition-colors"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <span className="font-mono font-medium">
                   {format(new Date(s.datetime), "HH:mm")}
-                </td>
-                <td className="py-1.5 pr-4 text-text-secondary">
+                </span>
+                <span className="text-text-secondary">
                   {s.cinema.shortName || s.cinema.name}
-                </td>
-                <td className="py-1.5">
-                  <a
-                    href={s.bookingUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-accent-primary hover:underline"
-                  >
-                    Book
-                  </a>
-                </td>
-              </tr>
-            ))
-          ))}
-        </tbody>
-      </table>
+                </span>
+                {s.format && (
+                  <span className="text-text-tertiary">
+                    {s.format}
+                  </span>
+                )}
+              </a>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
