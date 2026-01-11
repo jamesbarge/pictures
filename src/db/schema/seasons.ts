@@ -50,6 +50,9 @@ export const seasons = pgTable(
     // Source tracking
     sourceUrl: text("source_url"), // Where we scraped this from
     sourceCinemas: text("source_cinemas").array().default([]), // Cinema slugs ["bfi-southbank", "barbican"]
+    
+    // Raw film titles scraped from cinema website (for re-matching when new films added)
+    rawFilmTitles: text("raw_film_titles").array().default([]),
 
     // Status
     isActive: boolean("is_active").notNull().default(true),

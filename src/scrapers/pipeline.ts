@@ -23,6 +23,7 @@ import type { EventType, ScreeningFormat } from "@/types/screening";
 import { v4 as uuidv4 } from "uuid";
 import { validateScreenings, printValidationSummary } from "./utils/screening-validator";
 import { generateScrapeDiff, printDiffReport, shouldBlockScrape } from "./utils/scrape-diff";
+import { linkFilmToMatchingSeasons } from "./seasons/season-linker";
 
 // Agent imports - conditionally used when ENABLE_AGENTS=true
 const AGENTS_ENABLED = process.env.ENABLE_AGENTS === "true";
@@ -202,6 +203,10 @@ export async function processScreenings(
         result.failed += filmScreenings.length;
         continue;
       }
+
+      // Link film to any matching seasons
+      // This ensures films are associated with seasons as soon as they're scraped
+      await linkFilmToMatchingSeasons(filmId, firstScreening.filmTitle);
 
       // Insert screenings
       for (const screening of filmScreenings) {

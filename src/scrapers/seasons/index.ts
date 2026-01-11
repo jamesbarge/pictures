@@ -27,3 +27,11 @@ export { CloseUpSeasonScraper, createCloseUpSeasonScraper } from "./close-up";
 export { BarbicanSeasonScraper, createBarbicanSeasonScraper } from "./barbican";
 export { PCCSeasonScraper, createPCCSeasonScraper } from "./pcc";
 export { ICASeasonScraper, createICASeasonScraper } from "./ica";
+
+// Season Linker - for linking films to seasons during main scrape
+export {
+  linkFilmToMatchingSeasons,
+  relinkSeasonFilms,
+  clearSeasonCache,
+} from "./season-linker";
+

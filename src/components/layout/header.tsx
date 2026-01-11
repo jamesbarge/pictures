@@ -1481,7 +1481,7 @@ function SeasonFilter({ seasons, mounted, fullWidth }: SeasonFilterProps) {
             : "bg-background-secondary border-border-default text-text-secondary hover:border-border-emphasis hover:text-text-primary"
         )}
       >
-        <Film className="w-4 h-4 shrink-0" />
+        <History className="w-4 h-4 shrink-0" />
         <span className="flex-1 text-left truncate">{displayText}</span>
         <ChevronDown className={cn("w-4 h-4 shrink-0 transition-transform", isOpen && "rotate-180")} />
       </button>

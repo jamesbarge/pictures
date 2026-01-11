@@ -147,6 +147,8 @@ async function saveSeason(
     websiteUrl: rawSeason.websiteUrl,
     sourceUrl: rawSeason.websiteUrl,
     sourceCinemas: [rawSeason.sourceCinema],
+    // Store raw film titles for re-matching when new films are added
+    rawFilmTitles: rawSeason.films.map((f) => f.title),
     isActive: true,
     scrapedAt: new Date(),
   };
@@ -167,6 +169,7 @@ async function saveSeason(
         endDate: seasonData.endDate,
         posterUrl: seasonData.posterUrl,
         websiteUrl: seasonData.websiteUrl,
+        rawFilmTitles: seasonData.rawFilmTitles,
         scrapedAt: seasonData.scrapedAt,
         updatedAt: new Date(),
       })
