@@ -6,10 +6,51 @@
  *
  * Discovery page: https://whatson.bfi.org.uk/Online/default.asp?BOparam::WScontent::loadArticle::permalink=bfisouthbankguide
  * PDF URL pattern: https://core-cms.bfi.org.uk/media/{mediaId}/download
+ *
+ * Proxy Support:
+ * Set SCRAPER_API_KEY env var to use ScraperAPI for Cloudflare bypass.
+ * ScraperAPI automatically handles JavaScript rendering and anti-bot protection.
  */
 
 import * as cheerio from "cheerio";
 import { createHash } from "crypto";
+
+/**
+ * Fetches a URL, optionally through a proxy service.
+ * Uses ScraperAPI if SCRAPER_API_KEY is set, otherwise direct fetch.
+ */
+async function proxyFetch(url: string, options: RequestInit = {}): Promise<Response> {
+  const scraperApiKey = process.env.SCRAPER_API_KEY;
+
+  if (scraperApiKey) {
+    // Use ScraperAPI to bypass Cloudflare
+    const proxyUrl = new URL("https://api.scraperapi.com/");
+    proxyUrl.searchParams.set("api_key", scraperApiKey);
+    proxyUrl.searchParams.set("url", url);
+    proxyUrl.searchParams.set("render", "false"); // Don't need JS rendering for PDFs
+
+    console.log(`[BFI-PDF] Using ScraperAPI proxy for: ${url.slice(0, 60)}...`);
+
+    return fetch(proxyUrl.toString(), {
+      ...options,
+      // ScraperAPI handles headers, but we can pass some through
+      headers: {
+        ...options.headers,
+      },
+    });
+  }
+
+  // Direct fetch with browser-like headers
+  return fetch(url, {
+    ...options,
+    headers: {
+      "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+      "Accept-Language": "en-GB,en;q=0.9",
+      ...options.headers,
+    },
+  });
+}
 
 export interface PDFInfo {
   /** Month(s) covered by this guide, e.g., "February / March 2026" */
@@ -44,13 +85,7 @@ const PDF_BASE_URL = "https://core-cms.bfi.org.uk/media";
 export async function discoverPDFs(): Promise<PDFInfo[]> {
   console.log("[BFI-PDF] Discovering available PDFs...");
 
-  const response = await fetch(GUIDE_PAGE_URL, {
-    headers: {
-      "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-      "Accept-Language": "en-GB,en;q=0.9",
-    },
-  });
+  const response = await proxyFetch(GUIDE_PAGE_URL);
 
   if (!response.ok) {
     throw new Error(`Failed to fetch BFI guide page: ${response.status} ${response.statusText}`);
@@ -168,11 +203,7 @@ export async function downloadPDF(info: PDFInfo): Promise<FetchedPDF> {
 
   console.log(`[BFI-PDF] Downloading ${info.label} from ${url}...`);
 
-  const response = await fetch(url, {
-    headers: {
-      "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    },
-  });
+  const response = await proxyFetch(url);
 
   if (!response.ok) {
     throw new Error(`Failed to download PDF: ${response.status} ${response.statusText}`);

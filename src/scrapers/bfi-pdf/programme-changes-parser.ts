@@ -11,11 +11,39 @@
  * - Screening info: "Thu 8 Jan 14:50 NFT4 p19"
  * - Multiple screenings: "Fri 9 Jan 11:50 NFT4 and 17:30 NFT4 (DS); Sat 10 Jan 20:30 NFT4"
  * - Notes about changes/additions
+ *
+ * Proxy Support:
+ * Set SCRAPER_API_KEY env var to use ScraperAPI for Cloudflare bypass.
  */
 
 import * as cheerio from "cheerio";
 import type { RawScreening } from "../types";
 import type { CheerioAPI, CheerioSelection } from "../utils/cheerio-types";
+
+/**
+ * Fetches a URL, optionally through a proxy service.
+ */
+async function proxyFetch(url: string): Promise<Response> {
+  const scraperApiKey = process.env.SCRAPER_API_KEY;
+
+  if (scraperApiKey) {
+    const proxyUrl = new URL("https://api.scraperapi.com/");
+    proxyUrl.searchParams.set("api_key", scraperApiKey);
+    proxyUrl.searchParams.set("url", url);
+    proxyUrl.searchParams.set("render", "false");
+
+    console.log(`[BFI-Changes] Using ScraperAPI proxy for: ${url.slice(0, 60)}...`);
+    return fetch(proxyUrl.toString());
+  }
+
+  return fetch(url, {
+    headers: {
+      "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+      "Accept-Language": "en-GB,en;q=0.9",
+    },
+  });
+}
 
 const PROGRAMME_CHANGES_URL = "https://whatson.bfi.org.uk/Online/default.asp?BOparam::WScontent::loadArticle::permalink=programme-changes";
 
@@ -78,13 +106,7 @@ export interface ProgrammeChangesResult {
 export async function fetchProgrammeChanges(): Promise<ProgrammeChangesResult> {
   console.log("[BFI-Changes] Fetching programme changes page...");
 
-  const response = await fetch(PROGRAMME_CHANGES_URL, {
-    headers: {
-      "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-      "Accept-Language": "en-GB,en;q=0.9",
-    },
-  });
+  const response = await proxyFetch(PROGRAMME_CHANGES_URL);
 
   if (!response.ok) {
     throw new Error(`Failed to fetch programme changes: ${response.status} ${response.statusText}`);
