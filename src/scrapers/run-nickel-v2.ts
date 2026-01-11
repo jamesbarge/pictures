@@ -6,21 +6,21 @@
  */
 
 import { createMain, type SingleVenueConfig } from "./runner-factory";
-import { createNickelScraperV2 } from "./cinemas/nickel-v2";
+import { createNickelScraperV2, NICKEL_VENUE } from "./cinemas/nickel-v2";
 
 const config: SingleVenueConfig = {
   type: "single",
   venue: {
-    id: "nickel",
-    name: "The Nickel",
-    shortName: "Nickel",
-    website: "https://thenickel.co.uk",
+    id: NICKEL_VENUE.id,
+    name: NICKEL_VENUE.name,
+    shortName: NICKEL_VENUE.shortName,
+    website: NICKEL_VENUE.website,
     address: {
-      street: "194 Upper Street",
-      area: "Islington",
-      postcode: "N1 1RQ",
+      street: NICKEL_VENUE.address,
+      area: NICKEL_VENUE.area,
+      postcode: NICKEL_VENUE.postcode,
     },
-    features: ["independent", "bar", "restaurant"],
+    features: NICKEL_VENUE.features,
   },
   createScraper: () => createNickelScraperV2(),
 };

@@ -63,10 +63,10 @@ const getCachedScreenings = unstable_cache(
   { revalidate: 60, tags: ["screenings"] }
 );
 
-// Cache cinemas list (changes rarely)
+// Cache cinemas list (changes rarely) - only active cinemas
 const getCachedCinemas = unstable_cache(
-  async () => db.select().from(cinemas),
-  ["all-cinemas"],
+  async () => db.select().from(cinemas).where(eq(cinemas.isActive, true)),
+  ["all-cinemas-active"],
   { revalidate: 3600, tags: ["cinemas"] }
 );
 

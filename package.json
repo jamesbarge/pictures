@@ -28,6 +28,8 @@
     "db:cleanup-films": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/db/cleanup-films.ts",
     "db:classify-events": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/db/classify-events.ts",
     "db:cleanup-screenings": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/db/cleanup-screenings.ts",
+    "db:check-duplicates": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register scripts/check-duplicates.ts",
+    "db:fix-duplicates": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register scripts/check-duplicates.ts --fix",
     "db:backfill-posters": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/db/backfill-posters.ts",
     "scrape:bfi": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/run-bfi.ts",
     "scrape:pcc": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/run-pcc.ts",

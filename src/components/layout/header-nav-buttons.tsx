@@ -13,7 +13,6 @@ import { Navigation, Heart, MapPin, Settings, User, Clapperboard, Menu, X, Leaf 
 import { SignInButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import { cn } from "@/lib/cn";
 import { usePreferences } from "@/stores/preferences";
-import { ThemeToggle } from "@/components/layout/theme-toggle";
 
 interface HeaderNavButtonsProps {
   mounted: boolean;
@@ -174,15 +173,9 @@ function MobileMenuDrawer({
         {/* Divider */}
         <div className="mx-4 my-2 h-px bg-border-subtle" />
 
-        {/* Theme & Account Section */}
+        {/* Account Section */}
         <div className="p-4 space-y-4">
-          {/* Theme Toggle with Label */}
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-text-secondary">Dark Mode</span>
-            <ThemeToggle />
-          </div>
-
-          {/* Account Section */}
+          {/* Account */}
           <div className="flex items-center justify-between">
             <span className="text-sm text-text-secondary">Account</span>
             {mounted ? (
@@ -268,9 +261,6 @@ export function HeaderNavButtons({ mounted }: HeaderNavButtonsProps) {
           icon={<Settings className="w-4 h-4" />}
           label="Settings"
         />
-
-        {/* Theme Toggle */}
-        <ThemeToggle />
 
         {/* Auth UI */}
         <div className="w-8 h-8 flex items-center justify-center">
