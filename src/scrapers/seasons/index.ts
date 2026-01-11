@@ -20,3 +20,6 @@ export { BaseSeasonScraper } from "./base";
 
 // Pipeline
 export { processSeasons, mergeSeasonSources } from "./pipeline";
+
+// Scrapers
+export { BFISeasonScraper, createBFISeasonScraper } from "./bfi";

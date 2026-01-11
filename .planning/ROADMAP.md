@@ -17,7 +17,7 @@ Cinema web scraping — HTML parsing, API integration, Playwright automation (ex
 - [x] **Phase 1: Database Schema** — Season data model with Drizzle ✓
 - [x] **Phase 2: Season Scraper Research** — Analyze cinema website structures ✓
 - [x] **Phase 3: Scraper Infrastructure** — Base season scraper pattern ✓
-- [ ] **Phase 4: BFI Season Scraper** — First implementation
+- [x] **Phase 4: BFI Season Scraper** — First implementation ✓
 - [ ] **Phase 5: Additional Cinema Scrapers** — Barbican, Curzon, others
 - [ ] **Phase 6: Director Enrichment** — TMDB integration for director data
 - [ ] **Phase 7: /seasons Page** — Season cards and detail views
@@ -72,15 +72,28 @@ Plans:
 - `src/scrapers/seasons/pipeline.ts` - processSeasons() for saving to database with film matching
 - Film matching strategies: exact title, year+title, director+title, fuzzy Levenshtein
 
-### Phase 4: BFI Season Scraper
+### Phase 4: BFI Season Scraper ✓
 **Goal**: Implement working season scraper for BFI (most prolific season runner)
 **Depends on**: Phase 3
 **Research**: Likely (BFI-specific implementation details)
 **Research topics**: BFI season page selectors, date ranges, film associations
-**Plans**: TBD
+**Plans**: Complete
+**Completed**: 2026-01-11
 
 Plans:
-- [ ] 04-01: Implement BFI season scraper
+- [x] 04-01: Implement BFI season scraper
+
+**Key Deliverables:**
+- `src/scrapers/seasons/bfi.ts` - BFISeasonScraper extending BaseSeasonScraper
+- `src/scrapers/seasons/run-bfi-seasons.ts` - Manual run script
+- `npm run scrape:bfi-seasons` command in package.json
+
+**Implementation Notes:**
+- Uses Playwright with stealth plugin to bypass Cloudflare protection
+- Parses listing page at `permalink=seasons`, then visits each season detail page
+- Extracts films using heading-first approach (h2/h3 headings followed by "Read more" links)
+- Filters section headings (months, "Programme", etc.) from film results
+- Successfully tested: finds season cards, extracts films, saves via pipeline
 
 ### Phase 5: Additional Cinema Scrapers
 **Goal**: Extend season scraping to Barbican, Curzon, and other cinemas with seasons
@@ -146,7 +159,7 @@ Plans:
 | 1. Database Schema | 1/1 | Complete | 2026-01-10 |
 | 2. Season Scraper Research | 1/1 | Complete | 2026-01-10 |
 | 3. Scraper Infrastructure | 1/1 | Complete | 2026-01-10 |
-| 4. BFI Season Scraper | 0/1 | Not started | - |
+| 4. BFI Season Scraper | 1/1 | Complete | 2026-01-11 |
 | 5. Additional Cinema Scrapers | 0/1 | Not started | - |
 | 6. Director Enrichment | 0/1 | Not started | - |
 | 7. /seasons Page | 0/2 | Not started | - |
