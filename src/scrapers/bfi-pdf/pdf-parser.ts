@@ -17,7 +17,7 @@
  * Accessibility flags: AD (Audio Description), DS (Descriptive Subtitles), CC (Closed Captions), BSL (BSL interpreted)
  */
 
-import { PDFParse } from "pdf-parse";
+import { extractText as unpdfExtractText, getDocumentProxy } from "unpdf";
 import type { RawScreening } from "../types";
 import type { FetchedPDF } from "./fetcher";
 
@@ -77,16 +77,12 @@ export interface ParseResult {
 }
 
 /**
- * Extracts text from PDF buffer using pdf-parse
+ * Extracts text from PDF buffer using unpdf (serverless-compatible)
  */
 async function extractText(buffer: Buffer): Promise<string> {
-  const pdfParser = new PDFParse({ data: new Uint8Array(buffer) });
-  try {
-    const result = await pdfParser.getText();
-    return result.text;
-  } finally {
-    await pdfParser.destroy();
-  }
+  const pdf = await getDocumentProxy(new Uint8Array(buffer));
+  const { text } = await unpdfExtractText(pdf, { mergePages: true });
+  return text;
 }
 
 /**
