@@ -56,7 +56,6 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
-          TMDB_READ_ACCESS_TOKEN: ${{ secrets.TMDB_READ_ACCESS_TOKEN }}
 
       - name: Scrape Picturehouse
         if: github.event.inputs.scraper == '' || github.event.inputs.scraper == 'picturehouse'
@@ -64,7 +63,6 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
-          TMDB_READ_ACCESS_TOKEN: ${{ secrets.TMDB_READ_ACCESS_TOKEN }}
 
       - name: Scrape Everyman
         if: github.event.inputs.scraper == '' || github.event.inputs.scraper == 'everyman'
@@ -72,7 +70,6 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
-          TMDB_READ_ACCESS_TOKEN: ${{ secrets.TMDB_READ_ACCESS_TOKEN }}
 
   scrape-independents:
     name: Scrape Playwright Independents
@@ -103,7 +100,6 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
-          TMDB_READ_ACCESS_TOKEN: ${{ secrets.TMDB_READ_ACCESS_TOKEN }}
 
       - name: Scrape Barbican
         if: github.event.inputs.scraper == '' || github.event.inputs.scraper == 'barbican'
@@ -111,7 +107,6 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
-          TMDB_READ_ACCESS_TOKEN: ${{ secrets.TMDB_READ_ACCESS_TOKEN }}
 
       - name: Scrape Phoenix
         if: github.event.inputs.scraper == '' || github.event.inputs.scraper == 'phoenix'
@@ -119,7 +114,6 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
-          TMDB_READ_ACCESS_TOKEN: ${{ secrets.TMDB_READ_ACCESS_TOKEN }}
 
       - name: Scrape Electric
         if: github.event.inputs.scraper == '' || github.event.inputs.scraper == 'electric'
@@ -127,7 +121,6 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
-          TMDB_READ_ACCESS_TOKEN: ${{ secrets.TMDB_READ_ACCESS_TOKEN }}
 
       - name: Scrape Lexi
         if: github.event.inputs.scraper == '' || github.event.inputs.scraper == 'lexi'
@@ -135,7 +128,6 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
-          TMDB_READ_ACCESS_TOKEN: ${{ secrets.TMDB_READ_ACCESS_TOKEN }}
 
       - name: Scrape Regent Street
         if: github.event.inputs.scraper == '' || github.event.inputs.scraper == 'regent-street'
@@ -143,7 +135,6 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
-          TMDB_READ_ACCESS_TOKEN: ${{ secrets.TMDB_READ_ACCESS_TOKEN }}
 
   notify-on-failure:
     name: Notify on Failure
