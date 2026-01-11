@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-01-10)
 
 **Core value:** Season discovery — helping users find what seasons are currently running.
-**Current focus:** Phase 4 — BFI Season Scraper (complete)
+**Current focus:** Phase 5 — Additional Cinema Scrapers (complete)
 
 ## Current Position
 
-Phase: 4 of 10 (BFI Season Scraper)
+Phase: 5 of 10 (Additional Cinema Scrapers)
 Plan: 1 of 1 in current phase
 Status: Phase complete
-Last activity: 2026-01-11 — Implemented BFI season scraper
+Last activity: 2026-01-11 — Implemented Close-Up, Barbican, PCC, ICA scrapers
 
-Progress: ████░░░░░░ 40%
+Progress: █████░░░░░ 50%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 4
+- Total plans completed: 5
 - Average duration: ~5 min
-- Total execution time: ~20 min
+- Total execution time: ~25 min
 
 **By Phase:**
 
@@ -31,10 +31,11 @@ Progress: ████░░░░░░ 40%
 | 2. Season Scraper Research | 1 | 5 min | 5 min |
 | 3. Scraper Infrastructure | 1 | 5 min | 5 min |
 | 4. BFI Season Scraper | 1 | 6 min | 6 min |
+| 5. Additional Cinema Scrapers | 1 | 10 min | 10 min |
 
 **Recent Trend:**
-- Last 5 plans: 4, 5, 5, 6 min
-- Trend: Steady (~5 min per plan)
+- Last 5 plans: 4, 5, 5, 6, 10 min
+- Trend: Steady (~6 min per plan)
 
 ## Accumulated Context
 
@@ -54,6 +55,10 @@ Recent decisions affecting current work:
 | 3 | Multi-strategy film matching | Exact, year+title, director+title, fuzzy (Levenshtein) |
 | 4 | Playwright for BFI | Cloudflare protection requires stealth browser |
 | 4 | Heading-first film detection | Find h2/h3 headings with "Read more" links to identify films |
+| 5 | Close-Up from JSON film_url | Season slug embedded in existing data structure |
+| 5 | Barbican series discovery | Find /whats-on/series/ links from cinema page |
+| 5 | PCC dedicated section | /seasons-events/ has curated programming |
+| 5 | ICA strand patterns | Pattern match in-focus-*, long-takes, etc. |
 
 ### Deferred Issues
 
@@ -66,6 +71,6 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-01-11
-Stopped at: Completed Phase 4 BFI season scraper
+Stopped at: Completed Phase 5 additional cinema scrapers
 Resume file: None
-Next: Phase 5 (Additional Cinema Scrapers) — Barbican, Close-Up, PCC, ICA
+Next: Phase 6 (Director Enrichment) — TMDB integration for director data
