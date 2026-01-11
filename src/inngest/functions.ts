@@ -608,5 +608,78 @@ export const handleFunctionFailure = inngest.createFunction(
   }
 );
 
+/**
+ * Inngest Function: Scheduled BFI PDF Import
+ *
+ * Runs weekly on Sundays at 6:00 AM UTC to import from BFI PDFs.
+ * This is a full import that parses the monthly guide PDF and programme changes.
+ */
+export const scheduledBFIPDFImport = inngest.createFunction(
+  {
+    id: "scheduled-bfi-pdf-import",
+    retries: 2,
+  },
+  { cron: "0 6 * * 0" }, // 6:00 AM UTC every Sunday
+  async ({ step }) => {
+    console.log("[Inngest] Starting scheduled BFI PDF import...");
+
+    const result = await step.run("import-bfi-pdf", async () => {
+      const { runBFIImport } = await import("@/scrapers/bfi-pdf");
+      return runBFIImport();
+    });
+
+    console.log("[Inngest] BFI PDF import complete:", result);
+
+    return {
+      success: result.success,
+      pdfScreenings: result.pdfScreenings,
+      changesScreenings: result.changesScreenings,
+      totalScreenings: result.totalScreenings,
+      saved: result.savedScreenings,
+      durationMs: result.durationMs,
+      errors: result.errors,
+    };
+  }
+);
+
+/**
+ * Inngest Function: Scheduled BFI Programme Changes
+ *
+ * Runs daily at 10:00 AM UTC to check for programme changes.
+ * This is a lighter import that only fetches the programme changes page.
+ */
+export const scheduledBFIChanges = inngest.createFunction(
+  {
+    id: "scheduled-bfi-changes",
+    retries: 2,
+  },
+  { cron: "0 10 * * *" }, // 10:00 AM UTC daily
+  async ({ step }) => {
+    console.log("[Inngest] Starting scheduled BFI programme changes import...");
+
+    const result = await step.run("import-bfi-changes", async () => {
+      const { runProgrammeChangesImport } = await import("@/scrapers/bfi-pdf");
+      return runProgrammeChangesImport();
+    });
+
+    console.log("[Inngest] BFI changes import complete:", result);
+
+    return {
+      success: result.success,
+      screenings: result.changesScreenings,
+      saved: result.savedScreenings,
+      lastUpdated: result.changesInfo?.lastUpdated,
+      durationMs: result.durationMs,
+      errors: result.errors,
+    };
+  }
+);
+
 // Export all functions for the serve handler
-export const functions = [runCinemaScraper, scheduledScrapeAll, handleFunctionFailure];
+export const functions = [
+  runCinemaScraper,
+  scheduledScrapeAll,
+  handleFunctionFailure,
+  scheduledBFIPDFImport,
+  scheduledBFIChanges,
+];

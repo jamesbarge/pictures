@@ -89,6 +89,8 @@
     "scrape:olympic-v2": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/run-olympic-v2.ts",
     "scrape:david-lean-v2": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/run-david-lean-v2.ts",
     "scrape": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/cli.ts",
+    "scrape:bfi-pdf": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/bfi-pdf/run-bfi-pdf.ts",
+    "scrape:bfi-changes": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/bfi-pdf/run-bfi-pdf.ts changes",
     "scrape:bfi-seasons": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/seasons/run-bfi-seasons.ts",
     "scrape:close-up-seasons": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/seasons/run-close-up-seasons.ts",
     "scrape:barbican-seasons": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/seasons/run-barbican-seasons.ts",
