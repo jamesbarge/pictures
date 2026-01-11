@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-01-10)
 
 **Core value:** Season discovery — helping users find what seasons are currently running.
-**Current focus:** Phase 5 — Additional Cinema Scrapers (complete)
+**Current focus:** Phase 6 — Director Enrichment (complete)
 
 ## Current Position
 
-Phase: 5 of 10 (Additional Cinema Scrapers)
+Phase: 6 of 10 (Director Enrichment)
 Plan: 1 of 1 in current phase
 Status: Phase complete
-Last activity: 2026-01-11 — Implemented Close-Up, Barbican, PCC, ICA scrapers
+Last activity: 2026-01-11 — Added TMDB person API integration
 
-Progress: █████░░░░░ 50%
+Progress: ██████░░░░ 60%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 5
+- Total plans completed: 6
 - Average duration: ~5 min
-- Total execution time: ~25 min
+- Total execution time: ~30 min
 
 **By Phase:**
 
@@ -32,9 +32,10 @@ Progress: █████░░░░░ 50%
 | 3. Scraper Infrastructure | 1 | 5 min | 5 min |
 | 4. BFI Season Scraper | 1 | 6 min | 6 min |
 | 5. Additional Cinema Scrapers | 1 | 10 min | 10 min |
+| 6. Director Enrichment | 1 | 5 min | 5 min |
 
 **Recent Trend:**
-- Last 5 plans: 4, 5, 5, 6, 10 min
+- Last 5 plans: 5, 5, 6, 10, 5 min
 - Trend: Steady (~6 min per plan)
 
 ## Accumulated Context
@@ -59,6 +60,9 @@ Recent decisions affecting current work:
 | 5 | Barbican series discovery | Find /whats-on/series/ links from cinema page |
 | 5 | PCC dedicated section | /seasons-events/ has curated programming |
 | 5 | ICA strand patterns | Pattern match in-focus-*, long-takes, etc. |
+| 6 | Extend existing TMDBClient | Person methods follow same patterns as movie methods |
+| 6 | findDirectorId with department filter | Prioritize known_for_department === "Directing" |
+| 6 | Director lookup caching | Avoid duplicate TMDB queries for same director name |
 
 ### Deferred Issues
 
@@ -71,6 +75,6 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-01-11
-Stopped at: Completed Phase 5 additional cinema scrapers
+Stopped at: Completed Phase 6 director enrichment
 Resume file: None
-Next: Phase 6 (Director Enrichment) — TMDB integration for director data
+Next: Phase 7 (/seasons Page) — Season cards and detail views

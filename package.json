@@ -21,6 +21,7 @@
     "db:seed:festivals": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/db/seed-cli.ts --festivals",
     "db:seed:screenings": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/db/seed-cli.ts --screenings",
     "db:enrich": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/db/enrich-films.ts",
+    "db:enrich-directors": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/db/enrich-directors.ts",
     "db:enrich-letterboxd": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/db/enrich-letterboxd.ts",
     "db:enrich-posters": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/db/enrich-posters.ts",
     "db:recheck-posters": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/db/enrich-posters.ts recheck",

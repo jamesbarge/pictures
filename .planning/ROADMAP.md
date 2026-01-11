@@ -19,7 +19,7 @@ Cinema web scraping — HTML parsing, API integration, Playwright automation (ex
 - [x] **Phase 3: Scraper Infrastructure** — Base season scraper pattern ✓
 - [x] **Phase 4: BFI Season Scraper** — First implementation ✓
 - [x] **Phase 5: Additional Cinema Scrapers** — Barbican, Close-Up, PCC, ICA ✓
-- [ ] **Phase 6: Director Enrichment** — TMDB integration for director data
+- [x] **Phase 6: Director Enrichment** — TMDB integration for director data ✓
 - [ ] **Phase 7: /seasons Page** — Season cards and detail views
 - [ ] **Phase 8: Director Pages** — Browse by director
 - [ ] **Phase 9: Calendar Integration** — Seasons as filters/tags
@@ -118,15 +118,27 @@ Plans:
 - `scrape:pcc-seasons`
 - `scrape:ica-seasons`
 
-### Phase 6: Director Enrichment
+### Phase 6: Director Enrichment ✓
 **Goal**: Integrate TMDB for director bios, photos, and filmography data
 **Depends on**: Phase 1
-**Research**: Likely (TMDB API for directors)
-**Research topics**: TMDB person API, director credits, images endpoint
-**Plans**: TBD
+**Research**: Unlikely (TMDB patterns established)
+**Plans**: Complete
+**Completed**: 2026-01-11
 
 Plans:
-- [ ] 06-01: Add TMDB director enrichment
+- [x] 06-01: Add TMDB director enrichment
+
+**Key Deliverables:**
+- `src/lib/tmdb/types.ts` - Added person types (TMDBPersonSearchResult, TMDBPersonDetails, TMDBPersonCredits)
+- `src/lib/tmdb/client.ts` - Added person methods (searchPerson, getPersonDetails, getPersonCredits, findDirectorId, getDirectorData, getProfileUrl)
+- `src/db/enrich-directors.ts` - Script to populate directorTmdbId from directorName
+- `npm run db:enrich-directors` command in package.json
+
+**Implementation Notes:**
+- `findDirectorId()` prioritizes people with `known_for_department === "Directing"`
+- `getDirectorData()` returns bio, filmography sorted by release date
+- Enrichment script caches director lookups to avoid duplicate TMDB queries
+- Rate limited to 40 requests per 10 seconds (300ms delays)
 
 ### Phase 7: /seasons Page
 **Goal**: Create dedicated page for browsing all current seasons with cards
@@ -174,7 +186,7 @@ Plans:
 | 3. Scraper Infrastructure | 1/1 | Complete | 2026-01-10 |
 | 4. BFI Season Scraper | 1/1 | Complete | 2026-01-11 |
 | 5. Additional Cinema Scrapers | 1/1 | Complete | 2026-01-11 |
-| 6. Director Enrichment | 0/1 | Not started | - |
+| 6. Director Enrichment | 1/1 | Complete | 2026-01-11 |
 | 7. /seasons Page | 0/2 | Not started | - |
 | 8. Director Pages | 0/1 | Not started | - |
 | 9. Calendar Integration | 0/1 | Not started | - |
