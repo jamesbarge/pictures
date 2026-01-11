@@ -21,7 +21,7 @@ Cinema web scraping — HTML parsing, API integration, Playwright automation (ex
 - [x] **Phase 5: Additional Cinema Scrapers** — Barbican, Close-Up, PCC, ICA ✓
 - [x] **Phase 6: Director Enrichment** — TMDB integration for director data ✓
 - [x] **Phase 7: /seasons Page** — Season cards and detail views ✓
-- [ ] **Phase 8: Director Pages** — Browse by director
+- [x] **Phase 8: Director Pages** — Browse by director ✓
 - [ ] **Phase 9: Calendar Integration** — Seasons as filters/tags
 - [ ] **Phase 10: Polish & Metadata** — Related seasons, UI refinement
 
@@ -163,14 +163,28 @@ Plans:
 - Cards link to detail page, films link to /film/[id]
 - Screenings shown with booking links on detail page
 
-### Phase 8: Director Pages
+### Phase 8: Director Pages ✓
 **Goal**: Create director detail pages showing their seasons and screenings
 **Depends on**: Phase 6, Phase 7
 **Research**: Unlikely (internal UI patterns)
-**Plans**: TBD
+**Plans**: Complete
+**Completed**: 2026-01-11
 
 Plans:
-- [ ] 08-01: Create director pages
+- [x] 08-01: Create director pages
+
+**Key Deliverables:**
+- `src/app/directors/page.tsx` - Browse page listing directors with seasons
+- `src/app/directors/[tmdbId]/page.tsx` - Detail page with bio, seasons, screenings, filmography
+- TMDB integration for profile photos and biographies
+- SEO: ItemListSchema, BreadcrumbSchema, generateMetadata
+
+**Implementation Notes:**
+- Directors identified by TMDB ID (only directors with enriched seasons shown)
+- Browse page shows active directors first, past directors collapsed
+- Detail page fetches TMDB data for bio, birthplace, filmography
+- Upcoming screenings grouped by date with booking links
+- Filmography shows up to 12 recent films with posters
 
 ### Phase 9: Calendar Integration
 **Goal**: Add seasons as filters/tags on existing calendar view
@@ -201,6 +215,6 @@ Plans:
 | 5. Additional Cinema Scrapers | 1/1 | Complete | 2026-01-11 |
 | 6. Director Enrichment | 1/1 | Complete | 2026-01-11 |
 | 7. /seasons Page | 2/2 | Complete | 2026-01-11 |
-| 8. Director Pages | 0/1 | Not started | - |
+| 8. Director Pages | 1/1 | Complete | 2026-01-11 |
 | 9. Calendar Integration | 0/1 | Not started | - |
 | 10. Polish & Metadata | 0/1 | Not started | - |

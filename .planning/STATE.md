@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-01-10)
 
 **Core value:** Season discovery — helping users find what seasons are currently running.
-**Current focus:** Phase 7 — /seasons Page (complete)
+**Current focus:** Phase 8 — Director Pages (complete)
 
 ## Current Position
 
-Phase: 7 of 10 (/seasons Page)
-Plan: 2 of 2 in current phase
+Phase: 8 of 10 (Director Pages)
+Plan: 1 of 1 in current phase
 Status: Phase complete
-Last activity: 2026-01-11 — Created seasons browse and detail pages
+Last activity: 2026-01-11 — Created director browse and detail pages
 
-Progress: ███████░░░ 70%
+Progress: ████████░░ 80%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 8
+- Total plans completed: 9
 - Average duration: ~5 min
-- Total execution time: ~40 min
+- Total execution time: ~45 min
 
 **By Phase:**
 
@@ -34,9 +34,10 @@ Progress: ███████░░░ 70%
 | 5. Additional Cinema Scrapers | 1 | 10 min | 10 min |
 | 6. Director Enrichment | 1 | 5 min | 5 min |
 | 7. /seasons Page | 2 | 10 min | 5 min |
+| 8. Director Pages | 1 | 5 min | 5 min |
 
 **Recent Trend:**
-- Last 5 plans: 6, 10, 5, 5, 5 min
+- Last 5 plans: 10, 5, 5, 5, 5 min
 - Trend: Steady (~6 min per plan)
 
 ## Accumulated Context
@@ -67,6 +68,9 @@ Recent decisions affecting current work:
 | 7 | Follow /cinemas page pattern | Server components, force-dynamic, max-w-4xl layout |
 | 7 | Status-based sorting | Ongoing first, then upcoming, hide past seasons |
 | 7 | Films with screenings | Detail page shows film cards with upcoming screening links |
+| 8 | TMDB ID as URL parameter | Directors identified by TMDB ID for reliable linking |
+| 8 | Active directors prioritized | Browse shows active first, past collapsed with opacity |
+| 8 | Filmography from TMDB | Show 12 recent films, full bio/photo from TMDB API |
 
 ### Deferred Issues
 
@@ -79,6 +83,6 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-01-11
-Stopped at: Completed Phase 7 /seasons page
+Stopped at: Completed Phase 8 director pages
 Resume file: None
-Next: Phase 8 (Director Pages) — Browse by director
+Next: Phase 9 (Calendar Integration) — Seasons as filters/tags
