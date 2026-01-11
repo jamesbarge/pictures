@@ -6,7 +6,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Eye, EyeOff, Heart, X, Check } from "lucide-react";
+import { EyeOff, Heart, X, Check } from "lucide-react";
 import { useFilmStatus, FilmStatus } from "@/stores/film-status";
 import { useHydrated } from "@/hooks/useHydrated";
 import { cn } from "@/lib/cn";
@@ -16,8 +16,9 @@ interface StatusToggleProps {
   variant?: "full" | "compact";
 }
 
+// Only show actionable statuses - "seen" removed since it doesn't affect the calendar
 const statusConfig: Record<
-  Exclude<FilmStatus, null>,
+  "want_to_see" | "not_interested",
   { icon: typeof Heart; label: string; className: string; activeClassName: string }
 > = {
   want_to_see: {
@@ -25,12 +26,6 @@ const statusConfig: Record<
     label: "Want to See",
     className: "hover:bg-pink-500/20 hover:text-pink-400 hover:border-pink-500/50",
     activeClassName: "bg-pink-500/20 text-pink-400 border-pink-500/50",
-  },
-  seen: {
-    icon: Eye,
-    label: "Seen",
-    className: "hover:bg-green-500/20 hover:text-green-400 hover:border-green-500/50",
-    activeClassName: "bg-green-500/20 text-green-400 border-green-500/50",
   },
   not_interested: {
     icon: EyeOff,
@@ -70,7 +65,7 @@ export function StatusToggle({ filmId, variant = "full" }: StatusToggleProps) {
     // Just show icons in a row
     return (
       <div className="flex items-center gap-1">
-        {(Object.entries(statusConfig) as [Exclude<FilmStatus, null>, typeof statusConfig["want_to_see"]][]).map(
+        {(Object.entries(statusConfig) as ["want_to_see" | "not_interested", typeof statusConfig["want_to_see"]][]).map(
           ([status, config]) => {
             const Icon = config.icon;
             const isActive = currentStatus === status;
@@ -95,7 +90,10 @@ export function StatusToggle({ filmId, variant = "full" }: StatusToggleProps) {
   }
 
   // Full dropdown variant
-  const activeConfig = currentStatus ? statusConfig[currentStatus] : null;
+  // Handle legacy "seen" status gracefully - treat as no status since we removed it
+  const activeConfig = currentStatus && currentStatus in statusConfig
+    ? statusConfig[currentStatus as "want_to_see" | "not_interested"]
+    : null;
   const ActiveIcon = activeConfig?.icon;
 
   return (
@@ -132,7 +130,7 @@ export function StatusToggle({ filmId, variant = "full" }: StatusToggleProps) {
       {/* Dropdown */}
       {isOpen && (
         <div className="absolute top-full left-0 mt-2 py-1 bg-background-secondary border border-border-default rounded-lg shadow-elevated z-50 min-w-[180px]">
-          {(Object.entries(statusConfig) as [Exclude<FilmStatus, null>, typeof statusConfig["want_to_see"]][]).map(
+          {(Object.entries(statusConfig) as ["want_to_see" | "not_interested", typeof statusConfig["want_to_see"]][]).map(
             ([status, config]) => {
               const Icon = config.icon;
               const isActive = currentStatus === status;
