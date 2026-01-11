@@ -10,7 +10,6 @@
  * - Detail: whatson.bfi.org.uk/Online/default.asp?BOparam::WScontent::loadArticle::permalink=[season-name]
  */
 
-import * as cheerio from "cheerio";
 import type { Page } from "playwright";
 import { BaseSeasonScraper } from "./base";
 import type { RawSeason, RawSeasonFilm, SeasonScraperConfig } from "./types";
@@ -190,7 +189,7 @@ export class BFISeasonScraper extends BaseSeasonScraper {
   /**
    * Parse season cards from the listing page
    */
-  private parseSeasonCards($: cheerio.CheerioAPI): SeasonCard[] {
+  private parseSeasonCards($: ReturnType<typeof this.parseHtml>): SeasonCard[] {
     const cards: SeasonCard[] = [];
 
     // BFI's article cards contain season info
@@ -331,7 +330,7 @@ export class BFISeasonScraper extends BaseSeasonScraper {
   /**
    * Extract description from season detail page
    */
-  private extractDescription($: cheerio.CheerioAPI): string | undefined {
+  private extractDescription($: ReturnType<typeof this.parseHtml>): string | undefined {
     // Look for common description containers
     const selectors = [
       ".article-content p",
@@ -356,7 +355,7 @@ export class BFISeasonScraper extends BaseSeasonScraper {
    * Extract date range from page content
    */
   private extractDateRange(
-    $: cheerio.CheerioAPI
+    $: ReturnType<typeof this.parseHtml>
   ): { startDate: Date; endDate: Date } | null {
     // Look for date text in common locations
     const dateSelectors = [".date-range", ".dates", ".event-date", "time"];
@@ -387,7 +386,7 @@ export class BFISeasonScraper extends BaseSeasonScraper {
    * BFI pages structure films as headings with "Read more" links.
    * We look for heading patterns followed by film page links.
    */
-  private extractFilms($: cheerio.CheerioAPI): RawSeasonFilm[] {
+  private extractFilms($: ReturnType<typeof this.parseHtml>): RawSeasonFilm[] {
     const films: RawSeasonFilm[] = [];
     const seenTitles = new Set<string>();
 
