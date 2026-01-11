@@ -23,3 +23,4 @@ export { processSeasons, mergeSeasonSources } from "./pipeline";
 
 // Scrapers
 export { BFISeasonScraper, createBFISeasonScraper } from "./bfi";
+export { CloseUpSeasonScraper, createCloseUpSeasonScraper } from "./close-up";

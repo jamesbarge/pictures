@@ -88,7 +88,8 @@
     "scrape:olympic-v2": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/run-olympic-v2.ts",
     "scrape:david-lean-v2": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/run-david-lean-v2.ts",
     "scrape": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/cli.ts",
-    "scrape:bfi-seasons": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/seasons/run-bfi-seasons.ts"
+    "scrape:bfi-seasons": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/seasons/run-bfi-seasons.ts",
+    "scrape:close-up-seasons": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/seasons/run-close-up-seasons.ts"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.1.76",
