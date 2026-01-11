@@ -25,3 +25,4 @@ export { processSeasons, mergeSeasonSources } from "./pipeline";
 export { BFISeasonScraper, createBFISeasonScraper } from "./bfi";
 export { CloseUpSeasonScraper, createCloseUpSeasonScraper } from "./close-up";
 export { BarbicanSeasonScraper, createBarbicanSeasonScraper } from "./barbican";
+export { PCCSeasonScraper, createPCCSeasonScraper } from "./pcc";
