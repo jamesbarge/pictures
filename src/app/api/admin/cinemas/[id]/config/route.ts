@@ -109,6 +109,9 @@ export async function PUT(request: Request, { params }: RouteParams) {
       throw new BadRequestError("Invalid request body", parseResult.error.flatten());
     }
     const body = parseResult.data;
+    const maxScrapeDate = body.maxScrapeDate
+      ? new Date(body.maxScrapeDate)
+      : null;
 
     // Verify cinema exists
     const [cinema] = await db
@@ -136,7 +139,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
       manualOverride: body.manualOverride ?? false,
       notes: body.notes ?? null,
       scrapeHorizonDays: body.scrapeHorizonDays ?? 60,
-      maxScrapeDate: body.maxScrapeDate ?? null,
+      maxScrapeDate,
       updatedAt: new Date(),
     };
 

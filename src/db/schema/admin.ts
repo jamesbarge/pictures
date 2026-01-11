@@ -145,6 +145,10 @@ export const cinemaBaselines = pgTable("cinema_baselines", {
   // Override automatic baseline calculation
   manualOverride: boolean("manual_override").notNull().default(false),
 
+  // Scrape horizon settings
+  scrapeHorizonDays: integer("scrape_horizon_days").notNull().default(60),
+  maxScrapeDate: timestamp("max_scrape_date", { withTimezone: true }),
+
   // Metadata
   lastCalculated: timestamp("last_calculated", { withTimezone: true }),
   notes: text("notes"),
