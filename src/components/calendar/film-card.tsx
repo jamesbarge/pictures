@@ -146,14 +146,16 @@ export const FilmCard = memo(function FilmCard({
           aria-hidden="true"
           onClick={trackCardClick}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <Image
             src={film.posterUrl && !film.posterUrl.includes("poster-placeholder")
               ? film.posterUrl
               : `/api/poster-placeholder?title=${encodeURIComponent(film.title)}${film.year ? `&year=${film.year}` : ""}`}
             alt=""
-            className="absolute inset-0 w-full h-full object-cover"
-            loading="eager"
+            fill
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 200px"
+            className="object-cover"
+            placeholder="blur"
+            blurDataURL={POSTER_BLUR_PLACEHOLDER}
           />
 
           {/* Gradient overlay for better text readability */}
