@@ -6,7 +6,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, Calendar, Clock } from "lucide-react";
+import { X, Calendar, Clock, ChevronLeft, ChevronRight } from "lucide-react";
 import { format, addDays, startOfToday, isSameDay, isSaturday, isSunday, differenceInDays } from "date-fns";
 import { DayPicker } from "react-day-picker";
 import { cn } from "@/lib/cn";
@@ -183,8 +183,8 @@ export function MobileDatePickerModal({ isOpen, onClose }: MobileDatePickerModal
                 month_caption: "flex justify-center relative items-center h-10 mb-2",
                 caption_label: "text-base font-medium text-text-primary",
                 nav: "flex items-center gap-1",
-                button_previous: "absolute left-1 p-2 rounded-lg border border-border-default bg-background-secondary text-text-primary hover:bg-background-active hover:border-border-emphasis transition-all",
-                button_next: "absolute right-1 p-2 rounded-lg border border-border-default bg-background-secondary text-text-primary hover:bg-background-active hover:border-border-emphasis transition-all",
+                button_previous: "absolute left-0 p-2 rounded-lg border border-accent-primary/30 bg-accent-primary/10 text-accent-primary hover:bg-accent-primary/20 hover:border-accent-primary/50 transition-all",
+                button_next: "absolute right-0 p-2 rounded-lg border border-accent-primary/30 bg-accent-primary/10 text-accent-primary hover:bg-accent-primary/20 hover:border-accent-primary/50 transition-all",
                 month_grid: "w-full",
                 weekdays: "grid grid-cols-7 gap-1 mb-1",
                 weekday: "text-text-tertiary text-sm font-medium h-10 flex items-center justify-center",
@@ -195,6 +195,13 @@ export function MobileDatePickerModal({ isOpen, onClose }: MobileDatePickerModal
                 today: "[&>button]:ring-1 [&>button]:ring-accent-primary/50 [&>button]:text-accent-primary [&>button]:font-medium",
                 outside: "[&>button]:text-text-muted [&>button]:opacity-50",
                 disabled: "[&>button]:text-text-muted [&>button]:opacity-30 [&>button]:cursor-not-allowed [&>button]:hover:bg-transparent",
+              }}
+              components={{
+                Chevron: ({ orientation }) => (
+                  orientation === "left"
+                    ? <ChevronLeft className="h-5 w-5" />
+                    : <ChevronRight className="h-5 w-5" />
+                ),
               }}
             />
           </div>
