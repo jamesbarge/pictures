@@ -573,14 +573,14 @@ function DateFilter({ mounted }: { mounted: boolean; fullWidth?: boolean }) {
               disabled={{ before: today }}
               showOutsideDays
               classNames={{
-                root: "text-text-primary w-[320px]",
+                root: "text-text-primary w-[320px] relative",
                 months: "flex flex-col",
-                month: "relative",
-                month_caption: "flex justify-center items-center h-10 mb-3",
+                month: "space-y-2",
+                month_caption: "flex justify-center items-center h-10",
                 caption_label: "text-sm font-medium text-text-primary",
-                nav: "contents",
-                button_previous: "absolute left-2 top-0 h-10 flex items-center p-1.5 rounded-md bg-background-tertiary text-text-secondary hover:bg-background-active hover:text-text-primary transition-colors",
-                button_next: "absolute right-2 top-0 h-10 flex items-center p-1.5 rounded-md bg-background-tertiary text-text-secondary hover:bg-background-active hover:text-text-primary transition-colors",
+                nav: "absolute top-0 left-0 right-0 h-10 flex items-center justify-between px-2 pointer-events-none",
+                button_previous: "pointer-events-auto p-1.5 rounded-md bg-background-tertiary text-text-secondary hover:bg-background-active hover:text-text-primary transition-colors",
+                button_next: "pointer-events-auto p-1.5 rounded-md bg-background-tertiary text-text-secondary hover:bg-background-active hover:text-text-primary transition-colors",
                 month_grid: "w-full",
                 weekdays: "grid grid-cols-7 gap-1 mb-1",
                 weekday: "text-text-tertiary text-xs font-medium h-10 flex items-center justify-center",
