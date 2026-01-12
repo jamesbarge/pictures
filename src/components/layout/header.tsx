@@ -575,10 +575,10 @@ function DateFilter({ mounted }: { mounted: boolean; fullWidth?: boolean }) {
               classNames={{
                 root: "text-text-primary w-[320px]",
                 months: "flex flex-col",
-                month: "space-y-2",
-                month_caption: "flex justify-center items-center h-10 mb-3 gap-3",
+                month: "relative",
+                month_caption: "flex justify-center items-center h-10 mb-3",
                 caption_label: "text-sm font-medium text-text-primary",
-                nav: "flex items-center",
+                nav: "absolute top-0 left-0 right-0 h-10 flex items-center justify-between px-4",
                 button_previous: "p-1.5 rounded-md bg-background-tertiary text-text-secondary hover:bg-background-active hover:text-text-primary transition-colors",
                 button_next: "p-1.5 rounded-md bg-background-tertiary text-text-secondary hover:bg-background-active hover:text-text-primary transition-colors",
                 month_grid: "w-full",
