@@ -161,6 +161,9 @@ export function useUserSync() {
           // Clear stored anonymous ID
           storedAnonymousId = null;
         }
+      }).catch((error) => {
+        isSyncingRef.current = false;
+        console.error("[Sync] Initial sync failed:", error);
       });
     }
 
@@ -278,7 +281,9 @@ export function useUserSync() {
       Promise.all([
         performFullSync("manual"),
         performFestivalSync(),
-      ]);
+      ]).catch((error) => {
+        console.error("[Sync] Online sync failed:", error);
+      });
     };
 
     window.addEventListener("online", handleOnline);
