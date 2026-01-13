@@ -43,9 +43,7 @@ jobs:
     name: E2E Tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    # E2E tests require DATABASE_URL_TEST secret - only run when explicitly requested
-    # To enable: add 'run-e2e' label to PR, or set DATABASE_URL_TEST secret for main branch
-    if: contains(github.event.pull_request.labels.*.name, 'run-e2e')
+    # E2E tests require DATABASE_URL_TEST secret configured in GitHub
 
     env:
       # Use test database for E2E tests
@@ -88,20 +86,25 @@ jobs:
           path: playwright-report/
           retention-days: 7
 
-  # Summary job that depends on unit tests (E2E is optional for PRs)
+  # Summary job that depends on both unit and E2E tests
   test-summary:
     name: Test Summary
     runs-on: ubuntu-latest
-    needs: [unit-tests]
+    needs: [unit-tests, e2e-tests]
     if: always()
 
     steps:
       - name: Check test results
         env:
           UNIT_RESULT: ${{ needs.unit-tests.result }}
+          E2E_RESULT: ${{ needs.e2e-tests.result }}
         run: |
           if [ "$UNIT_RESULT" != "success" ]; then
             echo "Unit tests failed"
             exit 1
           fi
-          echo "All required tests passed!"
+          if [ "$E2E_RESULT" != "success" ]; then
+            echo "E2E tests failed"
+            exit 1
+          fi
+          echo "All tests passed!"
