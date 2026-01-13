@@ -28,14 +28,14 @@ export default defineConfig({
         "**/test/**",
         "**/*.d.ts",
       ],
-      // Coverage thresholds - commented out until coverage is higher
-      // Enable these once we have more tests:
-      // thresholds: {
-      //   lines: 60,
-      //   functions: 60,
-      //   branches: 55,
-      //   statements: 60,
-      // },
+      // Coverage thresholds - start low to prevent regression, increase over time
+      // Current: ~12% lines, ~11% functions. Target: 60%
+      thresholds: {
+        lines: 10,
+        functions: 10,
+        branches: 8,
+        statements: 10,
+      },
     },
     // Timeout for slow tests
     testTimeout: 10000,
