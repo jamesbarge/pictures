@@ -9,6 +9,44 @@ London cinema listings app that scrapes screening data from cinemas across Londo
 
 - **Always think about a way to verify your work before starting any work.** Before implementing changes, identify how you'll confirm the change works correctly (run tests, check database values, verify in browser, etc.).
 
+## Changelogs - PRIORITY
+
+**Every PR or direct ship to main MUST update BOTH changelog locations.**
+
+### 1. Quick Summary: `RECENT_CHANGES.md` (root)
+Add a new entry **at the top** of the file. Keep only the last ~20 entries (old ones drop off the bottom).
+
+Format:
+```markdown
+## YYYY-MM-DD: Short Description
+**PR**: #XX | **Files**: `path/to/file.ts`, `other/file.ts`
+- What changed (bullet points)
+- Why it matters
+
+---
+```
+
+### 2. Detailed Archive: `/changelogs/YYYY-MM-DD-short-description.md`
+Create a new file with full details including impact and context.
+
+Format:
+```markdown
+# Short Description
+
+**PR**: #XX
+**Date**: YYYY-MM-DD
+
+## Changes
+- Detailed bullet points
+
+## Impact
+- Who/what this affects
+```
+
+### Why Both?
+- `RECENT_CHANGES.md` = Quick AI context at session start (one file to read)
+- `/changelogs/` = Permanent archive with full details
+
 ## Git Workflow
 
 ### Branch Strategy
