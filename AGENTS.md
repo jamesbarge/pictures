@@ -4,6 +4,40 @@ London cinema calendar app (Pictures) that scrapes screening data from cinemas a
 ## General Principles
 - **Always think about a way to verify your work before starting any work.** Identify how you'll confirm changes work correctly (run tests, check database values, verify in browser, etc.).
 
+## Verification
+Before completing any task:
+1. Run tests to verify nothing is broken
+2. Run type checking and linting
+3. Self-review: verify the solution matches the original request
+4. Check for regressions in related functionality
+
+Do not claim work is complete until all checks pass. Maximum 3 attempts per issue, then STOP and ask for guidance.
+
+## Avoid
+- Don't add new dependencies without asking first
+- Don't create new utility files without checking if similar ones exist
+- Don't refactor or "improve" code unrelated to the current task
+- Don't guess at implementation patterns - check existing code first
+- Don't make assumptions about requirements - ask for clarification
+
+## When Stuck
+If you encounter repeated failures or uncertainty:
+1. Stop after 3 failed attempts
+2. Summarize what you tried and why it failed
+3. Ask the user for guidance before continuing
+
+## Code Quality
+- Read existing code before making changes
+- Follow existing patterns and conventions in the codebase
+- Keep changes minimal and focused on the task
+- Don't over-engineer solutions
+
+## Communication
+- Be explicit about what you're doing and why
+- Flag any uncertainties or assumptions
+- Report errors clearly with context
+- Ask clarifying questions early rather than guessing
+
 ## Tech Stack
 - Next.js 16 App Router, React 19
 - Drizzle ORM with PostgreSQL on Supabase (not Neon)
