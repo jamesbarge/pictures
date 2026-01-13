@@ -2,6 +2,11 @@
   "name": "pictures",
   "version": "0.1.0",
   "private": true,
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix"
+    ]
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build --webpack",
@@ -97,7 +102,9 @@
     "scrape:close-up-seasons": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/seasons/run-close-up-seasons.ts",
     "scrape:barbican-seasons": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/seasons/run-barbican-seasons.ts",
     "scrape:pcc-seasons": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/seasons/run-pcc-seasons.ts",
-    "scrape:ica-seasons": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/seasons/run-ica-seasons.ts"
+    "scrape:ica-seasons": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/seasons/run-ica-seasons.ts",
+    "link:seasons:directors": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register scripts/link-seasons-by-director.ts",
+    "prepare": "husky"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.1.76",
@@ -151,7 +158,9 @@
     "drizzle-kit": "^0.31.8",
     "eslint": "^9",
     "eslint-config-next": "16.1.0",
+    "husky": "^9.1.7",
     "jsdom": "^27.4.0",
+    "lint-staged": "^16.2.7",
     "openai": "^6.15.0",
     "playwright": "^1.57.0",
     "playwright-extra": "^4.3.6",
