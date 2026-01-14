@@ -4,8 +4,8 @@
  * Enhanced with Movie schema and SEO optimizations for GEO
  */
 
-// ISR: Revalidate every 5 minutes - film data rarely changes
-export const revalidate = 300;
+// Force dynamic - avoid build timeout on DB connection
+export const dynamic = "force-dynamic";
 
 import { notFound } from "next/navigation";
 import Link from "next/link";

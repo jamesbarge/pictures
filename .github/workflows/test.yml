@@ -56,22 +56,38 @@ jobs:
       DATABASE_URL: ${{ secrets.DATABASE_URL_TEST }}
 
     steps:
+      - name: Check if DATABASE_URL_TEST is configured
+        id: check-db
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "DATABASE_URL_TEST not configured, skipping E2E tests"
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "DATABASE_URL_TEST is configured"
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Checkout repository
+        if: steps.check-db.outputs.skip != 'true'
         uses: actions/checkout@v4
 
       - name: Setup Node.js
+        if: steps.check-db.outputs.skip != 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
 
       - name: Install dependencies
+        if: steps.check-db.outputs.skip != 'true'
         run: npm ci
 
       - name: Install Playwright browsers
+        if: steps.check-db.outputs.skip != 'true'
         run: npx playwright install chromium --with-deps
 
       - name: Build application
+        if: steps.check-db.outputs.skip != 'true'
         run: npm run build
         env:
           # Minimal env vars for build
@@ -80,13 +96,18 @@ jobs:
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || 'disabled' }}
 
       - name: Run E2E tests
+        if: steps.check-db.outputs.skip != 'true'
         run: npm run test:e2e
         env:
           CI: true
 
+      - name: Skip E2E tests (no database)
+        if: steps.check-db.outputs.skip == 'true'
+        run: echo "E2E tests skipped - DATABASE_URL_TEST not configured"
+
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
-        if: failure()
+        if: failure() && steps.check-db.outputs.skip != 'true'
         with:
           name: playwright-report
           path: playwright-report/
@@ -109,8 +130,12 @@ jobs:
             echo "Unit tests failed"
             exit 1
           fi
-          if [ "$E2E_RESULT" != "success" ]; then
+          # E2E is optional - allow skipped (no DATABASE_URL_TEST) or success
+          if [ "$E2E_RESULT" != "success" ] && [ "$E2E_RESULT" != "skipped" ]; then
             echo "E2E tests failed"
             exit 1
+          fi
+          if [ "$E2E_RESULT" == "skipped" ]; then
+            echo "E2E tests skipped (no DATABASE_URL_TEST configured)"
           fi
           echo "All tests passed!"

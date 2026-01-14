@@ -1,4 +1,4 @@
-import { db } from "@/db";
+import { db, isDatabaseAvailable } from "@/db";
 import { screenings, films, cinemas, festivals, seasons } from "@/db/schema";
 import { eq, gte, lte, and, countDistinct, count } from "drizzle-orm";
 import { endOfDay, addDays, startOfDay, format } from "date-fns";
@@ -130,6 +130,48 @@ const getCachedStats = unstable_cache(
 export default async function Home() {
   // Use date key to bust cache at midnight (ensures fresh data each day)
   const dateKey = format(new Date(), "yyyy-MM-dd");
+
+  // Early return with fallback data if no database (CI/test environments)
+  if (!isDatabaseAvailable) {
+    const fallbackFaq = [
+      { question: "What cinemas are in London?", answer: "Database not available in this environment." },
+      { question: "How do I find film screenings in London?", answer: "Database not available in this environment." },
+      { question: "What films are showing in London today?", answer: "Database not available in this environment." },
+    ];
+    return (
+      <div className="min-h-screen bg-background-primary">
+        <WebSiteSchema />
+        <FAQSchema items={fallbackFaq} />
+        <Header cinemas={[]} festivals={[]} seasons={[]} availableFormats={[]} />
+        <div className="px-4 sm:px-6 lg:px-8 pt-6">
+          <h1 className="sr-only">London Cinema Listings - Independent & Art House Films</h1>
+          <p className="text-sm text-text-tertiary mb-4 max-w-2xl">
+            Find screenings at London cinemas. Database not available in CI/test environment.
+          </p>
+        </div>
+        <main className="px-4 sm:px-6 lg:px-8 pb-6">
+          <div className="p-6 bg-background-secondary/50 border border-border-subtle rounded-lg text-center">
+            <p className="text-text-secondary">
+              No screenings available. Database not connected.
+            </p>
+          </div>
+          <section className="mt-12 pt-8 border-t border-border-subtle">
+            <h2 className="text-lg font-display text-text-primary mb-6">
+              Frequently Asked Questions
+            </h2>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {fallbackFaq.map((faq, index) => (
+                <div key={index} className="space-y-2">
+                  <h3 className="font-medium text-text-primary text-sm">{faq.question}</h3>
+                  <p className="text-text-tertiary text-sm">{faq.answer}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        </main>
+      </div>
+    );
+  }
 
   // Fetch cached data (60s cache for screenings, 1hr for cinemas/seasons, 5min for stats)
   const [initialScreenings, allCinemas, activeFestivals, activeSeasons, stats] = await Promise.all([

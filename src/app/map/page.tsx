@@ -3,6 +3,9 @@
  * Interactive map for defining cinema area filters
  */
 
+// Force dynamic rendering - page requires database
+export const dynamic = "force-dynamic";
+
 import { db } from "@/db";
 import { cinemas } from "@/db/schema";
 import { eq } from "drizzle-orm";

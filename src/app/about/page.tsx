@@ -8,11 +8,13 @@ import { Metadata } from "next";
 import Link from "next/link";
 import { ChevronLeft, Film, Calendar, MapPin, ExternalLink } from "lucide-react";
 import { db } from "@/db";
-import { cinemas, screenings, films } from "@/db/schema";
+import { cinemas, screenings } from "@/db/schema";
 import { eq, gte, count, countDistinct } from "drizzle-orm";
+import { safeQuery } from "@/db/safe-query";
 import { OrganizationSchema, FAQSchema, BreadcrumbSchema } from "@/components/seo/json-ld";
 
-export const revalidate = 3600; // Revalidate hourly
+// Force dynamic rendering - page requires database
+export const dynamic = "force-dynamic";
 
 const BASE_URL = "https://pictures.london";
 
@@ -35,26 +37,34 @@ export const metadata: Metadata = {
 export default async function AboutPage() {
   const now = new Date();
 
-  // Fetch stats
+  // Fetch stats with fallbacks for CI builds without database
   const [allCinemas, statsResult] = await Promise.all([
-    db
-      .select({
-        id: cinemas.id,
-        name: cinemas.name,
-        chain: cinemas.chain,
-        address: cinemas.address,
-        programmingFocus: cinemas.programmingFocus,
-      })
-      .from(cinemas)
-      .where(eq(cinemas.isActive, true))
-      .orderBy(cinemas.name),
-    db
-      .select({
-        totalScreenings: count(screenings.id),
-        uniqueFilms: countDistinct(screenings.filmId),
-      })
-      .from(screenings)
-      .where(gte(screenings.datetime, now)),
+    safeQuery(
+      () =>
+        db
+          .select({
+            id: cinemas.id,
+            name: cinemas.name,
+            chain: cinemas.chain,
+            address: cinemas.address,
+            programmingFocus: cinemas.programmingFocus,
+          })
+          .from(cinemas)
+          .where(eq(cinemas.isActive, true))
+          .orderBy(cinemas.name),
+      [] // Fallback: empty cinema list
+    ),
+    safeQuery(
+      () =>
+        db
+          .select({
+            totalScreenings: count(screenings.id),
+            uniqueFilms: countDistinct(screenings.filmId),
+          })
+          .from(screenings)
+          .where(gte(screenings.datetime, now)),
+      [{ totalScreenings: 0, uniqueFilms: 0 }] // Fallback: zero stats
+    ),
   ]);
 
   const stats = {

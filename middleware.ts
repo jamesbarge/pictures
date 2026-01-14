@@ -1,4 +1,5 @@
-import { clerkMiddleware } from "@clerk/nextjs/server";
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
 /**
  * Clerk Middleware Configuration
@@ -7,11 +8,28 @@ import { clerkMiddleware } from "@clerk/nextjs/server";
  * This middleware adds Clerk context to all requests
  * without protecting any routes.
  *
- * Future: Add route protection for subscription features:
- * - /account - User profile, subscription management
- * - /api/sync - Sync localStorage to database
+ * In CI/test environments without Clerk keys, this middleware
+ * is a no-op passthrough.
  */
-export default clerkMiddleware();
+
+// Check if we have a valid Clerk key
+const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+const hasValidClerkKey =
+  publishableKey &&
+  publishableKey.startsWith("pk_") &&
+  publishableKey !== "disabled";
+
+// Dynamic middleware based on Clerk availability
+export default async function middleware(request: NextRequest) {
+  if (!hasValidClerkKey) {
+    // No valid Clerk key - passthrough (CI/test mode)
+    return NextResponse.next();
+  }
+
+  // Dynamically import and run Clerk middleware only when key is valid
+  const { clerkMiddleware } = await import("@clerk/nextjs/server");
+  return clerkMiddleware()(request, {} as never);
+}
 
 export const config = {
   matcher: [
