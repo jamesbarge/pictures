@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
-import { useUser } from "@clerk/nextjs";
+import { useUser } from "@/hooks/useClerkSafe";
 import { useFilmStatus } from "@/stores/film-status";
 import { Button } from "@/components/ui";
 import { RotateCcw, Film, Loader2 } from "lucide-react";

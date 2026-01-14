@@ -16,7 +16,7 @@
  */
 
 import { useEffect, useRef, useCallback } from "react";
-import { useUser } from "@clerk/nextjs";
+import { useUser } from "@/hooks/useClerkSafe";
 import { useFilmStatus } from "@/stores/film-status";
 import { usePreferences } from "@/stores/preferences";
 import { useFilters } from "@/stores/filters";

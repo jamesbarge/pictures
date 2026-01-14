@@ -4,7 +4,7 @@ import posthog from "posthog-js";
 import { PostHogProvider as PHProvider, usePostHog } from "posthog-js/react";
 import { useEffect, Suspense, useRef } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useUser } from "@clerk/nextjs";
+import { useUser } from "@/hooks/useClerkSafe";
 import { useCookieConsent } from "@/stores/cookie-consent";
 
 /**

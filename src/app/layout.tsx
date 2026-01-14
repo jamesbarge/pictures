@@ -4,7 +4,7 @@ import localFont from "next/font/local";
 import Script from "next/script";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
-import { ClerkProvider } from "@clerk/nextjs";
+import { ClerkProviderConditional } from "@/components/clerk-provider-conditional";
 import { Providers } from "@/components/providers";
 import { OrganizationSchema } from "@/components/seo/json-ld";
 import { Footer } from "@/components/layout/footer";
@@ -181,26 +181,14 @@ export default function RootLayout({
       >
         {/* Organization schema for brand recognition */}
         <OrganizationSchema />
-        <ClerkProvider
-          appearance={{
-            variables: {
-              colorPrimary: "#1E3A5F",
-              colorText: "#1A1A1A",
-              colorTextSecondary: "#4A4A4A",
-              colorBackground: "#FFFFFF",
-              colorInputBackground: "#EDE8DD",
-              colorInputText: "#1A1A1A",
-              borderRadius: "0.5rem",
-            },
-          }}
-        >
+        <ClerkProviderConditional>
           <Providers>
             <div className="min-h-screen flex flex-col">
               <main className="flex-1">{children}</main>
               <Footer />
             </div>
           </Providers>
-        </ClerkProvider>
+        </ClerkProviderConditional>
         <Analytics />
         <SpeedInsights />
       </body>

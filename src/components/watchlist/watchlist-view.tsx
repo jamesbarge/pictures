@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui";
-import { SignInButton, SignedOut } from "@clerk/nextjs";
+import { SafeSignInButton as SignInButton, SafeSignedOut as SignedOut } from "@/components/clerk-components-safe";
 
 interface Film {
   id: string;

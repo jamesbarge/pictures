@@ -5,7 +5,7 @@
  */
 
 import Link from "next/link";
-import { UserButton } from "@clerk/nextjs";
+import { SafeUserButton as UserButton } from "@/components/clerk-components-safe";
 import {
   LayoutDashboard,
   Film,

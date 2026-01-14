@@ -7,7 +7,7 @@
  */
 
 import { useState } from "react";
-import { useAuth } from "@clerk/nextjs";
+import { useAuth } from "@/hooks/useClerkSafe";
 import { Button } from "@/components/ui/button";
 import { useFestivalStore } from "@/stores/festival";
 import { useHydrated } from "@/hooks/useHydrated";

@@ -10,7 +10,12 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Navigation, Heart, MapPin, Settings, User, Clapperboard, Menu, X, Leaf } from "lucide-react";
-import { SignInButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
+import {
+  SafeSignInButton as SignInButton,
+  SafeSignedIn as SignedIn,
+  SafeSignedOut as SignedOut,
+  SafeUserButton as UserButton,
+} from "@/components/clerk-components-safe";
 import { cn } from "@/lib/cn";
 import { usePreferences } from "@/stores/preferences";
 
