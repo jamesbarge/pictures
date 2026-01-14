@@ -50,6 +50,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     # E2E tests require DATABASE_URL_TEST secret configured in GitHub
+    # Skip E2E tests if no test database is configured
+    if: ${{ secrets.DATABASE_URL_TEST != '' }}
 
     env:
       # Use test database for E2E tests
@@ -109,8 +111,12 @@ jobs:
             echo "Unit tests failed"
             exit 1
           fi
-          if [ "$E2E_RESULT" != "success" ]; then
+          # E2E is optional - allow skipped (no DATABASE_URL_TEST) or success
+          if [ "$E2E_RESULT" != "success" ] && [ "$E2E_RESULT" != "skipped" ]; then
             echo "E2E tests failed"
             exit 1
+          fi
+          if [ "$E2E_RESULT" == "skipped" ]; then
+            echo "E2E tests skipped (no DATABASE_URL_TEST configured)"
           fi
           echo "All tests passed!"
