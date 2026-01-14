@@ -129,7 +129,7 @@ export class PCCSeasonScraper extends BaseSeasonScraper {
     const $ = this.parseHtml(html);
 
     // Extract season name from h1 or page title
-    let name =
+    const name =
       $("h1").first().text().trim() ||
       $("title").text().replace(/\s*[|–-]\s*Prince Charles Cinema.*$/i, "").trim() ||
       "";

@@ -169,7 +169,7 @@ export class ICASeasonScraper extends BaseSeasonScraper {
     const $ = this.parseHtml(html);
 
     // Extract strand name
-    let name =
+    const name =
       $("h1").first().text().trim() ||
       $('meta[property="og:title"]').attr("content")?.replace(" | ICA", "").trim() ||
       "";

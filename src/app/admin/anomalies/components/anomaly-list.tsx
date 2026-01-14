@@ -7,7 +7,6 @@
 
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { AlertTriangle, XCircle, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/cn";
 import Link from "next/link";
@@ -31,25 +30,24 @@ interface AnomalyListProps {
 }
 
 export function AnomalyList({ anomalies }: AnomalyListProps) {
-  const [visibleAnomalies, setVisibleAnomalies] = useState<DetectedAnomaly[]>(anomalies);
-  const [mounted, setMounted] = useState(false);
+  // null = not yet hydrated (server render shows all), array = client-filtered
+  const [clientFiltered, setClientFiltered] = useState<DetectedAnomaly[] | null>(null);
 
   // Filter out dismissed anomalies on mount
   useEffect(() => {
-    setMounted(true);
     const filtered = anomalies.filter(
       a => !isAnomalyDismissed(a.cinemaId, a.todayCount)
     );
-    setVisibleAnomalies(filtered);
+    setClientFiltered(filtered);
   }, [anomalies]);
 
   // Handle dismiss - remove from visible list
   function handleDismiss(cinemaId: string) {
-    setVisibleAnomalies(prev => prev.filter(a => a.cinemaId !== cinemaId));
+    setClientFiltered(prev => prev?.filter(a => a.cinemaId !== cinemaId) ?? null);
   }
 
-  // Show all anomalies on server render, filter on client
-  const displayAnomalies = mounted ? visibleAnomalies : anomalies;
+  // Show all anomalies on server render, filtered on client
+  const displayAnomalies = clientFiltered ?? anomalies;
 
   if (displayAnomalies.length === 0) {
     return (

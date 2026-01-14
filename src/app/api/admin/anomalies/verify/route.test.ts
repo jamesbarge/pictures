@@ -64,7 +64,7 @@ describe("POST /api/admin/anomalies/verify", () => {
   });
 
   it("returns 401 when not authenticated", async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: null } as any);
+    vi.mocked(auth).mockResolvedValue({ userId: null } as unknown as Awaited<ReturnType<typeof auth>>);
 
     const request = new Request("http://localhost/api/admin/anomalies/verify", {
       method: "POST",
@@ -82,7 +82,7 @@ describe("POST /api/admin/anomalies/verify", () => {
   });
 
   it("returns 400 when missing required fields", async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as any);
+    vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as unknown as Awaited<ReturnType<typeof auth>>);
 
     const request = new Request("http://localhost/api/admin/anomalies/verify", {
       method: "POST",
@@ -101,7 +101,7 @@ describe("POST /api/admin/anomalies/verify", () => {
   });
 
   it("returns analysis with confidence when AI succeeds", async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as any);
+    vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as unknown as Awaited<ReturnType<typeof auth>>);
 
     // Mock successful AI response with high confidence
     mockCreate.mockResolvedValue({
@@ -139,7 +139,7 @@ describe("POST /api/admin/anomalies/verify", () => {
   });
 
   it("escalates to Sonnet when Haiku confidence is low", async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as any);
+    vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as unknown as Awaited<ReturnType<typeof auth>>);
 
     // First call (Haiku) returns low confidence
     // Second call (Sonnet) returns high confidence
@@ -188,7 +188,7 @@ describe("POST /api/admin/anomalies/verify", () => {
   });
 
   it("handles AI response with markdown code block", async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as any);
+    vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as unknown as Awaited<ReturnType<typeof auth>>);
 
     // Mock AI response wrapped in code block
     mockCreate.mockResolvedValue({

@@ -48,14 +48,14 @@ describe("Agent API Routes", () => {
     });
 
     it("returns 401 when not authenticated", async () => {
-      vi.mocked(auth).mockResolvedValue({ userId: null } as any);
+      vi.mocked(auth).mockResolvedValue({ userId: null } as unknown as Awaited<ReturnType<typeof auth>>);
 
       const response = await POST();
       expect(response.status).toBe(401);
     });
 
     it("returns link verification results", async () => {
-      vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as any);
+      vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as unknown as Awaited<ReturnType<typeof auth>>);
       vi.mocked(verifySampleOfUpcomingLinks).mockResolvedValue({
         success: true,
         data: [
@@ -79,7 +79,7 @@ describe("Agent API Routes", () => {
     });
 
     it("handles agent errors gracefully", async () => {
-      vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as any);
+      vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as unknown as Awaited<ReturnType<typeof auth>>);
       vi.mocked(verifySampleOfUpcomingLinks).mockResolvedValue({
         success: false,
         error: "Database connection failed",
@@ -107,14 +107,14 @@ describe("Agent API Routes", () => {
     });
 
     it("returns 401 when not authenticated", async () => {
-      vi.mocked(auth).mockResolvedValue({ userId: null } as any);
+      vi.mocked(auth).mockResolvedValue({ userId: null } as unknown as Awaited<ReturnType<typeof auth>>);
 
       const response = await POST();
       expect(response.status).toBe(401);
     });
 
     it("returns health check results", async () => {
-      vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as any);
+      vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as unknown as Awaited<ReturnType<typeof auth>>);
       vi.mocked(runHealthCheckAllCinemas).mockResolvedValue({
         success: true,
         data: [
@@ -172,14 +172,14 @@ describe("Agent API Routes", () => {
     });
 
     it("returns 401 when not authenticated", async () => {
-      vi.mocked(auth).mockResolvedValue({ userId: null } as any);
+      vi.mocked(auth).mockResolvedValue({ userId: null } as unknown as Awaited<ReturnType<typeof auth>>);
 
       const response = await POST();
       expect(response.status).toBe(401);
     });
 
     it("returns enrichment results", async () => {
-      vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as any);
+      vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as unknown as Awaited<ReturnType<typeof auth>>);
       vi.mocked(enrichUnmatchedFilms).mockResolvedValue({
         success: true,
         data: [
@@ -219,7 +219,7 @@ describe("Agent API Routes", () => {
     });
 
     it("handles empty results", async () => {
-      vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as any);
+      vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as unknown as Awaited<ReturnType<typeof auth>>);
       vi.mocked(enrichUnmatchedFilms).mockResolvedValue({
         success: true,
         data: [],

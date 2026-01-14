@@ -35,7 +35,7 @@ describe("POST /api/admin/scrape/all", () => {
   });
 
   it("returns 401 when not authenticated", async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: null } as any);
+    vi.mocked(auth).mockResolvedValue({ userId: null } as unknown as Awaited<ReturnType<typeof auth>>);
 
     const request = new Request("http://localhost/api/admin/scrape/all", {
       method: "POST",
@@ -46,7 +46,7 @@ describe("POST /api/admin/scrape/all", () => {
   });
 
   it("queues all scrapers when authenticated", async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as any);
+    vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as unknown as Awaited<ReturnType<typeof auth>>);
     mockSend.mockResolvedValue({ ids: ["event-1", "event-2"] });
 
     const request = new Request("http://localhost/api/admin/scrape/all", {
@@ -64,7 +64,7 @@ describe("POST /api/admin/scrape/all", () => {
   });
 
   it("includes both independent and chain cinemas", async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as any);
+    vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as unknown as Awaited<ReturnType<typeof auth>>);
     mockSend.mockResolvedValue({ ids: [] });
 
     const request = new Request("http://localhost/api/admin/scrape/all", {
@@ -82,7 +82,7 @@ describe("POST /api/admin/scrape/all", () => {
   });
 
   it("sends scraper/run events to Inngest", async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as any);
+    vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as unknown as Awaited<ReturnType<typeof auth>>);
     mockSend.mockResolvedValue({ ids: [] });
 
     const request = new Request("http://localhost/api/admin/scrape/all", {
@@ -100,7 +100,7 @@ describe("POST /api/admin/scrape/all", () => {
     expect(events.length).toBeGreaterThan(0);
 
     // Each event should have the correct structure
-    events.forEach((event: any) => {
+    events.forEach((event: { name: string; data: { cinemaId: string; scraperId: string; triggeredBy: string } }) => {
       expect(event.name).toBe("scraper/run");
       expect(event.data.cinemaId).toBeDefined();
       expect(event.data.scraperId).toBeDefined();
@@ -109,7 +109,7 @@ describe("POST /api/admin/scrape/all", () => {
   });
 
   it("returns 500 when Inngest fails", async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as any);
+    vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as unknown as Awaited<ReturnType<typeof auth>>);
     mockSend.mockRejectedValue(new Error("Inngest service unavailable"));
 
     const request = new Request("http://localhost/api/admin/scrape/all", {

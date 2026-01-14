@@ -2,6 +2,7 @@
 
 import posthog from "posthog-js";
 import { useEffect } from "react";
+import Link from "next/link";
 
 /**
  * Global error boundary for the root layout.
@@ -44,12 +45,12 @@ export default function GlobalError({
               >
                 Try again
               </button>
-              <a
+              <Link
                 href="/"
                 className="px-6 py-2.5 border border-[#E5E0D5] rounded-lg hover:bg-[#EDE8DD] transition-colors font-medium"
               >
                 Go home
-              </a>
+              </Link>
             </div>
             {process.env.NODE_ENV === "development" && error.message && (
               <details className="mt-8 text-left">

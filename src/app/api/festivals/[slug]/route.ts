@@ -223,7 +223,7 @@ export async function GET(
         .orderBy(asc(screenings.datetime));
 
       // If user is logged in, get their schedule status for these screenings
-      let userScheduleMap = new Map<string, { status: string }>();
+      const userScheduleMap = new Map<string, { status: string }>();
       if (userId && screeningResults.length > 0) {
         const screeningIds = screeningResults.map((s) => s.id);
         const scheduleItems = await db

@@ -139,7 +139,7 @@ export class BarbicanSeasonScraper extends BaseSeasonScraper {
     const $ = this.parseHtml(html);
 
     // Extract series name from h1 or page title
-    let name =
+    const name =
       $("h1").first().text().trim() ||
       $('meta[property="og:title"]').attr("content")?.replace(" | Barbican", "").trim() ||
       "";

@@ -214,7 +214,7 @@ export class BFISeasonScraper extends BaseSeasonScraper {
       if (permalink === "seasons") return;
 
       // Get title from link text, heading, or image alt
-      let name =
+      const name =
         $el.find("h2, h3, .title").first().text().trim() ||
         $link.text().trim() ||
         $el.find("img").attr("alt") ||

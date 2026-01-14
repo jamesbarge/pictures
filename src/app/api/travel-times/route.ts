@@ -143,7 +143,7 @@ export async function POST(request: Request) {
     const googleMode = mode === "bicycling" ? "bicycling" : mode;
 
     // Initial Fetch
-    let data = await fetchGoogleTimes(
+    const data = await fetchGoogleTimes(
       originsParam,
       destinationsParam,
       googleMode,

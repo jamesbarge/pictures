@@ -12,7 +12,7 @@ import * as cheerio from "cheerio";
 function titleToSlug(title: string, year?: number | null): string {
   // Letterboxd uses lowercase, hyphenated slugs
   // Remove special characters, replace spaces with hyphens
-  let slug = title
+  const slug = title
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "") // Remove accents

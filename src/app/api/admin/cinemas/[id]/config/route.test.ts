@@ -60,7 +60,7 @@ describe("Cinema Config API", () => {
     });
 
     it("returns 401 when not authenticated", async () => {
-      vi.mocked(auth).mockResolvedValue({ userId: null } as any);
+      vi.mocked(auth).mockResolvedValue({ userId: null } as unknown as Awaited<ReturnType<typeof auth>>);
 
       const request = new Request("http://localhost/api/admin/cinemas/bfi-southbank/config");
       const response = await GET(request, { params: Promise.resolve({ id: "bfi-southbank" }) });
@@ -69,7 +69,7 @@ describe("Cinema Config API", () => {
     });
 
     it("returns 404 when cinema not found", async () => {
-      vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as any);
+      vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as unknown as Awaited<ReturnType<typeof auth>>);
       mockSelect.mockResolvedValueOnce([]); // Cinema not found
 
       const request = new Request("http://localhost/api/admin/cinemas/nonexistent/config");
@@ -79,7 +79,7 @@ describe("Cinema Config API", () => {
     });
 
     it("returns existing config when baseline exists", async () => {
-      vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as any);
+      vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as unknown as Awaited<ReturnType<typeof auth>>);
       mockSelect
         .mockResolvedValueOnce([{ id: "bfi-southbank" }]) // Cinema exists
         .mockResolvedValueOnce([{
@@ -105,7 +105,7 @@ describe("Cinema Config API", () => {
     });
 
     it("returns defaults when no baseline exists", async () => {
-      vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as any);
+      vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as unknown as Awaited<ReturnType<typeof auth>>);
       mockSelect
         .mockResolvedValueOnce([{ id: "prince-charles" }]) // Cinema exists
         .mockResolvedValueOnce([]); // No baseline
@@ -133,7 +133,7 @@ describe("Cinema Config API", () => {
     });
 
     it("returns 401 when not authenticated", async () => {
-      vi.mocked(auth).mockResolvedValue({ userId: null } as any);
+      vi.mocked(auth).mockResolvedValue({ userId: null } as unknown as Awaited<ReturnType<typeof auth>>);
 
       const request = new Request("http://localhost/api/admin/cinemas/bfi-southbank/config", {
         method: "PUT",
@@ -146,7 +146,7 @@ describe("Cinema Config API", () => {
     });
 
     it("returns 400 for invalid tier", async () => {
-      vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as any);
+      vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as unknown as Awaited<ReturnType<typeof auth>>);
 
       const request = new Request("http://localhost/api/admin/cinemas/bfi-southbank/config", {
         method: "PUT",
@@ -159,7 +159,7 @@ describe("Cinema Config API", () => {
     });
 
     it("returns 400 for tolerancePercent below 10", async () => {
-      vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as any);
+      vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as unknown as Awaited<ReturnType<typeof auth>>);
 
       const request = new Request("http://localhost/api/admin/cinemas/bfi-southbank/config", {
         method: "PUT",
@@ -175,7 +175,7 @@ describe("Cinema Config API", () => {
     });
 
     it("returns 400 for tolerancePercent above 100", async () => {
-      vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as any);
+      vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as unknown as Awaited<ReturnType<typeof auth>>);
 
       const request = new Request("http://localhost/api/admin/cinemas/bfi-southbank/config", {
         method: "PUT",
@@ -191,7 +191,7 @@ describe("Cinema Config API", () => {
     });
 
     it("returns 400 for scrapeHorizonDays below 7", async () => {
-      vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as any);
+      vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as unknown as Awaited<ReturnType<typeof auth>>);
 
       const request = new Request("http://localhost/api/admin/cinemas/bfi-southbank/config", {
         method: "PUT",
@@ -207,7 +207,7 @@ describe("Cinema Config API", () => {
     });
 
     it("returns 400 for scrapeHorizonDays above 365", async () => {
-      vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as any);
+      vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as unknown as Awaited<ReturnType<typeof auth>>);
 
       const request = new Request("http://localhost/api/admin/cinemas/bfi-southbank/config", {
         method: "PUT",
@@ -223,7 +223,7 @@ describe("Cinema Config API", () => {
     });
 
     it("returns 400 for invalid maxScrapeDate", async () => {
-      vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as any);
+      vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as unknown as Awaited<ReturnType<typeof auth>>);
 
       const request = new Request("http://localhost/api/admin/cinemas/bfi-southbank/config", {
         method: "PUT",
@@ -239,7 +239,7 @@ describe("Cinema Config API", () => {
     });
 
     it("accepts valid maxScrapeDate ISO datetime", async () => {
-      vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as any);
+      vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as unknown as Awaited<ReturnType<typeof auth>>);
       mockSelect
         .mockResolvedValueOnce([{ id: "bfi-southbank" }]) // Cinema exists
         .mockResolvedValueOnce([]); // No baseline exists
@@ -256,7 +256,7 @@ describe("Cinema Config API", () => {
     });
 
     it("accepts null for nullable fields", async () => {
-      vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as any);
+      vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as unknown as Awaited<ReturnType<typeof auth>>);
       mockSelect
         .mockResolvedValueOnce([{ id: "bfi-southbank" }]) // Cinema exists
         .mockResolvedValueOnce([]); // No baseline exists
@@ -280,7 +280,7 @@ describe("Cinema Config API", () => {
     it("accepts boundary values for tolerancePercent", async () => {
       for (const tolerancePercent of [10, 100]) {
         vi.clearAllMocks();
-        vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as any);
+        vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as unknown as Awaited<ReturnType<typeof auth>>);
         mockSelect
           .mockResolvedValueOnce([{ id: "bfi-southbank" }])
           .mockResolvedValueOnce([]);
@@ -299,7 +299,7 @@ describe("Cinema Config API", () => {
     it("accepts boundary values for scrapeHorizonDays", async () => {
       for (const scrapeHorizonDays of [7, 365]) {
         vi.clearAllMocks();
-        vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as any);
+        vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as unknown as Awaited<ReturnType<typeof auth>>);
         mockSelect
           .mockResolvedValueOnce([{ id: "bfi-southbank" }])
           .mockResolvedValueOnce([]);
@@ -316,7 +316,7 @@ describe("Cinema Config API", () => {
     });
 
     it("updates existing baseline", async () => {
-      vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as any);
+      vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as unknown as Awaited<ReturnType<typeof auth>>);
       mockSelect
         .mockResolvedValueOnce([{ id: "bfi-southbank" }]) // Cinema exists
         .mockResolvedValueOnce([{ cinemaId: "bfi-southbank" }]); // Baseline exists
@@ -340,7 +340,7 @@ describe("Cinema Config API", () => {
     });
 
     it("creates new baseline when none exists", async () => {
-      vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as any);
+      vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as unknown as Awaited<ReturnType<typeof auth>>);
       mockSelect
         .mockResolvedValueOnce([{ id: "new-cinema" }]) // Cinema exists
         .mockResolvedValueOnce([]); // No baseline exists

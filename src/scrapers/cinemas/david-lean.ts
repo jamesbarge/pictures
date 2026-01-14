@@ -95,7 +95,7 @@ export class DavidLeanScraper extends BaseScraper {
     for (const time of times) {
       try {
         const datetime = this.parseDateTime(dayName, dayNum, monthName, time, currentYear);
-        let adjustedDatetime = datetime < now ? addYears(datetime, 1) : datetime;
+        const adjustedDatetime = datetime < now ? addYears(datetime, 1) : datetime;
 
         if (adjustedDatetime >= now) {
           screenings.push({

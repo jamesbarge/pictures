@@ -134,19 +134,19 @@ export async function createPage(): Promise<Page> {
       get: () => 8,
     });
 
-    // Override permissions query
-    const originalQuery = window.navigator.permissions.query;
-    // @ts-ignore
-    window.navigator.permissions.query = (parameters: any) => {
+    // Override permissions query (anti-detection requires non-standard API manipulation)
+    const originalQuery = window.navigator.permissions.query.bind(window.navigator.permissions);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window.navigator.permissions as any).query = (parameters: PermissionDescriptor) => {
       if (parameters.name === "notifications") {
         return Promise.resolve({ state: "denied", onchange: null });
       }
       return originalQuery(parameters);
     };
 
-    // Mock chrome runtime
-    // @ts-ignore
-    window.chrome = {
+    // Mock chrome runtime (anti-detection requires adding non-standard window properties)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).chrome = {
       runtime: {},
       loadTimes: () => ({}),
       csi: () => ({}),

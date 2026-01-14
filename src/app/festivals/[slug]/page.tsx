@@ -194,7 +194,7 @@ export default async function FestivalPage({ params }: FestivalPageProps) {
         
         {status === "upcoming" && !festival.programmAnnouncedDate ? (
            <div className="bg-background-secondary border border-border-subtle rounded-lg p-8 text-center text-text-secondary">
-              Programme coming soon. Follow this festival to get notified when it's announced.
+              Programme coming soon. Follow this festival to get notified when it&apos;s announced.
            </div>
         ) : (
           <FestivalProgramme festivalId={festival.id} />

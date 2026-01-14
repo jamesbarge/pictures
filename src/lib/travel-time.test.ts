@@ -10,6 +10,7 @@ import {
   groupByUrgency,
   formatLeaveBy,
   type Screening,
+  type ReachableScreening,
 } from "./travel-time";
 
 // =============================================================================
@@ -216,38 +217,51 @@ describe("getReachableScreenings", () => {
 // groupByUrgency Tests
 // =============================================================================
 
+// Helper to create mock ReachableScreening for groupByUrgency tests
+const createMockReachable = (id: string, minutesUntilLeave: number): ReachableScreening => ({
+  id,
+  datetime: new Date().toISOString(),
+  format: null,
+  bookingUrl: `https://example.com/book/${id}`,
+  cinema: { id, name: `Cinema ${id}`, shortName: id },
+  film: { id: `film-${id}`, title: `Film ${id}`, year: 2024, runtime: 120, posterUrl: null },
+  travelMinutes: 20,
+  travelMode: "transit",
+  leaveBy: new Date(),
+  minutesUntilLeave,
+  screeningEnd: new Date(),
+});
+
 describe("groupByUrgency", () => {
   it("should group screenings by minutes until leave", () => {
-    const now = new Date("2025-01-06T14:00:00Z");
-
     // Create mock ReachableScreening objects with different minutesUntilLeave
-    const screenings = [
-      { minutesUntilLeave: 15, cinema: { id: "a" } }, // leave_soon
-      { minutesUntilLeave: 45, cinema: { id: "b" } }, // leave_within_hour
-      { minutesUntilLeave: 90, cinema: { id: "c" } }, // later
-      { minutesUntilLeave: 25, cinema: { id: "d" } }, // leave_soon
-      { minutesUntilLeave: 55, cinema: { id: "e" } }, // leave_within_hour
-    ] as any;
+    const screenings: ReachableScreening[] = [
+      createMockReachable("a", 15), // leave_soon
+      createMockReachable("b", 45), // leave_within_hour
+      createMockReachable("c", 90), // later
+      createMockReachable("d", 25), // leave_soon
+      createMockReachable("e", 55), // leave_within_hour
+    ];
 
     const groups = groupByUrgency(screenings);
 
     expect(groups.leave_soon).toHaveLength(2);
-    expect(groups.leave_soon.map((s: any) => s.cinema.id)).toEqual(["a", "d"]);
+    expect(groups.leave_soon.map((s) => s.cinema.id)).toEqual(["a", "d"]);
 
     expect(groups.leave_within_hour).toHaveLength(2);
-    expect(groups.leave_within_hour.map((s: any) => s.cinema.id)).toEqual(["b", "e"]);
+    expect(groups.leave_within_hour.map((s) => s.cinema.id)).toEqual(["b", "e"]);
 
     expect(groups.later).toHaveLength(1);
     expect(groups.later[0].cinema.id).toBe("c");
   });
 
   it("should handle boundary cases correctly", () => {
-    const screenings = [
-      { minutesUntilLeave: 30, cinema: { id: "a" } }, // exactly 30 = leave_soon
-      { minutesUntilLeave: 31, cinema: { id: "b" } }, // 31 = leave_within_hour
-      { minutesUntilLeave: 60, cinema: { id: "c" } }, // exactly 60 = leave_within_hour
-      { minutesUntilLeave: 61, cinema: { id: "d" } }, // 61 = later
-    ] as any;
+    const screenings: ReachableScreening[] = [
+      createMockReachable("a", 30), // exactly 30 = leave_soon
+      createMockReachable("b", 31), // 31 = leave_within_hour
+      createMockReachable("c", 60), // exactly 60 = leave_within_hour
+      createMockReachable("d", 61), // 61 = later
+    ];
 
     const groups = groupByUrgency(screenings);
 
@@ -255,16 +269,16 @@ describe("groupByUrgency", () => {
     expect(groups.leave_soon[0].cinema.id).toBe("a");
 
     expect(groups.leave_within_hour).toHaveLength(2);
-    expect(groups.leave_within_hour.map((s: any) => s.cinema.id)).toEqual(["b", "c"]);
+    expect(groups.leave_within_hour.map((s) => s.cinema.id)).toEqual(["b", "c"]);
 
     expect(groups.later).toHaveLength(1);
     expect(groups.later[0].cinema.id).toBe("d");
   });
 
   it("should return empty arrays when no screenings in a group", () => {
-    const screenings = [
-      { minutesUntilLeave: 90, cinema: { id: "a" } }, // only later
-    ] as any;
+    const screenings: ReachableScreening[] = [
+      createMockReachable("a", 90), // only later
+    ];
 
     const groups = groupByUrgency(screenings);
 

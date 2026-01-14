@@ -181,7 +181,7 @@ export function extractFilmTitle(title: string): TitleExtractionResult {
   let extracted = title.trim();
   let isCompilation = false;
   let isLiveBroadcast = false;
-  let isNonFilm = false;
+  const isNonFilm = false;
   let method = "none";
   let confidence = 1.0;
 
