@@ -630,3 +630,150 @@ describe("extractFilmTitle - edge cases", () => {
     expect(result.filmTitle).toBeTruthy();
   });
 });
+
+// =============================================================================
+// Canonical Title Extraction Tests
+// Tests for the canonicalTitle field that strips version suffixes
+// =============================================================================
+
+describe("extractFilmTitle - canonical title extraction", () => {
+  describe("version suffixes should be stripped from canonical title", () => {
+    const versionTests = [
+      {
+        input: "Apocalypse Now : Final Cut",
+        expectedFilmTitle: "Apocalypse Now : Final Cut",
+        expectedCanonical: "Apocalypse Now",
+        expectedVersion: "Final Cut",
+      },
+      {
+        input: "Blade Runner : The Final Cut",
+        expectedFilmTitle: "Blade Runner : The Final Cut",
+        expectedCanonical: "Blade Runner",
+        expectedVersion: "The Final Cut",
+      },
+      {
+        input: "Amadeus: Director's Cut",
+        expectedFilmTitle: "Amadeus: Director's Cut",
+        expectedCanonical: "Amadeus",
+        expectedVersion: "Director's Cut",
+      },
+      {
+        input: "Robocop - Director's Cut",
+        expectedFilmTitle: "Robocop - Director's Cut",
+        expectedCanonical: "Robocop",
+        expectedVersion: "Director's Cut",
+      },
+      {
+        input: "Little Shop of Horrors : Directors Cut",
+        expectedFilmTitle: "Little Shop of Horrors : Directors Cut",
+        expectedCanonical: "Little Shop of Horrors",
+        expectedVersion: "Directors Cut",
+      },
+      {
+        input: "Aliens: Extended Edition",
+        expectedFilmTitle: "Aliens: Extended Edition",
+        expectedCanonical: "Aliens",
+        expectedVersion: "Extended Edition",
+      },
+      {
+        input: "Apocalypse Now: Redux",
+        expectedFilmTitle: "Apocalypse Now: Redux",
+        expectedCanonical: "Apocalypse Now",
+        expectedVersion: "Redux",
+      },
+      {
+        input: "Metropolis: Restored",
+        expectedFilmTitle: "Metropolis: Restored",
+        expectedCanonical: "Metropolis",
+        expectedVersion: "Restored",
+      },
+      {
+        input: "Brazil - Final Cut",
+        expectedFilmTitle: "Brazil - Final Cut",
+        expectedCanonical: "Brazil",
+        expectedVersion: "Final Cut",
+      },
+    ];
+
+    it.each(versionTests)(
+      "should extract canonical title from '$input'",
+      async ({ input, expectedFilmTitle, expectedCanonical, expectedVersion }) => {
+        const result = await extractFilmTitle(input);
+        expect(result.filmTitle).toBe(expectedFilmTitle);
+        expect(result.canonicalTitle).toBe(expectedCanonical);
+        expect(result.version).toBe(expectedVersion);
+        expect(result.confidence).toBe("high");
+      }
+    );
+  });
+
+  describe("non-version suffixes should NOT be stripped", () => {
+    const nonVersionTests = [
+      {
+        input: "Star Wars: A New Hope",
+        expectedFilmTitle: "Star Wars: A New Hope",
+        expectedCanonical: "Star Wars: A New Hope",
+      },
+      {
+        input: "Mission: Impossible",
+        expectedFilmTitle: "Mission: Impossible",
+        expectedCanonical: "Mission: Impossible",
+      },
+      {
+        input: "The Lord of the Rings: The Fellowship of the Ring",
+        expectedFilmTitle: "The Lord of the Rings: The Fellowship of the Ring",
+        expectedCanonical: "The Lord of the Rings: The Fellowship of the Ring",
+      },
+      {
+        input: "Casablanca",
+        expectedFilmTitle: "Casablanca",
+        expectedCanonical: "Casablanca",
+      },
+    ];
+
+    it.each(nonVersionTests)(
+      "should keep canonical same as display for '$input'",
+      async ({ input, expectedFilmTitle, expectedCanonical }) => {
+        const result = await extractFilmTitle(input);
+        expect(result.filmTitle).toBe(expectedFilmTitle);
+        expect(result.canonicalTitle).toBe(expectedCanonical);
+        expect(result.version).toBeUndefined();
+      }
+    );
+  });
+
+  describe("BBFC ratings should be removed but version info preserved", () => {
+    it("should remove rating but keep version suffix handling", async () => {
+      const result = await extractFilmTitle("Apocalypse Now : Final Cut (15)");
+      expect(result.filmTitle).toBe("Apocalypse Now : Final Cut");
+      expect(result.canonicalTitle).toBe("Apocalypse Now");
+      expect(result.version).toBe("Final Cut");
+    });
+  });
+
+  describe("batch extraction should include canonical titles", () => {
+    it("should return canonical titles for all batch results", async () => {
+      const titles = [
+        "Casablanca",
+        "Apocalypse Now : Final Cut",
+        "Blade Runner : The Final Cut",
+      ];
+
+      const results = await batchExtractTitles(titles);
+
+      expect(results.size).toBe(3);
+
+      const casablanca = results.get("Casablanca");
+      expect(casablanca?.canonicalTitle).toBe("Casablanca");
+      expect(casablanca?.version).toBeUndefined();
+
+      const apocalypse = results.get("Apocalypse Now : Final Cut");
+      expect(apocalypse?.canonicalTitle).toBe("Apocalypse Now");
+      expect(apocalypse?.version).toBe("Final Cut");
+
+      const bladeRunner = results.get("Blade Runner : The Final Cut");
+      expect(bladeRunner?.canonicalTitle).toBe("Blade Runner");
+      expect(bladeRunner?.version).toBe("The Final Cut");
+    });
+  });
+});

@@ -166,16 +166,18 @@ export async function processScreenings(
   console.log(`[Pipeline] Extracting titles from ${uniqueRawTitles.length} unique raw titles`);
   const titleExtractions = await batchExtractTitles(uniqueRawTitles);
 
-  // Group screenings by extracted film title
+  // Group screenings by canonical title for deduplication
+  // This ensures "Apocalypse Now" and "Apocalypse Now : Final Cut" are grouped together
   const screeningsByFilm = new Map<string, RawScreening[]>();
   for (const screening of screeningsToProcess) {
     const extraction = titleExtractions.get(screening.filmTitle);
-    // Use AI result if confident, otherwise fall back to regex cleaning
-    let cleanTitle = extraction?.filmTitle ?? screening.filmTitle;
-    if (extraction?.confidence === "low") {
-      cleanTitle = cleanFilmTitle(screening.filmTitle);
+    // Use canonical title for grouping (base title without version suffixes)
+    // Fall back to filmTitle if canonicalTitle is not available
+    let matchingTitle = extraction?.canonicalTitle ?? extraction?.filmTitle ?? screening.filmTitle;
+    if (extraction?.confidence === "low" && !extraction.canonicalTitle) {
+      matchingTitle = cleanFilmTitle(screening.filmTitle);
     }
-    const key = normalizeTitle(cleanTitle);
+    const key = normalizeTitle(matchingTitle);
     if (!screeningsByFilm.has(key)) {
       screeningsByFilm.set(key, []);
     }
@@ -329,15 +331,20 @@ async function getOrCreateFilm(
 
   // If AI extraction failed or has low confidence, apply regex-based cleaning as fallback
   let cleanedTitle = extraction.filmTitle;
-  if (extraction.confidence === "low") {
+  if (extraction.confidence === "low" && !extraction.canonicalTitle) {
     cleanedTitle = cleanFilmTitle(title);
   }
 
+  // Use canonical title for matching (without version suffixes like "Final Cut")
+  // This ensures "Apocalypse Now" and "Apocalypse Now : Final Cut" match to the same film
+  const matchingTitle = extraction.canonicalTitle || cleanedTitle;
+
   if (cleanedTitle !== title) {
-    console.log(`[Pipeline] Cleaned: "${title}" → "${cleanedTitle}" (${extraction.confidence})`);
+    const versionNote = extraction.version ? ` [version: ${extraction.version}]` : "";
+    console.log(`[Pipeline] Cleaned: "${title}" → "${cleanedTitle}"${versionNote} (${extraction.confidence})`);
   }
 
-  const normalized = normalizeTitle(cleanedTitle);
+  const normalized = normalizeTitle(matchingTitle);
 
   // Try to find existing film using the pre-loaded cache (O(1) lookup)
   // This fixes the previous bug where .limit(100) missed most films
@@ -356,27 +363,29 @@ async function getOrCreateFilm(
   if (isSimilarityConfigured()) {
     try {
       // Use Claude confirmation for medium-confidence matches if API key is available
+      // Use canonical/matching title for similarity search
       const match = await findMatchingFilm(
-        cleanedTitle,
+        matchingTitle,
         scraperYear,
         isClaudeConfigured() // Enable Claude confirmation if available
       );
 
       if (match) {
         console.log(
-          `[Pipeline] Similarity match (${match.confidence}): "${cleanedTitle}" → existing film`
+          `[Pipeline] Similarity match (${match.confidence}): "${matchingTitle}" → existing film`
         );
         return match.filmId;
       }
     } catch (e) {
       // Similarity search failed, continue with normal flow
-      console.warn(`[Pipeline] Similarity search failed for "${cleanedTitle}":`, e);
+      console.warn(`[Pipeline] Similarity search failed for "${matchingTitle}":`, e);
     }
   }
 
-  // Try to match with TMDB using the cleaned title
+  // Try to match with TMDB using the canonical/matching title
+  // This ensures "Apocalypse Now : Final Cut" searches for "Apocalypse Now"
   try {
-    const match = await matchFilmToTMDB(cleanedTitle, {
+    const match = await matchFilmToTMDB(matchingTitle, {
       year: scraperYear,
       director: scraperDirector,
     });
@@ -500,10 +509,11 @@ async function getOrCreateFilm(
     console.log(`[Pipeline] Using scraper-provided poster`);
   } else {
     // Try OMDB/Fanart without TMDB match
+    // Use canonical/matching title for better API matching
     try {
       const posterService = getPosterService();
       const posterResult = await posterService.findPoster({
-        title: cleanedTitle,
+        title: matchingTitle,
         year: scraperYear,
         scraperPosterUrl,
       });
@@ -519,9 +529,11 @@ async function getOrCreateFilm(
 
   const filmId = uuidv4();
 
+  // Store the canonical/matching title as the film title
+  // Version suffixes like "Final Cut" are screening attributes, not film attributes
   await db.insert(films).values({
     id: filmId,
-    title: cleanedTitle, // Use cleaned title
+    title: matchingTitle,
     year: scraperYear,
     directors: scraperDirector ? [scraperDirector] : [],
     posterUrl,
@@ -535,7 +547,7 @@ async function getOrCreateFilm(
   // Add to cache so subsequent lookups in this run find it
   addToFilmCache({
     id: filmId,
-    title: cleanedTitle,
+    title: matchingTitle,
     originalTitle: null,
     year: scraperYear ?? null,
     runtime: null,
@@ -567,7 +579,7 @@ async function getOrCreateFilm(
     updatedAt: new Date(),
   });
 
-  console.log(`[Pipeline] Created film without TMDB: ${cleanedTitle}${posterUrl ? " (with poster)" : ""}`);
+  console.log(`[Pipeline] Created film without TMDB: ${matchingTitle}${posterUrl ? " (with poster)" : ""}`);
   return filmId;
 }
 

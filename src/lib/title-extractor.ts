@@ -16,8 +16,65 @@ function getClient(): Anthropic {
 
 interface ExtractionResult {
   filmTitle: string;
+  /** Base title for matching/deduplication (without version suffixes like "Final Cut") */
+  canonicalTitle: string;
+  /** Version/cut if present (e.g., "Final Cut", "Director's Cut") */
+  version?: string;
   eventType?: string;
   confidence: "high" | "medium" | "low";
+}
+
+/**
+ * Version suffix patterns - these indicate different cuts/versions of the same film
+ * These should be stripped for canonical title matching but preserved for display
+ *
+ * Patterns match:
+ * - ": Final Cut" / ": The Final Cut"
+ * - ": Director's Cut" / ": Directors Cut"
+ * - ": Extended Edition" / ": Extended Cut"
+ * - " - Director's Cut" (hyphen variant)
+ * - ": Redux" / ": Remastered" / ": Restored"
+ */
+const VERSION_SUFFIX_PATTERNS = [
+  // Colon-separated versions (most common at PCC)
+  /\s*:\s*(?:The\s+)?Final\s+Cut$/i,
+  /\s*:\s*Director'?s?\s+Cut$/i,
+  /\s*:\s*Extended\s+(?:Edition|Cut)$/i,
+  /\s*:\s*Original\s+(?:Edition|Cut)$/i,
+  /\s*:\s*Theatrical\s+(?:Edition|Cut)$/i,
+  /\s*:\s*(?:Redux|Remastered|Restored|Re-?release)$/i,
+  /\s*:\s*Ultimate\s+(?:Edition|Cut)$/i,
+  /\s*:\s*Uncut$/i,
+  /\s*:\s*Special\s+Edition$/i,
+  // Hyphen-separated versions
+  /\s+-\s*(?:The\s+)?Final\s+Cut$/i,
+  /\s+-\s*Director'?s?\s+Cut$/i,
+  /\s+-\s*Extended\s+(?:Edition|Cut)$/i,
+  /\s+-\s*(?:Redux|Remastered|Restored)$/i,
+];
+
+/**
+ * Extract version suffix from a title
+ * Returns the version string if found, null otherwise
+ */
+function extractVersionSuffix(title: string): { baseTitle: string; version: string } | null {
+  for (const pattern of VERSION_SUFFIX_PATTERNS) {
+    const match = title.match(pattern);
+    if (match) {
+      const baseTitle = title.slice(0, match.index).trim();
+      // Clean up the version string (remove leading colon/hyphen/spaces)
+      const version = match[0].replace(/^[\s:\-]+/, "").trim();
+      return { baseTitle, version };
+    }
+  }
+  return null;
+}
+
+/**
+ * Check if a title has a version suffix that needs canonical extraction
+ */
+function hasVersionSuffix(title: string): boolean {
+  return VERSION_SUFFIX_PATTERNS.some((pattern) => pattern.test(title));
 }
 
 /**
@@ -28,12 +85,28 @@ interface ExtractionResult {
  * - "UK PREMIERE I Only Rest in the Storm" → "Only Rest in the Storm"
  * - "35mm: Casablanca" → "Casablanca"
  * - "Star Wars: A New Hope" → "Star Wars: A New Hope" (kept as-is, it's the real title)
+ * - "Apocalypse Now : Final Cut" → filmTitle: "Apocalypse Now : Final Cut", canonicalTitle: "Apocalypse Now"
  */
 export async function extractFilmTitle(rawTitle: string): Promise<ExtractionResult> {
   // Quick pass: if it looks like a clean title already, skip the API call
   if (isLikelyCleanTitle(rawTitle)) {
+    const displayTitle = cleanBasicCruft(rawTitle);
+
+    // Check for version suffixes (e.g., ": Final Cut")
+    // These are clean titles but need canonical extraction for matching
+    const versionInfo = extractVersionSuffix(displayTitle);
+    if (versionInfo) {
+      return {
+        filmTitle: displayTitle,
+        canonicalTitle: versionInfo.baseTitle,
+        version: versionInfo.version,
+        confidence: "high",
+      };
+    }
+
     return {
-      filmTitle: cleanBasicCruft(rawTitle),
+      filmTitle: displayTitle,
+      canonicalTitle: displayTitle,
       confidence: "high",
     };
   }
@@ -41,22 +114,31 @@ export async function extractFilmTitle(rawTitle: string): Promise<ExtractionResu
   try {
     const response = await getClient().messages.create({
       model: "claude-3-5-haiku-20241022",
-      max_tokens: 150,
+      max_tokens: 200,
       messages: [
         {
           role: "user",
-          content: `Extract the actual film title from this cinema screening listing. The listing may include event prefixes (like "Kids Club:", "35mm:", "UK PREMIERE"), format info, or Q&A notes that are NOT part of the film title.
+          content: `Extract film title information from this cinema screening listing.
 
 Listing: "${rawTitle}"
 
-Respond with ONLY a JSON object (no markdown):
-{"title": "The Actual Film Title", "event": "event type if any", "confidence": "high|medium|low"}
+Return ONLY a JSON object (no markdown) with:
+- title: The display title (as shown, with version if present)
+- canonical: The base film title without version suffixes like "Director's Cut", "Final Cut", "Extended Edition", "Redux", "Restored", "Remastered" (for matching/deduplication)
+- version: The version/cut if present (e.g., "Final Cut", "Director's Cut")
+- event: Event type if any (e.g., "35mm screening", "Q&A", "kids screening")
+- confidence: "high" | "medium" | "low"
+
+IMPORTANT: "canonical" should strip version suffixes but keep legitimate subtitles.
+- "Apocalypse Now : Final Cut" → canonical: "Apocalypse Now", version: "Final Cut"
+- "Blade Runner : The Final Cut" → canonical: "Blade Runner", version: "The Final Cut"
+- "Star Wars: A New Hope" → canonical: "Star Wars: A New Hope" (subtitle, not version)
+- "Amadeus: Director's Cut" → canonical: "Amadeus", version: "Director's Cut"
 
 Examples:
-- "Saturday Morning Picture Club: The Muppets Christmas Carol" → {"title": "The Muppets Christmas Carol", "event": "kids screening", "confidence": "high"}
-- "Star Wars: A New Hope" → {"title": "Star Wars: A New Hope", "confidence": "high"}
-- "35mm: Casablanca (PG)" → {"title": "Casablanca", "event": "35mm screening", "confidence": "high"}
-- "UK PREMIERE I Only Rest in the Storm" → {"title": "Only Rest in the Storm", "event": "premiere", "confidence": "high"}`,
+- "Saturday Morning Picture Club: The Muppets Christmas Carol" → {"title": "The Muppets Christmas Carol", "canonical": "The Muppets Christmas Carol", "event": "kids screening", "confidence": "high"}
+- "Apocalypse Now : Final Cut" → {"title": "Apocalypse Now : Final Cut", "canonical": "Apocalypse Now", "version": "Final Cut", "confidence": "high"}
+- "35mm: Casablanca (PG)" → {"title": "Casablanca", "canonical": "Casablanca", "event": "35mm screening", "confidence": "high"}`,
         },
       ],
     });
@@ -65,17 +147,33 @@ Examples:
 
     // Parse the JSON response
     const parsed = JSON.parse(text.trim());
+    const displayTitle = cleanBasicCruft(parsed.title || rawTitle);
 
     return {
-      filmTitle: cleanBasicCruft(parsed.title || rawTitle),
+      filmTitle: displayTitle,
+      canonicalTitle: parsed.canonical || displayTitle,
+      version: parsed.version,
       eventType: parsed.event,
       confidence: parsed.confidence || "medium",
     };
   } catch (error) {
     console.warn(`[TitleExtractor] AI extraction failed for "${rawTitle}":`, error);
-    // Fallback to basic cleaning
+    // Fallback to basic cleaning with version extraction
+    const displayTitle = cleanBasicCruft(rawTitle);
+    const versionInfo = extractVersionSuffix(displayTitle);
+
+    if (versionInfo) {
+      return {
+        filmTitle: displayTitle,
+        canonicalTitle: versionInfo.baseTitle,
+        version: versionInfo.version,
+        confidence: "low",
+      };
+    }
+
     return {
-      filmTitle: cleanBasicCruft(rawTitle),
+      filmTitle: displayTitle,
+      canonicalTitle: displayTitle,
       confidence: "low",
     };
   }
@@ -95,10 +193,23 @@ export async function batchExtractTitles(
 
   for (const title of uniqueTitles) {
     if (isLikelyCleanTitle(title)) {
-      results.set(title, {
-        filmTitle: cleanBasicCruft(title),
-        confidence: "high",
-      });
+      const displayTitle = cleanBasicCruft(title);
+      // Check for version suffixes
+      const versionInfo = extractVersionSuffix(displayTitle);
+      if (versionInfo) {
+        results.set(title, {
+          filmTitle: displayTitle,
+          canonicalTitle: versionInfo.baseTitle,
+          version: versionInfo.version,
+          confidence: "high",
+        });
+      } else {
+        results.set(title, {
+          filmTitle: displayTitle,
+          canonicalTitle: displayTitle,
+          confidence: "high",
+        });
+      }
     } else {
       needsExtraction.push(title);
     }
@@ -158,6 +269,12 @@ function isLikelyCleanTitle(title: string): boolean {
     if (pattern.test(normalized)) {
       return false; // Needs extraction
     }
+  }
+
+  // Check for version suffixes - these are clean titles that we handle locally
+  // e.g., "Apocalypse Now : Final Cut" should be treated as clean
+  if (hasVersionSuffix(title)) {
+    return true; // Clean, we'll extract the canonical title locally
   }
 
   // Also check for suspicious colon patterns (but allow film subtitles)
