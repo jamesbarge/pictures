@@ -99,7 +99,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
             "bg-background-secondary",
             "border border-border-default",
             "text-text-primary placeholder:text-text-tertiary",
-            "transition-all duration-[var(--duration-fast)]",
+            "transition-colors duration-[var(--duration-fast)]",
             // Focus styles
             "focus:outline-none focus:ring-2 focus:ring-accent-primary/30 focus:border-accent-primary",
             // Hover styles

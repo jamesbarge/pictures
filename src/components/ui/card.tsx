@@ -21,7 +21,7 @@ const variantStyles: Record<CardVariant, string> = {
   ghost: "bg-transparent border-none",
   interactive: cn(
     "bg-background-secondary border border-border-subtle shadow-card",
-    "transition-all duration-[var(--duration-normal)]",
+    "transition-[border-color,box-shadow] duration-[var(--duration-normal)]",
     "hover:border-accent-primary/30 hover:shadow-card-hover",
     "cursor-pointer"
   ),

@@ -240,7 +240,7 @@ export function Select({
             "px-[var(--input-padding-x)]",
             "bg-background-secondary border border-border-default",
             "rounded-[var(--input-radius)]",
-            "text-left transition-all duration-[var(--duration-fast)]",
+            "text-left transition-colors duration-[var(--duration-fast)]",
             "focus:outline-none focus:ring-2 focus:ring-accent-primary/30 focus:border-accent-primary",
             "hover:border-border-emphasis",
             "disabled:bg-background-tertiary disabled:text-text-muted disabled:cursor-not-allowed",
@@ -424,7 +424,7 @@ export function MultiSelect({
             "bg-background-secondary border",
             values.length > 0 ? "border-accent-primary/30" : "border-border-default",
             "rounded-[var(--input-radius)]",
-            "text-sm text-left transition-all duration-[var(--duration-fast)]",
+            "text-sm text-left transition-colors duration-[var(--duration-fast)]",
             "focus:outline-none focus:ring-2 focus:ring-accent-primary/30",
             "hover:border-border-emphasis",
             "disabled:opacity-50 disabled:cursor-not-allowed"

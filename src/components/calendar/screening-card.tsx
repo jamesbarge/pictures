@@ -116,7 +116,7 @@ export const ScreeningCard = memo(function ScreeningCard({ screening }: Screenin
         // Refined hover state - subtle lift with warm shadow
         "hover:border-accent-primary/30 hover:shadow-card-hover",
         "hover:-translate-y-0.5 transform-gpu",
-        "transition-all duration-200 ease-out",
+        "transition-[border-color,box-shadow,transform] duration-200 ease-out",
         // Focus-within for keyboard navigation
         "focus-within:ring-2 focus-within:ring-accent-primary/40 focus-within:ring-offset-2 focus-within:ring-offset-background-primary"
       )}

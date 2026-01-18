@@ -78,7 +78,7 @@ export function FilmHeader({ film }: FilmHeaderProps) {
             fill
             sizes="100vw"
             className={cn(
-              "object-cover transition-all duration-1000 ease-out",
+              "object-cover transition-[opacity,transform] duration-1000 ease-out",
               "animate-ken-burns",
               backdropLoaded ? "opacity-30 scale-100" : "opacity-0 scale-105"
             )}
@@ -111,7 +111,7 @@ export function FilmHeader({ film }: FilmHeaderProps) {
                     fill
                     sizes="(max-width: 640px) 192px, 224px"
                     className={cn(
-                      "object-cover transition-all duration-700 ease-out",
+                      "object-cover transition-[opacity,transform] duration-700 ease-out",
                       posterLoaded ? "opacity-100 scale-100" : "opacity-0 scale-105"
                     )}
                     priority
@@ -126,7 +126,7 @@ export function FilmHeader({ film }: FilmHeaderProps) {
                     src={`/api/poster-placeholder?title=${encodeURIComponent(film.title)}${film.year ? `&year=${film.year}` : ""}`}
                     alt={film.title}
                     className={cn(
-                      "absolute inset-0 w-full h-full object-cover transition-all duration-700 ease-out",
+                      "absolute inset-0 w-full h-full object-cover transition-[opacity,transform] duration-700 ease-out",
                       posterLoaded ? "opacity-100 scale-100" : "opacity-0 scale-105"
                     )}
                     onLoad={() => setPosterLoaded(true)}
@@ -224,7 +224,7 @@ export function FilmHeader({ film }: FilmHeaderProps) {
                       key={genre}
                       onClick={() => handleGenreClick(genre)}
                       className={cn(
-                        "px-3 py-1 text-sm rounded-full capitalize transition-all",
+                        "px-3 py-1 text-sm rounded-full capitalize transition-colors",
                         "bg-background-tertiary text-text-secondary border border-border-subtle",
                         "hover:bg-accent-primary/10 hover:text-accent-primary hover:border-accent-primary/30",
                         "focus:outline-none focus:ring-2 focus:ring-accent-primary/40",
@@ -244,7 +244,7 @@ export function FilmHeader({ film }: FilmHeaderProps) {
                   <button
                     onClick={() => handleDecadeClick(film.decade!)}
                     className={cn(
-                      "px-3 py-1 text-sm rounded-full transition-all",
+                      "px-3 py-1 text-sm rounded-full transition-colors",
                       "bg-accent-highlight/15 text-accent-highlight-dark border border-accent-highlight/30",
                       "hover:bg-accent-highlight/25 hover:border-accent-highlight/50",
                       "focus:outline-none focus:ring-2 focus:ring-accent-highlight/40",
@@ -283,7 +283,7 @@ export function FilmHeader({ film }: FilmHeaderProps) {
                   "text-sm text-text-tertiary hover:text-text-primary",
                   "bg-background-tertiary hover:bg-surface-overlay-hover",
                   "border border-border-subtle hover:border-border-default",
-                  "transition-all"
+                  "transition-colors"
                 )}
               >
                 <span className="font-medium">TMDB</span>
@@ -300,7 +300,7 @@ export function FilmHeader({ film }: FilmHeaderProps) {
                   "text-sm text-text-tertiary hover:text-text-primary",
                   "bg-background-tertiary hover:bg-surface-overlay-hover",
                   "border border-border-subtle hover:border-border-default",
-                  "transition-all"
+                  "transition-colors"
                 )}
               >
                 <span className="font-medium">IMDb</span>
@@ -316,7 +316,7 @@ export function FilmHeader({ film }: FilmHeaderProps) {
                 "text-sm text-text-tertiary hover:text-text-primary",
                 "bg-background-tertiary hover:bg-surface-overlay-hover",
                 "border border-border-subtle hover:border-border-default",
-                "transition-all"
+                "transition-colors"
               )}
             >
               <span className="font-medium">Letterboxd</span>

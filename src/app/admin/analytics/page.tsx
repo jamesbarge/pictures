@@ -260,7 +260,7 @@ export default function AnalyticsDashboard() {
                         </div>
                         <div
                           className={cn(
-                            "w-full rounded-t-lg transition-all",
+                            "w-full rounded-t-lg transition-colors",
                             i === 0
                               ? "bg-accent-primary"
                               : i === funnel.steps.length - 1

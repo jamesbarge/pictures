@@ -267,7 +267,7 @@ function WatchlistFilmCard({
   return (
     <div
       className={cn(
-        "border rounded-xl overflow-hidden transition-all",
+        "border rounded-xl overflow-hidden transition-colors",
         isNotPlaying
           ? "border-border-subtle bg-background-secondary/30"
           : "border-border-default bg-background-secondary"

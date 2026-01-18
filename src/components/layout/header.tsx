@@ -229,7 +229,7 @@ function MobileFiltersButton({
     <button
       onClick={onClick}
       className={cn(
-        "flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-all",
+        "flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-colors",
         isOpen || count > 0
           ? "bg-accent-primary/10 border-accent-primary/30 text-accent-primary"
           : "bg-background-secondary border-border-default text-text-secondary"
@@ -390,7 +390,7 @@ function FilmTypeFilter({ mounted, fullWidth }: { mounted: boolean; fullWidth?: 
             onClick={() => handleSelect(option.value)}
             aria-pressed={isActive}
             className={cn(
-              "flex items-center justify-center gap-1.5 px-3 py-2.5 text-sm font-medium transition-all",
+              "flex items-center justify-center gap-1.5 px-3 py-2.5 text-sm font-medium transition-colors",
               "border-r border-border-default last:border-r-0",
               fullWidth && "flex-1",
               isActive
@@ -498,7 +498,7 @@ function DateFilter({ mounted }: { mounted: boolean; fullWidth?: boolean }) {
       <button
         onClick={handleButtonClick}
         className={cn(
-          "flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-all min-w-[140px]",
+          "flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-colors min-w-[140px]",
           hasFilter
             ? "bg-accent-primary/10 border-accent-primary/30 text-accent-primary"
             : "bg-background-secondary border-border-default text-text-secondary hover:border-border-emphasis hover:text-text-primary"
@@ -642,7 +642,7 @@ function DateFilter({ mounted }: { mounted: boolean; fullWidth?: boolean }) {
             <button
               onClick={() => setShowTimeCustom(!showTimeCustom)}
               className={cn(
-                "mt-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border",
+                "mt-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border",
                 showTimeCustom
                   ? "border-accent-primary bg-accent-primary/10 text-accent-primary"
                   : "border-border-default bg-background-secondary text-text-secondary hover:border-border-emphasis hover:text-text-primary"
@@ -889,7 +889,7 @@ function FilmSearchFilter({ mounted }: { mounted: boolean }) {
         autoComplete="off"
         className={cn(
           "w-full pl-9 py-2 rounded-lg border bg-background-secondary text-sm text-text-primary placeholder:text-text-tertiary",
-          "transition-all duration-150",
+          "transition-colors duration-150",
           "focus:outline-none focus:ring-2 focus:ring-accent-primary/30 focus:border-accent-primary",
           hasValue
             ? "border-accent-primary/40 pr-8"
@@ -1116,7 +1116,7 @@ function CinemaFilter({ cinemas, mounted }: { cinemas: Cinema[]; mounted: boolea
       <button
         onClick={handleButtonClick}
         className={cn(
-          "flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-all min-w-[140px]",
+          "flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-colors min-w-[140px]",
           hasSelection
             ? "bg-accent-primary/10 border-accent-primary/30 text-accent-primary"
             : "bg-background-secondary border-border-default text-text-secondary hover:border-border-emphasis hover:text-text-primary"
@@ -1277,7 +1277,7 @@ function FormatFilter({ mounted, availableFormats, fullWidth }: { mounted: boole
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-all",
+          "flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-colors",
           fullWidth ? "w-full" : "min-w-[120px]",
           hasSelection
             ? "bg-accent-primary/10 border-accent-primary/30 text-accent-primary"
@@ -1486,7 +1486,7 @@ function ViewModeToggle({ mounted, fullWidth }: { mounted: boolean; fullWidth?: 
             onClick={() => handleSelect(option.value)}
             aria-pressed={isActive}
             className={cn(
-              "flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium transition-all",
+              "flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors",
               "border-r border-border-default last:border-r-0",
               fullWidth && "flex-1",
               isActive

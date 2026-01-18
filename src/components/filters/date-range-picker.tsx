@@ -180,7 +180,7 @@ export function DateRangePicker({ className }: DateRangePickerProps) {
                   caption: "flex justify-center pt-1 relative items-center",
                   caption_label: "text-sm font-medium",
                   nav: "flex items-center gap-1",
-                  nav_button: "h-8 w-8 p-1.5 rounded-lg border border-accent-primary/30 bg-accent-primary/10 text-accent-primary hover:bg-accent-primary/20 hover:border-accent-primary/50 transition-all flex items-center justify-center",
+                  nav_button: "h-8 w-8 p-1.5 rounded-lg border border-accent-primary/30 bg-accent-primary/10 text-accent-primary hover:bg-accent-primary/20 hover:border-accent-primary/50 transition-colors flex items-center justify-center",
                   nav_button_previous: "absolute left-0",
                   nav_button_next: "absolute right-0",
                   table: "w-full border-collapse",

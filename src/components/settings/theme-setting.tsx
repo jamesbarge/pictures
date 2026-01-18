@@ -50,7 +50,7 @@ export function ThemeSetting() {
               aria-checked={isSelected}
               onClick={() => setTheme(value)}
               className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all duration-200",
+                "flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-[color,background-color,box-shadow] duration-200",
                 isSelected
                   ? "bg-accent-primary text-text-inverse shadow-sm"
                   : "text-text-secondary hover:text-text-primary hover:bg-background-hover"

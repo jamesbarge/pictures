@@ -66,7 +66,7 @@ export function FilmStatusButtons({
       <button
         onClick={(e) => handleStatusClick(e, "want_to_see")}
         className={cn(
-          "w-7 h-7 flex items-center justify-center rounded-full transition-all shadow-sm",
+          "w-7 h-7 flex items-center justify-center rounded-full transition-colors shadow-sm",
           status === "want_to_see"
             ? "bg-accent-danger text-white"
             : "bg-black/60 text-white/80 hover:bg-accent-danger hover:text-white"
@@ -78,7 +78,7 @@ export function FilmStatusButtons({
       <button
         onClick={(e) => handleStatusClick(e, "not_interested")}
         className={cn(
-          "w-7 h-7 flex items-center justify-center rounded-full transition-all shadow-sm",
+          "w-7 h-7 flex items-center justify-center rounded-full transition-colors shadow-sm",
           status === "not_interested"
             ? "bg-neutral-700 text-white"
             : "bg-black/60 text-white/80 hover:bg-neutral-600 hover:text-white"

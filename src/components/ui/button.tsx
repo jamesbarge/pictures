@@ -83,7 +83,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           // Base styles
           "inline-flex items-center justify-center font-medium",
           "rounded-[var(--button-radius)]",
-          "transition-all duration-[var(--duration-fast)]",
+          "transition-colors duration-[var(--duration-fast)]",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background-primary",
           "disabled:cursor-not-allowed",
           // Variant styles

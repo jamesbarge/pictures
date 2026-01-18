@@ -92,7 +92,7 @@ export function LetterboxdRatingReveal({
         "text-sm text-text-tertiary hover:text-text-primary",
         "bg-background-tertiary hover:bg-surface-overlay-hover",
         "border border-border-subtle hover:border-border-default",
-        "transition-all cursor-pointer",
+        "transition-colors cursor-pointer",
         "focus:outline-none focus:ring-2 focus:ring-accent-primary/40",
         className
       )}

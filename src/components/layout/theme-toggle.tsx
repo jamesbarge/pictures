@@ -49,7 +49,7 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
         {/* Sun */}
         <svg
           className={cn(
-            "absolute inset-0 w-5 h-5 transition-all duration-200 ease-out",
+            "absolute inset-0 w-5 h-5 transition-[opacity,transform] duration-200 ease-out",
             isDark
               ? "opacity-0 rotate-90 scale-50"
               : "opacity-100 rotate-0 scale-100"
@@ -77,7 +77,7 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
         {/* Moon */}
         <svg
           className={cn(
-            "absolute inset-0 w-5 h-5 transition-all duration-200 ease-out",
+            "absolute inset-0 w-5 h-5 transition-[opacity,transform] duration-200 ease-out",
             isDark
               ? "opacity-100 rotate-0 scale-100"
               : "opacity-0 -rotate-90 scale-50"

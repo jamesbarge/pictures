@@ -75,7 +75,7 @@ export function StatusToggle({ filmId, variant = "full" }: StatusToggleProps) {
                 key={status}
                 onClick={() => handleStatusChange(isActive ? null : status)}
                 className={cn(
-                  "p-2 rounded-lg border border-border-default transition-all",
+                  "p-2 rounded-lg border border-border-default transition-colors",
                   isActive ? config.activeClassName : "text-text-tertiary " + config.className
                 )}
                 title={config.label}
@@ -101,7 +101,7 @@ export function StatusToggle({ filmId, variant = "full" }: StatusToggleProps) {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "flex items-center gap-2 px-4 py-2 rounded-lg border transition-all min-w-[160px]",
+          "flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors min-w-[160px]",
           currentStatus && activeConfig
             ? activeConfig.activeClassName
             : "border-border-default text-text-secondary hover:border-border-emphasis hover:text-text-primary"

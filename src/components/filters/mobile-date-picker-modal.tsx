@@ -183,8 +183,8 @@ export function MobileDatePickerModal({ isOpen, onClose }: MobileDatePickerModal
                 month_caption: "flex justify-center relative items-center h-10 mb-2",
                 caption_label: "text-base font-medium text-text-primary",
                 nav: "flex items-center gap-1",
-                button_previous: "absolute left-0 p-2 rounded-lg border border-accent-primary/30 bg-accent-primary/10 text-accent-primary hover:bg-accent-primary/20 hover:border-accent-primary/50 transition-all",
-                button_next: "absolute right-0 p-2 rounded-lg border border-accent-primary/30 bg-accent-primary/10 text-accent-primary hover:bg-accent-primary/20 hover:border-accent-primary/50 transition-all",
+                button_previous: "absolute left-0 p-2 rounded-lg border border-accent-primary/30 bg-accent-primary/10 text-accent-primary hover:bg-accent-primary/20 hover:border-accent-primary/50 transition-colors",
+                button_next: "absolute right-0 p-2 rounded-lg border border-accent-primary/30 bg-accent-primary/10 text-accent-primary hover:bg-accent-primary/20 hover:border-accent-primary/50 transition-colors",
                 month_grid: "w-full",
                 weekdays: "grid grid-cols-7 gap-1 mb-1",
                 weekday: "text-text-tertiary text-sm font-medium h-10 flex items-center justify-center",
@@ -248,7 +248,7 @@ export function MobileDatePickerModal({ isOpen, onClose }: MobileDatePickerModal
           <button
             onClick={() => setShowTimeCustom(!showTimeCustom)}
             className={cn(
-              "mt-1 px-4 py-2 rounded-lg text-sm font-medium transition-all border",
+              "mt-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors border",
               showTimeCustom
                 ? "border-accent-primary bg-accent-primary/10 text-accent-primary"
                 : "border-border-default bg-background-secondary text-text-secondary hover:border-border-emphasis hover:text-text-primary"
