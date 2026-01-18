@@ -1080,15 +1080,18 @@ function CinemaFilter({ cinemas, mounted }: { cinemas: Cinema[]; mounted: boolea
     }
   }, [isOpen]);
 
-  // Filter cinemas by search term
+  // Filter cinemas by search term - matches if ALL words appear in name, shortName, or chain
   const filteredCinemas = useMemo(() => {
     if (!searchTerm.trim()) return cinemas;
-    const term = searchTerm.toLowerCase();
-    return cinemas.filter(
-      (c) =>
-        c.name.toLowerCase().includes(term) ||
-        c.shortName?.toLowerCase().includes(term)
-    );
+    const searchWords = searchTerm.toLowerCase().split(/\s+/).filter(Boolean);
+    return cinemas.filter((c) => {
+      const searchableText = [
+        c.name.toLowerCase(),
+        c.shortName?.toLowerCase() || "",
+        c.chain?.toLowerCase() || "",
+      ].join(" ");
+      return searchWords.every((word) => searchableText.includes(word));
+    });
   }, [cinemas, searchTerm]);
 
   const displayText = useMemo(() => {
