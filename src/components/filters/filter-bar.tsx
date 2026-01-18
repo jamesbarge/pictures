@@ -349,9 +349,10 @@ function ActiveFilterPills({ festivals = [] }: { festivals?: { id: string; name:
           {pill.label}
           <button
             onClick={pill.onRemove}
+            aria-label={`Remove ${pill.label} filter`}
             className="p-0.5 rounded-full hover:bg-accent-primary/20"
           >
-            <X className="w-3 h-3" />
+            <X className="w-3 h-3" aria-hidden="true" />
           </button>
         </span>
       ))}

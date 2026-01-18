@@ -332,10 +332,11 @@ function ActiveFilterChips({ cinemas, seasons, mounted }: { cinemas: Cinema[]; s
         <button
           key={i}
           onClick={chip.onRemove}
+          aria-label={`Remove ${chip.label} filter`}
           className="flex items-center gap-1 px-2 py-1 bg-accent-primary/10 text-accent-primary text-xs font-medium rounded-full hover:bg-accent-primary/20 transition-colors"
         >
           <span>{chip.label}</span>
-          <X className="w-3 h-3" />
+          <X className="w-3 h-3" aria-hidden="true" />
         </button>
       ))}
     </div>
@@ -372,10 +373,14 @@ function FilmTypeFilter({ mounted, fullWidth }: { mounted: boolean; fullWidth?: 
   ] as const;
 
   return (
-    <div className={cn(
-      "flex rounded-lg border border-border-default bg-background-tertiary overflow-hidden",
-      fullWidth && "w-full"
-    )}>
+    <div
+      role="group"
+      aria-label="Film type filter"
+      className={cn(
+        "flex rounded-lg border border-border-default bg-background-tertiary overflow-hidden",
+        fullWidth && "w-full"
+      )}
+    >
       {options.map((option) => {
         const Icon = option.icon;
         const isActive = currentType === option.value;
@@ -383,6 +388,7 @@ function FilmTypeFilter({ mounted, fullWidth }: { mounted: boolean; fullWidth?: 
           <button
             key={option.value}
             onClick={() => handleSelect(option.value)}
+            aria-pressed={isActive}
             className={cn(
               "flex items-center justify-center gap-1.5 px-3 py-2.5 text-sm font-medium transition-all",
               "border-r border-border-default last:border-r-0",
@@ -392,7 +398,7 @@ function FilmTypeFilter({ mounted, fullWidth }: { mounted: boolean; fullWidth?: 
                 : "text-text-secondary hover:text-text-primary hover:bg-background-hover"
             )}
           >
-            <Icon className="w-4 h-4" />
+            <Icon className="w-4 h-4" aria-hidden="true" />
             <span>{option.label}</span>
           </button>
         );
@@ -1463,10 +1469,14 @@ function ViewModeToggle({ mounted, fullWidth }: { mounted: boolean; fullWidth?: 
   ] as const;
 
   return (
-    <div className={cn(
-      "flex rounded-lg border border-border-default bg-background-tertiary overflow-hidden",
-      fullWidth && "w-full"
-    )}>
+    <div
+      role="group"
+      aria-label="View mode"
+      className={cn(
+        "flex rounded-lg border border-border-default bg-background-tertiary overflow-hidden",
+        fullWidth && "w-full"
+      )}
+    >
       {options.map((option) => {
         const Icon = option.icon;
         const isActive = currentMode === option.value;
@@ -1474,6 +1484,7 @@ function ViewModeToggle({ mounted, fullWidth }: { mounted: boolean; fullWidth?: 
           <button
             key={option.value}
             onClick={() => handleSelect(option.value)}
+            aria-pressed={isActive}
             className={cn(
               "flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium transition-all",
               "border-r border-border-default last:border-r-0",
@@ -1483,7 +1494,7 @@ function ViewModeToggle({ mounted, fullWidth }: { mounted: boolean; fullWidth?: 
                 : "text-text-secondary hover:text-text-primary hover:bg-background-hover"
             )}
           >
-            <Icon className="w-4 h-4" />
+            <Icon className="w-4 h-4" aria-hidden="true" />
             <span>{option.label}</span>
           </button>
         );

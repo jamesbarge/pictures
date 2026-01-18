@@ -164,9 +164,10 @@ export function SearchDialog() {
             )}
             <button
               onClick={() => setIsOpen(false)}
+              aria-label="Close search"
               className="p-1 rounded-lg hover:bg-surface-overlay-hover text-text-tertiary hover:text-text-primary transition-colors"
             >
-              <X className="w-5 h-5" />
+              <X className="w-5 h-5" aria-hidden="true" />
             </button>
           </div>
 
@@ -313,9 +314,10 @@ export function SearchTrigger() {
       <button
         onClick={() => setIsOpen(true)}
         className="p-2 rounded-lg hover:bg-surface-overlay-hover text-text-secondary hover:text-text-primary transition-colors"
+        aria-label="Search films (⌘K)"
         title="Search (⌘K)"
       >
-        <Search className="w-5 h-5" />
+        <Search className="w-5 h-5" aria-hidden="true" />
       </button>
       {isOpen && <SearchDialogPortal onClose={() => setIsOpen(false)} />}
     </>
