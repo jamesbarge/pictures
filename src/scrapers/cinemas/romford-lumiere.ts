@@ -159,49 +159,78 @@ export class RomfordLumiereScraper {
     const films: CineSyncMovieData[] = [];
 
     try {
-      // Wait for film cards to appear
-      await this.page.waitForSelector('a[href*="/movies/"]', { timeout: 10000 }).catch(() => {});
+      // Wait for CineSync movie cards to load
+      // Lumiere Romford uses .pc-moviewrap for film cards
+      await this.page.waitForSelector('.pc-moviewrap, .pc-movies-container', { timeout: 15000 }).catch(() => {});
+      await this.page.waitForTimeout(2000); // Extra wait for dynamic content
 
       // Get the page content and parse with Cheerio
       const html = await this.page.content();
       const $ = cheerio.load(html);
 
-      // Find all film links - CineSync sites typically have /movies/ or /en/movies/ URLs
-      const filmLinks = $('a[href*="/movies/"]');
-
       const seenFilms = new Set<string>();
 
-      filmLinks.each((_, el) => {
-        const $el = $(el);
-        const href = $el.attr("href") || "";
+      // CineSync uses .pc-moviewrap for each film card
+      // Also try .pc-movie-content and general movie card patterns
+      const movieCardSelectors = [
+        '.pc-moviewrap',
+        '.pc-movie-content',
+        '[class*="movie-card"]',
+        '[class*="movieCard"]',
+      ];
 
-        // Extract the URL key from the href
-        const urlKeyMatch = href.match(/\/movies\/([^/?]+)/);
-        if (!urlKeyMatch) return;
+      for (const selector of movieCardSelectors) {
+        const movieCards = $(selector);
+        if (movieCards.length === 0) continue;
 
-        const urlKey = urlKeyMatch[1];
-        if (seenFilms.has(urlKey)) return;
-        seenFilms.add(urlKey);
+        console.log(`[${this.config.cinemaId}] Found ${movieCards.length} cards with selector: ${selector}`);
 
-        // Try to get the film name from the link text or nearby elements
-        let movieName = $el.text().trim();
+        movieCards.each((_, el) => {
+          const $card = $(el);
 
-        // If the link has an image, try to find the title elsewhere
-        if (!movieName || movieName.length < 2) {
-          movieName = $el.attr("title") || $el.find("img").attr("alt") || "";
-        }
+          // Try multiple ways to find the movie title
+          let movieName = '';
+          const titleSelectors = [
+            '.pc-movie-detail-wrap h3',
+            '.pc-movie-detail-wrap h4',
+            '[class*="movie-title"]',
+            '[class*="movieTitle"]',
+            'h3',
+            'h4',
+            '.title',
+          ];
 
-        // Clean up the movie name
-        movieName = movieName.replace(/\s+/g, " ").trim();
+          for (const titleSel of titleSelectors) {
+            const titleEl = $card.find(titleSel).first();
+            if (titleEl.length > 0) {
+              movieName = titleEl.text().trim();
+              if (movieName && movieName.length > 1) break;
+            }
+          }
 
-        if (movieName && movieName.length > 1) {
-          films.push({
-            movie_id: urlKey,
-            movie_name: movieName,
-            url_key: urlKey,
-          });
-        }
-      });
+          // Fallback: try image alt or data attributes
+          if (!movieName || movieName.length < 2) {
+            movieName = $card.find('img').attr('alt') || '';
+          }
+          if (!movieName || movieName.length < 2) {
+            movieName = $card.attr('data-movie-name') || $card.attr('data-title') || '';
+          }
+
+          movieName = movieName.replace(/\s+/g, ' ').trim();
+
+          if (movieName && movieName.length > 1 && !seenFilms.has(movieName.toLowerCase())) {
+            seenFilms.add(movieName.toLowerCase());
+            const urlKey = movieName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+            films.push({
+              movie_id: urlKey,
+              movie_name: movieName,
+              url_key: urlKey,
+            });
+          }
+        });
+
+        if (films.length > 0) break; // Found films, stop trying other selectors
+      }
 
       console.log(`[${this.config.cinemaId}] Extracted ${films.length} films from page`);
     } catch (error) {
@@ -365,40 +394,74 @@ export class RomfordLumiereScraper {
       const html = await this.page.content();
       const $ = cheerio.load(html);
 
-      // Look for any structured screening data
-      // This is a fallback when we can't find individual film pages
+      console.log(`[${this.config.cinemaId}] Direct extraction using CineSync selectors...`);
 
-      // Try to find JSON-LD data (many cinema sites include this)
-      $('script[type="application/ld+json"]').each((_, el) => {
-        try {
-          const jsonText = $(el).html();
-          if (!jsonText) return;
+      // CineSync structure: .pc-moviewrap contains film cards
+      // Each card has .pc-movie-detail-wrap for title and .pc-movie-time-wrap for times
+      // Dates are in .moviedateswrap
 
-          const data = JSON.parse(jsonText);
-          if (data["@type"] === "MovieTheater" || data["@type"] === "Movie") {
-            // Parse structured data if available
-            console.log(`[${this.config.cinemaId}] Found JSON-LD data`);
-          }
-        } catch {
-          // Ignore JSON parse errors
-        }
-      });
+      // First, try to find date sections and iterate through them
+      const dateWrappers = $('.moviedateswrap');
+      console.log(`[${this.config.cinemaId}] Found ${dateWrappers.length} date wrappers`);
 
-      // Look for any visible film/time combinations
-      $('[class*="film"], [class*="movie"]').each((_, el) => {
-        const $el = $(el);
-        const titleEl = $el.find('[class*="title"], h2, h3, h4').first();
-        const title = titleEl.text().trim();
+      if (dateWrappers.length > 0) {
+        dateWrappers.each((_, dateWrapper) => {
+          const $dateWrapper = $(dateWrapper);
+          // Find date text - usually in a heading or specific date element
+          const dateText = $dateWrapper.find('h3, h4, [class*="date-header"], .date').first().text().trim()
+            || $dateWrapper.text().match(/\d{1,2}\s+\w+|\w+day\s+\d{1,2}/i)?.[0]
+            || '';
 
-        if (!title || title.length < 2) return;
+          if (!dateText) return;
 
-        // Look for times within this film card
-        $el.find('[class*="time"], button, a').each((_, timeEl) => {
-          const timeText = $(timeEl).text().trim();
-          if (/^\d{1,2}[:.]\d{2}\s*(?:am|pm)?$/i.test(timeText)) {
-            // Found a time - try to determine the date
-            const dateEl = $el.find('[class*="date"]').first();
-            const dateText = dateEl.text().trim() || format(now, "yyyy-MM-dd");
+          // Find all movie cards within or after this date section
+          const movieCards = $dateWrapper.find('.pc-moviewrap').length > 0
+            ? $dateWrapper.find('.pc-moviewrap')
+            : $dateWrapper.nextUntil('.moviedateswrap').find('.pc-moviewrap');
+
+          movieCards.each((_, card) => {
+            const $card = $(card);
+            const title = $card.find('.pc-movie-detail-wrap h3, .pc-movie-detail-wrap h4, h3, h4').first().text().trim();
+            if (!title || title.length < 2) return;
+
+            // Find times in .pc-movie-time-wrap
+            $card.find('.pc-movie-time-wrap button, .pc-movie-time-wrap a, [class*="time"] button').each((_, timeEl) => {
+              const timeText = $(timeEl).text().trim();
+              if (/^\d{1,2}[:.]\d{2}\s*(?:am|pm)?$/i.test(timeText)) {
+                const datetime = this.parseShowtimeDateTime(dateText, timeText);
+                if (datetime && datetime > now && datetime <= endOfApril) {
+                  const sourceId = `romford-lumiere-${this.slugify(title)}-${datetime.toISOString()}`;
+                  screenings.push({
+                    filmTitle: this.cleanTitle(title),
+                    datetime,
+                    bookingUrl: `${this.config.baseUrl}/en/buy-tickets`,
+                    sourceId,
+                  });
+                }
+              }
+            });
+          });
+        });
+      }
+
+      // Fallback: Look for any visible film/time combinations with CineSync classes
+      if (screenings.length === 0) {
+        console.log(`[${this.config.cinemaId}] Trying fallback with general movie selectors...`);
+
+        $('.pc-moviewrap, [class*="movie"]').each((_, el) => {
+          const $el = $(el);
+          const titleEl = $el.find('.pc-movie-detail-wrap h3, .pc-movie-detail-wrap h4, [class*="title"], h2, h3, h4').first();
+          const title = titleEl.text().trim();
+
+          if (!title || title.length < 2) return;
+
+          // Look for times within this film card
+          $el.find('.pc-movie-time-wrap button, .pc-movie-time-wrap a, [class*="time"], button, a').each((_, timeEl) => {
+            const timeText = $(timeEl).text().trim();
+            if (/^\d{1,2}[:.]\d{2}\s*(?:am|pm)?$/i.test(timeText)) {
+              // Found a time - try to determine the date
+              const dateEl = $el.closest('.moviedateswrap').find('[class*="date"]').first();
+              const dateText = dateEl.text().trim() || format(now, "yyyy-MM-dd");
 
             const datetime = this.parseShowtimeDateTime(dateText, timeText);
 
@@ -415,6 +478,7 @@ export class RomfordLumiereScraper {
           }
         });
       });
+      }
 
     } catch (error) {
       console.warn(`[${this.config.cinemaId}] Error in direct extraction:`, error);
