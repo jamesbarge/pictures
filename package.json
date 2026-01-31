@@ -72,6 +72,7 @@
     "agents:links": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/agents/run-agents.ts links",
     "agents:health": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/agents/run-agents.ts health",
     "agents:enrich": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/agents/run-agents.ts enrich",
+    "agents:verify": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/agents/data-quality/run-verify.ts",
     "scrape:snapshot": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/__tests__/run-snapshot.ts",
     "scrape:genesis-basescraper": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/run-genesis-v2-basescraper.ts",
     "scrape": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/cli.ts",
