@@ -56,7 +56,7 @@ export function ThemeSetting() {
                   : "text-text-secondary hover:text-text-primary hover:bg-background-hover"
               )}
             >
-              <Icon className="w-4 h-4" />
+              <Icon className="w-4 h-4" aria-hidden="true" />
               <span>{label}</span>
             </button>
           );

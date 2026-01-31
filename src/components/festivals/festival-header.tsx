@@ -67,7 +67,7 @@ export function FestivalHeader({ festival, status }: FestivalHeaderProps) {
       {/* Date and Status row */}
       <div className="flex flex-wrap items-center gap-3 text-text-secondary mb-6">
         <span className="inline-flex items-center gap-2">
-          <Calendar className="w-4 h-4" />
+          <Calendar className="w-4 h-4" aria-hidden="true" />
           {formatDateRange()}
         </span>
         <Badge variant={statusBadge.variant}>{statusBadge.text}</Badge>

@@ -122,10 +122,10 @@ export async function FestivalProgramme({ festivalId }: FestivalProgrammeProps) 
                       {film.title}
                     </h4>
                     <div className="flex items-center gap-2 text-sm text-text-secondary mb-3">
-                      <Calendar className="w-3.5 h-3.5" />
+                      <Calendar className="w-3.5 h-3.5" aria-hidden="true" />
                       {format(screening.datetime, "HH:mm")}
                       <span className="text-text-tertiary">•</span>
-                      <MapPin className="w-3.5 h-3.5" />
+                      <MapPin className="w-3.5 h-3.5" aria-hidden="true" />
                       <span className="truncate">{cinema.shortName}</span>
                     </div>
                     

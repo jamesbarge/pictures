@@ -120,7 +120,7 @@ export function FestivalCard({ festival }: FestivalCardProps) {
             {/* Venues */}
             {festival.venues && festival.venues.length > 0 && (
               <span className="inline-flex items-center gap-1">
-                <MapPin className="w-3.5 h-3.5" />
+                <MapPin className="w-3.5 h-3.5" aria-hidden="true" />
                 {festival.venues.length === 1
                   ? festival.venues[0]
                   : `${festival.venues.length} venues`}
@@ -132,7 +132,7 @@ export function FestivalCard({ festival }: FestivalCardProps) {
           <div className="h-8">
             {ticketBadge && (
               <div className="flex items-center gap-2">
-                <Ticket className="w-4 h-4 text-text-tertiary" />
+                <Ticket className="w-4 h-4 text-text-tertiary" aria-hidden="true" />
                 <Badge variant={ticketBadge.variant} size="sm">
                   {ticketBadge.text}
                 </Badge>

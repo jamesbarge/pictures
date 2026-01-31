@@ -40,7 +40,7 @@ export function FestivalVenues({ venues }: FestivalVenuesProps) {
             className="group flex items-center gap-3 p-4 rounded-lg bg-background-secondary border border-border-subtle hover:border-accent-primary/30 transition-colors"
           >
             <div className="flex-shrink-0 w-10 h-10 rounded-full bg-background-tertiary flex items-center justify-center text-text-tertiary group-hover:text-accent-primary group-hover:bg-accent-primary/10 transition-colors">
-              <MapPin className="w-5 h-5" />
+              <MapPin className="w-5 h-5" aria-hidden="true" />
             </div>
 
             <div className="flex-1 min-w-0">
@@ -54,7 +54,7 @@ export function FestivalVenues({ venues }: FestivalVenuesProps) {
               )}
             </div>
 
-            <ChevronRight className="w-4 h-4 text-text-tertiary group-hover:text-accent-primary transition-colors" />
+            <ChevronRight className="w-4 h-4 text-text-tertiary group-hover:text-accent-primary transition-colors" aria-hidden="true" />
           </Link>
         ))}
       </div>

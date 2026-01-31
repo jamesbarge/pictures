@@ -52,7 +52,7 @@ export function MobileModal({
           className="p-2 -mr-2 rounded-lg hover:bg-background-tertiary transition-colors"
           aria-label="Close"
         >
-          <X className="w-5 h-5 text-text-secondary" />
+          <X className="w-5 h-5 text-text-secondary" aria-hidden="true" />
         </button>
       </header>
 

@@ -73,7 +73,7 @@ export function FilmStatusButtons({
         )}
         aria-label={status === "want_to_see" ? "Remove from watchlist" : "Add to watchlist"}
       >
-        <Heart className={cn("w-3.5 h-3.5", status === "want_to_see" && "fill-current")} />
+        <Heart className={cn("w-3.5 h-3.5", status === "want_to_see" && "fill-current")} aria-hidden="true" />
       </button>
       <button
         onClick={(e) => handleStatusClick(e, "not_interested")}
@@ -87,7 +87,7 @@ export function FilmStatusButtons({
           status === "not_interested" ? "Show this film again" : "Not interested in this film"
         }
       >
-        <X className="w-3.5 h-3.5" />
+        <X className="w-3.5 h-3.5" aria-hidden="true" />
       </button>
     </div>
   );

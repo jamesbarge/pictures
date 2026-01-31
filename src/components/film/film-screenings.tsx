@@ -281,7 +281,7 @@ export function FilmScreenings({ screenings, film }: FilmScreeningsProps) {
             <Filter className={cn(
               "w-4 h-4 shrink-0",
               ignoreGlobalFilters ? "text-text-tertiary" : "text-accent-primary"
-            )} />
+            )} aria-hidden="true" />
             {ignoreGlobalFilters ? (
               <span className="text-text-secondary">
                 Showing all screenings
@@ -356,7 +356,7 @@ export function FilmScreenings({ screenings, film }: FilmScreeningsProps) {
                   <h3 className="font-display text-lg text-text-primary">{cinema.name}</h3>
                   {cinema.address?.area && (
                     <p className="text-sm text-text-tertiary flex items-center gap-1 mt-0.5">
-                      <MapPin className="w-3 h-3" />
+                      <MapPin className="w-3 h-3" aria-hidden="true" />
                       {cinema.address.area}
                     </p>
                   )}
@@ -419,7 +419,7 @@ export function FilmScreenings({ screenings, film }: FilmScreeningsProps) {
                         className="shrink-0 px-4 py-2 text-sm font-medium text-text-inverse bg-accent-primary hover:bg-accent-primary-hover rounded-lg transition-colors flex items-center gap-1.5 shadow-sm"
                       >
                         Book
-                        <ExternalLink className="w-3.5 h-3.5" />
+                        <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
                       </a>
                     </div>
                   ))}

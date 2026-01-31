@@ -48,7 +48,7 @@ export function FestivalList({ festivals }: FestivalListProps) {
   if (festivals.length === 0) {
     return (
       <EmptyState
-        icon={<Calendar className="w-12 h-12" />}
+        icon={<Calendar className="w-12 h-12" aria-hidden="true" />}
         title="No festivals found"
         description="Check back later for upcoming film festivals in London"
       />
@@ -94,7 +94,7 @@ export function FestivalList({ festivals }: FestivalListProps) {
       {/* No active festivals message */}
       {!hasAnyFestivals && (
         <EmptyState
-          icon={<Calendar className="w-12 h-12" />}
+          icon={<Calendar className="w-12 h-12" aria-hidden="true" />}
           title="No upcoming festivals"
           description="Check back later for upcoming film festivals in London"
         />
@@ -115,7 +115,7 @@ export function FestivalTimeline({ festivals }: { festivals: Festival[] }) {
   if (sortedFestivals.length === 0) {
     return (
       <EmptyState
-        icon={<Calendar className="w-12 h-12" />}
+        icon={<Calendar className="w-12 h-12" aria-hidden="true" />}
         title="No festivals found"
         description="Check back later for upcoming film festivals in London"
       />

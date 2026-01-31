@@ -454,7 +454,7 @@ function CalendarEmptyState({
   if (hasSearch) {
     return (
       <EmptyState
-        icon={<Search className="w-10 h-10" />}
+        icon={<Search className="w-10 h-10" aria-hidden="true" />}
         title="No films match your search"
         description="Try a different search term or check your spelling."
         action={
@@ -470,7 +470,7 @@ function CalendarEmptyState({
   if (hasMapFilter && !hasFilters) {
     return (
       <EmptyState
-        icon={<MapPin className="w-10 h-10" />}
+        icon={<MapPin className="w-10 h-10" aria-hidden="true" />}
         title="No cinemas in your selected area"
         description="Try expanding your map area to include more cinemas."
         action={
@@ -501,7 +501,7 @@ function CalendarEmptyState({
   // Default empty state
   return (
     <EmptyState
-      icon={<Film className="w-10 h-10" />}
+      icon={<Film className="w-10 h-10" aria-hidden="true" />}
       title="No screenings available"
       description="Check back later for new listings from London cinemas."
     />

@@ -86,7 +86,7 @@ function FilterBarContent({ festivals }: { festivals: { id: string; name: string
                   filters.setFestivalFilter(slug);
                 }
               }}
-              icon={<Ticket className="w-4 h-4" />}
+              icon={<Ticket className="w-4 h-4" aria-hidden="true" />}
               singleSelect
             />
           )}
@@ -152,7 +152,7 @@ function FilterBarContent({ festivals }: { festivals: { id: string; name: string
             )}
             title="Show films that screen only once per day across London"
           >
-            <CalendarClock className="w-4 h-4" />
+            <CalendarClock className="w-4 h-4" aria-hidden="true" />
             <span>Single showing (today)</span>
           </button>
 
@@ -165,7 +165,7 @@ function FilterBarContent({ festivals }: { festivals: { id: string; name: string
               onClick={filters.clearAllFilters}
               className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-text-tertiary hover:text-text-primary hover:bg-surface-overlay-hover transition-colors"
             >
-              <RotateCcw className="w-3.5 h-3.5" />
+              <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
               Clear ({activeCount})
             </button>
           )}
@@ -226,7 +226,7 @@ function FilterDropdown({ label, options, selected, onToggle, icon, singleSelect
             {selected.length}
           </span>
         )}
-        <ChevronDown className={cn("w-3.5 h-3.5 transition-transform", isOpen && "rotate-180")} />
+        <ChevronDown className={cn("w-3.5 h-3.5 transition-transform", isOpen && "rotate-180")} aria-hidden="true" />
       </button>
 
       {isOpen && (

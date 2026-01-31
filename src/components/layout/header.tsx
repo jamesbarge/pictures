@@ -235,14 +235,14 @@ function MobileFiltersButton({
           : "bg-background-secondary border-border-default text-text-secondary"
       )}
     >
-      <SlidersHorizontal className="w-4 h-4" />
+      <SlidersHorizontal className="w-4 h-4" aria-hidden="true" />
       <span>Filters</span>
       {count > 0 && (
         <span className="bg-accent-primary text-text-inverse text-xs px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
           {count}
         </span>
       )}
-      <ChevronDown className={cn("w-4 h-4 transition-transform", isOpen && "rotate-180")} />
+      <ChevronDown className={cn("w-4 h-4 transition-transform", isOpen && "rotate-180")} aria-hidden="true" />
     </button>
   );
 }
@@ -504,9 +504,9 @@ function DateFilter({ mounted }: { mounted: boolean; fullWidth?: boolean }) {
             : "bg-background-secondary border-border-default text-text-secondary hover:border-border-emphasis hover:text-text-primary"
         )}
       >
-        <Calendar className="w-4 h-4 shrink-0" />
+        <Calendar className="w-4 h-4 shrink-0" aria-hidden="true" />
         <span className="flex-1 text-left truncate">{displayText}</span>
-        <ChevronDown className={cn("w-4 h-4 shrink-0 transition-transform", isOpen && "rotate-180")} />
+        <ChevronDown className={cn("w-4 h-4 shrink-0 transition-transform", isOpen && "rotate-180")} aria-hidden="true" />
       </button>
 
       {isOpen && (
@@ -514,7 +514,7 @@ function DateFilter({ mounted }: { mounted: boolean; fullWidth?: boolean }) {
           {/* Date Section */}
           <div className="p-3 border-b border-border-subtle">
             <div className="flex items-center gap-2 mb-2">
-              <Calendar className="w-4 h-4 text-text-tertiary" />
+              <Calendar className="w-4 h-4 text-text-tertiary" aria-hidden="true" />
               <span className="text-xs font-medium text-text-secondary uppercase tracking-wide">Date</span>
             </div>
 
@@ -604,7 +604,7 @@ function DateFilter({ mounted }: { mounted: boolean; fullWidth?: boolean }) {
           {/* Time Section */}
           <div className="p-3">
             <div className="flex items-center gap-2 mb-2">
-              <Clock className="w-4 h-4 text-text-tertiary" />
+              <Clock className="w-4 h-4 text-text-tertiary" aria-hidden="true" />
               <span className="text-xs font-medium text-text-secondary uppercase tracking-wide">Time</span>
             </div>
 
@@ -873,7 +873,7 @@ function FilmSearchFilter({ mounted }: { mounted: boolean }) {
 
   return (
     <div ref={containerRef} className="relative flex-1 max-w-xs">
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary pointer-events-none z-10" />
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary pointer-events-none z-10" aria-hidden="true" />
       <input
         ref={inputRef}
         type="text"
@@ -915,7 +915,7 @@ function FilmSearchFilter({ mounted }: { mounted: boolean }) {
           className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md hover:bg-surface-overlay-hover text-text-tertiary hover:text-text-primary transition-colors z-10"
           aria-label="Clear search"
         >
-          <X className="w-3.5 h-3.5" />
+          <X className="w-3.5 h-3.5" aria-hidden="true" />
         </button>
       )}
 
@@ -966,7 +966,7 @@ function FilmSearchFilter({ mounted }: { mounted: boolean }) {
                             />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-text-tertiary">
-                              <Film className="w-3 h-3" />
+                              <Film className="w-3 h-3" aria-hidden="true" />
                             </div>
                           )}
                         </div>
@@ -1020,7 +1020,7 @@ function FilmSearchFilter({ mounted }: { mounted: boolean }) {
                         >
                           {/* Cinema Icon */}
                           <div className="w-8 h-8 rounded-lg overflow-hidden bg-accent-primary/10 shrink-0 flex items-center justify-center">
-                            <MapPin className="w-4 h-4 text-accent-primary" />
+                            <MapPin className="w-4 h-4 text-accent-primary" aria-hidden="true" />
                           </div>
                           {/* Cinema Info */}
                           <div className="flex-1 min-w-0">
@@ -1125,9 +1125,9 @@ function CinemaFilter({ cinemas, mounted }: { cinemas: Cinema[]; mounted: boolea
             : "bg-background-secondary border-border-default text-text-secondary hover:border-border-emphasis hover:text-text-primary"
         )}
       >
-        <MapPin className="w-4 h-4 shrink-0" />
+        <MapPin className="w-4 h-4 shrink-0" aria-hidden="true" />
         <span className="flex-1 text-left truncate">{displayText}</span>
-        <ChevronDown className={cn("w-4 h-4 shrink-0 transition-transform", isOpen && "rotate-180")} />
+        <ChevronDown className={cn("w-4 h-4 shrink-0 transition-transform", isOpen && "rotate-180")} aria-hidden="true" />
       </button>
 
       {isOpen && (
@@ -1135,7 +1135,7 @@ function CinemaFilter({ cinemas, mounted }: { cinemas: Cinema[]; mounted: boolea
           {/* Search Input */}
           <div className="p-2 border-b border-border-subtle">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" aria-hidden="true" />
               <input
                 ref={searchInputRef}
                 type="text"
@@ -1169,7 +1169,7 @@ function CinemaFilter({ cinemas, mounted }: { cinemas: Cinema[]; mounted: boolea
                   cinemaIds.length === 0 ? "bg-accent-primary border-accent-primary" : "border-border-default"
                 )}
               >
-                {cinemaIds.length === 0 && <Check className="w-3 h-3 text-text-inverse" />}
+                {cinemaIds.length === 0 && <Check className="w-3 h-3 text-text-inverse" aria-hidden="true" />}
               </div>
               All Cinemas
             </button>
@@ -1197,7 +1197,7 @@ function CinemaFilter({ cinemas, mounted }: { cinemas: Cinema[]; mounted: boolea
                       isSelected ? "bg-accent-primary border-accent-primary" : "border-border-default"
                     )}
                   >
-                    {isSelected && <Check className="w-3 h-3 text-text-inverse" />}
+                    {isSelected && <Check className="w-3 h-3 text-text-inverse" aria-hidden="true" />}
                   </div>
                   <span className="truncate">{cinema.name}</span>
                 </button>
@@ -1287,9 +1287,9 @@ function FormatFilter({ mounted, availableFormats, fullWidth }: { mounted: boole
             : "bg-background-secondary border-border-default text-text-secondary hover:border-border-emphasis hover:text-text-primary"
         )}
       >
-        <Film className="w-4 h-4 shrink-0" />
+        <Film className="w-4 h-4 shrink-0" aria-hidden="true" />
         <span className="flex-1 text-left truncate">{displayText}</span>
-        <ChevronDown className={cn("w-4 h-4 shrink-0 transition-transform", isOpen && "rotate-180")} />
+        <ChevronDown className={cn("w-4 h-4 shrink-0 transition-transform", isOpen && "rotate-180")} aria-hidden="true" />
       </button>
 
       {isOpen && (
@@ -1325,7 +1325,7 @@ function FormatFilter({ mounted, availableFormats, fullWidth }: { mounted: boole
                       isSelected ? "bg-accent-primary border-accent-primary" : "border-border-default"
                     )}
                   >
-                    {isSelected && <Check className="w-3 h-3 text-text-inverse" />}
+                    {isSelected && <Check className="w-3 h-3 text-text-inverse" aria-hidden="true" />}
                   </div>
                   <span>{format.label}</span>
                 </button>

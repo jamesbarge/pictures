@@ -264,6 +264,7 @@ export function Select({
               "w-4 h-4 shrink-0 text-text-tertiary transition-transform",
               isOpen && "rotate-180"
             )}
+            aria-hidden="true"
           />
         </button>
 
@@ -316,7 +317,7 @@ export function Select({
                   )}
                 </div>
                 {option.value === value && (
-                  <Check className="w-4 h-4 shrink-0 text-accent-primary" />
+                  <Check className="w-4 h-4 shrink-0 text-accent-primary" aria-hidden="true" />
                 )}
               </button>
             ))}
@@ -443,6 +444,7 @@ export function MultiSelect({
               "w-4 h-4 shrink-0 text-text-tertiary transition-transform",
               isOpen && "rotate-180"
             )}
+            aria-hidden="true"
           />
         </button>
 
@@ -506,7 +508,7 @@ export function MultiSelect({
                       )}
                     >
                       {isSelected && (
-                        <Check className="w-3 h-3 text-text-inverse" />
+                        <Check className="w-3 h-3 text-text-inverse" aria-hidden="true" />
                       )}
                     </div>
 

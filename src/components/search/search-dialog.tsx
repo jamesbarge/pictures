@@ -149,7 +149,7 @@ export function SearchDialog() {
         <div className="bg-background-secondary border border-border-default rounded-xl shadow-elevated overflow-hidden">
           {/* Search Input */}
           <div className="flex items-center gap-3 px-4 border-b border-border-subtle">
-            <Search className="w-5 h-5 text-text-tertiary shrink-0" />
+            <Search className="w-5 h-5 text-text-tertiary shrink-0" aria-hidden="true" />
             <input
               ref={inputRef}
               type="text"
@@ -160,7 +160,7 @@ export function SearchDialog() {
               className="flex-1 py-4 bg-transparent text-text-primary placeholder:text-text-tertiary outline-none text-lg"
             />
             {isLoading && (
-              <Loader2 className="w-5 h-5 text-text-tertiary animate-spin" />
+              <Loader2 className="w-5 h-5 text-text-tertiary animate-spin" aria-hidden="true" />
             )}
             <button
               onClick={() => setIsOpen(false)}
@@ -187,7 +187,7 @@ export function SearchDialog() {
               </div>
             ) : query.trim() && !isLoading ? (
               <div className="py-12 text-center">
-                <Film className="w-10 h-10 text-text-tertiary mx-auto mb-3" />
+                <Film className="w-10 h-10 text-text-tertiary mx-auto mb-3" aria-hidden="true" />
                 <p className="text-text-secondary">No films found</p>
                 <p className="text-sm text-text-tertiary mt-1">
                   Try a different search term
@@ -267,7 +267,7 @@ function SearchResultItem({
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
-            <Film className="w-5 h-5 text-text-tertiary" />
+            <Film className="w-5 h-5 text-text-tertiary" aria-hidden="true" />
           </div>
         )}
       </div>
@@ -294,7 +294,7 @@ function SearchResultItem({
       {/* Screening Count */}
       {film.screeningCount > 0 && (
         <div className="flex items-center gap-1 text-xs text-accent-highlight-dark shrink-0">
-          <Calendar className="w-3.5 h-3.5" />
+          <Calendar className="w-3.5 h-3.5" aria-hidden="true" />
           <span>{film.screeningCount}</span>
         </div>
       )}

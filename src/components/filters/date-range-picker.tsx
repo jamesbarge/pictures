@@ -113,7 +113,7 @@ export function DateRangePicker({ className }: DateRangePickerProps) {
             : "bg-background-secondary border-border-subtle text-text-secondary hover:border-border-default hover:text-text-primary"
         )}
       >
-        <Calendar className="w-4 h-4" />
+        <Calendar className="w-4 h-4" aria-hidden="true" />
         <span>{getButtonLabel()}</span>
         {hasSelection && (
           <button
@@ -123,7 +123,7 @@ export function DateRangePicker({ className }: DateRangePickerProps) {
             }}
             className="ml-1 p-0.5 rounded hover:bg-accent-primary/20"
           >
-            <X className="w-3 h-3" />
+            <X className="w-3 h-3" aria-hidden="true" />
           </button>
         )}
       </button>
@@ -201,8 +201,8 @@ export function DateRangePicker({ className }: DateRangePickerProps) {
                 components={{
                   Chevron: ({ orientation }) => (
                     orientation === "left"
-                      ? <ChevronLeft className="h-4 w-4" />
-                      : <ChevronRight className="h-4 w-4" />
+                      ? <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+                      : <ChevronRight className="h-4 w-4" aria-hidden="true" />
                   ),
                 }}
               />

@@ -93,14 +93,14 @@ export function MobileCinemaPickerModal({ isOpen, onClose, cinemas }: MobileCine
           className="p-2 -mr-2 rounded-lg hover:bg-background-tertiary transition-colors"
           aria-label="Close"
         >
-          <X className="w-5 h-5 text-text-secondary" />
+          <X className="w-5 h-5 text-text-secondary" aria-hidden="true" />
         </button>
       </header>
 
       {/* Search Input - Sticky below header */}
       <div className="px-4 py-3 border-b border-border-subtle bg-background-primary">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" aria-hidden="true" />
           <input
             ref={searchInputRef}
             type="text"
@@ -116,7 +116,7 @@ export function MobileCinemaPickerModal({ isOpen, onClose, cinemas }: MobileCine
               className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-md hover:bg-background-hover text-text-tertiary"
               aria-label="Clear search"
             >
-              <X className="w-4 h-4" />
+              <X className="w-4 h-4" aria-hidden="true" />
             </button>
           )}
         </div>
@@ -141,9 +141,9 @@ export function MobileCinemaPickerModal({ isOpen, onClose, cinemas }: MobileCine
                 cinemaIds.length === 0 ? "bg-accent-primary border-accent-primary" : "border-border-default"
               )}
             >
-              {cinemaIds.length === 0 && <Check className="w-3.5 h-3.5 text-text-inverse" />}
+              {cinemaIds.length === 0 && <Check className="w-3.5 h-3.5 text-text-inverse" aria-hidden="true" />}
             </div>
-            <MapPin className="w-4 h-4 shrink-0" />
+            <MapPin className="w-4 h-4 shrink-0" aria-hidden="true" />
             <span className="font-medium">All Cinemas</span>
           </button>
         </div>
@@ -183,7 +183,7 @@ export function MobileCinemaPickerModal({ isOpen, onClose, cinemas }: MobileCine
                         isSelected ? "bg-accent-primary border-accent-primary" : "border-border-default"
                       )}
                     >
-                      {isSelected && <Check className="w-3.5 h-3.5 text-text-inverse" />}
+                      {isSelected && <Check className="w-3.5 h-3.5 text-text-inverse" aria-hidden="true" />}
                     </div>
                     <span className="truncate">{cinema.name}</span>
                   </button>
@@ -219,7 +219,7 @@ export function MobileCinemaPickerModal({ isOpen, onClose, cinemas }: MobileCine
                         isSelected ? "bg-accent-primary border-accent-primary" : "border-border-default"
                       )}
                     >
-                      {isSelected && <Check className="w-3.5 h-3.5 text-text-inverse" />}
+                      {isSelected && <Check className="w-3.5 h-3.5 text-text-inverse" aria-hidden="true" />}
                     </div>
                     <span className="truncate">{cinema.name}</span>
                   </button>

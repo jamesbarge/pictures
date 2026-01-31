@@ -77,7 +77,7 @@ function DateItem({ icon, label, date, endDate, isPassed, showTime = false }: Da
       }`}
     >
       <div className={isPassed ? "text-accent-success" : "text-text-tertiary"}>
-        {isPassed ? <CheckCircle2 className="w-5 h-5" /> : icon}
+        {isPassed ? <CheckCircle2 className="w-5 h-5" aria-hidden="true" /> : icon}
       </div>
       <div className="flex-1">
         <div className="flex items-center justify-between gap-2">
@@ -88,7 +88,7 @@ function DateItem({ icon, label, date, endDate, isPassed, showTime = false }: Da
             </Badge>
           ) : (
             <Badge variant="default" size="sm">
-              <Clock className="w-3 h-3 mr-1" />
+              <Clock className="w-3 h-3 mr-1" aria-hidden="true" />
               {formatDistanceToNow(date, { addSuffix: true })}
             </Badge>
           )}
@@ -124,7 +124,7 @@ export function FestivalKeyDates({
       <div className="grid gap-3 sm:grid-cols-2">
         {/* Festival Dates */}
         <DateItem
-          icon={<Calendar className="w-5 h-5" />}
+          icon={<Calendar className="w-5 h-5" aria-hidden="true" />}
           label="Festival Dates"
           date={start}
           endDate={end}
@@ -133,7 +133,7 @@ export function FestivalKeyDates({
 
         {/* Programme Announcement */}
         <DateItem
-          icon={<Megaphone className="w-5 h-5" />}
+          icon={<Megaphone className="w-5 h-5" aria-hidden="true" />}
           label="Programme Announced"
           date={programmeDate}
           isPassed={programmeDate ? isPast(programmeDate) : false}
@@ -141,7 +141,7 @@ export function FestivalKeyDates({
 
         {/* Member Sale */}
         <DateItem
-          icon={<Users className="w-5 h-5" />}
+          icon={<Users className="w-5 h-5" aria-hidden="true" />}
           label="Member Ticket Sale"
           date={memberSaleDate}
           isPassed={memberSaleDate ? isPast(memberSaleDate) : false}
@@ -150,7 +150,7 @@ export function FestivalKeyDates({
 
         {/* Public Sale */}
         <DateItem
-          icon={<Globe className="w-5 h-5" />}
+          icon={<Globe className="w-5 h-5" aria-hidden="true" />}
           label="Public Ticket Sale"
           date={publicSaleDate}
           isPassed={publicSaleDate ? isPast(publicSaleDate) : false}

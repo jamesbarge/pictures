@@ -105,7 +105,7 @@ export function MobileDatePickerModal({ isOpen, onClose }: MobileDatePickerModal
           className="p-2 -mr-2 rounded-lg hover:bg-background-tertiary transition-colors"
           aria-label="Close"
         >
-          <X className="w-5 h-5 text-text-secondary" />
+          <X className="w-5 h-5 text-text-secondary" aria-hidden="true" />
         </button>
       </header>
 
@@ -114,7 +114,7 @@ export function MobileDatePickerModal({ isOpen, onClose }: MobileDatePickerModal
         {/* Date Section */}
         <section className="px-4 py-4 border-b border-border-subtle">
           <div className="flex items-center gap-2 mb-3">
-            <Calendar className="w-4 h-4 text-text-tertiary" />
+            <Calendar className="w-4 h-4 text-text-tertiary" aria-hidden="true" />
             <span className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">Date</span>
           </div>
 
@@ -199,8 +199,8 @@ export function MobileDatePickerModal({ isOpen, onClose }: MobileDatePickerModal
               components={{
                 Chevron: ({ orientation }) => (
                   orientation === "left"
-                    ? <ChevronLeft className="h-5 w-5" />
-                    : <ChevronRight className="h-5 w-5" />
+                    ? <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+                    : <ChevronRight className="h-5 w-5" aria-hidden="true" />
                 ),
               }}
             />
@@ -210,7 +210,7 @@ export function MobileDatePickerModal({ isOpen, onClose }: MobileDatePickerModal
         {/* Time Section */}
         <section className="px-4 py-4">
           <div className="flex items-center gap-2 mb-3">
-            <Clock className="w-4 h-4 text-text-tertiary" />
+            <Clock className="w-4 h-4 text-text-tertiary" aria-hidden="true" />
             <span className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">Time</span>
           </div>
 

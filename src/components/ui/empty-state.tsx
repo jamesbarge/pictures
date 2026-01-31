@@ -20,22 +20,22 @@ interface EmptyStateProps {
 
 const defaultContent: Record<EmptyStateVariant, { icon: ReactNode; title: string; description: string }> = {
   "no-results": {
-    icon: <Search className="w-10 h-10" />,
+    icon: <Search className="w-10 h-10" aria-hidden="true" />,
     title: "No results found",
-    description: "Try adjusting your search or filters to find what you're looking for.",
+    description: "Try different dates or cinemas.",
   },
   "no-screenings": {
-    icon: <Calendar className="w-10 h-10" />,
+    icon: <Calendar className="w-10 h-10" aria-hidden="true" />,
     title: "No screenings available",
-    description: "There are no screenings scheduled for your selected dates. Try expanding your date range.",
+    description: "Nothing scheduled for these dates. Try a wider range.",
   },
   "no-films": {
-    icon: <Film className="w-10 h-10" />,
+    icon: <Film className="w-10 h-10" aria-hidden="true" />,
     title: "No films found",
-    description: "We couldn't find any films matching your criteria. Check back later for new listings.",
+    description: "No films match your search. Check back later for new listings.",
   },
   "no-cinemas": {
-    icon: <MapPin className="w-10 h-10" />,
+    icon: <MapPin className="w-10 h-10" aria-hidden="true" />,
     title: "No cinemas selected",
     description: "Select one or more cinemas to see their screenings.",
   },

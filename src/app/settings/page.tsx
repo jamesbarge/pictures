@@ -28,10 +28,7 @@ export default function SettingsPage() {
 
       {/* Content */}
       <div className="max-w-4xl mx-auto px-4 py-8">
-        <h1 className="text-3xl font-display text-text-primary mb-2 text-balance">Settings</h1>
-        <p className="text-text-secondary mb-8 text-pretty">
-          Customize your Pictures experience
-        </p>
+        <h1 className="text-3xl font-display text-text-primary mb-8 text-balance">Settings</h1>
 
         {/* Appearance Section - First */}
         <section className="mb-12">
@@ -76,7 +73,7 @@ export default function SettingsPage() {
             Privacy & Cookies
           </h2>
           <p className="text-text-secondary text-sm mb-6">
-            Control how we use cookies to improve your experience.
+            Control how we use cookies for analytics.
           </p>
 
           <CookieConsentSettings />
@@ -88,5 +85,5 @@ export default function SettingsPage() {
 
 export const metadata = {
   title: "Settings | Pictures",
-  description: "Customize your Pictures experience",
+  description: "Manage your Pictures settings and preferences",
 };

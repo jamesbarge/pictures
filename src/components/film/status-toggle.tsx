@@ -80,7 +80,7 @@ export function StatusToggle({ filmId, variant = "full" }: StatusToggleProps) {
                 )}
                 title={config.label}
               >
-                <Icon className="w-4 h-4" />
+                <Icon className="w-4 h-4" aria-hidden="true" />
               </button>
             );
           }
@@ -109,10 +109,11 @@ export function StatusToggle({ filmId, variant = "full" }: StatusToggleProps) {
       >
         {ActiveIcon ? (
           <>
-            <ActiveIcon className="w-4 h-4" />
+            <ActiveIcon className="w-4 h-4" aria-hidden="true" />
             <span className="text-sm font-medium">{activeConfig?.label}</span>
             <X
               className="w-3.5 h-3.5 ml-1 opacity-50 hover:opacity-100"
+              aria-hidden="true"
               onClick={(e) => {
                 e.stopPropagation();
                 handleStatusChange(null);
@@ -121,7 +122,7 @@ export function StatusToggle({ filmId, variant = "full" }: StatusToggleProps) {
           </>
         ) : (
           <>
-            <Heart className="w-4 h-4" />
+            <Heart className="w-4 h-4" aria-hidden="true" />
             <span className="text-sm">Add to Watchlist</span>
           </>
         )}
@@ -146,9 +147,9 @@ export function StatusToggle({ filmId, variant = "full" }: StatusToggleProps) {
                       : "text-text-secondary hover:text-text-primary hover:bg-surface-overlay-hover"
                   )}
                 >
-                  <Icon className="w-4 h-4" />
+                  <Icon className="w-4 h-4" aria-hidden="true" />
                   <span className="flex-1 text-sm">{config.label}</span>
-                  {isActive && <Check className="w-4 h-4" />}
+                  {isActive && <Check className="w-4 h-4" aria-hidden="true" />}
                 </button>
               );
             }

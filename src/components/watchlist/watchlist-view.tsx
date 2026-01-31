@@ -290,7 +290,7 @@ function WatchlistFilmCard({
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
-                <Film className="w-6 h-6 text-text-tertiary" />
+                <Film className="w-6 h-6 text-text-tertiary" aria-hidden="true" />
               </div>
             )}
           </div>
@@ -327,7 +327,7 @@ function WatchlistFilmCard({
                 onClick={onToggleExpand}
                 className="inline-flex items-center gap-2 text-sm text-accent-primary hover:text-accent-hover transition-colors"
               >
-                <Calendar className="w-4 h-4" />
+                <Calendar className="w-4 h-4" aria-hidden="true" />
                 <span>
                   {film.upcomingCount} screening{film.upcomingCount !== 1 ? "s" : ""}
                 </span>
@@ -337,9 +337,9 @@ function WatchlistFilmCard({
                   </span>
                 )}
                 {isExpanded ? (
-                  <ChevronUp className="w-4 h-4" />
+                  <ChevronUp className="w-4 h-4" aria-hidden="true" />
                 ) : (
-                  <ChevronDown className="w-4 h-4" />
+                  <ChevronDown className="w-4 h-4" aria-hidden="true" />
                 )}
               </button>
             </div>
@@ -359,14 +359,14 @@ function WatchlistFilmCard({
             className="p-2 rounded-lg text-text-tertiary hover:text-green-400 hover:bg-green-500/10 transition-colors"
             title="Mark as seen"
           >
-            <Eye className="w-4 h-4" />
+            <Eye className="w-4 h-4" aria-hidden="true" />
           </button>
           <button
             onClick={onRemove}
             className="p-2 rounded-lg text-text-tertiary hover:text-red-400 hover:bg-red-500/10 transition-colors"
             title="Remove from watchlist"
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash2 className="w-4 h-4" aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -385,13 +385,13 @@ function WatchlistFilmCard({
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 text-sm">
-                    <Clock className="w-4 h-4 text-text-tertiary" />
+                    <Clock className="w-4 h-4 text-text-tertiary" aria-hidden="true" />
                     <span className="text-text-primary font-medium">
                       {format(new Date(screening.datetime), "EEE d MMM, HH:mm")}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 text-sm text-text-tertiary mt-1">
-                    <MapPin className="w-4 h-4" />
+                    <MapPin className="w-4 h-4" aria-hidden="true" />
                     <span>{screening.cinema.name}</span>
                     {screening.format && (
                       <>
@@ -407,7 +407,7 @@ function WatchlistFilmCard({
                     )}
                   </div>
                 </div>
-                <ExternalLink className="w-4 h-4 text-text-tertiary group-hover:text-accent-primary transition-colors" />
+                <ExternalLink className="w-4 h-4 text-text-tertiary group-hover:text-accent-primary transition-colors" aria-hidden="true" />
               </a>
             ))}
             {film.screenings.length > 10 && (
@@ -429,14 +429,14 @@ function SyncBanner({ onDismiss }: { onDismiss: () => void }) {
   return (
     <div className="relative flex items-center gap-4 p-4 rounded-xl bg-gradient-to-r from-accent-primary/10 to-accent-secondary/10 border border-accent-primary/20">
       <div className="flex-shrink-0 w-10 h-10 rounded-full bg-accent-primary/20 flex items-center justify-center">
-        <Cloud className="w-5 h-5 text-accent-primary" />
+        <Cloud className="w-5 h-5 text-accent-primary" aria-hidden="true" />
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-text-primary">
           Sign in to sync your watchlist
         </p>
         <p className="text-xs text-text-secondary mt-0.5">
-          Access your watchlist on any device and never lose your saved films
+          Access your watchlist on any device
         </p>
       </div>
       <SignInButton mode="modal">
@@ -449,7 +449,7 @@ function SyncBanner({ onDismiss }: { onDismiss: () => void }) {
         className="absolute top-2 right-2 p-1 text-text-tertiary hover:text-text-secondary transition-colors"
         aria-label="Dismiss"
       >
-        <X className="w-4 h-4" />
+        <X className="w-4 h-4" aria-hidden="true" />
       </button>
     </div>
   );
@@ -458,13 +458,12 @@ function SyncBanner({ onDismiss }: { onDismiss: () => void }) {
 function EmptyWatchlist() {
   return (
     <div className="text-center py-16">
-      <Heart className="w-16 h-16 text-text-tertiary mx-auto mb-4" />
+      <Heart className="w-16 h-16 text-text-tertiary mx-auto mb-4" aria-hidden="true" />
       <h2 className="text-xl font-display text-text-primary mb-2">
         Your watchlist is empty
       </h2>
       <p className="text-text-secondary mb-6 max-w-md mx-auto">
-        Browse the calendar and mark films you want to see. They&apos;ll appear here
-        so you never miss a screening.
+        Mark films you want to see from the calendar. They&apos;ll show up here.
       </p>
       <Link href="/">
         <Button variant="primary">Browse Screenings</Button>

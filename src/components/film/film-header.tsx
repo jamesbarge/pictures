@@ -173,13 +173,13 @@ export function FilmHeader({ film }: FilmHeaderProps) {
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 mt-4 text-sm text-text-secondary">
                 {film.year && (
                   <span className="flex items-center gap-1.5">
-                    <Calendar className="w-4 h-4" />
+                    <Calendar className="w-4 h-4" aria-hidden="true" />
                     {film.year}
                   </span>
                 )}
                 {film.runtime && (
                   <span className="flex items-center gap-1.5">
-                    <Clock className="w-4 h-4" />
+                    <Clock className="w-4 h-4" aria-hidden="true" />
                     {film.runtime} min
                   </span>
                 )}
@@ -190,7 +190,7 @@ export function FilmHeader({ film }: FilmHeaderProps) {
                 )}
                 {film.countries.length > 0 && (
                   <span className="flex items-center gap-1.5">
-                    <Globe className="w-4 h-4" />
+                    <Globe className="w-4 h-4" aria-hidden="true" />
                     {film.countries.slice(0, 2).join(", ")}
                   </span>
                 )}
@@ -287,7 +287,7 @@ export function FilmHeader({ film }: FilmHeaderProps) {
                 )}
               >
                 <span className="font-medium">TMDB</span>
-                <ExternalLink className="w-3.5 h-3.5" />
+                <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
               </a>
             )}
             {film.imdbId && (
@@ -304,7 +304,7 @@ export function FilmHeader({ film }: FilmHeaderProps) {
                 )}
               >
                 <span className="font-medium">IMDb</span>
-                <ExternalLink className="w-3.5 h-3.5" />
+                <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
               </a>
             )}
             <a
@@ -320,7 +320,7 @@ export function FilmHeader({ film }: FilmHeaderProps) {
               )}
             >
               <span className="font-medium">Letterboxd</span>
-              <ExternalLink className="w-3.5 h-3.5" />
+              <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
             </a>
 
             {/* Letterboxd Rating Reveal - only show if we have a rating */}

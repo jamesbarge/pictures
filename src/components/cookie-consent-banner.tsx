@@ -51,9 +51,8 @@ export function CookieConsentBanner() {
             id="cookie-consent-description"
             className="text-sm text-text-secondary mb-4 leading-relaxed"
           >
-            We use cookies to understand how you use Pictures and improve your
-            experience. This includes analytics to see which features are
-            popular and session recordings to fix issues.{" "}
+            We use cookies to see which features get used and to fix bugs. This
+            includes analytics and session recordings.{" "}
             <Link
               href="/privacy"
               className="text-accent-primary hover:underline"
