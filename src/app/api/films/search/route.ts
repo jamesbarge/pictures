@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { films, screenings, cinemas } from "@/db/schema";
 import { ilike, or, sql, asc, gte, lte, eq, and } from "drizzle-orm";
-import { startOfDay, addDays } from "date-fns";
+import { addDays } from "date-fns";
 import { z } from "zod";
 import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
 import type { CinemaAddress } from "@/types/cinema";
@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
   const browse = parseResult.data.browse === "true";
 
   // Only show films with screenings in the next 30 days
-  const startDate = startOfDay(new Date());
+  const startDate = new Date();
   const endDate = addDays(startDate, 30);
 
   const formatCinemaAddress = (address: CinemaAddress | null) => {

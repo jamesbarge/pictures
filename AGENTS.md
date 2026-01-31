@@ -38,12 +38,57 @@ If you encounter repeated failures or uncertainty:
 - Report errors clearly with context
 - Ask clarifying questions early rather than guessing
 
+## Changelogs - PRIORITY
+**Every PR or direct ship to main MUST update BOTH changelog locations.**
+
+### 1. Quick Summary: `RECENT_CHANGES.md` (root)
+Add a new entry **at the top** of the file. Keep only the last ~20 entries.
+
+Format:
+```markdown
+## YYYY-MM-DD: Short Description
+**PR**: #XX | **Files**: `path/to/file.ts`, `other/file.ts`
+- What changed (bullet points)
+- Why it matters
+
+---
+```
+
+### 2. Detailed Archive: `/changelogs/YYYY-MM-DD-short-description.md`
+Create a new file with full details including impact and context.
+
+Format:
+```markdown
+# Short Description
+
+**PR**: #XX
+**Date**: YYYY-MM-DD
+
+## Changes
+- Detailed bullet points
+
+## Impact
+- Who/what this affects
+```
+
+## Git Workflow
+- **Never commit directly to `main`**; use feature branches (`fix/...`, `feat/...`).
+- Use conventional commits (`fix:`, `feat:`, `chore:`, `docs:`).
+- Include `Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>` when AI-assisted.
+- Create PRs and squash-merge unless explicitly told otherwise.
+
 ## Tech Stack
 - Next.js 16 App Router, React 19
 - Drizzle ORM with PostgreSQL on Supabase (not Neon)
 - Scrapers: Playwright (JS-heavy), Cheerio (static), API-based
 - date-fns for date manipulation
 - Clerk for auth, PostHog for analytics, Zustand for client state
+
+## Scraper Architecture
+- All scrapers extend `BaseScraper` (`src/scrapers/base.ts`)
+- Chains: `src/scrapers/chains/` (Curzon, Picturehouse, Everyman)
+- Independents: `src/scrapers/cinemas/` (BFI, PCC, ICA, Barbican, Rio, etc.)
+- Types: Playwright (JS-heavy), Cheerio (static), API-based
 
 ## Critical Scraper Rules
 - Always capture AM/PM when parsing times; use full element text, not inner nodes.
@@ -53,10 +98,26 @@ If you encounter repeated failures or uncertainty:
 - When fixing/modifying scrapers, update `docs/scraping-playbook.md` with selectors, URL patterns, formats, and known issues.
 - After time parsing fixes, clean up bad data (screenings 00:00-09:59).
 
+## Scraper Testing
+- Verify actual database values, not just counts.
+- Validate times are sensible (most screenings 10:00-23:59).
+- Confirm a few films match the cinema website.
+
+## Data Integrity
+- Scrapers should add new screenings; do not delete valid future screenings.
+- Only delete screenings for confirmed parsing errors, true duplicates, or orphaned records.
+
 ## Database Rules
 - Filter past screenings using current time (`new Date()`), not start of day.
 - Use `gte(screenings.datetime, now)` for server-side filtering.
 - Times stored in UTC, displayed in UK timezone.
+- **Never delete screenings** unless confirmed incorrect (parsing errors, duplicates, or orphaned).
+- Cleanup scripts:
+  - `db:cleanup-screenings` removes past screenings only
+  - `db:cleanup-films` removes orphaned films with no screenings
+
+## UI Rules
+- Display times in 24-hour format (e.g., "14:15").
 
 ## Architecture Map
 - UI (pages, routes): `src/app/`
@@ -71,6 +132,23 @@ If you encounter repeated failures or uncertainty:
 - Use `getCurrentUserId()` for optional auth.
 - Use `requireAuth()` for protected routes.
 - Signed-in users sync to cloud; anonymous uses localStorage only.
+
+## State Management
+- Zustand stores in `src/stores/` (`film-status.ts`, `preferences.ts`, `filters.ts`).
+- Stores integrate with PostHog for analytics tracking.
+
+## Environment Variables
+Required in `.env.local` (see `.env.local.example`):
+- `DATABASE_URL` (Supabase connection string)
+- `TMDB_API_KEY` / `TMDB_READ_ACCESS_TOKEN`
+- `NEXT_PUBLIC_CLERK_*`
+- `NEXT_PUBLIC_POSTHOG_*`
+- `CRON_SECRET`
+- `ANTHROPIC_API_KEY`
+
+## API Routes
+- Screenings API: `/api/screenings`
+- User APIs: `/api/user/*`
 
 ## Data Quality Agents
 - Run via `npm run agents` or `agents:links`, `agents:health`, `agents:enrich`.

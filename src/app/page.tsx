@@ -1,7 +1,7 @@
 import { db, isDatabaseAvailable } from "@/db";
 import { screenings, films, cinemas, festivals, seasons } from "@/db/schema";
 import { eq, gte, lte, and, countDistinct, count } from "drizzle-orm";
-import { endOfDay, addDays, startOfDay, format } from "date-fns";
+import { endOfDay, addDays, format } from "date-fns";
 import { unstable_cache } from "next/cache";
 import { CalendarViewWithLoader } from "@/components/calendar/calendar-view-loader";
 import { Header } from "@/components/layout/header";
@@ -52,7 +52,7 @@ const getCachedScreenings = unstable_cache(
       .innerJoin(cinemas, eq(screenings.cinemaId, cinemas.id))
       .where(
         and(
-          gte(screenings.datetime, startOfDay(now)),
+          gte(screenings.datetime, now),
           lte(screenings.datetime, endDate)
         )
       )
