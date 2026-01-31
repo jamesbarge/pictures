@@ -39,11 +39,9 @@ export default function PrivacyPage() {
               Introduction
             </h2>
             <p className="text-text-secondary leading-relaxed">
-              Pictures is a cinema listings service that helps you find film
-              screenings at cinemas across London. We respect your
-              privacy and are committed to protecting your personal data. This
-              policy explains how we collect, use, and protect your information
-              in compliance with UK GDPR and PECR.
+              Pictures is a cinema listings service for London. We collect
+              minimal data and don&apos;t sell it. This policy explains what we
+              collect and how we use it, in compliance with UK GDPR and PECR.
             </p>
           </section>
 

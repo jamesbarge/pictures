@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "About Pictures - London Cinema Listings",
     description:
-      "The definitive cinema listings for London cinephiles. Updated daily with listings from independent venues.",
+      "Cinema listings from across London in one place. Updated daily with showtimes from independent venues.",
     url: `${BASE_URL}/about`,
     type: "website",
   },
@@ -94,7 +94,7 @@ export default async function AboutPage() {
     {
       question: "Is Pictures free to use?",
       answer:
-        "Yes, Pictures is completely free. We aggregate listings to help film lovers discover screenings across London's cinema scene.",
+        "Yes, Pictures is free. We pull listings together so you can see what's on across London.",
     },
   ];
 
@@ -133,10 +133,9 @@ export default async function AboutPage() {
 
         {/* Answer-first summary */}
         <p className="text-lg text-text-secondary mb-8 text-pretty">
-          Pictures provides the definitive cinema listings for London cinephiles. We
-          aggregate listings from {stats.cinemaCount} cinemas into
-          one unified view, helping you discover screenings you might otherwise
-          miss.
+          Pictures pulls together cinema listings from {stats.cinemaCount} London
+          cinemas into one calendar, so you can see what&apos;s on without checking
+          each venue separately.
         </p>
 
         {/* Stats */}
@@ -177,22 +176,16 @@ export default async function AboutPage() {
           </h2>
           <div className="space-y-4 text-text-secondary">
             <p>
-              London has an incredible independent cinema scene, but finding
-              what&apos;s showing across different venues can be frustrating.
-              Each cinema has its own website, its own calendar, its own way of
-              presenting information.
+              London has a great independent cinema scene, but each venue has its
+              own website and calendar. Checking them all is tedious.
             </p>
             <p>
-              Pictures solves this by aggregating listings from {stats.cinemaCount}{" "}
-              cinemas into one searchable, filterable calendar. Whether
-              you&apos;re looking for a specific film, browsing repertory
-              screenings, or just seeing what&apos;s on near you tonight, we make
-              it simple.
+              Pictures puts everything in one place. You can search for a specific
+              film or just see what&apos;s on tonight.
             </p>
             <p>
-              We update daily, pulling the latest listings from each cinema. Our
-              data includes film details from TMDB, making it easy to learn about
-              films before you book.
+              We update daily, pulling the latest listings from each cinema. Film
+              details come from TMDB.
             </p>
           </div>
         </section>
@@ -257,9 +250,8 @@ export default async function AboutPage() {
             >
               The Movie Database (TMDB)
             </a>
-            . Screening times are sourced directly from each cinema&apos;s
-            website. While we strive for accuracy, always verify showtimes on the
-            cinema&apos;s official site before booking.
+            . Screening times come directly from each cinema&apos;s website.
+            Showtimes can change, so check the cinema&apos;s site before you book.
           </p>
         </section>
 
