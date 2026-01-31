@@ -18,6 +18,7 @@ import {
 } from "@/components/clerk-components-safe";
 import { cn } from "@/lib/cn";
 import { usePreferences } from "@/stores/preferences";
+import { isFeatureEnabled } from "@/lib/features";
 
 interface HeaderNavButtonsProps {
   mounted: boolean;
@@ -32,6 +33,15 @@ const NAV_ITEMS = [
   { href: "/watchlist", icon: Heart, label: "Watchlist" },
   { href: "/settings", icon: Settings, label: "Settings" },
 ] as const;
+
+// Filter out feature-flagged nav items
+const getNavItems = () => {
+  const seasonsEnabled = isFeatureEnabled("seasons");
+  return NAV_ITEMS.filter((item) => {
+    if (item.href === "/seasons" && !seasonsEnabled) return false;
+    return true;
+  });
+};
 
 // Labeled button for key features (desktop only - shows text inline)
 function DesktopNavButton({
@@ -82,15 +92,6 @@ function MobileMenuDrawer({
   mapIsActive: boolean;
 }) {
   const pathname = usePathname();
-  const [shouldRender, setShouldRender] = useState(false);
-
-  // Handle animation lifecycle
-  useEffect(() => {
-    if (isOpen) {
-      setShouldRender(true);
-    }
-  }, [isOpen]);
-
   // Close on escape key and manage body scroll
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -106,22 +107,13 @@ function MobileMenuDrawer({
     };
   }, [isOpen, onClose]);
 
-  // Cleanup after animation completes
-  const handleTransitionEnd = () => {
-    if (!isOpen) {
-      setShouldRender(false);
-    }
-  };
-
-  if (!shouldRender) return null;
-
   return (
     <>
       {/* Backdrop */}
       <div
         className={cn(
           "fixed inset-0 bg-black/50 z-50 sm:hidden transition-opacity duration-200",
-          isOpen ? "opacity-100" : "opacity-0"
+          isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
         )}
         onClick={onClose}
         aria-hidden="true"
@@ -129,12 +121,12 @@ function MobileMenuDrawer({
 
       {/* Drawer */}
       <div
-        onTransitionEnd={handleTransitionEnd}
         className={cn(
           "fixed top-0 right-0 h-dvh w-72 bg-background-primary border-l border-border-subtle z-50 sm:hidden",
           "transform transition-transform duration-200 ease-out",
-          isOpen ? "translate-x-0" : "translate-x-full"
+          isOpen ? "translate-x-0" : "translate-x-full pointer-events-none"
         )}
+        aria-hidden={!isOpen}
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border-subtle">
@@ -150,7 +142,7 @@ function MobileMenuDrawer({
 
         {/* Navigation Items */}
         <nav className="p-2">
-          {NAV_ITEMS.map((item) => {
+          {getNavItems().map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href || (item.href === "/map" && mapIsActive);
             return (
@@ -237,12 +229,14 @@ export function HeaderNavButtons({ mounted }: HeaderNavButtonsProps) {
           label="Festivals"
         />
 
-        {/* Seasons */}
-        <DesktopNavButton
-          href="/seasons"
-          icon={<Leaf className="w-4 h-4" />}
-          label="Seasons"
-        />
+        {/* Seasons (feature-flagged) */}
+        {isFeatureEnabled("seasons") && (
+          <DesktopNavButton
+            href="/seasons"
+            icon={<Leaf className="w-4 h-4" />}
+            label="Seasons"
+          />
+        )}
 
         {/* Map */}
         <DesktopNavButton

@@ -8,6 +8,7 @@ export const dynamic = "force-dynamic";
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import {
   ChevronLeft,
   Calendar,
@@ -21,6 +22,7 @@ import { seasons, seasonFilms, films, screenings } from "@/db/schema";
 import { eq, and, gte, inArray } from "drizzle-orm";
 import { format } from "date-fns";
 import { BreadcrumbSchema } from "@/components/seo/json-ld";
+import { isFeatureEnabled } from "@/lib/features";
 
 const BASE_URL = "https://pictures.london";
 
@@ -29,6 +31,10 @@ interface SeasonPageProps {
 }
 
 export default async function SeasonPage({ params }: SeasonPageProps) {
+  if (!isFeatureEnabled("seasons")) {
+    notFound();
+  }
+
   const { slug } = await params;
 
   // Fetch season with films
@@ -248,11 +254,13 @@ export default async function SeasonPage({ params }: SeasonPageProps) {
                   <div className="flex">
                     {/* Poster */}
                     {film.posterUrl ? (
-                      <div className="w-28 h-40 flex-shrink-0 bg-background-tertiary">
-                        <img
+                      <div className="relative w-28 h-40 flex-shrink-0 bg-background-tertiary">
+                        <Image
                           src={film.posterUrl}
                           alt={film.title}
-                          className="w-full h-full object-cover"
+                          fill
+                          sizes="112px"
+                          className="object-cover"
                         />
                       </div>
                     ) : (

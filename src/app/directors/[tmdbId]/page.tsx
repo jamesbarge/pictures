@@ -8,6 +8,7 @@ export const dynamic = "force-dynamic";
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import {
   ChevronLeft,
   Calendar,
@@ -20,6 +21,7 @@ import { eq, and, gte, inArray, desc, asc } from "drizzle-orm";
 import { format } from "date-fns";
 import { getTMDBClient, TMDBClient } from "@/lib/tmdb";
 import { BreadcrumbSchema } from "@/components/seo/json-ld";
+import { isFeatureEnabled } from "@/lib/features";
 
 const BASE_URL = "https://pictures.london";
 
@@ -188,11 +190,13 @@ export default async function DirectorPage({ params }: DirectorPageProps) {
           <div className="flex gap-6">
             {/* Profile Photo */}
             {profileUrl ? (
-              <div className="w-32 h-40 flex-shrink-0 rounded-lg overflow-hidden bg-background-tertiary">
-                <img
+              <div className="relative w-32 h-40 flex-shrink-0 rounded-lg overflow-hidden bg-background-tertiary">
+                <Image
                   src={profileUrl}
                   alt={directorName}
-                  className="w-full h-full object-cover"
+                  fill
+                  sizes="128px"
+                  className="object-cover"
                 />
               </div>
             ) : (
@@ -256,64 +260,66 @@ export default async function DirectorPage({ params }: DirectorPageProps) {
         </div>
       </div>
 
-      {/* Seasons */}
-      <div className="max-w-4xl mx-auto px-4 mt-8">
-        <h2 className="text-xl font-display text-text-primary mb-4">
-          Seasons at London Cinemas
-        </h2>
+      {/* Seasons (feature-flagged) */}
+      {isFeatureEnabled("seasons") && (
+        <div className="max-w-4xl mx-auto px-4 mt-8">
+          <h2 className="text-xl font-display text-text-primary mb-4">
+            Seasons at London Cinemas
+          </h2>
 
-        <div className="space-y-3">
-          {seasonsWithStatus.map((season) => (
-            <Link
-              key={season.id}
-              href={`/seasons/${season.slug}`}
-              className="block bg-background-card border border-border-subtle rounded-lg p-4 hover:border-border-default transition-colors"
-            >
-              <div className="flex items-start justify-between">
-                <div>
-                  {/* Status badge */}
-                  <div className="mb-2">
-                    {season.status === "ongoing" && (
-                      <span className="text-xs px-2 py-0.5 bg-accent-success/20 text-accent-success rounded">
-                        Now showing
-                      </span>
-                    )}
-                    {season.status === "upcoming" && (
-                      <span className="text-xs px-2 py-0.5 bg-accent-primary/20 text-accent-primary rounded">
-                        Coming soon
-                      </span>
-                    )}
-                    {season.status === "past" && (
-                      <span className="text-xs px-2 py-0.5 bg-background-tertiary text-text-tertiary rounded">
-                        Ended
-                      </span>
+          <div className="space-y-3">
+            {seasonsWithStatus.map((season) => (
+              <Link
+                key={season.id}
+                href={`/seasons/${season.slug}`}
+                className="block bg-background-card border border-border-subtle rounded-lg p-4 hover:border-border-default transition-colors"
+              >
+                <div className="flex items-start justify-between">
+                  <div>
+                    {/* Status badge */}
+                    <div className="mb-2">
+                      {season.status === "ongoing" && (
+                        <span className="text-xs px-2 py-0.5 bg-accent-success/20 text-accent-success rounded">
+                          Now showing
+                        </span>
+                      )}
+                      {season.status === "upcoming" && (
+                        <span className="text-xs px-2 py-0.5 bg-accent-primary/20 text-accent-primary rounded">
+                          Coming soon
+                        </span>
+                      )}
+                      {season.status === "past" && (
+                        <span className="text-xs px-2 py-0.5 bg-background-tertiary text-text-tertiary rounded">
+                          Ended
+                        </span>
+                      )}
+                    </div>
+
+                    <h3 className="font-display text-text-primary">
+                      {season.name}
+                    </h3>
+
+                    <p className="text-sm text-text-tertiary flex items-center gap-1 mt-1">
+                      <Calendar className="w-4 h-4" />
+                      {format(new Date(season.startDate), "d MMM")} -{" "}
+                      {format(new Date(season.endDate), "d MMM yyyy")}
+                    </p>
+
+                    {season.sourceCinemas && season.sourceCinemas.length > 0 && (
+                      <p className="text-sm text-text-tertiary flex items-center gap-1 mt-1">
+                        <MapPin className="w-4 h-4" />
+                        {season.sourceCinemas
+                          .map((slug) => formatCinemaName(slug))
+                          .join(", ")}
+                      </p>
                     )}
                   </div>
-
-                  <h3 className="font-display text-text-primary">
-                    {season.name}
-                  </h3>
-
-                  <p className="text-sm text-text-tertiary flex items-center gap-1 mt-1">
-                    <Calendar className="w-4 h-4" />
-                    {format(new Date(season.startDate), "d MMM")} -{" "}
-                    {format(new Date(season.endDate), "d MMM yyyy")}
-                  </p>
-
-                  {season.sourceCinemas && season.sourceCinemas.length > 0 && (
-                    <p className="text-sm text-text-tertiary flex items-center gap-1 mt-1">
-                      <MapPin className="w-4 h-4" />
-                      {season.sourceCinemas
-                        .map((slug) => formatCinemaName(slug))
-                        .join(", ")}
-                    </p>
-                  )}
                 </div>
-              </div>
-            </Link>
-          ))}
+              </Link>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Upcoming Screenings */}
       {upcomingScreenings.length > 0 && (
@@ -375,11 +381,15 @@ export default async function DirectorPage({ params }: DirectorPageProps) {
                 className="bg-background-card rounded overflow-hidden"
               >
                 {film.posterPath ? (
-                  <img
-                    src={TMDBClient.getPosterUrl(film.posterPath, "w154")!}
-                    alt={film.title}
-                    className="w-full aspect-[2/3] object-cover"
-                  />
+                  <div className="relative w-full aspect-[2/3]">
+                    <Image
+                      src={TMDBClient.getPosterUrl(film.posterPath, "w154")!}
+                      alt={film.title}
+                      fill
+                      sizes="154px"
+                      className="object-cover"
+                    />
+                  </div>
                 ) : (
                   <div className="w-full aspect-[2/3] bg-background-tertiary flex items-center justify-center">
                     <Film className="w-6 h-6 text-text-tertiary" />

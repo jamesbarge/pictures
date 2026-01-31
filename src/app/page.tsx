@@ -1,5 +1,5 @@
 import { db, isDatabaseAvailable } from "@/db";
-import { screenings, films, cinemas, festivals, seasons } from "@/db/schema";
+import { screenings, films, cinemas, seasons } from "@/db/schema";
 import { eq, gte, lte, and, countDistinct, count } from "drizzle-orm";
 import { endOfDay, addDays, format } from "date-fns";
 import { unstable_cache } from "next/cache";
@@ -7,6 +7,7 @@ import { CalendarViewWithLoader } from "@/components/calendar/calendar-view-load
 import { Header } from "@/components/layout/header";
 import { FeatureDiscoveryBanner } from "@/components/discovery/feature-discovery-banner";
 import { WebSiteSchema, FAQSchema } from "@/components/seo/json-ld";
+import { isFeatureEnabled } from "@/lib/features";
 
 // Dynamic rendering with data-layer caching
 // Force-dynamic prevents build timeout, unstable_cache provides 60s data caching
@@ -16,6 +17,7 @@ export const dynamic = "force-dynamic";
 // Load all screenings for 3 days (~2500) - never hide films that are showing
 const getCachedScreenings = unstable_cache(
   async (_dateKey: string) => {
+    void _dateKey;
     const now = new Date();
     const endDate = endOfDay(addDays(now, 3)); // 3 days instead of 7
 
@@ -68,13 +70,6 @@ const getCachedCinemas = unstable_cache(
   async () => db.select().from(cinemas).where(eq(cinemas.isActive, true)),
   ["all-cinemas-active"],
   { revalidate: 3600, tags: ["cinemas"] }
-);
-
-// Cache active festivals
-const getCachedActiveFestivals = unstable_cache(
-  async () => db.select({ id: festivals.id, name: festivals.name, slug: festivals.slug }).from(festivals).where(eq(festivals.isActive, true)),
-  ["active-festivals"],
-  { revalidate: 3600, tags: ["festivals"] }
 );
 
 // Cache active seasons (ongoing and upcoming)
@@ -142,7 +137,7 @@ export default async function Home() {
       <div className="min-h-screen bg-background-primary">
         <WebSiteSchema />
         <FAQSchema items={fallbackFaq} />
-        <Header cinemas={[]} festivals={[]} seasons={[]} availableFormats={[]} />
+        <Header cinemas={[]} seasons={[]} availableFormats={[]} />
         <div className="px-4 sm:px-6 lg:px-8 pt-6">
           <h1 className="sr-only">London Cinema Listings - Independent & Art House Films</h1>
           <p className="text-sm text-text-tertiary mb-4 max-w-2xl">
@@ -174,22 +169,12 @@ export default async function Home() {
   }
 
   // Fetch cached data (60s cache for screenings, 1hr for cinemas/seasons, 5min for stats)
-  const [initialScreenings, allCinemas, activeFestivals, activeSeasons, stats] = await Promise.all([
+  const [initialScreenings, allCinemas, activeSeasons, stats] = await Promise.all([
     getCachedScreenings(dateKey),
     getCachedCinemas(),
-    getCachedActiveFestivals(),
     getCachedActiveSeasons(),
     getCachedStats(),
   ]);
-
-  // Prepare cinemas with coordinates for map filtering and venue type filtering
-  const cinemasWithCoords = allCinemas.map(c => ({
-    id: c.id,
-    name: c.name,
-    shortName: c.shortName,
-    coordinates: c.coordinates,
-    chain: c.chain,
-  }));
 
   // Extract unique formats from screenings (for format filter)
   const availableFormats = [...new Set(
@@ -223,8 +208,7 @@ export default async function Home() {
       {/* Unified Header with Filters */}
       <Header
         cinemas={allCinemas.map(c => ({ id: c.id, name: c.name, shortName: c.shortName, chain: c.chain }))}
-        festivals={activeFestivals}
-        seasons={activeSeasons}
+        seasons={isFeatureEnabled("seasons") ? activeSeasons : []}
         availableFormats={availableFormats}
       />
 
@@ -246,7 +230,7 @@ export default async function Home() {
       {/* Main Content - Full Width */}
       <main className="px-4 sm:px-6 lg:px-8 pb-6">
         {/* Calendar View with Load More */}
-        <CalendarViewWithLoader initialScreenings={initialScreenings} cinemas={cinemasWithCoords} />
+        <CalendarViewWithLoader initialScreenings={initialScreenings} />
 
         {/* Empty State Helper */}
         {initialScreenings.length === 0 && (
