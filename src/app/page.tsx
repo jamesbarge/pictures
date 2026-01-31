@@ -52,7 +52,7 @@ const getCachedScreenings = unstable_cache(
       .innerJoin(cinemas, eq(screenings.cinemaId, cinemas.id))
       .where(
         and(
-          gte(screenings.datetime, startOfDay(now)),
+          gte(screenings.datetime, now),
           lte(screenings.datetime, endDate)
         )
       )

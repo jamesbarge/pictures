@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
     // Parse filters with validated data
     const startDate = params.startDate
       ? new Date(params.startDate)
-      : startOfDay(new Date());
+      : new Date();
     const endDate = params.endDate
       ? new Date(params.endDate)
       : endOfDay(addDays(new Date(), 14)); // Default: 2 weeks ahead

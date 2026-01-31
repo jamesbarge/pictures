@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
   const browse = parseResult.data.browse === "true";
 
   // Only show films with screenings in the next 30 days
-  const startDate = startOfDay(new Date());
+  const startDate = new Date();
   const endDate = addDays(startDate, 30);
 
   const formatCinemaAddress = (address: CinemaAddress | null) => {
