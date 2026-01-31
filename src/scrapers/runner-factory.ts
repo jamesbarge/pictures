@@ -490,7 +490,8 @@ export function createMain(
     const venueIds = parseVenueArgs(options?.venuePrefix);
     const runnerOptions: RunnerOptions = {
       ...options,
-      venueIds: venueIds.length > 0 ? venueIds : options?.venueIds,
+      // Use CLI args if provided, otherwise use options.venueIds, defaulting to [] if neither
+      venueIds: venueIds.length > 0 ? venueIds : (options?.venueIds ?? []),
     };
 
     const result = await runScraper(config, runnerOptions);
