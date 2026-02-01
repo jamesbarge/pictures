@@ -7,6 +7,57 @@
 
 import * as cheerio from "cheerio";
 
+/**
+ * Validate URL is safe to fetch (blocks private IPs, localhost, internal hosts)
+ */
+function isUrlSafeToFetch(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+
+    // Only allow http/https
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+      return false;
+    }
+
+    const hostname = parsed.hostname.toLowerCase();
+
+    // Block localhost variants
+    if (
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname === "[::1]" ||
+      hostname === "::1"
+    ) {
+      return false;
+    }
+
+    // Block internal hostnames (no dots = likely internal)
+    if (!hostname.includes(".")) {
+      return false;
+    }
+
+    // Block private IP ranges
+    const ipMatch = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+    if (ipMatch) {
+      const [, a, b] = ipMatch.map(Number);
+      // 10.0.0.0/8
+      if (a === 10) return false;
+      // 172.16.0.0/12
+      if (a === 172 && b >= 16 && b <= 31) return false;
+      // 192.168.0.0/16
+      if (a === 192 && b === 168) return false;
+      // 127.0.0.0/8 (loopback)
+      if (a === 127) return false;
+      // 169.254.0.0/16 (link-local)
+      if (a === 169 && b === 254) return false;
+    }
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export interface BookingPageData {
   ogImage: string | null;
   ogDescription: string | null;
@@ -22,6 +73,12 @@ export interface BookingPageData {
 export async function scrapeBookingPage(
   bookingUrl: string
 ): Promise<BookingPageData | null> {
+  // Validate URL before fetching (SSRF protection)
+  if (!isUrlSafeToFetch(bookingUrl)) {
+    console.warn(`Blocked unsafe URL: ${bookingUrl}`);
+    return null;
+  }
+
   try {
     const response = await fetch(bookingUrl, {
       headers: {
