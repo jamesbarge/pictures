@@ -364,6 +364,10 @@ function formatCinemaName(slug: string): string {
 export async function generateMetadata({
   params,
 }: SeasonPageProps): Promise<Metadata> {
+  if (!isFeatureEnabled("seasons")) {
+    return { title: "Not Found" };
+  }
+
   const { slug } = await params;
 
   const seasonData = await db

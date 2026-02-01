@@ -34,14 +34,11 @@ const NAV_ITEMS = [
   { href: "/settings", icon: Settings, label: "Settings" },
 ] as const;
 
-// Filter out feature-flagged nav items
-const getNavItems = () => {
-  const seasonsEnabled = isFeatureEnabled("seasons");
-  return NAV_ITEMS.filter((item) => {
-    if (item.href === "/seasons" && !seasonsEnabled) return false;
-    return true;
-  });
-};
+// Filter out feature-flagged nav items (evaluated once at build time since NEXT_PUBLIC_ vars are inlined)
+const VISIBLE_NAV_ITEMS = NAV_ITEMS.filter((item) => {
+  if (item.href === "/seasons" && !isFeatureEnabled("seasons")) return false;
+  return true;
+});
 
 // Labeled button for key features (desktop only - shows text inline)
 function DesktopNavButton({
@@ -142,7 +139,7 @@ function MobileMenuDrawer({
 
         {/* Navigation Items */}
         <nav className="p-2">
-          {getNavItems().map((item) => {
+          {VISIBLE_NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href || (item.href === "/map" && mapIsActive);
             return (

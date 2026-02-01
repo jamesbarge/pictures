@@ -6,6 +6,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import posthog from "posthog-js";
+import { isFeatureEnabled } from "@/lib/features";
 
 // Re-export types and constants for backwards compatibility
 export {
@@ -357,6 +358,13 @@ export const useFilters = create<FilterState & FilterActions>()(
     }),
     {
       name: "pictures-filters",
+      // Clear seasonSlug on hydration if seasons feature is disabled
+      // Prevents stale localStorage values from silently filtering screenings
+      onRehydrateStorage: () => (state) => {
+        if (state && !isFeatureEnabled("seasons") && state.seasonSlug) {
+          state.seasonSlug = null;
+        }
+      },
       // Don't persist search terms or date range - they should reset each session
       partialize: (state) => ({
         cinemaIds: state.cinemaIds,
