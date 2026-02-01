@@ -1,6 +1,6 @@
 # Allow Additional Poster Domains
 
-**PR**: #XX
+**PR**: #56
 **Date**: 2026-02-01
 
 ## Changes

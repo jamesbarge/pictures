@@ -6,7 +6,7 @@ When an entry is added here, also create a detailed file in /changelogs/
 -->
 
 ## 2026-02-01: Allow Additional Poster Domains
-**PR**: #XX | **Files**: `next.config.ts`
+**PR**: #56 | **Files**: `next.config.ts`
 - Added poster host allowlist entries for non-TMDB images
 - Fixes missing calendar posters for films using external sources
 
