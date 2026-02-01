@@ -96,7 +96,8 @@ export interface TmdbMatchResult {
     | "year_adjusted"
     | "director_search"
     | "agent"  // AI suggested alternative title
-    | "embedding_similarity";
+    | "embedding_similarity"
+    | "web-search-agent";  // Fallback enrichment via web search
   shouldAutoApply: boolean;
 }
 

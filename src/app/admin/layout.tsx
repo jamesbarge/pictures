@@ -15,6 +15,7 @@ import {
   Bot,
   ChevronLeft,
   Calendar,
+  ClipboardCheck,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 
@@ -61,6 +62,12 @@ const navItems: NavItem[] = [
     label: "Anomalies",
     icon: <AlertCircle className="w-5 h-5" />,
     description: "Review and resolve data issues",
+  },
+  {
+    href: "/admin/data-quality",
+    label: "Data Quality",
+    icon: <ClipboardCheck className="w-5 h-5" />,
+    description: "Film metadata completeness",
   },
   {
     href: "/admin/agents",
