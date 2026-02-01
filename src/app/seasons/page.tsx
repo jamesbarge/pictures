@@ -7,12 +7,15 @@ export const dynamic = "force-dynamic";
 
 import { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
+import { notFound } from "next/navigation";
 import { ChevronLeft, Calendar, Film, MapPin } from "lucide-react";
 import { db } from "@/db";
 import { seasons, seasonFilms } from "@/db/schema";
-import { eq, count, sql, desc, asc } from "drizzle-orm";
+import { eq, count, asc } from "drizzle-orm";
 import { format } from "date-fns";
 import { ItemListSchema, BreadcrumbSchema } from "@/components/seo/json-ld";
+import { isFeatureEnabled } from "@/lib/features";
 
 const BASE_URL = "https://pictures.london";
 
@@ -35,8 +38,11 @@ export const metadata: Metadata = {
 type SeasonStatus = "ongoing" | "upcoming" | "past";
 
 export default async function SeasonsPage() {
+  if (!isFeatureEnabled("seasons")) {
+    notFound();
+  }
+
   const now = new Date();
-  const today = now.toISOString().split("T")[0];
 
   // Fetch all active seasons with film counts
   const seasonsWithStats = await db
@@ -94,14 +100,16 @@ export default async function SeasonsPage() {
   });
 
   // Filter to current and upcoming by default (hide past)
-  const activeSeasons = sortedSeasons.filter((s) => s.status !== "past");
+  const activeSeasons = sortedSeasons.filter(
+    (s) => s.status !== "past" && s.filmCount > 0
+  );
 
   // Count stats
   const ongoingCount = seasonsWithStatus.filter(
-    (s) => s.status === "ongoing"
+    (s) => s.status === "ongoing" && s.filmCount > 0
   ).length;
   const upcomingCount = seasonsWithStatus.filter(
-    (s) => s.status === "upcoming"
+    (s) => s.status === "upcoming" && s.filmCount > 0
   ).length;
 
   // ItemList schema for SEO
@@ -228,11 +236,13 @@ function SeasonCard({ season }: SeasonCardProps) {
       <div className="flex">
         {/* Poster (if available) */}
         {season.posterUrl && (
-          <div className="w-24 h-32 flex-shrink-0 bg-background-tertiary">
-            <img
+          <div className="relative w-24 h-32 flex-shrink-0 bg-background-tertiary">
+            <Image
               src={season.posterUrl}
               alt={season.name}
-              className="w-full h-full object-cover"
+              fill
+              sizes="96px"
+              className="object-cover"
             />
           </div>
         )}

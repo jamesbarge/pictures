@@ -37,18 +37,13 @@ import { usePreferences } from "@/stores/preferences";
 import { Button } from "@/components/ui";
 import { Clock } from "lucide-react";
 import { useUrlFilters } from "@/hooks/useUrlFilters";
+import { isFeatureEnabled } from "@/lib/features";
 
 interface Cinema {
   id: string;
   name: string;
   shortName: string | null;
   chain: string | null;
-}
-
-interface Festival {
-  id: string;
-  name: string;
-  slug: string;
 }
 
 interface Season {
@@ -60,12 +55,11 @@ interface Season {
 
 interface HeaderProps {
   cinemas: Cinema[];
-  festivals: Festival[];
   seasons: Season[];
   availableFormats: string[];
 }
 
-export function Header({ cinemas, festivals, seasons, availableFormats }: HeaderProps) {
+export function Header({ cinemas, seasons, availableFormats }: HeaderProps) {
   const mounted = useHydrated();
   const [filtersOpen, setFiltersOpen] = useState(false);
 
@@ -114,43 +108,43 @@ export function Header({ cinemas, festivals, seasons, availableFormats }: Header
           <div className="mt-3 p-4 bg-background-secondary rounded-xl border border-border-subtle divide-y divide-border-subtle">
             {/* Film Type */}
             <div className="pb-4">
-              <label className="block text-[11px] font-semibold text-text-tertiary uppercase tracking-wider mb-3">
+              <div className="block text-[11px] font-semibold text-text-tertiary uppercase tracking-wider mb-3">
                 Film Type
-              </label>
+              </div>
               <FilmTypeFilter mounted={mounted} fullWidth />
             </div>
 
             {/* Date & Time */}
             <div className="py-4">
-              <label className="block text-[11px] font-semibold text-text-tertiary uppercase tracking-wider mb-3">
+              <div className="block text-[11px] font-semibold text-text-tertiary uppercase tracking-wider mb-3">
                 When
-              </label>
+              </div>
               <DateFilter mounted={mounted} fullWidth />
             </div>
 
             {/* Cinema */}
             <div className="py-4">
-              <label className="block text-[11px] font-semibold text-text-tertiary uppercase tracking-wider mb-3">
+              <div className="block text-[11px] font-semibold text-text-tertiary uppercase tracking-wider mb-3">
                 Cinema
-              </label>
+              </div>
               <CinemaFilter cinemas={cinemas} mounted={mounted} fullWidth />
             </div>
 
             {/* Format - only show if formats are available */}
             {availableFormats.length > 0 && (
               <div className="py-4">
-                <label className="block text-[11px] font-semibold text-text-tertiary uppercase tracking-wider mb-3">
+                <div className="block text-[11px] font-semibold text-text-tertiary uppercase tracking-wider mb-3">
                   Projection Format
-                </label>
+                </div>
                 <FormatFilter mounted={mounted} availableFormats={availableFormats} fullWidth />
               </div>
             )}
 
             {/* View Mode */}
             <div className="py-4">
-              <label className="block text-[11px] font-semibold text-text-tertiary uppercase tracking-wider mb-3">
+              <div className="block text-[11px] font-semibold text-text-tertiary uppercase tracking-wider mb-3">
                 View
-              </label>
+              </div>
               <ViewModeToggle mounted={mounted} fullWidth />
             </div>
 
@@ -310,8 +304,8 @@ function ActiveFilterChips({ cinemas, seasons, mounted }: { cinemas: Cinema[]; s
       });
     }
 
-    // Season chip
-    if (filters.seasonSlug) {
+    // Season chip (only when seasons feature is enabled)
+    if (filters.seasonSlug && isFeatureEnabled("seasons")) {
       const season = seasons.find(s => s.slug === filters.seasonSlug);
       chips.push({
         label: season?.directorName || season?.name || "Season",
@@ -655,8 +649,11 @@ function DateFilter({ mounted }: { mounted: boolean; fullWidth?: boolean }) {
             {showTimeCustom && (
               <div className="mt-3 flex items-center gap-2">
                 <div className="flex-1">
-                  <label className="block text-xs text-text-tertiary mb-1">From</label>
+                  <label htmlFor="time-range-from" className="block text-xs text-text-tertiary mb-1">
+                    From
+                  </label>
                   <select
+                    id="time-range-from"
                     value={timeFrom ?? ""}
                     onChange={(e) => setTimeRange(
                       e.target.value === "" ? null : Number(e.target.value),
@@ -672,8 +669,11 @@ function DateFilter({ mounted }: { mounted: boolean; fullWidth?: boolean }) {
                 </div>
                 <span className="text-text-tertiary mt-5">–</span>
                 <div className="flex-1">
-                  <label className="block text-xs text-text-tertiary mb-1">To</label>
+                  <label htmlFor="time-range-to" className="block text-xs text-text-tertiary mb-1">
+                    To
+                  </label>
                   <select
+                    id="time-range-to"
                     value={timeTo ?? ""}
                     onChange={(e) => setTimeRange(
                       timeFrom,
@@ -795,7 +795,13 @@ function FilmSearchFilter({ mounted }: { mounted: boolean }) {
   const displayFilms = filmSearch.trim() ? suggestions : allFilms;
   const displayCinemas = filmSearch.trim() ? cinemaSuggestions : allCinemas;
   // Combined list for keyboard navigation: films first, then cinemas
-  const displayList = [...displayFilms.map(f => ({ type: 'film' as const, item: f })), ...displayCinemas.map(c => ({ type: 'cinema' as const, item: c }))];
+  const displayList = useMemo(
+    () => [
+      ...displayFilms.map(f => ({ type: "film" as const, item: f })),
+      ...displayCinemas.map(c => ({ type: "cinema" as const, item: c })),
+    ],
+    [displayFilms, displayCinemas]
+  );
 
   // Close on click outside
   useEffect(() => {
@@ -860,12 +866,12 @@ function FilmSearchFilter({ mounted }: { mounted: boolean }) {
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [setFilmSearch, displayList, displayFilms, displayCinemas, selectedIndex, handleSelectFilm, handleSelectCinema]);
+  }, [setFilmSearch, displayList, selectedIndex, handleSelectFilm, handleSelectCinema]);
 
   // Reset selection when display lists change
   useEffect(() => {
     setSelectedIndex(-1);
-  }, [displayFilms, displayCinemas]);
+  }, [displayList]);
 
   const hasValue = mounted && filmSearch.trim();
   const showShortcutHint = !isFocused && !hasValue;
