@@ -36,17 +36,8 @@ interface Screening {
   };
 }
 
-interface CinemaWithCoords {
-  id: string;
-  name: string;
-  shortName: string | null;
-  coordinates: { lat: number; lng: number } | null;
-  chain: string | null;
-}
-
 interface CalendarViewWithLoaderProps {
   initialScreenings: Screening[];
-  cinemas: CinemaWithCoords[];
 }
 
 interface FetchOptions {
@@ -93,7 +84,7 @@ async function fetchMoreScreenings({
   return data.screenings;
 }
 
-export function CalendarViewWithLoader({ initialScreenings, cinemas }: CalendarViewWithLoaderProps) {
+export function CalendarViewWithLoader({ initialScreenings }: CalendarViewWithLoaderProps) {
   // Track load state (0 = initial 3 days, 1 = week 1 complete, 2-4 = additional weeks)
   const [loadState, setLoadState] = useState(0);
   const maxLoadState = 4; // Up to 4 weeks (28 days)
@@ -325,7 +316,7 @@ export function CalendarViewWithLoader({ initialScreenings, cinemas }: CalendarV
       )}
 
       <ErrorBoundary>
-        <CalendarView screenings={allScreenings} cinemas={cinemas} />
+        <CalendarView screenings={allScreenings} />
       </ErrorBoundary>
 
       {/* Infinite scroll sentinel & loading indicator */}

@@ -49,17 +49,8 @@ interface Screening {
   };
 }
 
-interface CinemaWithCoords {
-  id: string;
-  name: string;
-  shortName: string | null;
-  coordinates: { lat: number; lng: number } | null;
-  chain: string | null;
-}
-
 interface CalendarViewProps {
   screenings: Screening[];
-  cinemas: CinemaWithCoords[];
 }
 
 // Film group structure for film view mode
@@ -85,7 +76,7 @@ interface FilmGroup {
   specialFormats: string[];
 }
 
-export function CalendarView({ screenings, cinemas }: CalendarViewProps) {
+export function CalendarView({ screenings }: CalendarViewProps) {
   const filters = useFilters();
   const { mapArea, calendarViewMode } = usePreferences();
   const mounted = useHydrated();
