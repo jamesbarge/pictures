@@ -5,7 +5,7 @@
 
 import { db } from "./index";
 import { films, screenings } from "./schema";
-import { eq, isNull, isNotNull, gte, and } from "drizzle-orm";
+import { eq, isNull, gte, and } from "drizzle-orm";
 import * as cheerio from "cheerio";
 
 // Convert title to Letterboxd URL slug
@@ -112,6 +112,39 @@ function parseRatingWithVerification(
   return { rating, url };
 }
 
+// Check if a title looks like an event rather than a film
+function isLikelyEvent(title: string): boolean {
+  const eventKeywords = [
+    'q&a', 'preview', 'quiz', 'workshop', 'marathon',
+    'ceremony', 'screening', 'party', 'tasting',
+    'conversation', 'discussion', 'intro', 'talk', 'forum',
+    'live broadcast', 'season', 'trilogy', 'series'
+  ];
+
+  const lowerTitle = title.toLowerCase();
+  return eventKeywords.some(keyword => lowerTitle.includes(keyword));
+}
+
+// Extract clean film title from event-style titles like "BFI Classics: Vertigo"
+function extractFilmTitle(rawTitle: string): string | null {
+  const patterns = [
+    /^[^:]+:\s*(.+)$/,                                    // "Series: Film Title"
+    /^(.+?)\s*\+\s*(q&a|intro|discussion|preview)/i,      // "Film + Q&A"
+    /^(.+?)\s*-\s*/,                                       // "Film - extra info"
+  ];
+
+  for (const pattern of patterns) {
+    const match = rawTitle.match(pattern);
+    if (match) {
+      let cleaned = match[1].trim();
+      cleaned = cleaned.replace(/\s*\(\d{4}\)\s*$/, ''); // Remove trailing year
+      return cleaned;
+    }
+  }
+
+  return null;
+}
+
 export interface EnrichmentResult {
   enriched: number;
   failed: number;
@@ -143,6 +176,7 @@ export async function enrichLetterboxdRatings(
     .where(
       and(
         isNull(films.letterboxdRating),
+        eq(films.contentType, "film"),
         gte(screenings.datetime, now)
       )
     );
@@ -162,7 +196,7 @@ export async function enrichLetterboxdRatings(
         year: films.year,
       })
       .from(films)
-      .where(isNull(films.letterboxdRating));
+      .where(and(isNull(films.letterboxdRating), eq(films.contentType, "film")));
 
     // Combine with priority films first, deduplicate
     const priorityIds = new Set(filmsWithScreenings.map((f) => f.id));
@@ -182,11 +216,26 @@ export async function enrichLetterboxdRatings(
   let enriched = 0;
   let failed = 0;
 
-  for (const film of filmsToEnrich) {
+  // Filter out likely events before processing
+  const filteredFilms = filmsToEnrich.filter(f => !isLikelyEvent(f.title));
+  const skippedEvents = filmsToEnrich.length - filteredFilms.length;
+  if (skippedEvents > 0) {
+    console.log(`Skipped ${skippedEvents} likely events\n`);
+  }
+
+  for (const film of filteredFilms) {
     try {
       process.stdout.write(`Processing: ${film.title} (${film.year || "?"})... `);
 
-      const result = await fetchLetterboxdRating(film.title, film.year);
+      let result = await fetchLetterboxdRating(film.title, film.year);
+
+      // If not found, try extracting a clean film title
+      if (!result) {
+        const cleanTitle = extractFilmTitle(film.title);
+        if (cleanTitle && cleanTitle !== film.title) {
+          result = await fetchLetterboxdRating(cleanTitle, film.year);
+        }
+      }
 
       if (!result) {
         console.log("✗ Not found");
@@ -219,13 +268,19 @@ export async function enrichLetterboxdRatings(
   console.log(`  ✓ Enriched: ${enriched}`);
   console.log(`  ✗ Not found: ${failed}`);
 
-  return { enriched, failed, total: filmsToEnrich.length };
+  return { enriched, failed, total: filteredFilms.length };
 }
 
-// Run if called directly
-enrichLetterboxdRatings()
-  .then(() => process.exit(0))
-  .catch((error) => {
-    console.error("Fatal error:", error);
-    process.exit(1);
-  });
+// Run if called directly (not when imported as a module)
+const isDirectRun =
+  process.argv[1]?.endsWith("enrich-letterboxd.ts") ||
+  process.argv[1]?.endsWith("enrich-letterboxd.js");
+
+if (isDirectRun) {
+  enrichLetterboxdRatings()
+    .then(() => process.exit(0))
+    .catch((error) => {
+      console.error("Fatal error:", error);
+      process.exit(1);
+    });
+}
