@@ -1,0 +1,74 @@
+name: Social Outreach Pipeline
+
+on:
+  # Run every Sunday at 10am UTC
+  schedule:
+    - cron: '0 10 * * 0'
+  
+  # Allow manual trigger
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (scrape only, no Attio sync)'
+        required: false
+        default: 'false'
+        type: boolean
+      platform:
+        description: 'Specific platform to scrape (leave empty for all)'
+        required: false
+        default: ''
+        type: choice
+        options:
+          - ''
+          - instagram
+          - tiktok
+          - youtube
+          - reddit
+
+jobs:
+  scrape-and-sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Social Outreach Pipeline
+        env:
+          APIFY_API_TOKEN: ${{ secrets.APIFY_API_TOKEN }}
+          ATTIO_API_TOKEN: ${{ secrets.ATTIO_API_TOKEN }}
+        run: |
+          ARGS=""
+          
+          if [ "${{ github.event.inputs.dry_run }}" == "true" ]; then
+            ARGS="$ARGS --dry-run"
+          fi
+          
+          if [ -n "${{ github.event.inputs.platform }}" ]; then
+            ARGS="$ARGS --platform=${{ github.event.inputs.platform }}"
+          fi
+          
+          npx tsx scripts/social-outreach/run.ts $ARGS
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Social Outreach Pipeline Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Time**: $(date -u)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Trigger**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ github.event.inputs.dry_run }}" == "true" ]; then
+            echo "- **Mode**: Dry Run" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **Mode**: Full Sync" >> $GITHUB_STEP_SUMMARY
+          fi
