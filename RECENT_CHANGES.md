@@ -5,6 +5,17 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-02-02: Social Outreach Pipeline (Apify + Attio)
+**PR**: TBD | **Files**: `scripts/social-outreach/`, `.github/workflows/social-outreach.yml`, `package.json`
+- Automated weekly pipeline to find London film enthusiasts on social media
+- Scrapes Instagram hashtags, TikTok, YouTube, and Reddit via Apify
+- Filters for active users (recent posts, engagement thresholds, London keywords)
+- Syncs contacts to Attio CRM People object with deduplication
+- Runs every Sunday 10am UTC via GitHub Actions
+- CLI: `npm run outreach` (full) or `npm run outreach:dry-run` (test)
+
+---
+
 ## 2026-02-01: Fallback Film Enrichment System
 **PR**: #59 | **Files**: `src/agents/fallback-enrichment/`, `src/scripts/audit-film-data.ts`, `src/app/admin/data-quality/`
 - New fallback enrichment agent fills metadata gaps for films without TMDB matches

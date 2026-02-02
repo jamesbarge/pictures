@@ -86,6 +86,8 @@
     "scrape:pcc-seasons": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/seasons/run-pcc-seasons.ts",
     "scrape:ica-seasons": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/seasons/run-ica-seasons.ts",
     "link:seasons:directors": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register scripts/link-seasons-by-director.ts",
+    "outreach": "dotenv -e .env.local -- npx tsx scripts/social-outreach/run.ts",
+    "outreach:dry-run": "dotenv -e .env.local -- npx tsx scripts/social-outreach/run.ts --dry-run",
     "prepare": "husky"
   },
   "dependencies": {
@@ -134,6 +136,7 @@
     "@types/react-dom": "^19",
     "@types/uuid": "^10.0.0",
     "@vitest/coverage-v8": "^4.0.16",
+    "apify-client": "^2.22.0",
     "babel-plugin-react-compiler": "1.0.0",
     "cheerio": "^1.1.2",
     "dotenv-cli": "^11.0.0",
