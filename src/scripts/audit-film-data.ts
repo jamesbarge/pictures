@@ -354,24 +354,24 @@ function printReport(result: AuditResult) {
   console.log("\n=== Audit Complete ===\n");
 }
 
-// CLI execution
-async function main() {
-  const args = process.argv.slice(2);
-  const jsonMode = args.includes("--json");
-  const upcomingOnly = args.includes("--upcoming-only");
+// CLI execution — only runs when invoked directly, not when imported
+if (process.argv[1]?.includes("audit-film-data")) {
+  (async () => {
+    const args = process.argv.slice(2);
+    const jsonMode = args.includes("--json");
+    const upcomingOnly = args.includes("--upcoming-only");
 
-  const result = await auditFilmData(upcomingOnly);
+    const result = await auditFilmData(upcomingOnly);
 
-  if (jsonMode) {
-    console.log(JSON.stringify(result, null, 2));
-  } else {
-    printReport(result);
-  }
+    if (jsonMode) {
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      printReport(result);
+    }
 
-  process.exit(0);
+    process.exit(0);
+  })().catch((err) => {
+    console.error("Audit failed:", err);
+    process.exit(1);
+  });
 }
-
-main().catch((err) => {
-  console.error("Audit failed:", err);
-  process.exit(1);
-});

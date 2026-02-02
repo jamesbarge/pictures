@@ -12,7 +12,7 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import { db } from "@/db";
-import { films } from "@/db/schema/films";
+import { films, type FilmInsert } from "@/db/schema/films";
 import { eq, sql } from "drizzle-orm";
 import { searchAndExtractFilmData } from "./web-search";
 import {
@@ -234,13 +234,14 @@ async function getFilmsNeedingEnrichment(
   const now = new Date();
 
   // Films without TMDB match that are missing key data and have upcoming screenings
+  // Group by film only (not cinema/booking URL) to avoid processing the same film multiple times
   const results = await db.execute(sql`
     SELECT
       f.id,
       f.title,
       f.year,
-      c.name as cinema_name,
-      s.booking_url,
+      MIN(c.name) as cinema_name,
+      MIN(s.booking_url) as booking_url,
       COUNT(s.id) as upcoming_count
     FROM films f
     INNER JOIN screenings s ON s.film_id = f.id AND s.datetime >= ${now.toISOString()}
@@ -254,7 +255,7 @@ async function getFilmsNeedingEnrichment(
         OR f.poster_url = ''
         OR f.synopsis = ''
       )
-    GROUP BY f.id, f.title, f.year, c.name, s.booking_url
+    GROUP BY f.id, f.title, f.year
     ORDER BY upcoming_count DESC, f.created_at DESC
     LIMIT ${limit}
   `);
@@ -311,7 +312,7 @@ async function applyEnrichmentToFilm(
   if (currentFilm.length === 0) return;
 
   const existing = currentFilm[0];
-  const updates: Record<string, unknown> = {};
+  const updates: Partial<FilmInsert> = {};
 
   if (!existing.year && data.year) updates.year = data.year;
   if (!existing.synopsis && data.synopsis) updates.synopsis = data.synopsis;
