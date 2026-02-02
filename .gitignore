@@ -54,3 +54,14 @@ docs/
 .tessl/
 .claude/
 tessl.json
+
+# Local-only directories
+packages/
+Pictures/
+scratchpad/
+
+# Debug logs
+firebase-debug.log
+
+# Data exports
+*.xlsx
