@@ -10,6 +10,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { FilmPoster } from "@/components/film/film-poster";
 import { cn } from "@/lib/cn";
 import { POSTER_BLUR_PLACEHOLDER } from "@/lib/constants";
 import { useFilmStatus } from "@/stores/film-status";
@@ -110,7 +111,7 @@ export const FilmCard = memo(function FilmCard({
         >
           {/* Use placeholder SVG route for films without posters */}
           {film.posterUrl && !film.posterUrl.includes("poster-placeholder") ? (
-            <Image
+            <FilmPoster
               src={film.posterUrl}
               alt=""
               fill

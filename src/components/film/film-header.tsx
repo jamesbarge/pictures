@@ -8,6 +8,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import { FilmPoster } from "./film-poster";
 import { useRouter } from "next/navigation";
 
 // Tiny placeholder images for blur effect during load
@@ -105,7 +106,7 @@ export function FilmHeader({ film }: FilmHeaderProps) {
               <div className="relative w-48 h-72 sm:w-56 sm:h-84 rounded overflow-hidden shadow-elevated bg-background-secondary border border-border-subtle">
                 {/* Use poster URL or fall back to generated placeholder */}
                 {film.posterUrl && !film.posterUrl.includes('poster-placeholder') ? (
-                  <Image
+                  <FilmPoster
                     src={film.posterUrl}
                     alt={film.title}
                     fill
@@ -118,7 +119,6 @@ export function FilmHeader({ film }: FilmHeaderProps) {
                     placeholder="blur"
                     blurDataURL={POSTER_BLUR}
                     onLoad={() => setPosterLoaded(true)}
-                    unoptimized
                   />
                 ) : (
                   /* eslint-disable-next-line @next/next/no-img-element */
