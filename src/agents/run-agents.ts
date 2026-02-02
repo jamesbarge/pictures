@@ -97,13 +97,30 @@ async function main() {
       }
       break;
 
+    case "fallback": {
+      const fbLimitArg = args[1];
+      const fbLimit = fbLimitArg ? parseInt(fbLimitArg, 10) : 20;
+      console.log(`Running fallback enrichment for up to ${fbLimit} films...`);
+      const { runFallbackEnrichment } = await import("./fallback-enrichment");
+      const fbResult = await runFallbackEnrichment({ limit: fbLimit });
+      if (fbResult.success && fbResult.data) {
+        console.log(
+          `\n✓ Processed ${fbResult.data.processed} films: ${fbResult.data.autoApplied} auto-applied, ${fbResult.data.needsReview} need review`
+        );
+      } else {
+        console.error("Fallback enrichment failed:", fbResult.error);
+      }
+      break;
+    }
+
     default:
       console.log(`Unknown command: ${command}`);
       console.log(`\nAvailable commands:`);
-      console.log(`  all     - Run all agents (default)`);
-      console.log(`  links   - Run link verification`);
-      console.log(`  health  - Run scraper health checks`);
-      console.log(`  enrich  - Run film enrichment`);
+      console.log(`  all      - Run all agents (default)`);
+      console.log(`  links    - Run link verification`);
+      console.log(`  health   - Run scraper health checks`);
+      console.log(`  enrich   - Run film enrichment`);
+      console.log(`  fallback - Run fallback enrichment (web search)`);
       process.exit(1);
   }
 

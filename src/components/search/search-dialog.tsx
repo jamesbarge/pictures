@@ -8,7 +8,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { usePrefetch } from "@/hooks/usePrefetch";
-import Image from "next/image";
+import { FilmPoster } from "@/components/film/film-poster";
 import { Search, X, Film, Calendar, Loader2 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { trackSearch, trackSearchResultClick } from "@/lib/analytics";
@@ -258,7 +258,7 @@ function SearchResultItem({
       {/* Poster */}
       <div className="w-10 h-14 rounded overflow-hidden bg-background-tertiary shrink-0">
         {film.posterUrl ? (
-          <Image
+          <FilmPoster
             src={film.posterUrl}
             alt=""
             width={40}

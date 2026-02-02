@@ -5,6 +5,16 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-02-01: Fallback Film Enrichment System
+**PR**: #59 | **Files**: `src/agents/fallback-enrichment/`, `src/scripts/audit-film-data.ts`, `src/app/admin/data-quality/`
+- New fallback enrichment agent fills metadata gaps for films without TMDB matches
+- Uses Claude Haiku + booking page scraping + Letterboxd discovery
+- Confidence scoring: >0.8 auto-applies, lower queued for review
+- CLI: `npm run audit:films` and `npm run agents:fallback-enrich`
+- Admin dashboard at `/admin/data-quality`
+
+---
+
 ## 2026-02-01: Allow Additional Poster Domains
 **PR**: #56 | **Files**: `next.config.ts`
 - Added poster host allowlist entries for non-TMDB images

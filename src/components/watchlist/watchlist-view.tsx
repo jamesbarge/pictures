@@ -9,7 +9,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useFilmStatus } from "@/stores/film-status";
 import { format } from "date-fns";
 import Link from "next/link";
-import Image from "next/image";
+import { FilmPoster } from "@/components/film/film-poster";
 import {
   Heart,
   Calendar,
@@ -279,7 +279,7 @@ function WatchlistFilmCard({
         <Link href={`/film/${film.id}`} className="shrink-0">
           <div className="relative w-16 h-24 rounded overflow-hidden bg-background-tertiary">
             {film.posterUrl ? (
-              <Image
+              <FilmPoster
                 src={film.posterUrl}
                 alt={film.title}
                 fill

@@ -9,7 +9,7 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
+import { FilmPoster } from "@/components/film/film-poster";
 import { format } from "date-fns";
 import { cn } from "@/lib/cn";
 import { POSTER_BLUR_PLACEHOLDER, getSpecialFormat } from "@/lib/constants";
@@ -136,7 +136,7 @@ export const ScreeningCard = memo(function ScreeningCard({ screening }: Screenin
           onClick={trackCardClick}
         >
           {film.posterUrl && !film.posterUrl.includes('poster-placeholder') ? (
-            <Image
+            <FilmPoster
               src={film.posterUrl}
               alt=""
               fill
