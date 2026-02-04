@@ -20,3 +20,6 @@ export * from "./admin";
 
 // Season schemas
 export * from "./seasons";
+
+// Health monitoring schemas
+export * from "./health-snapshots";
