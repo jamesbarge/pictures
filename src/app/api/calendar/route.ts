@@ -77,7 +77,7 @@ function buildIcsEvent(screening: ScreeningData): string {
     `DTSTART:${start}`,
     `DTEND:${end}`,
     `SUMMARY:${escapeIcal(title)} at ${escapeIcal(screening.cinemaName)}`,
-    `DESCRIPTION:${escapeIcal(descParts.join("\\n"))}`,
+    `DESCRIPTION:${escapeIcal(descParts.join("\n"))}`,
     `LOCATION:${escapeIcal(location)}`,
     `URL:${screening.bookingUrl}`,
     `STATUS:CONFIRMED`,
