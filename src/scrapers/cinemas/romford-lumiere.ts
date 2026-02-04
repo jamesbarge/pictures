@@ -123,28 +123,23 @@ export class RomfordLumiereScraper {
 
       console.log(`[${this.config.cinemaId}] Will scrape ${daysToScrape.length} days until end of April`);
 
-      // First, try to get the list of films from the current page
-      const films = await this.extractFilmsFromPage();
+      // Primary method: Extract screenings directly from the buy-tickets page
+      // This works better than navigating to individual film pages
+      console.log(`[${this.config.cinemaId}] Extracting screenings directly from buy-tickets page...`);
 
-      if (films.length > 0) {
-        console.log(`[${this.config.cinemaId}] Found ${films.length} films on the page`);
-
-        // Navigate to each film's page to get its showtimes
-        for (const film of films) {
-          try {
-            const filmScreenings = await this.extractFilmScreenings(film, endOfApril);
-            allScreenings.push(...filmScreenings);
-            await this.page.waitForTimeout(this.config.delayBetweenRequests);
-          } catch (error) {
-            console.warn(`[${this.config.cinemaId}] Error extracting screenings for "${film.movie_name}":`, error);
-          }
-        }
-      } else {
-        // Fallback: Try to extract screenings directly from the page
-        console.log(`[${this.config.cinemaId}] No films found, attempting direct extraction...`);
-        const directScreenings = await this.extractScreeningsDirectly();
-        allScreenings.push(...directScreenings);
+      // Return to buy-tickets page if we navigated away
+      if (!this.page.url().includes('buy-tickets')) {
+        await this.page.goto(`${this.config.baseUrl}/en/buy-tickets`, {
+          waitUntil: "networkidle",
+          timeout: 60000,
+        });
+        await this.page.waitForTimeout(3000);
       }
+
+      const directScreenings = await this.extractScreeningsDirectly();
+      allScreenings.push(...directScreenings);
+
+      console.log(`[${this.config.cinemaId}] Direct extraction found ${directScreenings.length} screenings`)
 
     } catch (error) {
       console.error(`[${this.config.cinemaId}] Error fetching screenings:`, error);
@@ -160,8 +155,7 @@ export class RomfordLumiereScraper {
 
     try {
       // Wait for CineSync movie cards to load
-      // Lumiere Romford uses .pc-moviewrap for film cards
-      await this.page.waitForSelector('.pc-moviewrap, .pc-movies-container', { timeout: 15000 }).catch(() => {});
+      await this.page.waitForSelector('.pc-moviewrap, .pc-movies-container, a[href*="/movies/"]', { timeout: 15000 }).catch(() => {});
       await this.page.waitForTimeout(2000); // Extra wait for dynamic content
 
       // Get the page content and parse with Cheerio
@@ -170,66 +164,87 @@ export class RomfordLumiereScraper {
 
       const seenFilms = new Set<string>();
 
-      // CineSync uses .pc-moviewrap for each film card
-      // Also try .pc-movie-content and general movie card patterns
-      const movieCardSelectors = [
-        '.pc-moviewrap',
-        '.pc-movie-content',
-        '[class*="movie-card"]',
-        '[class*="movieCard"]',
-      ];
+      // Primary method: Extract from movie page links
+      // Links like /en/movies/28-years-later-the-bone-temple-2026?location=romford
+      $('a[href*="/movies/"]').each((_, el) => {
+        const href = $(el).attr('href') || '';
+        const text = $(el).text().trim();
 
-      for (const selector of movieCardSelectors) {
-        const movieCards = $(selector);
-        if (movieCards.length === 0) continue;
+        // Skip time/showtime links and "More Performances" links
+        if (text.match(/^\d{1,2}:\d{2}/) || text === 'More Performances') return;
 
-        console.log(`[${this.config.cinemaId}] Found ${movieCards.length} cards with selector: ${selector}`);
+        // Extract movie slug from URL
+        const slugMatch = href.match(/\/movies\/([^/?]+)/);
+        if (slugMatch) {
+          const urlKey = slugMatch[1];
+          // Convert slug to title (replace hyphens with spaces, title case)
+          let movieName = urlKey
+            .replace(/-\d{4}$/, '') // Remove year suffix like -2026
+            .replace(/-/g, ' ')
+            .replace(/\b\w/g, c => c.toUpperCase());
 
-        movieCards.each((_, el) => {
-          const $card = $(el);
-
-          // Try multiple ways to find the movie title
-          let movieName = '';
-          const titleSelectors = [
-            '.pc-movie-detail-wrap h3',
-            '.pc-movie-detail-wrap h4',
-            '[class*="movie-title"]',
-            '[class*="movieTitle"]',
-            'h3',
-            'h4',
-            '.title',
-          ];
-
-          for (const titleSel of titleSelectors) {
-            const titleEl = $card.find(titleSel).first();
-            if (titleEl.length > 0) {
-              movieName = titleEl.text().trim();
-              if (movieName && movieName.length > 1) break;
-            }
+          // If we have link text that's not a time, prefer that
+          if (text && text.length > 2 && !text.match(/^\d/) && text !== 'More Performances') {
+            movieName = text;
           }
 
-          // Fallback: try image alt or data attributes
-          if (!movieName || movieName.length < 2) {
-            movieName = $card.find('img').attr('alt') || '';
-          }
-          if (!movieName || movieName.length < 2) {
-            movieName = $card.attr('data-movie-name') || $card.attr('data-title') || '';
-          }
-
-          movieName = movieName.replace(/\s+/g, ' ').trim();
-
-          if (movieName && movieName.length > 1 && !seenFilms.has(movieName.toLowerCase())) {
-            seenFilms.add(movieName.toLowerCase());
-            const urlKey = movieName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+          if (movieName && movieName.length > 1 && !seenFilms.has(urlKey)) {
+            seenFilms.add(urlKey);
             films.push({
               movie_id: urlKey,
               movie_name: movieName,
               url_key: urlKey,
             });
           }
-        });
+        }
+      });
 
-        if (films.length > 0) break; // Found films, stop trying other selectors
+      // Fallback: Try title elements within movie cards
+      if (films.length === 0) {
+        const movieCardSelectors = ['.pc-moviewrap', '.pc-movie-content'];
+
+        for (const selector of movieCardSelectors) {
+          const movieCards = $(selector);
+          if (movieCards.length === 0) continue;
+
+          console.log(`[${this.config.cinemaId}] Found ${movieCards.length} cards with selector: ${selector}`);
+
+          movieCards.each((_, el) => {
+            const $card = $(el);
+
+            // Look for title in elements with class containing "title"
+            let movieName = '';
+            const titleEl = $card.find('[class*="title"]').first();
+            if (titleEl.length > 0) {
+              movieName = titleEl.text().trim();
+            }
+
+            // Fallback: try link href
+            if (!movieName || movieName.length < 2) {
+              const link = $card.find('a[href*="/movies/"]').first();
+              const href = link.attr('href') || '';
+              const slugMatch = href.match(/\/movies\/([^/?]+)/);
+              if (slugMatch) {
+                movieName = slugMatch[1].replace(/-\d{4}$/, '').replace(/-/g, ' ')
+                  .replace(/\b\w/g, c => c.toUpperCase());
+              }
+            }
+
+            movieName = movieName.replace(/\s+/g, ' ').trim();
+
+            if (movieName && movieName.length > 1 && !seenFilms.has(movieName.toLowerCase())) {
+              seenFilms.add(movieName.toLowerCase());
+              const urlKey = movieName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+              films.push({
+                movie_id: urlKey,
+                movie_name: movieName,
+                url_key: urlKey,
+              });
+            }
+          });
+
+          if (films.length > 0) break;
+        }
       }
 
       console.log(`[${this.config.cinemaId}] Extracted ${films.length} films from page`);

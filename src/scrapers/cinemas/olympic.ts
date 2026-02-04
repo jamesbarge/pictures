@@ -16,7 +16,7 @@ import { parse, getYear } from "date-fns";
 
 export class OlympicScraper extends BaseScraper {
   config: ScraperConfig = {
-    cinemaId: "olympic-studios",
+    cinemaId: "olympic",
     baseUrl: "https://www.olympiccinema.com",
     requestsPerMinute: 10,
     delayBetweenRequests: 1000,

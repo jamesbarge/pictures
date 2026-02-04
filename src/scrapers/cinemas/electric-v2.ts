@@ -67,20 +67,35 @@ interface ElectricApiResponse {
 }
 
 export class ElectricScraperV2 extends BaseScraper {
-  config: ScraperConfig = {
-    cinemaId: "electric",
-    baseUrl: "https://www.electriccinema.co.uk",
-    requestsPerMinute: 60,
-    delayBetweenRequests: 100,
-  };
+  config: ScraperConfig;
 
   private apiUrl = "https://electriccinema.co.uk/data/data.json";
+
+  // Target venue ID to filter screenings (if null, returns all)
+  private targetVenueId: string | null;
 
   // Map API cinema IDs to our venue IDs
   private cinemaIdMap: Record<string, string> = {
     "603": "electric-portobello",
     "602": "electric-white-city",
   };
+
+  // Reverse map: venue ID to API cinema ID
+  private venueIdToApiId: Record<string, string> = {
+    "electric-portobello": "603",
+    "electric-white-city": "602",
+  };
+
+  constructor(venueId?: string) {
+    super();
+    this.targetVenueId = venueId || null;
+    this.config = {
+      cinemaId: venueId || "electric",
+      baseUrl: "https://www.electriccinema.co.uk",
+      requestsPerMinute: 60,
+      delayBetweenRequests: 100,
+    };
+  }
 
   protected async fetchPages(): Promise<string[]> {
     console.log("[electric] Fetching from API...");
@@ -105,6 +120,9 @@ export class ElectricScraperV2 extends BaseScraper {
       // Get venue ID from cinema ID
       const venueId = this.cinemaIdMap[String(screening.cinema)];
       if (!venueId) continue;
+
+      // Filter by target venue if specified
+      if (this.targetVenueId && venueId !== this.targetVenueId) continue;
 
       // Get film data
       const film = data.films[String(screening.film)];
@@ -174,6 +192,6 @@ export class ElectricScraperV2 extends BaseScraper {
   }
 }
 
-export function createElectricScraperV2(): ElectricScraperV2 {
-  return new ElectricScraperV2();
+export function createElectricScraperV2(venueId?: string): ElectricScraperV2 {
+  return new ElectricScraperV2(venueId);
 }

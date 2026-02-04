@@ -5,6 +5,17 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-02-04: Fix Cinema Zero Screenings
+**PR**: TBD | **Files**: `src/scrapers/cinemas/*.ts`, `src/scrapers/run-electric-v2.ts`
+- Fixed all cinemas showing 0 screenings (Phoenix, David Lean, Romford Lumiere)
+- Standardized cinema IDs across seed.ts and scraper configs
+- Added Electric White City support with multi-venue configuration
+- Phoenix: Rewrote scraper from GraphQL to DOM parsing (website changed)
+- David Lean: Updated selectors for new Divi theme structure
+- Romford Lumiere: Fixed title extraction from movie URLs
+
+---
+
 ## 2026-02-02: Social Outreach Pipeline (Apify + Attio)
 **PR**: TBD | **Files**: `scripts/social-outreach/`, `.github/workflows/social-outreach.yml`, `package.json`
 - Automated weekly pipeline to find London film enthusiasts on social media

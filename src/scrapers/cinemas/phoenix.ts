@@ -5,162 +5,238 @@
  * Address: 52 High Rd, London N2 9PJ
  * Website: https://phoenixcinema.co.uk
  *
- * Uses INDY Systems GraphQL API at /graphql
- * Captures data by intercepting GraphQL responses from the page
+ * Uses DOM parsing to extract films and showtimes from the website.
+ * Website uses a classic ASP.NET/DLL system with /PhoenixCinemaLondon.dll endpoints.
  */
 
-import { chromium, type Page } from "playwright";
+import { chromium } from "playwright";
 import type { RawScreening, ScraperConfig, CinemaScraper } from "../types";
+import { parse, getYear, addYears } from "date-fns";
 
-const PHOENIX_CONFIG: ScraperConfig & { graphqlUrl: string } = {
-  cinemaId: "phoenix-east-finchley",
+const PHOENIX_CONFIG: ScraperConfig & { programmeUrl: string } = {
+  cinemaId: "phoenix",
   baseUrl: "https://www.phoenixcinema.co.uk",
-  graphqlUrl: "https://www.phoenixcinema.co.uk/graphql",
+  programmeUrl: "https://www.phoenixcinema.co.uk/whats-on/",
   requestsPerMinute: 10,
-  delayBetweenRequests: 1500,
+  delayBetweenRequests: 1000,
 };
 
-// GraphQL response types
-interface PhoenixMovie {
-  id: string;
-  name: string;
-  urlSlug: string;
-  showingStatus: string;
-  duration: number;
-  genre: string;
-  rating: string;
-}
-
-interface PhoenixShowing {
-  id: string;
-  time: string;
-  screenId: string;
-  published: boolean;
-  past: boolean;
-  movie: PhoenixMovie;
+interface PhoenixFilm {
+  title: string;
+  pageUrl: string;
 }
 
 export class PhoenixScraper implements CinemaScraper {
   config = PHOENIX_CONFIG;
 
   async scrape(): Promise<RawScreening[]> {
-    console.log("[" + this.config.cinemaId + "] Starting Phoenix Cinema scrape...");
+    console.log(`[${this.config.cinemaId}] Starting Phoenix Cinema scrape...`);
 
     const browser = await chromium.launch({ headless: true });
     const context = await browser.newContext();
     const page = await context.newPage();
 
-    const movies: PhoenixMovie[] = [];
-    const allShowings: PhoenixShowing[] = [];
+    try {
+      // Step 1: Get list of films from the programme page
+      console.log(`[${this.config.cinemaId}] Loading programme page...`);
+      await page.goto(this.config.programmeUrl, { waitUntil: "networkidle", timeout: 60000 });
+      await page.waitForTimeout(3000);
 
-    // Intercept GraphQL responses to capture data
-    // Use a promise to track when movies are loaded
-    let moviesResolved = false;
-    const moviesPromise = new Promise<void>((resolve) => {
-      const timeout = setTimeout(() => {
-        console.log("[" + this.config.cinemaId + "] Movies timeout - proceeding with " + movies.length + " movies");
-        resolve();
-      }, 10000);
+      // Extract films from the page
+      const films = await page.evaluate(() => {
+        const results: Array<{ title: string; pageUrl: string }> = [];
+        const seenUrls = new Set<string>();
 
-      page.on("response", async (response) => {
-        if (response.url().includes("/graphql")) {
-          try {
-            const text = await response.text();
-            const json = JSON.parse(text);
+        document.querySelectorAll('.film-title, [class*="film-title"]').forEach(el => {
+          const title = el.textContent?.trim() || '';
+          if (!title || title.length < 2) return;
 
-            // Capture movies list
-            if (json?.data?.movies?.data) {
-              const movieData = json.data.movies.data as PhoenixMovie[];
-              movies.push(...movieData);
-              console.log("[" + this.config.cinemaId + "] Captured " + movieData.length + " movies from movies query");
-              if (!moviesResolved) {
-                moviesResolved = true;
-                clearTimeout(timeout);
-                resolve();
+          // Find the parent link
+          const parent = el.closest('a') as HTMLAnchorElement | null;
+          let pageUrl = '';
+
+          if (parent && parent.href) {
+            pageUrl = parent.href;
+          } else {
+            // Look for link in parent container
+            const container = el.closest('div, article');
+            const link = container?.querySelector('a[href*="WhatsOn"]') as HTMLAnchorElement | null;
+            if (link) {
+              pageUrl = link.href;
+            }
+          }
+
+          if (pageUrl && !seenUrls.has(pageUrl)) {
+            seenUrls.add(pageUrl);
+            results.push({ title, pageUrl });
+          }
+        });
+
+        return results;
+      });
+
+      console.log(`[${this.config.cinemaId}] Found ${films.length} films`);
+
+      // Step 2: Visit each film page and extract showtimes
+      const allScreenings: RawScreening[] = [];
+      const now = new Date();
+      const currentYear = getYear(now);
+
+      for (const film of films) {
+        try {
+          console.log(`[${this.config.cinemaId}] Fetching showtimes for "${film.title}"...`);
+
+          await page.goto(film.pageUrl, { waitUntil: "networkidle", timeout: 30000 });
+          await page.waitForTimeout(1500);
+
+          // Extract dates and times from the film page
+          const showtimes = await page.evaluate(() => {
+            const results: Array<{ date: string; time: string; bookingUrl?: string }> = [];
+
+            // Get all date elements
+            const dateElements = document.querySelectorAll('[class*="date"]');
+            const dates: string[] = [];
+            dateElements.forEach(el => {
+              const text = el.textContent?.trim();
+              if (text && /Mon|Tue|Wed|Thu|Fri|Sat|Sun/i.test(text)) {
+                dates.push(text);
+              }
+            });
+
+            // Get all time elements with their booking links
+            const timeElements = document.querySelectorAll('[class*="time"]');
+            const times: Array<{ time: string; bookingUrl?: string }> = [];
+            timeElements.forEach(el => {
+              const text = el.textContent?.trim();
+              if (text && /^\d{1,2}:\d{2}$/.test(text)) {
+                const parent = el.closest('a');
+                const bookingUrl = parent?.getAttribute('href') || undefined;
+                times.push({ time: text, bookingUrl });
+              }
+            });
+
+            // Match dates to times
+            // The pattern seems to be dates followed by their times in groups
+            // For now, use a simpler approach: pair unique dates with times sequentially
+
+            // Actually look for date-time groups
+            const dateTimeGroups = document.querySelectorAll('[class*="showtime"], [class*="session"], .performance-row, [class*="schedule"]');
+
+            if (dateTimeGroups.length > 0) {
+              // Parse structured groups
+              dateTimeGroups.forEach(group => {
+                const dateEl = group.querySelector('[class*="date"]');
+                const timeEl = group.querySelector('[class*="time"]');
+                if (dateEl && timeEl) {
+                  const date = dateEl.textContent?.trim() || '';
+                  const time = timeEl.textContent?.trim() || '';
+                  const link = group.querySelector('a');
+                  results.push({
+                    date,
+                    time,
+                    bookingUrl: link?.href
+                  });
+                }
+              });
+            }
+
+            // If no structured groups, try to correlate dates and times
+            if (results.length === 0 && dates.length > 0 && times.length > 0) {
+              // Simple heuristic: assume times are distributed across dates
+              const timesPerDate = Math.ceil(times.length / dates.length);
+              let timeIndex = 0;
+
+              for (const date of dates) {
+                for (let i = 0; i < timesPerDate && timeIndex < times.length; i++) {
+                  results.push({
+                    date,
+                    time: times[timeIndex].time,
+                    bookingUrl: times[timeIndex].bookingUrl
+                  });
+                  timeIndex++;
+                }
               }
             }
 
-            // Capture showings
-            if (json?.data?.showingsForDate?.data) {
-              const showingData = json.data.showingsForDate.data as PhoenixShowing[];
-              allShowings.push(...showingData);
-              console.log("[" + this.config.cinemaId + "] Captured " + showingData.length + " showings");
+            return results;
+          });
+
+          // Convert to RawScreenings
+          for (const showtime of showtimes) {
+            const datetime = this.parseShowtime(showtime.date, showtime.time, currentYear, now);
+            if (datetime && datetime > now) {
+              const bookingUrl = showtime.bookingUrl
+                ? (showtime.bookingUrl.startsWith('http') ? showtime.bookingUrl : `${this.config.baseUrl}/${showtime.bookingUrl.replace(/^\//, '')}`)
+                : film.pageUrl;
+
+              allScreenings.push({
+                filmTitle: film.title,
+                datetime,
+                bookingUrl,
+                sourceId: `phoenix-${film.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${datetime.toISOString()}`,
+              });
             }
-          } catch (e) {
-            // Not JSON or parse error - ignore
           }
+
+          // Delay between film pages
+          await page.waitForTimeout(this.config.delayBetweenRequests);
+        } catch (error) {
+          console.warn(`[${this.config.cinemaId}] Error fetching showtimes for "${film.title}":`, error);
         }
+      }
+
+      // Deduplicate
+      const seen = new Set<string>();
+      const uniqueScreenings = allScreenings.filter(s => {
+        const key = `${s.filmTitle}-${s.datetime.toISOString()}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
       });
-    });
 
-    try {
-      // Visit the whats-on page to trigger movies loading
-      console.log("[" + this.config.cinemaId + "] Loading whats-on page...");
-      await page.goto(this.config.baseUrl + "/whats-on/", { waitUntil: "networkidle" });
-
-      // Wait for movies to be captured
-      console.log("[" + this.config.cinemaId + "] Waiting for movies data...");
-      await moviesPromise;
-      console.log("[" + this.config.cinemaId + "] Movies captured: " + movies.length);
-
-      // Get unique movie IDs that are currently showing
-      const showingMovieIds = new Set<string>();
-      for (const movie of movies) {
-        if (movie.showingStatus === "Now Playing" || movie.showingStatus === "Previews") {
-          showingMovieIds.add(movie.id);
-        }
-      }
-
-      console.log("[" + this.config.cinemaId + "] Found " + showingMovieIds.size + " showing movies");
-
-      // Visit each movie page to get showings
-      // Limit to first 10 movies to avoid too many requests
-      const movieSlugMap = new Map<string, PhoenixMovie>();
-      for (const movie of movies) {
-        if (showingMovieIds.has(movie.id)) {
-          movieSlugMap.set(movie.urlSlug, movie);
-        }
-      }
-
-      const slugs = Array.from(movieSlugMap.keys()).slice(0, 10);
-      console.log("[" + this.config.cinemaId + "] Visiting " + slugs.length + " movie pages...");
-
-      for (const slug of slugs) {
-        console.log("[" + this.config.cinemaId + "] Visiting: " + slug);
-        await page.goto(this.config.baseUrl + "/movie/" + slug, { waitUntil: "networkidle" });
-        await page.waitForTimeout(1500);
-      }
-
-      // Convert showings to RawScreenings
-      const screenings: RawScreening[] = [];
-      const now = new Date();
-      const seenIds = new Set<string>();
-
-      for (const showing of allShowings) {
-        // Skip duplicates
-        if (seenIds.has(showing.id)) continue;
-        seenIds.add(showing.id);
-
-        // Skip past screenings
-        const datetime = new Date(showing.time);
-        if (datetime < now) continue;
-        if (showing.past) continue;
-        if (!showing.published) continue;
-
-        const bookingUrl = this.config.baseUrl + "/showing/" + showing.id;
-
-        screenings.push({
-          filmTitle: showing.movie.name,
-          datetime,
-          bookingUrl,
-          sourceId: "phoenix-" + showing.id,
-        });
-      }
-
-      console.log("[" + this.config.cinemaId + "] Found " + screenings.length + " screenings total");
-      return screenings;
+      console.log(`[${this.config.cinemaId}] Found ${uniqueScreenings.length} screenings total`);
+      return uniqueScreenings;
     } finally {
       await browser.close();
+    }
+  }
+
+  private parseShowtime(dateStr: string, timeStr: string, currentYear: number, now: Date): Date | null {
+    try {
+      // Parse date like "Tue 3 Feb" or "Wed 4 Feb"
+      const dateMatch = dateStr.match(/(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/i);
+      if (!dateMatch) return null;
+
+      const day = parseInt(dateMatch[1], 10);
+      const monthStr = dateMatch[2];
+
+      // Parse time like "17:00" or "14:15"
+      const timeMatch = timeStr.match(/^(\d{1,2}):(\d{2})$/);
+      if (!timeMatch) return null;
+
+      const hours = parseInt(timeMatch[1], 10);
+      const minutes = parseInt(timeMatch[2], 10);
+
+      // Build date string and parse
+      const dateFullStr = `${day} ${monthStr} ${currentYear}`;
+      let datetime = parse(dateFullStr, "d MMM yyyy", new Date());
+
+      // Set time
+      datetime.setHours(hours, minutes, 0, 0);
+
+      // Only roll to next year if date is more than 30 days in the past
+      // (handles year boundary cases like Dec->Jan, but not recent past dates)
+      const thirtyDaysAgo = new Date(now);
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      if (datetime < thirtyDaysAgo) {
+        datetime = parse(`${day} ${monthStr} ${currentYear + 1}`, "d MMM yyyy", new Date());
+        datetime.setHours(hours, minutes, 0, 0);
+      }
+
+      return datetime;
+    } catch {
+      return null;
     }
   }
 
