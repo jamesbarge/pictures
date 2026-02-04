@@ -3,137 +3,172 @@
  *
  * Cinema: The David Lean Cinema (Croydon Clocktower)
  * Address: Katharine Street, Croydon CR9 1ET
- * Website: https://www.davidleancinema.org.uk
+ * Website: https://www.davidleancinema.uk (redirected from .org.uk)
  *
  * Uses TicketSolve for booking (via tinyurl redirects)
- * WordPress site with Elementor - film cards in figure elements
- * Cheerio-based scraper - suitable for serverless cloud execution
+ * Divi-based site with slider for featured films and listing section
+ * Playwright-based scraper for dynamic content
  */
 
-import { BaseScraper } from "../base";
-import type { RawScreening, ScraperConfig } from "../types";
+import { chromium } from "playwright";
+import type { RawScreening, ScraperConfig, CinemaScraper } from "../types";
 import { parse, getYear, addYears } from "date-fns";
 
-export class DavidLeanScraper extends BaseScraper {
-  config: ScraperConfig = {
-    cinemaId: "david-lean-cinema",
-    baseUrl: "https://www.davidleancinema.org.uk",
-    requestsPerMinute: 10,
-    delayBetweenRequests: 1000,
-  };
+const DAVID_LEAN_CONFIG: ScraperConfig = {
+  cinemaId: "david-lean",
+  baseUrl: "https://www.davidleancinema.uk",
+  requestsPerMinute: 10,
+  delayBetweenRequests: 1000,
+};
 
-  protected async fetchPages(): Promise<string[]> {
-    const url = `${this.config.baseUrl}/listings`;
-    console.log(`[${this.config.cinemaId}] Fetching listings page: ${url}`);
+export class DavidLeanScraper implements CinemaScraper {
+  config = DAVID_LEAN_CONFIG;
 
-    const html = await this.fetchUrl(url);
-    return [html];
+  async scrape(): Promise<RawScreening[]> {
+    console.log(`[${this.config.cinemaId}] Starting David Lean Cinema scrape...`);
+
+    const browser = await chromium.launch({ headless: true });
+    const context = await browser.newContext();
+    const page = await context.newPage();
+
+    try {
+      console.log(`[${this.config.cinemaId}] Loading homepage...`);
+      await page.goto(this.config.baseUrl, {
+        waitUntil: "networkidle",
+        timeout: 30000
+      });
+
+      const screenings: RawScreening[] = [];
+      const now = new Date();
+      const currentYear = getYear(now);
+
+      // Extract listings from the schedule section
+      const listings = await page.evaluate(() => {
+        const textElements = document.querySelectorAll('.et_pb_text_inner');
+        const results: Array<{ text: string; link: string | null }> = [];
+
+        textElements.forEach(el => {
+          const text = el.textContent?.trim() || "";
+          const link = el.querySelector('a.et_pb_button')?.getAttribute('href') || null;
+
+          // Look for patterns with date/time info
+          if (text.match(/\d{1,2}\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/i) &&
+              text.match(/at\s+\d{1,2}[.:]\d{2}(am|pm)/i)) {
+            results.push({ text, link });
+          }
+        });
+
+        return results;
+      });
+
+      console.log(`[${this.config.cinemaId}] Found ${listings.length} listing entries`);
+
+      // Process listings to extract screenings
+      const seenScreenings = new Set<string>();
+
+      for (const listing of listings) {
+        const parsed = this.parseListingText(listing.text, listing.link, currentYear, now);
+        for (const screening of parsed) {
+          const key = `${screening.filmTitle}-${screening.datetime.toISOString()}`;
+          if (!seenScreenings.has(key)) {
+            seenScreenings.add(key);
+            screenings.push(screening);
+          }
+        }
+      }
+
+      console.log(`[${this.config.cinemaId}] Found ${screenings.length} screenings total`);
+      return screenings;
+    } finally {
+      await browser.close();
+    }
   }
 
-  protected async parsePages(htmlPages: string[]): Promise<RawScreening[]> {
-    const screenings: RawScreening[] = [];
-    const $ = this.parseHtml(htmlPages[0]);
-    const now = new Date();
-    const currentYear = getYear(now);
-
-    // Find all figure elements with film data
-    const figures = $("figure.wp-caption");
-    console.log(`[${this.config.cinemaId}] Found ${figures.length} film figures`);
-
-    figures.each((_, figure) => {
-      const $figure = $(figure);
-
-      // Get film title from image alt attribute
-      const filmTitle = $figure.find("img").attr("alt")?.trim();
-      if (!filmTitle) return;
-
-      // Get booking URL from the link
-      const bookingUrl = $figure.find("a").attr("href") || "";
-      if (!bookingUrl) return;
-
-      // Get date/time from figcaption
-      // Format: "Tues 06 Jan at 11am (DF)" or "Tues 06 Jan at 2.30pm and 7.30pm (HOH)"
-      const captionText = $figure.find("figcaption").text().trim();
-      if (!captionText) return;
-
-      // Parse the caption to extract dates and times
-      const parsedScreenings = this.parseCaptionToScreenings(
-        filmTitle,
-        captionText,
-        bookingUrl,
-        currentYear,
-        now
-      );
-
-      screenings.push(...parsedScreenings);
-    });
-
-    console.log(`[${this.config.cinemaId}] Found ${screenings.length} screenings`);
-    return screenings;
-  }
-
-  private parseCaptionToScreenings(
-    filmTitle: string,
-    caption: string,
-    bookingUrl: string,
+  private parseListingText(
+    text: string,
+    bookingUrl: string | null,
     currentYear: number,
     now: Date
   ): RawScreening[] {
     const screenings: RawScreening[] = [];
 
-    // Remove annotations like (DF), (HOH), (BIA) - these are accessibility notes
-    const cleanCaption = caption.replace(/\s*\([A-Z]+\)\s*/g, " ").trim();
+    // Extract film title (first line before year/country/runtime)
+    const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
+    let filmTitle = lines[0];
 
-    // Match pattern: "Day DD Mon at HH:MM" with optional "and HH:MM"
-    // Examples: "Tues 06 Jan at 11am", "Tues 06 Jan at 2.30pm and 7.30pm"
-    const simpleMatch = cleanCaption.match(/(\w+)\s+(\d{1,2})\s+(\w+)\s+at\s+(.+)/i);
-    if (!simpleMatch) return screenings;
+    // Clean title - remove metadata if present
+    if (filmTitle.match(/^\d{4}\s*\|/)) {
+      // First line is metadata, skip to second
+      filmTitle = lines.length > 1 ? lines[1] : "";
+    }
 
-    const [, dayName, dayNum, monthName, timePart] = simpleMatch;
-    const times = this.extractTimes(timePart);
+    if (!filmTitle) return screenings;
 
-    for (const time of times) {
-      try {
-        const datetime = this.parseDateTime(dayName, dayNum, monthName, time, currentYear);
-        const adjustedDatetime = datetime < now ? addYears(datetime, 1) : datetime;
+    // Extract date/time patterns from the full text
+    // Pattern: "Day DD Mon at HH.MMam/pm"
+    const dateTimePattern = /(Mon|Tue|Tues|Wed|Thur|Thurs|Fri|Sat|Sun)\s+(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+at\s+([\d.:]+(?:am|pm))/gi;
 
-        if (adjustedDatetime >= now) {
-          screenings.push({
-            filmTitle,
-            datetime: adjustedDatetime,
-            bookingUrl,
-            sourceId: `david-lean-${filmTitle.toLowerCase().replace(/\s+/g, "-")}-${adjustedDatetime.toISOString()}`,
-          });
+    let match;
+    while ((match = dateTimePattern.exec(text)) !== null) {
+      const [, , dayNum, monthName, timeStr] = match;
+      const times = this.extractTimes(timeStr + " " + text.substring(match.index + match[0].length, match.index + match[0].length + 30));
+
+      for (const time of times) {
+        try {
+          const datetime = this.parseDateTime(dayNum, monthName, time, currentYear);
+          const adjustedDatetime = datetime < now ? addYears(datetime, 1) : datetime;
+
+          if (adjustedDatetime >= now) {
+            screenings.push({
+              filmTitle: this.cleanTitle(filmTitle),
+              datetime: adjustedDatetime,
+              bookingUrl: bookingUrl || `${this.config.baseUrl}/#whatson`,
+              sourceId: `david-lean-${filmTitle.toLowerCase().replace(/\s+/g, "-").substring(0, 30)}-${adjustedDatetime.toISOString()}`,
+            });
+          }
+        } catch {
+          // Skip on error
         }
-      } catch {
-        // Skip on error
       }
     }
 
     return screenings;
   }
 
-  private extractTimes(timePart: string): string[] {
-    // Handle "11am", "2.30pm", "2.30pm and 7.30pm"
+  private cleanTitle(title: string): string {
+    // Remove certificate info like "(Cert 15)"
+    return title.replace(/\s*\(Cert\s*\d+A?\)\s*/gi, "").trim();
+  }
+
+  private extractTimes(text: string): string[] {
     const times: string[] = [];
-    const timePattern = /(\d{1,2}(?:\.\d{2})?(?:am|pm))/gi;
+    const timePattern = /(\d{1,2}[.:]\d{2}(?:am|pm))/gi;
 
     let match;
-    while ((match = timePattern.exec(timePart)) !== null) {
+    while ((match = timePattern.exec(text)) !== null) {
       times.push(match[1]);
+    }
+
+    // Also handle "HHam" or "HHpm" format
+    const simpleTimePattern = /(\d{1,2}(?:am|pm))/gi;
+    while ((match = simpleTimePattern.exec(text)) !== null) {
+      const simple = match[1];
+      // Don't add if we already have a detailed time for this hour
+      if (!times.some(t => t.startsWith(simple.replace(/am|pm/i, "")))) {
+        times.push(simple);
+      }
     }
 
     return times;
   }
 
   private parseDateTime(
-    dayName: string,
     dayNum: string,
     monthName: string,
     timeStr: string,
     currentYear: number
   ): Date {
-    // Normalize time format: "2.30pm" -> "14:30", "11am" -> "11:00"
+    // Normalize time format: "2.30pm" or "2:30pm" -> "14:30", "11am" -> "11:00"
     const normalizedTime = this.normalizeTime(timeStr);
     const [hours, minutes] = normalizedTime.split(":").map(Number);
 
@@ -146,8 +181,8 @@ export class DavidLeanScraper extends BaseScraper {
   }
 
   private normalizeTime(timeStr: string): string {
-    // Convert "2.30pm" or "2pm" to "14:30" or "14:00"
-    const match = timeStr.toLowerCase().match(/(\d{1,2})(?:\.(\d{2}))?(am|pm)/);
+    // Convert "2.30pm" or "2:30pm" to "14:30"
+    const match = timeStr.toLowerCase().match(/(\d{1,2})[.:]?(\d{2})?(am|pm)/);
     if (!match) return "00:00";
 
     let hours = parseInt(match[1], 10);
@@ -161,6 +196,20 @@ export class DavidLeanScraper extends BaseScraper {
     }
 
     return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
+  }
+
+  async healthCheck(): Promise<boolean> {
+    try {
+      const response = await fetch(this.config.baseUrl, {
+        method: "HEAD",
+        headers: {
+          "User-Agent": "Mozilla/5.0 (compatible; PicturesBot/1.0)",
+        },
+      });
+      return response.ok;
+    } catch {
+      return false;
+    }
   }
 }
 

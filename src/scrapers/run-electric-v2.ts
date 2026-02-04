@@ -2,15 +2,16 @@
  * Run Electric Cinema Scraper (v2 - using runner factory)
  *
  * Usage:
- *   npm run scrape:electric-v2
+ *   npm run scrape:electric        # Scrape both venues
+ *   npm run scrape:electric -- portobello  # Scrape specific venue
  */
 
-import { createMain, type SingleVenueConfig } from "./runner-factory";
+import { createMain, type MultiVenueConfig } from "./runner-factory";
 import { createElectricScraperV2 } from "./cinemas/electric-v2";
 
-const config: SingleVenueConfig = {
-  type: "single",
-  venue: {
+// Define Electric venues
+const ELECTRIC_VENUES = [
+  {
     id: "electric-portobello",
     name: "Electric Cinema Portobello",
     shortName: "Electric",
@@ -20,13 +21,32 @@ const config: SingleVenueConfig = {
       area: "Notting Hill",
       postcode: "W11 2ED",
     },
-    features: ["independent", "luxury", "historic", "bar"],
+    features: ["independent", "luxury", "historic", "bar", "beds"],
   },
-  createScraper: () => createElectricScraperV2(),
+  {
+    id: "electric-white-city",
+    name: "Electric Cinema White City",
+    shortName: "Electric WC",
+    website: "https://www.electriccinema.co.uk",
+    address: {
+      street: "Television Centre",
+      area: "White City",
+      postcode: "W12 7SL",
+    },
+    features: ["independent", "luxury", "bar", "beds"],
+  },
+];
+
+// Configure the multi-venue scraper
+const config: MultiVenueConfig = {
+  type: "multi",
+  venues: ELECTRIC_VENUES,
+  createScraper: (venueId: string) => createElectricScraperV2(venueId),
 };
 
 const main = createMain(config, {
   useValidation: true,
+  venuePrefix: "electric-",
 });
 
 main().catch((error) => {

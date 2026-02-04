@@ -18,7 +18,7 @@ import type { RawScreening, ScraperConfig } from "../types";
 
 export class GardenCinemaScraper extends BaseScraper {
   config: ScraperConfig = {
-    cinemaId: "garden-cinema",
+    cinemaId: "garden",
     baseUrl: "https://thegardencinema.co.uk",
     requestsPerMinute: 10,
     delayBetweenRequests: 1000,
@@ -112,7 +112,7 @@ export class GardenCinemaScraper extends BaseScraper {
           }
 
           // Create sourceId for deduplication
-          const sourceId = `garden-cinema-${this.slugify(title)}-${datetime.toISOString()}`;
+          const sourceId = `garden-${this.slugify(title)}-${datetime.toISOString()}`;
 
           screenings.push({
             filmTitle: title,

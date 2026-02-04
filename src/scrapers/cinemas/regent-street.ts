@@ -17,7 +17,7 @@ import { chromium } from "playwright";
 import type { RawScreening, ScraperConfig, CinemaScraper } from "../types";
 
 const REGENT_STREET_CONFIG: ScraperConfig & { programmeUrl: string } = {
-  cinemaId: "regent-street-cinema",
+  cinemaId: "regent-street",
   baseUrl: "https://www.regentstreetcinema.com",
   programmeUrl: "https://www.regentstreetcinema.com/programme/",
   requestsPerMinute: 10,
