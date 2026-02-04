@@ -2,6 +2,7 @@ import { inngest } from "./client";
 import { saveScreenings, ensureCinemaExists } from "@/scrapers/pipeline";
 import type { RawScreening } from "@/scrapers/types";
 import { captureServerException } from "@/lib/posthog-server";
+import { CHAIN_CINEMA_MAPPING, SCRAPER_REGISTRY_IDS } from "./known-ids";
 
 // Venue definition with required website for Inngest scrapers
 interface InnggestVenueDefinition {
@@ -477,44 +478,20 @@ const getScraperRegistry = (): Record<string, () => Promise<ScraperEntry>> => ({
   },
 });
 
-// Chain cinema IDs map to their chain scraper
-const CHAIN_CINEMA_MAPPING: Record<string, string> = {
-  // Curzon venues
-  "curzon-soho": "curzon",
-  "curzon-mayfair": "curzon",
-  "curzon-bloomsbury": "curzon",
-  "curzon-victoria": "curzon",
-  "curzon-hoxton": "curzon",
-  "curzon-kingston": "curzon",
-  "curzon-aldgate": "curzon",
-  // Picturehouse venues
-  "picturehouse-central": "picturehouse",
-  "hackney-picturehouse": "picturehouse",
-  "crouch-end-picturehouse": "picturehouse",
-  "east-dulwich-picturehouse": "picturehouse",
-  "greenwich-picturehouse": "picturehouse",
-  "finsbury-park-picturehouse": "picturehouse",
-  "gate-picturehouse": "picturehouse",
-  "picturehouse-ritzy": "picturehouse",
-  "clapham-picturehouse": "picturehouse",
-  "west-norwood-picturehouse": "picturehouse",
-  "ealing-picturehouse": "picturehouse",
-  // Everyman venues
-  "everyman-belsize-park": "everyman",
-  "everyman-baker-street": "everyman",
-  "everyman-barnet": "everyman",
-  "everyman-borough-yards": "everyman",
-  "everyman-broadgate": "everyman",
-  "everyman-canary-wharf": "everyman",
-  "everyman-chelsea": "everyman",
-  "everyman-crystal-palace": "everyman",
-  "everyman-hampstead": "everyman",
-  "everyman-kings-cross": "everyman",
-  "everyman-maida-vale": "everyman",
-  "everyman-muswell-hill": "everyman",
-  "everyman-screen-on-the-green": "everyman",
-  "everyman-stratford": "everyman",
-};
+// Validate scraper registry keys match SCRAPER_REGISTRY_IDS at module load
+// This catches drift between runtime and known-ids.ts during development
+const registryKeys = new Set(Object.keys(getScraperRegistry()));
+const missingInRegistry = [...SCRAPER_REGISTRY_IDS].filter((id) => !registryKeys.has(id));
+const missingInKnownIds = [...registryKeys].filter((id) => !SCRAPER_REGISTRY_IDS.has(id));
+if (missingInRegistry.length > 0 || missingInKnownIds.length > 0) {
+  console.error("[Inngest] SCRAPER_REGISTRY_IDS drift detected!");
+  if (missingInRegistry.length > 0) {
+    console.error("  Missing from getScraperRegistry():", missingInRegistry);
+  }
+  if (missingInKnownIds.length > 0) {
+    console.error("  Missing from SCRAPER_REGISTRY_IDS:", missingInKnownIds);
+  }
+}
 
 /**
  * Inngest Function: Run Cinema Scraper

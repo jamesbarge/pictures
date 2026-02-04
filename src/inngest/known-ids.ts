@@ -43,46 +43,52 @@ export const SCRAPER_REGISTRY_IDS = new Set([
 ]);
 
 /**
- * Chain venue IDs that Inngest routes to chain scrapers.
- * These return "requires Playwright" message since chains need browser runtime.
+ * Chain cinema ID to chain scraper mapping.
+ * Maps venue IDs to their parent chain for Inngest routing.
+ * Single source of truth - consumed by functions.ts at runtime.
  */
-export const CHAIN_CINEMA_IDS = new Set([
-  // Curzon
-  "curzon-soho",
-  "curzon-mayfair",
-  "curzon-bloomsbury",
-  "curzon-victoria",
-  "curzon-hoxton",
-  "curzon-kingston",
-  "curzon-aldgate",
-  // Picturehouse
-  "picturehouse-central",
-  "hackney-picturehouse",
-  "crouch-end-picturehouse",
-  "east-dulwich-picturehouse",
-  "greenwich-picturehouse",
-  "finsbury-park-picturehouse",
-  "gate-picturehouse",
-  "picturehouse-ritzy",
-  "clapham-picturehouse",
-  "west-norwood-picturehouse",
-  "ealing-picturehouse",
-  // Everyman
-  "everyman-belsize-park",
-  "everyman-baker-street",
-  "everyman-barnet",
-  "everyman-borough-yards",
-  "everyman-broadgate",
-  "everyman-canary-wharf",
-  "everyman-chelsea",
-  "everyman-crystal-palace",
-  "everyman-hampstead",
-  "everyman-kings-cross",
-  "everyman-maida-vale",
-  "everyman-muswell-hill",
-  "everyman-screen-on-the-green",
-  "everyman-stratford",
-]);
+export const CHAIN_CINEMA_MAPPING: Record<string, string> = {
+  // Curzon venues
+  "curzon-soho": "curzon",
+  "curzon-mayfair": "curzon",
+  "curzon-bloomsbury": "curzon",
+  "curzon-victoria": "curzon",
+  "curzon-hoxton": "curzon",
+  "curzon-kingston": "curzon",
+  "curzon-aldgate": "curzon",
+  // Picturehouse venues
+  "picturehouse-central": "picturehouse",
+  "hackney-picturehouse": "picturehouse",
+  "crouch-end-picturehouse": "picturehouse",
+  "east-dulwich-picturehouse": "picturehouse",
+  "greenwich-picturehouse": "picturehouse",
+  "finsbury-park-picturehouse": "picturehouse",
+  "gate-picturehouse": "picturehouse",
+  "picturehouse-ritzy": "picturehouse",
+  "clapham-picturehouse": "picturehouse",
+  "west-norwood-picturehouse": "picturehouse",
+  "ealing-picturehouse": "picturehouse",
+  // Everyman venues
+  "everyman-belsize-park": "everyman",
+  "everyman-baker-street": "everyman",
+  "everyman-barnet": "everyman",
+  "everyman-borough-yards": "everyman",
+  "everyman-broadgate": "everyman",
+  "everyman-canary-wharf": "everyman",
+  "everyman-chelsea": "everyman",
+  "everyman-crystal-palace": "everyman",
+  "everyman-hampstead": "everyman",
+  "everyman-kings-cross": "everyman",
+  "everyman-maida-vale": "everyman",
+  "everyman-muswell-hill": "everyman",
+  "everyman-screen-on-the-green": "everyman",
+  "everyman-stratford": "everyman",
+};
+
+/**
+ * Derived set of chain cinema IDs for quick lookup.
+ */
+export const CHAIN_CINEMA_IDS = new Set(Object.keys(CHAIN_CINEMA_MAPPING));
 
 /**
  * Get all cinema IDs that Inngest can resolve.
