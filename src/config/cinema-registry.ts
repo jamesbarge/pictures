@@ -1304,19 +1304,45 @@ export function getChainIds(): ChainId[] {
 
 /**
  * Get cinema-to-scraper mapping for admin API
+ * Maps both canonical and legacy IDs to the scraper ID that Inngest expects.
  * Replaces CINEMA_TO_SCRAPER in src/app/api/admin/scrape/route.ts
  */
 export function getCinemaToScraperMap(): Record<string, string> {
   const map: Record<string, string> = {};
+
+  // IDs where Inngest SCRAPER_REGISTRY uses a different key than the canonical ID
+  // These are temporary until Inngest is updated to use canonical IDs
+  const INNGEST_LEGACY_SCRAPER_IDS: Record<string, string> = {
+    "the-nickel": "nickel",
+    "phoenix-east-finchley": "phoenix",
+    "electric": "electric-portobello",
+  };
+
   for (const cinema of CINEMA_REGISTRY) {
-    // For chain cinemas, map to the chain scraper
+    // Determine the scraper ID that Inngest expects
+    let scraperId: string;
     if (cinema.chain && cinema.chain !== "bfi") {
-      map[cinema.id] = cinema.chain;
+      // For chain cinemas, map to the chain scraper
+      scraperId = cinema.chain;
+    } else if (INNGEST_LEGACY_SCRAPER_IDS[cinema.id]) {
+      // Use the legacy ID that Inngest expects
+      scraperId = INNGEST_LEGACY_SCRAPER_IDS[cinema.id];
     } else {
-      // For independents, use the cinema ID as the scraper ID
-      map[cinema.id] = cinema.id;
+      // For most independents, use the canonical ID
+      scraperId = cinema.id;
+    }
+
+    // Map the canonical ID
+    map[cinema.id] = scraperId;
+
+    // Also map any legacy IDs to the same scraper
+    if (cinema.legacyIds) {
+      for (const legacyId of cinema.legacyIds) {
+        map[legacyId] = scraperId;
+      }
     }
   }
+
   return map;
 }
 

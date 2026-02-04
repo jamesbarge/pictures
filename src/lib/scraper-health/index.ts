@@ -89,9 +89,12 @@ export async function getCinemaHealthMetrics(cinemaId: string): Promise<CinemaHe
   const in7days = addDays(now, 7);
   const in14days = addDays(now, 14);
 
-  // Get cinema info from registry
+  // Get cinema info from registry (resolves legacy IDs to canonical)
   const cinemaInfo = getCinemaById(cinemaId);
   if (!cinemaInfo) return null;
+
+  // Use canonical ID for database queries (cinemaInfo.id, not the input cinemaId)
+  const canonicalId = cinemaInfo.id;
 
   // Get volume metrics
   const [volumeResult] = await db
@@ -104,7 +107,7 @@ export async function getCinemaHealthMetrics(cinemaId: string): Promise<CinemaHe
     .from(screenings)
     .where(
       and(
-        eq(screenings.cinemaId, cinemaId),
+        eq(screenings.cinemaId, canonicalId),
         gte(screenings.datetime, now)
       )
     );
@@ -130,7 +133,7 @@ export async function getCinemaHealthMetrics(cinemaId: string): Promise<CinemaHe
     const chainCinemas = getActiveCinemasByChain(cinemaInfo.chain);
     const chainVolumes = await Promise.all(
       chainCinemas
-        .filter((c) => c.id !== cinemaId) // Exclude current cinema
+        .filter((c) => c.id !== canonicalId) // Exclude current cinema
         .map(async (c) => {
           const [result] = await db
             .select({ count: count() })
@@ -189,7 +192,7 @@ export async function getCinemaHealthMetrics(cinemaId: string): Promise<CinemaHe
   }
 
   return {
-    cinemaId,
+    cinemaId: canonicalId,
     cinemaName: cinemaInfo.name,
     chain: cinemaInfo.chain,
     totalFutureScreenings,
@@ -295,12 +298,16 @@ export async function getRecentHealthSnapshots(
 ): Promise<typeof healthSnapshots.$inferSelect[]> {
   const since = subDays(new Date(), days);
 
+  // Resolve to canonical ID for database query
+  const cinemaInfo = getCinemaById(cinemaId);
+  const canonicalId = cinemaInfo?.id || cinemaId;
+
   return db
     .select()
     .from(healthSnapshots)
     .where(
       and(
-        eq(healthSnapshots.cinemaId, cinemaId),
+        eq(healthSnapshots.cinemaId, canonicalId),
         gte(healthSnapshots.snapshotAt, since)
       )
     )
