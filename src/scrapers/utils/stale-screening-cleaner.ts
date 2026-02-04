@@ -44,6 +44,17 @@ export async function removeStaleScreenings(
       .filter((id): id is string => id !== undefined)
   );
 
+  // SAFETY: If no fresh screenings have sourceIds, don't delete anything.
+  // This prevents catastrophic deletion when scraper returns empty results
+  // or when all screenings lack sourceIds (inArray with empty array = false,
+  // so not(inArray(..., [])) = true, which would delete everything).
+  if (freshSourceIds.size === 0) {
+    console.log(
+      `[StaleCleaner] ${cinemaId}: No fresh sourceIds provided, skipping cleanup to prevent data loss`
+    );
+    return { deleted: 0, preserved: 0 };
+  }
+
   // Find stale screenings:
   // - Same cinema
   // - Future date (not past)
@@ -100,6 +111,11 @@ export async function reportStaleScreenings(
       .map((s) => s.sourceId)
       .filter((id): id is string => id !== undefined)
   );
+
+  // SAFETY: Same guard as removeStaleScreenings
+  if (freshSourceIds.size === 0) {
+    return { wouldDelete: 0, staleScreenings: [] };
+  }
 
   const staleScreenings = await db
     .select({
