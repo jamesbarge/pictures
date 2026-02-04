@@ -405,7 +405,7 @@ async function checkBookingLinks(options: VerifyOptions): Promise<DataQualityIss
     }
   }
 
-  console.log(`[${AGENT_NAME}] Link check: ${screenings.length} checked, ${issues.length} issues`);
+  console.log(`[${AGENT_NAME}] Link check: ${screeningsToCheck.length} checked, ${issues.length} issues`);
   return issues;
 }
 
