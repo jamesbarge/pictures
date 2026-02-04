@@ -6,13 +6,22 @@ When an entry is added here, also create a detailed file in /changelogs/
 -->
 
 ## 2026-02-04: Fix Cinema Zero Screenings
-**PR**: TBD | **Files**: `src/scrapers/cinemas/*.ts`, `src/scrapers/run-electric-v2.ts`
+**PR**: #65 | **Files**: `src/scrapers/cinemas/*.ts`, `src/scrapers/run-electric-v2.ts`
 - Fixed all cinemas showing 0 screenings (Phoenix, David Lean, Romford Lumiere)
 - Standardized cinema IDs across seed.ts and scraper configs
 - Added Electric White City support with multi-venue configuration
 - Phoenix: Rewrote scraper from GraphQL to DOM parsing (website changed)
 - David Lean: Updated selectors for new Divi theme structure
 - Romford Lumiere: Fixed title extraction from movie URLs
+
+---
+
+## 2026-02-02: Letterboxd Enrichment Coverage Improvements
+**PR**: #64 | **Files**: `src/db/enrich-letterboxd.ts`
+- Added event filtering to skip Q&As, workshops, previews etc. (wasted lookups)
+- Added clean title extraction fallback for "BFI Classics: Vertigo" style titles
+- Added `contentType = 'film'` filter so non-film content is excluded from queries
+- Fixed auto-run side effect when importing the module
 
 ---
 
