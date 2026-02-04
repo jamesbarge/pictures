@@ -12,7 +12,7 @@
  */
 
 import { db } from "@/db";
-import { screenings, cinemas, healthSnapshots } from "@/db/schema";
+import { screenings, healthSnapshots } from "@/db/schema";
 import { eq, gte, and, sql, desc, count } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { addDays, differenceInHours, subDays } from "date-fns";
@@ -21,7 +21,7 @@ import {
   ANOMALY_REASONS,
   type AnomalyReason,
 } from "@/db/schema/health-snapshots";
-import { getCinemaById, getActiveCinemasByChain } from "@/config/cinema-registry";
+import { getCinemaById, getActiveCinemasByChain, getActiveCinemas } from "@/config/cinema-registry";
 
 // ============================================================================
 // Types
@@ -216,10 +216,8 @@ export async function runFullHealthCheck(): Promise<HealthCheckResult> {
   const metrics: CinemaHealthMetrics[] = [];
   const alerts: HealthAlert[] = [];
 
-  // Get all active cinemas from database
-  const activeCinemas = await db
-    .select({ id: cinemas.id, name: cinemas.name })
-    .from(cinemas);
+  // Get active cinemas from registry (not database) to avoid noisy alerts for inactive/newly seeded cinemas
+  const activeCinemas = getActiveCinemas();
 
   // Get health metrics for each cinema
   for (const cinema of activeCinemas) {

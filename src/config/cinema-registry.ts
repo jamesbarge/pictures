@@ -681,7 +681,7 @@ const PICTUREHOUSE_VENUES: CinemaDefinition[] = [
     description: "Picturehouse's flagship West End venue.",
   },
   {
-    id: "hackney-picturehouse",
+    id: "picturehouse-hackney",
     name: "Hackney Picturehouse",
     shortName: "Hackney PH",
     website: "https://www.picturehouses.com/cinema/hackney-picturehouse",
@@ -697,9 +697,10 @@ const PICTUREHOUSE_VENUES: CinemaDefinition[] = [
     active: true,
     features: ["bar", "cafe"],
     programmingFocus: ["arthouse", "mainstream"],
+    legacyIds: ["hackney-picturehouse"],
   },
   {
-    id: "crouch-end-picturehouse",
+    id: "picturehouse-crouch-end",
     name: "Crouch End Picturehouse",
     shortName: "Crouch End PH",
     website: "https://www.picturehouses.com/cinema/crouch-end-picturehouse",
@@ -715,9 +716,10 @@ const PICTUREHOUSE_VENUES: CinemaDefinition[] = [
     active: true,
     features: ["bar"],
     programmingFocus: ["arthouse", "mainstream"],
+    legacyIds: ["crouch-end-picturehouse"],
   },
   {
-    id: "east-dulwich-picturehouse",
+    id: "picturehouse-east-dulwich",
     name: "East Dulwich Picturehouse",
     shortName: "East Dulwich PH",
     website: "https://www.picturehouses.com/cinema/east-dulwich",
@@ -733,9 +735,10 @@ const PICTUREHOUSE_VENUES: CinemaDefinition[] = [
     active: true,
     features: ["bar", "cafe"],
     programmingFocus: ["arthouse", "mainstream"],
+    legacyIds: ["east-dulwich-picturehouse"],
   },
   {
-    id: "greenwich-picturehouse",
+    id: "picturehouse-greenwich",
     name: "Greenwich Picturehouse",
     shortName: "Greenwich PH",
     website: "https://www.picturehouses.com/cinema/greenwich-picturehouse",
@@ -751,9 +754,10 @@ const PICTUREHOUSE_VENUES: CinemaDefinition[] = [
     active: true,
     features: ["bar"],
     programmingFocus: ["arthouse", "mainstream"],
+    legacyIds: ["greenwich-picturehouse"],
   },
   {
-    id: "finsbury-park-picturehouse",
+    id: "picturehouse-finsbury-park",
     name: "Finsbury Park Picturehouse",
     shortName: "Finsbury Park PH",
     website: "https://www.picturehouses.com/cinema/finsbury-park",
@@ -769,9 +773,10 @@ const PICTUREHOUSE_VENUES: CinemaDefinition[] = [
     active: true,
     features: ["bar"],
     programmingFocus: ["arthouse", "mainstream"],
+    legacyIds: ["finsbury-park-picturehouse"],
   },
   {
-    id: "gate-picturehouse",
+    id: "gate-notting-hill",
     name: "The Gate",
     shortName: "The Gate",
     website: "https://www.picturehouses.com/cinema/the-gate",
@@ -787,7 +792,7 @@ const PICTUREHOUSE_VENUES: CinemaDefinition[] = [
     active: true,
     features: ["historic", "single_screen"],
     programmingFocus: ["arthouse", "repertory"],
-    legacyIds: ["gate-notting-hill"],
+    legacyIds: ["gate-picturehouse"],
   },
   {
     id: "ritzy-brixton",
@@ -810,7 +815,7 @@ const PICTUREHOUSE_VENUES: CinemaDefinition[] = [
     legacyIds: ["picturehouse-ritzy"],
   },
   {
-    id: "clapham-picturehouse",
+    id: "picturehouse-clapham",
     name: "Clapham Picturehouse",
     shortName: "Clapham PH",
     website: "https://www.picturehouses.com/cinema/clapham-picturehouse",
@@ -826,9 +831,10 @@ const PICTUREHOUSE_VENUES: CinemaDefinition[] = [
     active: true,
     features: ["bar"],
     programmingFocus: ["arthouse", "mainstream"],
+    legacyIds: ["clapham-picturehouse"],
   },
   {
-    id: "west-norwood-picturehouse",
+    id: "picturehouse-west-norwood",
     name: "West Norwood Picturehouse",
     shortName: "West Norwood PH",
     website: "https://www.picturehouses.com/cinema/west-norwood-picturehouse",
@@ -843,9 +849,10 @@ const PICTUREHOUSE_VENUES: CinemaDefinition[] = [
     active: true,
     features: ["bar", "library_building"],
     programmingFocus: ["arthouse", "mainstream"],
+    legacyIds: ["west-norwood-picturehouse"],
   },
   {
-    id: "ealing-picturehouse",
+    id: "picturehouse-ealing",
     name: "Ealing Picturehouse",
     shortName: "Ealing PH",
     website: "https://www.picturehouses.com/cinema/ealing-picturehouse",
@@ -860,6 +867,7 @@ const PICTUREHOUSE_VENUES: CinemaDefinition[] = [
     active: true,
     features: ["bar"],
     programmingFocus: ["arthouse", "mainstream"],
+    legacyIds: ["ealing-picturehouse"],
   },
 ];
 
@@ -1388,60 +1396,6 @@ export function getChainCinemaMapping(): Record<string, string> {
   return mapping;
 }
 
-// ============================================================================
-// Playwright Local Runner Functions
-// ============================================================================
-
-/**
- * Get Playwright scrapers for local runner
- * Replaces PLAYWRIGHT_SCRAPERS in src/scrapers/local-runner.ts
- */
-export function getPlaywrightScrapersForRunner() {
-  // Group by script (chain scrapers share a script)
-  const scrapers: Array<{
-    id: string;
-    name: string;
-    script: string;
-    priority: number;
-    isChain: boolean;
-  }> = [];
-
-  // Add chain scrapers first
-  const chains = ["curzon", "picturehouse", "everyman"] as const;
-  for (const chain of chains) {
-    const firstVenue = getActiveCinemasByChain(chain)[0];
-    if (firstVenue) {
-      scrapers.push({
-        id: firstVenue.id,
-        name: `${chain.charAt(0).toUpperCase() + chain.slice(1)} (all venues)`,
-        script: `scrape:${chain}`,
-        priority: 1,
-        isChain: true,
-      });
-    }
-  }
-
-  // Add individual Playwright cinemas
-  for (const cinema of getPlaywrightCinemas()) {
-    // Skip chain venues (already added above) and BFI (handled separately)
-    if (cinema.chain && cinema.chain !== "bfi") continue;
-
-    // Determine priority based on importance
-    let priority = 3;
-    if (cinema.id === "bfi-southbank" || cinema.id === "barbican") {
-      priority = 1;
-    } else if (cinema.id.startsWith("bfi-")) {
-      priority = 2;
-    }
-
-    scrapers.push({
-      id: cinema.id,
-      name: cinema.name,
-      script: `scrape:${cinema.id.replace(/-/g, "")}`, // Note: script names may need adjustment
-      priority,
-      isChain: false,
-    });
-  }
-
-  return scrapers.sort((a, b) => a.priority - b.priority);
-}
+// Note: getPlaywrightScrapersForRunner was removed as it was unused and had
+// incorrect script name generation. The local-runner.ts should continue using
+// its existing PLAYWRIGHT_SCRAPERS array until a proper migration is done.

@@ -23,6 +23,10 @@ interface SlackBlock {
     type: string;
     text: string;
   }>;
+  elements?: Array<{
+    type: string;
+    text: string;
+  }>;
 }
 
 interface SlackMessage {
@@ -170,10 +174,12 @@ function buildSlackMessage(
   // Thresholds info
   blocks.push({
     type: "context",
-    text: {
-      type: "mrkdwn",
-      text: `Thresholds: Critical stale >${HEALTH_THRESHOLDS.CRITICAL_STALE_HOURS}h | Warning stale >${HEALTH_THRESHOLDS.WARNING_STALE_HOURS}h | Low volume <${HEALTH_THRESHOLDS.WARNING_VOLUME_PERCENT}% of chain median`,
-    },
+    elements: [
+      {
+        type: "mrkdwn",
+        text: `Thresholds: Critical stale >${HEALTH_THRESHOLDS.CRITICAL_STALE_HOURS}h | Warning stale >${HEALTH_THRESHOLDS.WARNING_STALE_HOURS}h | Low volume <${HEALTH_THRESHOLDS.WARNING_VOLUME_PERCENT}% of chain median`,
+      },
+    ],
   });
 
   const fallbackText = criticalAlerts.length > 0
