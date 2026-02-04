@@ -10,6 +10,7 @@ import {
   getCinemaById,
   getCinemaToScraperMap,
   getCanonicalId,
+  getInngestCinemaId,
 } from "@/config/cinema-registry";
 
 // Get the cinema-to-scraper mapping from the canonical registry
@@ -41,8 +42,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Use the ORIGINAL ID for Inngest - Inngest registry still uses original scraper IDs
-    // TODO: Once Inngest functions are updated to use canonical registry, switch to canonicalId
+    // Get the scraper ID for Inngest
     const scraperId = CINEMA_TO_SCRAPER[rawCinemaId] || CINEMA_TO_SCRAPER[canonicalId];
     if (!scraperId) {
       return Response.json(
@@ -51,12 +51,15 @@ export async function POST(request: Request) {
       );
     }
 
-    // Send event to Inngest with the original ID (not canonicalized)
-    // This ensures compatibility with the existing Inngest scraper registry
+    // Get the cinema ID that Inngest expects (may differ from canonical ID)
+    // Inngest's CHAIN_CINEMA_MAPPING and SCRAPER_REGISTRY still use some legacy IDs
+    const inngestCinemaId = getInngestCinemaId(canonicalId);
+
+    // Send event to Inngest with the ID it expects
     const { ids } = await inngest.send({
       name: "scraper/run",
       data: {
-        cinemaId: rawCinemaId,
+        cinemaId: inngestCinemaId,
         scraperId,
         triggeredBy: userId,
       },
@@ -65,7 +68,7 @@ export async function POST(request: Request) {
     return Response.json({
       success: true,
       message: `Scraper queued for ${cinema.name}`,
-      cinemaId: rawCinemaId,
+      cinemaId: canonicalId, // Return canonical ID in response
       cinemaName: cinema.name,
       scraperId,
       eventId: ids[0],

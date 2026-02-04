@@ -1303,6 +1303,41 @@ export function getChainIds(): ChainId[] {
 // ============================================================================
 
 /**
+ * IDs where Inngest uses a different key than the canonical registry ID.
+ * This handles both:
+ * 1. SCRAPER_REGISTRY keys (for independent cinemas)
+ * 2. CHAIN_CINEMA_MAPPING keys (for chain cinemas)
+ *
+ * These are temporary until Inngest functions are updated to use canonical registry.
+ */
+const INNGEST_ID_OVERRIDES: Record<string, string> = {
+  // Independent cinemas where Inngest uses legacy ID
+  "the-nickel": "nickel",
+  "phoenix-east-finchley": "phoenix",
+  "electric": "electric-portobello",
+  // Picturehouse chain where Inngest uses old naming convention
+  "picturehouse-hackney": "hackney-picturehouse",
+  "picturehouse-crouch-end": "crouch-end-picturehouse",
+  "picturehouse-east-dulwich": "east-dulwich-picturehouse",
+  "picturehouse-greenwich": "greenwich-picturehouse",
+  "picturehouse-finsbury-park": "finsbury-park-picturehouse",
+  "gate-notting-hill": "gate-picturehouse",
+  "picturehouse-clapham": "clapham-picturehouse",
+  // Note: ritzy-brixton uses "picturehouse-ritzy" in Inngest, not the canonical
+  "ritzy-brixton": "picturehouse-ritzy",
+  // Note: screen-on-the-green canonical matches Inngest's everyman-screen-on-the-green
+};
+
+/**
+ * Get the cinema ID that Inngest expects for a given canonical ID.
+ * Inngest's CHAIN_CINEMA_MAPPING and SCRAPER_REGISTRY may use different IDs
+ * than the canonical registry until they are migrated.
+ */
+export function getInngestCinemaId(canonicalId: string): string {
+  return INNGEST_ID_OVERRIDES[canonicalId] || canonicalId;
+}
+
+/**
  * Get cinema-to-scraper mapping for admin API
  * Maps both canonical and legacy IDs to the scraper ID that Inngest expects.
  * Replaces CINEMA_TO_SCRAPER in src/app/api/admin/scrape/route.ts
@@ -1310,23 +1345,15 @@ export function getChainIds(): ChainId[] {
 export function getCinemaToScraperMap(): Record<string, string> {
   const map: Record<string, string> = {};
 
-  // IDs where Inngest SCRAPER_REGISTRY uses a different key than the canonical ID
-  // These are temporary until Inngest is updated to use canonical IDs
-  const INNGEST_LEGACY_SCRAPER_IDS: Record<string, string> = {
-    "the-nickel": "nickel",
-    "phoenix-east-finchley": "phoenix",
-    "electric": "electric-portobello",
-  };
-
   for (const cinema of CINEMA_REGISTRY) {
     // Determine the scraper ID that Inngest expects
     let scraperId: string;
     if (cinema.chain && cinema.chain !== "bfi") {
       // For chain cinemas, map to the chain scraper
       scraperId = cinema.chain;
-    } else if (INNGEST_LEGACY_SCRAPER_IDS[cinema.id]) {
+    } else if (INNGEST_ID_OVERRIDES[cinema.id]) {
       // Use the legacy ID that Inngest expects
-      scraperId = INNGEST_LEGACY_SCRAPER_IDS[cinema.id];
+      scraperId = INNGEST_ID_OVERRIDES[cinema.id];
     } else {
       // For most independents, use the canonical ID
       scraperId = cinema.id;
