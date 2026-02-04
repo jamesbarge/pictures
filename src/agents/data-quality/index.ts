@@ -281,42 +281,48 @@ async function checkDuplicateFilms(): Promise<DataQualityIssue[]> {
 /**
  * Check screening data validity
  */
-async function checkScreeningValidity(_options: VerifyOptions = {}): Promise<DataQualityIssue[]> {
+async function checkScreeningValidity(options: VerifyOptions = {}): Promise<DataQualityIssue[]> {
   console.log(`[${AGENT_NAME}] Checking screening validity...`);
   const issues: DataQualityIssue[] = [];
   const now = new Date();
-  void _options;
 
-  // Check for screenings with suspicious times (before 10am)
+  // Build conditions - always filter future screenings, optionally by cinema
+  const conditions = [
+    gte(schema.screenings.datetime, now),
+    // Check for screenings before 10am in UK time
+    sql`EXTRACT(HOUR FROM ${schema.screenings.datetime} AT TIME ZONE 'Europe/London') < 10`,
+  ];
+  if (options.cinemaId) {
+    conditions.push(eq(schema.screenings.cinemaId, options.cinemaId));
+  }
+
   const earlyScreenings = await db
     .select({
       id: schema.screenings.id,
       datetime: schema.screenings.datetime,
+      // Also get the UK hour from SQL to ensure consistency
+      ukHour: sql<number>`EXTRACT(HOUR FROM ${schema.screenings.datetime} AT TIME ZONE 'Europe/London')`,
       filmTitle: schema.films.title,
       cinemaName: schema.cinemas.name,
     })
     .from(schema.screenings)
     .innerJoin(schema.films, eq(schema.screenings.filmId, schema.films.id))
     .innerJoin(schema.cinemas, eq(schema.screenings.cinemaId, schema.cinemas.id))
-    .where(
-      and(
-        gte(schema.screenings.datetime, now),
-        sql`EXTRACT(HOUR FROM ${schema.screenings.datetime} AT TIME ZONE 'Europe/London') < 10`
-      )
-    )
-    .limit(20);
+    .where(and(...conditions))
+    .limit(options.limit || 20);
 
   for (const screening of earlyScreenings) {
-    const hour = screening.datetime.getUTCHours();
+    // Use the UK hour from SQL to avoid DST inconsistencies
+    const ukHour = Number(screening.ukHour);
     // Allow 9am matinees but flag anything earlier
-    if (hour < 9) {
+    if (ukHour < 9) {
       issues.push({
         type: "invalid_time",
         severity: "warning",
         entityType: "screening",
         entityId: screening.id,
         field: "datetime",
-        details: `"${screening.filmTitle}" at ${screening.cinemaName} scheduled for ${screening.datetime.toISOString()} (very early)`,
+        details: `"${screening.filmTitle}" at ${screening.cinemaName} scheduled for ${screening.datetime.toISOString()} (${ukHour}:00 UK time - very early)`,
         suggestion: "Verify time parsing is correct (AM/PM confusion?)",
       });
     }
@@ -334,8 +340,14 @@ async function checkBookingLinks(options: VerifyOptions): Promise<DataQualityIss
   const issues: DataQualityIssue[] = [];
   const now = new Date();
 
+  // Build conditions - filter by cinema if specified
+  const conditions = [gte(schema.screenings.datetime, now)];
+  if (options.cinemaId) {
+    conditions.push(eq(schema.screenings.cinemaId, options.cinemaId));
+  }
+
   // Get sample of upcoming screenings
-  const screenings = await db
+  const screeningsToCheck = await db
     .select({
       id: schema.screenings.id,
       bookingUrl: schema.screenings.bookingUrl,
@@ -345,11 +357,11 @@ async function checkBookingLinks(options: VerifyOptions): Promise<DataQualityIss
     .from(schema.screenings)
     .innerJoin(schema.films, eq(schema.screenings.filmId, schema.films.id))
     .innerJoin(schema.cinemas, eq(schema.screenings.cinemaId, schema.cinemas.id))
-    .where(gte(schema.screenings.datetime, now))
+    .where(and(...conditions))
     .orderBy(desc(schema.screenings.scrapedAt))
     .limit(options.limit || 20);
 
-  for (const screening of screenings) {
+  for (const screening of screeningsToCheck) {
     if (!screening.bookingUrl) {
       issues.push({
         type: "broken_link",
@@ -435,17 +447,18 @@ async function countFilmsChecked(options: VerifyOptions): Promise<number> {
  */
 async function countScreeningsChecked(options: VerifyOptions): Promise<number> {
   const now = new Date();
-  let query = db
-    .select({ count: sql<number>`count(*)` })
-    .from(schema.screenings)
-    .where(gte(schema.screenings.datetime, now))
-    .$dynamic();
 
+  // Build conditions array to avoid where() override issue in dynamic mode
+  const conditions = [gte(schema.screenings.datetime, now)];
   if (options.cinemaId) {
-    query = query.where(eq(schema.screenings.cinemaId, options.cinemaId));
+    conditions.push(eq(schema.screenings.cinemaId, options.cinemaId));
   }
 
-  const result = await query;
+  const result = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(schema.screenings)
+    .where(and(...conditions));
+
   return Number(result[0]?.count || 0);
 }
 
