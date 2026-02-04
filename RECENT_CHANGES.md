@@ -5,6 +5,16 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-02-04: Admin BFI Import Endpoint
+**PR**: #74 | **Files**: `src/app/api/admin/bfi-import/route.ts`
+- New admin endpoint to manually trigger BFI PDF imports
+- Full import: `POST /api/admin/bfi-import` (parses monthly PDF + changes)
+- Changes only: `POST /api/admin/bfi-import?changesOnly=true` (faster)
+- GET endpoint returns usage info and scheduled job details
+- Requires Clerk authentication
+
+---
+
 ## 2026-02-04: Fix Cinema Zero Screenings
 **PR**: #65 | **Files**: `src/scrapers/cinemas/*.ts`, `src/scrapers/run-electric-v2.ts`
 - Fixed all cinemas showing 0 screenings (Phoenix, David Lean, Romford Lumiere)
