@@ -396,6 +396,22 @@ const getScraperRegistry = (): Record<string, () => Promise<ScraperEntry>> => ({
     );
   },
 
+  "bfi-imax": async () => {
+    const { createBFIScraper } = await import("@/scrapers/cinemas/bfi");
+    return createIndependentEntry(
+      {
+        id: "bfi-imax",
+        name: "BFI IMAX",
+        shortName: "IMAX",
+        website: "https://www.bfi.org.uk/bfi-imax",
+        address: { street: "1 Charlie Chaplin Walk", area: "South Bank", postcode: "SE1 8XR" },
+        features: ["imax", "blockbusters"],
+      },
+      true, // Requires Playwright
+      async () => createBFIScraper("bfi-imax")
+    );
+  },
+
   "barbican": async () => {
     const { createBarbicanScraper } = await import("@/scrapers/cinemas/barbican");
     return createIndependentEntry(
@@ -443,6 +459,22 @@ const getScraperRegistry = (): Record<string, () => Promise<ScraperEntry>> => ({
       async () => createLexiScraper()
     );
   },
+
+  "romford-lumiere": async () => {
+    const { createRomfordLumiereScraper } = await import("@/scrapers/cinemas/romford-lumiere");
+    return createIndependentEntry(
+      {
+        id: "romford-lumiere",
+        name: "Lumiere Cinema Romford",
+        shortName: "Lumiere",
+        website: "https://lumiere-cinema.co.uk",
+        address: { street: "The Sapphire Ice and Leisure", area: "Romford", postcode: "RM1 3RL" },
+        features: ["independent", "modern"],
+      },
+      true, // Requires Playwright
+      async () => createRomfordLumiereScraper()
+    );
+  },
 });
 
 // Chain cinema IDs map to their chain scraper
@@ -465,10 +497,17 @@ const CHAIN_CINEMA_MAPPING: Record<string, string> = {
   "gate-picturehouse": "picturehouse",
   "picturehouse-ritzy": "picturehouse",
   "clapham-picturehouse": "picturehouse",
+  "west-norwood-picturehouse": "picturehouse",
+  "ealing-picturehouse": "picturehouse",
   // Everyman venues
   "everyman-belsize-park": "everyman",
   "everyman-baker-street": "everyman",
+  "everyman-barnet": "everyman",
+  "everyman-borough-yards": "everyman",
+  "everyman-broadgate": "everyman",
   "everyman-canary-wharf": "everyman",
+  "everyman-chelsea": "everyman",
+  "everyman-crystal-palace": "everyman",
   "everyman-hampstead": "everyman",
   "everyman-kings-cross": "everyman",
   "everyman-maida-vale": "everyman",

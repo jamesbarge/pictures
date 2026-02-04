@@ -1323,9 +1323,11 @@ const INNGEST_ID_OVERRIDES: Record<string, string> = {
   "picturehouse-finsbury-park": "finsbury-park-picturehouse",
   "gate-notting-hill": "gate-picturehouse",
   "picturehouse-clapham": "clapham-picturehouse",
-  // Note: ritzy-brixton uses "picturehouse-ritzy" in Inngest, not the canonical
   "ritzy-brixton": "picturehouse-ritzy",
-  // Note: screen-on-the-green canonical matches Inngest's everyman-screen-on-the-green
+  "picturehouse-west-norwood": "west-norwood-picturehouse",
+  "picturehouse-ealing": "ealing-picturehouse",
+  // Everyman: screen-on-the-green uses legacy prefix in Inngest
+  "screen-on-the-green": "everyman-screen-on-the-green",
 };
 
 /**
