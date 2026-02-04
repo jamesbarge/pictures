@@ -108,6 +108,33 @@ describe("POST /api/admin/scrape/all", () => {
     });
   });
 
+  it("queues BFI PDF import once and deduplicates chain triggers", async () => {
+    vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as unknown as Awaited<ReturnType<typeof auth>>);
+    mockSend.mockResolvedValue({ ids: [] });
+
+    const request = new Request("http://localhost/api/admin/scrape/all", {
+      method: "POST",
+    });
+
+    await POST(request);
+
+    const events = mockSend.mock.calls[0][0] as Array<{
+      name: string;
+      data: { cinemaId: string; scraperId: string; triggeredBy: string };
+    }>;
+
+    const bfiEvents = events.filter((event) => event.data.cinemaId === "bfi-southbank");
+    expect(bfiEvents).toHaveLength(1);
+
+    const curzonEvents = events.filter((event) => event.data.scraperId === "curzon");
+    const picturehouseEvents = events.filter((event) => event.data.scraperId === "picturehouse");
+    const everymanEvents = events.filter((event) => event.data.scraperId === "everyman");
+
+    expect(curzonEvents).toHaveLength(1);
+    expect(picturehouseEvents).toHaveLength(1);
+    expect(everymanEvents).toHaveLength(1);
+  });
+
   it("returns 500 when Inngest fails", async () => {
     vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as unknown as Awaited<ReturnType<typeof auth>>);
     mockSend.mockRejectedValue(new Error("Inngest service unavailable"));
