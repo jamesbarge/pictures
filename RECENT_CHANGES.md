@@ -5,6 +5,17 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-02-04: Scraper Infrastructure Consolidation
+**PR**: #73 | **Files**: `src/config/cinema-registry.ts`, `src/lib/scraper-health/`, `src/db/schema/health-snapshots.ts`, `src/scrapers/run-*-v2.ts`
+- Created canonical cinema registry as single source of truth for 63 cinemas
+- Added health monitoring system with freshness/volume scoring and Slack alerts
+- Created v2 runners for Curzon, Picturehouse, Everyman using runner-factory pattern
+- Added database migration script for canonicalizing cinema IDs
+- Health check cron runs daily at 7am UTC, filters only active cinemas
+- New admin health API at `/api/admin/health`
+
+---
+
 ## 2026-02-04: Fix Cinema Zero Screenings
 **PR**: #65 | **Files**: `src/scrapers/cinemas/*.ts`, `src/scrapers/run-electric-v2.ts`
 - Fixed all cinemas showing 0 screenings (Phoenix, David Lean, Romford Lumiere)
