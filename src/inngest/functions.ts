@@ -85,6 +85,8 @@ const CHEERIO_CINEMAS = [
   // Note: "phoenix" and "regent-street" removed - they use Playwright
 ];
 
+const BFI_PDF_CINEMAS = new Set(["bfi-southbank", "bfi-imax"]);
+
 // Lazy-loaded scraper registry
 const getScraperRegistry = (): Record<string, () => Promise<ScraperEntry>> => ({
   // ============================================================================
@@ -511,6 +513,36 @@ export const runCinemaScraper = inngest.createFunction(
 
     console.log(`[Inngest] Starting scraper for ${cinemaId} (triggered by ${triggeredBy})`);
 
+    // BFI uses the PDF + programme-changes pipeline as the primary source of truth.
+    // This keeps BFI scrape execution cloud-runnable even when Playwright runtimes are unavailable.
+    if (BFI_PDF_CINEMAS.has(cinemaId)) {
+      const result = await step.run("run-bfi-pdf-import", async () => {
+        const { runBFIImport } = await import("@/scrapers/bfi-pdf");
+        return runBFIImport({
+          triggeredBy: typeof triggeredBy === "string" ? triggeredBy : "inngest:bfi-manual",
+        });
+      });
+
+      return {
+        cinemaId,
+        scraperId,
+        triggeredBy,
+        success: result.success,
+        status: result.status,
+        source: "bfi-pdf",
+        totalAdded: result.savedScreenings.added,
+        totalUpdated: result.savedScreenings.updated,
+        totalFailed: result.savedScreenings.failed,
+        totalScreenings: result.totalScreenings,
+        pdfScreenings: result.pdfScreenings,
+        changesScreenings: result.changesScreenings,
+        sourceStatus: result.sourceStatus,
+        errorCodes: result.errorCodes,
+        errors: result.errors,
+        durationMs: Date.now() - startTime,
+      };
+    }
+
     // Check if this is a chain cinema
     const chainId = CHAIN_CINEMA_MAPPING[cinemaId];
     if (chainId) {
@@ -778,17 +810,20 @@ export const scheduledBFIPDFImport = inngest.createFunction(
 
     const result = await step.run("import-bfi-pdf", async () => {
       const { runBFIImport } = await import("@/scrapers/bfi-pdf");
-      return runBFIImport();
+      return runBFIImport({ triggeredBy: "scheduled-bfi-pdf-import" });
     });
 
     console.log("[Inngest] BFI PDF import complete:", result);
 
     return {
+      status: result.status,
       success: result.success,
       pdfScreenings: result.pdfScreenings,
       changesScreenings: result.changesScreenings,
       totalScreenings: result.totalScreenings,
       saved: result.savedScreenings,
+      sourceStatus: result.sourceStatus,
+      errorCodes: result.errorCodes,
       durationMs: result.durationMs,
       errors: result.errors,
     };
@@ -812,16 +847,19 @@ export const scheduledBFIChanges = inngest.createFunction(
 
     const result = await step.run("import-bfi-changes", async () => {
       const { runProgrammeChangesImport } = await import("@/scrapers/bfi-pdf");
-      return runProgrammeChangesImport();
+      return runProgrammeChangesImport({ triggeredBy: "scheduled-bfi-changes" });
     });
 
     console.log("[Inngest] BFI changes import complete:", result);
 
     return {
+      status: result.status,
       success: result.success,
       screenings: result.changesScreenings,
       saved: result.savedScreenings,
       lastUpdated: result.changesInfo?.lastUpdated,
+      sourceStatus: result.sourceStatus,
+      errorCodes: result.errorCodes,
       durationMs: result.durationMs,
       errors: result.errors,
     };
