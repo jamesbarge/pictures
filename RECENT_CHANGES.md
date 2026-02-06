@@ -5,6 +5,14 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-02-06: Fix Broken Accent Hover Tokens
+**PR**: TBD | **Files**: `src/app/film/[id]/not-found.tsx`, `src/components/filters/date-range-picker.tsx`
+- Replaced invalid `accent-hover` class usage with the defined `accent-primary-hover` token.
+- Restored intended hover feedback for the film not-found CTA and date-range picker apply action.
+- Keeps behavior unchanged while fixing missing visual state transitions in key navigation/filter flows.
+
+---
+
 ## 2026-02-04: BFI PDF-First Resilience Path
 **PR**: #75 | **Files**: `src/inngest/functions.ts`, `src/scrapers/bfi-pdf/importer.ts`, `src/app/api/admin/bfi/status/route.ts`, `src/db/schema/bfi-import-runs.ts`
 - Routed BFI Inngest runs through the PDF + programme-changes importer so manual/admin runs no longer depend on Playwright availability
