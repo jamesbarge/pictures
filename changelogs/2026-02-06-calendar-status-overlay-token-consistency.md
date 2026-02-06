@@ -1,6 +1,6 @@
 # Calendar Status Overlay Token Consistency
 
-**PR**: TBD
+**PR**: #87
 **Date**: 2026-02-06
 
 ## Changes

@@ -6,7 +6,7 @@ When an entry is added here, also create a detailed file in /changelogs/
 -->
 
 ## 2026-02-06: Calendar Status Overlay Token Consistency
-**PR**: TBD | **Files**: `src/components/calendar/film-status-overlay.tsx`, `src/components/calendar/film-status-buttons.tsx`
+**PR**: #87 | **Files**: `src/components/calendar/film-status-overlay.tsx`, `src/components/calendar/film-status-buttons.tsx`
 - Updated compact watchlist/not-interested status controls to use semantic token classes instead of hardcoded white/neutral colors.
 - Standardized active and hover states for calendar status overlays while preserving existing interaction behavior and contrast.
 - Aligned overlay status styling with shared status tokens (`status-not-interested`, `accent-danger`).
