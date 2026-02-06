@@ -7,13 +7,14 @@
  * - changesOnly=true: Only import programme changes (faster)
  */
 
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth, unauthorizedResponse } from "@/lib/auth";
 
 export async function POST(request: Request) {
-  // Verify admin auth
-  const { userId } = await auth();
-  if (!userId) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  let userId: string;
+  try {
+    userId = await requireAuth();
+  } catch {
+    return unauthorizedResponse();
   }
 
   const url = new URL(request.url);
@@ -66,9 +67,10 @@ export async function POST(request: Request) {
 
 // GET endpoint to check status/info
 export async function GET() {
-  const { userId } = await auth();
-  if (!userId) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    await requireAuth();
+  } catch {
+    return unauthorizedResponse();
   }
 
   return Response.json({
