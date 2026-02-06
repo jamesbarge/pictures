@@ -5,6 +5,14 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-02-06: Calendar Loader Derived Auto-Load State
+**PR**: TBD | **Files**: `src/components/calendar/calendar-view-loader.tsx`
+- Removed effect-driven `setLoadState` updates tied to `dateTo` changes and replaced them with derived required-load calculations.
+- Kept user-triggered "load more" behavior intact via explicit manual load state.
+- Preserved query enabling behavior while eliminating a `setState`-in-effect warning in the core calendar loader.
+
+---
+
 ## 2026-02-06: Mobile Menu Scrim and Backdrop Accessibility
 **PR**: #92 | **Files**: `src/components/layout/header-nav-buttons.tsx`
 - Updated the mobile drawer backdrop from `bg-black/50` to `bg-black/60 backdrop-blur-sm` to match the app’s overlay depth treatment.
