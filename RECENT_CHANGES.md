@@ -6,7 +6,7 @@ When an entry is added here, also create a detailed file in /changelogs/
 -->
 
 ## 2026-02-06: Film Card and Festival Badge Token Consistency
-**PR**: TBD | **Files**: `src/components/calendar/film-card.tsx`, `src/components/festivals/festival-programme.tsx`
+**PR**: #90 | **Files**: `src/components/calendar/film-card.tsx`, `src/components/festivals/festival-programme.tsx`
 - Replaced hardcoded white/black overlay badge styling in film cards and festival programme cards with semantic token-based surfaces.
 - Added subtle tokenized chip borders in film cards to improve definition and consistency with the broader UI system.
 - Preserved all card behavior and content while aligning visual treatments to shared tokens.
