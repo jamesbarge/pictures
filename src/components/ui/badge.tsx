@@ -31,7 +31,7 @@ const variantStyles: Record<BadgeVariant, string> = {
   primary: "bg-accent-primary/15 text-accent-primary border-accent-primary/30",
   secondary: "bg-accent-highlight/15 text-accent-highlight-dark border-accent-highlight/30",
   success: "bg-accent-success/15 text-accent-success border-accent-success/30",
-  warning: "bg-amber-500/15 text-amber-700 border-amber-500/30",
+  warning: "bg-accent-highlight/20 text-accent-highlight-dark border-accent-highlight/40",
   danger: "bg-accent-danger/15 text-accent-danger border-accent-danger/30",
   gold: "bg-accent-highlight text-text-inverse border-transparent",
   outline: "bg-transparent text-text-secondary border-border-default",
@@ -77,7 +77,7 @@ export const Badge = forwardRef<HTMLSpanElement, BadgeProps>(function Badge(
             e.stopPropagation();
             onRemove?.();
           }}
-          className="shrink-0 ml-0.5 -mr-0.5 p-0.5 rounded hover:bg-black/10 transition-colors"
+          className="shrink-0 ml-0.5 -mr-0.5 p-0.5 rounded hover:bg-surface-overlay-hover transition-colors"
           aria-label="Remove"
         >
           <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">

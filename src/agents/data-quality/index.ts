@@ -76,11 +76,9 @@ export async function verifyDataQuality(
     const linkIssues = await checkBookingLinks(options);
     issues.push(...linkIssues);
 
-    // 5. Visual verification (if not quick mode and browser available)
-    if (!options.quick) {
-      const visualIssues = await runVisualVerification(options);
-      issues.push(...visualIssues);
-    }
+    // 5. Visual verification — currently a no-op placeholder.
+    // Skipped until browser-based verification is implemented.
+    // When ready, gate on !options.quick && browser availability.
 
     // Build report
     const report: DataQualityReport = {
@@ -199,7 +197,7 @@ async function checkFilmCompleteness(options: VerifyOptions): Promise<DataQualit
     }
 
     // Check for films without TMDB match
-    if (!film.tmdbId && film.year && film.year < 2025) {
+    if (!film.tmdbId && film.year && film.year < new Date().getFullYear()) {
       issues.push({
         type: "missing_data",
         severity: "info",

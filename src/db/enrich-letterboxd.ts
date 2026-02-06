@@ -28,6 +28,41 @@ function titleToSlug(title: string, year?: number | null): string {
   return slug;
 }
 
+// Build title variants for noisy programming labels before Letterboxd lookup.
+export function buildTitleCandidates(rawTitle: string): string[] {
+  const candidates = new Set<string>();
+  const trimmed = rawTitle.trim();
+
+  if (!trimmed) return [];
+
+  candidates.add(trimmed);
+
+  // Example: "UK PREMIERE MACDO" -> "MACDO"
+  const withoutPremierePrefix = trimmed.replace(
+    /^(UK|WORLD|LONDON)\s+PREMIERE[:\s-]*/i,
+    ""
+  );
+  if (withoutPremierePrefix && withoutPremierePrefix !== trimmed) {
+    candidates.add(withoutPremierePrefix.trim());
+  }
+
+  // Example: "Amelie (Le fabuleux...)" -> "Amelie"
+  const withoutParenTitle = trimmed.replace(/\s*\([^)]*\)\s*$/, "").trim();
+  if (withoutParenTitle && withoutParenTitle !== trimmed) {
+    candidates.add(withoutParenTitle);
+  }
+
+  // Example: "... in association with X" -> main title only
+  const withoutAssociation = trimmed
+    .replace(/\s+in association with\s+.+$/i, "")
+    .trim();
+  if (withoutAssociation && withoutAssociation !== trimmed) {
+    candidates.add(withoutAssociation);
+  }
+
+  return [...candidates];
+}
+
 async function fetchLetterboxdRating(
   title: string,
   year?: number | null
@@ -72,7 +107,7 @@ async function fetchLetterboxdRating(
  * Parse rating and verify year matches expected year
  * Letterboxd URLs can match wrong films with same title but different year
  */
-function parseRatingWithVerification(
+export function parseRatingWithVerification(
   html: string,
   url: string,
   expectedYear?: number | null
@@ -98,8 +133,8 @@ function parseRatingWithVerification(
     return null;
   }
 
-  // Parse "4.53 out of 5" format
-  const match = ratingMeta.match(/^([\d.]+)\s+out\s+of\s+5$/);
+  // Parse both "4.53 out of 5" and "4.53 out of 5 stars" formats.
+  const match = ratingMeta.match(/^([\d.]+)\s+out\s+of\s+5(?:\s+stars)?$/);
   if (!match) {
     return null;
   }
@@ -113,7 +148,7 @@ function parseRatingWithVerification(
 }
 
 // Check if a title looks like an event rather than a film
-function isLikelyEvent(title: string): boolean {
+export function isLikelyEvent(title: string): boolean {
   const eventKeywords = [
     'q&a', 'preview', 'quiz', 'workshop', 'marathon',
     'ceremony', 'screening', 'party', 'tasting',

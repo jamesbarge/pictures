@@ -99,8 +99,8 @@ export default function TermsOfServicePage() {
             <h2 className="text-xl font-display text-text-primary mb-4">
               3. Accuracy of Information
             </h2>
-            <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4 mb-4">
-              <p className="text-amber-200 font-medium mb-2">
+            <div className="bg-accent-highlight/10 border border-accent-highlight/30 rounded-lg p-4 mb-4">
+              <p className="text-accent-highlight-dark font-medium mb-2">
                 Important Disclaimer
               </p>
               <p className="text-text-secondary text-sm">
