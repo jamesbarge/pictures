@@ -5,6 +5,15 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-02-06: Legal and Consent Token Consistency
+**PR**: #79 | **Files**: `src/app/terms/page.tsx`, `src/components/cookie-consent-banner.tsx`, `src/components/ui/badge.tsx`
+- Replaced remaining hardcoded legal/consent warning colors with design-system tokens.
+- Updated cookie consent action and status states to use semantic token colors for primary, success, danger, and warning contexts.
+- Standardized shared `Badge` warning variant + removable hover surface to align with tokenized UI semantics.
+- Keeps legal and privacy-critical UI consistent with the rest of the app without changing behavior.
+
+---
+
 ## 2026-02-04: Admin BFI Import Endpoint
 **PR**: #81 | **Files**: `src/app/api/admin/bfi-import/route.ts`, `src/middleware.ts`
 - New admin endpoint to manually trigger BFI PDF imports
