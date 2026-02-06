@@ -24,7 +24,10 @@ import { ChevronLeft } from "lucide-react";
 
 const BASE_URL = "https://pictures.london";
 
-// Cache tonight's screenings for 60 seconds
+// Cache tonight's screenings for 60 seconds.
+// _dateKey is not used inside the function body — it serves as part of
+// unstable_cache's cache key (derived from function arguments) to bust
+// the cache hourly when the date-hour changes.
 const getTonightScreenings = unstable_cache(
   async (_dateKey: string) => {
     void _dateKey;

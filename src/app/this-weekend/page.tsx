@@ -29,27 +29,32 @@ const BASE_URL = "https://pictures.london";
 
 function getWeekendDates() {
   const now = new Date();
-  let satStart: Date;
-  let sunEnd: Date;
+  let weekendStart: Date;
+  let weekendEnd: Date;
 
   if (isSaturday(now)) {
-    satStart = startOfDay(now);
-    sunEnd = endOfDay(new Date(now.getTime() + 24 * 60 * 60 * 1000));
+    weekendStart = startOfDay(now);
+    weekendEnd = endOfDay(new Date(now.getTime() + 24 * 60 * 60 * 1000));
   } else if (isSunday(now)) {
-    satStart = startOfDay(now); // Show just Sunday if it's Sunday
-    sunEnd = endOfDay(now);
+    // On Sunday, show just remaining Sunday screenings
+    // (Saturday screenings are in the past and filtered by the query)
+    weekendStart = startOfDay(now);
+    weekendEnd = endOfDay(now);
   } else {
-    satStart = startOfDay(nextSaturday(now));
-    sunEnd = endOfDay(nextSunday(now));
+    weekendStart = startOfDay(nextSaturday(now));
+    weekendEnd = endOfDay(nextSunday(now));
   }
 
-  return { satStart, sunEnd };
+  return { weekendStart, weekendEnd };
 }
 
+// _dateKey is not used inside the function body — it serves as part of
+// unstable_cache's cache key (derived from function arguments) to ensure
+// the cache busts daily when the date changes.
 const getWeekendScreenings = unstable_cache(
   async (_dateKey: string) => {
     void _dateKey;
-    const { satStart, sunEnd } = getWeekendDates();
+    const { weekendStart, weekendEnd } = getWeekendDates();
 
     return db
       .select({
@@ -79,8 +84,8 @@ const getWeekendScreenings = unstable_cache(
       .innerJoin(cinemas, eq(screenings.cinemaId, cinemas.id))
       .where(
         and(
-          gte(screenings.datetime, satStart),
-          lte(screenings.datetime, sunEnd)
+          gte(screenings.datetime, weekendStart),
+          lte(screenings.datetime, weekendEnd)
         )
       )
       .orderBy(screenings.datetime);
@@ -101,10 +106,10 @@ export default async function ThisWeekendPage() {
   const dateKey = format(new Date(), "yyyy-MM-dd");
   const weekendScreenings = await getWeekendScreenings(dateKey);
 
-  const { satStart, sunEnd } = getWeekendDates();
+  const { weekendStart, weekendEnd } = getWeekendDates();
   const weekendLabel = isSaturday(new Date()) || isSunday(new Date())
     ? "This Weekend"
-    : `Weekend of ${format(satStart, "d")}–${format(sunEnd, "d MMMM")}`;
+    : `Weekend of ${format(weekendStart, "d")}–${format(weekendEnd, "d MMMM")}`;
 
   const uniqueCinemas = [...new Set(weekendScreenings.map((s) => s.cinema.name))];
   const uniqueFilms = [...new Set(weekendScreenings.map((s) => s.film.title))];
@@ -139,7 +144,7 @@ export default async function ThisWeekendPage() {
   const faqItems = [
     {
       question: "What's on at London cinemas this weekend?",
-      answer: `There are ${weekendScreenings.length} screenings of ${uniqueFilms.length} films at ${uniqueCinemas.length} London cinemas this weekend (${format(satStart, "d MMMM")}–${format(sunEnd, "d MMMM yyyy")}).`,
+      answer: `There are ${weekendScreenings.length} screenings of ${uniqueFilms.length} films at ${uniqueCinemas.length} London cinemas this weekend (${format(weekendStart, "d MMMM")}–${format(weekendEnd, "d MMMM yyyy")}).`,
     },
     {
       question: "Which cinemas are showing films this weekend?",
@@ -326,8 +331,8 @@ export default async function ThisWeekendPage() {
 }
 
 export async function generateMetadata(): Promise<Metadata> {
-  const { satStart, sunEnd } = getWeekendDates();
-  const weekendStr = `${format(satStart, "d")}–${format(sunEnd, "d MMMM yyyy")}`;
+  const { weekendStart, weekendEnd } = getWeekendDates();
+  const weekendStr = `${format(weekendStart, "d")}–${format(weekendEnd, "d MMMM yyyy")}`;
 
   return {
     title: `London Cinema This Weekend — ${weekendStr}`,

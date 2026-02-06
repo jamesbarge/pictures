@@ -28,6 +28,9 @@ interface CinemaTonightPageProps {
   params: Promise<{ slug: string }>;
 }
 
+// _dateKey is not used inside the function body — it serves as part of
+// unstable_cache's cache key (derived from function arguments) to bust
+// the cache hourly when the date-hour changes.
 const getCinemaTonightScreenings = unstable_cache(
   async (slug: string, _dateKey: string) => {
     void _dateKey;
