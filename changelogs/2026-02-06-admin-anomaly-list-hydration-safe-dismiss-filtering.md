@@ -1,6 +1,6 @@
 # Admin Anomaly List Hydration-Safe Dismiss Filtering
 
-**PR**: TBD
+**PR**: #102
 **Date**: 2026-02-06
 
 ## Changes
