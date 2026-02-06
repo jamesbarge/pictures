@@ -6,7 +6,7 @@ When an entry is added here, also create a detailed file in /changelogs/
 -->
 
 ## 2026-02-06: Overlay Scrim Consistency
-**PR**: TBD | **Files**: `src/app/globals.css`, `src/components/layout/header-nav.tsx`, `src/components/layout/header-nav-buttons.tsx`, `src/components/search/search-dialog.tsx`
+**PR**: #89 | **Files**: `src/app/globals.css`, `src/components/layout/header-nav.tsx`, `src/components/layout/header-nav-buttons.tsx`, `src/components/search/search-dialog.tsx`
 - Added a shared `overlay-scrim` utility class for full-screen backdrop overlays.
 - Updated search and navigation overlay backdrops to use the same blur/opacity treatment.
 - Standardized mobile drawer scrim from `bg-black/50` to the shared scrim so modal layering feels consistent.
