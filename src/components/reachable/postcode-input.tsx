@@ -25,6 +25,7 @@ interface PostcodeInputProps {
   ) => void;
   error?: string | null;
   placeholder?: string;
+  ariaLabel?: string;
 }
 
 type Status = "idle" | "validating" | "valid" | "invalid" | "warning";
@@ -34,6 +35,7 @@ export function PostcodeInput({
   onChange,
   error,
   placeholder = "e.g. E1 6PW",
+  ariaLabel = "Postcode",
 }: PostcodeInputProps) {
   const [status, setStatus] = useState<Status>("idle");
   const [locationName, setLocationName] = useState<string | null>(null);
@@ -142,6 +144,7 @@ export function PostcodeInput({
         <input
           ref={inputRef}
           type="text"
+          aria-label={ariaLabel}
           value={value}
           onChange={handleChange}
           onBlur={handleBlur}
