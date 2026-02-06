@@ -6,7 +6,7 @@ When an entry is added here, also create a detailed file in /changelogs/
 -->
 
 ## 2026-02-06: Mobile Menu Scrim and Backdrop Accessibility
-**PR**: TBD | **Files**: `src/components/layout/header-nav-buttons.tsx`
+**PR**: #92 | **Files**: `src/components/layout/header-nav-buttons.tsx`
 - Updated the mobile drawer backdrop from `bg-black/50` to `bg-black/60 backdrop-blur-sm` to match the app’s overlay depth treatment.
 - Replaced the clickable backdrop `<div>` with a semantic `button` including an explicit close label for assistive tech.
 - Preserved drawer open/close behavior while improving consistency and accessibility in core navigation.
