@@ -653,7 +653,7 @@ body,
 
 .table-view-header th {
   @apply text-xs uppercase tracking-wide text-text-tertiary font-medium;
-  @apply py-2 px-2 text-left border-b border-border-subtle;
+  @apply py-2.5 px-2.5 text-left border-b border-border-subtle;
   @apply cursor-pointer select-none transition-colors;
 }
 
@@ -675,7 +675,7 @@ body,
 }
 
 .table-view-row td {
-  @apply py-1.5 px-2 align-middle;
+  @apply py-2 px-2.5 align-middle;
 }
 
 /* Film column - takes available space */
@@ -723,5 +723,5 @@ body,
 }
 
 .table-expanded-inner {
-  @apply py-3 px-4;
+  @apply py-3.5 px-4;
 }
