@@ -47,7 +47,7 @@ export default function GlobalError({
               </button>
               <Link
                 href="/"
-                className="px-6 py-2.5 border border-border-default rounded-lg hover:bg-background-tertiary transition-colors font-medium"
+                className="px-6 py-2.5 border border-border-default rounded-lg hover:bg-background-secondary transition-colors font-medium"
               >
                 Go home
               </Link>
@@ -57,7 +57,7 @@ export default function GlobalError({
                 <summary className="text-sm text-text-secondary cursor-pointer hover:text-text-primary">
                   Error details
                 </summary>
-                <pre className="mt-2 p-4 bg-background-tertiary rounded-lg text-xs overflow-auto text-accent-danger">
+                <pre className="mt-2 p-4 bg-background-secondary rounded-lg text-xs overflow-auto text-accent-danger">
                   {error.message}
                   {error.stack && `\n\n${error.stack}`}
                 </pre>

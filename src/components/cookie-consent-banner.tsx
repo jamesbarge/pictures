@@ -71,7 +71,7 @@ export function CookieConsentBanner() {
             </button>
             <button
               onClick={acceptAnalytics}
-              className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-accent-primary hover:bg-accent-primary/90 rounded-lg transition-colors"
+              className="flex-1 px-4 py-2.5 text-sm font-medium text-text-inverse bg-accent-primary hover:bg-accent-primary-hover rounded-lg transition-colors"
             >
               Accept all
             </button>
@@ -123,10 +123,10 @@ export function CookieConsentSettings() {
         <div
           className={`w-3 h-3 rounded-full ${
             analyticsConsent === "accepted"
-              ? "bg-green-500"
+              ? "bg-accent-success"
               : analyticsConsent === "rejected"
-                ? "bg-red-500"
-                : "bg-yellow-500"
+                ? "bg-accent-danger"
+                : "bg-accent-highlight"
           }`}
         />
       </div>
@@ -138,7 +138,7 @@ export function CookieConsentSettings() {
           disabled={analyticsConsent === "accepted"}
           className={`flex-1 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
             analyticsConsent === "accepted"
-              ? "bg-accent-primary text-white cursor-default"
+              ? "bg-accent-primary text-text-inverse cursor-default"
               : "bg-background-tertiary text-text-secondary hover:bg-background-hover border border-border-subtle"
           }`}
         >
@@ -149,7 +149,7 @@ export function CookieConsentSettings() {
           disabled={analyticsConsent === "rejected"}
           className={`flex-1 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
             analyticsConsent === "rejected"
-              ? "bg-red-600 text-white cursor-default"
+              ? "bg-accent-danger text-text-inverse cursor-default"
               : "bg-background-tertiary text-text-secondary hover:bg-background-hover border border-border-subtle"
           }`}
         >

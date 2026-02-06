@@ -68,8 +68,8 @@ export function FilmStatusButtons({
         className={cn(
           "w-7 h-7 flex items-center justify-center rounded-full transition-colors shadow-sm",
           status === "want_to_see"
-            ? "bg-accent-danger text-white"
-            : "bg-black/60 text-white/80 hover:bg-accent-danger hover:text-white"
+            ? "bg-accent-danger text-text-inverse"
+            : "bg-black/60 text-text-inverse/80 hover:bg-accent-danger hover:text-text-inverse"
         )}
         aria-label={status === "want_to_see" ? "Remove from watchlist" : "Add to watchlist"}
       >
@@ -80,8 +80,8 @@ export function FilmStatusButtons({
         className={cn(
           "w-7 h-7 flex items-center justify-center rounded-full transition-colors shadow-sm",
           status === "not_interested"
-            ? "bg-neutral-700 text-white"
-            : "bg-black/60 text-white/80 hover:bg-neutral-600 hover:text-white"
+            ? "bg-status-not-interested text-text-inverse"
+            : "bg-black/60 text-text-inverse/80 hover:bg-status-not-interested hover:text-text-inverse"
         )}
         aria-label={
           status === "not_interested" ? "Show this film again" : "Not interested in this film"
