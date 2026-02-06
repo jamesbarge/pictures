@@ -12,6 +12,7 @@
 
 # testing
 /coverage
+/playwright-report/
 
 # next.js
 /.next/
@@ -45,7 +46,7 @@ next-env.d.ts
 .worktrees
 
 # Private documentation (sensitive business docs)
-docs/
+docs/private/
 .planning-archive/
 
 # Local development config

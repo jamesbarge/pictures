@@ -208,6 +208,18 @@ src/
 └── lib/                 # Utilities & helpers
 ```
 
+## Documentation Map
+
+- `AI_CONTEXT.md` - single entry point for agent/doc navigation
+- `AGENTS.md` - canonical engineering and workflow rules
+- `CLAUDE.md` - Claude compatibility shim pointing back to canonical rules
+- `ARCHITECTURE.md` - deeper architecture and data-flow reference
+- `src/scrapers/SCRAPING_PLAYBOOK.md` - scraper operational playbook
+- `RECENT_CHANGES.md` - last ~20 shipped changes
+- `changelogs/` - full historical change archive
+
+---
+
 ### Scraper Types
 
 1. **Playwright** — For JS-heavy sites (Curzon, BFI, Everyman). Slower but handles dynamic content.
