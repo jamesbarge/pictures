@@ -224,7 +224,9 @@ export function ScreeningFormModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto py-8">
       {/* Backdrop */}
-      <div
+      <button
+        type="button"
+        aria-label="Close screening form modal"
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
       />
@@ -242,6 +244,8 @@ export function ScreeningFormModal({
             </p>
           </div>
           <button
+            type="button"
+            aria-label="Close screening form modal"
             onClick={onClose}
             className="p-1 text-text-tertiary hover:text-text-primary transition-colors"
           >
@@ -253,12 +257,16 @@ export function ScreeningFormModal({
         <CardContent className="space-y-4 max-h-[60vh] overflow-y-auto">
           {/* Film Search */}
           <div className="relative">
-            <label className="block text-sm font-medium text-text-primary mb-2">
+            <label
+              htmlFor="admin-screening-film-search"
+              className="block text-sm font-medium text-text-primary mb-2"
+            >
               Film *
             </label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
               <input
+                id="admin-screening-film-search"
                 type="text"
                 value={filmSearch}
                 onChange={(e) => handleFilmSearchChange(e.target.value)}
@@ -309,10 +317,14 @@ export function ScreeningFormModal({
 
           {/* Cinema */}
           <div>
-            <label className="block text-sm font-medium text-text-primary mb-2">
+            <label
+              htmlFor="admin-screening-cinema-select"
+              className="block text-sm font-medium text-text-primary mb-2"
+            >
               Cinema *
             </label>
             <select
+              id="admin-screening-cinema-select"
               value={formData.cinemaId}
               onChange={(e) => setFormData(prev => ({ ...prev, cinemaId: e.target.value }))}
               className="w-full px-3 py-2 bg-background-secondary border border-border-subtle rounded-lg text-text-primary"
@@ -328,10 +340,14 @@ export function ScreeningFormModal({
 
           {/* Date/Time */}
           <div>
-            <label className="block text-sm font-medium text-text-primary mb-2">
+            <label
+              htmlFor="admin-screening-datetime"
+              className="block text-sm font-medium text-text-primary mb-2"
+            >
               Date & Time *
             </label>
             <input
+              id="admin-screening-datetime"
               type="datetime-local"
               value={formData.datetime ? formData.datetime.slice(0, 16) : ""}
               onChange={(e) => setFormData(prev => ({
@@ -344,10 +360,14 @@ export function ScreeningFormModal({
 
           {/* Booking URL */}
           <div>
-            <label className="block text-sm font-medium text-text-primary mb-2">
+            <label
+              htmlFor="admin-screening-booking-url"
+              className="block text-sm font-medium text-text-primary mb-2"
+            >
               Booking URL *
             </label>
             <input
+              id="admin-screening-booking-url"
               type="url"
               value={formData.bookingUrl}
               onChange={(e) => setFormData(prev => ({ ...prev, bookingUrl: e.target.value }))}
@@ -360,10 +380,14 @@ export function ScreeningFormModal({
           <div className="grid grid-cols-2 gap-3">
             {/* Format */}
             <div>
-              <label className="block text-xs text-text-tertiary mb-1">
+              <label
+                htmlFor="admin-screening-format"
+                className="block text-xs text-text-tertiary mb-1"
+              >
                 Format
               </label>
               <select
+                id="admin-screening-format"
                 value={formData.format || ""}
                 onChange={(e) => setFormData(prev => ({ ...prev, format: e.target.value || null }))}
                 className="w-full px-3 py-2 bg-background-secondary border border-border-subtle rounded-lg text-text-primary text-sm"
@@ -379,10 +403,14 @@ export function ScreeningFormModal({
 
             {/* Screen */}
             <div>
-              <label className="block text-xs text-text-tertiary mb-1">
+              <label
+                htmlFor="admin-screening-screen"
+                className="block text-xs text-text-tertiary mb-1"
+              >
                 Screen
               </label>
               <input
+                id="admin-screening-screen"
                 type="text"
                 value={formData.screen || ""}
                 onChange={(e) => setFormData(prev => ({ ...prev, screen: e.target.value || null }))}
@@ -394,10 +422,14 @@ export function ScreeningFormModal({
 
           {/* Event Type */}
           <div>
-            <label className="block text-xs text-text-tertiary mb-1">
+            <label
+              htmlFor="admin-screening-event-type"
+              className="block text-xs text-text-tertiary mb-1"
+            >
               Event Type (optional)
             </label>
             <select
+              id="admin-screening-event-type"
               value={formData.eventType || ""}
               onChange={(e) => setFormData(prev => ({ ...prev, eventType: e.target.value || null }))}
               className="w-full px-3 py-2 bg-background-secondary border border-border-subtle rounded-lg text-text-primary text-sm"
@@ -415,10 +447,14 @@ export function ScreeningFormModal({
           {/* Event Description */}
           {formData.eventType && (
             <div>
-              <label className="block text-xs text-text-tertiary mb-1">
+              <label
+                htmlFor="admin-screening-event-description"
+                className="block text-xs text-text-tertiary mb-1"
+              >
                 Event Description
               </label>
               <textarea
+                id="admin-screening-event-description"
                 value={formData.eventDescription || ""}
                 onChange={(e) => setFormData(prev => ({ ...prev, eventDescription: e.target.value || null }))}
                 placeholder="Details about the event..."

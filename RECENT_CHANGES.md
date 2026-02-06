@@ -5,6 +5,14 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-02-06: Admin Modal and Filter Form Label Accessibility
+**PR**: TBD | **Files**: `src/app/admin/cinemas/components/cinema-config-modal.tsx`, `src/app/admin/screenings/components/screening-form-modal.tsx`, `src/app/admin/screenings/page.tsx`
+- Converted admin modal backdrops to semantic close buttons with explicit labels, preserving existing click-to-close behavior.
+- Added explicit `htmlFor`/`id` associations for admin screening and cinema configuration form labels, and converted non-control headings from `<label>` to semantic text elements.
+- Replaced admin screenings filter section labels with non-form headings to remove orphaned label semantics.
+
+---
+
 ## 2026-02-06: Mobile Menu Scrim and Backdrop Accessibility
 **PR**: #92 | **Files**: `src/components/layout/header-nav-buttons.tsx`
 - Updated the mobile drawer backdrop from `bg-black/50` to `bg-black/60 backdrop-blur-sm` to match the app’s overlay depth treatment.

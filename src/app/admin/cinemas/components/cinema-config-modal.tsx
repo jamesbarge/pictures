@@ -104,7 +104,9 @@ export function CinemaConfigModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
-      <div
+      <button
+        type="button"
+        aria-label="Close cinema configuration modal"
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
       />
@@ -118,6 +120,8 @@ export function CinemaConfigModal({
             <p className="text-sm text-text-secondary">{cinemaName}</p>
           </div>
           <button
+            type="button"
+            aria-label="Close cinema configuration modal"
             onClick={onClose}
             className="p-1 text-text-tertiary hover:text-text-primary transition-colors"
           >
@@ -140,9 +144,9 @@ export function CinemaConfigModal({
             <>
               {/* Tier */}
               <div>
-                <label className="block text-sm font-medium text-text-primary mb-2">
+                <p className="block text-sm font-medium text-text-primary mb-2">
                   Tier
-                </label>
+                </p>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
@@ -176,11 +180,15 @@ export function CinemaConfigModal({
 
               {/* Tolerance */}
               <div>
-                <label className="block text-sm font-medium text-text-primary mb-2">
+                <label
+                  htmlFor="cinema-config-tolerance-percent"
+                  className="block text-sm font-medium text-text-primary mb-2"
+                >
                   Tolerance Threshold
                 </label>
                 <div className="flex items-center gap-3">
                   <input
+                    id="cinema-config-tolerance-percent"
                     type="range"
                     min="10"
                     max="80"
@@ -205,15 +213,19 @@ export function CinemaConfigModal({
 
               {/* Expected Counts */}
               <div>
-                <label className="block text-sm font-medium text-text-primary mb-2">
+                <p className="block text-sm font-medium text-text-primary mb-2">
                   Expected Counts (Optional)
-                </label>
+                </p>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs text-text-tertiary mb-1">
+                    <label
+                      htmlFor="cinema-config-weekday-average"
+                      className="block text-xs text-text-tertiary mb-1"
+                    >
                       Weekday Average
                     </label>
                     <input
+                      id="cinema-config-weekday-average"
                       type="number"
                       min="0"
                       value={config.weekdayAvg ?? ""}
@@ -229,10 +241,14 @@ export function CinemaConfigModal({
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-text-tertiary mb-1">
+                    <label
+                      htmlFor="cinema-config-weekend-average"
+                      className="block text-xs text-text-tertiary mb-1"
+                    >
                       Weekend Average
                     </label>
                     <input
+                      id="cinema-config-weekend-average"
                       type="number"
                       min="0"
                       value={config.weekendAvg ?? ""}
@@ -255,10 +271,14 @@ export function CinemaConfigModal({
 
               {/* Notes */}
               <div>
-                <label className="block text-sm font-medium text-text-primary mb-2">
+                <label
+                  htmlFor="cinema-config-notes"
+                  className="block text-sm font-medium text-text-primary mb-2"
+                >
                   Notes
                 </label>
                 <textarea
+                  id="cinema-config-notes"
                   value={config.notes ?? ""}
                   onChange={(e) =>
                     setConfig({
