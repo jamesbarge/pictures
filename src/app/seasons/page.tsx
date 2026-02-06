@@ -231,7 +231,7 @@ function SeasonCard({ season }: SeasonCardProps) {
   return (
     <Link
       href={`/seasons/${season.slug}`}
-      className="block bg-background-card border border-border-subtle rounded-lg overflow-hidden hover:border-border-default transition-colors"
+      className="block bg-background-secondary border border-border-subtle rounded-lg overflow-hidden hover:border-border-default transition-colors"
     >
       <div className="flex">
         {/* Poster (if available) */}

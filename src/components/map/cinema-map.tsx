@@ -450,7 +450,7 @@ function DrawingControls({
             </button>
             <button
               onClick={onClearArea}
-              className="flex items-center gap-2 px-3 py-2 bg-background-primary border border-border-default rounded-lg text-sm font-medium text-text-secondary hover:text-error-text hover:bg-error-subtle transition-colors"
+              className="flex items-center gap-2 px-3 py-2 bg-background-primary border border-border-default rounded-lg text-sm font-medium text-text-secondary hover:text-accent-danger hover:bg-accent-danger/10 transition-colors"
             >
               <Trash2 className="w-4 h-4" />
               <span>Clear</span>
