@@ -35,30 +35,19 @@ export function MapPageClient({ cinemas }: MapPageClientProps) {
   const { mapArea, setMapArea, useMapFiltering } = usePreferences();
   const { setCinemas } = useFilters();
 
-  // Local state for editing (doesn't save until "Apply")
-  const [localArea, setLocalArea] = useState<MapArea | null>(null);
-  const [hasChanges, setHasChanges] = useState(false);
+  // Local draft state for editing (doesn't save until "Apply")
+  // `undefined` means "use persisted mapArea from store"
+  const [localAreaOverride, setLocalAreaOverride] = useState<MapArea | null | undefined>(undefined);
 
   // Track that user has visited this feature (for discovery banner)
   useEffect(() => {
     useDiscovery.getState().markFeatureVisited("map");
   }, []);
 
-  // Initialize local state from store
-  useEffect(() => {
-    if (hydrated) {
-      setLocalArea(mapArea);
-    }
-  }, [hydrated, mapArea]);
-
-  // Track changes
-  useEffect(() => {
-    if (!hydrated) return;
-
-    const areaChanged =
-      JSON.stringify(localArea) !== JSON.stringify(mapArea);
-    setHasChanges(areaChanged);
-  }, [hydrated, localArea, mapArea]);
+  const localArea =
+    localAreaOverride === undefined ? (hydrated ? mapArea : null) : localAreaOverride;
+  const hasChanges =
+    hydrated && JSON.stringify(localArea) !== JSON.stringify(mapArea);
 
   const handleApply = () => {
     // Save the map area for re-editing later
@@ -81,7 +70,7 @@ export function MapPageClient({ cinemas }: MapPageClientProps) {
   };
 
   const handleClear = () => {
-    setLocalArea(null);
+    setLocalAreaOverride(null);
     setMapArea(null);
     // Also clear the cinema filter
     setCinemas([]);
@@ -144,7 +133,7 @@ export function MapPageClient({ cinemas }: MapPageClientProps) {
             <CinemaMapLazy
               cinemas={cinemas}
               mapArea={localArea}
-              onAreaChange={setLocalArea}
+              onAreaChange={setLocalAreaOverride}
             />
           ) : (
             <div className="flex items-center justify-center h-full bg-background-secondary">
