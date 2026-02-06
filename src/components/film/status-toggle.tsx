@@ -24,14 +24,14 @@ const statusConfig: Record<
   want_to_see: {
     icon: Heart,
     label: "Want to See",
-    className: "hover:bg-pink-500/20 hover:text-pink-400 hover:border-pink-500/50",
-    activeClassName: "bg-pink-500/20 text-pink-400 border-pink-500/50",
+    className: "hover:bg-accent-danger/15 hover:text-accent-danger hover:border-accent-danger/40",
+    activeClassName: "bg-accent-danger/15 text-accent-danger border-accent-danger/40",
   },
   not_interested: {
     icon: EyeOff,
     label: "Not Interested",
-    className: "hover:bg-gray-500/20 hover:text-gray-400 hover:border-gray-500/50",
-    activeClassName: "bg-gray-500/20 text-gray-400 border-gray-500/50",
+    className: "hover:bg-background-tertiary hover:text-text-primary hover:border-border-default",
+    activeClassName: "bg-background-tertiary text-text-secondary border-border-default",
   },
 };
 
