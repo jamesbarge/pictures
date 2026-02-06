@@ -110,7 +110,7 @@ function MobileMenuDrawer({
       <button
         type="button"
         className={cn(
-          "fixed inset-0 bg-black/60 backdrop-blur-sm z-50 sm:hidden transition-opacity duration-200",
+          "overlay-scrim z-50 sm:hidden transition-opacity duration-200",
           isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
         )}
         onClick={onClose}

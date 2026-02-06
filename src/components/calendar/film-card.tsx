@@ -177,12 +177,12 @@ export const FilmCard = memo(function FilmCard({
         <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-text-tertiary mt-auto pt-1">
           <span>{screeningCount} {screeningLabel} at {cinemaDisplay}</span>
           {film.isRepertory && !isRepertoryFilterActive && (
-            <span className="px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide rounded bg-white/10 text-text-secondary">
+            <span className="px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide rounded bg-surface-overlay-hover text-text-secondary border border-border-subtle/60">
               rep
             </span>
           )}
           {specialFormats.length > 0 && (
-            <span className="px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide rounded bg-white/10 text-text-secondary">
+            <span className="px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide rounded bg-surface-overlay-hover text-text-secondary border border-border-subtle/60">
               {specialFormats.join(" / ")}
             </span>
           )}

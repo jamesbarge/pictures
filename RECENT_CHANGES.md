@@ -13,6 +13,38 @@ When an entry is added here, also create a detailed file in /changelogs/
 
 ---
 
+## 2026-02-06: Admin Modal Scrim Consistency
+**PR**: #91 | **Files**: `src/app/admin/cinemas/components/cinema-config-modal.tsx`, `src/app/admin/screenings/components/screening-form-modal.tsx`
+- Standardized admin modal backdrops from `bg-black/50` to `bg-black/60 backdrop-blur-sm`.
+- Aligned cinema config and screening form dialogs to the same overlay depth treatment used in other overlays.
+- Preserved all modal interaction behavior (close-on-backdrop, focus/flow) while improving visual consistency.
+
+---
+
+## 2026-02-06: Film Card and Festival Badge Token Consistency
+**PR**: #90 | **Files**: `src/components/calendar/film-card.tsx`, `src/components/festivals/festival-programme.tsx`
+- Replaced hardcoded white/black overlay badge styling in film cards and festival programme cards with semantic token-based surfaces.
+- Added subtle tokenized chip borders in film cards to improve definition and consistency with the broader UI system.
+- Preserved all card behavior and content while aligning visual treatments to shared tokens.
+
+---
+
+## 2026-02-06: Overlay Scrim Consistency
+**PR**: #89 | **Files**: `src/app/globals.css`, `src/components/layout/header-nav.tsx`, `src/components/layout/header-nav-buttons.tsx`, `src/components/search/search-dialog.tsx`
+- Added a shared `overlay-scrim` utility class for full-screen backdrop overlays.
+- Updated search and navigation overlay backdrops to use the same blur/opacity treatment.
+- Standardized mobile drawer scrim from `bg-black/50` to the shared scrim so modal layering feels consistent.
+
+---
+
+## 2026-02-06: Fix Broken Accent Hover Tokens
+**PR**: #88 | **Files**: `src/app/film/[id]/not-found.tsx`, `src/components/filters/date-range-picker.tsx`
+- Replaced invalid `accent-hover` class usage with the defined `accent-primary-hover` token.
+- Restored intended hover feedback for the film not-found CTA and date-range picker apply action.
+- Keeps behavior unchanged while fixing missing visual state transitions in key navigation/filter flows.
+
+---
+
 ## 2026-02-06: Accessibility Semantics for Search and Reachable Inputs
 **PR**: #77 | **Files**: `src/components/search/search-dialog.tsx`, `src/components/layout/header-nav.tsx`, `src/app/reachable/reachable-page-client.tsx`, `src/components/filters/mobile-date-picker-modal.tsx`, `src/components/reachable/postcode-input.tsx`
 - Replaced clickable backdrop `<div>` elements with accessible button semantics in both search dialogs, including explicit dialog attributes (`role`, `aria-modal`, labels)
