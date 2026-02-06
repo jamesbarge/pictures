@@ -5,6 +5,14 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-02-06: Film Card and Festival Badge Token Consistency
+**PR**: TBD | **Files**: `src/components/calendar/film-card.tsx`, `src/components/festivals/festival-programme.tsx`
+- Replaced hardcoded white/black overlay badge styling in film cards and festival programme cards with semantic token-based surfaces.
+- Added subtle tokenized chip borders in film cards to improve definition and consistency with the broader UI system.
+- Preserved all card behavior and content while aligning visual treatments to shared tokens.
+
+---
+
 ## 2026-02-04: BFI PDF-First Resilience Path
 **PR**: #75 | **Files**: `src/inngest/functions.ts`, `src/scrapers/bfi-pdf/importer.ts`, `src/app/api/admin/bfi/status/route.ts`, `src/db/schema/bfi-import-runs.ts`
 - Routed BFI Inngest runs through the PDF + programme-changes importer so manual/admin runs no longer depend on Playwright availability
