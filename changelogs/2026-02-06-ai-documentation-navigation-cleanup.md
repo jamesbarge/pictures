@@ -1,6 +1,6 @@
 # AI Documentation Navigation Cleanup
 
-**PR**: TBD
+**PR**: #97
 **Date**: 2026-02-06
 
 ## Changes
