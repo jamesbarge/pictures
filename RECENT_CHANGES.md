@@ -6,7 +6,7 @@ When an entry is added here, also create a detailed file in /changelogs/
 -->
 
 ## 2026-02-06: Map Filter Local State Derivation
-**PR**: TBD | **Files**: `src/app/map/map-page-client.tsx`
+**PR**: #96 | **Files**: `src/app/map/map-page-client.tsx`
 - Replaced effect-driven local map area synchronization with derived local draft state, removing synchronous `setState` calls inside effects.
 - Derived `hasChanges` from current draft vs persisted map area instead of maintaining separate effect-managed state.
 - Preserved map filter apply/cancel/clear behavior while reducing render cascade risk in the map flow.
