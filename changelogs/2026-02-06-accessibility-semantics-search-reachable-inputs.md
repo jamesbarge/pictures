@@ -1,6 +1,6 @@
 # Accessibility Semantics for Search and Reachable Inputs
 
-**PR**: TBD
+**PR**: #77
 **Date**: 2026-02-06
 
 ## Changes
