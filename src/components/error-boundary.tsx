@@ -55,8 +55,8 @@ export class ErrorBoundary extends Component<Props, State> {
       // Default fallback UI
       return (
         <div className="flex flex-col items-center justify-center min-h-[400px] p-8 text-center">
-          <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mb-4">
-            <AlertTriangle className="w-8 h-8 text-red-600" />
+          <div className="w-16 h-16 rounded-full bg-accent-danger/15 flex items-center justify-center mb-4">
+            <AlertTriangle className="w-8 h-8 text-accent-danger" />
           </div>
           <h2 className="text-xl font-semibold text-text-primary mb-2">
             Something went wrong
@@ -65,7 +65,7 @@ export class ErrorBoundary extends Component<Props, State> {
             We encountered an unexpected error. Please try refreshing the page.
           </p>
           {process.env.NODE_ENV === "development" && this.state.error && (
-            <pre className="text-left text-xs text-red-600 bg-red-50 p-4 rounded-lg mb-4 max-w-full overflow-auto">
+            <pre className="text-left text-xs text-accent-danger bg-accent-danger/10 p-4 rounded-lg mb-4 max-w-full overflow-auto border border-accent-danger/20">
               {this.state.error.message}
             </pre>
           )}
