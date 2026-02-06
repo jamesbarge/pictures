@@ -5,6 +5,16 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-02-06: Accessibility Semantics for Search and Reachable Inputs
+**PR**: #77 | **Files**: `src/components/search/search-dialog.tsx`, `src/components/layout/header-nav.tsx`, `src/app/reachable/reachable-page-client.tsx`, `src/components/filters/mobile-date-picker-modal.tsx`, `src/components/reachable/postcode-input.tsx`
+- Replaced clickable backdrop `<div>` elements with accessible button semantics in both search dialogs, including explicit dialog attributes (`role`, `aria-modal`, labels)
+- Added explicit accessible labels for header nav icon actions and search close controls to improve screen reader clarity
+- Reworked reachable input headings into grouped `fieldset/legend` structures and added an explicit postcode input aria label
+- Associated mobile custom time labels with select controls via `htmlFor`/`id` to remove orphaned label semantics
+- Preserved behavior while reducing high-impact a11y lint issues in core discovery flows
+
+---
+
 ## 2026-02-06: Calendar Listing Hierarchy and Token Alignment
 **PR**: #78 | **Files**: `src/components/calendar/screening-card.tsx`, `src/components/calendar/table-view.tsx`, `src/components/film/status-toggle.tsx`, `src/components/error-boundary.tsx`, `src/app/globals.css`
 - Unified calendar and status UI color semantics to design-system tokens (removed hardcoded amber/pink/gray/red treatment in core user-facing components)

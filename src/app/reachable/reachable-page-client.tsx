@@ -195,10 +195,10 @@ export function ReachablePageClient({
           {/* Input Section */}
           <div className="space-y-6 mb-8">
             {/* Postcode Input */}
-            <div>
-              <label className="block text-sm font-medium text-text-primary mb-2">
+            <fieldset>
+              <legend className="block text-sm font-medium text-text-primary mb-2">
                 Your location
-              </label>
+              </legend>
               <PostcodeInput
                 value={hydrated ? postcode : ""}
                 onChange={(value, coords, error) => {
@@ -207,30 +207,31 @@ export function ReachablePageClient({
                   setPostcodeError(error || null);
                 }}
                 error={postcodeError}
+                ariaLabel="Your location postcode"
               />
-            </div>
+            </fieldset>
 
             {/* Deadline Picker */}
-            <div>
-              <label className="block text-sm font-medium text-text-primary mb-2">
+            <fieldset>
+              <legend className="block text-sm font-medium text-text-primary mb-2">
                 I need to be free by
-              </label>
+              </legend>
               <DeadlinePicker
                 value={hydrated ? finishedByTime : null}
                 onChange={setFinishedByTime}
               />
-            </div>
+            </fieldset>
 
             {/* Travel Mode */}
-            <div>
-              <label className="block text-sm font-medium text-text-primary mb-2">
+            <fieldset>
+              <legend className="block text-sm font-medium text-text-primary mb-2">
                 How are you travelling?
-              </label>
+              </legend>
               <TravelModeToggle
                 value={hydrated ? travelMode : "transit"}
                 onChange={setTravelMode}
               />
-            </div>
+            </fieldset>
           </div>
 
           {/* Status Messages */}

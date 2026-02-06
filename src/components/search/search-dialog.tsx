@@ -139,13 +139,20 @@ export function SearchDialog() {
   return (
     <>
       {/* Backdrop */}
-      <div
+      <button
+        type="button"
+        aria-label="Close search dialog"
         className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
         onClick={() => setIsOpen(false)}
       />
 
       {/* Dialog */}
-      <div className="fixed inset-x-4 top-[15%] sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:w-full sm:max-w-lg z-50">
+      <div
+        className="fixed inset-x-4 top-[15%] sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:w-full sm:max-w-lg z-50"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Search films"
+      >
         <div className="bg-background-secondary border border-border-default rounded-xl shadow-elevated overflow-hidden">
           {/* Search Input */}
           <div className="flex items-center gap-3 px-4 border-b border-border-subtle">

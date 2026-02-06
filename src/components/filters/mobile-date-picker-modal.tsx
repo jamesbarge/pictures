@@ -261,8 +261,14 @@ export function MobileDatePickerModal({ isOpen, onClose }: MobileDatePickerModal
           {showTimeCustom && (
             <div className="mt-4 flex items-end gap-3">
               <div className="flex-1">
-                <label className="block text-xs text-text-tertiary mb-1.5">From</label>
+                <label
+                  htmlFor="mobile-date-picker-time-from"
+                  className="block text-xs text-text-tertiary mb-1.5"
+                >
+                  From
+                </label>
                 <select
+                  id="mobile-date-picker-time-from"
                   value={timeFrom ?? ""}
                   onChange={(e) => setTimeRange(
                     e.target.value === "" ? null : Number(e.target.value),
@@ -278,8 +284,14 @@ export function MobileDatePickerModal({ isOpen, onClose }: MobileDatePickerModal
               </div>
               <span className="text-text-tertiary pb-2.5">–</span>
               <div className="flex-1">
-                <label className="block text-xs text-text-tertiary mb-1.5">To</label>
+                <label
+                  htmlFor="mobile-date-picker-time-to"
+                  className="block text-xs text-text-tertiary mb-1.5"
+                >
+                  To
+                </label>
                 <select
+                  id="mobile-date-picker-time-to"
                   value={timeTo ?? ""}
                   onChange={(e) => setTimeRange(
                     timeFrom,
