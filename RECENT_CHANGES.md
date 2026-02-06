@@ -5,6 +5,14 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-02-06: Admin Anomaly List Hydration-Safe Dismiss Filtering
+**PR**: #102 | **Files**: `src/app/admin/anomalies/components/anomaly-list.tsx`
+- Replaced effect-driven client-side anomaly filtering with derived filtering that activates only after hydration.
+- Added local dismissed-cinema tracking so dismissed anomalies disappear immediately without re-running full effect initialization.
+- Preserved server/client render consistency by showing unfiltered anomalies before hydration.
+
+---
+
 ## 2026-02-06: Calendar View Hydration Filter-State Semantics
 **PR**: #100 | **Files**: `src/components/calendar/calendar-view.tsx`
 - Removed a synchronous hydration state update inside effect setup for film status persistence.
