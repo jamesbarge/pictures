@@ -6,7 +6,7 @@ When an entry is added here, also create a detailed file in /changelogs/
 -->
 
 ## 2026-02-06: Settings and Dropdown Keyboard Label Accessibility
-**PR**: TBD | **Files**: `src/components/settings/calendar-view-setting.tsx`, `src/components/ui/dropdown.tsx`
+**PR**: #95 | **Files**: `src/components/settings/calendar-view-setting.tsx`, `src/components/ui/dropdown.tsx`
 - Added explicit `htmlFor`/`id` and accessible label metadata for calendar view radio options in settings.
 - Moved dropdown keyboard handlers from a non-interactive wrapper onto interactive trigger/listbox elements.
 - Preserved existing selection behavior and keyboard interactions while removing accessibility lint issues.
