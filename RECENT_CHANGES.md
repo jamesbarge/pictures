@@ -6,7 +6,7 @@ When an entry is added here, also create a detailed file in /changelogs/
 -->
 
 ## 2026-02-06: Calendar View Hydration Filter-State Semantics
-**PR**: TBD | **Files**: `src/components/calendar/calendar-view.tsx`
+**PR**: #100 | **Files**: `src/components/calendar/calendar-view.tsx`
 - Removed a synchronous hydration state update inside effect setup for film status persistence.
 - Kept hydration completion subscription logic intact so hide-seen/hide-not-interested behavior still activates after persisted state is ready.
 - Removed an unused `isIndependentCinema` import from the calendar view filter pipeline.
