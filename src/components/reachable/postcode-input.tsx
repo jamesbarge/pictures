@@ -154,8 +154,8 @@ export function PostcodeInput({
             "placeholder:text-text-tertiary",
             "focus:outline-none focus:ring-2 focus:ring-accent-primary/50",
             "transition-colors",
-            showError && "border-error-border focus:ring-error-border/50",
-            showSuccess && "border-success-border",
+            showError && "border-accent-danger focus:ring-accent-danger/30",
+            showSuccess && "border-accent-success/40",
             !showError && !showSuccess && "border-border-default"
           )}
           autoComplete="postal-code"
@@ -169,20 +169,20 @@ export function PostcodeInput({
             <Loader2 className="w-5 h-5 text-text-tertiary animate-spin" />
           )}
           {status === "valid" && (
-            <Check className="w-5 h-5 text-success-text" />
+            <Check className="w-5 h-5 text-accent-success" />
           )}
           {status === "warning" && (
-            <AlertCircle className="w-5 h-5 text-warning-text" />
+            <AlertCircle className="w-5 h-5 text-accent-highlight" />
           )}
           {status === "invalid" && value.length > 0 && (
-            <AlertCircle className="w-5 h-5 text-error-text" />
+            <AlertCircle className="w-5 h-5 text-accent-danger" />
           )}
         </div>
       </div>
 
       {/* Location Name Display */}
       {locationName && showSuccess && (
-        <p className="text-sm text-success-text flex items-center gap-1.5">
+        <p className="text-sm text-accent-success flex items-center gap-1.5">
           <Check className="w-3.5 h-3.5" />
           {locationName}
         </p>
@@ -190,7 +190,7 @@ export function PostcodeInput({
 
       {/* Warning Message */}
       {warningMessage && status === "warning" && (
-        <p className="text-sm text-warning-text flex items-center gap-1.5">
+        <p className="text-sm text-accent-highlight flex items-center gap-1.5">
           <AlertCircle className="w-3.5 h-3.5" />
           {warningMessage}
         </p>
@@ -198,7 +198,7 @@ export function PostcodeInput({
 
       {/* Error Message */}
       {showError && (
-        <p className="text-sm text-error-text flex items-center gap-1.5">
+        <p className="text-sm text-accent-danger flex items-center gap-1.5">
           <AlertCircle className="w-3.5 h-3.5" />
           {error || "Invalid postcode"}
         </p>

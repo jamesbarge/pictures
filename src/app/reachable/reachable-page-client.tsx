@@ -239,11 +239,11 @@ export function ReachablePageClient({
             <>
               {/* Error State */}
               {error && (
-                <div className="mb-6 p-4 bg-error-surface border border-error-border rounded-lg">
-                  <p className="text-sm text-error-text">{error}</p>
+                <div className="mb-6 p-4 bg-accent-danger/10 border border-accent-danger/30 rounded-lg">
+                  <p className="text-sm text-accent-danger">{error}</p>
                   <button
                     onClick={calculateTimes}
-                    className="mt-2 text-sm text-error-text underline hover:no-underline"
+                    className="mt-2 text-sm text-accent-danger underline hover:no-underline"
                   >
                     Try again
                   </button>
