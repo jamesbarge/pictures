@@ -110,7 +110,7 @@ export async function FestivalProgramme({ festivalId }: FestivalProgrammeProps) 
                     {/* Section Badge */}
                     {festivalData.festivalSection && (
                       <div className="absolute top-2 left-2">
-                         <Badge variant="secondary" className="shadow-lg backdrop-blur-md bg-black/50 text-white border-transparent">
+                         <Badge variant="secondary" className="shadow-lg backdrop-blur-md bg-background-secondary/85 text-text-primary border-border-subtle">
                           {festivalData.festivalSection}
                         </Badge>
                       </div>

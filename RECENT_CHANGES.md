@@ -5,6 +5,14 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-02-06: Film Card and Festival Badge Token Consistency
+**PR**: #90 | **Files**: `src/components/calendar/film-card.tsx`, `src/components/festivals/festival-programme.tsx`
+- Replaced hardcoded white/black overlay badge styling in film cards and festival programme cards with semantic token-based surfaces.
+- Added subtle tokenized chip borders in film cards to improve definition and consistency with the broader UI system.
+- Preserved all card behavior and content while aligning visual treatments to shared tokens.
+
+---
+
 ## 2026-02-06: Overlay Scrim Consistency
 **PR**: #89 | **Files**: `src/app/globals.css`, `src/components/layout/header-nav.tsx`, `src/components/layout/header-nav-buttons.tsx`, `src/components/search/search-dialog.tsx`
 - Added a shared `overlay-scrim` utility class for full-screen backdrop overlays.
