@@ -5,6 +5,14 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-02-06: Mobile Menu Scrim and Backdrop Accessibility
+**PR**: #92 | **Files**: `src/components/layout/header-nav-buttons.tsx`
+- Updated the mobile drawer backdrop from `bg-black/50` to `bg-black/60 backdrop-blur-sm` to match the app’s overlay depth treatment.
+- Replaced the clickable backdrop `<div>` with a semantic `button` including an explicit close label for assistive tech.
+- Preserved drawer open/close behavior while improving consistency and accessibility in core navigation.
+
+---
+
 ## 2026-02-06: Admin Modal Scrim Consistency
 **PR**: #91 | **Files**: `src/app/admin/cinemas/components/cinema-config-modal.tsx`, `src/app/admin/screenings/components/screening-form-modal.tsx`
 - Standardized admin modal backdrops from `bg-black/50` to `bg-black/60 backdrop-blur-sm`.
