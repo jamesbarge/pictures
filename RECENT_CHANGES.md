@@ -5,6 +5,15 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-02-06: Align Agent Documentation Process
+**PR**: TBD | **Files**: `AGENTS.md`, `CLAUDE.md`
+- Added a mandatory documentation-navigation process to `AGENTS.md` with canonical rule ownership and read order.
+- Updated scraper documentation references in `AGENTS.md` to `src/scrapers/SCRAPING_PLAYBOOK.md`.
+- Replaced `CLAUDE.md` with a concise compatibility shim to prevent drift from canonical rules.
+- Explicitly documented verification and dual-changelog workflow in the shim.
+
+---
+
 ## 2026-02-06: Film Card and Festival Badge Token Consistency
 **PR**: #90 | **Files**: `src/components/calendar/film-card.tsx`, `src/components/festivals/festival-programme.tsx`
 - Replaced hardcoded white/black overlay badge styling in film cards and festival programme cards with semantic token-based surfaces.

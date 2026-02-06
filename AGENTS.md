@@ -1,6 +1,16 @@
 ## Project Overview
 London cinema calendar app (Pictures) that scrapes screening data from cinemas across London and displays it in a unified calendar view. We cover all cinemas with a special focus on independent venues. Production: https://pictures.london
 
+## Documentation Navigation Process - MANDATORY
+- `AGENTS.md` is the canonical rules file. If any other file conflicts with it, follow `AGENTS.md`.
+- `CLAUDE.md` must stay a concise compatibility shim that points back to `AGENTS.md`; do not duplicate full rule sets there.
+- Start work by checking docs in this order:
+  1. `AGENTS.md`
+  2. `AI_CONTEXT.md` (if present on branch)
+  3. `RECENT_CHANGES.md`
+  4. `ARCHITECTURE.md`
+- Keep navigation docs and references accurate when paths change (no dead links or stale doc paths).
+
 ## General Principles
 - **Always think about a way to verify your work before starting any work.** Identify how you'll confirm changes work correctly (run tests, check database values, verify in browser, etc.).
 
@@ -95,7 +105,7 @@ Format:
 - If hour is 1-9 without AM/PM, assume PM.
 - Times before 10:00 are likely errors; validate and warn.
 - Use the shared parser at `src/scrapers/utils/date-parser.ts`.
-- When fixing/modifying scrapers, update `docs/scraping-playbook.md` with selectors, URL patterns, formats, and known issues.
+- When fixing/modifying scrapers, update `src/scrapers/SCRAPING_PLAYBOOK.md` with selectors, URL patterns, formats, and known issues.
 - After time parsing fixes, clean up bad data (screenings 00:00-09:59).
 
 ## Scraper Testing
