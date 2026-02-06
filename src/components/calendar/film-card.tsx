@@ -95,9 +95,6 @@ export const FilmCard = memo(function FilmCard({
         "focus-within:ring-2 focus-within:ring-accent-primary/40 focus-within:ring-offset-2 focus-within:ring-offset-background-primary"
       )}
       aria-label={`${film.title} - ${screeningCount} ${screeningLabel} at ${cinemaDisplay}`}
-      onMouseEnter={prefetch.onMouseEnter}
-      onMouseLeave={prefetch.onMouseLeave}
-      onTouchStart={prefetch.onTouchStart}
     >
       {/* Poster area - contains link and buttons */}
       <div className="relative aspect-[2/3] w-full overflow-hidden poster-glow poster-glow-hover transition-shadow duration-200">
@@ -108,6 +105,9 @@ export const FilmCard = memo(function FilmCard({
           tabIndex={-1}
           aria-hidden="true"
           onClick={trackCardClick}
+          onMouseEnter={prefetch.onMouseEnter}
+          onMouseLeave={prefetch.onMouseLeave}
+          onTouchStart={prefetch.onTouchStart}
         >
           {/* Use placeholder SVG route for films without posters */}
           {film.posterUrl && !film.posterUrl.includes("poster-placeholder") ? (
@@ -157,6 +157,9 @@ export const FilmCard = memo(function FilmCard({
         href={`/film/${film.id}`}
         className="flex flex-col flex-1 p-2 focus:outline-none"
         onClick={trackCardClick}
+        onMouseEnter={prefetch.onMouseEnter}
+        onMouseLeave={prefetch.onMouseLeave}
+        onTouchStart={prefetch.onTouchStart}
       >
         {/* Title */}
         <h3 className="font-display text-xs sm:text-sm text-text-primary group-hover:text-accent-primary transition-colors line-clamp-1 leading-tight">

@@ -5,7 +5,7 @@
  * Client-side wrapper that filters out dismissed anomalies
  */
 
-import { useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { AlertTriangle, XCircle, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -13,6 +13,7 @@ import Link from "next/link";
 import { ReScrapeButton } from "./re-scrape-button";
 import { DismissButton, isAnomalyDismissed } from "./dismiss-button";
 import { AIVerifyButton } from "./ai-verify-button";
+import { useHydrated } from "@/hooks/useHydrated";
 
 export interface DetectedAnomaly {
   cinemaId: string;
@@ -30,24 +31,26 @@ interface AnomalyListProps {
 }
 
 export function AnomalyList({ anomalies }: AnomalyListProps) {
-  // null = not yet hydrated (server render shows all), array = client-filtered
-  const [clientFiltered, setClientFiltered] = useState<DetectedAnomaly[] | null>(null);
-
-  // Filter out dismissed anomalies on mount
-  useEffect(() => {
-    const filtered = anomalies.filter(
-      a => !isAnomalyDismissed(a.cinemaId, a.todayCount)
-    );
-    setClientFiltered(filtered);
-  }, [anomalies]);
+  const hydrated = useHydrated();
+  const [dismissedCinemaIds, setDismissedCinemaIds] = useState<string[]>([]);
 
   // Handle dismiss - remove from visible list
   function handleDismiss(cinemaId: string) {
-    setClientFiltered(prev => prev?.filter(a => a.cinemaId !== cinemaId) ?? null);
+    setDismissedCinemaIds((prev) =>
+      prev.includes(cinemaId) ? prev : [...prev, cinemaId]
+    );
   }
 
-  // Show all anomalies on server render, filtered on client
-  const displayAnomalies = clientFiltered ?? anomalies;
+  const displayAnomalies = useMemo(() => {
+    // Show all anomalies until client hydration to avoid server/client mismatch.
+    if (!hydrated) return anomalies;
+
+    return anomalies.filter(
+      (a) =>
+        !dismissedCinemaIds.includes(a.cinemaId) &&
+        !isAnomalyDismissed(a.cinemaId, a.todayCount)
+    );
+  }, [anomalies, dismissedCinemaIds, hydrated]);
 
   if (displayAnomalies.length === 0) {
     return (

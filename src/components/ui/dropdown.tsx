@@ -160,7 +160,7 @@ export function Select({
   );
 
   const handleKeyDown = useCallback(
-    (e: KeyboardEvent<HTMLDivElement>) => {
+    (e: KeyboardEvent<HTMLElement>) => {
       if (!isOpen) return;
 
       switch (e.key) {
@@ -228,13 +228,14 @@ export function Select({
         </label>
       )}
 
-      <div className="relative" onKeyDown={handleKeyDown}>
+      <div className="relative">
         {/* Trigger */}
         <button
           ref={triggerRef}
           type="button"
           disabled={disabled}
           onClick={() => setIsOpen(!isOpen)}
+          onKeyDown={handleKeyDown}
           className={cn(
             "flex items-center justify-between gap-2",
             "px-[var(--input-padding-x)]",
@@ -273,6 +274,7 @@ export function Select({
           <div
             ref={listRef}
             role="listbox"
+            onKeyDown={handleKeyDown}
             className={cn(
               "absolute z-50 top-full left-0 right-0 mt-2",
               "bg-background-secondary border border-border-default",

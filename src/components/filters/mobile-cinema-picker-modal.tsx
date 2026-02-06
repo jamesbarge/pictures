@@ -44,12 +44,10 @@ export function MobileCinemaPickerModal({ isOpen, onClose, cinemas }: MobileCine
     }
   }, [isOpen]);
 
-  // Clear search when modal closes
-  useEffect(() => {
-    if (!isOpen) {
-      setSearchTerm("");
-    }
-  }, [isOpen]);
+  const handleClose = () => {
+    setSearchTerm("");
+    onClose();
+  };
 
   // Filter cinemas by search term - matches if ALL words appear in name, shortName, or chain
   const filteredCinemas = useMemo(() => {
@@ -89,7 +87,7 @@ export function MobileCinemaPickerModal({ isOpen, onClose, cinemas }: MobileCine
       <header className="flex items-center justify-between px-4 py-3 border-b border-border-subtle bg-background-primary">
         <h2 className="text-lg font-semibold text-text-primary">Select Cinemas</h2>
         <button
-          onClick={onClose}
+          onClick={handleClose}
           className="p-2 -mr-2 rounded-lg hover:bg-background-tertiary transition-colors"
           aria-label="Close"
         >
@@ -257,7 +255,7 @@ export function MobileCinemaPickerModal({ isOpen, onClose, cinemas }: MobileCine
             </button>
           )}
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className={cn(
               "py-3 rounded-xl bg-accent-primary text-text-inverse font-semibold text-base hover:bg-accent-primary-hover transition-colors",
               cinemaIds.length > 0 ? "flex-1" : "w-full"
