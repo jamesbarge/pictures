@@ -6,7 +6,7 @@ When an entry is added here, also create a detailed file in /changelogs/
 -->
 
 ## 2026-02-06: Admin Modal and Filter Form Label Accessibility
-**PR**: TBD | **Files**: `src/app/admin/cinemas/components/cinema-config-modal.tsx`, `src/app/admin/screenings/components/screening-form-modal.tsx`, `src/app/admin/screenings/page.tsx`
+**PR**: #94 | **Files**: `src/app/admin/cinemas/components/cinema-config-modal.tsx`, `src/app/admin/screenings/components/screening-form-modal.tsx`, `src/app/admin/screenings/page.tsx`
 - Converted admin modal backdrops to semantic close buttons with explicit labels, preserving existing click-to-close behavior.
 - Added explicit `htmlFor`/`id` associations for admin screening and cinema configuration form labels, and converted non-control headings from `<label>` to semantic text elements.
 - Replaced admin screenings filter section labels with non-form headings to remove orphaned label semantics.
