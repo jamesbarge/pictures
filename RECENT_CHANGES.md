@@ -6,7 +6,7 @@ When an entry is added here, also create a detailed file in /changelogs/
 -->
 
 ## 2026-02-06: Fix Broken Accent Hover Tokens
-**PR**: TBD | **Files**: `src/app/film/[id]/not-found.tsx`, `src/components/filters/date-range-picker.tsx`
+**PR**: #88 | **Files**: `src/app/film/[id]/not-found.tsx`, `src/components/filters/date-range-picker.tsx`
 - Replaced invalid `accent-hover` class usage with the defined `accent-primary-hover` token.
 - Restored intended hover feedback for the film not-found CTA and date-range picker apply action.
 - Keeps behavior unchanged while fixing missing visual state transitions in key navigation/filter flows.

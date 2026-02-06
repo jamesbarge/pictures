@@ -1,6 +1,6 @@
 # Fix Broken Accent Hover Tokens
 
-**PR**: TBD
+**PR**: #88
 **Date**: 2026-02-06
 
 ## Changes
