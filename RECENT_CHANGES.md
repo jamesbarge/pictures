@@ -5,6 +5,38 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-02-06: Normalize Frontend Tokens and Time Format
+**PR**: #76 | **Files**: `src/app/error.tsx`, `src/app/global-error.tsx`, `src/components/reachable/reachable-results.tsx`, `src/components/reachable/postcode-input.tsx`, `src/components/watchlist/watchlist-view.tsx`
+- Replaced undefined Tailwind/token classes with existing design-system tokens across high-traffic pages (cinemas, directors, seasons, watchlist, map, reachable, and error surfaces)
+- Converted remaining user-facing 12-hour reachable/festival time labels to the project-standard 24-hour format
+- Standardized critical and warning color usage to `accent-*` tokens for consistent urgency semantics and reduced visual drift
+- Removed mixed hardcoded hex values from global error UI so fallback screens now inherit the shared theme system
+
+---
+
+## 2026-02-04: BFI PDF-First Resilience Path
+**PR**: #75 | **Files**: `src/inngest/functions.ts`, `src/scrapers/bfi-pdf/importer.ts`, `src/app/api/admin/bfi/status/route.ts`, `src/db/schema/bfi-import-runs.ts`
+- Routed BFI Inngest runs through the PDF + programme-changes importer so manual/admin runs no longer depend on Playwright availability
+- Added importer-level resilience diagnostics (`status`, per-source outcome, error codes) so partial-source runs return degraded success with clear failure reasons
+- Added `bfi_import_runs` persistence + `/api/admin/bfi/status` endpoint for immediate ops visibility into latest BFI run health
+- Added degraded/failure Slack alerts for BFI import runs so partial outages are surfaced proactively
+- Fixed dedup key collisions by including screen/venue in merge key, preventing dropped simultaneous Southbank/IMAX screenings
+- Updated scrape-all admin fanout to use registry-driven events, dedupe chain triggers, and queue BFI once to avoid duplicate imports
+- Added tests for BFI importer resilience, BFI status endpoint, and scrape-all dedup behavior
+
+---
+
+## 2026-02-04: Scraper Infrastructure Consolidation
+**PR**: #73 | **Files**: `src/config/cinema-registry.ts`, `src/lib/scraper-health/`, `src/db/schema/health-snapshots.ts`, `src/scrapers/run-*-v2.ts`
+- Created canonical cinema registry as single source of truth for 63 cinemas
+- Added health monitoring system with freshness/volume scoring and Slack alerts
+- Created v2 runners for Curzon, Picturehouse, Everyman using runner-factory pattern
+- Added database migration script for canonicalizing cinema IDs
+- Health check cron runs daily at 7am UTC, filters only active cinemas
+- New admin health API at `/api/admin/health`
+
+---
+
 ## 2026-02-04: Fix Cinema Zero Screenings
 **PR**: #65 | **Files**: `src/scrapers/cinemas/*.ts`, `src/scrapers/run-electric-v2.ts`
 - Fixed all cinemas showing 0 screenings (Phoenix, David Lean, Romford Lumiere)
