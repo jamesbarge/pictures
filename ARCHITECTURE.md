@@ -62,8 +62,8 @@ filmcal2/
 │   │
 │   └── test/                   # Test utilities
 │
-├── docs/                       # Documentation
-│   └── scraping-playbook.md    # Per-cinema scraping notes
+├── AI_CONTEXT.md               # AI/navigation entry point
+├── changelogs/                 # Detailed change archive
 │
 ├── e2e/                        # Playwright E2E tests
 │
@@ -122,6 +122,8 @@ npm run scrape:all        # All scrapers
 npm run scrape:chains     # Curzon, Picturehouse, Everyman
 npm run scrape:independents
 ```
+
+Scraper change notes and incident patterns are tracked in `src/scrapers/SCRAPING_PLAYBOOK.md`.
 
 ## State Management
 
