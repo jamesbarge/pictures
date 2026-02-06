@@ -107,13 +107,14 @@ function MobileMenuDrawer({
   return (
     <>
       {/* Backdrop */}
-      <div
+      <button
+        type="button"
         className={cn(
-          "fixed inset-0 bg-black/50 z-50 sm:hidden transition-opacity duration-200",
+          "overlay-scrim z-50 sm:hidden transition-opacity duration-200",
           isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
         )}
         onClick={onClose}
-        aria-hidden="true"
+        aria-label="Close mobile menu"
       />
 
       {/* Drawer */}

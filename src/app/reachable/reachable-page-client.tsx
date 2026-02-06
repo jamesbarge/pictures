@@ -195,10 +195,10 @@ export function ReachablePageClient({
           {/* Input Section */}
           <div className="space-y-6 mb-8">
             {/* Postcode Input */}
-            <div>
-              <label className="block text-sm font-medium text-text-primary mb-2">
+            <fieldset>
+              <legend className="block text-sm font-medium text-text-primary mb-2">
                 Your location
-              </label>
+              </legend>
               <PostcodeInput
                 value={hydrated ? postcode : ""}
                 onChange={(value, coords, error) => {
@@ -207,30 +207,31 @@ export function ReachablePageClient({
                   setPostcodeError(error || null);
                 }}
                 error={postcodeError}
+                ariaLabel="Your location postcode"
               />
-            </div>
+            </fieldset>
 
             {/* Deadline Picker */}
-            <div>
-              <label className="block text-sm font-medium text-text-primary mb-2">
+            <fieldset>
+              <legend className="block text-sm font-medium text-text-primary mb-2">
                 I need to be free by
-              </label>
+              </legend>
               <DeadlinePicker
                 value={hydrated ? finishedByTime : null}
                 onChange={setFinishedByTime}
               />
-            </div>
+            </fieldset>
 
             {/* Travel Mode */}
-            <div>
-              <label className="block text-sm font-medium text-text-primary mb-2">
+            <fieldset>
+              <legend className="block text-sm font-medium text-text-primary mb-2">
                 How are you travelling?
-              </label>
+              </legend>
               <TravelModeToggle
                 value={hydrated ? travelMode : "transit"}
                 onChange={setTravelMode}
               />
-            </div>
+            </fieldset>
           </div>
 
           {/* Status Messages */}
@@ -238,11 +239,11 @@ export function ReachablePageClient({
             <>
               {/* Error State */}
               {error && (
-                <div className="mb-6 p-4 bg-error-surface border border-error-border rounded-lg">
-                  <p className="text-sm text-error-text">{error}</p>
+                <div className="mb-6 p-4 bg-accent-danger/10 border border-accent-danger/30 rounded-lg">
+                  <p className="text-sm text-accent-danger">{error}</p>
                   <button
                     onClick={calculateTimes}
-                    className="mt-2 text-sm text-error-text underline hover:no-underline"
+                    className="mt-2 text-sm text-accent-danger underline hover:no-underline"
                   >
                     Try again
                   </button>

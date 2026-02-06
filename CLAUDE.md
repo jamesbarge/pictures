@@ -1,31 +1,28 @@
 # CLAUDE.md
 
-Claude compatibility shim for this repository.
+Claude-specific compatibility shim.
 
 ## Canonical Rules
-- **Source of truth**: `AGENTS.md`
-- If this file conflicts with `AGENTS.md`, follow `AGENTS.md`.
-- Keep this file concise; do not duplicate the full rule set here.
+- Source of truth: `AGENTS.md`
+- If this file conflicts with `AGENTS.md`, follow `AGENTS.md`
+- Keep this file concise; do not duplicate full rule sets
 
-## Required Navigation Order
+## Required Read Order
 1. `AGENTS.md`
-2. `AI_CONTEXT.md` (if present on the branch)
+2. `AI_CONTEXT.md` (if present)
 3. `RECENT_CHANGES.md`
 4. `ARCHITECTURE.md`
 
-## Mandatory Process
-- Use feature branches; never commit directly to `main`.
-- Keep changes scoped to the request.
-- Before marking work complete, run:
-  - `npm run test:run`
-  - `npm run lint`
-  - `npx tsc --noEmit`
-- On every PR/direct ship, update both changelog locations:
-  - `RECENT_CHANGES.md` (new entry at top, keep ~20)
+## Non-Negotiable Workflow
+- Use feature branches (never commit directly to `main`)
+- Keep changes minimal and scoped to the request
+- Before finishing: run `npm run test:run`, `npm run lint`, and `npx tsc --noEmit`
+- Update both changelog locations on every PR:
+  - `RECENT_CHANGES.md`
   - `changelogs/YYYY-MM-DD-short-description.md`
 
 ## Scraper Documentation Rule
-- For scraper changes, update `src/scrapers/SCRAPING_PLAYBOOK.md`.
-- Do not reference `docs/scraping-playbook.md`.
+- Keep scraper implementation notes in `src/scrapers/SCRAPING_PLAYBOOK.md`
+- Do not reference `docs/scraping-playbook.md`
 
 For full project rules, conventions, and constraints, read `AGENTS.md`.

@@ -199,7 +199,7 @@ export function WatchlistView({ films, screeningsByFilm }: WatchlistViewProps) {
       {currentlyShowing.length > 0 && (
         <section>
           <div className="flex items-center gap-2 mb-4">
-            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+            <div className="w-2 h-2 rounded-full bg-accent-success animate-pulse" />
             <h2 className="text-lg font-display text-text-primary">
               Currently Showing ({currentlyShowing.length})
             </h2>
@@ -325,7 +325,7 @@ function WatchlistFilmCard({
             <div className="mt-2">
               <button
                 onClick={onToggleExpand}
-                className="inline-flex items-center gap-2 text-sm text-accent-primary hover:text-accent-hover transition-colors"
+                className="inline-flex items-center gap-2 text-sm text-accent-primary hover:text-accent-primary-hover transition-colors"
               >
                 <Calendar className="w-4 h-4" aria-hidden="true" />
                 <span>
@@ -356,14 +356,14 @@ function WatchlistFilmCard({
         <div className="flex flex-col gap-1 shrink-0">
           <button
             onClick={onMarkSeen}
-            className="p-2 rounded-lg text-text-tertiary hover:text-green-400 hover:bg-green-500/10 transition-colors"
+            className="p-2 rounded-lg text-text-tertiary hover:text-accent-success hover:bg-accent-success/10 transition-colors"
             title="Mark as seen"
           >
             <Eye className="w-4 h-4" aria-hidden="true" />
           </button>
           <button
             onClick={onRemove}
-            className="p-2 rounded-lg text-text-tertiary hover:text-red-400 hover:bg-red-500/10 transition-colors"
+            className="p-2 rounded-lg text-text-tertiary hover:text-accent-danger hover:bg-accent-danger/10 transition-colors"
             title="Remove from watchlist"
           >
             <Trash2 className="w-4 h-4" aria-hidden="true" />
@@ -413,7 +413,7 @@ function WatchlistFilmCard({
             {film.screenings.length > 10 && (
               <Link
                 href={`/film/${film.id}`}
-                className="block text-center text-sm text-accent-primary hover:text-accent-hover transition-colors py-2"
+                className="block text-center text-sm text-accent-primary hover:text-accent-primary-hover transition-colors py-2"
               >
                 View all {film.screenings.length} screenings
               </Link>
@@ -427,7 +427,7 @@ function WatchlistFilmCard({
 
 function SyncBanner({ onDismiss }: { onDismiss: () => void }) {
   return (
-    <div className="relative flex items-center gap-4 p-4 rounded-xl bg-gradient-to-r from-accent-primary/10 to-accent-secondary/10 border border-accent-primary/20">
+    <div className="relative flex items-center gap-4 p-4 rounded-xl bg-gradient-to-r from-accent-primary/10 to-accent-highlight/10 border border-accent-primary/20">
       <div className="flex-shrink-0 w-10 h-10 rounded-full bg-accent-primary/20 flex items-center justify-center">
         <Cloud className="w-5 h-5 text-accent-primary" aria-hidden="true" />
       </div>
@@ -440,7 +440,7 @@ function SyncBanner({ onDismiss }: { onDismiss: () => void }) {
         </p>
       </div>
       <SignInButton mode="modal">
-        <button className="flex-shrink-0 px-4 py-2 text-sm font-medium text-white bg-accent-primary hover:bg-accent-primary-hover rounded-lg transition-colors">
+        <button className="flex-shrink-0 px-4 py-2 text-sm font-medium text-text-inverse bg-accent-primary hover:bg-accent-primary-hover rounded-lg transition-colors">
           Sign In
         </button>
       </SignInButton>
@@ -495,8 +495,8 @@ function WatchlistSkeleton() {
               <div className="w-16 h-24 bg-background-tertiary rounded animate-pulse" />
               <div className="flex-1 space-y-2">
                 <div className="h-5 w-48 bg-background-tertiary rounded animate-pulse" />
-                <div className="h-4 w-32 bg-surface-muted rounded animate-pulse" />
-                <div className="h-4 w-40 bg-surface-muted rounded animate-pulse" />
+                <div className="h-4 w-32 bg-background-tertiary rounded animate-pulse" />
+                <div className="h-4 w-40 bg-background-tertiary rounded animate-pulse" />
               </div>
             </div>
           </div>
