@@ -5,6 +5,14 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-02-06: Watchlist Token Consistency
+**PR**: #86 | **Files**: `src/components/watchlist/watchlist-view.tsx`
+- Replaced hardcoded watchlist status/action colors (green/red utilities and `text-white`) with semantic design tokens.
+- Fixed invalid utility classes (`accent-hover`, `accent-secondary`) by switching to existing token classes.
+- Aligned watchlist CTA, section indicators, and action hover states to the same tokenized visual language used elsewhere.
+
+---
+
 ## 2026-02-06: Legal and Consent Token Consistency
 **PR**: #79 | **Files**: `src/app/terms/page.tsx`, `src/components/cookie-consent-banner.tsx`, `src/components/ui/badge.tsx`
 - Replaced remaining hardcoded legal/consent warning colors with design-system tokens.
