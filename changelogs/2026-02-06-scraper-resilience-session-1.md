@@ -1,6 +1,6 @@
 # Scraper Resilience - Session 1 Quick Wins
 
-**PR**: #76
+**PR**: #104
 **Date**: 2026-02-06
 
 ## Changes
