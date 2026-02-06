@@ -495,8 +495,8 @@ function WatchlistSkeleton() {
               <div className="w-16 h-24 bg-background-tertiary rounded animate-pulse" />
               <div className="flex-1 space-y-2">
                 <div className="h-5 w-48 bg-background-tertiary rounded animate-pulse" />
-                <div className="h-4 w-32 bg-surface-muted rounded animate-pulse" />
-                <div className="h-4 w-40 bg-surface-muted rounded animate-pulse" />
+                <div className="h-4 w-32 bg-background-tertiary rounded animate-pulse" />
+                <div className="h-4 w-40 bg-background-tertiary rounded animate-pulse" />
               </div>
             </div>
           </div>

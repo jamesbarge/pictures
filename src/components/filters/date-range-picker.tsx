@@ -213,7 +213,7 @@ export function DateRangePicker({ className }: DateRangePickerProps) {
           <div className="border-t border-border-subtle px-4 py-2 flex justify-end">
             <button
               onClick={() => setIsOpen(false)}
-              className="px-3 py-1.5 rounded-lg text-sm bg-accent-primary text-text-inverse hover:bg-accent-hover transition-colors"
+              className="px-3 py-1.5 rounded-lg text-sm bg-accent-primary text-text-inverse hover:bg-accent-primary-hover transition-colors"
             >
               Apply
             </button>

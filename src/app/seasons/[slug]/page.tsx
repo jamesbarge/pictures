@@ -249,7 +249,7 @@ export default async function SeasonPage({ params }: SeasonPageProps) {
               return (
                 <div
                   key={film.id}
-                  className="bg-background-card border border-border-subtle rounded-lg overflow-hidden"
+                  className="bg-background-secondary border border-border-subtle rounded-lg overflow-hidden"
                 >
                   <div className="flex">
                     {/* Poster */}
