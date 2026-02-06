@@ -5,6 +5,14 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-02-06: Fix Broken Accent Hover Tokens
+**PR**: #88 | **Files**: `src/app/film/[id]/not-found.tsx`, `src/components/filters/date-range-picker.tsx`
+- Replaced invalid `accent-hover` class usage with the defined `accent-primary-hover` token.
+- Restored intended hover feedback for the film not-found CTA and date-range picker apply action.
+- Keeps behavior unchanged while fixing missing visual state transitions in key navigation/filter flows.
+
+---
+
 ## 2026-02-06: Accessibility Semantics for Search and Reachable Inputs
 **PR**: #77 | **Files**: `src/components/search/search-dialog.tsx`, `src/components/layout/header-nav.tsx`, `src/app/reachable/reachable-page-client.tsx`, `src/components/filters/mobile-date-picker-modal.tsx`, `src/components/reachable/postcode-input.tsx`
 - Replaced clickable backdrop `<div>` elements with accessible button semantics in both search dialogs, including explicit dialog attributes (`role`, `aria-modal`, labels)
