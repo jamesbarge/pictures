@@ -6,7 +6,7 @@ When an entry is added here, also create a detailed file in /changelogs/
 -->
 
 ## 2026-02-06: Film Detail Initial Date Filter Derivation
-**PR**: TBD | **Files**: `src/components/film/film-screenings.tsx`
+**PR**: #101 | **Files**: `src/components/film/film-screenings.tsx`
 - Replaced effect-driven one-time date filter initialization with pure initial-state derivation from persisted global date filters.
 - Added a dedicated helper to compute restrictive selected-date pills from available film screening dates.
 - Preserved persisted time/date filter behavior while removing `setState` calls from effect setup.
