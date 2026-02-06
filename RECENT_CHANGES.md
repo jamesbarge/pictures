@@ -5,6 +5,14 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-02-06: Map Filter Local State Derivation
+**PR**: TBD | **Files**: `src/app/map/map-page-client.tsx`
+- Replaced effect-driven local map area synchronization with derived local draft state, removing synchronous `setState` calls inside effects.
+- Derived `hasChanges` from current draft vs persisted map area instead of maintaining separate effect-managed state.
+- Preserved map filter apply/cancel/clear behavior while reducing render cascade risk in the map flow.
+
+---
+
 ## 2026-02-06: Mobile Menu Scrim and Backdrop Accessibility
 **PR**: #92 | **Files**: `src/components/layout/header-nav-buttons.tsx`
 - Updated the mobile drawer backdrop from `bg-black/50` to `bg-black/60 backdrop-blur-sm` to match the app’s overlay depth treatment.
