@@ -103,14 +103,14 @@ export function DeadlinePicker({ value, onChange }: DeadlinePickerProps) {
 
   // Format selected time for display
   const formatSelectedTime = (date: Date) => {
-    const timeStr = format(date, "h:mm a");
+    const timeStr = format(date, "HH:mm");
     if (isToday(date)) {
       return `Today at ${timeStr}`;
     }
     if (isTomorrow(date)) {
       return `Tomorrow at ${timeStr}`;
     }
-    return format(date, "EEE d MMM 'at' h:mm a");
+    return format(date, "EEE d MMM 'at' HH:mm");
   };
 
   return (

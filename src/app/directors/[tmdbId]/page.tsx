@@ -272,7 +272,7 @@ export default async function DirectorPage({ params }: DirectorPageProps) {
               <Link
                 key={season.id}
                 href={`/seasons/${season.slug}`}
-                className="block bg-background-card border border-border-subtle rounded-lg p-4 hover:border-border-default transition-colors"
+                className="block bg-background-secondary border border-border-subtle rounded-lg p-4 hover:border-border-default transition-colors"
               >
                 <div className="flex items-start justify-between">
                   <div>
@@ -341,7 +341,7 @@ export default async function DirectorPage({ params }: DirectorPageProps) {
                       href={screening.bookingUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-4 bg-background-card border border-border-subtle rounded-lg p-3 hover:border-border-default transition-colors"
+                      className="flex items-center gap-4 bg-background-secondary border border-border-subtle rounded-lg p-3 hover:border-border-default transition-colors"
                     >
                       <div className="text-lg font-mono text-text-primary min-w-[50px]">
                         {format(screening.datetime, "HH:mm")}
@@ -378,7 +378,7 @@ export default async function DirectorPage({ params }: DirectorPageProps) {
             {tmdbData.directedFilms.slice(0, 12).map((film) => (
               <div
                 key={film.tmdbId}
-                className="bg-background-card rounded overflow-hidden"
+                className="bg-background-secondary rounded overflow-hidden"
               >
                 {film.posterPath ? (
                   <div className="relative w-full aspect-[2/3]">

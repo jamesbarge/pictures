@@ -64,7 +64,7 @@ function DateItem({ icon, label, date, endDate, isPassed, showTime = false }: Da
     }
   } else {
     formattedDate = showTime
-      ? format(date, "EEE d MMM, h:mm a")
+      ? format(date, "EEE d MMM, HH:mm")
       : format(date, "EEE d MMMM yyyy");
   }
 
