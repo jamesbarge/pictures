@@ -6,7 +6,7 @@ When an entry is added here, also create a detailed file in /changelogs/
 -->
 
 ## 2026-02-06: Calendar Card Prefetch Interaction Semantics
-**PR**: TBD | **Files**: `src/components/calendar/film-card.tsx`, `src/components/calendar/screening-card.tsx`
+**PR**: #93 | **Files**: `src/components/calendar/film-card.tsx`, `src/components/calendar/screening-card.tsx`
 - Moved prefetch hover/touch handlers off non-interactive card container elements and onto the actual interactive film links.
 - Preserved existing prefetch and analytics behavior for both poster and content click targets.
 - Reduced accessibility lint issues in core calendar card interactions without changing user-visible behavior.

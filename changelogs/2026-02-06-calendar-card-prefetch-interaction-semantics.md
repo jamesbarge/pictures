@@ -1,6 +1,6 @@
 # Calendar Card Prefetch Interaction Semantics
 
-**PR**: TBD
+**PR**: #93
 **Date**: 2026-02-06
 
 ## Changes
