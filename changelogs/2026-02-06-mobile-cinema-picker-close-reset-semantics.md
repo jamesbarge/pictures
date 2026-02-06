@@ -1,6 +1,6 @@
 # Mobile Cinema Picker Close-Reset Semantics
 
-**PR**: TBD
+**PR**: #98
 **Date**: 2026-02-06
 
 ## Changes

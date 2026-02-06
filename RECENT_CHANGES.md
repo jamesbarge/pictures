@@ -6,7 +6,7 @@ When an entry is added here, also create a detailed file in /changelogs/
 -->
 
 ## 2026-02-06: Mobile Cinema Picker Close-Reset Semantics
-**PR**: TBD | **Files**: `src/components/filters/mobile-cinema-picker-modal.tsx`
+**PR**: #98 | **Files**: `src/components/filters/mobile-cinema-picker-modal.tsx`
 - Removed effect-driven search reset on modal close and replaced it with an explicit close handler that resets local search state before closing.
 - Applied the shared close handler to both top-right close control and footer apply action.
 - Preserved filtering and selection behavior while eliminating a `setState`-in-effect warning in a mobile core flow.
