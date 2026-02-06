@@ -40,7 +40,7 @@ export default function Error({
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <button
             onClick={reset}
-            className="px-6 py-2.5 bg-accent-navy text-white rounded-lg hover:bg-accent-navy/90 transition-colors font-medium"
+            className="px-6 py-2.5 bg-accent-primary text-text-inverse rounded-lg hover:bg-accent-primary-hover transition-colors font-medium"
           >
             Try again
           </button>
@@ -56,7 +56,7 @@ export default function Error({
             <summary className="text-sm text-text-secondary cursor-pointer hover:text-text-primary">
               Error details
             </summary>
-            <pre className="mt-2 p-4 bg-background-secondary rounded-lg text-xs overflow-auto text-red-600">
+            <pre className="mt-2 p-4 bg-background-secondary rounded-lg text-xs overflow-auto text-accent-danger">
               {error.message}
               {error.stack && `\n\n${error.stack}`}
             </pre>
