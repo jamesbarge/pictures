@@ -1442,10 +1442,10 @@ function ShareFiltersButton({ fullWidth }: { fullWidth?: boolean } = {}) {
       variant="ghost"
       size="sm"
       onClick={handleShare}
-      leftIcon={copied ? <CheckCircle className="w-4 h-4 text-status-success" /> : <Share2 className="w-4 h-4" />}
+      leftIcon={copied ? <CheckCircle className="w-4 h-4 text-accent-success" /> : <Share2 className="w-4 h-4" />}
       className={cn(
         fullWidth ? "w-full justify-center" : undefined,
-        copied && "text-status-success"
+        copied && "text-accent-success"
       )}
     >
       {copied ? "Copied!" : "Share"}

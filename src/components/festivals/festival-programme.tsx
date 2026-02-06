@@ -76,7 +76,7 @@ export async function FestivalProgramme({ festivalId }: FestivalProgrammeProps) 
               {items.map(({ screening, film, cinema, festivalData }) => (
                 <div
                   key={screening.id}
-                  className="group relative bg-background-card border border-border-subtle rounded-lg overflow-hidden hover:border-border-emphasis transition-colors"
+                  className="group relative bg-background-secondary border border-border-subtle rounded-lg overflow-hidden hover:border-border-emphasis transition-colors"
                 >
                   <div className="aspect-[2/3] relative bg-background-tertiary">
                     {film.posterUrl && !film.posterUrl.includes('poster-placeholder') ? (

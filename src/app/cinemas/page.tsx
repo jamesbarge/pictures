@@ -152,7 +152,7 @@ export default async function CinemasPage() {
             <Link
               key={cinema.id}
               href={`/cinemas/${cinema.id}`}
-              className="block bg-background-card border border-border-subtle rounded-lg p-6 hover:border-border-default transition-colors"
+              className="block bg-background-secondary border border-border-subtle rounded-lg p-6 hover:border-border-default transition-colors"
             >
               <div className="flex justify-between items-start">
                 <div className="flex-1">

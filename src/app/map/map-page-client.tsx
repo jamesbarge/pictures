@@ -112,7 +112,7 @@ export function MapPageClient({ cinemas }: MapPageClientProps) {
               {localArea && (
                 <button
                   onClick={handleClear}
-                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-text-secondary hover:text-error-text transition-colors"
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-text-secondary hover:text-accent-danger transition-colors"
                 >
                   <X className="w-4 h-4" />
                   <span className="hidden sm:inline">Clear</span>

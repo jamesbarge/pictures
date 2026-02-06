@@ -47,7 +47,7 @@ export function ReachableResults({
         </h2>
         <p className="text-text-secondary text-sm max-w-md mx-auto">
           No screenings finish before{" "}
-          <span className="font-medium">{format(finishedByTime, "h:mm a")}</span>{" "}
+          <span className="font-medium">{format(finishedByTime, "HH:mm")}</span>{" "}
           that you can reach in time. Try a later deadline or different travel mode.
         </p>
         <p className="text-text-tertiary text-xs mt-4">
@@ -72,8 +72,8 @@ export function ReachableResults({
               <h2
                 className={cn(
                   "text-sm font-semibold uppercase tracking-wide",
-                  urgency === "leave_soon" && "text-error-text",
-                  urgency === "leave_within_hour" && "text-warning-text",
+                  urgency === "leave_soon" && "text-accent-danger",
+                  urgency === "leave_within_hour" && "text-accent-highlight",
                   urgency === "later" && "text-text-secondary"
                 )}
               >
@@ -138,8 +138,8 @@ function ReachableScreeningCard({
         <div
           className={cn(
             "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold mb-2",
-            urgency === "leave_soon" && "bg-error-surface text-error-text",
-            urgency === "leave_within_hour" && "bg-warning-surface text-warning-text",
+            urgency === "leave_soon" && "bg-accent-danger/10 text-accent-danger",
+            urgency === "leave_within_hour" && "bg-accent-highlight/15 text-accent-highlight-dark",
             urgency === "later" && "bg-accent-primary/10 text-accent-primary"
           )}
         >
@@ -163,7 +163,7 @@ function ReachableScreeningCard({
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-sm text-text-secondary">
           {/* Time */}
           <span className="font-medium text-text-primary">
-            {format(screeningTime, "h:mm a")}
+            {format(screeningTime, "HH:mm")}
           </span>
 
           {/* Cinema */}

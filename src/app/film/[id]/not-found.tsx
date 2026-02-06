@@ -20,7 +20,7 @@ export default function FilmNotFound() {
 
       <Link
         href="/"
-        className="inline-flex items-center gap-2 px-4 py-2 bg-accent-primary text-text-inverse font-medium rounded-lg hover:bg-accent-hover transition-colors"
+        className="inline-flex items-center gap-2 px-4 py-2 bg-accent-primary text-text-inverse font-medium rounded-lg hover:bg-accent-primary-hover transition-colors"
       >
         <ChevronLeft className="w-4 h-4" />
         Back to Calendar
