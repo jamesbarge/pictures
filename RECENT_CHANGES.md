@@ -5,11 +5,11 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
-## 2026-02-06: Film Detail Initial Date Filter Derivation
-**PR**: #101 | **Files**: `src/components/film/film-screenings.tsx`
-- Replaced effect-driven one-time date filter initialization with pure initial-state derivation from persisted global date filters.
-- Added a dedicated helper to compute restrictive selected-date pills from available film screening dates.
-- Preserved persisted time/date filter behavior while removing `setState` calls from effect setup.
+## 2026-02-06: Calendar View Hydration Filter-State Semantics
+**PR**: #100 | **Files**: `src/components/calendar/calendar-view.tsx`
+- Removed a synchronous hydration state update inside effect setup for film status persistence.
+- Kept hydration completion subscription logic intact so hide-seen/hide-not-interested behavior still activates after persisted state is ready.
+- Removed an unused `isIndependentCinema` import from the calendar view filter pipeline.
 
 ---
 
