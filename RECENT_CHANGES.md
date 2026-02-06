@@ -5,6 +5,14 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-02-06: Settings and Dropdown Keyboard Label Accessibility
+**PR**: TBD | **Files**: `src/components/settings/calendar-view-setting.tsx`, `src/components/ui/dropdown.tsx`
+- Added explicit `htmlFor`/`id` and accessible label metadata for calendar view radio options in settings.
+- Moved dropdown keyboard handlers from a non-interactive wrapper onto interactive trigger/listbox elements.
+- Preserved existing selection behavior and keyboard interactions while removing accessibility lint issues.
+
+---
+
 ## 2026-02-06: Mobile Menu Scrim and Backdrop Accessibility
 **PR**: #92 | **Files**: `src/components/layout/header-nav-buttons.tsx`
 - Updated the mobile drawer backdrop from `bg-black/50` to `bg-black/60 backdrop-blur-sm` to match the app’s overlay depth treatment.
