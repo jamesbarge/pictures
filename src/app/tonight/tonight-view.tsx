@@ -241,7 +241,7 @@ function TonightScreeningCard({ screening }: { screening: TonightScreening }) {
             filmId={film.id}
             cinemaName={cinema.name}
             datetime={datetime}
-            format={screening.format}
+            screeningFormat={screening.format}
             eventType={screening.eventType}
           />
         </div>
