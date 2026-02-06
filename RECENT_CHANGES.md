@@ -5,6 +5,14 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-02-06: Mobile Menu Scrim and Backdrop Accessibility
+**PR**: TBD | **Files**: `src/components/layout/header-nav-buttons.tsx`
+- Updated the mobile drawer backdrop from `bg-black/50` to `bg-black/60 backdrop-blur-sm` to match the app’s overlay depth treatment.
+- Replaced the clickable backdrop `<div>` with a semantic `button` including an explicit close label for assistive tech.
+- Preserved drawer open/close behavior while improving consistency and accessibility in core navigation.
+
+---
+
 ## 2026-02-06: Accessibility Semantics for Search and Reachable Inputs
 **PR**: #77 | **Files**: `src/components/search/search-dialog.tsx`, `src/components/layout/header-nav.tsx`, `src/app/reachable/reachable-page-client.tsx`, `src/components/filters/mobile-date-picker-modal.tsx`, `src/components/reachable/postcode-input.tsx`
 - Replaced clickable backdrop `<div>` elements with accessible button semantics in both search dialogs, including explicit dialog attributes (`role`, `aria-modal`, labels)
