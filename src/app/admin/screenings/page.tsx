@@ -124,7 +124,7 @@ export default async function AdminScreeningsPage({
         <div className="flex flex-wrap gap-4 items-center">
           {/* Cinema Filter */}
           <div className="flex-1 min-w-[200px]">
-            <label className="text-xs text-text-tertiary block mb-1">Cinema</label>
+            <p className="text-xs text-text-tertiary block mb-1">Cinema</p>
             <div className="flex flex-wrap gap-2">
               <FilterLink
                 href={`/admin/screenings${selectedDate ? `?date=${format(selectedDate, "yyyy-MM-dd")}` : ""}`}
@@ -146,7 +146,7 @@ export default async function AdminScreeningsPage({
 
           {/* Date Filter */}
           <div>
-            <label className="text-xs text-text-tertiary block mb-1">Date</label>
+            <p className="text-xs text-text-tertiary block mb-1">Date</p>
             <div className="flex flex-wrap gap-2">
               <FilterLink
                 href={`/admin/screenings${selectedCinema ? `?cinema=${selectedCinema}` : ""}`}
