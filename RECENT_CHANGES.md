@@ -6,7 +6,7 @@ When an entry is added here, also create a detailed file in /changelogs/
 -->
 
 ## 2026-02-06: Watchlist Token Consistency
-**PR**: TBD | **Files**: `src/components/watchlist/watchlist-view.tsx`
+**PR**: #86 | **Files**: `src/components/watchlist/watchlist-view.tsx`
 - Replaced hardcoded watchlist status/action colors (green/red utilities and `text-white`) with semantic design tokens.
 - Fixed invalid utility classes (`accent-hover`, `accent-secondary`) by switching to existing token classes.
 - Aligned watchlist CTA, section indicators, and action hover states to the same tokenized visual language used elsewhere.

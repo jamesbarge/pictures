@@ -1,6 +1,6 @@
 # Watchlist Token Consistency
 
-**PR**: TBD
+**PR**: #86
 **Date**: 2026-02-06
 
 ## Changes
