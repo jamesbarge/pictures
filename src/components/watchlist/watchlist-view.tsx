@@ -325,7 +325,7 @@ function WatchlistFilmCard({
             <div className="mt-2">
               <button
                 onClick={onToggleExpand}
-                className="inline-flex items-center gap-2 text-sm text-accent-primary hover:text-accent-hover transition-colors"
+                className="inline-flex items-center gap-2 text-sm text-accent-primary hover:text-accent-primary-hover transition-colors"
               >
                 <Calendar className="w-4 h-4" aria-hidden="true" />
                 <span>
@@ -413,7 +413,7 @@ function WatchlistFilmCard({
             {film.screenings.length > 10 && (
               <Link
                 href={`/film/${film.id}`}
-                className="block text-center text-sm text-accent-primary hover:text-accent-hover transition-colors py-2"
+                className="block text-center text-sm text-accent-primary hover:text-accent-primary-hover transition-colors py-2"
               >
                 View all {film.screenings.length} screenings
               </Link>
@@ -427,7 +427,7 @@ function WatchlistFilmCard({
 
 function SyncBanner({ onDismiss }: { onDismiss: () => void }) {
   return (
-    <div className="relative flex items-center gap-4 p-4 rounded-xl bg-gradient-to-r from-accent-primary/10 to-accent-secondary/10 border border-accent-primary/20">
+    <div className="relative flex items-center gap-4 p-4 rounded-xl bg-gradient-to-r from-accent-primary/10 to-accent-highlight/10 border border-accent-primary/20">
       <div className="flex-shrink-0 w-10 h-10 rounded-full bg-accent-primary/20 flex items-center justify-center">
         <Cloud className="w-5 h-5 text-accent-primary" aria-hidden="true" />
       </div>
@@ -495,8 +495,8 @@ function WatchlistSkeleton() {
               <div className="w-16 h-24 bg-background-tertiary rounded animate-pulse" />
               <div className="flex-1 space-y-2">
                 <div className="h-5 w-48 bg-background-tertiary rounded animate-pulse" />
-                <div className="h-4 w-32 bg-surface-muted rounded animate-pulse" />
-                <div className="h-4 w-40 bg-surface-muted rounded animate-pulse" />
+                <div className="h-4 w-32 bg-background-tertiary rounded animate-pulse" />
+                <div className="h-4 w-40 bg-background-tertiary rounded animate-pulse" />
               </div>
             </div>
           </div>
