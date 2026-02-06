@@ -5,6 +5,15 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-02-06: Legal and Consent Token Consistency
+**PR**: TBD | **Files**: `src/app/terms/page.tsx`, `src/components/cookie-consent-banner.tsx`, `src/components/ui/badge.tsx`
+- Replaced remaining hardcoded legal/consent warning colors with design-system tokens.
+- Updated cookie consent action and status states to use semantic token colors for primary, success, danger, and warning contexts.
+- Standardized shared `Badge` warning variant + removable hover surface to align with tokenized UI semantics.
+- Keeps legal and privacy-critical UI consistent with the rest of the app without changing behavior.
+
+---
+
 ## 2026-02-04: BFI PDF-First Resilience Path
 **PR**: #75 | **Files**: `src/inngest/functions.ts`, `src/scrapers/bfi-pdf/importer.ts`, `src/app/api/admin/bfi/status/route.ts`, `src/db/schema/bfi-import-runs.ts`
 - Routed BFI Inngest runs through the PDF + programme-changes importer so manual/admin runs no longer depend on Playwright availability
