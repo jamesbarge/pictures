@@ -9,6 +9,10 @@
     {
       "path": "/api/cron/posthog-sync",
       "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/health-check",
+      "schedule": "0 7 * * *"
     }
   ],
   "functions": {
