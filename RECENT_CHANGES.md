@@ -5,6 +5,14 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-02-06: Mobile Cinema Picker Close-Reset Semantics
+**PR**: TBD | **Files**: `src/components/filters/mobile-cinema-picker-modal.tsx`
+- Removed effect-driven search reset on modal close and replaced it with an explicit close handler that resets local search state before closing.
+- Applied the shared close handler to both top-right close control and footer apply action.
+- Preserved filtering and selection behavior while eliminating a `setState`-in-effect warning in a mobile core flow.
+
+---
+
 ## 2026-02-06: Mobile Menu Scrim and Backdrop Accessibility
 **PR**: #92 | **Files**: `src/components/layout/header-nav-buttons.tsx`
 - Updated the mobile drawer backdrop from `bg-black/50` to `bg-black/60 backdrop-blur-sm` to match the app’s overlay depth treatment.
