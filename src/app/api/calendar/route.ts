@@ -13,7 +13,7 @@
 import { NextRequest } from "next/server";
 import { db } from "@/db";
 import { screenings, films, cinemas } from "@/db/schema";
-import { eq, gte, and, inArray } from "drizzle-orm";
+import { eq, gte, and } from "drizzle-orm";
 
 function escapeIcal(text: string): string {
   return text

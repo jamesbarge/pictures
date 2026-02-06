@@ -38,8 +38,13 @@ export function AddToCalendarButton({
       cinema_name: cinemaName,
     });
 
-    // Trigger download by opening the API URL
-    window.open(`/api/calendar?screening=${screeningId}`, "_blank");
+    // Use a hidden anchor to trigger download (avoids popup blockers)
+    const a = document.createElement("a");
+    a.href = `/api/calendar?screening=${screeningId}`;
+    a.download = "";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
   if (compact) {

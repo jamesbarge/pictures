@@ -8,7 +8,7 @@
 
 import { useState, useCallback } from "react";
 import { Share2, Check } from "lucide-react";
-import { format } from "date-fns";
+import { format as formatDate } from "date-fns";
 import { cn } from "@/lib/cn";
 import { usePostHog } from "posthog-js/react";
 
@@ -17,7 +17,7 @@ interface ShareScreeningButtonProps {
   filmId: string;
   cinemaName: string;
   datetime: Date;
-  format?: string | null;
+  screeningFormat?: string | null;
   eventType?: string | null;
   /** Compact mode for use in screening cards (icon only) */
   compact?: boolean;
@@ -28,11 +28,11 @@ function buildShareText({
   filmTitle,
   cinemaName,
   datetime,
-  format: screeningFormat,
+  screeningFormat,
   eventType,
 }: Omit<ShareScreeningButtonProps, "filmId" | "compact" | "className">): string {
-  const dateStr = format(new Date(datetime), "EEE d MMM");
-  const timeStr = format(new Date(datetime), "HH:mm");
+  const dateStr = formatDate(new Date(datetime), "EEE d MMM");
+  const timeStr = formatDate(new Date(datetime), "HH:mm");
 
   const parts = [
     `${filmTitle} at ${cinemaName}`,
@@ -66,7 +66,7 @@ export function ShareScreeningButton({
   filmId,
   cinemaName,
   datetime,
-  format: screeningFormat,
+  screeningFormat,
   eventType,
   compact = false,
   className,
@@ -80,7 +80,7 @@ export function ShareScreeningButton({
     filmTitle,
     cinemaName,
     datetime,
-    format: screeningFormat,
+    screeningFormat,
     eventType,
   });
 
