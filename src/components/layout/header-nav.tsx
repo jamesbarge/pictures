@@ -44,6 +44,7 @@ export function HeaderNav() {
       <nav className="flex items-center gap-2">
         <button
           onClick={() => setSearchOpen(true)}
+          aria-label="Open search"
           className="p-2 rounded-lg hover:bg-surface-overlay-hover text-text-secondary hover:text-text-primary transition-colors"
           title="Search (⌘K)"
         >
@@ -52,6 +53,7 @@ export function HeaderNav() {
         <FilterButton filters={filters} />
         <Link
           href="/settings"
+          aria-label="Open settings"
           className="p-2 rounded-lg hover:bg-surface-overlay-hover text-text-secondary hover:text-text-primary transition-colors"
         >
           <Settings className="w-5 h-5" />
@@ -87,6 +89,7 @@ function FilterButton({ filters }: { filters: FilterState & { clearAllFilters: (
           filters.clearAllFilters();
         }
       }}
+      aria-label={activeCount > 0 ? "Clear filters" : "Filters"}
       className={cn(
         "p-2 rounded-lg hover:bg-surface-overlay-hover transition-colors",
         activeCount > 0
@@ -172,13 +175,20 @@ function SearchDialogContent({ onClose }: { onClose: () => void }) {
   return (
     <>
       {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
+      <button
+        type="button"
+        aria-label="Close search dialog"
+        className="overlay-scrim z-50"
         onClick={onClose}
       />
 
       {/* Dialog */}
-      <div className="fixed inset-x-4 top-[15%] sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:w-full sm:max-w-lg z-50">
+      <div
+        className="fixed inset-x-4 top-[15%] sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:w-full sm:max-w-lg z-50"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Search films"
+      >
         <div className="bg-background-secondary border border-border-default rounded-xl shadow-elevated overflow-hidden">
           {/* Search Input */}
           <div className="flex items-center gap-3 px-4 border-b border-border-subtle">
@@ -197,6 +207,8 @@ function SearchDialogContent({ onClose }: { onClose: () => void }) {
             )}
             <button
               onClick={onClose}
+              type="button"
+              aria-label="Close search"
               className="p-1 rounded-lg hover:bg-surface-overlay-hover text-text-tertiary hover:text-text-primary transition-colors"
             >
               <X className="w-5 h-5" />

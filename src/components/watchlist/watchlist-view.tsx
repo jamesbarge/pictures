@@ -199,7 +199,7 @@ export function WatchlistView({ films, screeningsByFilm }: WatchlistViewProps) {
       {currentlyShowing.length > 0 && (
         <section>
           <div className="flex items-center gap-2 mb-4">
-            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+            <div className="w-2 h-2 rounded-full bg-accent-success animate-pulse" />
             <h2 className="text-lg font-display text-text-primary">
               Currently Showing ({currentlyShowing.length})
             </h2>
@@ -356,14 +356,14 @@ function WatchlistFilmCard({
         <div className="flex flex-col gap-1 shrink-0">
           <button
             onClick={onMarkSeen}
-            className="p-2 rounded-lg text-text-tertiary hover:text-green-400 hover:bg-green-500/10 transition-colors"
+            className="p-2 rounded-lg text-text-tertiary hover:text-accent-success hover:bg-accent-success/10 transition-colors"
             title="Mark as seen"
           >
             <Eye className="w-4 h-4" aria-hidden="true" />
           </button>
           <button
             onClick={onRemove}
-            className="p-2 rounded-lg text-text-tertiary hover:text-red-400 hover:bg-red-500/10 transition-colors"
+            className="p-2 rounded-lg text-text-tertiary hover:text-accent-danger hover:bg-accent-danger/10 transition-colors"
             title="Remove from watchlist"
           >
             <Trash2 className="w-4 h-4" aria-hidden="true" />
@@ -440,7 +440,7 @@ function SyncBanner({ onDismiss }: { onDismiss: () => void }) {
         </p>
       </div>
       <SignInButton mode="modal">
-        <button className="flex-shrink-0 px-4 py-2 text-sm font-medium text-white bg-accent-primary hover:bg-accent-primary-hover rounded-lg transition-colors">
+        <button className="flex-shrink-0 px-4 py-2 text-sm font-medium text-text-inverse bg-accent-primary hover:bg-accent-primary-hover rounded-lg transition-colors">
           Sign In
         </button>
       </SignInButton>

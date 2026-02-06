@@ -357,7 +357,7 @@ const TableRow = memo(function TableRow({ row, isExpanded, onToggleExpand, ratin
             <span className="text-text-tertiary">•••</span>
           ) : rating ? (
             <span className="inline-flex items-center gap-0.5">
-              <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+              <Star className="w-3 h-3 fill-accent-highlight text-accent-highlight" />
               <span>{rating.toFixed(1)}</span>
             </span>
           ) : (
