@@ -5,6 +5,14 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-02-06: Error Surface Token Alignment
+**PR**: #80 | **Files**: `src/app/error.tsx`, `src/app/global-error.tsx`, `src/components/error-boundary.tsx`
+- Replaced hardcoded/hex color values in route, global, and component error fallbacks with semantic design tokens.
+- Aligned retry/home action styling and development error-detail colors to the shared token palette.
+- Keeps all error handling behavior intact while making fallback experiences visually consistent and theme-safe.
+
+---
+
 ## 2026-02-06: Calendar Status Overlay Token Consistency
 **PR**: #87 | **Files**: `src/components/calendar/film-status-overlay.tsx`, `src/components/calendar/film-status-buttons.tsx`
 - Updated compact watchlist/not-interested status controls to use semantic token classes instead of hardcoded white/neutral colors.

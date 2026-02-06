@@ -56,7 +56,7 @@ export default function Error({
             <summary className="text-sm text-text-secondary cursor-pointer hover:text-text-primary">
               Error details
             </summary>
-            <pre className="mt-2 p-4 bg-background-secondary rounded-lg text-xs overflow-auto text-red-600">
+            <pre className="mt-2 p-4 bg-background-secondary rounded-lg text-xs overflow-auto text-accent-danger">
               {error.message}
               {error.stack && `\n\n${error.stack}`}
             </pre>
