@@ -6,7 +6,7 @@ When an entry is added here, also create a detailed file in /changelogs/
 -->
 
 ## 2026-02-06: Calendar Loader Derived Auto-Load State
-**PR**: TBD | **Files**: `src/components/calendar/calendar-view-loader.tsx`
+**PR**: #99 | **Files**: `src/components/calendar/calendar-view-loader.tsx`
 - Removed effect-driven `setLoadState` updates tied to `dateTo` changes and replaced them with derived required-load calculations.
 - Kept user-triggered "load more" behavior intact via explicit manual load state.
 - Preserved query enabling behavior while eliminating a `setState`-in-effect warning in the core calendar loader.

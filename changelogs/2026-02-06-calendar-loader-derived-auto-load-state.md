@@ -1,6 +1,6 @@
 # Calendar Loader Derived Auto-Load State
 
-**PR**: TBD
+**PR**: #99
 **Date**: 2026-02-06
 
 ## Changes
