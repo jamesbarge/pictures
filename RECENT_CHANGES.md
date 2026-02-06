@@ -5,20 +5,13 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
-## 2026-02-06: Settings and Dropdown Keyboard Label Accessibility
-**PR**: #95 | **Files**: `src/components/settings/calendar-view-setting.tsx`, `src/components/ui/dropdown.tsx`
-- Added explicit `htmlFor`/`id` and accessible label metadata for calendar view radio options in settings.
-- Moved dropdown keyboard handlers from a non-interactive wrapper onto interactive trigger/listbox elements.
-- Preserved existing selection behavior and keyboard interactions while removing accessibility lint issues.
+## 2026-02-06: Calendar View Hydration Filter-State Semantics
+**PR**: #100 | **Files**: `src/components/calendar/calendar-view.tsx`
+- Removed a synchronous hydration state update inside effect setup for film status persistence.
+- Kept hydration completion subscription logic intact so hide-seen/hide-not-interested behavior still activates after persisted state is ready.
+- Removed an unused `isIndependentCinema` import from the calendar view filter pipeline.
 
 ---
-
-# Recent Changes
-
-<!--
-AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
-When an entry is added here, also create a detailed file in /changelogs/
--->
 
 ## 2026-02-06: AI Documentation Navigation Cleanup
 **PR**: #97 | **Files**: `AI_CONTEXT.md`, `CLAUDE.md`, `AGENTS.md`, `src/scrapers/SCRAPING_PLAYBOOK.md`, `RECENT_CHANGES.md`, `changelogs/README.md`, `.gitignore`
