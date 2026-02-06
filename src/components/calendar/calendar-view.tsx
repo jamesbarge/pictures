@@ -9,7 +9,7 @@ import { useMemo, useState, useEffect } from "react";
 import { startOfDay, endOfDay, format, isWithinInterval, getHours } from "date-fns";
 import { DaySection } from "./day-section";
 import { TableView } from "./table-view";
-import { useFilters, getTimeOfDayFromHour, isIndependentCinema } from "@/stores/filters";
+import { useFilters, getTimeOfDayFromHour } from "@/stores/filters";
 import { useFilmStatus } from "@/stores/film-status";
 import { usePreferences } from "@/stores/preferences";
 import { useHydrated } from "@/hooks/useHydrated";
@@ -88,8 +88,6 @@ export function CalendarView({ screenings }: CalendarViewProps) {
   // Track when film status storage has rehydrated so we can safely apply hide filters without flashing
   useEffect(() => {
     if (!filmStatusPersist?.onFinishHydration) return;
-    // Ensure we capture already-hydrated state
-    setFilmStatusesHydrated(filmStatusPersist.hasHydrated?.() ?? false);
     const unsub = filmStatusPersist.onFinishHydration(() => {
       setFilmStatusesHydrated(true);
     });
