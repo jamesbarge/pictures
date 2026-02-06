@@ -1,6 +1,6 @@
 # Legal and Consent Token Consistency
 
-**PR**: TBD
+**PR**: #79
 **Date**: 2026-02-06
 
 ## Changes
