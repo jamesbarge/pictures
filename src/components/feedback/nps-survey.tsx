@@ -16,19 +16,20 @@ import { cn } from "@/lib/cn";
 import { usePostHog } from "posthog-js/react";
 
 const NPS_STORAGE_KEY = "pictures-nps-state";
+const NPS_SESSION_KEY = "pictures-nps-session-counted";
 const MIN_SESSIONS_BEFORE_PROMPT = 5;
 const DAYS_BETWEEN_PROMPTS = 90;
 
 interface NpsState {
   lastPromptedAt: string | null;
   sessionCount: number;
-  dismissed: boolean;
+  permanentlyDismissed: boolean;
   responded: boolean;
 }
 
 function getNpsState(): NpsState {
   if (typeof window === "undefined") {
-    return { lastPromptedAt: null, sessionCount: 0, dismissed: false, responded: false };
+    return { lastPromptedAt: null, sessionCount: 0, permanentlyDismissed: false, responded: false };
   }
   try {
     const stored = localStorage.getItem(NPS_STORAGE_KEY);
@@ -36,7 +37,7 @@ function getNpsState(): NpsState {
   } catch {
     // Ignore parse errors
   }
-  return { lastPromptedAt: null, sessionCount: 0, dismissed: false, responded: false };
+  return { lastPromptedAt: null, sessionCount: 0, permanentlyDismissed: false, responded: false };
 }
 
 function setNpsState(state: NpsState): void {
@@ -59,17 +60,20 @@ export function NpsSurvey() {
   useEffect(() => {
     const state = getNpsState();
 
-    // Increment session count
-    state.sessionCount += 1;
-    setNpsState(state);
+    // Increment session count once per browser session (not per mount/navigation)
+    if (!sessionStorage.getItem(NPS_SESSION_KEY)) {
+      state.sessionCount += 1;
+      setNpsState(state);
+      sessionStorage.setItem(NPS_SESSION_KEY, "1");
+    }
 
-    // Don't show if already responded or recently dismissed
-    if (state.responded) return;
+    // Don't show if already responded or permanently dismissed
+    if (state.responded || state.permanentlyDismissed) return;
 
     // Don't show if not enough sessions
     if (state.sessionCount < MIN_SESSIONS_BEFORE_PROMPT) return;
 
-    // Don't show if recently prompted
+    // Don't show if recently prompted (covers both "ask later" dismissals and previous showings)
     if (state.lastPromptedAt) {
       const lastPrompted = new Date(state.lastPromptedAt);
       const daysSincePrompt = (Date.now() - lastPrompted.getTime()) / (1000 * 60 * 60 * 24);
@@ -85,14 +89,22 @@ export function NpsSurvey() {
     }, 15000); // 15 seconds after page load
 
     return () => clearTimeout(timer);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [posthog]);
 
-  const handleDismiss = useCallback(() => {
+  const handleAskLater = useCallback(() => {
     setVisible(false);
     const state = getNpsState();
-    state.dismissed = true;
+    // lastPromptedAt already set when shown — 90-day cooldown will apply
     setNpsState(state);
-    posthog.capture("nps_survey_dismissed");
+    posthog.capture("nps_survey_dismissed", { action: "ask_later" });
+  }, [posthog]);
+
+  const handleDontAskAgain = useCallback(() => {
+    setVisible(false);
+    const state = getNpsState();
+    state.permanentlyDismissed = true;
+    setNpsState(state);
+    posthog.capture("nps_survey_dismissed", { action: "dont_ask_again" });
   }, [posthog]);
 
   const handleSubmit = useCallback(() => {
@@ -137,9 +149,9 @@ export function NpsSurvey() {
                 </p>
               </div>
               <button
-                onClick={handleDismiss}
+                onClick={handleAskLater}
                 className="p-1 rounded-lg hover:bg-surface-overlay-hover text-text-tertiary hover:text-text-primary transition-colors -mt-1 -mr-1"
-                aria-label="Dismiss survey"
+                aria-label="Ask me later"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -196,6 +208,13 @@ export function NpsSurvey() {
                 </button>
               </div>
             )}
+
+            <button
+              onClick={handleDontAskAgain}
+              className="w-full text-center text-[11px] text-text-tertiary hover:text-text-secondary transition-colors mt-2"
+            >
+              Don&apos;t ask again
+            </button>
           </>
         )}
       </div>
