@@ -9,7 +9,7 @@
 
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { format, isSameDay, getHours, startOfDay, endOfDay } from "date-fns";
 import { MapPin, ExternalLink, Search, Filter } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -69,6 +69,33 @@ function formatScreeningDate(
 // Threshold: show filters when there are enough screenings to warrant filtering
 const FILTER_THRESHOLD = 5;
 
+function getInitialSelectedDates(
+  screenings: Screening[],
+  dateFrom: Date | null,
+  dateTo: Date | null
+): Date[] | null {
+  if (!dateFrom && !dateTo) {
+    return null;
+  }
+
+  const filmDates = screenings.map((s) => startOfDay(new Date(s.datetime)));
+  const uniqueDates = Array.from(new Set(filmDates.map((d) => d.getTime()))).map(
+    (t) => new Date(t)
+  );
+
+  const datesInRange = uniqueDates.filter((date) => {
+    if (dateFrom && date < startOfDay(dateFrom)) return false;
+    if (dateTo && date > endOfDay(dateTo)) return false;
+    return true;
+  });
+
+  if (datesInRange.length > 0 && datesInRange.length < uniqueDates.length) {
+    return datesInRange;
+  }
+
+  return null;
+}
+
 export function FilmScreenings({ screenings, film }: FilmScreeningsProps) {
   const posthog = usePostHog();
   const { isClientToday, isClientTomorrow } = useSafeDateLabels();
@@ -87,34 +114,12 @@ export function FilmScreenings({ screenings, film }: FilmScreeningsProps) {
     cinemaSearch: "",
     timeFrom: globalFilters.timeFrom,
     timeTo: globalFilters.timeTo,
-    selectedDates: null,
+    selectedDates: getInitialSelectedDates(
+      screenings,
+      globalFilters.dateFrom,
+      globalFilters.dateTo
+    ),
   });
-
-  // Initialize date filter from global date range
-  // This runs once when component mounts and converts dateFrom/dateTo to selectedDates
-  const [hasInitializedDates, setHasInitializedDates] = useState(false);
-  useEffect(() => {
-    if (!hasInitializedDates && (globalFilters.dateFrom || globalFilters.dateTo)) {
-      // Get available dates for this film
-      const filmDates = screenings.map((s) => startOfDay(new Date(s.datetime)));
-      const uniqueDates = Array.from(
-        new Set(filmDates.map((d) => d.getTime()))
-      ).map((t) => new Date(t));
-
-      // Filter to dates within the global range
-      const datesInRange = uniqueDates.filter((date) => {
-        if (globalFilters.dateFrom && date < startOfDay(globalFilters.dateFrom)) return false;
-        if (globalFilters.dateTo && date > endOfDay(globalFilters.dateTo)) return false;
-        return true;
-      });
-
-      if (datesInRange.length > 0 && datesInRange.length < uniqueDates.length) {
-        // Only set filter if it actually restricts the dates
-        setFilters((prev) => ({ ...prev, selectedDates: datesInRange }));
-      }
-      setHasInitializedDates(true);
-    }
-  }, [hasInitializedDates, globalFilters.dateFrom, globalFilters.dateTo, screenings]);
 
   // Track if user wants to ignore global filters on this page
   const [ignoreGlobalFilters, setIgnoreGlobalFilters] = useState(false);
