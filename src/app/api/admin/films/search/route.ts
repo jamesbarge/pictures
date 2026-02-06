@@ -4,16 +4,16 @@
  */
 
 import { NextRequest } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAdmin } from "@/lib/auth";
 import { db } from "@/db";
 import { films } from "@/db/schema";
 import { ilike, or, sql, asc } from "drizzle-orm";
 
 export async function GET(request: NextRequest) {
   // Verify admin auth
-  const { userId } = await auth();
-  if (!userId) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const admin = await requireAdmin();
+  if (admin instanceof Response) {
+    return admin;
   }
 
   const searchParams = request.nextUrl.searchParams;

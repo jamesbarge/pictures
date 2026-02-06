@@ -6,8 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
-import { ADMIN_EMAILS } from "@/components/posthog-provider";
+import { requireAdmin } from "@/lib/auth";
 import {
   healthCheck,
   getDashboardSummary,
@@ -20,8 +19,11 @@ import {
 
 export async function GET(request: NextRequest) {
   try {
-    // Require authentication
-    await requireAuth();
+    // Require admin authentication
+    const admin = await requireAdmin();
+    if (admin instanceof Response) {
+      return admin;
+    }
 
     const searchParams = request.nextUrl.searchParams;
     const type = searchParams.get("type") || "summary";

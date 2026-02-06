@@ -12,7 +12,7 @@
  */
 
 import { db } from "@/db";
-import { screenings, healthSnapshots } from "@/db/schema";
+import { screenings, healthSnapshots, cinemas } from "@/db/schema";
 import { eq, gte, and, sql, desc, count } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { addDays, differenceInHours, subDays } from "date-fns";
@@ -102,7 +102,7 @@ export async function getCinemaHealthMetrics(cinemaId: string): Promise<CinemaHe
       total: count(),
       next7d: sql<number>`COUNT(*) FILTER (WHERE ${screenings.datetime} < ${in7days})`,
       next14d: sql<number>`COUNT(*) FILTER (WHERE ${screenings.datetime} < ${in14days})`,
-      lastScraped: sql<Date>`MAX(${screenings.scrapedAt})`,
+      lastScrapedFromScreenings: sql<Date>`MAX(${screenings.scrapedAt})`,
     })
     .from(screenings)
     .where(
@@ -112,10 +112,20 @@ export async function getCinemaHealthMetrics(cinemaId: string): Promise<CinemaHe
       )
     );
 
+  // Freshness should use cinema-level lastScrapedAt so zero-result runs are still counted.
+  const [cinemaResult] = await db
+    .select({
+      lastScrapedAt: cinemas.lastScrapedAt,
+    })
+    .from(cinemas)
+    .where(eq(cinemas.id, canonicalId))
+    .limit(1);
+
   const totalFutureScreenings = Number(volumeResult?.total) || 0;
   const next7dScreenings = Number(volumeResult?.next7d) || 0;
   const next14dScreenings = Number(volumeResult?.next14d) || 0;
-  const lastScrapeAt = volumeResult?.lastScraped || null;
+  const lastScrapeAt =
+    cinemaResult?.lastScrapedAt || volumeResult?.lastScrapedFromScreenings || null;
 
   // Calculate hours since last scrape
   const hoursSinceLastScrape = lastScrapeAt

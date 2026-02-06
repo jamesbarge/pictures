@@ -8,6 +8,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 // Mock Clerk auth
 vi.mock("@clerk/nextjs/server", () => ({
   auth: vi.fn(),
+  currentUser: vi.fn(),
 }));
 
 // Mock database
@@ -40,11 +41,14 @@ vi.mock("@/db/schema", () => ({
   cinemas: { id: "id" },
 }));
 
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 
 describe("Cinema Config API", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(currentUser).mockResolvedValue({
+      emailAddresses: [{ emailAddress: "jdwbarge@gmail.com" }],
+    } as never);
   });
 
   afterEach(() => {

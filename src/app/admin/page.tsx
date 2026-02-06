@@ -1,311 +1,315 @@
 /**
- * Admin Health Overview Dashboard
- * Shows cinema status, scraper health, and system-wide metrics
- * Phase 1: Basic cinema status and screening counts
+ * Admin Operations Dashboard
+ *
+ * Operational view for scraper health and rapid interventions.
+ * Uses scraper-health service metrics (same logic as /api/admin/health)
+ * so statuses are consistent and auditable.
  */
 
-import { db } from "@/db";
-import { cinemas, screenings, festivals, festivalScreenings } from "@/db/schema";
-import { eq, gte, count, and, countDistinct, lte, asc } from "drizzle-orm";
-import { subDays, startOfDay, endOfDay, format, subWeeks } from "date-fns";
-import { Card, CardHeader, CardContent } from "@/components/ui/card";
-import {
-  CheckCircle,
-  AlertTriangle,
-  XCircle,
-  RefreshCw,
-  TrendingUp,
-  TrendingDown,
-  Minus,
-  Calendar,
-} from "lucide-react";
-import { cn } from "@/lib/cn";
 import Link from "next/link";
+import type { ReactNode } from "react";
+import { format } from "date-fns";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Clock3,
+  ShieldAlert,
+  Siren,
+  Activity,
+} from "lucide-react";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/cn";
+import { runFullHealthCheck, type CinemaHealthMetrics } from "@/lib/scraper-health";
+import { HEALTH_THRESHOLDS, ANOMALY_REASONS } from "@/db/schema/health-snapshots";
+import { RescanAllButton } from "./anomalies/components/rescan-all-button";
+import { ReScrapeButton } from "./anomalies/components/re-scrape-button";
 
 export const dynamic = "force-dynamic";
 
-// Status thresholds for cinema health
-type CinemaStatus = "healthy" | "warning" | "error";
+type DashboardStatus = "healthy" | "warning" | "critical";
 
-interface CinemaHealth {
-  id: string;
-  name: string;
-  shortName: string | null;
-  tier: "top" | "standard";
-  screeningCount: number;
-  lastWeekCount: number;
-  percentChange: number;
-  status: CinemaStatus;
+function getDashboardStatus(score: number): DashboardStatus {
+  if (score >= HEALTH_THRESHOLDS.HEALTHY_SCORE) return "healthy";
+  if (score >= HEALTH_THRESHOLDS.WARNING_SCORE) return "warning";
+  return "critical";
 }
 
-// Determine status based on screening count changes
-function getStatus(current: number, lastWeek: number, tier: "top" | "standard"): CinemaStatus {
-  if (current === 0) return "error";
-
-  const percentChange = lastWeek > 0
-    ? ((current - lastWeek) / lastWeek) * 100
-    : 0;
-
-  // Top tier cinemas (independents) are more sensitive
-  const threshold = tier === "top" ? 30 : 50;
-
-  if (percentChange < -threshold) return "warning";
-  return "healthy";
+function getStatusBadgeVariant(status: DashboardStatus): "success" | "warning" | "danger" {
+  if (status === "healthy") return "success";
+  if (status === "warning") return "warning";
+  return "danger";
 }
 
-// Independent cinemas are top tier
-const INDEPENDENT_CHAINS = ["independent", null];
+function formatLastScrape(metrics: CinemaHealthMetrics): { label: string; sublabel: string } {
+  if (!metrics.lastScrapeAt || metrics.hoursSinceLastScrape === null) {
+    return { label: "Never", sublabel: "No successful scrape recorded" };
+  }
+
+  return {
+    label: format(metrics.lastScrapeAt, "dd MMM HH:mm"),
+    sublabel: `${Math.round(metrics.hoursSinceLastScrape)}h ago`,
+  };
+}
+
+function reasonLabel(reason: string): string {
+  switch (reason) {
+    case ANOMALY_REASONS.CRITICAL_STALE:
+      return "Critically stale";
+    case ANOMALY_REASONS.WARNING_STALE:
+      return "Stale";
+    case ANOMALY_REASONS.ZERO_SCREENINGS:
+      return "Zero screenings";
+    case ANOMALY_REASONS.LOW_VOLUME:
+      return "Low volume";
+    case ANOMALY_REASONS.SUDDEN_DROP:
+      return "Sudden drop";
+    case ANOMALY_REASONS.PARSE_ERROR_SUSPECTED:
+      return "Parse issue suspected";
+    default:
+      return reason;
+  }
+}
+
+function sortByUrgency(metrics: CinemaHealthMetrics[]): CinemaHealthMetrics[] {
+  return [...metrics].sort((a, b) => {
+    if (a.isAnomaly !== b.isAnomaly) {
+      return a.isAnomaly ? -1 : 1;
+    }
+
+    if (a.overallHealthScore !== b.overallHealthScore) {
+      return a.overallHealthScore - b.overallHealthScore;
+    }
+
+    return a.cinemaName.localeCompare(b.cinemaName);
+  });
+}
+
+function formatChainComparison(metrics: CinemaHealthMetrics): string {
+  if (metrics.percentOfChainMedian === null || metrics.chainMedian === null) {
+    return "Independent/No peer baseline";
+  }
+
+  return `${Math.round(metrics.percentOfChainMedian)}% of chain median (${metrics.chainMedian})`;
+}
 
 export default async function AdminDashboard() {
+  const result = await runFullHealthCheck();
   const now = new Date();
-  const today = startOfDay(now);
-  const todayEnd = endOfDay(now);
-  const lastWeekSameDay = subWeeks(today, 1);
-  const lastWeekSameDayEnd = endOfDay(lastWeekSameDay);
-  const threeDaysAhead = endOfDay(subDays(now, -3));
 
-  // Fetch cinema data with screening counts (today and last week same day)
-  const cinemasWithStats = await db
-    .select({
-      id: cinemas.id,
-      name: cinemas.name,
-      shortName: cinemas.shortName,
-      chain: cinemas.chain,
-      isActive: cinemas.isActive,
-    })
-    .from(cinemas)
-    .where(eq(cinemas.isActive, true))
-    .orderBy(cinemas.name);
+  const orderedMetrics = sortByUrgency(result.metrics);
+  const staleCinemas = result.metrics.filter(
+    (metric) =>
+      metric.hoursSinceLastScrape !== null &&
+      metric.hoursSinceLastScrape >= HEALTH_THRESHOLDS.WARNING_STALE_HOURS
+  );
 
-  // Get screening counts for each cinema - today
-  const todayCounts = await db
-    .select({
-      cinemaId: screenings.cinemaId,
-      count: count(screenings.id),
-    })
-    .from(screenings)
-    .where(
-      and(
-        gte(screenings.datetime, today),
-        lte(screenings.datetime, todayEnd)
-      )
-    )
-    .groupBy(screenings.cinemaId);
+  const zeroScreeningCinemas = result.metrics.filter(
+    (metric) => metric.totalFutureScreenings === 0
+  );
 
-  // Get screening counts for last week same day
-  const lastWeekCounts = await db
-    .select({
-      cinemaId: screenings.cinemaId,
-      count: count(screenings.id),
-    })
-    .from(screenings)
-    .where(
-      and(
-        gte(screenings.datetime, lastWeekSameDay),
-        lte(screenings.datetime, lastWeekSameDayEnd)
-      )
-    )
-    .groupBy(screenings.cinemaId);
-
-  // Get upcoming screening counts (next 3 days)
-  const upcomingCounts = await db
-    .select({
-      cinemaId: screenings.cinemaId,
-      count: count(screenings.id),
-    })
-    .from(screenings)
-    .where(
-      and(
-        gte(screenings.datetime, now),
-        lte(screenings.datetime, threeDaysAhead)
-      )
-    )
-    .groupBy(screenings.cinemaId);
-
-  // Build cinema health data
-  const todayMap = new Map(todayCounts.map(c => [c.cinemaId, c.count]));
-  const lastWeekMap = new Map(lastWeekCounts.map(c => [c.cinemaId, c.count]));
-  const upcomingMap = new Map(upcomingCounts.map(c => [c.cinemaId, c.count]));
-
-  const cinemaHealth: CinemaHealth[] = cinemasWithStats.map(cinema => {
-    const tier = INDEPENDENT_CHAINS.includes(cinema.chain) ? "top" : "standard";
-    const current = todayMap.get(cinema.id) || 0;
-    const lastWeek = lastWeekMap.get(cinema.id) || 0;
-    const percentChange = lastWeek > 0
-      ? ((current - lastWeek) / lastWeek) * 100
-      : current > 0 ? 100 : 0;
-
-    return {
-      id: cinema.id,
-      name: cinema.name,
-      shortName: cinema.shortName,
-      tier,
-      screeningCount: upcomingMap.get(cinema.id) || 0,
-      lastWeekCount: lastWeek,
-      percentChange,
-      status: getStatus(current, lastWeek, tier),
-    };
-  });
-
-  // Sort by status (errors first) then by name
-  const sortedCinemas = cinemaHealth.sort((a, b) => {
-    const statusOrder = { error: 0, warning: 1, healthy: 2 };
-    if (statusOrder[a.status] !== statusOrder[b.status]) {
-      return statusOrder[a.status] - statusOrder[b.status];
-    }
-    return a.name.localeCompare(b.name);
-  });
-
-  // Calculate summary stats
-  const totalScreenings = upcomingCounts.reduce((sum, c) => sum + c.count, 0);
-  const healthyCinemas = cinemaHealth.filter(c => c.status === "healthy").length;
-  const warningCinemas = cinemaHealth.filter(c => c.status === "warning").length;
-  const errorCinemas = cinemaHealth.filter(c => c.status === "error").length;
-
-  // Get unique films count
-  const [filmStats] = await db
-    .select({
-      totalFilms: countDistinct(screenings.filmId),
-    })
-    .from(screenings)
-    .where(gte(screenings.datetime, now));
-
-  // Check for festivals needing attention
-  const activeFestivals = await db
-    .select({
-      id: festivals.id,
-      name: festivals.name,
-      slug: festivals.slug,
-      startDate: festivals.startDate,
-      endDate: festivals.endDate,
-    })
-    .from(festivals)
-    .where(
-      and(
-        eq(festivals.isActive, true),
-        gte(festivals.endDate, format(now, "yyyy-MM-dd"))
-      )
-    )
-    .orderBy(asc(festivals.startDate));
-
-  // Get screening counts per festival
-  const festivalCounts = await db
-    .select({
-      festivalId: festivalScreenings.festivalId,
-      count: count(festivalScreenings.screeningId),
-    })
-    .from(festivalScreenings)
-    .groupBy(festivalScreenings.festivalId);
-
-  const festivalCountMap = new Map(festivalCounts.map((f) => [f.festivalId, f.count]));
-
-  // Find festivals that are currently running or soon, with no screenings
-  const festivalsNeedingAttention = activeFestivals.filter((f) => {
-    const startDate = new Date(f.startDate);
-    const endDate = new Date(f.endDate);
-    const screeningCount = festivalCountMap.get(f.id) || 0;
-    const isRunning = now >= startDate && now <= endDate;
-    const startsWithinWeek = startDate > now && startDate <= subDays(now, -7);
-
-    return screeningCount === 0 && (isRunning || startsWithinWeek);
-  });
-
-  const runningFestivalsNeedingScraping = festivalsNeedingAttention.filter((f) => {
-    const startDate = new Date(f.startDate);
-    const endDate = new Date(f.endDate);
-    return now >= startDate && now <= endDate;
-  });
+  const criticalRows = orderedMetrics.filter(
+    (metric) => getDashboardStatus(metric.overallHealthScore) === "critical"
+  );
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <div>
-        <h1 className="text-2xl font-display text-text-primary">Health Overview</h1>
-        <p className="text-text-secondary mt-1">
-          Monitor cinema status and scraper health. Last checked: {format(now, "HH:mm")}
-        </p>
-      </div>
-
-      {/* Festival Alert Banner */}
-      {runningFestivalsNeedingScraping.length > 0 && (
-        <Link href="/admin/festivals">
-          <Card className="border-l-4 border-l-red-500 bg-red-500/5 hover:bg-red-500/10 transition-colors cursor-pointer">
-            <div className="p-4 flex items-center gap-4">
-              <Calendar className="w-6 h-6 text-red-500 shrink-0" />
-              <div className="flex-1">
-                <p className="font-medium text-text-primary">
-                  Festival Running Without Programme Data
-                </p>
-                <p className="text-sm text-text-secondary">
-                  {runningFestivalsNeedingScraping.map((f) => f.name).join(", ")} needs scraping
-                </p>
-              </div>
-              <span className="text-sm text-accent-primary">View Festivals →</span>
-            </div>
-          </Card>
-        </Link>
-      )}
-
-      {/* Summary Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <StatCard
-          label="Upcoming Screenings"
-          value={totalScreenings}
-          subtext="Next 3 days"
-        />
-        <StatCard
-          label="Unique Films"
-          value={filmStats?.totalFilms || 0}
-          subtext="With screenings"
-        />
-        <StatCard
-          label="Healthy Cinemas"
-          value={healthyCinemas}
-          total={cinemaHealth.length}
-          variant="success"
-        />
-        <StatCard
-          label="Issues Detected"
-          value={warningCinemas + errorCinemas}
-          subtext={`${warningCinemas} warnings, ${errorCinemas} errors`}
-          variant={errorCinemas > 0 ? "error" : warningCinemas > 0 ? "warning" : "default"}
-        />
-      </div>
-
-      {/* Cinema Health Grid */}
-      <div>
-        <h2 className="text-lg font-display text-text-primary mb-4">
-          Cinema Status
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {sortedCinemas.map(cinema => (
-            <CinemaCard key={cinema.id} cinema={cinema} />
-          ))}
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <h1 className="text-2xl font-display text-text-primary">Admin Operations</h1>
+          <p className="text-text-secondary mt-1">
+            Scraper health, freshness, and manual intervention controls. Refreshed at {format(now, "HH:mm")}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <RescanAllButton />
+          <Link href="/admin/anomalies">
+            <Button variant="secondary" size="sm">
+              <Siren className="w-4 h-4 mr-2" />
+              Review Anomalies
+            </Button>
+          </Link>
+          <Link href="/admin/screenings">
+            <Button variant="ghost" size="sm">
+              <Activity className="w-4 h-4 mr-2" />
+              Manage Screenings
+            </Button>
+          </Link>
         </div>
       </div>
 
-      {/* Quick Actions */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
+        <SummaryCard
+          label="Cinemas"
+          value={result.totalCinemas}
+          icon={<CheckCircle2 className="w-4 h-4" />}
+          tone="default"
+        />
+        <SummaryCard
+          label="Healthy"
+          value={result.healthyCinemas}
+          icon={<CheckCircle2 className="w-4 h-4" />}
+          tone="success"
+        />
+        <SummaryCard
+          label="Warning"
+          value={result.warnCinemas}
+          icon={<AlertTriangle className="w-4 h-4" />}
+          tone="warning"
+        />
+        <SummaryCard
+          label="Critical"
+          value={result.criticalCinemas}
+          icon={<ShieldAlert className="w-4 h-4" />}
+          tone="danger"
+        />
+        <SummaryCard
+          label="Stale >48h"
+          value={staleCinemas.length}
+          icon={<Clock3 className="w-4 h-4" />}
+          tone={staleCinemas.length > 0 ? "warning" : "default"}
+        />
+      </div>
+
+      {(criticalRows.length > 0 || zeroScreeningCinemas.length > 0) && (
+        <Card className="border-l-4 border-l-red-500 bg-red-500/5">
+          <CardHeader
+            heading="Immediate Attention"
+            subtitle="These cinemas are most likely to need intervention now"
+          />
+          <CardContent className="space-y-3">
+            {criticalRows.slice(0, 6).map((metric) => (
+              <div
+                key={metric.cinemaId}
+                className="flex flex-col gap-3 rounded-lg border border-border-subtle bg-background-secondary p-3 lg:flex-row lg:items-center lg:justify-between"
+              >
+                <div className="min-w-0">
+                  <p className="font-medium text-text-primary">{metric.cinemaName}</p>
+                  <p className="text-sm text-text-secondary">
+                    Score {metric.overallHealthScore} • {metric.totalFutureScreenings} future screenings • {formatChainComparison(metric)}
+                  </p>
+                  {metric.anomalyReasons.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {metric.anomalyReasons.map((reason) => (
+                        <Badge key={`${metric.cinemaId}-${reason}`} size="sm" variant="danger">
+                          {reasonLabel(reason)}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <ReScrapeButton cinemaId={metric.cinemaId} variant="secondary" />
+                  <Link href={`/admin/screenings?cinema=${metric.cinemaId}`}>
+                    <Button variant="ghost" size="sm">Open</Button>
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
-        <CardHeader heading="Quick Actions" />
+        <CardHeader
+          heading="Cinema Health Matrix"
+          subtitle="Status is computed from scraper freshness + volume scoring. Use Re-scrape to queue a run for one cinema."
+        />
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1120px] text-sm">
+              <thead className="bg-background-tertiary/60 border-y border-border-subtle">
+                <tr className="text-left">
+                  <th className="px-4 py-3 font-medium text-text-secondary">Cinema</th>
+                  <th className="px-4 py-3 font-medium text-text-secondary">Status</th>
+                  <th className="px-4 py-3 font-medium text-text-secondary">Health Score</th>
+                  <th className="px-4 py-3 font-medium text-text-secondary">Future Screenings</th>
+                  <th className="px-4 py-3 font-medium text-text-secondary">Last Scrape</th>
+                  <th className="px-4 py-3 font-medium text-text-secondary">Chain Comparison</th>
+                  <th className="px-4 py-3 font-medium text-text-secondary">Flags</th>
+                  <th className="px-4 py-3 font-medium text-text-secondary">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orderedMetrics.map((metric) => {
+                  const status = getDashboardStatus(metric.overallHealthScore);
+                  const lastScrape = formatLastScrape(metric);
+
+                  return (
+                    <tr
+                      key={metric.cinemaId}
+                      className={cn(
+                        "border-b border-border-subtle align-top",
+                        metric.isAnomaly && "bg-red-500/5"
+                      )}
+                    >
+                      <td className="px-4 py-3">
+                        <div>
+                          <p className="font-medium text-text-primary">{metric.cinemaName}</p>
+                          <p className="text-xs text-text-tertiary">{metric.cinemaId}</p>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge size="sm" variant={getStatusBadgeVariant(status)}>
+                          {status}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3">
+                        <p className="font-mono text-text-primary">{metric.overallHealthScore}</p>
+                        <p className="text-xs text-text-tertiary">
+                          Freshness {metric.freshnessScore} • Volume {metric.volumeScore}
+                        </p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <p className="font-mono text-text-primary">{metric.totalFutureScreenings}</p>
+                        <p className="text-xs text-text-tertiary">Next 7d: {metric.next7dScreenings}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <p className="text-text-primary">{lastScrape.label}</p>
+                        <p className="text-xs text-text-tertiary">{lastScrape.sublabel}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <p className="text-text-secondary">{formatChainComparison(metric)}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        {metric.anomalyReasons.length > 0 ? (
+                          <div className="flex flex-wrap gap-1.5">
+                            {metric.anomalyReasons.map((reason) => (
+                              <Badge key={`${metric.cinemaId}-flag-${reason}`} size="sm" variant="warning">
+                                {reasonLabel(reason)}
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-text-tertiary">No active flags</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <ReScrapeButton cinemaId={metric.cinemaId} variant="ghost" />
+                          <Link href={`/admin/screenings?cinema=${metric.cinemaId}`}>
+                            <Button variant="ghost" size="sm">View</Button>
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader heading="Health Rules" subtitle="Current thresholds used by scraper-health" />
         <CardContent>
-          <div className="flex flex-wrap gap-3">
-            <ActionButton
-              href="/admin/screenings"
-              icon={<RefreshCw className="w-4 h-4" />}
-              label="Browse Screenings"
-            />
-            <ActionButton
-              href="/admin/anomalies"
-              icon={<AlertTriangle className="w-4 h-4" />}
-              label="View Anomalies"
-              variant={errorCinemas > 0 ? "warning" : "default"}
-            />
-            <ActionButton
-              href="/admin/festivals"
-              icon={<Calendar className="w-4 h-4" />}
-              label="Festival Programmes"
-              variant={runningFestivalsNeedingScraping.length > 0 ? "warning" : "default"}
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
+            <RulePill label="Healthy score" value={`>= ${HEALTH_THRESHOLDS.HEALTHY_SCORE}`} />
+            <RulePill label="Warning score" value={`${HEALTH_THRESHOLDS.WARNING_SCORE}-${HEALTH_THRESHOLDS.HEALTHY_SCORE - 1}`} />
+            <RulePill label="Critical stale" value={`>= ${HEALTH_THRESHOLDS.CRITICAL_STALE_HOURS}h`} />
+            <RulePill label="Low chain volume" value={`< ${HEALTH_THRESHOLDS.WARNING_VOLUME_PERCENT}%`} />
           </div>
         </CardContent>
       </Card>
@@ -313,140 +317,42 @@ export default async function AdminDashboard() {
   );
 }
 
-// Stat Card Component
-function StatCard({
+function SummaryCard({
   label,
   value,
-  subtext,
-  total,
-  variant = "default",
+  icon,
+  tone,
 }: {
   label: string;
   value: number;
-  subtext?: string;
-  total?: number;
-  variant?: "default" | "success" | "warning" | "error";
+  icon: ReactNode;
+  tone: "default" | "success" | "warning" | "danger";
 }) {
-  const variantStyles = {
+  const toneStyles = {
     default: "",
     success: "border-l-4 border-l-green-500",
     warning: "border-l-4 border-l-yellow-500",
-    error: "border-l-4 border-l-red-500",
+    danger: "border-l-4 border-l-red-500",
   };
 
   return (
-    <Card className={cn(variantStyles[variant])}>
+    <Card className={toneStyles[tone]}>
       <div className="p-4">
-        <p className="text-sm text-text-secondary">{label}</p>
-        <p className="text-2xl font-mono text-text-primary mt-1">
-          {value.toLocaleString()}
-          {total && (
-            <span className="text-sm text-text-tertiary">/{total}</span>
-          )}
-        </p>
-        {subtext && (
-          <p className="text-xs text-text-tertiary mt-1">{subtext}</p>
-        )}
+        <div className="flex items-center gap-2 text-text-secondary">
+          {icon}
+          <span className="text-sm">{label}</span>
+        </div>
+        <p className="mt-2 text-2xl font-mono text-text-primary">{value}</p>
       </div>
     </Card>
   );
 }
 
-// Cinema Card Component
-function CinemaCard({ cinema }: { cinema: CinemaHealth }) {
-  const statusConfig = {
-    healthy: {
-      icon: <CheckCircle className="w-5 h-5 text-green-500" />,
-      border: "border-l-green-500",
-      bg: "bg-green-500/5",
-    },
-    warning: {
-      icon: <AlertTriangle className="w-5 h-5 text-yellow-500" />,
-      border: "border-l-yellow-500",
-      bg: "bg-yellow-500/5",
-    },
-    error: {
-      icon: <XCircle className="w-5 h-5 text-red-500" />,
-      border: "border-l-red-500",
-      bg: "bg-red-500/5",
-    },
-  };
-
-  const config = statusConfig[cinema.status];
-  const trendIcon = cinema.percentChange > 5 ? (
-    <TrendingUp className="w-4 h-4 text-green-500" />
-  ) : cinema.percentChange < -5 ? (
-    <TrendingDown className="w-4 h-4 text-red-500" />
-  ) : (
-    <Minus className="w-4 h-4 text-text-tertiary" />
-  );
-
+function RulePill({ label, value }: { label: string; value: string }) {
   return (
-    <Card className={cn("border-l-4", config.border, config.bg)}>
-      <div className="p-4">
-        <div className="flex items-start justify-between">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <h3 className="font-medium text-text-primary truncate">
-                {cinema.shortName || cinema.name}
-              </h3>
-              {cinema.tier === "top" && (
-                <span className="text-xs px-1.5 py-0.5 bg-accent-primary/10 text-accent-primary rounded">
-                  Top
-                </span>
-              )}
-            </div>
-            <p className="text-sm text-text-secondary mt-1">
-              {cinema.screeningCount} upcoming screenings
-            </p>
-          </div>
-          {config.icon}
-        </div>
-
-        <div className="mt-3 pt-3 border-t border-border-subtle flex items-center justify-between text-xs">
-          <span className="text-text-tertiary flex items-center gap-1">
-            {trendIcon}
-            <span>
-              {cinema.percentChange > 0 ? "+" : ""}
-              {cinema.percentChange.toFixed(0)}% vs last week
-            </span>
-          </span>
-          <Link
-            href={`/admin/screenings?cinema=${cinema.id}`}
-            className="text-accent-primary hover:underline"
-          >
-            View →
-          </Link>
-        </div>
-      </div>
-    </Card>
-  );
-}
-
-// Action Button Component
-function ActionButton({
-  href,
-  icon,
-  label,
-  variant = "default",
-}: {
-  href: string;
-  icon: React.ReactNode;
-  label: string;
-  variant?: "default" | "warning";
-}) {
-  return (
-    <Link
-      href={href}
-      className={cn(
-        "inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-        variant === "warning"
-          ? "bg-yellow-500/10 text-yellow-700 hover:bg-yellow-500/20"
-          : "bg-background-tertiary text-text-secondary hover:bg-background-hover hover:text-text-primary"
-      )}
-    >
-      {icon}
-      {label}
-    </Link>
+    <div className="rounded-lg border border-border-subtle bg-background-secondary px-3 py-2">
+      <p className="text-xs text-text-tertiary">{label}</p>
+      <p className="font-mono text-text-primary mt-1">{value}</p>
+    </div>
   );
 }

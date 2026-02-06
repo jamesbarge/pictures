@@ -8,6 +8,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 // Mock Clerk auth
 vi.mock("@clerk/nextjs/server", () => ({
   auth: vi.fn(),
+  currentUser: vi.fn(),
 }));
 
 // Mock Inngest
@@ -18,13 +19,16 @@ vi.mock("@/inngest/client", () => ({
   },
 }));
 
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 
 describe("POST /api/admin/scrape/all", () => {
   let POST: (request: Request) => Promise<Response>;
 
   beforeEach(async () => {
     vi.clearAllMocks();
+    vi.mocked(currentUser).mockResolvedValue({
+      emailAddresses: [{ emailAddress: "jdwbarge@gmail.com" }],
+    } as never);
     // Import fresh module
     const module = await import("./route");
     POST = module.POST;
@@ -43,6 +47,20 @@ describe("POST /api/admin/scrape/all", () => {
 
     const response = await POST(request);
     expect(response.status).toBe(401);
+  });
+
+  it("returns 403 for non-admin users", async () => {
+    vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as unknown as Awaited<ReturnType<typeof auth>>);
+    vi.mocked(currentUser).mockResolvedValue({
+      emailAddresses: [{ emailAddress: "someone@example.com" }],
+    } as never);
+
+    const request = new Request("http://localhost/api/admin/scrape/all", {
+      method: "POST",
+    });
+
+    const response = await POST(request);
+    expect(response.status).toBe(403);
   });
 
   it("queues all scrapers when authenticated", async () => {

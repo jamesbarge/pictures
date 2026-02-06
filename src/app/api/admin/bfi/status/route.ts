@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { requireAdmin } from "@/lib/auth";
 import { db } from "@/db";
 import { bfiImportRuns } from "@/db/schema";
 import { desc } from "drizzle-orm";
@@ -46,9 +46,9 @@ function nextWeeklyFullRun(now: Date): Date {
 }
 
 export async function GET() {
-  const { userId } = await auth();
-  if (!userId) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const admin = await requireAdmin();
+  if (admin instanceof Response) {
+    return admin;
   }
 
   try {

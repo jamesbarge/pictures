@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@clerk/nextjs/server", () => ({
   auth: vi.fn(),
+  currentUser: vi.fn(),
 }));
 
 const mockLimit = vi.fn();
@@ -27,12 +28,15 @@ vi.mock("drizzle-orm", () => ({
   desc: vi.fn((value) => value),
 }));
 
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { GET } from "./route";
 
 describe("GET /api/admin/bfi/status", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(currentUser).mockResolvedValue({
+      emailAddresses: [{ emailAddress: "jdwbarge@gmail.com" }],
+    } as never);
   });
 
   it("returns 401 when unauthenticated", async () => {

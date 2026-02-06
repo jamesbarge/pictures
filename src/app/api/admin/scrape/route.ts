@@ -4,7 +4,7 @@
  * POST /api/admin/scrape
  */
 
-import { auth } from "@clerk/nextjs/server";
+import { requireAdmin } from "@/lib/auth";
 import { inngest } from "@/inngest/client";
 import {
   getCinemaById,
@@ -18,9 +18,9 @@ const CINEMA_TO_SCRAPER = getCinemaToScraperMap();
 
 export async function POST(request: Request) {
   // Verify admin auth
-  const { userId } = await auth();
-  if (!userId) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const admin = await requireAdmin();
+  if (admin instanceof Response) {
+    return admin;
   }
 
   try {
@@ -61,7 +61,7 @@ export async function POST(request: Request) {
       data: {
         cinemaId: inngestCinemaId,
         scraperId,
-        triggeredBy: userId,
+        triggeredBy: admin.userId,
       },
     });
 

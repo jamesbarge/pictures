@@ -1,10 +1,11 @@
 /**
  * Admin Layout
  * Provides sidebar navigation and authentication wrapper for all /admin/* routes
- * Protected by Clerk middleware - only authenticated users can access
+ * Protected by middleware and server-side admin check
  */
 
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { SafeUserButton as UserButton } from "@/components/clerk-components-safe";
 import {
   LayoutDashboard,
@@ -18,6 +19,7 @@ import {
   ClipboardCheck,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { requireAdmin } from "@/lib/auth";
 
 interface NavItem {
   href: string;
@@ -77,11 +79,20 @@ const navItems: NavItem[] = [
   },
 ];
 
-export default function AdminLayout({
+export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // Defense in depth: ensure all /admin pages require admin privileges.
+  const admin = await requireAdmin();
+  if (admin instanceof Response) {
+    if (admin.status === 401) {
+      redirect("/sign-in");
+    }
+    redirect("/");
+  }
+
   return (
     <div className="min-h-screen bg-background-primary flex">
       {/* Sidebar */}

@@ -5,6 +5,16 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-02-06: Admin Ops Dashboard + Admin Auth Hardening
+**PR**: TBD | **Files**: `src/app/admin/page.tsx`, `src/lib/auth.ts`, `src/middleware.ts`, `src/app/api/admin/*`, `src/lib/scraper-health/index.ts`
+- Rebuilt `/admin` into an operations dashboard that surfaces real scraper-health metrics and lets admins re-scrape individual cinemas directly from the health matrix.
+- Fixed admin access control so `/api/admin/*` now enforces admin allowlist checks (not just signed-in users), and added server-side admin guard in admin layout for defense in depth.
+- Corrected health freshness truthfulness by using `cinemas.lastScrapedAt` (with fallback) so zero-result runs no longer look falsely stale.
+- Fixed admin screening update validation/runtime issues (`cinemaId` validation mismatch and writes to non-existent manual-edit columns).
+- Added/updated admin API tests for hardened auth path and refreshed lint ignores for local `.tmp-*` scripts that were failing CI lint runs.
+
+---
+
 ## 2026-02-06: Align Agent Documentation Process
 **PR**: TBD | **Files**: `AGENTS.md`, `CLAUDE.md`
 - Added a mandatory documentation-navigation process to `AGENTS.md` with canonical rule ownership and read order.
