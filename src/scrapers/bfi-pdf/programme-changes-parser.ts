@@ -21,6 +21,23 @@ import type { RawScreening } from "../types";
 import type { CheerioAPI, CheerioSelection } from "../utils/cheerio-types";
 
 /**
+ * Attempt a fetch with retry on failure (for proxy calls that have transient errors).
+ * Retries once after a 2-second delay.
+ */
+async function fetchWithRetry(url: string, options?: RequestInit, label = "proxy"): Promise<Response> {
+  try {
+    const response = await fetch(url, options);
+    if (response.ok || response.status < 500) return response;
+    // Server error — worth retrying
+    console.log(`[BFI-Changes] ${label} returned ${response.status}, retrying in 2s...`);
+  } catch (error) {
+    console.log(`[BFI-Changes] ${label} failed: ${error instanceof Error ? error.message : error}, retrying in 2s...`);
+  }
+  await new Promise((resolve) => setTimeout(resolve, 2000));
+  return fetch(url, options);
+}
+
+/**
  * Fetches a URL, optionally through a proxy service.
  */
 async function proxyFetch(url: string): Promise<Response> {
@@ -36,7 +53,7 @@ async function proxyFetch(url: string): Promise<Response> {
     proxyUrl.searchParams.set("url", url);
 
     console.log(`[BFI-Changes] Using ScraperAPI proxy for: ${url.slice(0, 60)}...`);
-    return fetch(proxyUrl.toString());
+    return fetchWithRetry(proxyUrl.toString(), undefined, "ScraperAPI changes proxy");
   }
 
   return fetch(url, {

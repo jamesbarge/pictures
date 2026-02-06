@@ -159,6 +159,16 @@ When an entry is added here, also create a detailed file in /changelogs/
 
 ---
 
+## 2026-02-06: Scraper Resilience - Session 1 Quick Wins
+**PR**: #104 | **Files**: `src/scrapers/pipeline.ts`, `src/scrapers/runner-factory.ts`, `src/scrapers/bfi-pdf/fetcher.ts`, `src/scrapers/bfi-pdf/programme-changes-parser.ts`
+- Fixed blocked scrapes silently reporting as success — added explicit `blocked` flag to PipelineResult
+- Added jitter to exponential backoff to prevent thundering herd on concurrent retries
+- Added `fetchWithRetry()` to BFI PDF fetcher and programme changes parser for ScraperAPI resilience
+- Wired `recordScraperRun()` into all 5 runner exit paths with baseline anomaly detection
+- Created self-improvement notes system (`tasks/lessons.md`, `tasks/scraper-lessons.md`)
+
+---
+
 ## 2026-02-04: BFI PDF-First Resilience Path
 **PR**: #75 | **Files**: `src/inngest/functions.ts`, `src/scrapers/bfi-pdf/importer.ts`, `src/app/api/admin/bfi/status/route.ts`, `src/db/schema/bfi-import-runs.ts`
 - Routed BFI Inngest runs through the PDF + programme-changes importer so manual/admin runs no longer depend on Playwright availability

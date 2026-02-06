@@ -16,6 +16,23 @@ import * as cheerio from "cheerio";
 import { createHash } from "crypto";
 
 /**
+ * Attempt a fetch with retry on failure (for proxy calls that have transient errors).
+ * Retries once after a 2-second delay.
+ */
+async function fetchWithRetry(url: string, options?: RequestInit, label = "proxy"): Promise<Response> {
+  try {
+    const response = await fetch(url, options);
+    if (response.ok || response.status < 500) return response;
+    // Server error — worth retrying
+    console.log(`[BFI-PDF] ${label} returned ${response.status}, retrying in 2s...`);
+  } catch (error) {
+    console.log(`[BFI-PDF] ${label} failed: ${error instanceof Error ? error.message : error}, retrying in 2s...`);
+  }
+  await new Promise((resolve) => setTimeout(resolve, 2000));
+  return fetch(url, options);
+}
+
+/**
  * Fetches a URL, optionally through a proxy service.
  * Uses ScraperAPI if SCRAPER_API_KEY is set, otherwise direct fetch.
  */
@@ -50,7 +67,7 @@ async function proxyFetch(url: string, options: RequestInit = {}): Promise<Respo
       const proxyUrl = new URL("https://api.scraperapi.com/");
       proxyUrl.searchParams.set("api_key", trimmedKey);
       proxyUrl.searchParams.set("url", url);
-      return fetch(proxyUrl.toString());
+      return fetchWithRetry(proxyUrl.toString(), undefined, "ScraperAPI PDF proxy");
     }
 
     // Return the failed response
@@ -70,13 +87,13 @@ async function proxyFetch(url: string, options: RequestInit = {}): Promise<Respo
     console.log(`[BFI-PDF] Using ScraperAPI proxy for: ${url.slice(0, 60)}...`);
 
 
-    return fetch(proxyUrl.toString(), {
+    return fetchWithRetry(proxyUrl.toString(), {
       ...options,
       // ScraperAPI handles headers, but we can pass some through
       headers: {
         ...options.headers,
       },
-    });
+    }, "ScraperAPI HTML proxy");
   }
 
   // Direct fetch with browser-like headers

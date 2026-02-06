@@ -28,12 +28,13 @@ import { linkFilmToMatchingSeasons } from "./seasons/season-linker";
 // Agent imports - conditionally used when ENABLE_AGENTS=true
 const AGENTS_ENABLED = process.env.ENABLE_AGENTS === "true";
 
-interface PipelineResult {
+export interface PipelineResult {
   cinemaId: string;
   added: number;
   updated: number;
   failed: number;
   rejected: number;  // Validation failures
+  blocked: boolean;  // True when scrape was blocked by diff check
   scrapedAt: Date;
 }
 
@@ -142,6 +143,7 @@ export async function processScreenings(
         updated: 0,
         failed: rawScreenings.length,
         rejected: rejectedScreenings.length,
+        blocked: true,
         scrapedAt: new Date(),
       };
     }
@@ -156,6 +158,7 @@ export async function processScreenings(
     updated: 0,
     failed: 0,
     rejected: rejectedScreenings.length,
+    blocked: false,
     scrapedAt: new Date(),
   };
 
