@@ -244,7 +244,7 @@ export default async function CinemaPage({ params }: CinemaPageProps) {
                       href={screening.bookingUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="block bg-background-card border border-border-subtle rounded-lg p-4 hover:border-border-default transition-colors"
+                      className="block bg-background-secondary border border-border-subtle rounded-lg p-4 hover:border-border-default transition-colors"
                     >
                       <div className="flex gap-4">
                         {/* Time */}
