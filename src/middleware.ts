@@ -36,11 +36,12 @@ export default async function middleware(request: NextRequest) {
     "@clerk/nextjs/server"
   );
 
-  const isAdminRoute = createRouteMatcher(["/admin(.*)"]);
+  const isAdminPage = createRouteMatcher(["/admin(.*)"]);
+  const isAdminApi = createRouteMatcher(["/api/admin(.*)"]);
 
   return clerkMiddleware(async (auth, req) => {
-    // Protect admin routes - require sign-in AND admin email
-    if (isAdminRoute(req)) {
+    // Protect admin pages - require sign-in AND admin email
+    if (isAdminPage(req)) {
       const { userId } = await auth.protect({
         unauthenticatedUrl: new URL("/sign-in", req.url).toString(),
       });
@@ -54,6 +55,20 @@ export default async function middleware(request: NextRequest) {
       if (!isAdmin) {
         // Redirect non-admin users to home page
         return NextResponse.redirect(new URL("/", req.url));
+      }
+    }
+
+    // Protect admin API routes - require sign-in AND admin email
+    if (isAdminApi(req)) {
+      const { userId } = await auth.protect();
+
+      const client = await clerkClient();
+      const user = await client.users.getUser(userId);
+      const userEmails = user.emailAddresses.map((e) => e.emailAddress);
+      const isAdmin = userEmails.some((email) => ADMIN_EMAILS.includes(email));
+
+      if (!isAdmin) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
     }
   })(request, {} as never);

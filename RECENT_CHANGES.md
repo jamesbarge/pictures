@@ -5,6 +5,16 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-02-04: Admin BFI Import Endpoint
+**PR**: #81 | **Files**: `src/app/api/admin/bfi-import/route.ts`, `src/middleware.ts`
+- New admin endpoint to manually trigger BFI PDF imports
+- Full import: `POST /api/admin/bfi-import` (parses monthly PDF + changes)
+- Changes only: `POST /api/admin/bfi-import?changesOnly=true` (faster)
+- GET endpoint returns usage info and scheduled job details
+- Uses shared auth helpers and admin-only guards on `/api/admin/*`
+
+---
+
 ## 2026-02-06: Normalize Frontend Tokens and Time Format
 **PR**: #76 | **Files**: `src/app/error.tsx`, `src/app/global-error.tsx`, `src/components/reachable/reachable-results.tsx`, `src/components/reachable/postcode-input.tsx`, `src/components/watchlist/watchlist-view.tsx`
 - Replaced undefined Tailwind/token classes with existing design-system tokens across high-traffic pages (cinemas, directors, seasons, watchlist, map, reachable, and error surfaces)
