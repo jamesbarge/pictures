@@ -5,6 +5,14 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-02-06: Admin Modal Scrim Consistency
+**PR**: TBD | **Files**: `src/app/admin/cinemas/components/cinema-config-modal.tsx`, `src/app/admin/screenings/components/screening-form-modal.tsx`
+- Standardized admin modal backdrops from `bg-black/50` to `bg-black/60 backdrop-blur-sm`.
+- Aligned cinema config and screening form dialogs to the same overlay depth treatment used in other overlays.
+- Preserved all modal interaction behavior (close-on-backdrop, focus/flow) while improving visual consistency.
+
+---
+
 ## 2026-02-04: Admin BFI Import Endpoint
 **PR**: #81 | **Files**: `src/app/api/admin/bfi-import/route.ts`, `src/middleware.ts`
 - New admin endpoint to manually trigger BFI PDF imports
