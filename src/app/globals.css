@@ -574,6 +574,11 @@ body,
   outline-offset: var(--focus-ring-offset);
 }
 
+/* Shared backdrop scrim for modal/drawer overlays */
+.overlay-scrim {
+  @apply fixed inset-0 bg-black/60 backdrop-blur-sm;
+}
+
 /* Editorial card surface */
 .card-surface {
   background: var(--background-secondary);

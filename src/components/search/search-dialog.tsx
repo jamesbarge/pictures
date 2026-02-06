@@ -142,7 +142,7 @@ export function SearchDialog() {
       <button
         type="button"
         aria-label="Close search dialog"
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
+        className="overlay-scrim z-50"
         onClick={() => setIsOpen(false)}
       />
 
