@@ -13,6 +13,77 @@ When an entry is added here, also create a detailed file in /changelogs/
 
 ---
 
+## 2026-02-06: Accessibility Semantics for Search and Reachable Inputs
+**PR**: #77 | **Files**: `src/components/search/search-dialog.tsx`, `src/components/layout/header-nav.tsx`, `src/app/reachable/reachable-page-client.tsx`, `src/components/filters/mobile-date-picker-modal.tsx`, `src/components/reachable/postcode-input.tsx`
+- Replaced clickable backdrop `<div>` elements with accessible button semantics in both search dialogs, including explicit dialog attributes (`role`, `aria-modal`, labels)
+- Added explicit accessible labels for header nav icon actions and search close controls to improve screen reader clarity
+- Reworked reachable input headings into grouped `fieldset/legend` structures and added an explicit postcode input aria label
+- Associated mobile custom time labels with select controls via `htmlFor`/`id` to remove orphaned label semantics
+- Preserved behavior while reducing high-impact a11y lint issues in core discovery flows
+
+---
+
+## 2026-02-06: Calendar Listing Hierarchy and Token Alignment
+**PR**: #78 | **Files**: `src/components/calendar/screening-card.tsx`, `src/components/calendar/table-view.tsx`, `src/components/film/status-toggle.tsx`, `src/components/error-boundary.tsx`, `src/app/globals.css`
+- Unified calendar and status UI color semantics to design-system tokens (removed hardcoded amber/pink/gray/red treatment in core user-facing components)
+- Tightened visual hierarchy in screening cards and table view spacing for better scanability in dense listing contexts
+- Refined availability badges and repertory/format chips to use consistent surface/border treatments across cards
+- Updated shared error-boundary visuals to match app token palette for coherent fallback experiences
+
+---
+
+## 2026-02-06: Error Surface Token Alignment
+**PR**: #80 | **Files**: `src/app/error.tsx`, `src/app/global-error.tsx`, `src/components/error-boundary.tsx`
+- Replaced hardcoded/hex color values in route, global, and component error fallbacks with semantic design tokens.
+- Aligned retry/home action styling and development error-detail colors to the shared token palette.
+- Keeps all error handling behavior intact while making fallback experiences visually consistent and theme-safe.
+
+---
+
+## 2026-02-06: Calendar Status Overlay Token Consistency
+**PR**: #87 | **Files**: `src/components/calendar/film-status-overlay.tsx`, `src/components/calendar/film-status-buttons.tsx`
+- Updated compact watchlist/not-interested status controls to use semantic token classes instead of hardcoded white/neutral colors.
+- Standardized active and hover states for calendar status overlays while preserving existing interaction behavior and contrast.
+- Aligned overlay status styling with shared status tokens (`status-not-interested`, `accent-danger`).
+
+---
+
+## 2026-02-06: Watchlist Token Consistency
+**PR**: #86 | **Files**: `src/components/watchlist/watchlist-view.tsx`
+- Replaced hardcoded watchlist status/action colors (green/red utilities and `text-white`) with semantic design tokens.
+- Fixed invalid utility classes (`accent-hover`, `accent-secondary`) by switching to existing token classes.
+- Aligned watchlist CTA, section indicators, and action hover states to the same tokenized visual language used elsewhere.
+
+---
+
+## 2026-02-06: Legal and Consent Token Consistency
+**PR**: #79 | **Files**: `src/app/terms/page.tsx`, `src/components/cookie-consent-banner.tsx`, `src/components/ui/badge.tsx`
+- Replaced remaining hardcoded legal/consent warning colors with design-system tokens.
+- Updated cookie consent action and status states to use semantic token colors for primary, success, danger, and warning contexts.
+- Standardized shared `Badge` warning variant + removable hover surface to align with tokenized UI semantics.
+- Keeps legal and privacy-critical UI consistent with the rest of the app without changing behavior.
+
+---
+
+## 2026-02-04: Admin BFI Import Endpoint
+**PR**: #81 | **Files**: `src/app/api/admin/bfi-import/route.ts`, `src/middleware.ts`
+- New admin endpoint to manually trigger BFI PDF imports
+- Full import: `POST /api/admin/bfi-import` (parses monthly PDF + changes)
+- Changes only: `POST /api/admin/bfi-import?changesOnly=true` (faster)
+- GET endpoint returns usage info and scheduled job details
+- Uses shared auth helpers and admin-only guards on `/api/admin/*`
+
+---
+
+## 2026-02-06: Normalize Frontend Tokens and Time Format
+**PR**: #76 | **Files**: `src/app/error.tsx`, `src/app/global-error.tsx`, `src/components/reachable/reachable-results.tsx`, `src/components/reachable/postcode-input.tsx`, `src/components/watchlist/watchlist-view.tsx`
+- Replaced undefined Tailwind/token classes with existing design-system tokens across high-traffic pages (cinemas, directors, seasons, watchlist, map, reachable, and error surfaces)
+- Converted remaining user-facing 12-hour reachable/festival time labels to the project-standard 24-hour format
+- Standardized critical and warning color usage to `accent-*` tokens for consistent urgency semantics and reduced visual drift
+- Removed mixed hardcoded hex values from global error UI so fallback screens now inherit the shared theme system
+
+---
+
 ## 2026-02-04: BFI PDF-First Resilience Path
 **PR**: #75 | **Files**: `src/inngest/functions.ts`, `src/scrapers/bfi-pdf/importer.ts`, `src/app/api/admin/bfi/status/route.ts`, `src/db/schema/bfi-import-runs.ts`
 - Routed BFI Inngest runs through the PDF + programme-changes importer so manual/admin runs no longer depend on Playwright availability

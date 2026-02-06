@@ -51,9 +51,9 @@ interface ScreeningCardProps {
 }
 
 const AVAILABILITY_CONFIG: Record<string, { label: string; bgClass: string; textClass: string }> = {
-  sold_out: { label: "Sold Out", bgClass: "bg-accent-danger/90", textClass: "text-white" },
-  low: { label: "Low Availability", bgClass: "bg-amber-500/90", textClass: "text-white" },
-  returns: { label: "Returns Only", bgClass: "bg-accent-gold/90", textClass: "text-black" },
+  sold_out: { label: "Sold Out", bgClass: "bg-accent-danger/90", textClass: "text-text-inverse" },
+  low: { label: "Low Availability", bgClass: "bg-accent-highlight-dark/90", textClass: "text-text-inverse" },
+  returns: { label: "Returns Only", bgClass: "bg-accent-highlight/90", textClass: "text-text-primary" },
 };
 
 function AvailabilityBadge({ status }: { status: AvailabilityStatus }): React.ReactElement | null {
@@ -111,7 +111,7 @@ export const ScreeningCard = memo(function ScreeningCard({ screening }: Screenin
   return (
     <article
       className={cn(
-        "group relative flex flex-col rounded overflow-hidden cursor-pointer h-full",
+        "group relative flex flex-col rounded-xl overflow-hidden cursor-pointer h-full",
         "bg-background-secondary border border-border-subtle",
         // Refined hover state - subtle lift with warm shadow
         "hover:border-accent-primary/30 hover:shadow-card-hover",
@@ -183,7 +183,7 @@ export const ScreeningCard = memo(function ScreeningCard({ screening }: Screenin
       {/* Content - Compact below poster */}
       <Link
         href={`/film/${film.id}`}
-        className="flex flex-col flex-1 p-2 focus:outline-none"
+        className="flex flex-col flex-1 p-2.5 focus:outline-none"
         onClick={trackCardClick}
       >
         {/* Time and Cinema row */}
@@ -199,12 +199,12 @@ export const ScreeningCard = memo(function ScreeningCard({ screening }: Screenin
             {cinema.shortName || cinema.name}
           </span>
           {film.isRepertory && !isRepertoryFilterActive && (
-            <span className="px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide rounded bg-white/10 text-text-secondary">
+            <span className="px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide rounded bg-background-tertiary border border-border-subtle text-text-secondary">
               rep
             </span>
           )}
           {specialFormat && (
-            <span className="px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide rounded bg-white/10 text-text-secondary">
+            <span className="px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide rounded bg-background-tertiary border border-border-subtle text-text-secondary">
               {specialFormat}
             </span>
           )}

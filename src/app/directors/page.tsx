@@ -207,7 +207,7 @@ function DirectorCard({ director, muted }: DirectorCardProps) {
   return (
     <Link
       href={`/directors/${director.directorTmdbId}`}
-      className={`flex items-center gap-4 bg-background-card border border-border-subtle rounded-lg p-4 hover:border-border-default transition-colors ${
+      className={`flex items-center gap-4 bg-background-secondary border border-border-subtle rounded-lg p-4 hover:border-border-default transition-colors ${
         muted ? "opacity-70" : ""
       }`}
     >
