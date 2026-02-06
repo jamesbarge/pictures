@@ -5,15 +5,15 @@
  * POST /api/admin/agents/health
  */
 
-import { auth } from "@clerk/nextjs/server";
+import { requireAdmin } from "@/lib/auth";
 
 export const maxDuration = 60;
 
 export async function POST() {
   // Verify admin auth
-  const { userId } = await auth();
-  if (!userId) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const admin = await requireAdmin();
+  if (admin instanceof Response) {
+    return admin;
   }
 
   // Check for API key before importing agent

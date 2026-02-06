@@ -11,6 +11,7 @@ const mockCreate = vi.fn();
 // Mock Clerk auth
 vi.mock("@clerk/nextjs/server", () => ({
   auth: vi.fn(),
+  currentUser: vi.fn(),
 }));
 
 // Mock Anthropic SDK with a proper class
@@ -47,13 +48,16 @@ vi.mock("@/db", () => ({
   },
 }));
 
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 
 describe("POST /api/admin/anomalies/verify", () => {
   let POST: (request: Request) => Promise<Response>;
 
   beforeEach(async () => {
     vi.clearAllMocks();
+    vi.mocked(currentUser).mockResolvedValue({
+      emailAddresses: [{ emailAddress: "jdwbarge@gmail.com" }],
+    } as never);
     // Import fresh module
     const module = await import("./route");
     POST = module.POST;

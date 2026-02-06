@@ -4,7 +4,7 @@
  * DELETE - Remove a screening
  */
 
-import { auth } from "@clerk/nextjs/server";
+import { requireAdmin } from "@/lib/auth";
 import { db } from "@/db";
 import { screenings, films, cinemas } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -18,7 +18,7 @@ interface RouteParams {
 // Zod schema for PUT - full update
 const updateScreeningSchema = z.object({
   filmId: z.string().uuid().optional(),
-  cinemaId: z.string().uuid().optional(),
+  cinemaId: z.string().min(1).optional(),
   datetime: z.string().datetime().optional(),
   bookingUrl: z.string().url().optional(),
   format: z.string().nullable().optional(),
@@ -38,9 +38,9 @@ const patchScreeningSchema = z.object({
 export async function PUT(request: Request, { params }: RouteParams) {
   try {
     // Verify admin auth
-    const { userId } = await auth();
-    if (!userId) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    const admin = await requireAdmin();
+    if (admin instanceof Response) {
+      return admin;
     }
 
     const { id: screeningId } = await params;
@@ -92,9 +92,6 @@ export async function PUT(request: Request, { params }: RouteParams) {
     // Build update object with only provided fields
     const updateData: Record<string, unknown> = {
       updatedAt: new Date(),
-      // Mark as manually edited to protect from scraper overwrites
-      manuallyEdited: true,
-      editedAt: new Date(),
     };
 
     if (body.filmId) updateData.filmId = body.filmId;
@@ -127,9 +124,9 @@ export async function PUT(request: Request, { params }: RouteParams) {
 export async function PATCH(request: Request, { params }: RouteParams) {
   try {
     // Verify admin auth
-    const { userId } = await auth();
-    if (!userId) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    const admin = await requireAdmin();
+    if (admin instanceof Response) {
+      return admin;
     }
 
     const { id: screeningId } = await params;
@@ -155,8 +152,6 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     // Build update object
     const updateData: Record<string, unknown> = {
       updatedAt: new Date(),
-      manuallyEdited: true,
-      editedAt: new Date(),
     };
 
     // Only update fields that are explicitly provided
@@ -180,9 +175,9 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
 export async function DELETE(request: Request, { params }: RouteParams) {
   // Verify admin auth
-  const { userId } = await auth();
-  if (!userId) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const admin = await requireAdmin();
+  if (admin instanceof Response) {
+    return admin;
   }
 
   const { id: screeningId } = await params;

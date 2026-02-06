@@ -6,7 +6,7 @@
  * PUT /api/admin/cinemas/[id]/config - Update config
  */
 
-import { auth } from "@clerk/nextjs/server";
+import { requireAdmin } from "@/lib/auth";
 import { db } from "@/db";
 import { cinemaBaselines, cinemas } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -43,9 +43,9 @@ const DEFAULT_CONFIG = {
 
 export async function GET(request: Request, { params }: RouteParams) {
   // Verify admin auth
-  const { userId } = await auth();
-  if (!userId) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const admin = await requireAdmin();
+  if (admin instanceof Response) {
+    return admin;
   }
 
   const { id: cinemaId } = await params;
@@ -96,9 +96,9 @@ export async function GET(request: Request, { params }: RouteParams) {
 export async function PUT(request: Request, { params }: RouteParams) {
   try {
     // Verify admin auth
-    const { userId } = await auth();
-    if (!userId) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    const admin = await requireAdmin();
+    if (admin instanceof Response) {
+      return admin;
     }
 
     const { id: cinemaId } = await params;

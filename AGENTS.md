@@ -2,8 +2,9 @@
 London cinema calendar app (Pictures) that scrapes screening data from cinemas across London and displays it in a unified calendar view. We cover all cinemas with a special focus on independent venues. Production: https://pictures.london
 
 ## Documentation Entry Points
-- Start with `AI_CONTEXT.md` for task routing and high-signal docs.
-- Canonical rules live in `AGENTS.md` (this file).
+- Start with `AI_CONTEXT.md` for task routing and high-signal docs when present.
+- `AGENTS.md` is canonical; if any other file conflicts with it, follow this file.
+- Keep `CLAUDE.md` as a concise compatibility shim that points back to `AGENTS.md`.
 - Scraper operational notes live in `src/scrapers/SCRAPING_PLAYBOOK.md`.
 - Recent context is in `RECENT_CHANGES.md`; full history is in `changelogs/`.
 

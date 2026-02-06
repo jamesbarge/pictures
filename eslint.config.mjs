@@ -40,6 +40,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Local one-off analysis scripts
+    ".tmp-*.js",
   ]),
   // Rule overrides - temporarily downgrade problematic rules to warnings
   // TODO: Fix these issues incrementally and remove these overrides

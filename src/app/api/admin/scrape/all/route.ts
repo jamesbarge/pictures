@@ -5,7 +5,7 @@
  * POST /api/admin/scrape/all
  */
 
-import { auth } from "@clerk/nextjs/server";
+import { requireAdmin } from "@/lib/auth";
 import { inngest } from "@/inngest/client";
 import { getActiveCinemas, getInngestCinemaId } from "@/config/cinema-registry";
 
@@ -72,13 +72,13 @@ function buildScrapeAllEvents(triggeredBy: string) {
 
 export async function POST() {
   // Verify admin auth
-  const { userId } = await auth();
-  if (!userId) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const admin = await requireAdmin();
+  if (admin instanceof Response) {
+    return admin;
   }
 
   try {
-    const { events, queuedCinemas } = buildScrapeAllEvents(userId);
+    const { events, queuedCinemas } = buildScrapeAllEvents(admin.userId);
 
     // Send all events to Inngest
     const { ids } = await inngest.send(events);

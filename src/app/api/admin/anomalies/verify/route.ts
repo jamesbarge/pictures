@@ -7,7 +7,7 @@
  * Uses Haiku first for speed, escalates to Sonnet if confidence < 0.7
  */
 
-import { auth } from "@clerk/nextjs/server";
+import { requireAdmin } from "@/lib/auth";
 import Anthropic from "@anthropic-ai/sdk";
 import { db } from "@/db";
 import { cinemas, screenings } from "@/db/schema";
@@ -32,9 +32,9 @@ interface VerifyResponse {
 
 export async function POST(request: Request) {
   // Verify admin auth
-  const { userId } = await auth();
-  if (!userId) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const admin = await requireAdmin();
+  if (admin instanceof Response) {
+    return admin;
   }
 
   try {

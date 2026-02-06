@@ -8,15 +8,15 @@
  * Requires Clerk authentication
  */
 
-import { auth } from "@clerk/nextjs/server";
+import { requireAdmin } from "@/lib/auth";
 import { runFullHealthCheck, getRecentHealthSnapshots, getCinemaHealthMetrics } from "@/lib/scraper-health";
 import { HEALTH_THRESHOLDS } from "@/db/schema/health-snapshots";
 
 export async function GET(request: Request) {
   // Verify admin auth
-  const { userId } = await auth();
-  if (!userId) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const admin = await requireAdmin();
+  if (admin instanceof Response) {
+    return admin;
   }
 
   const url = new URL(request.url);

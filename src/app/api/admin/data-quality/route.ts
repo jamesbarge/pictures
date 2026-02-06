@@ -6,16 +6,16 @@
  * POST /api/admin/data-quality  (trigger fallback enrichment)
  */
 
-import { auth } from "@clerk/nextjs/server";
+import { requireAdmin } from "@/lib/auth";
 import { auditFilmData } from "@/scripts/audit-film-data";
 import { NextRequest } from "next/server";
 
 export const maxDuration = 60;
 
 export async function GET(request: NextRequest) {
-  const { userId } = await auth();
-  if (!userId) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const admin = await requireAdmin();
+  if (admin instanceof Response) {
+    return admin;
   }
 
   const upcomingOnly = request.nextUrl.searchParams.get("upcomingOnly") === "true";
@@ -35,9 +35,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST() {
-  const { userId } = await auth();
-  if (!userId) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const admin = await requireAdmin();
+  if (admin instanceof Response) {
+    return admin;
   }
 
   if (!process.env.ANTHROPIC_API_KEY) {

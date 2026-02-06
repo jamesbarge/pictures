@@ -8,6 +8,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 // Mock Clerk auth
 vi.mock("@clerk/nextjs/server", () => ({
   auth: vi.fn(),
+  currentUser: vi.fn(),
 }));
 
 // Mock the agents
@@ -17,7 +18,7 @@ vi.mock("@/agents", () => ({
   enrichUnmatchedFilms: vi.fn(),
 }));
 
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import {
   verifySampleOfUpcomingLinks,
   runHealthCheckAllCinemas,
@@ -31,6 +32,9 @@ describe("Agent API Routes", () => {
     vi.clearAllMocks();
     // Set API key so routes don't return "not configured" error
     process.env.ANTHROPIC_API_KEY = "test-api-key";
+    vi.mocked(currentUser).mockResolvedValue({
+      emailAddresses: [{ emailAddress: "jdwbarge@gmail.com" }],
+    } as never);
   });
 
   afterEach(() => {

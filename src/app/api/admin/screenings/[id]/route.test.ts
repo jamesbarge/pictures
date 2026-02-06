@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 
 // Mock database - must be defined inside vi.mock for hoisting
 vi.mock("@/db", () => {
@@ -51,6 +51,9 @@ function createParams(id = "test-screening-id"): { params: Promise<{ id: string 
 describe("Admin Screenings API", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(currentUser).mockResolvedValue({
+      emailAddresses: [{ emailAddress: "jdwbarge@gmail.com" }],
+    } as never);
     // Reset db mock to return existing screening
     mockLimit.mockResolvedValue([{ id: "test-screening-id" }]);
   });
