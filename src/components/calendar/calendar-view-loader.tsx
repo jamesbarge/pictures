@@ -86,7 +86,7 @@ async function fetchMoreScreenings({
 
 export function CalendarViewWithLoader({ initialScreenings }: CalendarViewWithLoaderProps) {
   // Track load state (0 = initial 3 days, 1 = week 1 complete, 2-4 = additional weeks)
-  const [loadState, setLoadState] = useState(0);
+  const [manualLoadState, setManualLoadState] = useState(0);
   const maxLoadState = 4; // Up to 4 weeks (28 days)
 
   // Ref for the infinite scroll sentinel element
@@ -107,33 +107,28 @@ export function CalendarViewWithLoader({ initialScreenings }: CalendarViewWithLo
   // URL filter sync - handles all filter params including festival
   useUrlFilters();
 
-  // Auto-load more weeks when dateTo extends beyond currently loaded data
-  useEffect(() => {
-    if (!dateTo) return;
-
+  const requiredLoadState = useMemo(() => {
+    if (!dateTo) return 0;
     const today = startOfDay(new Date());
     const daysUntilDateTo = differenceInDays(startOfDay(dateTo), today);
 
-    // Calculate required loadState based on days needed
-    // loadState 0 = 3 days, 1 = 7 days, 2 = 14 days, 3 = 21 days, 4 = 28 days
-    let requiredState: number;
     if (daysUntilDateTo <= 3) {
-      requiredState = 0;
+      return 0;
     } else if (daysUntilDateTo <= 7) {
-      requiredState = 1;
+      return 1;
     } else if (daysUntilDateTo <= 14) {
-      requiredState = 2;
+      return 2;
     } else if (daysUntilDateTo <= 21) {
-      requiredState = 3;
+      return 3;
     } else {
-      requiredState = 4;
+      return 4;
     }
+  }, [dateTo]);
 
-    // Only increase loadState, never decrease (user might have manually loaded more)
-    if (requiredState > loadState && requiredState <= maxLoadState) {
-      setLoadState(requiredState);
-    }
-  }, [dateTo, loadState, maxLoadState]);
+  const loadState = Math.min(
+    maxLoadState,
+    Math.max(manualLoadState, requiredLoadState)
+  );
 
   // Include festival and season in query key so React Query refetches when filter changes
   const festivalKey = festivalSlug || "all";
@@ -227,9 +222,9 @@ export function CalendarViewWithLoader({ initialScreenings }: CalendarViewWithLo
 
   const handleLoadMore = useCallback(() => {
     if (canLoadMore && !isLoading) {
-      setLoadState((s) => s + 1);
+      setManualLoadState((s) => Math.min(maxLoadState, s + 1));
     }
-  }, [canLoadMore, isLoading]);
+  }, [canLoadMore, isLoading, maxLoadState]);
 
   // Infinite scroll: observe sentinel element
   useEffect(() => {
