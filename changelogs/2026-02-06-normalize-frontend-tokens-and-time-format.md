@@ -1,6 +1,6 @@
 # Normalize Frontend Tokens and Time Format
 
-**PR**: TBD
+**PR**: #76
 **Date**: 2026-02-06
 
 ## Changes
