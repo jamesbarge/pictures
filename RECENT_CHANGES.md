@@ -5,6 +5,14 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-02-06: Watchlist Token Consistency
+**PR**: TBD | **Files**: `src/components/watchlist/watchlist-view.tsx`
+- Replaced hardcoded watchlist status/action colors (green/red utilities and `text-white`) with semantic design tokens.
+- Fixed invalid utility classes (`accent-hover`, `accent-secondary`) by switching to existing token classes.
+- Aligned watchlist CTA, section indicators, and action hover states to the same tokenized visual language used elsewhere.
+
+---
+
 ## 2026-02-04: BFI PDF-First Resilience Path
 **PR**: #75 | **Files**: `src/inngest/functions.ts`, `src/scrapers/bfi-pdf/importer.ts`, `src/app/api/admin/bfi/status/route.ts`, `src/db/schema/bfi-import-runs.ts`
 - Routed BFI Inngest runs through the PDF + programme-changes importer so manual/admin runs no longer depend on Playwright availability
