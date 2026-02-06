@@ -27,6 +27,8 @@ export function CalendarViewSetting() {
   return (
     <div className="space-y-3">
       <label
+        htmlFor="calendar-view-mode-films"
+        aria-label="Film view"
         className={cn(
           "flex items-start gap-3 p-4 rounded-lg border cursor-pointer transition-colors",
           calendarViewMode === "films"
@@ -35,6 +37,7 @@ export function CalendarViewSetting() {
         )}
       >
         <input
+          id="calendar-view-mode-films"
           type="radio"
           name="calendarViewMode"
           value="films"
@@ -52,6 +55,8 @@ export function CalendarViewSetting() {
       </label>
 
       <label
+        htmlFor="calendar-view-mode-screenings"
+        aria-label="Screening view"
         className={cn(
           "flex items-start gap-3 p-4 rounded-lg border cursor-pointer transition-colors",
           calendarViewMode === "screenings"
@@ -60,6 +65,7 @@ export function CalendarViewSetting() {
         )}
       >
         <input
+          id="calendar-view-mode-screenings"
           type="radio"
           name="calendarViewMode"
           value="screenings"
@@ -76,6 +82,8 @@ export function CalendarViewSetting() {
       </label>
 
       <label
+        htmlFor="calendar-view-mode-table"
+        aria-label="Table view"
         className={cn(
           "flex items-start gap-3 p-4 rounded-lg border cursor-pointer transition-colors",
           calendarViewMode === "table"
@@ -84,6 +92,7 @@ export function CalendarViewSetting() {
         )}
       >
         <input
+          id="calendar-view-mode-table"
           type="radio"
           name="calendarViewMode"
           value="table"
