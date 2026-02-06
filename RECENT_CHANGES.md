@@ -13,6 +13,33 @@ When an entry is added here, also create a detailed file in /changelogs/
 
 ---
 
+## 2026-02-06: Watchlist Token Consistency
+**PR**: #86 | **Files**: `src/components/watchlist/watchlist-view.tsx`
+- Replaced hardcoded watchlist status/action colors (green/red utilities and `text-white`) with semantic design tokens.
+- Fixed invalid utility classes (`accent-hover`, `accent-secondary`) by switching to existing token classes.
+- Aligned watchlist CTA, section indicators, and action hover states to the same tokenized visual language used elsewhere.
+
+---
+
+## 2026-02-06: Legal and Consent Token Consistency
+**PR**: #79 | **Files**: `src/app/terms/page.tsx`, `src/components/cookie-consent-banner.tsx`, `src/components/ui/badge.tsx`
+- Replaced remaining hardcoded legal/consent warning colors with design-system tokens.
+- Updated cookie consent action and status states to use semantic token colors for primary, success, danger, and warning contexts.
+- Standardized shared `Badge` warning variant + removable hover surface to align with tokenized UI semantics.
+- Keeps legal and privacy-critical UI consistent with the rest of the app without changing behavior.
+
+---
+
+## 2026-02-04: Admin BFI Import Endpoint
+**PR**: #81 | **Files**: `src/app/api/admin/bfi-import/route.ts`, `src/middleware.ts`
+- New admin endpoint to manually trigger BFI PDF imports
+- Full import: `POST /api/admin/bfi-import` (parses monthly PDF + changes)
+- Changes only: `POST /api/admin/bfi-import?changesOnly=true` (faster)
+- GET endpoint returns usage info and scheduled job details
+- Uses shared auth helpers and admin-only guards on `/api/admin/*`
+
+---
+
 ## 2026-02-06: Normalize Frontend Tokens and Time Format
 **PR**: #76 | **Files**: `src/app/error.tsx`, `src/app/global-error.tsx`, `src/components/reachable/reachable-results.tsx`, `src/components/reachable/postcode-input.tsx`, `src/components/watchlist/watchlist-view.tsx`
 - Replaced undefined Tailwind/token classes with existing design-system tokens across high-traffic pages (cinemas, directors, seasons, watchlist, map, reachable, and error surfaces)
