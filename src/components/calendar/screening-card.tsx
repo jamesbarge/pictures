@@ -121,9 +121,6 @@ export const ScreeningCard = memo(function ScreeningCard({ screening }: Screenin
         "focus-within:ring-2 focus-within:ring-accent-primary/40 focus-within:ring-offset-2 focus-within:ring-offset-background-primary"
       )}
       aria-label={`${film.title} screening at ${cinema.name}, ${formattedDate} at ${time}`}
-      onMouseEnter={prefetch.onMouseEnter}
-      onMouseLeave={prefetch.onMouseLeave}
-      onTouchStart={prefetch.onTouchStart}
     >
       {/* Poster area - contains link and buttons */}
       <div className="relative aspect-[2/3] w-full overflow-hidden">
@@ -134,6 +131,9 @@ export const ScreeningCard = memo(function ScreeningCard({ screening }: Screenin
           tabIndex={-1}
           aria-hidden="true"
           onClick={trackCardClick}
+          onMouseEnter={prefetch.onMouseEnter}
+          onMouseLeave={prefetch.onMouseLeave}
+          onTouchStart={prefetch.onTouchStart}
         >
           {film.posterUrl && !film.posterUrl.includes('poster-placeholder') ? (
             <FilmPoster
@@ -185,6 +185,9 @@ export const ScreeningCard = memo(function ScreeningCard({ screening }: Screenin
         href={`/film/${film.id}`}
         className="flex flex-col flex-1 p-2.5 focus:outline-none"
         onClick={trackCardClick}
+        onMouseEnter={prefetch.onMouseEnter}
+        onMouseLeave={prefetch.onMouseLeave}
+        onTouchStart={prefetch.onTouchStart}
       >
         {/* Time and Cinema row */}
         <div className="flex items-center gap-2 mb-1">
