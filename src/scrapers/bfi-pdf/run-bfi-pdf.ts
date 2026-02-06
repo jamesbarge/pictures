@@ -23,15 +23,20 @@ async function main() {
 
   try {
     const result = changesOnly
-      ? await runProgrammeChangesImport()
-      : await runBFIImport();
+      ? await runProgrammeChangesImport({ triggeredBy: "cli:bfi-changes" })
+      : await runBFIImport({ triggeredBy: "cli:bfi-full" });
 
     console.log();
     console.log("=".repeat(60));
     console.log("IMPORT RESULTS");
     console.log("=".repeat(60));
-    console.log(`Status: ${result.success ? "SUCCESS" : "FAILED"}`);
+    console.log(`Status: ${result.status.toUpperCase()} (${result.success ? "success" : "failed"})`);
     console.log(`Duration: ${result.durationMs}ms`);
+    console.log();
+
+    console.log("Source Status:");
+    console.log(`  PDF: ${result.sourceStatus.pdf}`);
+    console.log(`  Programme Changes: ${result.sourceStatus.programmeChanges}`);
     console.log();
 
     if (result.pdfInfo) {
@@ -58,7 +63,8 @@ async function main() {
       console.log();
       console.log("Errors:");
       result.errors.forEach((err, i) => {
-        console.log(`  ${i + 1}. ${err}`);
+        const code = result.errorCodes[i];
+        console.log(`  ${i + 1}. [${code}] ${err}`);
       });
     }
 

@@ -7,55 +7,68 @@
 
 import { auth } from "@clerk/nextjs/server";
 import { inngest } from "@/inngest/client";
+import { getActiveCinemas, getInngestCinemaId } from "@/config/cinema-registry";
 
-// All cinema IDs that have scrapers configured
-// Note: Playwright-based scrapers will fail gracefully on Vercel
-const ALL_CINEMA_IDS = [
-  // Independent cinemas (Cheerio-based - work on Vercel)
-  "rio-dalston",
-  "prince-charles",
-  "ica",
-  "genesis",
-  "peckhamplex",
-  "nickel",
-  "garden",
-  "castle",
-  "rich-mix",
-  // Independent cinemas (Playwright-based - may fail on Vercel)
-  "bfi-southbank",
-  "barbican",
-  "electric-portobello",
-  "lexi",
-  "phoenix",
-  // Chain cinemas (Playwright-based - may fail on Vercel)
-  // These trigger full chain scrapes
-  "curzon-soho", // Triggers curzon chain scraper
-  "picturehouse-central", // Triggers picturehouse chain scraper
-  "everyman-belsize-park", // Triggers everyman chain scraper
-];
+function buildScrapeAllEvents(triggeredBy: string) {
+  const events: Array<{
+    name: "scraper/run";
+    data: { cinemaId: string; scraperId: string; triggeredBy: string };
+  }> = [];
+  const queuedCinemas: string[] = [];
 
-// Map cinema IDs to their scraper IDs
-const CINEMA_TO_SCRAPER: Record<string, string> = {
-  // Independent cinemas
-  "rio-dalston": "rio",
-  "prince-charles": "pcc",
-  "ica": "ica",
-  "barbican": "barbican",
-  "genesis": "genesis",
-  "peckhamplex": "peckhamplex",
-  "nickel": "nickel",
-  "electric-portobello": "electric",
-  "lexi": "lexi",
-  "garden": "garden",
-  "castle": "castle",
-  "phoenix": "phoenix",
-  "rich-mix": "rich-mix",
-  "bfi-southbank": "bfi",
-  // Chain cinemas (one representative per chain)
-  "curzon-soho": "curzon",
-  "picturehouse-central": "picturehouse",
-  "everyman-belsize-park": "everyman",
-};
+  const queuedChains = new Set<string>();
+  let queuedBfiPdf = false;
+
+  for (const cinema of getActiveCinemas()) {
+    // For non-BFI chains, trigger one representative venue to run the full chain scraper.
+    if (cinema.chain && cinema.chain !== "bfi") {
+      if (queuedChains.has(cinema.chain)) continue;
+      queuedChains.add(cinema.chain);
+
+      const cinemaId = getInngestCinemaId(cinema.id);
+      events.push({
+        name: "scraper/run",
+        data: {
+          cinemaId,
+          scraperId: cinema.chain,
+          triggeredBy,
+        },
+      });
+      queuedCinemas.push(cinema.id);
+      continue;
+    }
+
+    // BFI is PDF-first now; queue one import event for both Southbank + IMAX.
+    if (cinema.chain === "bfi") {
+      if (queuedBfiPdf) continue;
+      queuedBfiPdf = true;
+
+      events.push({
+        name: "scraper/run",
+        data: {
+          cinemaId: "bfi-southbank",
+          scraperId: "bfi-southbank",
+          triggeredBy,
+        },
+      });
+      queuedCinemas.push("bfi-southbank");
+      continue;
+    }
+
+    const cinemaId = getInngestCinemaId(cinema.id);
+    events.push({
+      name: "scraper/run",
+      data: {
+        cinemaId,
+        scraperId: cinemaId,
+        triggeredBy,
+      },
+    });
+    queuedCinemas.push(cinema.id);
+  }
+
+  return { events, queuedCinemas };
+}
 
 export async function POST() {
   // Verify admin auth
@@ -65,15 +78,7 @@ export async function POST() {
   }
 
   try {
-    // Create events for all scrapers
-    const events = ALL_CINEMA_IDS.map((cinemaId) => ({
-      name: "scraper/run" as const,
-      data: {
-        cinemaId,
-        scraperId: CINEMA_TO_SCRAPER[cinemaId] || cinemaId,
-        triggeredBy: userId,
-      },
-    }));
+    const { events, queuedCinemas } = buildScrapeAllEvents(userId);
 
     // Send all events to Inngest
     const { ids } = await inngest.send(events);
@@ -83,7 +88,7 @@ export async function POST() {
       message: `Queued ${events.length} scrapers`,
       count: events.length,
       eventIds: ids,
-      cinemas: ALL_CINEMA_IDS,
+      cinemas: queuedCinemas,
     });
   } catch (error) {
     console.error("Error triggering all scrapers:", error);

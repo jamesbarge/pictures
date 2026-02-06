@@ -2,6 +2,7 @@ import { inngest } from "./client";
 import { saveScreenings, ensureCinemaExists } from "@/scrapers/pipeline";
 import type { RawScreening } from "@/scrapers/types";
 import { captureServerException } from "@/lib/posthog-server";
+import { CHAIN_CINEMA_MAPPING, SCRAPER_REGISTRY_IDS } from "./known-ids";
 
 // Venue definition with required website for Inngest scrapers
 interface InnggestVenueDefinition {
@@ -83,6 +84,8 @@ const CHEERIO_CINEMAS = [
   "riverside-studios",
   // Note: "phoenix" and "regent-street" removed - they use Playwright
 ];
+
+const BFI_PDF_CINEMAS = new Set(["bfi-southbank", "bfi-imax"]);
 
 // Lazy-loaded scraper registry
 const getScraperRegistry = (): Record<string, () => Promise<ScraperEntry>> => ({
@@ -396,6 +399,22 @@ const getScraperRegistry = (): Record<string, () => Promise<ScraperEntry>> => ({
     );
   },
 
+  "bfi-imax": async () => {
+    const { createBFIScraper } = await import("@/scrapers/cinemas/bfi");
+    return createIndependentEntry(
+      {
+        id: "bfi-imax",
+        name: "BFI IMAX",
+        shortName: "IMAX",
+        website: "https://www.bfi.org.uk/bfi-imax",
+        address: { street: "1 Charlie Chaplin Walk", area: "South Bank", postcode: "SE1 8XR" },
+        features: ["imax", "blockbusters"],
+      },
+      true, // Requires Playwright
+      async () => createBFIScraper("bfi-imax")
+    );
+  },
+
   "barbican": async () => {
     const { createBarbicanScraper } = await import("@/scrapers/cinemas/barbican");
     return createIndependentEntry(
@@ -443,39 +462,38 @@ const getScraperRegistry = (): Record<string, () => Promise<ScraperEntry>> => ({
       async () => createLexiScraper()
     );
   },
+
+  "romford-lumiere": async () => {
+    const { createRomfordLumiereScraper } = await import("@/scrapers/cinemas/romford-lumiere");
+    return createIndependentEntry(
+      {
+        id: "romford-lumiere",
+        name: "Lumiere Cinema Romford",
+        shortName: "Lumiere",
+        website: "https://lumiere-cinema.co.uk",
+        address: { street: "The Sapphire Ice and Leisure", area: "Romford", postcode: "RM1 3RL" },
+        features: ["independent", "modern"],
+      },
+      true, // Requires Playwright
+      async () => createRomfordLumiereScraper()
+    );
+  },
 });
 
-// Chain cinema IDs map to their chain scraper
-const CHAIN_CINEMA_MAPPING: Record<string, string> = {
-  // Curzon venues
-  "curzon-soho": "curzon",
-  "curzon-mayfair": "curzon",
-  "curzon-bloomsbury": "curzon",
-  "curzon-victoria": "curzon",
-  "curzon-hoxton": "curzon",
-  "curzon-kingston": "curzon",
-  "curzon-aldgate": "curzon",
-  // Picturehouse venues
-  "picturehouse-central": "picturehouse",
-  "hackney-picturehouse": "picturehouse",
-  "crouch-end-picturehouse": "picturehouse",
-  "east-dulwich-picturehouse": "picturehouse",
-  "greenwich-picturehouse": "picturehouse",
-  "finsbury-park-picturehouse": "picturehouse",
-  "gate-picturehouse": "picturehouse",
-  "picturehouse-ritzy": "picturehouse",
-  "clapham-picturehouse": "picturehouse",
-  // Everyman venues
-  "everyman-belsize-park": "everyman",
-  "everyman-baker-street": "everyman",
-  "everyman-canary-wharf": "everyman",
-  "everyman-hampstead": "everyman",
-  "everyman-kings-cross": "everyman",
-  "everyman-maida-vale": "everyman",
-  "everyman-muswell-hill": "everyman",
-  "everyman-screen-on-the-green": "everyman",
-  "everyman-stratford": "everyman",
-};
+// Validate scraper registry keys match SCRAPER_REGISTRY_IDS at module load
+// This catches drift between runtime and known-ids.ts during development
+const registryKeys = new Set(Object.keys(getScraperRegistry()));
+const missingInRegistry = [...SCRAPER_REGISTRY_IDS].filter((id) => !registryKeys.has(id));
+const missingInKnownIds = [...registryKeys].filter((id) => !SCRAPER_REGISTRY_IDS.has(id));
+if (missingInRegistry.length > 0 || missingInKnownIds.length > 0) {
+  console.error("[Inngest] SCRAPER_REGISTRY_IDS drift detected!");
+  if (missingInRegistry.length > 0) {
+    console.error("  Missing from getScraperRegistry():", missingInRegistry);
+  }
+  if (missingInKnownIds.length > 0) {
+    console.error("  Missing from SCRAPER_REGISTRY_IDS:", missingInKnownIds);
+  }
+}
 
 /**
  * Inngest Function: Run Cinema Scraper
@@ -494,6 +512,36 @@ export const runCinemaScraper = inngest.createFunction(
     const startTime = Date.now();
 
     console.log(`[Inngest] Starting scraper for ${cinemaId} (triggered by ${triggeredBy})`);
+
+    // BFI uses the PDF + programme-changes pipeline as the primary source of truth.
+    // This keeps BFI scrape execution cloud-runnable even when Playwright runtimes are unavailable.
+    if (BFI_PDF_CINEMAS.has(cinemaId)) {
+      const result = await step.run("run-bfi-pdf-import", async () => {
+        const { runBFIImport } = await import("@/scrapers/bfi-pdf");
+        return runBFIImport({
+          triggeredBy: typeof triggeredBy === "string" ? triggeredBy : "inngest:bfi-manual",
+        });
+      });
+
+      return {
+        cinemaId,
+        scraperId,
+        triggeredBy,
+        success: result.success,
+        status: result.status,
+        source: "bfi-pdf",
+        totalAdded: result.savedScreenings.added,
+        totalUpdated: result.savedScreenings.updated,
+        totalFailed: result.savedScreenings.failed,
+        totalScreenings: result.totalScreenings,
+        pdfScreenings: result.pdfScreenings,
+        changesScreenings: result.changesScreenings,
+        sourceStatus: result.sourceStatus,
+        errorCodes: result.errorCodes,
+        errors: result.errors,
+        durationMs: Date.now() - startTime,
+      };
+    }
 
     // Check if this is a chain cinema
     const chainId = CHAIN_CINEMA_MAPPING[cinemaId];
@@ -762,17 +810,20 @@ export const scheduledBFIPDFImport = inngest.createFunction(
 
     const result = await step.run("import-bfi-pdf", async () => {
       const { runBFIImport } = await import("@/scrapers/bfi-pdf");
-      return runBFIImport();
+      return runBFIImport({ triggeredBy: "scheduled-bfi-pdf-import" });
     });
 
     console.log("[Inngest] BFI PDF import complete:", result);
 
     return {
+      status: result.status,
       success: result.success,
       pdfScreenings: result.pdfScreenings,
       changesScreenings: result.changesScreenings,
       totalScreenings: result.totalScreenings,
       saved: result.savedScreenings,
+      sourceStatus: result.sourceStatus,
+      errorCodes: result.errorCodes,
       durationMs: result.durationMs,
       errors: result.errors,
     };
@@ -796,16 +847,19 @@ export const scheduledBFIChanges = inngest.createFunction(
 
     const result = await step.run("import-bfi-changes", async () => {
       const { runProgrammeChangesImport } = await import("@/scrapers/bfi-pdf");
-      return runProgrammeChangesImport();
+      return runProgrammeChangesImport({ triggeredBy: "scheduled-bfi-changes" });
     });
 
     console.log("[Inngest] BFI changes import complete:", result);
 
     return {
+      status: result.status,
       success: result.success,
       screenings: result.changesScreenings,
       saved: result.savedScreenings,
       lastUpdated: result.changesInfo?.lastUpdated,
+      sourceStatus: result.sourceStatus,
+      errorCodes: result.errorCodes,
       durationMs: result.durationMs,
       errors: result.errors,
     };
