@@ -858,12 +858,37 @@ const EVENT_PREFIXES = [
   /^christmas\s+classic[s]?[:\s]+/i,
   /^holiday\s+film[:\s]+/i,
   /^festive\s+film[:\s]+/i,
+
+  // Venue-specific curated series
+  /^dochouse[:\s]+/i,
+  /^pink\s+palace[:\s]+/i,
+  /^classic\s+matinee[:\s]+/i,
+  /^category\s+h\b[^:]*[:\s]+/i,
+  /^seniors['']?\s*paid\s+matinee[:\s]+/i,
+  /^dog\s+friendly\s+screening[:\s]+/i,
+  /^toddler\s+club[:\s]+/i,
+  /^queer\s+horror\s+nights?[:\s]+/i,
+
+  // Branded series
+  /^bar\s+trash\s+\d+[:\s]+/i,
+  /^pitchblack\s+playback[:\s]+/i,
+  /^phoenix\s+classics?\s*[-:]\s*/i,
+  /^the\s+liberated\s+film\s+club[:\s]+/i,
+
+  // Cultural / themed
+  /^s[üu]rreal\s+sinema[:\s]+/i,
+  /^never\s+watching\s+movies[:\s]+/i,
+  /^drink\s+&?\s*dine[:\s]+/i,
+  /^valentine['']?s?\s+throwback[:\s]+/i,
+
+  // Broadcast/RBO
+  /^rbo\s+cinema\s+season\b[^:]*[:\s]+/i,
 ];
 
 /**
  * Clean a film title by removing common cruft from scrapers
  */
-function cleanFilmTitle(title: string): string {
+export function cleanFilmTitle(title: string): string {
   let cleaned = title
     // Collapse whitespace (including newlines)
     .replace(/\s+/g, " ")
@@ -920,8 +945,14 @@ function cleanFilmTitle(title: string): string {
     .replace(/\s*\[.*?\]\s*$/g, "")
     // Remove trailing "- 35mm", "- 70mm" format notes (already captured as format)
     .replace(/\s*-\s*(35mm|70mm|4k|imax)\s*$/i, "")
-    // Remove trailing "+ Q&A" etc
-    .replace(/\s*\+\s*(q\s*&\s*a|discussion|intro)\s*$/i, "")
+    // Remove trailing "+ Q&A" / "+ pre-recorded intro by ..." / "+ discussion with ..."
+    .replace(/\s*\+\s*(q\s*&\s*a|discussion|intro)\b.*$/i, "")
+    // Remove "Presented by ..." suffixes
+    .replace(/\s+presented\s+by\s+.*$/i, "")
+    // Remove "• Nth Anniversary" suffixes
+    .replace(/\s*[•·]\s*\d+\w*\s+anniversary\b.*$/i, "")
+    // Remove "(Extended Edition)" / "(Extended Cut)" parentheticals
+    .replace(/\s*\(extended\s+(edition|cut)\)\s*$/i, "")
     .trim();
 }
 
