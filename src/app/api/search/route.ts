@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
     .from(films)
     .leftJoin(
       screenings,
-      sql`${screenings.filmId} = ${films.id} AND ${screenings.datetime} >= ${now}`
+      sql`${screenings.filmId} = ${films.id} AND ${screenings.datetime} >= ${now.toISOString()}`
     )
     .where(ilike(films.title, searchTerm))
     .groupBy(films.id)
