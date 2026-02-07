@@ -56,6 +56,15 @@ docs/private/
 .claude/
 tessl.json
 
+# Claude Code auto-generated files
+.claude-worktrees/
+**/CLAUDE.md
+!/CLAUDE.md
+.tmp-*
+
+# Local docs (not committed)
+docs/
+
 # Local-only directories
 packages/
 Pictures/

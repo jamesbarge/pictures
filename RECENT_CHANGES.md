@@ -5,6 +5,14 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-02-07: Enrich Upcoming Films Missing TMDB Data
+**PR**: #106 | **Files**: `src/scrapers/pipeline.ts`, `src/scripts/enrich-upcoming-films.ts`, `package.json`
+- Added 20 new event prefixes and 4 suffix patterns to `cleanFilmTitle` for better title cleaning
+- New `enrich:upcoming` script: finds films with upcoming screenings missing TMDB data, decodes HTML entities/mojibake, strips event prefixes, uses AI extraction, fixes bad years, and matches to TMDB
+- First run enriched 73 films with full TMDB data; 24 also got Letterboxd ratings
+
+---
+
 ## 2026-02-07: PR #104 Review Fixes
 **PR**: #104 | **Files**: `src/scrapers/runner-factory.ts`, `src/scrapers/bfi-pdf/fetcher.ts`, `src/scrapers/bfi-pdf/programme-changes-parser.ts`, `src/scrapers/load-bfi-manual.ts`, `src/scrapers/utils/fetch-with-retry.ts`
 - Fixed race condition: `recordScraperRun` promises now tracked and flushed before `process.exit`
