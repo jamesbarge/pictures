@@ -5,6 +5,16 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-02-07: iOS API Prerequisites — Backend Endpoints
+**PR**: TBD | **Files**: `src/db/repositories/film.ts`, `src/db/repositories/cinema.ts`, `src/db/repositories/screening.ts`, `src/db/repositories/index.ts`, `src/app/api/films/[id]/route.ts`, `src/app/api/cinemas/route.ts`, `src/app/api/cinemas/[id]/route.ts`, `src/app/api/screenings/route.ts`
+- New `GET /api/films/:id` endpoint with full film metadata + upcoming screenings (film repository)
+- New `GET /api/cinemas` endpoint listing all active cinemas with optional chain/features filters (cinema repository)
+- New `GET /api/cinemas/:id` endpoint with cinema detail + upcoming screenings
+- Added cursor pagination to `GET /api/screenings` via `cursor` and `limit` query params (backward compatible)
+- Extended screening select with accessibility fields (`hasSubtitles`, `hasAudioDescription`, `isRelaxedScreening`) and `film.contentType`, `film.tmdbRating`
+
+---
+
 ## 2026-02-07: Enrich Upcoming Films Missing TMDB Data
 **PR**: #106 | **Files**: `src/scrapers/pipeline.ts`, `src/scripts/enrich-upcoming-films.ts`, `package.json`
 - Added 20 new event prefixes and 4 suffix patterns to `cleanFilmTitle` for better title cleaning

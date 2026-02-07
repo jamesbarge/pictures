@@ -11,6 +11,7 @@ import { BadRequestError, handleApiError } from "@/lib/api-errors";
 import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
 import {
   getScreenings,
+  getScreeningsWithCursor,
   getScreeningsByFestival,
   getScreeningsBySeason,
   type ScreeningFilters,
@@ -28,6 +29,9 @@ const querySchema = z.object({
   festivalOnly: z.enum(["true", "false"]).optional(), // only show festival screenings
   // Season filtering
   season: z.string().max(100).optional(), // season slug (director retrospectives)
+  // Cursor pagination
+  cursor: z.string().max(200).optional(),
+  limit: z.coerce.number().int().min(1).max(500).optional(),
 });
 
 const CACHE_HEADERS = {
@@ -61,6 +65,8 @@ export async function GET(request: NextRequest) {
       festival: searchParams.get("festival") || undefined,
       festivalOnly: searchParams.get("festivalOnly") || undefined,
       season: searchParams.get("season") || undefined,
+      cursor: searchParams.get("cursor") || undefined,
+      limit: searchParams.get("limit") || undefined,
     });
 
     if (!parseResult.success) {
@@ -140,7 +146,29 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Standard query
+    // Standard query — use cursor pagination when cursor or limit is provided
+    if (params.cursor || params.limit) {
+      const pageLimit = params.limit ?? 200;
+      const { screenings: page, cursor: nextCursor, hasMore } =
+        await getScreeningsWithCursor(filters, params.cursor, pageLimit);
+
+      return NextResponse.json(
+        {
+          screenings: page,
+          meta: {
+            total: page.length,
+            startDate: startDate.toISOString(),
+            endDate: endDate.toISOString(),
+            cursor: nextCursor,
+            hasMore,
+            limit: pageLimit,
+          },
+        },
+        { headers: CACHE_HEADERS }
+      );
+    }
+
+    // Legacy non-paginated path (backward compatible)
     const results = await getScreenings(filters);
 
     return NextResponse.json(
