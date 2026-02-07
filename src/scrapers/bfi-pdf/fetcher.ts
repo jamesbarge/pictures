@@ -14,6 +14,7 @@
 
 import * as cheerio from "cheerio";
 import { createHash } from "crypto";
+import { fetchWithRetry } from "../utils/fetch-with-retry";
 
 /**
  * Fetches a URL, optionally through a proxy service.
@@ -50,7 +51,7 @@ async function proxyFetch(url: string, options: RequestInit = {}): Promise<Respo
       const proxyUrl = new URL("https://api.scraperapi.com/");
       proxyUrl.searchParams.set("api_key", trimmedKey);
       proxyUrl.searchParams.set("url", url);
-      return fetch(proxyUrl.toString());
+      return fetchWithRetry(proxyUrl.toString(), undefined, "[BFI-PDF] ScraperAPI PDF proxy");
     }
 
     // Return the failed response
@@ -70,13 +71,13 @@ async function proxyFetch(url: string, options: RequestInit = {}): Promise<Respo
     console.log(`[BFI-PDF] Using ScraperAPI proxy for: ${url.slice(0, 60)}...`);
 
 
-    return fetch(proxyUrl.toString(), {
+    return fetchWithRetry(proxyUrl.toString(), {
       ...options,
       // ScraperAPI handles headers, but we can pass some through
       headers: {
         ...options.headers,
       },
-    });
+    }, "[BFI-PDF] ScraperAPI HTML proxy");
   }
 
   // Direct fetch with browser-like headers

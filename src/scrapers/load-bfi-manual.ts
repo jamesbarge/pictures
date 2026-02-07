@@ -42,6 +42,10 @@ async function loadBFIManualData() {
   // Process using existing pipeline
   try {
     const result = await processScreenings(bfiData.venue, futureScreenings);
+    if (result.blocked) {
+      console.error("BLOCKED: Diff check flagged suspicious data. No screenings were saved.");
+      process.exit(1);
+    }
     console.log("\n✅ BFI data loaded successfully!");
     console.log(`Screenings added: ${result.added}`);
     console.log(`Screenings updated: ${result.updated}`);

@@ -5,6 +5,17 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-02-07: PR #104 Review Fixes
+**PR**: #104 | **Files**: `src/scrapers/runner-factory.ts`, `src/scrapers/bfi-pdf/fetcher.ts`, `src/scrapers/bfi-pdf/programme-changes-parser.ts`, `src/scrapers/load-bfi-manual.ts`, `src/scrapers/utils/fetch-with-retry.ts`
+- Fixed race condition: `recordScraperRun` promises now tracked and flushed before `process.exit`
+- Extracted shared `fetchWithRetry` into `src/scrapers/utils/fetch-with-retry.ts` (was copy-pasted in 2 BFI files)
+- Fixed `useValidation: false` path silently ignoring blocked flag in both single-venue and chain paths
+- Fixed `load-bfi-manual.ts` ignoring blocked flag from `processScreenings`
+- Fixed chain venue `durationMs` being cumulative — now uses per-venue start time
+- Removed unused `PipelineResult` type import and stale backoff comment
+
+---
+
 ## 2026-02-07: Fix Date Serialization in Drizzle SQL Templates
 **PR**: #104 | **Files**: `src/lib/scraper-health/index.ts`, `src/app/api/search/route.ts`
 - Fixed crash on `/admin` caused by raw `Date` objects passed through Drizzle `sql` template literals; postgres.js Bind step requires strings, not Date instances.
@@ -156,6 +167,16 @@ When an entry is added here, also create a detailed file in /changelogs/
 - Converted remaining user-facing 12-hour reachable/festival time labels to the project-standard 24-hour format
 - Standardized critical and warning color usage to `accent-*` tokens for consistent urgency semantics and reduced visual drift
 - Removed mixed hardcoded hex values from global error UI so fallback screens now inherit the shared theme system
+
+---
+
+## 2026-02-06: Scraper Resilience - Session 1 Quick Wins
+**PR**: #104 | **Files**: `src/scrapers/pipeline.ts`, `src/scrapers/runner-factory.ts`, `src/scrapers/bfi-pdf/fetcher.ts`, `src/scrapers/bfi-pdf/programme-changes-parser.ts`
+- Fixed blocked scrapes silently reporting as success — added explicit `blocked` flag to PipelineResult
+- Added jitter to exponential backoff to prevent thundering herd on concurrent retries
+- Added `fetchWithRetry()` to BFI PDF fetcher and programme changes parser for ScraperAPI resilience
+- Wired `recordScraperRun()` into all 5 runner exit paths with baseline anomaly detection
+- Created self-improvement notes system (`tasks/lessons.md`, `tasks/scraper-lessons.md`)
 
 ---
 

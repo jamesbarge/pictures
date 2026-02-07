@@ -19,6 +19,7 @@
 import * as cheerio from "cheerio";
 import type { RawScreening } from "../types";
 import type { CheerioAPI, CheerioSelection } from "../utils/cheerio-types";
+import { fetchWithRetry } from "../utils/fetch-with-retry";
 
 /**
  * Fetches a URL, optionally through a proxy service.
@@ -36,7 +37,7 @@ async function proxyFetch(url: string): Promise<Response> {
     proxyUrl.searchParams.set("url", url);
 
     console.log(`[BFI-Changes] Using ScraperAPI proxy for: ${url.slice(0, 60)}...`);
-    return fetch(proxyUrl.toString());
+    return fetchWithRetry(proxyUrl.toString(), undefined, "[BFI-Changes] ScraperAPI changes proxy");
   }
 
   return fetch(url, {
