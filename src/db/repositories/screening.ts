@@ -13,7 +13,7 @@ import {
   seasons,
   seasonFilms,
 } from "@/db/schema";
-import { eq, gte, lte, and, inArray, SQL } from "drizzle-orm";
+import { eq, gte, lte, and, inArray, sql, SQL } from "drizzle-orm";
 import type { ScreeningFormat } from "@/types/screening";
 
 /**
@@ -30,6 +30,9 @@ export const screeningWithDetailsSelect = {
   bookingUrl: screenings.bookingUrl,
   isFestivalScreening: screenings.isFestivalScreening,
   availabilityStatus: screenings.availabilityStatus,
+  hasSubtitles: screenings.hasSubtitles,
+  hasAudioDescription: screenings.hasAudioDescription,
+  isRelaxedScreening: screenings.isRelaxedScreening,
   film: {
     id: films.id,
     title: films.title,
@@ -39,6 +42,8 @@ export const screeningWithDetailsSelect = {
     runtime: films.runtime,
     isRepertory: films.isRepertory,
     letterboxdRating: films.letterboxdRating,
+    contentType: films.contentType,
+    tmdbRating: films.tmdbRating,
   },
   cinema: {
     id: cinemas.id,
@@ -67,6 +72,9 @@ export type ScreeningWithDetails = {
   bookingUrl: string;
   isFestivalScreening: boolean;
   availabilityStatus: string | null;
+  hasSubtitles: boolean;
+  hasAudioDescription: boolean;
+  isRelaxedScreening: boolean;
   film: {
     id: string;
     title: string;
@@ -76,6 +84,8 @@ export type ScreeningWithDetails = {
     runtime: number | null;
     isRepertory: boolean;
     letterboxdRating: number | null;
+    contentType: string;
+    tmdbRating: number | null;
   };
   cinema: {
     id: string;
@@ -224,6 +234,80 @@ export async function getScreeningsBySeason(
 
   const results = await getScreenings(filtersWithFilms, limit);
   return { season, screenings: results };
+}
+
+/**
+ * Parse a cursor string into datetime + id components.
+ * Cursor format: "{ISO datetime}_{screening UUID}"
+ */
+export function parseCursor(cursor: string): { datetime: string; id: string } | null {
+  const separatorIndex = cursor.lastIndexOf("_");
+  if (separatorIndex === -1) return null;
+
+  const datetime = cursor.slice(0, separatorIndex);
+  const id = cursor.slice(separatorIndex + 1);
+
+  // Basic validation
+  if (!datetime || !id || isNaN(Date.parse(datetime))) return null;
+  return { datetime, id };
+}
+
+/**
+ * Build a cursor string from a screening
+ */
+export function buildCursor(screening: ScreeningWithDetails): string {
+  return `${screening.datetime.toISOString()}_${screening.id}`;
+}
+
+export interface CursorPaginatedResult {
+  screenings: ScreeningWithDetails[];
+  cursor: string | null;
+  hasMore: boolean;
+}
+
+/**
+ * Get screenings with cursor-based pagination.
+ * Orders by (datetime, id) for deterministic pagination.
+ */
+export async function getScreeningsWithCursor(
+  filters: ScreeningFilters,
+  cursor?: string,
+  limit = 200
+): Promise<CursorPaginatedResult> {
+  const conditions = buildConditions(filters);
+
+  // Add cursor condition: (datetime, id) > (cursorDatetime, cursorId)
+  if (cursor) {
+    const parsed = parseCursor(cursor);
+    if (parsed) {
+      conditions.push(
+        sql`(${screenings.datetime}, ${screenings.id}) > (${parsed.datetime}::timestamptz, ${parsed.id})`
+      );
+    }
+  }
+
+  // Fetch limit + 1 to detect if there are more results
+  const results = await db
+    .select(screeningWithDetailsSelect)
+    .from(screenings)
+    .innerJoin(films, eq(screenings.filmId, films.id))
+    .innerJoin(cinemas, eq(screenings.cinemaId, cinemas.id))
+    .where(and(...conditions))
+    .orderBy(screenings.datetime, screenings.id)
+    .limit(limit + 1);
+
+  const hasMore = results.length > limit;
+  const screeningsPage = hasMore ? results.slice(0, limit) : results;
+  const nextCursor =
+    hasMore && screeningsPage.length > 0
+      ? buildCursor(screeningsPage[screeningsPage.length - 1])
+      : null;
+
+  return {
+    screenings: screeningsPage,
+    cursor: nextCursor,
+    hasMore,
+  };
 }
 
 /**
