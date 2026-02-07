@@ -100,8 +100,8 @@ export async function getCinemaHealthMetrics(cinemaId: string): Promise<CinemaHe
   const [volumeResult] = await db
     .select({
       total: count(),
-      next7d: sql<number>`COUNT(*) FILTER (WHERE ${screenings.datetime} < ${in7days})`,
-      next14d: sql<number>`COUNT(*) FILTER (WHERE ${screenings.datetime} < ${in14days})`,
+      next7d: sql<number>`COUNT(*) FILTER (WHERE ${screenings.datetime} < ${in7days.toISOString()})`,
+      next14d: sql<number>`COUNT(*) FILTER (WHERE ${screenings.datetime} < ${in14days.toISOString()})`,
       lastScrapedFromScreenings: sql<Date>`MAX(${screenings.scrapedAt})`,
     })
     .from(screenings)

@@ -5,6 +5,14 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-02-07: Fix Date Serialization in Drizzle SQL Templates
+**PR**: #104 | **Files**: `src/lib/scraper-health/index.ts`, `src/app/api/search/route.ts`
+- Fixed crash on `/admin` caused by raw `Date` objects passed through Drizzle `sql` template literals; postgres.js Bind step requires strings, not Date instances.
+- Applied `.toISOString()` to Date parameters in `COUNT(*) FILTER` health queries and search API join condition.
+- Root cause: Drizzle ORM helpers (e.g. `gte()`) serialize Dates internally, but raw `sql` templates forward them as-is to the driver.
+
+---
+
 ## 2026-02-06: Admin Ops Dashboard + Admin Auth Hardening
 **PR**: #103 | **Files**: `src/app/admin/page.tsx`, `src/lib/auth.ts`, `src/middleware.ts`, `src/app/api/admin/*`, `src/lib/scraper-health/index.ts`
 - Rebuilt `/admin` into an operations dashboard with scraper-health metrics and per-cinema re-scrape actions.
