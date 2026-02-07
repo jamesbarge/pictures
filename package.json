@@ -79,6 +79,7 @@
     "agents:verify": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/agents/data-quality/run-verify.ts",
     "agents:fallback-enrich": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/agents/fallback-enrichment/run.ts",
     "enrich:upcoming": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scripts/enrich-upcoming-films.ts",
+    "cleanup:feb-films": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scripts/cleanup-feb-films.ts",
     "audit:films": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scripts/audit-film-data.ts",
     "scrape:snapshot": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/__tests__/run-snapshot.ts",
     "scrape:genesis-basescraper": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/run-genesis-v2-basescraper.ts",

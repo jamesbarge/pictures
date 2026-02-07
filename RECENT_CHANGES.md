@@ -5,6 +5,16 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-02-07: Data Cleanup — Films Missing TMDB Through Feb
+**PR**: TBD | **Files**: `src/scripts/cleanup-feb-films.ts`, `package.json`
+- One-time cleanup of 166 entries classified as films but missing TMDB data
+- Deleted 62 non-film entries (events, talks, quizzes, concerts, workshops) with cascading screening removal
+- Matched 36 real films to TMDB via title cleaning and year hints (19 more were duplicate TMDB IDs)
+- 30 obscure/ambiguous entries left as-is; 14 real films unmatched by TMDB
+- Backfilled 18 Letterboxd ratings and 12 posters for newly matched films
+
+---
+
 ## 2026-02-07: iOS API Prerequisites — Backend Endpoints
 **PR**: TBD | **Files**: `src/db/repositories/film.ts`, `src/db/repositories/cinema.ts`, `src/db/repositories/screening.ts`, `src/db/repositories/index.ts`, `src/app/api/films/[id]/route.ts`, `src/app/api/cinemas/route.ts`, `src/app/api/cinemas/[id]/route.ts`, `src/app/api/screenings/route.ts`
 - New `GET /api/films/:id` endpoint with full film metadata + upcoming screenings (film repository)
