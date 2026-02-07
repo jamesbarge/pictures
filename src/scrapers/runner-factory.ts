@@ -9,7 +9,7 @@
  */
 
 import type { CinemaScraper, RawScreening, ChainScraper, VenueConfig } from "./types";
-import { processScreenings, saveScreenings, ensureCinemaExists, type PipelineResult } from "./pipeline";
+import { processScreenings, saveScreenings, ensureCinemaExists } from "./pipeline";
 import { db, isDatabaseAvailable } from "../db";
 import { scraperRuns, cinemaBaselines } from "../db/schema/admin";
 import { eq } from "drizzle-orm";
@@ -133,8 +133,24 @@ function log(entry: Omit<LogEntry, "timestamp">): void {
 }
 
 // ============================================================================
-// Run Recording (fire-and-forget)
+// Run Recording (fire-and-forget with flush)
 // ============================================================================
+
+/** Pending record promises — collected so we can flush before process exit */
+const pendingRecords: Promise<void>[] = [];
+
+/**
+ * Await all pending recordScraperRun writes (with a 5s timeout).
+ * Call before process.exit to prevent data loss.
+ */
+export async function flushPendingRecords(): Promise<void> {
+  if (pendingRecords.length === 0) return;
+  const pending = pendingRecords.splice(0);
+  await Promise.race([
+    Promise.allSettled(pending),
+    new Promise((resolve) => setTimeout(resolve, 5000)),
+  ]);
+}
 
 /**
  * Get baseline screening count for a cinema (weekend vs weekday).
@@ -280,8 +296,9 @@ async function runSingleVenue(
           failed = result.failed;
           blocked = result.blocked;
         } else {
-          await saveScreenings(venue.id, screenings);
-          added = screenings.length;
+          const result = await saveScreenings(venue.id, screenings);
+          added = result.added;
+          blocked = result.blocked;
         }
       }
 
@@ -294,14 +311,14 @@ async function runSingleVenue(
           event: "venue_blocked",
           data: { venueId: venue.id, screeningsFound: screenings.length, durationMs },
         });
-        void recordScraperRun({
+        pendingRecords.push(recordScraperRun({
           cinemaId: venue.id,
           startedAt: new Date(startTime),
           status: "failed",
           screeningCount: screenings.length,
           durationMs,
           error: "scrape_blocked_by_diff_check",
-        });
+        }));
         return {
           venueId: venue.id,
           venueName: venue.name,
@@ -333,13 +350,13 @@ async function runSingleVenue(
       });
 
       // Record successful scraper run (fire-and-forget)
-      void recordScraperRun({
+      pendingRecords.push(recordScraperRun({
         cinemaId: venue.id,
         startedAt: new Date(startTime),
         status: "success",
         screeningCount: screenings.length,
         durationMs,
-      });
+      }));
 
       return {
         venueId: venue.id,
@@ -367,7 +384,6 @@ async function runSingleVenue(
             error: lastError.message,
           },
         });
-        // Exponential backoff: 1s, 2s, 4s
         // Exponential backoff with jitter to avoid thundering herd
         const baseDelay = 1000 * Math.pow(2, retryCount - 1);
         const jitteredDelay = baseDelay * (0.5 + Math.random());
@@ -391,14 +407,14 @@ async function runSingleVenue(
   });
 
   // Record failed scraper run (fire-and-forget)
-  void recordScraperRun({
+  pendingRecords.push(recordScraperRun({
     cinemaId: venue.id,
     startedAt: new Date(startTime),
     status: "failed",
     screeningCount: 0,
     durationMs,
     error: lastError?.message,
-  });
+  }));
 
   return {
     venueId: venue.id,
@@ -523,6 +539,7 @@ export async function runScraper(
           const venue = venuesToScrape.find((v) => v.id === venueId);
           if (!venue) continue;
 
+          const venueStartTime = Date.now();
           let added = 0, updated = 0, failed = 0;
           let venueBlocked = false;
 
@@ -534,8 +551,9 @@ export async function runScraper(
               failed = pipelineResult.failed;
               venueBlocked = pipelineResult.blocked;
             } else {
-              await saveScreenings(venueId, screenings);
-              added = screenings.length;
+              const pipelineResult = await saveScreenings(venueId, screenings);
+              added = pipelineResult.added;
+              venueBlocked = pipelineResult.blocked;
             }
           }
 
@@ -548,14 +566,14 @@ export async function runScraper(
           }
 
           // Record chain per-venue scraper run (fire-and-forget)
-          void recordScraperRun({
+          pendingRecords.push(recordScraperRun({
             cinemaId: venueId,
-            startedAt: new Date(startTime),
+            startedAt: new Date(venueStartTime),
             status: venueBlocked ? "failed" : "success",
             screeningCount: screenings.length,
-            durationMs: Date.now() - startTime,
+            durationMs: Date.now() - venueStartTime,
             error: venueBlocked ? "scrape_blocked_by_diff_check" : undefined,
-          });
+          }));
 
           venueResults.push({
             venueId,
@@ -565,7 +583,7 @@ export async function runScraper(
             screeningsAdded: venueBlocked ? 0 : added,
             screeningsUpdated: venueBlocked ? 0 : updated,
             screeningsFailed: failed,
-            durationMs: Date.now() - startTime,
+            durationMs: Date.now() - venueStartTime,
             error: venueBlocked ? "scrape_blocked_by_diff_check" : undefined,
             retryCount: 0,
           });
@@ -581,14 +599,14 @@ export async function runScraper(
         // Mark all venues as failed
         for (const venue of venuesToScrape) {
           // Record chain failure per-venue (fire-and-forget)
-          void recordScraperRun({
+          pendingRecords.push(recordScraperRun({
             cinemaId: venue.id,
             startedAt: new Date(startTime),
             status: "failed",
             screeningCount: 0,
             durationMs: Date.now() - startTime,
             error: errorMessage,
-          });
+          }));
 
           venueResults.push({
             venueId: venue.id,
@@ -644,6 +662,9 @@ export async function runScraper(
     },
   });
 
+  // Flush any pending record writes before returning
+  await flushPendingRecords();
+
   return result;
 }
 
@@ -686,6 +707,7 @@ export function createMain(
     const result = await runScraper(config, runnerOptions);
 
     if (!result.success) {
+      await flushPendingRecords();
       process.exit(1);
     }
   };
