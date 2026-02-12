@@ -5,6 +5,17 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-02-12: Festival Data Audit & Corrections
+**PR**: TBD | **Files**: `src/db/seed-festivals.ts`
+- Deactivated 2 defunct festivals: Sundance London (last held 2019) and East End Film Festival (dissolved 2021)
+- Fixed incorrect dates for 5 festivals (Open City Docs, Raindance, LIAF, UKJFF, LKFF)
+- Fixed 3 venue slug mismatches to match cinema registry (`prince-charles-cinema`, `genesis-cinema`, `rio-cinema`)
+- Removed 4 non-registry venue references (`vue-leicester-square`, `vue-piccadilly`, `odeon-luxe-leicester-square`, `jw3`)
+- Updated descriptions for factual accuracy (Raindance scope, FrightFest venue, edition numbers)
+- Added 2 new festivals: Doc'n Roll Film Festival and London Independent Film Festival
+
+---
+
 ## 2026-02-07: Data Cleanup — Films Missing TMDB Through Feb
 **PR**: TBD | **Files**: `src/scripts/cleanup-feb-films.ts`, `package.json`
 - One-time cleanup of 166 entries classified as films but missing TMDB data
