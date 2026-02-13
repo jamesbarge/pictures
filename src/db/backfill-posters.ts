@@ -190,7 +190,7 @@ const NON_FILM_PATTERNS = [
 // Title Processing Functions
 // ============================================================================
 
-interface ProcessedTitle {
+export interface ProcessedTitle {
   cleanedTitle: string;
   extractedYear: number | null;
   isNonFilm: boolean;
@@ -202,7 +202,7 @@ interface ProcessedTitle {
 /**
  * Process a film title to extract the underlying film and year
  */
-function processTitle(rawTitle: string): ProcessedTitle {
+export function processTitle(rawTitle: string): ProcessedTitle {
   let title = rawTitle.trim();
   const changes: string[] = [];
   let isLiveBroadcast = false;
@@ -352,7 +352,7 @@ interface BackfillResult {
 /**
  * Find if a film with this TMDB ID already exists
  */
-async function findFilmByTmdbId(tmdbId: number): Promise<typeof films.$inferSelect | null> {
+export async function findFilmByTmdbId(tmdbId: number): Promise<typeof films.$inferSelect | null> {
   const [existing] = await db
     .select()
     .from(films)
@@ -365,13 +365,14 @@ async function findFilmByTmdbId(tmdbId: number): Promise<typeof films.$inferSele
  * Merge a duplicate film into the canonical film
  * Moves all screenings and deletes the duplicate
  */
-async function mergeDuplicateFilm(
+export async function mergeDuplicateFilm(
   duplicateId: string,
   canonicalId: string,
   duplicateTitle: string,
-  canonicalTitle: string
+  canonicalTitle: string,
+  dryRun?: boolean
 ): Promise<number> {
-  if (DRY_RUN) {
+  if (dryRun ?? DRY_RUN) {
     console.log(`  [DRY RUN] Would merge "${duplicateTitle}" into "${canonicalTitle}"`);
     return 0;
   }
@@ -720,13 +721,16 @@ async function backfillPosters(): Promise<void> {
   }
 }
 
-// Run
-backfillPosters()
-  .then(() => {
-    console.log("\n✅ Backfill complete!");
-    process.exit(0);
-  })
-  .catch((err) => {
-    console.error("\n❌ Backfill failed:", err);
-    process.exit(1);
-  });
+// Only run when executed directly (not when imported)
+import { fileURLToPath } from "url";
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  backfillPosters()
+    .then(() => {
+      console.log("\n✅ Backfill complete!");
+      process.exit(0);
+    })
+    .catch((err) => {
+      console.error("\n❌ Backfill failed:", err);
+      process.exit(1);
+    });
+}

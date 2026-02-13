@@ -81,6 +81,7 @@
     "enrich:upcoming": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scripts/enrich-upcoming-films.ts",
     "cleanup:feb-films": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scripts/cleanup-feb-films.ts",
     "audit:films": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scripts/audit-film-data.ts",
+    "poster:audit": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scripts/poster-audit-and-fix.ts",
     "scrape:snapshot": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/__tests__/run-snapshot.ts",
     "scrape:genesis-basescraper": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/run-genesis-v2-basescraper.ts",
     "scrape": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/cli.ts",
