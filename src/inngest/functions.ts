@@ -935,6 +935,34 @@ export const scheduledFestivalWatchdog = inngest.createFunction(
   }
 );
 
+/**
+ * Inngest Function: Scheduled Eventive Festival Scrape
+ *
+ * Runs daily at 11:00 AM UTC (after venue scrapers) to scrape
+ * Eventive-based festivals (FrightFest, UKJFF) within their watch windows.
+ */
+export const scheduledEventiveScrape = inngest.createFunction(
+  { id: "scheduled-eventive-scrape", retries: 2 },
+  { cron: "0 11 * * *" }, // 11:00 AM UTC daily
+  async ({ step }) => {
+    console.log("[Inngest] Starting scheduled Eventive festival scrape...");
+    const results = await step.run("scrape-eventive-festivals", async () => {
+      const { scrapeActiveEventiveFestivals } = await import(
+        "@/scrapers/festivals/eventive-scraper"
+      );
+      return scrapeActiveEventiveFestivals();
+    });
+    const totalScreenings = results.reduce(
+      (sum: number, r: { screeningsTagged: number }) => sum + r.screeningsTagged,
+      0
+    );
+    console.log(
+      `[Inngest] Eventive scrape complete: ${results.length} festivals, ${totalScreenings} screenings`
+    );
+    return { success: true, festivals: results.length, totalScreenings, results };
+  }
+);
+
 // Export all functions for the serve handler
 export const functions = [
   runCinemaScraper,
@@ -945,4 +973,5 @@ export const functions = [
   scheduledLetterboxdEnrichment,
   scheduledFestivalReverseTag,
   scheduledFestivalWatchdog,
+  scheduledEventiveScrape,
 ];

@@ -50,10 +50,10 @@ describe("FestivalDetector", () => {
             {
               id: "liff-1",
               slug: "liff-2026",
-              name: "London Independent Film Festival 2026",
+              name: "London Indian Film Festival 2026",
               shortName: "LIFF",
-              startDate: "2026-04-09",
-              endDate: "2026-04-19",
+              startDate: "2026-06-25",
+              endDate: "2026-07-06",
               venues: ["genesis"],
             },
             {
@@ -82,6 +82,24 @@ describe("FestivalDetector", () => {
               startDate: "2026-06-17",
               endDate: "2026-06-26",
               venues: ["curzon-soho"],
+            },
+            {
+              id: "eeff-1",
+              slug: "eeff-2026",
+              name: "East End Film Festival 2026",
+              shortName: "EEFF",
+              startDate: "2026-07-02",
+              endDate: "2026-07-12",
+              venues: ["genesis", "rio-dalston", "rich-mix"],
+            },
+            {
+              id: "sl-1",
+              slug: "sundance-london-2026",
+              name: "Sundance Film Festival: London 2026",
+              shortName: "Sundance London",
+              startDate: "2026-05-28",
+              endDate: "2026-05-31",
+              venues: ["curzon-soho", "picturehouse-central"],
             },
           ]),
         }),
@@ -112,7 +130,7 @@ describe("FestivalDetector", () => {
       const result = FestivalDetector.detect(
         "genesis",
         "Some Indie Film",
-        new Date("2026-04-12T20:00:00Z")
+        new Date("2026-06-28T20:00:00Z")
       );
       expect(result.festivalSlug).toBe("liff-2026");
     });

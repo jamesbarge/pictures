@@ -29,7 +29,17 @@ export type FestivalProgrammeDetectedEvent = {
   };
 };
 
+export type EventiveScraperEvent = {
+  name: "festival/scrape-eventive";
+  data: {
+    festival: string;
+    year?: number;
+    triggeredBy: string;
+  };
+};
+
 export type Events = {
   "scraper/run": ScraperEvent;
   "festival/programme-detected": FestivalProgrammeDetectedEvent;
+  "festival/scrape-eventive": EventiveScraperEvent;
 };

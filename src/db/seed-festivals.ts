@@ -8,7 +8,7 @@ import { festivals } from "./schema";
 import { eq } from "drizzle-orm";
 import { randomUUID } from "crypto";
 
-const londonFestivals = [
+export const londonFestivals = [
   // BFI London Film Festival - The flagship
   {
     id: randomUUID(),
@@ -54,7 +54,7 @@ const londonFestivals = [
     memberSaleDate: null, // No member early access
     publicSaleDate: new Date("2026-07-20T10:00:00+01:00"),
     genreFocus: ["horror", "fantasy", "sci-fi", "thriller", "cult"],
-    venues: ["vue-leicester-square", "prince-charles-cinema"],
+    venues: ["vue-leicester-square", "prince-charles"],
     isActive: true,
   },
 
@@ -117,7 +117,7 @@ const londonFestivals = [
     memberSaleDate: null,
     publicSaleDate: new Date("2025-12-15T10:00:00+00:00"),
     genreFocus: ["shorts", "animation", "experimental", "music-video"],
-    venues: ["ica", "bfi-southbank", "rio-cinema", "rich-mix"],
+    venues: ["ica", "bfi-southbank", "rio-dalston", "rich-mix"],
     isActive: true,
   },
 
@@ -138,7 +138,7 @@ const londonFestivals = [
     memberSaleDate: null,
     publicSaleDate: new Date("2026-10-08T10:00:00+00:00"),
     genreFocus: ["korean", "international", "thriller", "drama"],
-    venues: ["prince-charles-cinema", "bfi-southbank", "genesis-cinema"],
+    venues: ["prince-charles", "bfi-southbank", "genesis"],
     isActive: true,
   },
 
@@ -201,7 +201,7 @@ const londonFestivals = [
     memberSaleDate: null,
     publicSaleDate: new Date("2026-06-03T10:00:00+01:00"),
     genreFocus: ["independent", "local", "documentary", "shorts"],
-    venues: ["genesis-cinema", "rio-cinema", "rich-mix"],
+    venues: ["genesis", "rio-dalston", "rich-mix"],
     isActive: true,
   },
 
@@ -226,6 +226,48 @@ const londonFestivals = [
     publicSaleDate: new Date("2026-10-20T10:00:00+00:00"),
     genreFocus: ["jewish", "international", "documentary", "historical"],
     venues: ["jw3", "barbican", "curzon-soho"],
+    isActive: true,
+  },
+
+  // London Indian Film Festival
+  {
+    id: randomUUID(),
+    name: "London Indian Film Festival 2026",
+    slug: "liff-2026",
+    shortName: "LIFF",
+    year: 2026,
+    description:
+      "The UK's largest South Asian film festival, showcasing bold features, documentaries, and shorts from Indian and South Asian cinema. Celebrating diversity and independent storytelling.",
+    websiteUrl: "https://londonindianfilmfestival.co.uk",
+    logoUrl: null,
+    startDate: "2026-06-25", // Recently moved from April to June
+    endDate: "2026-07-06",
+    programmAnnouncedDate: "2026-05-20",
+    memberSaleDate: null,
+    publicSaleDate: new Date("2026-05-28T10:00:00+01:00"),
+    genreFocus: ["south-asian", "indian", "documentary", "independent"],
+    venues: ["genesis"],
+    isActive: true,
+  },
+
+  // Doc'n Roll Film Festival
+  {
+    id: randomUUID(),
+    name: "Doc'n Roll Film Festival 2026",
+    slug: "docnroll-2026",
+    shortName: "Doc'n Roll",
+    year: 2026,
+    description:
+      "The UK's leading music documentary film festival, showcasing the best non-fiction films about music, musicians, and music culture from around the world.",
+    websiteUrl: "https://www.docnrollfestival.com",
+    logoUrl: null,
+    startDate: "2026-10-28", // Usually late October to early November
+    endDate: "2026-11-09",
+    programmAnnouncedDate: "2026-09-20",
+    memberSaleDate: null,
+    publicSaleDate: new Date("2026-09-28T10:00:00+01:00"),
+    genreFocus: ["documentary", "music", "independent"],
+    venues: ["barbican", "bfi-southbank", "rio-dalston"],
     isActive: true,
   },
 

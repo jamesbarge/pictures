@@ -28,7 +28,7 @@ export const FESTIVAL_CONFIGS: Record<string, FestivalTaggingConfig> = {
     slugBase: "liff",
     venues: ["genesis"],
     confidence: "AUTO",
-    typicalMonths: [3], // April
+    typicalMonths: [5, 6], // June-July (recently moved from April)
   },
 
   // ── TITLE-confidence festivals (shared venues, need signal matching) ───
@@ -103,6 +103,24 @@ export const FESTIVAL_CONFIGS: Record<string, FestivalTaggingConfig> = {
     titleKeywords: ["doc'n roll", "docnroll", "doc n roll"],
     urlPatterns: [/docnrollfestival\.com/i],
     typicalMonths: [9, 10], // October-November
+  },
+
+  eeff: {
+    slugBase: "eeff",
+    venues: ["genesis", "rio-dalston", "rich-mix"],
+    confidence: "TITLE",
+    titleKeywords: ["eeff", "east end film festival", "east end film"],
+    urlPatterns: [/eastendfilmfestival\.com/i],
+    typicalMonths: [6], // July
+  },
+
+  "sundance-london": {
+    slugBase: "sundance-london",
+    venues: ["curzon-soho", "picturehouse-central"],
+    confidence: "TITLE",
+    titleKeywords: ["sundance", "sundance london", "sundance:"],
+    urlPatterns: [/sundance\.org/i],
+    typicalMonths: [4], // May
   },
 
   "bfi-lff": {
@@ -190,6 +208,16 @@ export const WATCHDOG_PROBES: WatchdogProbe[] = [
   {
     slugBase: "docnroll",
     probeUrl: "https://www.docnrollfestival.com/programme",
+    signal: "content-hash",
+  },
+  {
+    slugBase: "eeff",
+    probeUrl: "https://eastendfilmfestival.com/programme",
+    signal: "content-hash",
+  },
+  {
+    slugBase: "sundance-london",
+    probeUrl: "https://www.sundance.org/festivals/london",
     signal: "content-hash",
   },
 ];
