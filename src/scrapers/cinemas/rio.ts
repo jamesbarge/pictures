@@ -8,6 +8,7 @@
 
 import { BaseScraper } from "../base";
 import type { RawScreening, ScraperConfig } from "../types";
+import { FestivalDetector } from "../festivals/festival-detector";
 
 interface RioPerformance {
   StartDate: string;      // "2025-12-19"
@@ -48,6 +49,7 @@ export class RioScraper extends BaseScraper {
   }
 
   protected async parsePages(htmlPages: string[]): Promise<RawScreening[]> {
+    await FestivalDetector.preload();
     const screenings: RawScreening[] = [];
     const html = htmlPages[0];
 
@@ -133,6 +135,7 @@ export class RioScraper extends BaseScraper {
             // Pass metadata from JSON for better TMDB matching
             year: event.Year ? parseInt(event.Year, 10) : undefined,
             director: event.Director || undefined,
+            ...FestivalDetector.detect("rio-dalston", event.Title, datetime, bookingUrl),
           });
         }
       }

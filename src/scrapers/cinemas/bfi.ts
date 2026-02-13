@@ -9,6 +9,7 @@ import type { RawScreening, ScraperConfig } from "../types";
 import { getBrowser, closeBrowser, createPage, waitForCloudflare } from "../utils/browser";
 import type { Page } from "playwright";
 import { parseFilmMetadata } from "../utils/metadata-parser";
+import { FestivalDetector } from "../festivals/festival-detector";
 
 interface BFIVenueConfig {
   id: "bfi-southbank" | "bfi-imax";
@@ -47,6 +48,7 @@ export class BFIScraper {
 
   async scrape(): Promise<RawScreening[]> {
     console.log(`[${this.config.cinemaId}] Starting scrape with Playwright stealth mode...`);
+    await FestivalDetector.preload();
 
     try {
       await this.initialize();
@@ -357,7 +359,7 @@ export class BFIScraper {
         year: metadata.year,
         director: metadata.director,
         // Detect festival based on title/date
-        ...this.detectFestival(cleanTitle, datetime),
+        ...FestivalDetector.detect(this.config.cinemaId, cleanTitle, datetime, bookingUrl),
       });
     });
 
@@ -459,23 +461,6 @@ export class BFIScraper {
     }
   }
 
-  private detectFestival(title: string, date: Date): { festivalSlug?: string; festivalSection?: string } {
-    const month = date.getMonth(); // 0-indexed
-    const year = date.getFullYear();
-
-    // BFI Flare: March
-    if (month === 2 && (title.includes("Flare") || title.includes("BFI Flare"))) {
-      return { festivalSlug: `bfi-flare-${year}` };
-    }
-
-    // BFI LFF: October
-    if (month === 9 && (title.includes("LFF") || title.includes("London Film Festival"))) {
-      return { festivalSlug: `bfi-lff-${year}` };
-    }
-    
-    // Future: Specific data-driven rules
-    return {};
-  }
 }
 
 export function createBFIScraper(venueId: "bfi-southbank" | "bfi-imax"): BFIScraper {

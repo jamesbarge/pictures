@@ -899,6 +899,42 @@ export const scheduledLetterboxdEnrichment = inngest.createFunction(
   }
 );
 
+export const scheduledFestivalReverseTag = inngest.createFunction(
+  { id: "scheduled-festival-reverse-tag", retries: 1 },
+  { cron: "0 9 * * *" },
+  async ({ step }) => {
+    console.log("[Inngest] Starting scheduled festival reverse-tagging...");
+    const results = await step.run("reverse-tag-festivals", async () => {
+      const { reverseTagFestivals } = await import("@/scrapers/festivals/reverse-tagger");
+      return reverseTagFestivals();
+    });
+    const totalTagged = results.reduce((sum: number, r: { screeningsTagged: number }) => sum + r.screeningsTagged, 0);
+    console.log(`[Inngest] Festival reverse-tagging complete: ${totalTagged} screenings tagged`);
+    return { success: true, festivals: results.length, totalTagged, results };
+  }
+);
+
+export const scheduledFestivalWatchdog = inngest.createFunction(
+  { id: "scheduled-festival-watchdog", retries: 1 },
+  { cron: "0 */6 * * *" },
+  async ({ step }) => {
+    console.log("[Inngest] Starting festival programme watchdog...");
+    const results = await step.run("check-programmes", async () => {
+      const { checkProgrammeAvailability } = await import("@/scrapers/festivals/watchdog");
+      return checkProgrammeAvailability();
+    });
+    const detected = results.filter((r: { detected: boolean }) => r.detected).length;
+    if (detected > 0) {
+      await step.run("trigger-reverse-tag", async () => {
+        const { reverseTagFestivals } = await import("@/scrapers/festivals/reverse-tagger");
+        return reverseTagFestivals();
+      });
+    }
+    console.log(`[Inngest] Watchdog complete: ${results.length} checked, ${detected} detected`);
+    return { success: true, checked: results.length, detected, results };
+  }
+);
+
 // Export all functions for the serve handler
 export const functions = [
   runCinemaScraper,
@@ -907,4 +943,6 @@ export const functions = [
   scheduledBFIPDFImport,
   scheduledBFIChanges,
   scheduledLetterboxdEnrichment,
+  scheduledFestivalReverseTag,
+  scheduledFestivalWatchdog,
 ];

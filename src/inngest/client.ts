@@ -20,6 +20,16 @@ export type ScraperEvent = {
   };
 };
 
+export type FestivalProgrammeDetectedEvent = {
+  name: "festival/programme-detected";
+  data: {
+    festivalSlug: string;
+    probeUrl: string;
+    detectedAt: string;
+  };
+};
+
 export type Events = {
   "scraper/run": ScraperEvent;
+  "festival/programme-detected": FestivalProgrammeDetectedEvent;
 };

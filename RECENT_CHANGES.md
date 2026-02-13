@@ -5,6 +5,17 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-02-13: Festival Scraper System — Automated Festival Detection & Tagging
+**PR**: TBD | **Files**: `src/scrapers/festivals/*`, `src/inngest/functions.ts`, 11 scraper files, 3 admin API routes
+- Built three-layer festival detection system: reverse-tagger (batch), festival detector (inline), and programme watchdog
+- Configured all 11 London festivals with per-festival tagging rules (AUTO for exclusive venues, TITLE for shared venues)
+- Integrated FestivalDetector into all 11 venue scrapers (BFI, Barbican, ICA, PCC, Genesis, Rich Mix, Close-Up, Cine Lumiere, Rio, Garden, Curzon)
+- Added Inngest crons: daily reverse-tagging at 09:00 UTC, watchdog every 6 hours
+- Added admin API: GET /festivals/status, POST /festivals/reverse-tag, GET /festivals/audit
+- Replaced hardcoded BFI detectFestival() with shared config-driven detector
+
+---
+
 ## 2026-02-13: Film & Cinema Data Audit — Duplicate Cleanup
 **PR**: TBD | **Files**: `src/scrapers/pipeline.ts`, `src/inngest/functions.ts`
 - Merged 30 duplicate films (event-prefixed variants like "Film Club:", "DocHouse:", "RBO:") into canonical entries

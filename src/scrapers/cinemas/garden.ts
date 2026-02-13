@@ -15,6 +15,7 @@
 
 import { BaseScraper } from "../base";
 import type { RawScreening, ScraperConfig } from "../types";
+import { FestivalDetector } from "../festivals/festival-detector";
 
 export class GardenCinemaScraper extends BaseScraper {
   config: ScraperConfig = {
@@ -34,6 +35,7 @@ export class GardenCinemaScraper extends BaseScraper {
   }
 
   protected async parsePages(htmlPages: string[]): Promise<RawScreening[]> {
+    await FestivalDetector.preload();
     const screenings: RawScreening[] = [];
     const html = htmlPages[0];
     const $ = this.parseHtml(html);
@@ -114,14 +116,16 @@ export class GardenCinemaScraper extends BaseScraper {
           // Create sourceId for deduplication
           const sourceId = `garden-${this.slugify(title)}-${datetime.toISOString()}`;
 
+          const normalizedBookingUrl = this.normalizeUrl(bookingUrl);
           screenings.push({
             filmTitle: title,
             datetime,
-            bookingUrl: this.normalizeUrl(bookingUrl),
+            bookingUrl: normalizedBookingUrl,
             sourceId,
             posterUrl: posterUrl ? this.normalizeUrl(posterUrl) : undefined,
             year,
             director,
+            ...FestivalDetector.detect("garden", title, datetime, normalizedBookingUrl),
           });
         });
       });
