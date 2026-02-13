@@ -28,7 +28,7 @@ const RATE_LIMIT_MS = 300;
  * Decode HTML entities and mojibake (double-encoded UTF-8 via Latin-1).
  * Example: "S&Atilde;&iexcl;t&Atilde;&iexcl;ntang&Atilde;&sup3;" → "Sátántangó"
  */
-function decodeHtmlEntities(text: string): string {
+export function decodeHtmlEntities(text: string): string {
   // First pass: named + numeric HTML entities
   let decoded = text
     .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
@@ -294,12 +294,19 @@ async function main() {
   if (DRY_RUN) console.log("\n(Dry run — no changes were written)");
 }
 
-main()
-  .then(() => {
-    console.log("\nDone!");
-    process.exit(0);
-  })
-  .catch((err) => {
-    console.error("Fatal error:", err);
-    process.exit(1);
-  });
+// Only run when called directly (not when imported as a module)
+const isDirectRun =
+  process.argv[1]?.endsWith("enrich-upcoming-films.ts") ||
+  process.argv[1]?.endsWith("enrich-upcoming-films.js");
+
+if (isDirectRun) {
+  main()
+    .then(() => {
+      console.log("\nDone!");
+      process.exit(0);
+    })
+    .catch((err) => {
+      console.error("Fatal error:", err);
+      process.exit(1);
+    });
+}

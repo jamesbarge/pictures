@@ -80,6 +80,7 @@
     "agents:fallback-enrich": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/agents/fallback-enrichment/run.ts",
     "enrich:upcoming": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scripts/enrich-upcoming-films.ts",
     "cleanup:feb-films": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scripts/cleanup-feb-films.ts",
+    "cleanup:upcoming": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scripts/cleanup-upcoming-films.ts",
     "audit:films": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scripts/audit-film-data.ts",
     "poster:audit": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scripts/poster-audit-and-fix.ts",
     "scrape:snapshot": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/__tests__/run-snapshot.ts",
