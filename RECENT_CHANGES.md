@@ -5,6 +5,19 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-02-13: Festival Data Alignment & Eventive API Client
+**PR**: TBD | **Files**: `src/db/seed-festivals.ts`, `src/scrapers/festivals/*`, `src/inngest/*`, `src/app/api/admin/festivals/scrape-eventive/`
+- Fixed 4 stale venue IDs in seed data (prince-charles-cinema→prince-charles, rio-cinema→rio-dalston, genesis-cinema→genesis)
+- Added LIFF and Doc'n Roll seed entries (previously in config only, missing from DB)
+- Added EEFF and Sundance London config entries (previously in DB only, missing from config)
+- Updated LIFF typicalMonths from April to June-July (festival recently moved)
+- Built Eventive API client for structured festival programme scraping (FrightFest, UKJFF)
+- Created Eventive scraper with venue name→canonical ID mapping and ticket availability detection
+- Added alignment validation test ensuring config↔seed↔registry stay in sync (13 festivals)
+- Added admin API: POST /festivals/scrape-eventive and Inngest daily cron at 11:00 UTC
+
+---
+
 ## 2026-02-13: Festival Scraper System — Automated Festival Detection & Tagging
 **PR**: TBD | **Files**: `src/scrapers/festivals/*`, `src/inngest/functions.ts`, 11 scraper files, 3 admin API routes
 - Built three-layer festival detection system: reverse-tagger (batch), festival detector (inline), and programme watchdog
