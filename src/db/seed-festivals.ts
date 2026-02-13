@@ -26,14 +26,7 @@ const londonFestivals = [
     memberSaleDate: new Date("2026-09-07T10:00:00+01:00"), // Members get ~1 week early access
     publicSaleDate: new Date("2026-09-15T10:00:00+01:00"),
     genreFocus: ["international", "arthouse", "documentary", "shorts"],
-    venues: [
-      "bfi-southbank",
-      "bfi-imax",
-      "curzon-soho",
-      "curzon-mayfair",
-      "vue-leicester-square",
-      "odeon-luxe-leicester-square",
-    ],
+    venues: ["bfi-southbank", "bfi-imax", "curzon-soho", "curzon-mayfair"],
     isActive: true,
   },
 
@@ -45,7 +38,7 @@ const londonFestivals = [
     shortName: "FrightFest",
     year: 2026,
     description:
-      "The UK's premier horror and fantasy film festival. Five days of premieres, cult classics, and genre-bending cinema at the heart of London's West End.",
+      "The UK's premier horror and fantasy film festival. Five days of premieres, cult classics, and genre-bending cinema at ODEON Luxe Leicester Square and Prince Charles Cinema.",
     websiteUrl: "https://www.frightfest.co.uk",
     logoUrl: null,
     startDate: "2026-08-27", // Usually late August bank holiday weekend
@@ -54,7 +47,7 @@ const londonFestivals = [
     memberSaleDate: null, // No member early access
     publicSaleDate: new Date("2026-07-20T10:00:00+01:00"),
     genreFocus: ["horror", "fantasy", "sci-fi", "thriller", "cult"],
-    venues: ["vue-leicester-square", "prince-charles-cinema"],
+    venues: ["prince-charles"],
     isActive: true,
   },
 
@@ -66,16 +59,16 @@ const londonFestivals = [
     shortName: "Raindance",
     year: 2026,
     description:
-      "Europe's largest independent film festival, championing first-time filmmakers and bold storytelling. Features competitions, masterclasses, and industry events.",
+      "The UK's largest independent film festival, championing first-time filmmakers and bold storytelling. Features competitions, masterclasses, and industry events.",
     websiteUrl: "https://raindance.org/festival",
     logoUrl: null,
     startDate: "2026-06-17", // Usually June
-    endDate: "2026-06-28",
+    endDate: "2026-06-26",
     programmAnnouncedDate: "2026-05-20",
     memberSaleDate: new Date("2026-05-25T10:00:00+01:00"),
     publicSaleDate: new Date("2026-06-01T10:00:00+01:00"),
     genreFocus: ["independent", "debut", "international", "documentary"],
-    venues: ["curzon-soho", "vue-piccadilly"],
+    venues: ["curzon-soho"],
     isActive: true,
   },
 
@@ -117,7 +110,7 @@ const londonFestivals = [
     memberSaleDate: null,
     publicSaleDate: new Date("2025-12-15T10:00:00+00:00"),
     genreFocus: ["shorts", "animation", "experimental", "music-video"],
-    venues: ["ica", "bfi-southbank", "rio-cinema", "rich-mix"],
+    venues: ["ica", "bfi-southbank", "rio-dalston", "rich-mix"],
     isActive: true,
   },
 
@@ -129,39 +122,21 @@ const londonFestivals = [
     shortName: "LKFF",
     year: 2026,
     description:
-      "Europe's largest Korean film festival, presenting the best of contemporary and classic Korean cinema including features, documentaries, and shorts. Showcases K-cinema's bold storytelling and visual innovation.",
+      "The 21st London Korean Film Festival, Europe's largest Korean film festival. Presents the best of contemporary and classic Korean cinema including features, documentaries, and shorts across two weeks.",
     websiteUrl: "https://koreanfilm.co.uk",
     logoUrl: null,
     startDate: "2026-11-05", // Usually early-mid November
-    endDate: "2026-11-26",
+    endDate: "2026-11-18",
     programmAnnouncedDate: "2026-10-01",
     memberSaleDate: null,
     publicSaleDate: new Date("2026-10-08T10:00:00+00:00"),
     genreFocus: ["korean", "international", "thriller", "drama"],
-    venues: ["prince-charles-cinema", "bfi-southbank", "genesis-cinema"],
+    venues: ["bfi-southbank", "cine-lumiere", "ica"],
     isActive: true,
   },
 
-  // Sundance Film Festival: London
-  {
-    id: randomUUID(),
-    name: "Sundance Film Festival: London 2026",
-    slug: "sundance-london-2026",
-    shortName: "Sundance London",
-    year: 2026,
-    description:
-      "A curated selection of award-winning films from the renowned Sundance Film Festival in Utah, bringing American independent cinema to London audiences.",
-    websiteUrl: "https://www.sundance.org/festivals/london",
-    logoUrl: null,
-    startDate: "2026-05-28", // Usually late May/early June
-    endDate: "2026-05-31",
-    programmAnnouncedDate: "2026-04-15",
-    memberSaleDate: null,
-    publicSaleDate: new Date("2026-04-22T10:00:00+01:00"),
-    genreFocus: ["independent", "american", "documentary", "debut"],
-    venues: ["curzon-soho", "picturehouse-central"],
-    isActive: true,
-  },
+  // Sundance Film Festival: London — last held 2019, never returned post-COVID
+  // Moved to deactivateSlugs
 
   // Open City Documentary Festival
   {
@@ -171,39 +146,21 @@ const londonFestivals = [
     shortName: "Open City Docs",
     year: 2026,
     description:
-      "London's leading documentary film festival, championing innovative non-fiction filmmaking with artist films, features, and shorts from around the world.",
+      "The 16th Open City Documentary Festival, London's leading documentary film festival. Championing innovative non-fiction filmmaking with artist films, features, and shorts from around the world.",
     websiteUrl: "https://opencitylondon.com",
     logoUrl: null,
-    startDate: "2026-09-09", // Usually September
-    endDate: "2026-09-13",
-    programmAnnouncedDate: "2026-08-10",
+    startDate: "2026-04-14", // Usually mid-April
+    endDate: "2026-04-19",
+    programmAnnouncedDate: "2026-03-15",
     memberSaleDate: null,
-    publicSaleDate: new Date("2026-08-15T10:00:00+01:00"),
+    publicSaleDate: new Date("2026-03-20T10:00:00+00:00"),
     genreFocus: ["documentary", "experimental", "artist-film", "international"],
-    venues: ["ica", "close-up-cinema", "bfi-southbank"],
+    venues: ["ica", "close-up-cinema", "barbican", "rich-mix"],
     isActive: true,
   },
 
-  // East End Film Festival
-  {
-    id: randomUUID(),
-    name: "East End Film Festival 2026",
-    slug: "eeff-2026",
-    shortName: "EEFF",
-    year: 2026,
-    description:
-      "Celebrating independent cinema with a focus on East London's diverse communities. Features bold shorts, docs, and features from emerging filmmakers.",
-    websiteUrl: "https://eastendfilmfestival.com",
-    logoUrl: null,
-    startDate: "2026-07-02", // Usually early July
-    endDate: "2026-07-12",
-    programmAnnouncedDate: "2026-05-28",
-    memberSaleDate: null,
-    publicSaleDate: new Date("2026-06-03T10:00:00+01:00"),
-    genreFocus: ["independent", "local", "documentary", "shorts"],
-    venues: ["genesis-cinema", "rio-cinema", "rich-mix"],
-    isActive: true,
-  },
+  // East End Film Festival — ceased operations March 2020, dissolved July 2021
+  // Moved to deactivateSlugs
 
   // Birds Eye View ended in 2014; organisation rebranded to Reclaim The Frame
   // Removed from seed data - not a running festival
@@ -216,16 +173,16 @@ const londonFestivals = [
     shortName: "UKJFF",
     year: 2026,
     description:
-      "The largest Jewish film festival in Europe, presenting features, documentaries, and shorts exploring Jewish life, culture, and history from around the world.",
+      "The largest Jewish film festival in Europe. London dates feature features, documentaries, and shorts exploring Jewish life, culture, and history, followed by a nationwide touring programme.",
     websiteUrl: "https://ukjewishfilm.org",
     logoUrl: null,
-    startDate: "2026-11-11", // Usually mid-November
-    endDate: "2026-11-22",
-    programmAnnouncedDate: "2026-10-15",
+    startDate: "2026-11-05", // London window, usually early-mid November
+    endDate: "2026-11-15",
+    programmAnnouncedDate: "2026-10-08",
     memberSaleDate: null,
-    publicSaleDate: new Date("2026-10-20T10:00:00+00:00"),
+    publicSaleDate: new Date("2026-10-13T10:00:00+00:00"),
     genreFocus: ["jewish", "international", "documentary", "historical"],
-    venues: ["jw3", "barbican", "curzon-soho"],
+    venues: ["barbican", "curzon-soho"],
     isActive: true,
   },
 
@@ -240,13 +197,55 @@ const londonFestivals = [
       "The UK's largest animation festival, showcasing cutting-edge animation from around the world including features, shorts, VR experiences, and masterclasses.",
     websiteUrl: "https://liaf.org.uk",
     logoUrl: null,
-    startDate: "2026-12-03", // Usually early December
+    startDate: "2026-11-27", // Usually late Nov to early Dec
     endDate: "2026-12-06",
-    programmAnnouncedDate: "2026-10-28",
+    programmAnnouncedDate: "2026-10-20",
     memberSaleDate: null,
-    publicSaleDate: new Date("2026-11-02T10:00:00+00:00"),
+    publicSaleDate: new Date("2026-10-25T10:00:00+00:00"),
     genreFocus: ["animation", "experimental", "shorts", "vr"],
-    venues: ["barbican", "bfi-southbank", "ica"],
+    venues: ["barbican", "close-up-cinema", "garden"],
+    isActive: true,
+  },
+
+  // Doc'n Roll Film Festival - Music documentary specialists
+  {
+    id: randomUUID(),
+    name: "Doc'n Roll Film Festival 2026",
+    slug: "docnroll-2026",
+    shortName: "Doc'n Roll",
+    year: 2026,
+    description:
+      "The UK's music documentary film festival, now in its 13th edition. Celebrating the stories behind the music with features and shorts exploring artists, scenes, and subcultures.",
+    websiteUrl: "https://www.docnrollfestival.com",
+    logoUrl: null,
+    startDate: "2026-10-24", // Estimated from 2025 pattern (Oct 25-Nov 9)
+    endDate: "2026-11-08",
+    programmAnnouncedDate: "2026-09-25",
+    memberSaleDate: null,
+    publicSaleDate: new Date("2026-10-01T10:00:00+01:00"),
+    genreFocus: ["music", "documentary", "subculture"],
+    venues: ["barbican", "bfi-southbank", "rio-dalston"],
+    isActive: true,
+  },
+
+  // London Independent Film Festival
+  {
+    id: randomUUID(),
+    name: "London Independent Film Festival 2026",
+    slug: "liff-2026",
+    shortName: "LIFF",
+    year: 2026,
+    description:
+      "London's indie film festival at Genesis Cinema, now in its 24th edition. Showcasing debut features, international shorts, and emerging talent with the SMASH Pitch competition.",
+    websiteUrl: "https://liff.org",
+    logoUrl: null,
+    startDate: "2026-04-09", // Estimated from 2025 pattern (Apr 10-19)
+    endDate: "2026-04-19",
+    programmAnnouncedDate: "2026-03-10",
+    memberSaleDate: null,
+    publicSaleDate: new Date("2026-03-15T10:00:00+00:00"),
+    genreFocus: ["independent", "debut", "international", "shorts"],
+    venues: ["genesis"],
     isActive: true,
   },
 ];
@@ -284,7 +283,7 @@ async function seedFestivals() {
   }
 
   // Deactivate festivals that no longer exist
-  const deactivateSlugs = ["birdseye-2026"];
+  const deactivateSlugs = ["birdseye-2026", "sundance-london-2026", "eeff-2026"];
   for (const slug of deactivateSlugs) {
     try {
       await db
