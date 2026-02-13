@@ -850,7 +850,7 @@ const EVENT_PREFIXES = [
   /^introduced\s+by[^:]*[:\s]+/i,
 
   // Sing-along and interactive
-  /^sing[\s-]*a[\s-]*long[:\s]+/i,
+  /^sing[\s-]*a[\s-]*long[\s-]*a?\s+/i,
   /^quote[\s-]*a[\s-]*long[:\s]+/i,
   /^singalong[:\s]+/i,
 
@@ -868,6 +868,8 @@ const EVENT_PREFIXES = [
   /^dog\s+friendly\s+screening[:\s]+/i,
   /^toddler\s+club[:\s]+/i,
   /^queer\s+horror\s+nights?[:\s]+/i,
+  /^varda\s+film\s+club[:\s]+/i,
+  /^awards\s+lunch[:\s]+/i,
 
   // Branded series
   /^bar\s+trash\s+\d+[:\s]+/i,
@@ -883,6 +885,7 @@ const EVENT_PREFIXES = [
 
   // Broadcast/RBO
   /^rbo\s+cinema\s+season\b[^:]*[:\s]+/i,
+  /^rbo[:\s]+/i,
 ];
 
 /**
@@ -945,8 +948,10 @@ export function cleanFilmTitle(title: string): string {
     .replace(/\s*\[.*?\]\s*$/g, "")
     // Remove trailing "- 35mm", "- 70mm" format notes (already captured as format)
     .replace(/\s*-\s*(35mm|70mm|4k|imax)\s*$/i, "")
-    // Remove trailing "+ Q&A" / "+ pre-recorded intro by ..." / "+ discussion with ..."
-    .replace(/\s*\+\s*(q\s*&\s*a|discussion|intro)\b.*$/i, "")
+    // Remove trailing "+ Q&A" (including HTML-encoded &amp;) / "+ pre-recorded intro by ..." / "+ discussion with ..." / "+ Live Music"
+    .replace(/\s*\+\s*(q\s*(&amp;|&)\s*a|discussion|intro|live\s+music)\b.*$/i, "")
+    // Remove trailing format parentheticals like "(ON VHS)", "(ON 35MM)"
+    .replace(/\s*\(on\s+(vhs|35mm|70mm|blu-?ray|dvd|4k)\)\s*$/i, "")
     // Remove "Presented by ..." suffixes
     .replace(/\s+presented\s+by\s+.*$/i, "")
     // Remove "• Nth Anniversary" suffixes

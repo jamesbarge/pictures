@@ -5,6 +5,17 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-02-13: Film & Cinema Data Audit — Duplicate Cleanup
+**PR**: TBD | **Files**: `src/scrapers/pipeline.ts`, `src/inngest/functions.ts`
+- Merged 30 duplicate films (event-prefixed variants like "Film Club:", "DocHouse:", "RBO:") into canonical entries
+- Consolidated 6 duplicate cinema pairs (legacy IDs → canonical registry IDs), migrating screenings
+- Migrated Phoenix Cinema from legacy `phoenix` to canonical `phoenix-east-finchley` ID
+- Reactivated Garden Cinema (was incorrectly marked inactive)
+- Fixed Romford Lumiere Inngest config with correct URL, name, and address
+- Added 6 missing event prefixes/suffixes to `cleanFilmTitle()` to prevent recurrence
+
+---
+
 ## 2026-02-07: Data Cleanup — Films Missing TMDB Through Feb
 **PR**: TBD | **Files**: `src/scripts/cleanup-feb-films.ts`, `package.json`
 - One-time cleanup of 166 entries classified as films but missing TMDB data
