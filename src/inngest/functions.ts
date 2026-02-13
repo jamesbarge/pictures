@@ -468,11 +468,11 @@ const getScraperRegistry = (): Record<string, () => Promise<ScraperEntry>> => ({
     return createIndependentEntry(
       {
         id: "romford-lumiere",
-        name: "Lumiere Cinema Romford",
-        shortName: "Lumiere",
-        website: "https://lumiere-cinema.co.uk",
-        address: { street: "The Sapphire Ice and Leisure", area: "Romford", postcode: "RM1 3RL" },
-        features: ["independent", "modern"],
+        name: "Lumière Romford",
+        shortName: "Lumière",
+        website: "https://www.lumiereromford.com",
+        address: { street: "Mercury Gardens", area: "Romford", postcode: "RM1 3EE" },
+        features: ["bar", "accessible", "community"],
       },
       true, // Requires Playwright
       async () => createRomfordLumiereScraper()
