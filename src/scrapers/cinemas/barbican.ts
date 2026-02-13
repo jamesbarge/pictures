@@ -7,6 +7,7 @@ import { BaseScraper } from "../base";
 import type { RawScreening, ScraperConfig } from "../types";
 import type { CheerioAPI } from "../utils/cheerio-types";
 import { parseFilmMetadata } from "../utils/metadata-parser";
+import { FestivalDetector } from "../festivals/festival-detector";
 
 export class BarbicanScraper extends BaseScraper {
   config: ScraperConfig = {
@@ -95,6 +96,7 @@ export class BarbicanScraper extends BaseScraper {
   }
 
   protected async parsePages(htmlPages: string[]): Promise<RawScreening[]> {
+    await FestivalDetector.preload();
     const screenings: RawScreening[] = [];
 
     for (const page of htmlPages) {
@@ -169,6 +171,7 @@ export class BarbicanScraper extends BaseScraper {
         // Pass extracted metadata for better TMDB matching
         year: metadata?.year,
         director: metadata?.director,
+        ...FestivalDetector.detect("barbican", title, datetime, bookingUrl),
       });
     });
 

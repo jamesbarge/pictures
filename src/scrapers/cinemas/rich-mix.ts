@@ -11,6 +11,7 @@
  */
 
 import type { RawScreening, ScraperConfig, CinemaScraper } from "../types";
+import { FestivalDetector } from "../festivals/festival-detector";
 
 const RICHMIX_CONFIG: ScraperConfig & { apiUrl: string } = {
   cinemaId: "rich-mix",
@@ -57,6 +58,7 @@ export class RichMixScraper implements CinemaScraper {
 
   async scrape(): Promise<RawScreening[]> {
     console.log(`[${this.config.cinemaId}] Starting Rich Mix scrape...`);
+    await FestivalDetector.preload();
 
     // Fetch the JSON API
     console.log(`[${this.config.cinemaId}] Fetching JSON API...`);
@@ -113,6 +115,7 @@ export class RichMixScraper implements CinemaScraper {
             datetime,
             bookingUrl,
             sourceId,
+            ...FestivalDetector.detect("rich-mix", film.post_title, datetime, bookingUrl),
           });
         }
       }

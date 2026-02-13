@@ -10,6 +10,7 @@
 
 import { BaseScraper } from "../base";
 import type { RawScreening, ScraperConfig } from "../types";
+import { FestivalDetector } from "../festivals/festival-detector";
 import {
   parseScreeningDate,
   parseScreeningTime,
@@ -42,6 +43,7 @@ export class CineLumiereScraper extends BaseScraper {
   }
 
   protected async parsePages(htmlPages: string[]): Promise<RawScreening[]> {
+    await FestivalDetector.preload();
     const screenings: RawScreening[] = [];
 
     for (const html of htmlPages) {
@@ -153,6 +155,7 @@ export class CineLumiereScraper extends BaseScraper {
           datetime,
           bookingUrl: bookingUrl || `${this.config.baseUrl}/CineLumiere.dll/`,
           sourceId: `cine-lumiere-${filmTitle.toLowerCase().replace(/\s+/g, "-")}-${datetime.toISOString()}`,
+          ...FestivalDetector.detect("cine-lumiere", filmTitle, datetime, bookingUrl),
         });
       }
     });
@@ -204,6 +207,7 @@ export class CineLumiereScraper extends BaseScraper {
             datetime,
             bookingUrl: bookingUrl || `${this.config.baseUrl}/CineLumiere.dll/`,
             sourceId: `cine-lumiere-${filmTitle.toLowerCase().replace(/\s+/g, "-")}-${datetime.toISOString()}`,
+            ...FestivalDetector.detect("cine-lumiere", filmTitle, datetime, bookingUrl),
           });
         }
       });
@@ -274,6 +278,7 @@ export class CineLumiereScraper extends BaseScraper {
           datetime,
           bookingUrl: bookingUrl || `${this.config.baseUrl}/CineLumiere.dll/`,
           sourceId: `cine-lumiere-${currentFilm.toLowerCase().replace(/\s+/g, "-")}-${datetime.toISOString()}`,
+          ...FestivalDetector.detect("cine-lumiere", currentFilm, datetime, bookingUrl),
         });
       }
     });

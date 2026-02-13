@@ -8,6 +8,7 @@ import type { RawScreening, ScraperConfig } from "../types";
 import { parseScreeningDate, parseScreeningTime, combineDateAndTime } from "../utils/date-parser";
 import { parseFilmMetadata } from "../utils/metadata-parser";
 import type { CheerioAPI, CheerioSelection } from "../utils/cheerio-types";
+import { FestivalDetector } from "../festivals/festival-detector";
 
 export class PrinceCharlesScraper extends BaseScraper {
   config: ScraperConfig = {
@@ -27,6 +28,7 @@ export class PrinceCharlesScraper extends BaseScraper {
   }
 
   protected async parsePages(htmlPages: string[]): Promise<RawScreening[]> {
+    await FestivalDetector.preload();
     const screenings: RawScreening[] = [];
 
     for (const html of htmlPages) {
@@ -151,6 +153,7 @@ export class PrinceCharlesScraper extends BaseScraper {
       director: metadata?.director,
       // Availability status from CSS class
       availabilityStatus: isSoldOut ? "sold_out" : "available",
+      ...FestivalDetector.detect("prince-charles", filmTitle, datetime, bookingUrl),
     };
   }
 }

@@ -7,6 +7,7 @@ import { BaseScraper } from "../base";
 import type { RawScreening, ScraperConfig } from "../types";
 import { parseScreeningDate, parseScreeningTime, combineDateAndTime } from "../utils/date-parser";
 import type { CheerioAPI } from "../utils/cheerio-types";
+import { FestivalDetector } from "../festivals/festival-detector";
 
 interface FilmInfo {
   title: string;
@@ -80,6 +81,7 @@ export class ICAScraper extends BaseScraper {
   }
 
   protected async parsePages(htmlPages: string[]): Promise<RawScreening[]> {
+    await FestivalDetector.preload();
     const screenings: RawScreening[] = [];
 
     for (const html of htmlPages) {
@@ -193,6 +195,7 @@ export class ICAScraper extends BaseScraper {
           // Pass extracted metadata for better TMDB matching
           year: filmInfo.year,
           director: filmInfo.director,
+          ...FestivalDetector.detect("ica", filmInfo.title, datetime, bookingBase || fallbackUrl),
         });
       }
     });

@@ -13,6 +13,7 @@
  */
 
 import type { ChainConfig, VenueConfig, RawScreening, ChainScraper } from "../types";
+import { FestivalDetector } from "../festivals/festival-detector";
 import { getBrowser, closeBrowser, createPage } from "../utils/browser";
 import type { Page } from "playwright";
 
@@ -234,6 +235,7 @@ export class CurzonScraper implements ChainScraper {
    */
   async scrapeVenues(venueIds: string[]): Promise<Map<string, RawScreening[]>> {
     const results = new Map<string, RawScreening[]>();
+    await FestivalDetector.preload();
 
     try {
       // Initialize and capture auth token
@@ -483,6 +485,7 @@ export class CurzonScraper implements ChainScraper {
         eventDescription: eventDescriptions.length > 0 ? eventDescriptions.join(", ") : undefined,
         // Availability status from Vista API
         availabilityStatus: showtime.isSoldOut ? "sold_out" : "available",
+        ...FestivalDetector.detect(venue.id, filmTitle, datetime, bookingUrl),
       });
     }
 

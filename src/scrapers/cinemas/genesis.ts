@@ -12,6 +12,7 @@
 
 import * as cheerio from "cheerio";
 import type { RawScreening, ScraperConfig, CinemaScraper } from "../types";
+import { FestivalDetector } from "../festivals/festival-detector";
 
 // ============================================================================
 // Genesis Configuration
@@ -44,6 +45,7 @@ export class GenesisScraper implements CinemaScraper {
 
   async scrape(): Promise<RawScreening[]> {
     console.log(`[genesis] Starting scrape...`);
+    await FestivalDetector.preload();
 
     try {
       const screenings: RawScreening[] = [];
@@ -160,6 +162,7 @@ export class GenesisScraper implements CinemaScraper {
         bookingUrl,
         eventType,
         sourceId: `genesis-${perfCode}`,
+        ...FestivalDetector.detect("genesis", filmTitle, datetime, bookingUrl),
       });
     });
 

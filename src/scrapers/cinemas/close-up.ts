@@ -18,6 +18,7 @@
 import * as cheerio from "cheerio";
 import { BaseScraper } from "../base";
 import type { RawScreening, ScraperConfig } from "../types";
+import { FestivalDetector } from "../festivals/festival-detector";
 
 interface CloseUpShow {
   id: string;
@@ -77,6 +78,7 @@ export class CloseUpCinemaScraper extends BaseScraper {
   }
 
   protected async parsePages(htmlPages: string[]): Promise<RawScreening[]> {
+    await FestivalDetector.preload();
     const screenings: RawScreening[] = [];
     const now = new Date();
     const seenKeys = new Set<string>(); // For deduplication
@@ -119,6 +121,7 @@ export class CloseUpCinemaScraper extends BaseScraper {
                 datetime,
                 bookingUrl,
                 sourceId,
+                ...FestivalDetector.detect("close-up-cinema", show.title.trim(), datetime, bookingUrl),
               });
             }
           }
@@ -172,6 +175,7 @@ export class CloseUpCinemaScraper extends BaseScraper {
         datetime,
         bookingUrl,
         sourceId,
+        ...FestivalDetector.detect("close-up-cinema", title.trim(), datetime, bookingUrl),
       });
     });
 
@@ -208,6 +212,7 @@ export class CloseUpCinemaScraper extends BaseScraper {
           datetime,
           bookingUrl,
           sourceId,
+          ...FestivalDetector.detect("close-up-cinema", title.trim(), datetime, bookingUrl),
         });
       });
     }
