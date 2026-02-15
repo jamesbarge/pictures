@@ -5,6 +5,16 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-02-15: Upgrade Node.js from 20 to 22 LTS
+**PR**: TBD | **Files**: `.nvmrc`, `package.json`, 4 GitHub Actions workflows
+- Upgraded Node.js target from 20 to 22 LTS (supported through April 2027)
+- Added `.nvmrc` pinning project to Node 22
+- Updated `@types/node` from `^20` to `^22`
+- Updated all 4 CI workflows to use Node 22 (test, scrape, scrape-playwright, social-outreach)
+- Motivation: PostHog SDK packages require `^20.20.0 || >=22.22.0`
+
+---
+
 ## 2026-02-13: Festival Data Alignment & Eventive API Client
 **PR**: TBD | **Files**: `src/db/seed-festivals.ts`, `src/scrapers/festivals/*`, `src/inngest/*`, `src/app/api/admin/festivals/scrape-eventive/`
 - Fixed 4 stale venue IDs in seed data (prince-charles-cinema→prince-charles, rio-cinema→rio-dalston, genesis-cinema→genesis)
