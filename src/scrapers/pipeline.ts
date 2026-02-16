@@ -42,6 +42,8 @@ export interface PipelineResult {
 // Maps normalizedTitle -> film record
 type FilmRecord = typeof films.$inferSelect;
 let filmCache: Map<string, FilmRecord> | null = null;
+// Secondary index: Maps tmdbId -> film record for dedup by TMDB ID
+let tmdbIdIndex: Map<number, FilmRecord> | null = null;
 
 // Track cache stats for logging
 let cacheStats = { hits: 0, misses: 0, dbQueries: 0 };
@@ -52,6 +54,7 @@ let cacheStats = { hits: 0, misses: 0, dbQueries: 0 };
  */
 async function initFilmCache(): Promise<Map<string, FilmRecord>> {
   const cache = new Map<string, FilmRecord>();
+  const tmdbIndex = new Map<number, FilmRecord>();
   cacheStats = { hits: 0, misses: 0, dbQueries: 0 };
 
   cacheStats.dbQueries++;
@@ -64,9 +67,14 @@ async function initFilmCache(): Promise<Map<string, FilmRecord>> {
     if (!existing || (film.tmdbId && !existing.tmdbId)) {
       cache.set(normalized, film);
     }
+    // Build TMDB ID index — two films with same TMDB ID are always the same film
+    if (film.tmdbId) {
+      tmdbIndex.set(film.tmdbId, film);
+    }
   }
 
-  console.log(`[Pipeline] Film cache initialized with ${cache.size} unique films (${allFilms.length} total)`);
+  tmdbIdIndex = tmdbIndex;
+  console.log(`[Pipeline] Film cache initialized with ${cache.size} unique films, ${tmdbIndex.size} TMDB IDs (${allFilms.length} total)`);
   return cache;
 }
 
@@ -100,6 +108,9 @@ function addToFilmCache(film: FilmRecord) {
   if (filmCache) {
     const normalized = normalizeTitle(film.title);
     filmCache.set(normalized, film);
+  }
+  if (tmdbIdIndex && film.tmdbId) {
+    tmdbIdIndex.set(film.tmdbId, film);
   }
 }
 
@@ -338,6 +349,14 @@ async function getOrCreateFilm(
     cleanedTitle = cleanFilmTitle(title);
   }
 
+  // Extract year from title as a hint for TMDB matching if scraper didn't provide one
+  if (!scraperYear) {
+    const yearMatch = title.match(/\((\d{4})\)\s*$/);
+    if (yearMatch) {
+      scraperYear = parseInt(yearMatch[1], 10);
+    }
+  }
+
   // Use canonical title for matching (without version suffixes like "Final Cut")
   // This ensures "Apocalypse Now" and "Apocalypse Now : Final Cut" match to the same film
   const matchingTitle = extraction.canonicalTitle || cleanedTitle;
@@ -394,12 +413,18 @@ async function getOrCreateFilm(
     });
 
     if (match) {
-      // Check if we already have this TMDB ID
+      // Check if we already have this TMDB ID — cache first, then DB fallback
+      const cachedByTmdb = tmdbIdIndex?.get(match.tmdbId);
+      if (cachedByTmdb) {
+        cacheStats.hits++;
+        return cachedByTmdb.id;
+      }
       const byTmdbId = await db
         .select()
         .from(films)
         .where(eq(films.tmdbId, match.tmdbId))
         .limit(1);
+      cacheStats.dbQueries++;
 
       if (byTmdbId.length > 0) {
         return byTmdbId[0].id;
@@ -804,6 +829,7 @@ const EVENT_PREFIXES = [
   // Kids/Family events
   /^saturday\s+morning\s+picture\s+club[:\s]+/i,
   /^kids['\s]*club[:\s]+/i,
+  /^family\s+film\s+club[:\s]+/i,
   /^family\s+film[:\s]+/i,
   /^toddler\s+time[:\s]+/i,
   /^big\s+scream[:\s]+/i,
@@ -854,10 +880,12 @@ const EVENT_PREFIXES = [
   /^quote[\s-]*a[\s-]*long[:\s]+/i,
   /^singalong[:\s]+/i,
 
-  // Christmas/Holiday
+  // Holiday/Themed events
   /^christmas\s+classic[s]?[:\s]+/i,
   /^holiday\s+film[:\s]+/i,
   /^festive\s+film[:\s]+/i,
+  /^galentine['\u2019]?s?\s+day[:\s]+/i,
+  /^valentine['\u2019]?s?\s+day[:\s]+/i,
 
   // Venue-specific curated series
   /^dochouse[:\s]+/i,
@@ -883,9 +911,14 @@ const EVENT_PREFIXES = [
   /^drink\s+&?\s*dine[:\s]+/i,
   /^valentine['']?s?\s+throwback[:\s]+/i,
 
-  // Broadcast/RBO
+  // Broadcast/RBO/ROH encore screenings
   /^rbo\s+cinema\s+season\b[^:]*[:\s]+/i,
+  /^rbo\s+encore[:\s]+/i,
+  /^roh\s+encore[:\s]+/i,
+  /^encore[:\s]+/i,
   /^rbo[:\s]+/i,
+  /^nt\s+live[:\s]+/i,
+  /^met\s+opera[:\s]+/i,
 ];
 
 /**
@@ -941,6 +974,9 @@ export function cleanFilmTitle(title: string): string {
     }
   }
 
+  // Strip trailing year like "(1997)" or "(2026)" — year is used as TMDB hint, not title text
+  cleaned = cleaned.replace(/\s*\(\d{4}\)\s*$/, "").trim();
+
   return cleaned
     // Remove BBFC ratings: (U), (PG), (12), (12A), (15), (18), with optional asterisk
     .replace(/\s*\((U|PG|12A?|15|18)\*?\)\s*$/i, "")
@@ -963,13 +999,18 @@ export function cleanFilmTitle(title: string): string {
 
 /**
  * Normalize a film title for comparison
- * Assumes title is already cleaned via AI extraction
+ * Uses unicode-aware normalization that preserves accented characters:
+ * - "Amélie" → "amelie" (not "amlie" which the old [^\w\s] produced)
+ * - "Delicatessen" → "delicatessen"
+ * - "Crouching Tiger, Hidden Dragon" → "crouching tiger hidden dragon"
  */
-function normalizeTitle(title: string): string {
+export function normalizeTitle(title: string): string {
   return title
+    .normalize("NFKD")                    // Decompose unicode (é → e + combining accent)
+    .replace(/[\u0300-\u036f]/g, "")      // Strip combining diacritical marks only
     .toLowerCase()
     .replace(/^the\s+/i, "")
-    .replace(/[^\w\s]/g, "")
+    .replace(/[^\p{L}\p{N}\s]/gu, "")     // Unicode-aware: keep letters + numbers + spaces
     .replace(/\s+/g, " ")
     .trim();
 }

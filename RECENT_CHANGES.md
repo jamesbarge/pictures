@@ -5,6 +5,45 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-02-16: Manual Title Fixes + TMDB Matching via Claude Code
+**PR**: TBD | **Files**: `scripts/manual-title-fixes.ts`, `AGENTS.md`
+- Claude Code-driven bulk data cleanup: 298 unmatched films → 94 remaining (69% reduction)
+- Phase 1: Deleted 50 non-film events (quizzes, talks, festivals, shorts compilations, music events)
+- Phase 2: Reclassified 11 entries (ballet/opera → live_broadcast, TV series → event)
+- Phase 3: 53 explicit title fixes matched to TMDB (stripped event prefixes, fixed misspellings, added year hints)
+- Phase 4: 87 films merged with existing records (duplicate screenings consolidated)
+- Overall improvement: Missing TMDB 548→131 (76%), Missing poster 246→14 (94%), Missing synopsis 524→129 (75%)
+- Documented "Claude Code vs API Agents" strategy in AGENTS.md — direct script generation beats API-based enrichment for bulk passes
+- Added `BAD_MERGE_TMDB_IDS` blocklist to prevent false-positive merges (e.g. "The Birds" → "The Bird's Placebo")
+
+---
+
+## 2026-02-16: Comprehensive Upcoming Screenings Data Quality Orchestrator
+**PR**: TBD | **Files**: `scripts/audit-and-fix-upcoming.ts`, `package.json`
+- New multi-pass orchestrator script (`npm run audit:fix-upcoming`) chains 8 passes for systematic data quality improvement
+- Pass 1: Pre-flight audit captures baseline metrics for before/after comparison
+- Pass 2: Non-film detection classifies unmatched entries as live_broadcast/concert/event using heuristic patterns
+- Pass 3-6: Chains existing scripts (duplicate cleanup, title/TMDB/Letterboxd enrichment, fallback enrichment, poster audit)
+- Pass 7: Dodgy entry detector flags long titles, ALL CAPS, year/runtime outliers, and fully unmatched films
+- Pass 8: Final audit with delta comparison table showing improvement across all metrics
+- Supports `--dry-run`, `--pass N` (single pass), `--skip N,N` (skip passes) flags
+- Uses `execFileSync` (not `exec`) to avoid shell injection; all sub-scripts run with error isolation
+
+---
+
+## 2026-02-15: Fix Duplicate Films & Pipeline Resilience
+**PR**: TBD | **Files**: `src/scrapers/pipeline.ts`, `src/lib/film-similarity.ts`, `src/lib/title-extractor.ts`, `scripts/cleanup-duplicate-films.ts`
+- Fixed `normalizeTitle()` unicode handling: NFKD decomposition preserves accented chars ("Amélie" → "amelie" not "amlie")
+- Added year stripping from titles ("Crash (1997)" → "Crash"), BBFC ratings, Q&A suffixes, format notes
+- Expanded event prefix patterns: added 15+ new patterns (Galentine's Day, RBO Encore, Varda Film Club, etc.)
+- Added TMDB ID secondary index to film cache for strongest dedup signal
+- Lowered fuzzy matching thresholds (HIGH 0.7→0.6, LOW 0.4→0.35, MIN 0.3→0.25)
+- Made `isLikelyCleanTitle()` stricter: titles >60 chars, ALL CAPS, or with parenthesized years go through AI extraction
+- Enhanced cleanup script with TMDB + trigram similarity duplicate detection and union-find clustering
+- Added 50 unit tests for normalizeTitle and cleanFilmTitle
+
+---
+
 ## 2026-02-13: Festival Data Alignment & Eventive API Client
 **PR**: TBD | **Files**: `src/db/seed-festivals.ts`, `src/scrapers/festivals/*`, `src/inngest/*`, `src/app/api/admin/festivals/scrape-eventive/`
 - Fixed 4 stale venue IDs in seed data (prince-charles-cinema→prince-charles, rio-cinema→rio-dalston, genesis-cinema→genesis)

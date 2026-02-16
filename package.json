@@ -82,6 +82,7 @@
     "cleanup:feb-films": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scripts/cleanup-feb-films.ts",
     "cleanup:upcoming": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scripts/cleanup-upcoming-films.ts",
     "audit:films": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scripts/audit-film-data.ts",
+    "audit:fix-upcoming": "dotenv -e .env.local -- npx tsx scripts/audit-and-fix-upcoming.ts",
     "poster:audit": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scripts/poster-audit-and-fix.ts",
     "scrape:snapshot": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/__tests__/run-snapshot.ts",
     "scrape:genesis-basescraper": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/run-genesis-v2-basescraper.ts",

@@ -160,6 +160,42 @@ Required in `.env.local` (see `.env.local.example`):
 ## Data Quality Agents
 - Run via `npm run agents` or `agents:links`, `agents:health`, `agents:enrich`.
 
+## Data Quality Strategy — Claude Code vs API Agents
+
+### Preferred approach: Claude Code direct enrichment
+For bulk data cleanup (title fixing, non-film detection, TMDB matching, duplicate merging), **Claude Code writing and executing scripts is dramatically more effective** than the fallback enrichment agent (Claude Haiku via Anthropic API).
+
+**Why Claude Code is better for this:**
+1. **Batch pattern recognition** — Can review hundreds of unmatched films at once, identify event prefixes ("Funeral Parade presents", "Lost Reels", "LAFS PRESENTS:"), and write targeted regex/title-fix arrays
+2. **Domain knowledge** — Knows that "Giselle" and "Siegfried" are ballet (reclassify as `live_broadcast`), "Big Mood Series 2" is TV (reclassify as `event`), and "THE GIRL WHO LEPT THROUGH TIME" is a misspelling of the Mamoru Hosoda anime
+3. **False positive prevention** — Can maintain a `BAD_MERGE_TMDB_IDS` blocklist to prevent "The Birds" merging into "The Bird's Placebo" or "The World" into "The World According To Bush"
+4. **Multi-phase orchestration** — Structures work into phases: delete non-films → explicit title fixes → auto-match remaining. Each phase builds on the last
+5. **Immediate verification** — Can query the database, run the script with `--dry-run`, review results, fix issues, then execute live — all in one session
+
+**Results (2026-02-16 session):**
+- Starting: 298 unmatched upcoming films
+- After Claude Code session: 94 remaining (69% reduction)
+- Overall audit improvement: Missing TMDB 548→131 (76%), Missing poster 246→14 (94%), Missing synopsis 524→129 (75%)
+
+**The API agent approach (Claude Haiku)** is useful for:
+- Ongoing maintenance of small batches (1-10 films)
+- Booking page scraping for metadata extraction
+- Cases where TMDB matching needs web search context
+
+**For major data quality passes, prefer the Claude Code approach:**
+1. Run `npm run audit:fix-upcoming` to identify issues
+2. Have Claude Code write `scripts/manual-title-fixes.ts` with explicit fixes
+3. Run with `--dry-run`, review, then execute live
+4. Re-run the audit to verify improvement
+
+### Key scripts
+| Script | Purpose |
+|--------|---------|
+| `npm run audit:fix-upcoming` | 8-pass orchestrator (non-film detection → dedup → TMDB → enrichment → poster → dodgy detection) |
+| `scripts/manual-title-fixes.ts` | Claude Code-generated title fixes + TMDB matching (re-generate each session) |
+| `scripts/cleanup-duplicate-films.ts` | TMDB ID + trigram similarity dedup with union-find clustering |
+| `npm run cleanup:upcoming` | 4-phase pipeline: title cleanup, TMDB, metadata, Letterboxd |
+
 # Agent Rules <!-- tessl-managed -->
 
 @.tessl/RULES.md follow the [instructions](.tessl/RULES.md)

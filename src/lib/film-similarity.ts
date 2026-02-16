@@ -17,9 +17,10 @@ import { sql } from "drizzle-orm";
 const anthropic = new Anthropic();
 
 // Similarity thresholds for trigram matching
-const HIGH_CONFIDENCE_THRESHOLD = 0.7; // Auto-accept match
-const LOW_CONFIDENCE_THRESHOLD = 0.4; // Consider for Claude confirmation
-const MINIMUM_THRESHOLD = 0.3; // Below this, don't even consider
+// Lowered from 0.7/0.4/0.3 to catch more near-duplicates (e.g., accent variations, minor formatting)
+const HIGH_CONFIDENCE_THRESHOLD = 0.6; // Auto-accept match
+const LOW_CONFIDENCE_THRESHOLD = 0.35; // Consider for Claude confirmation
+const MINIMUM_THRESHOLD = 0.25; // Below this, don't even consider
 
 interface SimilarFilm {
   id: string;

@@ -620,7 +620,9 @@ describe("extractFilmTitle - edge cases", () => {
       "Dr. Strangelove or: How I Learned to Stop Worrying and Love the Bomb";
     const result = await extractFilmTitle(longTitle);
     expect(result.filmTitle).toBe(longTitle);
-    expect(result.confidence).toBe("high");
+    // Titles >60 chars are no longer considered "likely clean" and go through
+    // AI extraction (which fails in test mock), so confidence is "low"
+    expect(result.confidence).toBe("low");
   });
 
   it("should handle titles with parentheses that are not ratings", async () => {

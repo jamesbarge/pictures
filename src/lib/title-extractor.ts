@@ -271,6 +271,23 @@ function isLikelyCleanTitle(title: string): boolean {
     }
   }
 
+  // Titles with parenthesized years like "Crash (1997)" should go through extraction
+  // so AI can separate the year from the title
+  if (/\(\d{4}\)\s*$/.test(title)) {
+    return false;
+  }
+
+  // ALL CAPS titles often have appended cruft or need normalization
+  // e.g., "LITTLE AMELIE" or "THE PHANTOM OF THE OPEN (12A)"
+  if (title === title.toUpperCase() && title.length > 3) {
+    return false;
+  }
+
+  // Very long titles likely have appended event info or descriptions
+  if (title.length > 60) {
+    return false;
+  }
+
   // Check for version suffixes - these are clean titles that we handle locally
   // e.g., "Apocalypse Now : Final Cut" should be treated as clean
   if (hasVersionSuffix(title)) {
