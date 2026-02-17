@@ -28,6 +28,7 @@ interface Screening {
     isRepertory: boolean;
     genres?: string[];
     decade?: string | null;
+    contentType?: string;
   };
   cinema: {
     id: string;

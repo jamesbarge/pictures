@@ -42,6 +42,7 @@ const getCachedScreenings = unstable_cache(
           genres: films.genres,
           decade: films.decade,
           letterboxdRating: films.letterboxdRating,
+          contentType: films.contentType,
         },
         cinema: {
           id: cinemas.id,

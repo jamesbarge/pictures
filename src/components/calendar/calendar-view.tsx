@@ -41,6 +41,7 @@ interface Screening {
     genres?: string[];
     decade?: string | null;
     letterboxdRating?: number | null;
+    contentType?: string;
   };
   cinema: {
     id: string;
@@ -221,10 +222,12 @@ export function CalendarView({ screenings }: CalendarViewProps) {
             case "repertory":
               return s.film.isRepertory;
             case "new_release":
-              // A new release must not be repertory, not a special event,
-              // and either have a recent year (2025+) or no year data
-              // (unknown films without year data are included as they're
-              // likely new releases that haven't been enriched yet)
+              // A new release must be a film (not event/concert/broadcast),
+              // not repertory, not a special event, and either have a
+              // recent year (2025+) or no year data (unknown films without
+              // year data are included as they're likely new releases
+              // that haven't been enriched yet)
+              if (s.film.contentType && s.film.contentType !== "film") return false;
               if (s.film.isRepertory || s.isSpecialEvent) return false;
               return !s.film.year || s.film.year >= 2025;
             case "special_event":
