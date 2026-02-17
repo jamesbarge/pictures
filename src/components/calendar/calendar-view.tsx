@@ -221,7 +221,12 @@ export function CalendarView({ screenings }: CalendarViewProps) {
             case "repertory":
               return s.film.isRepertory;
             case "new_release":
-              return !s.film.isRepertory && !s.isSpecialEvent;
+              // A new release must not be repertory, not a special event,
+              // and either have a recent year (2025+) or no year data
+              // (unknown films without year data are included as they're
+              // likely new releases that haven't been enriched yet)
+              if (s.film.isRepertory || s.isSpecialEvent) return false;
+              return !s.film.year || s.film.year >= 2025;
             case "special_event":
               return s.isSpecialEvent || !!s.eventType;
             case "preview":
