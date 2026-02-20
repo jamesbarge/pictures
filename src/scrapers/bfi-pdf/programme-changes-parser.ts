@@ -20,6 +20,7 @@ import * as cheerio from "cheerio";
 import type { RawScreening } from "../types";
 import type { CheerioAPI, CheerioSelection } from "../utils/cheerio-types";
 import { fetchWithRetry } from "../utils/fetch-with-retry";
+import { buildBFISearchUrl } from "./url-builder";
 
 /**
  * Fetches a URL, optionally through a proxy service.
@@ -406,9 +407,8 @@ function convertChangesToRawScreenings(changes: ProgrammeChange[]): RawScreening
       // Skip past screenings
       if (screening.datetime < now) continue;
 
-      // Build booking URL
-      const encodedTitle = encodeURIComponent(change.filmTitle);
-      const bookingUrl = `https://whatson.bfi.org.uk/Online/default.asp?doWork::WScontent::search=1&BOparam::WScontent::search::article_search_text=${encodedTitle}`;
+      // Build booking URL (routes IMAX screens to IMAX site, others to Southbank)
+      const bookingUrl = buildBFISearchUrl(change.filmTitle, screening.cinemaId);
 
       // Detect event type
       let eventType: string | undefined;
