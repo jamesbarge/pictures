@@ -20,6 +20,7 @@
 import { extractText as unpdfExtractText, getDocumentProxy } from "unpdf";
 import type { RawScreening } from "../types";
 import type { FetchedPDF } from "./fetcher";
+import { buildBFISearchUrl } from "./url-builder";
 
 // Venue mapping from PDF screen names to our cinema IDs
 const VENUE_MAP: Record<string, string> = {
@@ -394,9 +395,8 @@ function convertToRawScreenings(films: ParsedFilm[], pdfLabel: string): RawScree
       // Skip past screenings
       if (screening.datetime < now) continue;
 
-      // Build booking URL (link to BFI search for this film)
-      const encodedTitle = encodeURIComponent(film.title);
-      const bookingUrl = `https://whatson.bfi.org.uk/Online/default.asp?doWork::WScontent::search=1&BOparam::WScontent::search::article_search_text=${encodedTitle}`;
+      // Build booking URL (routes IMAX screens to IMAX site, others to Southbank)
+      const bookingUrl = buildBFISearchUrl(film.title, screening.venue);
 
       // Detect event type from title
       let eventType: string | undefined;
