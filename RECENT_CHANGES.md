@@ -6,7 +6,7 @@ When an entry is added here, also create a detailed file in /changelogs/
 -->
 
 ## 2026-02-20: Fix BFI Booking Links (Broken Search API)
-**PR**: TBD | **Files**: `src/scrapers/bfi-pdf/url-builder.ts`, `src/scrapers/bfi-pdf/pdf-parser.ts`, `src/scrapers/bfi-pdf/programme-changes-parser.ts`, `scripts/fix-bfi-booking-urls.ts`
+**PR**: #118 | **Files**: `src/scrapers/bfi-pdf/url-builder.ts`, `src/scrapers/bfi-pdf/pdf-parser.ts`, `src/scrapers/bfi-pdf/programme-changes-parser.ts`, `scripts/fix-bfi-booking-urls.ts`
 - Fixed all BFI booking links broken by BFI's search API change (`article_search_text` → `article_search_id` + `search_criteria`)
 - Created shared `buildBFISearchUrl()` utility that routes IMAX vs Southbank to their respective booking sites with correct GUIDs
 - Also fixed programme-changes parser always generating Southbank URLs for IMAX screenings

@@ -19,12 +19,6 @@ import { buildBFISearchUrl } from "../src/scrapers/bfi-pdf/url-builder";
 
 const DRY_RUN = !process.argv.includes("--apply");
 
-interface BrokenScreening {
-  id: string;
-  bookingUrl: string;
-  cinemaId: string;
-}
-
 async function main() {
   console.log(`[fix-bfi-urls] ${DRY_RUN ? "DRY RUN" : "APPLYING CHANGES"}\n`);
 

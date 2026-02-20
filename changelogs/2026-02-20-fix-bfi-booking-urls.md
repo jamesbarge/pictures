@@ -1,6 +1,7 @@
 # Fix BFI Booking Links (Broken Search API)
 
 **Date**: 2026-02-20
+**PR**: #118
 **Type**: Bug fix
 **Impact**: All BFI Southbank and IMAX booking links
 
