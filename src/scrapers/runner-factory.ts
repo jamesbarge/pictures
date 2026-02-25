@@ -13,6 +13,7 @@ import { processScreenings, saveScreenings, ensureCinemaExists } from "./pipelin
 import { db, isDatabaseAvailable } from "../db";
 import { scraperRuns, cinemaBaselines } from "../db/schema/admin";
 import { eq } from "drizzle-orm";
+import { getCanonicalId } from "@/config/cinema-registry";
 
 // ============================================================================
 // Types
@@ -260,6 +261,8 @@ async function runSingleVenue(
   const startTime = Date.now();
   let retryCount = 0;
   let lastError: Error | null = null;
+  // Resolve legacy venue IDs to canonical IDs for all pipeline operations
+  const canonicalId = getCanonicalId(venue.id);
 
   while (retryCount <= options.retryAttempts) {
     try {
@@ -290,13 +293,13 @@ async function runSingleVenue(
 
       if (screenings.length > 0) {
         if (options.useValidation) {
-          const result = await processScreenings(venue.id, screenings);
+          const result = await processScreenings(canonicalId, screenings);
           added = result.added;
           updated = result.updated;
           failed = result.failed;
           blocked = result.blocked;
         } else {
-          const result = await saveScreenings(venue.id, screenings);
+          const result = await saveScreenings(canonicalId, screenings);
           added = result.added;
           blocked = result.blocked;
         }
@@ -465,8 +468,9 @@ export async function runScraper(
   try {
     if (config.type === "single") {
       // Single venue - simple case
+      const singleCanonicalId = getCanonicalId(config.venue.id);
       await ensureCinemaExists({
-        id: config.venue.id,
+        id: singleCanonicalId,
         name: config.venue.name,
         shortName: config.venue.shortName,
         chain: config.venue.chain,
@@ -486,8 +490,9 @@ export async function runScraper(
         : config.venues;
 
       for (const venue of venuesToScrape) {
+        const multiCanonicalId = getCanonicalId(venue.id);
         await ensureCinemaExists({
-          id: venue.id,
+          id: multiCanonicalId,
           name: venue.name,
           shortName: venue.shortName,
           chain: venue.chain,
@@ -516,8 +521,9 @@ export async function runScraper(
 
       // Ensure all venues exist
       for (const venue of venuesToScrape) {
+        const chainCanonicalId = getCanonicalId(venue.id);
         await ensureCinemaExists({
-          id: venue.id,
+          id: chainCanonicalId,
           name: venue.name,
           shortName: venue.shortName,
           chain: config.chainName,
@@ -539,19 +545,20 @@ export async function runScraper(
           const venue = venuesToScrape.find((v) => v.id === venueId);
           if (!venue) continue;
 
+          const chainResultCanonicalId = getCanonicalId(venueId);
           const venueStartTime = Date.now();
           let added = 0, updated = 0, failed = 0;
           let venueBlocked = false;
 
           if (screenings.length > 0) {
             if (options.useValidation) {
-              const pipelineResult = await processScreenings(venueId, screenings);
+              const pipelineResult = await processScreenings(chainResultCanonicalId, screenings);
               added = pipelineResult.added;
               updated = pipelineResult.updated;
               failed = pipelineResult.failed;
               venueBlocked = pipelineResult.blocked;
             } else {
-              const pipelineResult = await saveScreenings(venueId, screenings);
+              const pipelineResult = await saveScreenings(chainResultCanonicalId, screenings);
               added = pipelineResult.added;
               venueBlocked = pipelineResult.blocked;
             }

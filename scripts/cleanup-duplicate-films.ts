@@ -289,10 +289,11 @@ async function mergeDuplicates(
       mergedScreenings += (movedScreenings as unknown as { rowCount?: number }).rowCount ?? 0;
 
       // 2. Move season_films (handle potential unique constraint conflicts)
+      const dupeIdsSql = sql.join(dupeIds.map(id => sql`${id}`), sql`, `);
       await tx.execute(sql`
         UPDATE season_films
         SET film_id = ${primary.id}
-        WHERE film_id = ANY(${dupeIds})
+        WHERE film_id IN (${dupeIdsSql})
           AND NOT EXISTS (
             SELECT 1 FROM season_films sf2
             WHERE sf2.season_id = season_films.season_id
@@ -301,14 +302,14 @@ async function mergeDuplicates(
       `);
       // Delete any remaining season_films that would conflict
       await tx.execute(sql`
-        DELETE FROM season_films WHERE film_id = ANY(${dupeIds})
+        DELETE FROM season_films WHERE film_id IN (${dupeIdsSql})
       `);
 
       // 3. Move user_film_statuses (handle unique constraint on user_id + film_id)
       await tx.execute(sql`
         UPDATE user_film_statuses
         SET film_id = ${primary.id}
-        WHERE film_id = ANY(${dupeIds})
+        WHERE film_id IN (${dupeIdsSql})
           AND NOT EXISTS (
             SELECT 1 FROM user_film_statuses ufs2
             WHERE ufs2.user_id = user_film_statuses.user_id
@@ -317,7 +318,7 @@ async function mergeDuplicates(
       `);
       // Delete any remaining that would conflict (user already has a status for primary film)
       await tx.execute(sql`
-        DELETE FROM user_film_statuses WHERE film_id = ANY(${dupeIds})
+        DELETE FROM user_film_statuses WHERE film_id IN (${dupeIdsSql})
       `);
 
       // 4. Delete duplicate film records

@@ -223,6 +223,10 @@ export const FRANCHISE_PREFIXES = [
   "guardians of the galaxy",
   "shrek",
   "dark knight",
+  "twin peaks",
+  "blade runner",
+  "john wick",
+  "planet of the apes",
 ];
 
 /**

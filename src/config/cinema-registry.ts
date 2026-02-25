@@ -1312,8 +1312,6 @@ export function getChainIds(): ChainId[] {
  */
 const INNGEST_ID_OVERRIDES: Record<string, string> = {
   // Independent cinemas where Inngest uses legacy ID
-  "the-nickel": "nickel",
-  "phoenix-east-finchley": "phoenix",
   "electric": "electric-portobello",
   // Picturehouse chain where Inngest uses old naming convention
   "picturehouse-hackney": "hackney-picturehouse",
