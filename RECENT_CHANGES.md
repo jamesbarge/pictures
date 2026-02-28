@@ -5,6 +5,18 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-02-28: Comprehensive Audit Fix — 897→624 Issues (30% reduction)
+**PRs**: #120, #121, #122 | **Files**: `src/components/calendar/calendar-view.tsx`, `src/app/page.tsx`, `src/db/repositories/screening.ts`, `scripts/audit/checkers/booking-checker.ts`
+- Fixed film card count mismatch: cards now show total screening counts (not filtered counts) matching detail pages
+- Added contentType filter to both server-side and API screening queries — non-film content excluded from calendar
+- Reclassified 4 non-film items; merged 8 duplicate film records; fixed 4 film title issues
+- Enriched 725 films with TMDB data; updated audit checker domain maps and bot-protection whitelist
+- Re-scraped Everyman (14 venues, 1137 screenings), Picturehouse (11 venues, 2167 screenings), Rich Mix, Lexi
+- Non-film content: 11→0 | Broken links: 373→186 | Missing posters: 268→235 | Duplicates: 112→94
+- **Remaining**: ~150 Curzon broken links (Cloudflare), 235 missing posters, invalid Anthropic API key
+
+---
+
 ## 2026-02-25: Fix Duplicate Screenings & Split Cinema IDs
 **Files**: `src/scrapers/runner-factory.ts`, `src/inngest/functions.ts`, `src/inngest/known-ids.ts`, `src/config/cinema-registry.ts`, `src/lib/title-patterns.ts`, `src/scrapers/pipeline.ts`, `src/db/migrations/canonicalize-cinema-ids.ts`, `scripts/verify-screening-integrity.ts`
 - Fixed 210 duplicate screenings caused by split cinema IDs (6 cinemas using legacy+canonical IDs) and duplicate film records
