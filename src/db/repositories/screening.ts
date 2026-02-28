@@ -13,7 +13,7 @@ import {
   seasons,
   seasonFilms,
 } from "@/db/schema";
-import { eq, gte, lte, and, inArray, sql, SQL } from "drizzle-orm";
+import { eq, gte, lte, and, inArray, or, isNull, sql, SQL } from "drizzle-orm";
 import type { ScreeningFormat } from "@/types/screening";
 
 /**
@@ -117,6 +117,8 @@ function buildConditions(filters: ScreeningFilters): SQL[] {
   const conditions: SQL[] = [
     gte(screenings.datetime, filters.startDate),
     lte(screenings.datetime, filters.endDate),
+    // Exclude non-film content (quizzes, ballet, NT Live, etc.) from calendar
+    or(eq(films.contentType, "film"), isNull(films.contentType))!,
   ];
 
   if (filters.cinemaIds && filters.cinemaIds.length > 0) {
