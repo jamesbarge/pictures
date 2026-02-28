@@ -22,7 +22,7 @@ vi.mock("@/inngest/client", () => ({
 import { auth, currentUser } from "@clerk/nextjs/server";
 
 describe("POST /api/admin/scrape/all", () => {
-  let POST: (request: Request) => Promise<Response>;
+  let POST: (request: Request, context: unknown) => Promise<Response>;
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -45,7 +45,7 @@ describe("POST /api/admin/scrape/all", () => {
       method: "POST",
     });
 
-    const response = await POST(request);
+    const response = await POST(request, {});
     expect(response.status).toBe(401);
   });
 
@@ -59,7 +59,7 @@ describe("POST /api/admin/scrape/all", () => {
       method: "POST",
     });
 
-    const response = await POST(request);
+    const response = await POST(request, {});
     expect(response.status).toBe(403);
   });
 
@@ -71,7 +71,7 @@ describe("POST /api/admin/scrape/all", () => {
       method: "POST",
     });
 
-    const response = await POST(request);
+    const response = await POST(request, {});
     expect(response.status).toBe(200);
 
     const data = await response.json();
@@ -89,7 +89,7 @@ describe("POST /api/admin/scrape/all", () => {
       method: "POST",
     });
 
-    const response = await POST(request);
+    const response = await POST(request, {});
     const data = await response.json();
 
     // Check for some known cinemas
@@ -107,7 +107,7 @@ describe("POST /api/admin/scrape/all", () => {
       method: "POST",
     });
 
-    await POST(request);
+    await POST(request, {});
 
     // Verify Inngest.send was called
     expect(mockSend).toHaveBeenCalledTimes(1);
@@ -134,7 +134,7 @@ describe("POST /api/admin/scrape/all", () => {
       method: "POST",
     });
 
-    await POST(request);
+    await POST(request, {});
 
     const events = mockSend.mock.calls[0][0] as Array<{
       name: string;
@@ -161,7 +161,7 @@ describe("POST /api/admin/scrape/all", () => {
       method: "POST",
     });
 
-    const response = await POST(request);
+    const response = await POST(request, {});
     expect(response.status).toBe(500);
 
     const data = await response.json();

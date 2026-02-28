@@ -66,7 +66,7 @@ describe("Admin Screenings API", () => {
   });
 
   describe("POST /api/admin/screenings", () => {
-    let POST: (request: Request) => Promise<Response>;
+    let POST: (request: Request, context: unknown) => Promise<Response>;
 
     beforeEach(async () => {
       const module = await import("./route");
@@ -87,7 +87,7 @@ describe("Admin Screenings API", () => {
         }),
       });
 
-      const response = await POST(request);
+      const response = await POST(request, {});
       expect(response.status).toBe(401);
     });
 
@@ -103,7 +103,7 @@ describe("Admin Screenings API", () => {
         }),
       });
 
-      const response = await POST(request);
+      const response = await POST(request, {});
       expect(response.status).toBe(400);
 
       const data = await response.json();
@@ -125,7 +125,7 @@ describe("Admin Screenings API", () => {
         }),
       });
 
-      const response = await POST(request);
+      const response = await POST(request, {});
       expect(response.status).toBe(404);
 
       const data = await response.json();
@@ -149,7 +149,7 @@ describe("Admin Screenings API", () => {
         }),
       });
 
-      const response = await POST(request);
+      const response = await POST(request, {});
       expect(response.status).toBe(404);
 
       const data = await response.json();
@@ -176,7 +176,7 @@ describe("Admin Screenings API", () => {
         }),
       });
 
-      const response = await POST(request);
+      const response = await POST(request, {});
       expect(response.status).toBe(200);
 
       const data = await response.json();

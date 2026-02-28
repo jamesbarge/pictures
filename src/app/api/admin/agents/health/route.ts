@@ -5,17 +5,11 @@
  * POST /api/admin/agents/health
  */
 
-import { requireAdmin } from "@/lib/auth";
+import { withAdminAuth } from "@/lib/auth";
 
 export const maxDuration = 60;
 
-export async function POST() {
-  // Verify admin auth
-  const admin = await requireAdmin();
-  if (admin instanceof Response) {
-    return admin;
-  }
-
+export const POST = withAdminAuth(async () => {
   // Check for API key before importing agent
   if (!process.env.GEMINI_API_KEY) {
     return Response.json({
@@ -70,4 +64,4 @@ export async function POST() {
       { status: 500 }
     );
   }
-}
+});

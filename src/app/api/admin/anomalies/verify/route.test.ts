@@ -50,7 +50,7 @@ vi.mock("@/db", () => ({
 import { auth, currentUser } from "@clerk/nextjs/server";
 
 describe("POST /api/admin/anomalies/verify", () => {
-  let POST: (request: Request) => Promise<Response>;
+  let POST: (request: Request, context: unknown) => Promise<Response>;
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -80,7 +80,7 @@ describe("POST /api/admin/anomalies/verify", () => {
       }),
     });
 
-    const response = await POST(request);
+    const response = await POST(request, {});
     expect(response.status).toBe(401);
   });
 
@@ -96,7 +96,7 @@ describe("POST /api/admin/anomalies/verify", () => {
       }),
     });
 
-    const response = await POST(request);
+    const response = await POST(request, {});
     expect(response.status).toBe(400);
 
     const data = await response.json();
@@ -126,7 +126,7 @@ describe("POST /api/admin/anomalies/verify", () => {
       }),
     });
 
-    const response = await POST(request);
+    const response = await POST(request, {});
     expect(response.status).toBe(200);
 
     const data = await response.json();
@@ -158,7 +158,7 @@ describe("POST /api/admin/anomalies/verify", () => {
       }),
     });
 
-    const response = await POST(request);
+    const response = await POST(request, {});
     expect(response.status).toBe(200);
 
     const data = await response.json();
@@ -185,7 +185,7 @@ describe("POST /api/admin/anomalies/verify", () => {
       }),
     });
 
-    const response = await POST(request);
+    const response = await POST(request, {});
     expect(response.status).toBe(200);
 
     const data = await response.json();

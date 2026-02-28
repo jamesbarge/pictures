@@ -5,6 +5,15 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-02-28: CR-04 — Admin Auth Middleware Factory
+**Branch**: `cr04-admin-auth-middleware` | **Files**: 24 files across `src/lib/auth.ts`, `src/app/api/admin/`, tests
+- Added `withAdminAuth()` HOF to `src/lib/auth.ts` — wraps the repeated `requireAdmin()` + `instanceof Response` check
+- Migrated 22 handler functions across 18 admin routes (19 files) to use the new wrapper
+- Updated 5 test files to match new handler signatures
+- Skipped `bfi-import/route.ts` (uses `requireAuth()`, not `requireAdmin()` — different pattern, out of scope)
+
+---
+
 ## 2026-02-28: Migrate AI Provider from Anthropic to Google Gemini
 **Branch**: `feat/gemini-migration` | **Files**: 20+ files across `src/lib/`, `src/agents/`, `src/app/api/admin/`, tests
 - Replaced `@anthropic-ai/sdk` and `@anthropic-ai/claude-agent-sdk` with `@google/genai`

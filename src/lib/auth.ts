@@ -89,3 +89,20 @@ export function forbiddenResponse() {
     { status: 403 }
   );
 }
+
+/**
+ * Higher-order function that wraps a Next.js route handler with admin auth.
+ * Eliminates the repeated requireAdmin() + instanceof check boilerplate.
+ *
+ * Static routes:  export const POST = withAdminAuth(async (req, admin) => { ... });
+ * Dynamic routes: export const PUT = withAdminAuth<RouteParams>(async (req, admin, ctx) => { ... });
+ */
+export function withAdminAuth<C = unknown>(
+  handler: (req: Request, admin: AdminAuthContext, context: C) => Promise<Response>
+): (req: Request, context: C) => Promise<Response> {
+  return async (req: Request, context: C): Promise<Response> => {
+    const admin = await requireAdmin();
+    if (admin instanceof Response) return admin;
+    return handler(req, admin, context);
+  };
+}

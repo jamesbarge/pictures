@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/auth";
+import { withAdminAuth } from "@/lib/auth";
 import { db } from "@/db";
 import { bfiImportRuns } from "@/db/schema";
 import { desc } from "drizzle-orm";
@@ -45,12 +45,7 @@ function nextWeeklyFullRun(now: Date): Date {
   return next;
 }
 
-export async function GET() {
-  const admin = await requireAdmin();
-  if (admin instanceof Response) {
-    return admin;
-  }
-
+export const GET = withAdminAuth(async () => {
   try {
     const [lastRun] = await db
       .select()
@@ -103,4 +98,4 @@ export async function GET() {
       { status: 500 }
     );
   }
-}
+});

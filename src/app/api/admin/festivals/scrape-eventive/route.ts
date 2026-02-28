@@ -6,16 +6,13 @@
  * Body: { festival: "frightfest" | "ukjff", year?: number }
  */
 
-import { requireAdmin } from "@/lib/auth";
+import { withAdminAuth } from "@/lib/auth";
 import {
   scrapeEventiveFestival,
   EVENTIVE_FESTIVALS,
 } from "@/scrapers/festivals/eventive-scraper";
 
-export async function POST(request: Request) {
-  const admin = await requireAdmin();
-  if (admin instanceof Response) return admin;
-
+export const POST = withAdminAuth(async (request, _admin) => {
   try {
     const body = await request.json().catch(() => ({}));
     const { festival, year } = body as {
@@ -65,4 +62,4 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-}
+});

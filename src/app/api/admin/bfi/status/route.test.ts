@@ -42,7 +42,7 @@ describe("GET /api/admin/bfi/status", () => {
   it("returns 401 when unauthenticated", async () => {
     vi.mocked(auth).mockResolvedValue({ userId: null } as never);
 
-    const response = await GET();
+    const response = await GET(new Request("http://localhost"), {});
 
     expect(response.status).toBe(401);
   });
@@ -51,7 +51,7 @@ describe("GET /api/admin/bfi/status", () => {
     vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as never);
     mockLimit.mockResolvedValue([]);
 
-    const response = await GET();
+    const response = await GET(new Request("http://localhost"), {});
     expect(response.status).toBe(200);
 
     const data = await response.json();
@@ -84,7 +84,7 @@ describe("GET /api/admin/bfi/status", () => {
       },
     ]);
 
-    const response = await GET();
+    const response = await GET(new Request("http://localhost"), {});
     expect(response.status).toBe(200);
 
     const data = await response.json();

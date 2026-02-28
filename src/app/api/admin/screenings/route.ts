@@ -3,7 +3,7 @@
  * POST - Create a new screening manually
  */
 
-import { requireAdmin } from "@/lib/auth";
+import { withAdminAuth } from "@/lib/auth";
 import { db } from "@/db";
 import { screenings, films, cinemas } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -21,13 +21,7 @@ interface CreateScreeningBody {
   eventDescription?: string | null;
 }
 
-export async function POST(request: Request) {
-  // Verify admin auth
-  const admin = await requireAdmin();
-  if (admin instanceof Response) {
-    return admin;
-  }
-
+export const POST = withAdminAuth(async (request, _admin) => {
   try {
     const body: CreateScreeningBody = await request.json();
     const { filmId, cinemaId, datetime, bookingUrl, format, screen, eventType, eventDescription } = body;
@@ -97,4 +91,4 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-}
+});

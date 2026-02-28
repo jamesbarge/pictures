@@ -6,18 +6,14 @@
  * POST /api/admin/data-quality  (trigger fallback enrichment)
  */
 
-import { requireAdmin } from "@/lib/auth";
+import { withAdminAuth } from "@/lib/auth";
 import { auditFilmData } from "@/scripts/audit-film-data";
 import { NextRequest } from "next/server";
 
 export const maxDuration = 60;
 
-export async function GET(request: NextRequest) {
-  const admin = await requireAdmin();
-  if (admin instanceof Response) {
-    return admin;
-  }
-
+export const GET = withAdminAuth(async (req, _admin) => {
+  const request = req as NextRequest;
   const upcomingOnly = request.nextUrl.searchParams.get("upcomingOnly") === "true";
   const limitParam = request.nextUrl.searchParams.get("limit");
   const limit = limitParam ? parseInt(limitParam, 10) : 200;
@@ -32,14 +28,9 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
-export async function POST() {
-  const admin = await requireAdmin();
-  if (admin instanceof Response) {
-    return admin;
-  }
-
+export const POST = withAdminAuth(async () => {
   if (!process.env.GEMINI_API_KEY) {
     return Response.json({
       success: false,
@@ -76,4 +67,4 @@ export async function POST() {
       { status: 500 }
     );
   }
-}
+});

@@ -6,7 +6,7 @@
  * PUT /api/admin/cinemas/[id]/config - Update config
  */
 
-import { requireAdmin } from "@/lib/auth";
+import { withAdminAuth } from "@/lib/auth";
 import { db } from "@/db";
 import { cinemaBaselines, cinemas } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -41,13 +41,7 @@ const DEFAULT_CONFIG = {
   maxScrapeDate: null,
 };
 
-export async function GET(request: Request, { params }: RouteParams) {
-  // Verify admin auth
-  const admin = await requireAdmin();
-  if (admin instanceof Response) {
-    return admin;
-  }
-
+export const GET = withAdminAuth<RouteParams>(async (_request, _admin, { params }) => {
   const { id: cinemaId } = await params;
 
   try {
@@ -91,16 +85,10 @@ export async function GET(request: Request, { params }: RouteParams) {
       { status: 500 }
     );
   }
-}
+});
 
-export async function PUT(request: Request, { params }: RouteParams) {
+export const PUT = withAdminAuth<RouteParams>(async (request, _admin, { params }) => {
   try {
-    // Verify admin auth
-    const admin = await requireAdmin();
-    if (admin instanceof Response) {
-      return admin;
-    }
-
     const { id: cinemaId } = await params;
 
     // Validate request body with Zod
@@ -164,4 +152,4 @@ export async function PUT(request: Request, { params }: RouteParams) {
   } catch (error) {
     return handleApiError(error, "PUT /api/admin/cinemas/[id]/config");
   }
-}
+});

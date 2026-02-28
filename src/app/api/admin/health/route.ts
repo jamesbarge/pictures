@@ -8,17 +8,11 @@
  * Requires Clerk authentication
  */
 
-import { requireAdmin } from "@/lib/auth";
+import { withAdminAuth } from "@/lib/auth";
 import { runFullHealthCheck, getRecentHealthSnapshots, getCinemaHealthMetrics } from "@/lib/scraper-health";
 import { HEALTH_THRESHOLDS } from "@/db/schema/health-snapshots";
 
-export async function GET(request: Request) {
-  // Verify admin auth
-  const admin = await requireAdmin();
-  if (admin instanceof Response) {
-    return admin;
-  }
-
+export const GET = withAdminAuth(async (request, _admin) => {
   const url = new URL(request.url);
   const cinemaId = url.searchParams.get("cinemaId");
   const includeHistory = url.searchParams.get("history") === "true";
@@ -73,4 +67,4 @@ export async function GET(request: Request) {
       { status: 500 }
     );
   }
-}
+});
