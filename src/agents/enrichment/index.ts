@@ -11,7 +11,7 @@
  * Uses aggressive auto-fix: automatically applies matches with confidence > 0.8
  */
 
-import Anthropic from "@anthropic-ai/sdk";
+import { generateTextWithUsage } from "@/lib/gemini";
 import { db, schema } from "@/db";
 import { eq, isNull, sql } from "drizzle-orm";
 import { analyzeTitleAmbiguity, hasSufficientMetadata } from "@/lib/tmdb/ambiguity";
@@ -230,21 +230,14 @@ Respond with JSON:
 }`;
 
         // Run direct API call for alternative search
-        const client = new Anthropic();
-        const response = await client.messages.create({
-          model: config.model,
-          max_tokens: 1024,
-          system: CINEMA_AGENT_SYSTEM_PROMPT,
-          messages: [{ role: "user", content: prompt }],
+        const response = await generateTextWithUsage(prompt, {
+          systemPrompt: CINEMA_AGENT_SYSTEM_PROMPT,
         });
 
-        totalTokens += (response.usage?.input_tokens || 0) + (response.usage?.output_tokens || 0);
+        totalTokens += response.tokensUsed;
 
         try {
-          const responseText = response.content
-            .filter((block): block is Anthropic.TextBlock => block.type === "text")
-            .map((block) => block.text)
-            .join("");
+          const responseText = response.text;
 
           const jsonMatch = responseText.match(/\{[\s\S]*\}/);
           if (jsonMatch) {
@@ -304,21 +297,14 @@ Respond with JSON:
 }`;
 
         // Run direct API call for matching
-        const matchClient = new Anthropic();
-        const matchResponse = await matchClient.messages.create({
-          model: config.model,
-          max_tokens: 1024,
-          system: CINEMA_AGENT_SYSTEM_PROMPT,
-          messages: [{ role: "user", content: matchPrompt }],
+        const matchResponse = await generateTextWithUsage(matchPrompt, {
+          systemPrompt: CINEMA_AGENT_SYSTEM_PROMPT,
         });
 
-        totalTokens += (matchResponse.usage?.input_tokens || 0) + (matchResponse.usage?.output_tokens || 0);
+        totalTokens += matchResponse.tokensUsed;
 
         try {
-          const responseText = matchResponse.content
-            .filter((block): block is Anthropic.TextBlock => block.type === "text")
-            .map((block) => block.text)
-            .join("");
+          const responseText = matchResponse.text;
 
           const jsonMatch = responseText.match(/\{[\s\S]*\}/);
           if (jsonMatch) {

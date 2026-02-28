@@ -9,7 +9,7 @@
  * Uses aggressive auto-fix: automatically blocks bad scrapes.
  */
 
-import Anthropic from "@anthropic-ai/sdk";
+import { generateTextWithUsage } from "@/lib/gemini";
 import { db, schema } from "@/db";
 import { eq, gte, and, count, sql } from "drizzle-orm";
 import { subDays } from "date-fns";
@@ -116,7 +116,6 @@ Respond with JSON:
 }`;
 
     // Run direct API call
-    const client = new Anthropic();
     let tokensUsed = 0;
     let report: ScraperHealthReport = {
       cinemaId,
@@ -132,20 +131,14 @@ Respond with JSON:
       recommendation: "",
     };
 
-    const response = await client.messages.create({
-      model: config.model,
-      max_tokens: 1024,
-      system: CINEMA_AGENT_SYSTEM_PROMPT,
-      messages: [{ role: "user", content: prompt }],
+    const response = await generateTextWithUsage(prompt, {
+      systemPrompt: CINEMA_AGENT_SYSTEM_PROMPT,
     });
 
-    tokensUsed = (response.usage?.input_tokens || 0) + (response.usage?.output_tokens || 0);
+    tokensUsed = response.tokensUsed;
 
     try {
-      const responseText = response.content
-        .filter((block): block is Anthropic.TextBlock => block.type === "text")
-        .map((block) => block.text)
-        .join("");
+      const responseText = response.text;
 
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
@@ -312,16 +305,11 @@ For EACH cinema, respond with a JSON array:
 Only include cinemas with anomalies or notable issues. If a cinema looks healthy, you can omit it or include with anomalyDetected: false.`;
 
     // Single AI call for all cinemas
-    const client = new Anthropic();
-    const response = await client.messages.create({
-      model: config.model,
-      max_tokens: 4096,
-      system: CINEMA_AGENT_SYSTEM_PROMPT,
-      messages: [{ role: "user", content: prompt }],
+    const response = await generateTextWithUsage(prompt, {
+      systemPrompt: CINEMA_AGENT_SYSTEM_PROMPT,
     });
 
-    const tokensUsed =
-      (response.usage?.input_tokens || 0) + (response.usage?.output_tokens || 0);
+    const tokensUsed = response.tokensUsed;
 
     // Parse response
     let aiResults: Array<{
@@ -334,10 +322,7 @@ Only include cinemas with anomalies or notable issues. If a cinema looks healthy
     }> = [];
 
     try {
-      const responseText = response.content
-        .filter((block): block is Anthropic.TextBlock => block.type === "text")
-        .map((block) => block.text)
-        .join("");
+      const responseText = response.text;
 
       const jsonMatch = responseText.match(/\[[\s\S]*\]/);
       if (jsonMatch) {

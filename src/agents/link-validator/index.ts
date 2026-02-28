@@ -9,7 +9,7 @@
  * Uses aggressive auto-fix: automatically marks broken links.
  */
 
-import Anthropic from "@anthropic-ai/sdk";
+import { generateTextWithUsage } from "@/lib/gemini";
 import { db, schema } from "@/db";
 import { eq, inArray } from "drizzle-orm";
 import {
@@ -101,25 +101,18 @@ ${screeningList}
 Respond with a JSON array of verification results.`;
 
     // Run direct API call
-    const client = new Anthropic();
     let tokensUsed = 0;
     let results: LinkVerificationResult[] = [];
 
-    const response = await client.messages.create({
-      model: config.model,
-      max_tokens: 4096,
-      system: CINEMA_AGENT_SYSTEM_PROMPT,
-      messages: [{ role: "user", content: prompt }],
+    const response = await generateTextWithUsage(prompt, {
+      systemPrompt: CINEMA_AGENT_SYSTEM_PROMPT,
     });
 
-    tokensUsed = (response.usage?.input_tokens || 0) + (response.usage?.output_tokens || 0);
+    tokensUsed = response.tokensUsed;
 
     // Parse the response
     try {
-      const responseText = response.content
-        .filter((block): block is Anthropic.TextBlock => block.type === "text")
-        .map((block) => block.text)
-        .join("");
+      const responseText = response.text;
 
       // Extract JSON from response
       const jsonMatch = responseText.match(/\[[\s\S]*\]/);

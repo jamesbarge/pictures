@@ -10,7 +10,6 @@
  * High-confidence results (>0.8) are auto-applied; low-confidence queued for review.
  */
 
-import Anthropic from "@anthropic-ai/sdk";
 import { db } from "@/db";
 import { films, type FilmInsert } from "@/db/schema/films";
 import { eq, sql } from "drizzle-orm";
@@ -60,8 +59,6 @@ export async function runFallbackEnrichment(
   console.log(`Auto-apply: ${autoApply} (threshold: ${confidenceThreshold})`);
 
   try {
-    const client = new Anthropic();
-
     // Get films needing enrichment, prioritized by upcoming screenings
     const filmsToProcess = await getFilmsNeedingEnrichment(limit);
 
@@ -94,15 +91,12 @@ export async function runFallbackEnrichment(
       console.log(`Processing: "${film.title}" (${film.year || "unknown year"})`);
 
       // Step 1: AI-powered web knowledge extraction
-      const { data: webData, tokensUsed } = await searchAndExtractFilmData(
-        {
-          title: film.title,
-          year: film.year,
-          cinemaName: film.cinemaName || undefined,
-          bookingUrl: film.bookingUrl || undefined,
-        },
-        client
-      );
+      const { data: webData, tokensUsed } = await searchAndExtractFilmData({
+        title: film.title,
+        year: film.year,
+        cinemaName: film.cinemaName || undefined,
+        bookingUrl: film.bookingUrl || undefined,
+      });
       totalTokens += tokensUsed;
 
       if (!webData) {

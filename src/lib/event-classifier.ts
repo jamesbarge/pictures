@@ -5,10 +5,8 @@
  * Detects: event types, formats, accessibility features, and seasons.
  */
 
-import Anthropic from "@anthropic-ai/sdk";
+import { generateText, stripCodeFences } from "./gemini";
 import type { EventType, ScreeningFormat } from "@/types/screening";
-
-const anthropic = new Anthropic();
 
 // Valid event types from the schema
 const VALID_EVENT_TYPES: EventType[] = [
@@ -121,17 +119,10 @@ Return ONLY valid JSON, no explanation.`;
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
-      const response = await anthropic.messages.create({
-        model: "claude-3-5-haiku-latest",
-        max_tokens: 500,
-        messages: [{ role: "user", content: prompt }],
-      });
-
-      const text =
-        response.content[0].type === "text" ? response.content[0].text : "";
+      const text = await generateText(prompt);
 
       // Parse JSON response
-      const json = JSON.parse(text);
+      const json = JSON.parse(stripCodeFences(text));
 
       // Validate and normalize the response
       return {
@@ -153,8 +144,10 @@ Return ONLY valid JSON, no explanation.`;
     } catch (e: unknown) {
       lastError = e as Error;
 
-      // Check for rate limit error (429)
-      const isRateLimit = (e as { status?: number })?.status === 429;
+      // Check for rate limit error (429 or RESOURCE_EXHAUSTED)
+      const isRateLimit =
+        (e as { status?: number })?.status === 429 ||
+        (e as { message?: string })?.message?.includes("RESOURCE_EXHAUSTED");
 
       if (isRateLimit && attempt < maxRetries - 1) {
         // Exponential backoff: 15s, 30s, 60s (respects 5 req/min limit)

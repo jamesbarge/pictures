@@ -1,13 +1,11 @@
 import { describe, it, expect, vi } from "vitest";
 
-// Mock Anthropic SDK (imported transitively via film-similarity → pipeline)
-vi.mock("@anthropic-ai/sdk", () => {
-  return {
-    default: class MockAnthropic {
-      messages = { create: vi.fn() };
-    },
-  };
-});
+// Mock Gemini client (imported transitively via film-similarity → pipeline)
+vi.mock("@/lib/gemini", () => ({
+  generateText: vi.fn().mockResolvedValue("{}"),
+  stripCodeFences: (text: string) => text,
+  isGeminiConfigured: () => false,
+}));
 
 import { normalizeTitle, cleanFilmTitle } from "./pipeline";
 

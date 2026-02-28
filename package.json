@@ -100,9 +100,9 @@
     "prepare": "husky"
   },
   "dependencies": {
-    "@anthropic-ai/claude-agent-sdk": "^0.1.76",
     "@base-ui/react": "^1.0.0",
     "@clerk/nextjs": "^6.36.5",
+    "@google/genai": "^1.43.0",
     "@posthog/ai": "^7.3.0",
     "@tanstack/react-query": "^5.90.12",
     "@turf/boolean-point-in-polygon": "^7.3.1",
@@ -132,7 +132,6 @@
     "zustand": "^5.0.9"
   },
   "devDependencies": {
-    "@anthropic-ai/sdk": "^0.71.2",
     "@playwright/test": "^1.57.0",
     "@supabase/supabase-js": "^2.89.0",
     "@tailwindcss/postcss": "^4",

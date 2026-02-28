@@ -8,13 +8,11 @@
  */
 
 import { requireAdmin } from "@/lib/auth";
-import Anthropic from "@anthropic-ai/sdk";
+import { generateText, stripCodeFences } from "@/lib/gemini";
 import { db } from "@/db";
 import { cinemas, screenings } from "@/db/schema";
 import { eq, gte, lte, count, and } from "drizzle-orm";
 import { endOfDay, subDays, format } from "date-fns";
-
-const anthropic = new Anthropic();
 
 interface VerifyRequest {
   cinemaId: string;
@@ -26,7 +24,7 @@ interface VerifyRequest {
 interface VerifyResponse {
   analysis: string;
   confidence: number;
-  model: "haiku" | "sonnet";
+  model: "gemini";
   suggestedAction?: string;
 }
 
@@ -93,25 +91,13 @@ Total Screenings (last 7 days): ${totalRecent}
 Date: ${format(now, "EEEE, d MMMM yyyy")}
 `;
 
-    // First try with Haiku (fast/cheap)
-    const haikuResult = await analyzeWithModel(context, anomalyType, "claude-haiku-4-5-20251101");
-
-    // If confidence is low, escalate to Sonnet
-    if (haikuResult.confidence < 0.7) {
-      const sonnetResult = await analyzeWithModel(context, anomalyType, "claude-sonnet-4-20250514");
-      return Response.json({
-        analysis: sonnetResult.analysis,
-        confidence: sonnetResult.confidence,
-        model: "sonnet",
-        suggestedAction: sonnetResult.suggestedAction,
-      } as VerifyResponse);
-    }
+    const result = await analyzeAnomaly(context, anomalyType);
 
     return Response.json({
-      analysis: haikuResult.analysis,
-      confidence: haikuResult.confidence,
-      model: "haiku",
-      suggestedAction: haikuResult.suggestedAction,
+      analysis: result.analysis,
+      confidence: result.confidence,
+      model: "gemini",
+      suggestedAction: result.suggestedAction,
     } as VerifyResponse);
   } catch (error) {
     console.error("Error in AI verify:", error);
@@ -122,10 +108,9 @@ Date: ${format(now, "EEEE, d MMMM yyyy")}
   }
 }
 
-async function analyzeWithModel(
+async function analyzeAnomaly(
   context: string,
-  anomalyType: string,
-  model: string
+  anomalyType: string
 ): Promise<{ analysis: string; confidence: number; suggestedAction?: string }> {
   const systemPrompt = `You are a cinema data quality analyst. Analyze screening data anomalies and provide concise, actionable insights.
 
@@ -154,31 +139,11 @@ Anomaly type "${anomalyType}" means:
 
 Provide your analysis as JSON.`;
 
-  const response = await anthropic.messages.create({
-    model,
-    max_tokens: 500,
-    messages: [
-      { role: "user", content: userPrompt },
-    ],
-    system: systemPrompt,
-  });
-
-  // Extract text content
-  const textContent = response.content.find(c => c.type === "text");
-  if (!textContent || textContent.type !== "text") {
-    throw new Error("No text response from AI");
-  }
+  const text = await generateText(userPrompt, { systemPrompt });
 
   // Parse JSON response
   try {
-    // Extract JSON from response (handle markdown code blocks)
-    let jsonStr = textContent.text;
-    const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
-    if (jsonMatch) {
-      jsonStr = jsonMatch[1];
-    }
-
-    const parsed = JSON.parse(jsonStr.trim());
+    const parsed = JSON.parse(stripCodeFences(text));
     return {
       analysis: parsed.analysis || "Unable to analyze",
       confidence: Math.min(1, Math.max(0, parsed.confidence || 0.5)),
@@ -187,7 +152,7 @@ Provide your analysis as JSON.`;
   } catch {
     // If JSON parsing fails, return the raw text
     return {
-      analysis: textContent.text.slice(0, 500),
+      analysis: text.slice(0, 500),
       confidence: 0.5,
     };
   }

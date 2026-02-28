@@ -12,7 +12,7 @@ import { extractFilmTitleCached, batchExtractTitles } from "@/lib/title-extracto
 import {
   findMatchingFilm,
   isSimilarityConfigured,
-  isClaudeConfigured,
+  isGeminiConfigured,
 } from "@/lib/film-similarity";
 import {
   classifyEventCached,
@@ -384,12 +384,12 @@ async function getOrCreateFilm(
   // This catches fuzzy matches like "Blade Runner 2049" vs "BLADE RUNNER 2049 (4K)"
   if (isSimilarityConfigured()) {
     try {
-      // Use Claude confirmation for medium-confidence matches if API key is available
+      // Use AI confirmation for medium-confidence matches if API key is available
       // Use canonical/matching title for similarity search
       const match = await findMatchingFilm(
         matchingTitle,
         scraperYear,
-        isClaudeConfigured() // Enable Claude confirmation if available
+        isGeminiConfigured() // Enable AI confirmation if available
       );
 
       if (match) {
@@ -648,7 +648,7 @@ async function tryUpdatePoster(
 /**
  * Insert or update a screening
  * If scraper didn't provide event data and title looks like it needs classification,
- * use Claude to extract event type, format, and accessibility info
+ * use AI to extract event type, format, and accessibility info
  */
 async function insertScreening(
   filmId: string,
