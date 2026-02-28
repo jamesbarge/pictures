@@ -717,6 +717,47 @@ async function insertScreening(
     )
     .limit(1);
 
+  // Secondary dedup guard: check for same (cinemaId, datetime) with a different filmId
+  // This catches cases where duplicate film records create duplicate screenings
+  if (!duplicate) {
+    const [sameTimeDifferentFilm] = await db
+      .select({ filmId: screeningsTable.filmId })
+      .from(screeningsTable)
+      .where(
+        and(
+          eq(screeningsTable.cinemaId, cinemaId),
+          eq(screeningsTable.datetime, screening.datetime)
+        )
+      )
+      .limit(1);
+
+    if (sameTimeDifferentFilm && sameTimeDifferentFilm.filmId !== filmId) {
+      // Look up both film titles and compare normalized versions
+      const [existingFilm] = await db
+        .select({ title: films.title })
+        .from(films)
+        .where(eq(films.id, sameTimeDifferentFilm.filmId))
+        .limit(1);
+      const [newFilm] = await db
+        .select({ title: films.title })
+        .from(films)
+        .where(eq(films.id, filmId))
+        .limit(1);
+
+      if (existingFilm && newFilm) {
+        const existingNorm = normalizeTitle(existingFilm.title);
+        const newNorm = normalizeTitle(newFilm.title);
+        if (existingNorm === newNorm) {
+          console.warn(
+            `[Pipeline] Skipping duplicate screening: "${newFilm.title}" at ${cinemaId} ${screening.datetime.toISOString()} ` +
+            `(already exists under different filmId with title "${existingFilm.title}")`
+          );
+          return false; // Skip this duplicate
+        }
+      }
+    }
+  }
+
   if (duplicate) {
     // Update existing
     const now = new Date();
@@ -748,7 +789,7 @@ async function insertScreening(
     return false; // Updated, not added
   }
 
-  // Insert new screening
+  // Insert new screening with conflict handling for race conditions
   const now = new Date();
   await db.insert(screeningsTable).values({
     id: uuidv4(),
@@ -774,6 +815,13 @@ async function insertScreening(
     // Availability status from scraper
     availabilityStatus: screening.availabilityStatus ?? null,
     availabilityCheckedAt: screening.availabilityStatus ? now : null,
+  }).onConflictDoUpdate({
+    target: [screeningsTable.filmId, screeningsTable.cinemaId, screeningsTable.datetime],
+    set: {
+      scrapedAt: now,
+      bookingUrl: screening.bookingUrl,
+      updatedAt: now,
+    },
   });
 
   // Handle festival linking
@@ -947,7 +995,7 @@ export function cleanFilmTitle(title: string): string {
     const afterColon = colonMatch[2].trim();
 
     // Check if before-colon looks like a film series/franchise (keep these intact)
-    const isFilmSeries = /^(star\s+wars|indiana\s+jones|harry\s+potter|lord\s+of\s+the\s+rings|mission\s+impossible|pirates\s+of\s+the\s+caribbean|fast\s+(&|and)\s+furious|jurassic\s+(park|world)|the\s+matrix|batman|spider[\s-]?man|x[\s-]?men|avengers|guardians\s+of\s+the\s+galaxy|toy\s+story|shrek|finding\s+(nemo|dory)|the\s+dark\s+knight|alien|terminator|mad\s+max|back\s+to\s+the\s+future|die\s+hard|lethal\s+weapon|home\s+alone|rocky|rambo|the\s+godfather)/i.test(beforeColon);
+    const isFilmSeries = /^(star\s+wars|indiana\s+jones|harry\s+potter|lord\s+of\s+the\s+rings|mission\s+impossible|pirates\s+of\s+the\s+caribbean|fast\s+(&|and)\s+furious|jurassic\s+(park|world)|the\s+matrix|batman|spider[\s-]?man|x[\s-]?men|avengers|guardians\s+of\s+the\s+galaxy|toy\s+story|shrek|finding\s+(nemo|dory)|the\s+dark\s+knight|alien|terminator|mad\s+max|back\s+to\s+the\s+future|die\s+hard|lethal\s+weapon|home\s+alone|rocky|rambo|the\s+godfather|twin\s+peaks|blade\s+runner|john\s+wick|planet\s+of\s+the\s+apes)/i.test(beforeColon);
 
     // Check if before-colon is a known event-type word pattern
     const isEventPattern = /^(season|series|part|episode|chapter|vol(ume)?|act|double\s+feature|marathon|retrospective|tribute|celebration|anniversary|special|presents?|screening|showing|feature)/i.test(beforeColon);

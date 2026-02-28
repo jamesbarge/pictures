@@ -26,7 +26,7 @@
 
 import { db } from "../index";
 import { screenings, cinemas } from "../schema";
-import { eq, sql, count } from "drizzle-orm";
+import { eq, sql, count, and, inArray } from "drizzle-orm";
 import { getLegacyIdMappings, getCinemaById, getCinemasSeedData } from "@/config/cinema-registry";
 
 // ============================================================================
@@ -90,37 +90,73 @@ async function migrateScreeningIds(): Promise<void> {
 
   const legacyMappings = getLegacyIdMappings();
   let totalMigrated = 0;
+  let totalCollisions = 0;
 
   for (const [legacyId, canonicalId] of legacyMappings) {
-    // Count screenings with legacy ID
-    const [result] = await db
-      .select({ count: count() })
+    // Get all screenings with legacy ID
+    const legacyScreenings = await db
+      .select({
+        id: screenings.id,
+        filmId: screenings.filmId,
+        datetime: screenings.datetime,
+      })
       .from(screenings)
       .where(eq(screenings.cinemaId, legacyId));
 
-    const screeningCount = Number(result?.count) || 0;
-
-    if (screeningCount === 0) {
+    if (legacyScreenings.length === 0) {
       console.log(`  ⏭️  ${legacyId} → ${canonicalId}: No screenings to migrate`);
       continue;
     }
 
-    if (!DRY_RUN) {
-      // Update screenings
-      await db
-        .update(screenings)
-        .set({ cinemaId: canonicalId })
-        .where(eq(screenings.cinemaId, legacyId));
+    // Check for collisions: legacy screenings that would conflict with existing canonical ones
+    const collisionIds: string[] = [];
+    const migrateIds: string[] = [];
 
-      console.log(`  ✅ ${legacyId} → ${canonicalId}: Migrated ${screeningCount} screenings`);
-    } else {
-      console.log(`  [DRY RUN] ${legacyId} → ${canonicalId}: Would migrate ${screeningCount} screenings`);
+    for (const ls of legacyScreenings) {
+      const [existing] = await db
+        .select({ id: screenings.id })
+        .from(screenings)
+        .where(
+          and(
+            eq(screenings.filmId, ls.filmId),
+            eq(screenings.cinemaId, canonicalId),
+            eq(screenings.datetime, ls.datetime)
+          )
+        )
+        .limit(1);
+
+      if (existing) {
+        collisionIds.push(ls.id);
+      } else {
+        migrateIds.push(ls.id);
+      }
     }
 
-    totalMigrated += screeningCount;
+    if (!DRY_RUN) {
+      // Delete collisions (canonical version already exists)
+      if (collisionIds.length > 0) {
+        await db.delete(screenings).where(inArray(screenings.id, collisionIds));
+        console.log(`  🗑️  ${legacyId} → ${canonicalId}: Deleted ${collisionIds.length} colliding legacy screenings`);
+      }
+
+      // Migrate non-colliding screenings
+      if (migrateIds.length > 0) {
+        await db
+          .update(screenings)
+          .set({ cinemaId: canonicalId })
+          .where(inArray(screenings.id, migrateIds));
+      }
+
+      console.log(`  ✅ ${legacyId} → ${canonicalId}: Migrated ${migrateIds.length}, deleted ${collisionIds.length} collisions`);
+    } else {
+      console.log(`  [DRY RUN] ${legacyId} → ${canonicalId}: Would migrate ${migrateIds.length}, delete ${collisionIds.length} collisions`);
+    }
+
+    totalMigrated += migrateIds.length;
+    totalCollisions += collisionIds.length;
   }
 
-  console.log(`\n  Total: ${totalMigrated} screenings ${DRY_RUN ? "would be " : ""}migrated`);
+  console.log(`\n  Total: ${totalMigrated} migrated, ${totalCollisions} collisions deleted ${DRY_RUN ? "(would be) " : ""}`);
 }
 
 async function reportOrphanedCinemas(): Promise<void> {
@@ -243,4 +279,4 @@ async function main() {
   }
 }
 
-main();
+main().then(() => process.exit(0));

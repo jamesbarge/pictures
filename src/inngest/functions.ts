@@ -69,7 +69,7 @@ const CHEERIO_CINEMAS = [
   "ica",
   "genesis",
   "peckhamplex",
-  "nickel",
+  "the-nickel",
   "garden",
   "castle",
   "rich-mix",
@@ -172,11 +172,11 @@ const getScraperRegistry = (): Record<string, () => Promise<ScraperEntry>> => ({
     );
   },
 
-  "nickel": async () => {
+  "the-nickel": async () => {
     const { createNickelScraper } = await import("@/scrapers/cinemas/the-nickel");
     return createIndependentEntry(
       {
-        id: "nickel",
+        id: "the-nickel",
         name: "The Nickel",
         shortName: "Nickel",
         website: "https://thenickel.co.uk",
@@ -220,11 +220,11 @@ const getScraperRegistry = (): Record<string, () => Promise<ScraperEntry>> => ({
     );
   },
 
-  "phoenix": async () => {
+  "phoenix-east-finchley": async () => {
     const { createPhoenixScraper } = await import("@/scrapers/cinemas/phoenix");
     return createIndependentEntry(
       {
-        id: "phoenix",
+        id: "phoenix-east-finchley",
         name: "Phoenix Cinema",
         shortName: "Phoenix",
         website: "https://phoenixcinema.co.uk",

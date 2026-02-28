@@ -5,6 +5,18 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-02-25: Fix Duplicate Screenings & Split Cinema IDs
+**Files**: `src/scrapers/runner-factory.ts`, `src/inngest/functions.ts`, `src/inngest/known-ids.ts`, `src/config/cinema-registry.ts`, `src/lib/title-patterns.ts`, `src/scrapers/pipeline.ts`, `src/db/migrations/canonicalize-cinema-ids.ts`, `scripts/verify-screening-integrity.ts`
+- Fixed 210 duplicate screenings caused by split cinema IDs (6 cinemas using legacy+canonical IDs) and duplicate film records
+- Central ID canonicalization: runner-factory now resolves all legacy IDs via `getCanonicalId()` before pipeline calls
+- Inngest consistency: aligned nickel/phoenix to canonical IDs, removed INNGEST_ID_OVERRIDES
+- Title pattern fix: "Twin Peaks", "Blade Runner", "John Wick", "Planet of the Apes" no longer split at colon
+- Pipeline insert idempotency: `onConflictDoUpdate` + secondary title-normalized dedup guard
+- Enhanced canonicalize migration with collision handling for safe re-runs
+- Created verification script with 4 SQL integrity assertions
+
+---
+
 ## 2026-02-20: Fix BFI Booking Links (Broken Search API)
 **PR**: #118 | **Files**: `src/scrapers/bfi-pdf/url-builder.ts`, `src/scrapers/bfi-pdf/pdf-parser.ts`, `src/scrapers/bfi-pdf/programme-changes-parser.ts`, `scripts/fix-bfi-booking-urls.ts`
 - Fixed all BFI booking links broken by BFI's search API change (`article_search_text` → `article_search_id` + `search_criteria`)

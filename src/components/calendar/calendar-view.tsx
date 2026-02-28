@@ -307,6 +307,21 @@ export function CalendarView({ screenings }: CalendarViewProps) {
     );
   }, [filteredScreenings]);
 
+  // Pre-compute per-film totals across ALL filtered dates (not just per-day)
+  // so card counts match what the film detail page shows
+  const filmTotals = useMemo(() => {
+    const totals = new Map<string, { count: number; cinemas: Map<string, { id: string; name: string; shortName?: string | null }> }>();
+    for (const s of filteredScreenings) {
+      if (!totals.has(s.film.id)) {
+        totals.set(s.film.id, { count: 0, cinemas: new Map() });
+      }
+      const entry = totals.get(s.film.id)!;
+      entry.count++;
+      entry.cinemas.set(s.cinema.id, { id: s.cinema.id, name: s.cinema.name, shortName: s.cinema.shortName });
+    }
+    return totals;
+  }, [filteredScreenings]);
+
   // Group screenings by film within each date (for film view mode)
   const groupedByDateThenFilm = useMemo(() => {
     if (calendarViewMode !== "films") return null;
@@ -328,14 +343,6 @@ export function CalendarView({ screenings }: CalendarViewProps) {
       const filmGroups: FilmGroup[] = Array.from(filmMap.values()).map((g) => {
         const uniqueCinemas = new Map(g.screenings.map((s) => [s.cinema.id, s.cinema]));
         const cinemaCount = uniqueCinemas.size;
-        // If only one cinema, include its info for display
-        const singleCinema = cinemaCount === 1
-          ? {
-              id: g.screenings[0].cinema.id,
-              name: g.screenings[0].cinema.name,
-              shortName: g.screenings[0].cinema.shortName,
-            }
-          : undefined;
 
         // Collect unique special formats with normalized display names
         const formatSet = new Set<string>();
@@ -357,9 +364,14 @@ export function CalendarView({ screenings }: CalendarViewProps) {
             letterboxdRating: g.film.letterboxdRating,
             isRepertory: g.film.isRepertory,
           },
-          screeningCount: g.screenings.length,
-          cinemaCount,
-          singleCinema,
+          screeningCount: filmTotals.get(g.film.id)?.count ?? g.screenings.length,
+          cinemaCount: filmTotals.get(g.film.id)?.cinemas.size ?? cinemaCount,
+          singleCinema: (filmTotals.get(g.film.id)?.cinemas.size ?? cinemaCount) === 1
+            ? (() => {
+                const c = filmTotals.get(g.film.id)!.cinemas.values().next().value!;
+                return { id: c.id, name: c.name, shortName: c.shortName };
+              })()
+            : undefined,
           // Use pre-parsed datetime to avoid repeated Date construction
           earliestTime: new Date(
             Math.min(...g.screenings.map((s) => (s as typeof s & { _parsedDatetime: Date })._parsedDatetime.getTime()))
@@ -380,7 +392,7 @@ export function CalendarView({ screenings }: CalendarViewProps) {
 
       return { date, screenings, filmGroups };
     });
-  }, [groupedByDate, calendarViewMode]);
+  }, [groupedByDate, calendarViewMode, filmTotals]);
 
   // Map filter is active if user drew an area on the map (synced to cinemaIds)
   const hasMapFilter = mounted && mapArea !== null;

@@ -112,10 +112,9 @@ describe("cleanFilmTitle — year stripping", () => {
   });
 
   it("strips year at end of longer title", () => {
-    // "Twin Peaks" is short (2 words) before colon, so cleanFilmTitle extracts after-colon
-    // This is actually correct behavior — the colon heuristic treats "Twin Peaks:" as event-like
+    // "Twin Peaks" is now recognized as a franchise prefix, so the full title is preserved
     expect(cleanFilmTitle("Twin Peaks: Fire Walk With Me (1992)")).toBe(
-      "Fire Walk With Me"
+      "Twin Peaks: Fire Walk With Me"
     );
   });
 
@@ -289,6 +288,38 @@ describe("cleanFilmTitle — event prefixes", () => {
       expect(
         cleanFilmTitle("Star Wars: The Empire Strikes Back")
       ).toBe("Star Wars: The Empire Strikes Back");
+    });
+  });
+
+  describe("franchise title preservation", () => {
+    it("preserves Twin Peaks titles (PCC format with spaces around colon)", () => {
+      expect(
+        cleanFilmTitle("Twin Peaks : Pilot - Northwest Passage")
+      ).toBe("Twin Peaks : Pilot - Northwest Passage");
+    });
+
+    it("preserves Twin Peaks titles (standard colon)", () => {
+      expect(
+        cleanFilmTitle("Twin Peaks: Fire Walk With Me")
+      ).toBe("Twin Peaks: Fire Walk With Me");
+    });
+
+    it("preserves Blade Runner titles", () => {
+      expect(cleanFilmTitle("Blade Runner: The Final Cut")).toBe(
+        "Blade Runner: The Final Cut"
+      );
+    });
+
+    it("preserves John Wick titles", () => {
+      expect(cleanFilmTitle("John Wick: Chapter 4")).toBe(
+        "John Wick: Chapter 4"
+      );
+    });
+
+    it("preserves Planet of the Apes titles", () => {
+      expect(
+        cleanFilmTitle("Planet of the Apes: Kingdom")
+      ).toBe("Planet of the Apes: Kingdom");
     });
   });
 });
