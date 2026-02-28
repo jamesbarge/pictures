@@ -307,11 +307,11 @@ export function CalendarView({ screenings }: CalendarViewProps) {
     );
   }, [filteredScreenings]);
 
-  // Pre-compute per-film totals across ALL filtered dates (not just per-day)
-  // so card counts match what the film detail page shows
+  // Pre-compute per-film totals across ALL upcoming screenings (unfiltered)
+  // so card counts always match the film detail page
   const filmTotals = useMemo(() => {
     const totals = new Map<string, { count: number; cinemas: Map<string, { id: string; name: string; shortName?: string | null }> }>();
-    for (const s of filteredScreenings) {
+    for (const s of parsedScreenings) {
       if (!totals.has(s.film.id)) {
         totals.set(s.film.id, { count: 0, cinemas: new Map() });
       }
@@ -320,7 +320,7 @@ export function CalendarView({ screenings }: CalendarViewProps) {
       entry.cinemas.set(s.cinema.id, { id: s.cinema.id, name: s.cinema.name, shortName: s.cinema.shortName });
     }
     return totals;
-  }, [filteredScreenings]);
+  }, [parsedScreenings]);
 
   // Group screenings by film within each date (for film view mode)
   const groupedByDateThenFilm = useMemo(() => {
