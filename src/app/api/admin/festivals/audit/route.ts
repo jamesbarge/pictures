@@ -6,7 +6,7 @@
  * Helps identify screenings that might need manual tagging.
  */
 
-import { requireAdmin } from "@/lib/auth";
+import { withAdminAuth } from "@/lib/auth";
 import { db } from "@/db";
 import {
   festivals,
@@ -16,10 +16,7 @@ import {
 } from "@/db/schema";
 import { eq, and, gte, lte, inArray, notInArray } from "drizzle-orm";
 
-export async function GET(request: Request) {
-  const admin = await requireAdmin();
-  if (admin instanceof Response) return admin;
-
+export const GET = withAdminAuth(async (request, _admin) => {
   const { searchParams } = new URL(request.url);
   const slug = searchParams.get("slug");
 
@@ -102,4 +99,4 @@ export async function GET(request: Request) {
   }
 
   return Response.json({ audit: auditResults });
-}
+});

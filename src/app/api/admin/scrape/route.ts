@@ -4,7 +4,7 @@
  * POST /api/admin/scrape
  */
 
-import { requireAdmin } from "@/lib/auth";
+import { withAdminAuth } from "@/lib/auth";
 import { inngest } from "@/inngest/client";
 import {
   getCinemaById,
@@ -16,13 +16,7 @@ import {
 // Get the cinema-to-scraper mapping from the canonical registry
 const CINEMA_TO_SCRAPER = getCinemaToScraperMap();
 
-export async function POST(request: Request) {
-  // Verify admin auth
-  const admin = await requireAdmin();
-  if (admin instanceof Response) {
-    return admin;
-  }
-
+export const POST = withAdminAuth(async (request, admin) => {
   try {
     const { cinemaId: rawCinemaId } = await request.json();
 
@@ -80,4 +74,4 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-}
+});

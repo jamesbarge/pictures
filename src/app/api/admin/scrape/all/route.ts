@@ -5,7 +5,7 @@
  * POST /api/admin/scrape/all
  */
 
-import { requireAdmin } from "@/lib/auth";
+import { withAdminAuth } from "@/lib/auth";
 import { inngest } from "@/inngest/client";
 import { getActiveCinemas, getInngestCinemaId } from "@/config/cinema-registry";
 
@@ -70,13 +70,7 @@ function buildScrapeAllEvents(triggeredBy: string) {
   return { events, queuedCinemas };
 }
 
-export async function POST() {
-  // Verify admin auth
-  const admin = await requireAdmin();
-  if (admin instanceof Response) {
-    return admin;
-  }
-
+export const POST = withAdminAuth(async (_req, admin) => {
   try {
     const { events, queuedCinemas } = buildScrapeAllEvents(admin.userId);
 
@@ -97,4 +91,4 @@ export async function POST() {
       { status: 500 }
     );
   }
-}
+});

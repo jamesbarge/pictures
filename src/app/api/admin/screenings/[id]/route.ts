@@ -4,7 +4,7 @@
  * DELETE - Remove a screening
  */
 
-import { requireAdmin } from "@/lib/auth";
+import { withAdminAuth } from "@/lib/auth";
 import { db } from "@/db";
 import { screenings, films, cinemas } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -35,14 +35,8 @@ const patchScreeningSchema = z.object({
   eventType: z.string().nullable().optional(),
 });
 
-export async function PUT(request: Request, { params }: RouteParams) {
+export const PUT = withAdminAuth<RouteParams>(async (request, _admin, { params }) => {
   try {
-    // Verify admin auth
-    const admin = await requireAdmin();
-    if (admin instanceof Response) {
-      return admin;
-    }
-
     const { id: screeningId } = await params;
 
     // Validate request body with Zod
@@ -115,20 +109,14 @@ export async function PUT(request: Request, { params }: RouteParams) {
   } catch (error) {
     return handleApiError(error, "PUT /api/admin/screenings/[id]");
   }
-}
+});
 
 /**
  * PATCH - Lightweight update for inline editing
  * Only updates the specified field(s) and marks as manually edited
  */
-export async function PATCH(request: Request, { params }: RouteParams) {
+export const PATCH = withAdminAuth<RouteParams>(async (request, _admin, { params }) => {
   try {
-    // Verify admin auth
-    const admin = await requireAdmin();
-    if (admin instanceof Response) {
-      return admin;
-    }
-
     const { id: screeningId } = await params;
 
     // Validate request body with Zod
@@ -171,15 +159,9 @@ export async function PATCH(request: Request, { params }: RouteParams) {
   } catch (error) {
     return handleApiError(error, "PATCH /api/admin/screenings/[id]");
   }
-}
+});
 
-export async function DELETE(request: Request, { params }: RouteParams) {
-  // Verify admin auth
-  const admin = await requireAdmin();
-  if (admin instanceof Response) {
-    return admin;
-  }
-
+export const DELETE = withAdminAuth<RouteParams>(async (_request, _admin, { params }) => {
   const { id: screeningId } = await params;
 
   try {
@@ -209,4 +191,4 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       { status: 500 }
     );
   }
-}
+});

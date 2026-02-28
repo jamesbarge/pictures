@@ -5,15 +5,12 @@
  * Returns all festivals with tagged screening counts and coverage info.
  */
 
-import { requireAdmin } from "@/lib/auth";
+import { withAdminAuth } from "@/lib/auth";
 import { db } from "@/db";
 import { festivals, festivalScreenings, screenings } from "@/db/schema";
 import { eq, and, gte, lte, inArray, count } from "drizzle-orm";
 
-export async function GET() {
-  const admin = await requireAdmin();
-  if (admin instanceof Response) return admin;
-
+export const GET = withAdminAuth(async () => {
   const activeFestivals = await db
     .select()
     .from(festivals)
@@ -80,4 +77,4 @@ export async function GET() {
   );
 
   return Response.json({ festivals: results });
-}
+});

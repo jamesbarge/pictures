@@ -4,18 +4,13 @@
  */
 
 import { NextRequest } from "next/server";
-import { requireAdmin } from "@/lib/auth";
+import { withAdminAuth } from "@/lib/auth";
 import { db } from "@/db";
 import { films } from "@/db/schema";
 import { ilike, or, sql, asc } from "drizzle-orm";
 
-export async function GET(request: NextRequest) {
-  // Verify admin auth
-  const admin = await requireAdmin();
-  if (admin instanceof Response) {
-    return admin;
-  }
-
+export const GET = withAdminAuth(async (req, _admin) => {
+  const request = req as NextRequest;
   const searchParams = request.nextUrl.searchParams;
   const query = searchParams.get("q")?.trim();
   const limit = Math.min(parseInt(searchParams.get("limit") || "10"), 50);
@@ -49,4 +44,4 @@ export async function GET(request: NextRequest) {
     console.error("Admin film search error:", error);
     return Response.json({ error: "Search failed" }, { status: 500 });
   }
-}
+});

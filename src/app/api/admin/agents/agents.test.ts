@@ -44,7 +44,7 @@ describe("Agent API Routes", () => {
   });
 
   describe("POST /api/admin/agents/links", () => {
-    let POST: () => Promise<Response>;
+    let POST: (req: Request, context: unknown) => Promise<Response>;
 
     beforeEach(async () => {
       const module = await import("./links/route");
@@ -54,7 +54,7 @@ describe("Agent API Routes", () => {
     it("returns 401 when not authenticated", async () => {
       vi.mocked(auth).mockResolvedValue({ userId: null } as unknown as Awaited<ReturnType<typeof auth>>);
 
-      const response = await POST();
+      const response = await POST(new Request("http://localhost"), {});
       expect(response.status).toBe(401);
     });
 
@@ -72,7 +72,7 @@ describe("Agent API Routes", () => {
         timestamp: new Date(),
       });
 
-      const response = await POST();
+      const response = await POST(new Request("http://localhost"), {});
       expect(response.status).toBe(200);
 
       const data = await response.json();
@@ -93,7 +93,7 @@ describe("Agent API Routes", () => {
         timestamp: new Date(),
       });
 
-      const response = await POST();
+      const response = await POST(new Request("http://localhost"), {});
       expect(response.status).toBe(200);
 
       const data = await response.json();
@@ -103,7 +103,7 @@ describe("Agent API Routes", () => {
   });
 
   describe("POST /api/admin/agents/health", () => {
-    let POST: () => Promise<Response>;
+    let POST: (req: Request, context: unknown) => Promise<Response>;
 
     beforeEach(async () => {
       const module = await import("./health/route");
@@ -113,7 +113,7 @@ describe("Agent API Routes", () => {
     it("returns 401 when not authenticated", async () => {
       vi.mocked(auth).mockResolvedValue({ userId: null } as unknown as Awaited<ReturnType<typeof auth>>);
 
-      const response = await POST();
+      const response = await POST(new Request("http://localhost"), {});
       expect(response.status).toBe(401);
     });
 
@@ -155,7 +155,7 @@ describe("Agent API Routes", () => {
         timestamp: new Date(),
       });
 
-      const response = await POST();
+      const response = await POST(new Request("http://localhost"), {});
       expect(response.status).toBe(200);
 
       const data = await response.json();
@@ -168,7 +168,7 @@ describe("Agent API Routes", () => {
   });
 
   describe("POST /api/admin/agents/enrich", () => {
-    let POST: () => Promise<Response>;
+    let POST: (req: Request, context: unknown) => Promise<Response>;
 
     beforeEach(async () => {
       const module = await import("./enrich/route");
@@ -178,7 +178,7 @@ describe("Agent API Routes", () => {
     it("returns 401 when not authenticated", async () => {
       vi.mocked(auth).mockResolvedValue({ userId: null } as unknown as Awaited<ReturnType<typeof auth>>);
 
-      const response = await POST();
+      const response = await POST(new Request("http://localhost"), {});
       expect(response.status).toBe(401);
     });
 
@@ -212,7 +212,7 @@ describe("Agent API Routes", () => {
         timestamp: new Date(),
       });
 
-      const response = await POST();
+      const response = await POST(new Request("http://localhost"), {});
       expect(response.status).toBe(200);
 
       const data = await response.json();
@@ -233,7 +233,7 @@ describe("Agent API Routes", () => {
         timestamp: new Date(),
       });
 
-      const response = await POST();
+      const response = await POST(new Request("http://localhost"), {});
       expect(response.status).toBe(200);
 
       const data = await response.json();

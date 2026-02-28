@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/auth";
+import { withAdminAuth } from "@/lib/auth";
 import {
   healthCheck,
   getDashboardSummary,
@@ -17,14 +17,9 @@ import {
   getCinemaEngagement,
 } from "@/lib/posthog-api";
 
-export async function GET(request: NextRequest) {
+export const GET = withAdminAuth(async (req, _admin) => {
   try {
-    // Require admin authentication
-    const admin = await requireAdmin();
-    if (admin instanceof Response) {
-      return admin;
-    }
-
+    const request = req as NextRequest;
     const searchParams = request.nextUrl.searchParams;
     const type = searchParams.get("type") || "summary";
     const dateFrom = searchParams.get("dateFrom") || "-7d";
@@ -106,4 +101,4 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

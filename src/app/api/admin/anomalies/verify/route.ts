@@ -7,7 +7,7 @@
  * Uses Haiku first for speed, escalates to Sonnet if confidence < 0.7
  */
 
-import { requireAdmin } from "@/lib/auth";
+import { withAdminAuth } from "@/lib/auth";
 import { generateText, stripCodeFences } from "@/lib/gemini";
 import { db } from "@/db";
 import { cinemas, screenings } from "@/db/schema";
@@ -28,13 +28,7 @@ interface VerifyResponse {
   suggestedAction?: string;
 }
 
-export async function POST(request: Request) {
-  // Verify admin auth
-  const admin = await requireAdmin();
-  if (admin instanceof Response) {
-    return admin;
-  }
-
+export const POST = withAdminAuth(async (request, _admin) => {
   try {
     const body: VerifyRequest = await request.json();
     const { cinemaId, anomalyType, todayCount, lastWeekCount } = body;
@@ -106,7 +100,7 @@ Date: ${format(now, "EEEE, d MMMM yyyy")}
       { status: 500 }
     );
   }
-}
+});
 
 async function analyzeAnomaly(
   context: string,

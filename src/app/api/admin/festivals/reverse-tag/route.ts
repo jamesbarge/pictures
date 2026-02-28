@@ -6,7 +6,7 @@
  * Optionally accepts a festivalSlug to tag a single festival.
  */
 
-import { requireAdmin } from "@/lib/auth";
+import { withAdminAuth } from "@/lib/auth";
 import { db } from "@/db";
 import { festivals } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -15,10 +15,7 @@ import {
   reverseTagFestival,
 } from "@/scrapers/festivals/reverse-tagger";
 
-export async function POST(request: Request) {
-  const admin = await requireAdmin();
-  if (admin instanceof Response) return admin;
-
+export const POST = withAdminAuth(async (request, _admin) => {
   try {
     const body = await request.json().catch(() => ({}));
     const { festivalSlug } = body as { festivalSlug?: string };
@@ -60,4 +57,4 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-}
+});
