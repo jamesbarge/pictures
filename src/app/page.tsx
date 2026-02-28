@@ -1,6 +1,6 @@
 import { db, isDatabaseAvailable } from "@/db";
 import { screenings, films, cinemas, seasons } from "@/db/schema";
-import { eq, gte, lte, and, countDistinct, count } from "drizzle-orm";
+import { eq, gte, lte, and, or, isNull, countDistinct, count } from "drizzle-orm";
 import { endOfDay, addDays, format } from "date-fns";
 import { unstable_cache } from "next/cache";
 import { CalendarViewWithLoader } from "@/components/calendar/calendar-view-loader";
@@ -56,7 +56,9 @@ const getCachedScreenings = unstable_cache(
       .where(
         and(
           gte(screenings.datetime, now),
-          lte(screenings.datetime, endDate)
+          lte(screenings.datetime, endDate),
+          // Exclude non-film content (quizzes, ballet, NT Live, etc.)
+          or(eq(films.contentType, "film"), isNull(films.contentType))
         )
       )
       .orderBy(screenings.datetime);
