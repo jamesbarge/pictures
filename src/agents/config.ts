@@ -63,9 +63,9 @@ export function getAgentConfig(
  * Environment check for API key
  */
 export function validateEnvironment(): void {
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!process.env.GEMINI_API_KEY) {
     throw new Error(
-      "ANTHROPIC_API_KEY environment variable is required for agents"
+      "GEMINI_API_KEY environment variable is required for agents"
     );
   }
 }

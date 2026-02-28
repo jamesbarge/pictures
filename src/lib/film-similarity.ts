@@ -9,12 +9,9 @@
  * - "The Godfather" vs "Godfather, The"
  */
 
-import Anthropic from "@anthropic-ai/sdk";
+import { generateText, stripCodeFences, isGeminiConfigured } from "./gemini";
 import { db } from "@/db";
 import { sql } from "drizzle-orm";
-
-// Initialize Anthropic client (uses ANTHROPIC_API_KEY from env)
-const anthropic = new Anthropic();
 
 // Similarity thresholds for trigram matching
 // Lowered from 0.7/0.4/0.3 to catch more near-duplicates (e.g., accent variations, minor formatting)
@@ -94,14 +91,8 @@ Respond with JSON only:
 {"isMatch": true/false, "confidence": 0.0-1.0, "reasoning": "brief explanation"}`;
 
   try {
-    const response = await anthropic.messages.create({
-      model: "claude-3-5-haiku-latest",
-      max_tokens: 200,
-      messages: [{ role: "user", content: prompt }],
-    });
-
-    const text = response.content[0].type === "text" ? response.content[0].text : "";
-    const json = JSON.parse(text);
+    const text = await generateText(prompt);
+    const json = JSON.parse(stripCodeFences(text));
 
     return {
       isMatch: json.isMatch === true,
@@ -184,8 +175,6 @@ export function isSimilarityConfigured(): boolean {
 }
 
 /**
- * Check if Claude confirmation is available
+ * Check if AI confirmation is available
  */
-export function isClaudeConfigured(): boolean {
-  return !!process.env.ANTHROPIC_API_KEY;
-}
+export { isGeminiConfigured } from "./gemini";

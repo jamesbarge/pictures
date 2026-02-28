@@ -13,6 +13,8 @@
 # testing
 /coverage
 /playwright-report/
+/scripts/audit/results/
+/screenshots/
 
 # next.js
 /.next/

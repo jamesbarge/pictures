@@ -3,16 +3,7 @@
  * Uses Claude Haiku to intelligently extract actual film titles from event names
  */
 
-import Anthropic from "@anthropic-ai/sdk";
-
-let client: Anthropic | null = null;
-
-function getClient(): Anthropic {
-  if (!client) {
-    client = new Anthropic();
-  }
-  return client;
-}
+import { generateText, stripCodeFences } from "./gemini";
 
 interface ExtractionResult {
   filmTitle: string;
@@ -112,13 +103,7 @@ export async function extractFilmTitle(rawTitle: string): Promise<ExtractionResu
   }
 
   try {
-    const response = await getClient().messages.create({
-      model: "claude-3-5-haiku-20241022",
-      max_tokens: 200,
-      messages: [
-        {
-          role: "user",
-          content: `Extract film title information from this cinema screening listing.
+    const text = await generateText(`Extract film title information from this cinema screening listing.
 
 Listing: "${rawTitle}"
 
@@ -138,15 +123,10 @@ IMPORTANT: "canonical" should strip version suffixes but keep legitimate subtitl
 Examples:
 - "Saturday Morning Picture Club: The Muppets Christmas Carol" → {"title": "The Muppets Christmas Carol", "canonical": "The Muppets Christmas Carol", "event": "kids screening", "confidence": "high"}
 - "Apocalypse Now : Final Cut" → {"title": "Apocalypse Now : Final Cut", "canonical": "Apocalypse Now", "version": "Final Cut", "confidence": "high"}
-- "35mm: Casablanca (PG)" → {"title": "Casablanca", "canonical": "Casablanca", "event": "35mm screening", "confidence": "high"}`,
-        },
-      ],
-    });
-
-    const text = response.content[0].type === "text" ? response.content[0].text : "";
+- "35mm: Casablanca (PG)" → {"title": "Casablanca", "canonical": "Casablanca", "event": "35mm screening", "confidence": "high"}`);
 
     // Parse the JSON response
-    const parsed = JSON.parse(text.trim());
+    const parsed = JSON.parse(stripCodeFences(text));
     const displayTitle = cleanBasicCruft(parsed.title || rawTitle);
 
     return {

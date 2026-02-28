@@ -17,11 +17,11 @@ export async function POST() {
   }
 
   // Check for API key before importing agent
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!process.env.GEMINI_API_KEY) {
     return Response.json({
       success: false,
       summary: "Agent not configured",
-      error: "ANTHROPIC_API_KEY environment variable is not set. Add it in Vercel project settings.",
+      error: "GEMINI_API_KEY environment variable is not set. Add it in Vercel project settings.",
     });
   }
 

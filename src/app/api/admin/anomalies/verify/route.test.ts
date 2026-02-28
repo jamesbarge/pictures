@@ -5,8 +5,8 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-// Mock create function we can control per test
-const mockCreate = vi.fn();
+// Mock generateText function we can control per test
+const mockGenerateText = vi.fn();
 
 // Mock Clerk auth
 vi.mock("@clerk/nextjs/server", () => ({
@@ -14,16 +14,15 @@ vi.mock("@clerk/nextjs/server", () => ({
   currentUser: vi.fn(),
 }));
 
-// Mock Anthropic SDK with a proper class
-vi.mock("@anthropic-ai/sdk", () => {
-  return {
-    default: class MockAnthropic {
-      messages = {
-        create: mockCreate,
-      };
-    },
-  };
-});
+// Mock Gemini client
+vi.mock("@/lib/gemini", () => ({
+  generateText: (...args: unknown[]) => mockGenerateText(...args),
+  stripCodeFences: (text: string) =>
+    text
+      .replace(/^```(?:json)?\s*\n?/, "")
+      .replace(/\n?```\s*$/, "")
+      .trim(),
+}));
 
 // Mock database
 vi.mock("@/db", () => ({
@@ -108,18 +107,13 @@ describe("POST /api/admin/anomalies/verify", () => {
     vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as unknown as Awaited<ReturnType<typeof auth>>);
 
     // Mock successful AI response with high confidence
-    mockCreate.mockResolvedValue({
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify({
-            analysis: "The cinema website may have changed its structure.",
-            confidence: 0.85,
-            suggestedAction: "Re-run the scraper and check for selector changes.",
-          }),
-        },
-      ],
-    });
+    mockGenerateText.mockResolvedValue(
+      JSON.stringify({
+        analysis: "The cinema website may have changed its structure.",
+        confidence: 0.85,
+        suggestedAction: "Re-run the scraper and check for selector changes.",
+      })
+    );
 
     const request = new Request("http://localhost/api/admin/anomalies/verify", {
       method: "POST",
@@ -139,38 +133,19 @@ describe("POST /api/admin/anomalies/verify", () => {
     expect(data.analysis).toBeDefined();
     expect(data.confidence).toBeGreaterThanOrEqual(0);
     expect(data.confidence).toBeLessThanOrEqual(1);
-    expect(data.model).toBe("haiku");
+    expect(data.model).toBe("gemini");
   });
 
-  it("escalates to Sonnet when Haiku confidence is low", async () => {
+  it("returns single Gemini result (no model escalation)", async () => {
     vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as unknown as Awaited<ReturnType<typeof auth>>);
 
-    // First call (Haiku) returns low confidence
-    // Second call (Sonnet) returns high confidence
-    mockCreate
-      .mockResolvedValueOnce({
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify({
-              analysis: "Uncertain about the cause.",
-              confidence: 0.5,
-            }),
-          },
-        ],
+    mockGenerateText.mockResolvedValue(
+      JSON.stringify({
+        analysis: "After analysis, this appears to be a website change.",
+        confidence: 0.9,
+        suggestedAction: "Update selectors.",
       })
-      .mockResolvedValueOnce({
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify({
-              analysis: "After deeper analysis, this appears to be a website change.",
-              confidence: 0.9,
-              suggestedAction: "Update selectors.",
-            }),
-          },
-        ],
-      });
+    );
 
     const request = new Request("http://localhost/api/admin/anomalies/verify", {
       method: "POST",
@@ -187,7 +162,7 @@ describe("POST /api/admin/anomalies/verify", () => {
     expect(response.status).toBe(200);
 
     const data = await response.json();
-    expect(data.model).toBe("sonnet");
+    expect(data.model).toBe("gemini");
     expect(data.confidence).toBeGreaterThan(0.7);
   });
 
@@ -195,14 +170,9 @@ describe("POST /api/admin/anomalies/verify", () => {
     vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as unknown as Awaited<ReturnType<typeof auth>>);
 
     // Mock AI response wrapped in code block
-    mockCreate.mockResolvedValue({
-      content: [
-        {
-          type: "text",
-          text: '```json\n{"analysis": "Test analysis", "confidence": 0.8}\n```',
-        },
-      ],
-    });
+    mockGenerateText.mockResolvedValue(
+      '```json\n{"analysis": "Test analysis", "confidence": 0.8}\n```'
+    );
 
     const request = new Request("http://localhost/api/admin/anomalies/verify", {
       method: "POST",

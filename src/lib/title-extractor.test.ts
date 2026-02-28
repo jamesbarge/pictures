@@ -16,13 +16,15 @@ import {
   clearTitleCache,
 } from "./title-extractor";
 
-// Mock the Anthropic SDK
-vi.mock("@anthropic-ai/sdk", () => ({
-  default: vi.fn().mockImplementation(() => ({
-    messages: {
-      create: vi.fn(),
-    },
-  })),
+// Mock the Gemini client
+const mockGenerateText = vi.fn();
+vi.mock("./gemini", () => ({
+  generateText: (...args: unknown[]) => mockGenerateText(...args),
+  stripCodeFences: (text: string) =>
+    text
+      .replace(/^```(?:json)?\s*\n?/, "")
+      .replace(/\n?```\s*$/, "")
+      .trim(),
 }));
 
 // =============================================================================
@@ -395,46 +397,25 @@ describe("extractFilmTitle - event prefixes (needs extraction)", () => {
 // =============================================================================
 
 describe("extractFilmTitle - API extraction", () => {
-  let mockCreate: ReturnType<typeof vi.fn>;
-
-  beforeEach(async () => {
-    // Get the mocked module and set up the mock
-    const Anthropic = (await import("@anthropic-ai/sdk")).default;
-    mockCreate = vi.fn();
-    (Anthropic as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => ({
-      messages: {
-        create: mockCreate,
-      },
-    }));
-  });
-
   afterEach(() => {
     vi.clearAllMocks();
   });
 
   it("should parse successful API response", async () => {
-    mockCreate.mockResolvedValueOnce({
-      content: [
-        {
-          type: "text",
-          text: '{"title": "The Muppets Christmas Carol", "event": "kids screening", "confidence": "high"}',
-        },
-      ],
-    });
+    mockGenerateText.mockResolvedValueOnce(
+      '{"title": "The Muppets Christmas Carol", "event": "kids screening", "confidence": "high"}'
+    );
 
     const result = await extractFilmTitle(
       "Saturday Morning Picture Club: The Muppets Christmas Carol"
     );
 
-    // Note: The mock needs to be called, but since we're testing the pattern detection,
-    // and the actual API call behavior depends on module initialization order,
-    // we verify the result structure is correct
     expect(result).toHaveProperty("filmTitle");
     expect(result).toHaveProperty("confidence");
   });
 
   it("should handle API errors gracefully", async () => {
-    mockCreate.mockRejectedValueOnce(new Error("API Error"));
+    mockGenerateText.mockRejectedValueOnce(new Error("API Error"));
 
     const result = await extractFilmTitle("35mm: Casablanca");
 
@@ -444,16 +425,9 @@ describe("extractFilmTitle - API extraction", () => {
   });
 
   it("should handle invalid JSON response gracefully", async () => {
-    // When Claude returns non-JSON text, JSON.parse should throw,
-    // but the outer try-catch should catch it and fallback gracefully
-    mockCreate.mockResolvedValueOnce({
-      content: [
-        {
-          type: "text",
-          text: "Sorry, I cannot extract the title from this.",
-        },
-      ],
-    });
+    mockGenerateText.mockResolvedValueOnce(
+      "Sorry, I cannot extract the title from this."
+    );
 
     const result = await extractFilmTitle("35mm: Some Film");
 
@@ -463,15 +437,7 @@ describe("extractFilmTitle - API extraction", () => {
   });
 
   it("should handle malformed JSON response gracefully", async () => {
-    // Partially valid JSON that will fail parsing
-    mockCreate.mockResolvedValueOnce({
-      content: [
-        {
-          type: "text",
-          text: '{"title": "Incomplete JSON',
-        },
-      ],
-    });
+    mockGenerateText.mockResolvedValueOnce('{"title": "Incomplete JSON');
 
     const result = await extractFilmTitle("Kids Club: Toy Story");
 

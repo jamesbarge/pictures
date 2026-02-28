@@ -26,12 +26,12 @@ import {
 } from "@/agents";
 
 describe("Agent API Routes", () => {
-  const originalEnv = process.env.ANTHROPIC_API_KEY;
+  const originalEnv = process.env.GEMINI_API_KEY;
 
   beforeEach(() => {
     vi.clearAllMocks();
     // Set API key so routes don't return "not configured" error
-    process.env.ANTHROPIC_API_KEY = "test-api-key";
+    process.env.GEMINI_API_KEY = "test-api-key";
     vi.mocked(currentUser).mockResolvedValue({
       emailAddresses: [{ emailAddress: "jdwbarge@gmail.com" }],
     } as never);
@@ -40,7 +40,7 @@ describe("Agent API Routes", () => {
   afterEach(() => {
     vi.resetModules();
     // Restore original env
-    process.env.ANTHROPIC_API_KEY = originalEnv;
+    process.env.GEMINI_API_KEY = originalEnv;
   });
 
   describe("POST /api/admin/agents/links", () => {

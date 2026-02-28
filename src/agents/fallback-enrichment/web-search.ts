@@ -5,7 +5,7 @@
  * structured metadata when TMDB matching fails.
  */
 
-import Anthropic from "@anthropic-ai/sdk";
+import { generateTextWithUsage } from "@/lib/gemini";
 import type { CastMember } from "@/types/film";
 
 export interface FilmSearchInput {
@@ -81,37 +81,17 @@ IMPORTANT: Return ONLY valid JSON, no markdown formatting or extra text.`;
  * Returns extracted structured data or null if film not found
  */
 export async function searchAndExtractFilmData(
-  input: FilmSearchInput,
-  anthropicClient?: Anthropic
+  input: FilmSearchInput
 ): Promise<{ data: ExtractedFilmData | null; tokensUsed: number }> {
-  const client = anthropicClient || new Anthropic();
-
   const searchQuery = buildSearchQuery(input);
 
   try {
-    const response = await client.messages.create({
-      model: "claude-3-5-haiku-20241022",
-      max_tokens: 1500,
-      system: EXTRACTION_PROMPT,
-      messages: [
-        {
-          role: "user",
-          content: searchQuery,
-        },
-      ],
+    const response = await generateTextWithUsage(searchQuery, {
+      systemPrompt: EXTRACTION_PROMPT,
     });
 
-    const tokensUsed =
-      (response.usage?.input_tokens || 0) +
-      (response.usage?.output_tokens || 0);
-
-    // Extract text from response
-    const textBlock = response.content.find((b) => b.type === "text");
-    if (!textBlock || textBlock.type !== "text") {
-      return { data: null, tokensUsed };
-    }
-
-    const responseText = textBlock.text.trim();
+    const tokensUsed = response.tokensUsed;
+    const responseText = response.text.trim();
 
     // Parse JSON from response
     const parsed = parseJsonResponse(responseText);

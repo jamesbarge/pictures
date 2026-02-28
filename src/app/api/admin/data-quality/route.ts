@@ -40,11 +40,11 @@ export async function POST() {
     return admin;
   }
 
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!process.env.GEMINI_API_KEY) {
     return Response.json({
       success: false,
       summary: "Agent not configured",
-      error: "ANTHROPIC_API_KEY environment variable is not set.",
+      error: "GEMINI_API_KEY environment variable is not set.",
     });
   }
 

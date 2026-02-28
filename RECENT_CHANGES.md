@@ -5,6 +5,30 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-02-28: Migrate AI Provider from Anthropic to Google Gemini
+**Branch**: `feat/gemini-migration` | **Files**: 20+ files across `src/lib/`, `src/agents/`, `src/app/api/admin/`, tests
+- Replaced `@anthropic-ai/sdk` and `@anthropic-ai/claude-agent-sdk` with `@google/genai`
+- Created shared `src/lib/gemini.ts` utility: `generateText()`, `generateTextWithUsage()`, `stripCodeFences()`, `isGeminiConfigured()`
+- Migrated 4 core pipeline files (title-extractor, content-classifier, event-classifier, film-similarity)
+- Migrated 6 agent system files (config, enrichment, scraper-health, link-validator, fallback-enrichment, web-search)
+- Migrated 6 admin API routes (env var checks + anomalies/verify direct usage)
+- Updated all test mocks, GitHub Actions workflow, and `.env.local`
+- Model: `gemini-3.1-pro-preview` for all AI calls (replaces haiku/sonnet split)
+
+---
+
+## 2026-02-28: Comprehensive Audit Fix — 897→624 Issues (30% reduction)
+**PRs**: #120, #121, #122 | **Files**: `src/components/calendar/calendar-view.tsx`, `src/app/page.tsx`, `src/db/repositories/screening.ts`, `scripts/audit/checkers/booking-checker.ts`
+- Fixed film card count mismatch: cards now show total screening counts (not filtered counts) matching detail pages
+- Added contentType filter to both server-side and API screening queries — non-film content excluded from calendar
+- Reclassified 4 non-film items; merged 8 duplicate film records; fixed 4 film title issues
+- Enriched 725 films with TMDB data; updated audit checker domain maps and bot-protection whitelist
+- Re-scraped Everyman (14 venues, 1137 screenings), Picturehouse (11 venues, 2167 screenings), Rich Mix, Lexi
+- Non-film content: 11→0 | Broken links: 373→186 | Missing posters: 268→235 | Duplicates: 112→94
+- **Remaining**: ~150 Curzon broken links (Cloudflare), 235 missing posters, invalid Anthropic API key
+
+---
+
 ## 2026-02-25: Fix Duplicate Screenings & Split Cinema IDs
 **Files**: `src/scrapers/runner-factory.ts`, `src/inngest/functions.ts`, `src/inngest/known-ids.ts`, `src/config/cinema-registry.ts`, `src/lib/title-patterns.ts`, `src/scrapers/pipeline.ts`, `src/db/migrations/canonicalize-cinema-ids.ts`, `scripts/verify-screening-integrity.ts`
 - Fixed 210 duplicate screenings caused by split cinema IDs (6 cinemas using legacy+canonical IDs) and duplicate film records

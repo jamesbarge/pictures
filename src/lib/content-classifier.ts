@@ -10,17 +10,8 @@
  * This replaces the title-extractor with a more comprehensive solution.
  */
 
-import Anthropic from "@anthropic-ai/sdk";
+import { generateText, stripCodeFences } from "./gemini";
 import type { ContentType } from "@/types/film";
-
-let client: Anthropic | null = null;
-
-function getClient(): Anthropic {
-  if (!client) {
-    client = new Anthropic();
-  }
-  return client;
-}
 
 export type PosterStrategy = "tmdb" | "scraper_image" | "generate";
 
@@ -226,13 +217,7 @@ export async function classifyContent(
   }
 
   try {
-    const response = await getClient().messages.create({
-      model: "claude-3-5-haiku-20241022",
-      max_tokens: 200,
-      messages: [
-        {
-          role: "user",
-          content: `Classify this cinema listing and extract the actual content title.
+    const text = await generateText(`Classify this cinema listing and extract the actual content title.
 
 Listing: "${rawTitle}"
 
@@ -258,14 +243,9 @@ Examples:
 - "NT Live: Hamlet (2026)" -> {"title":"Hamlet","year":2026,"type":"live_broadcast","poster":"scraper_image","confidence":"high"}
 - "Solaris (1972)" -> {"title":"Solaris","year":1972,"type":"film","poster":"tmdb","confidence":"high"}
 - "The Killer (1989)" -> {"title":"The Killer","year":1989,"type":"film","poster":"tmdb","confidence":"high"}
-- "Films For Workers: Killer of Sheep" -> {"title":"Killer of Sheep","year":null,"type":"film","poster":"tmdb","confidence":"high","event":"film club"}`,
-        },
-      ],
-    });
+- "Films For Workers: Killer of Sheep" -> {"title":"Killer of Sheep","year":null,"type":"film","poster":"tmdb","confidence":"high","event":"film club"}`);
 
-    const text =
-      response.content[0].type === "text" ? response.content[0].text : "";
-    const parsed = JSON.parse(text.trim());
+    const parsed = JSON.parse(stripCodeFences(text));
 
     return {
       cleanTitle: cleanBasicCruft(parsed.title || rawTitle),
