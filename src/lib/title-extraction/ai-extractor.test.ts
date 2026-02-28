@@ -1,7 +1,7 @@
 /**
- * Title Extractor Tests
+ * AI Title Extractor Tests
  *
- * Tests the film title extraction logic, including:
+ * Tests the AI-powered film title extraction logic, including:
  * - Clean title detection (skips API calls)
  * - Basic cruft removal (BBFC ratings, format suffixes)
  * - API-based extraction (mocked)
@@ -14,11 +14,11 @@ import {
   batchExtractTitles,
   extractFilmTitleCached,
   clearTitleCache,
-} from "./title-extractor";
+} from "./index";
 
 // Mock the Gemini client
 const mockGenerateText = vi.fn();
-vi.mock("./gemini", () => ({
+vi.mock("../gemini", () => ({
   generateText: (...args: unknown[]) => mockGenerateText(...args),
   stripCodeFences: (text: string) =>
     text

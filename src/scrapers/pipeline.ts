@@ -8,7 +8,7 @@ import { films, screenings as screeningsTable, cinemas, festivals, festivalScree
 import { eq, and } from "drizzle-orm";
 import { matchFilmToTMDB, getTMDBClient, isRepertoryFilm, getDecade } from "@/lib/tmdb";
 import { getPosterService } from "@/lib/posters";
-import { extractFilmTitleCached, batchExtractTitles } from "@/lib/title-extractor";
+import { extractFilmTitleCached, batchExtractTitles } from "@/lib/title-extraction";
 import {
   findMatchingFilm,
   isSimilarityConfigured,

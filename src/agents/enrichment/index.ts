@@ -22,9 +22,9 @@ import {
 } from "../types";
 import { CINEMA_AGENT_SYSTEM_PROMPT, calculateCost } from "../config";
 import {
-  extractFilmTitle,
+  extractFilmTitleSync as extractFilmTitle,
   generateSearchVariations,
-} from "./title-extractor";
+} from "@/lib/title-extraction";
 
 const AGENT_NAME = "enrichment";
 
