@@ -140,13 +140,13 @@ export async function generateMetadata(): Promise<Metadata> {
   // Web App Manifest for PWA
   manifest: "/manifest.json",
 
-  // Verification (add your actual verification codes)
-  // verification: {
-  //   google: "your-google-verification-code",
-  //   other: {
-  //     "msvalidate.01": "your-bing-verification-code",
-  //   },
-  // },
+  // Verification — env vars set in .env.local after registering with each dashboard
+  verification: {
+    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,
+    other: {
+      "msvalidate.01": process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION ?? "",
+    },
+  },
 
     // App info
     applicationName: "Pictures",
