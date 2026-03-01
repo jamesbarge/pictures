@@ -5,6 +5,16 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-01: CR-02 — Extract Header Subcomponents
+**Branch**: `cr02-extract-header-subcomponents` | **Files**: `src/components/layout/header.tsx`, `src/components/layout/header/` (13 new)
+- Decomposed the 1,522-line `header.tsx` into 10 focused subcomponents under `src/components/layout/header/`
+- Extracted: MobileFiltersButton, ActiveFilterChips, FilmTypeFilter, DateTimeFilter, FilmSearchFilter, CinemaFilter, FormatFilter, ViewModeToggle, ClearFiltersButton, ShareFiltersButton
+- Shared types in `types.ts`, utility helpers in `utils.ts`, barrel export in `index.ts`
+- `header.tsx` is now a 157-line composition layer that imports and arranges subcomponents
+- Pure refactoring: zero behavior changes, all tests pass
+
+---
+
 ## 2026-02-28: CR-03 — Unify Title Extraction
 **Branch**: `cr03-unify-title-extraction` | **Files**: `src/lib/title-extraction/` (6 new), 4 updated, 3 deleted
 - Consolidated two independent title extractors (AI-powered + pattern-based) into `src/lib/title-extraction/`
