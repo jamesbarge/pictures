@@ -15,6 +15,18 @@ When an entry is added here, also create a detailed file in /changelogs/
 
 ---
 
+## 2026-03-01: CR-01 — Decompose pipeline.ts
+**Branch**: `cr01-decompose-pipeline` | **Files**: `src/scrapers/pipeline.ts`, 3 new utility files in `src/scrapers/utils/`
+- Extracted 3 giant methods (564 lines / 49.7% of file) into focused utility modules
+- `film-title-cleaner.ts`: EVENT_PREFIXES array + `cleanFilmTitle()` (191 lines)
+- `film-matching.ts`: Film cache, TMDB matching, similarity search, poster resolution (421 lines)
+- `screening-classification.ts`: Event classification + duplicate detection (188 lines)
+- `pipeline.ts` reduced from 1,134 to 570 lines (50% reduction)
+- `getOrCreateFilm()` reduced from 276 to 70 lines; `insertScreening()` from 217 to 93 lines
+- Pure refactoring: zero behavioral changes, all 683 tests pass
+
+---
+
 ## 2026-02-28: CR-03 — Unify Title Extraction
 **Branch**: `cr03-unify-title-extraction` | **Files**: `src/lib/title-extraction/` (6 new), 4 updated, 3 deleted
 - Consolidated two independent title extractors (AI-powered + pattern-based) into `src/lib/title-extraction/`
