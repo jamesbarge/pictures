@@ -319,7 +319,10 @@ export function CalendarViewWithLoader({ initialScreenings, filmTotals }: Calend
       )}
 
       <ErrorBoundary>
-        <CalendarView screenings={allScreenings} serverFilmTotals={filmTotals} />
+        <CalendarView
+          screenings={allScreenings}
+          serverFilmTotals={festivalSlug || seasonSlug ? undefined : filmTotals}
+        />
       </ErrorBoundary>
 
       {/* Infinite scroll sentinel & loading indicator */}
