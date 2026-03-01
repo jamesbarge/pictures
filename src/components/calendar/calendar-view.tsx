@@ -50,8 +50,15 @@ interface Screening {
   };
 }
 
+interface ServerFilmTotal {
+  filmId: string;
+  count: number;
+  cinemaCount: number;
+}
+
 interface CalendarViewProps {
   screenings: Screening[];
+  serverFilmTotals?: ServerFilmTotal[];
 }
 
 // Film group structure for film view mode
@@ -77,7 +84,7 @@ interface FilmGroup {
   specialFormats: string[];
 }
 
-export function CalendarView({ screenings }: CalendarViewProps) {
+export function CalendarView({ screenings, serverFilmTotals }: CalendarViewProps) {
   const filters = useFilters();
   const { mapArea, calendarViewMode } = usePreferences();
   const mounted = useHydrated();
@@ -310,17 +317,42 @@ export function CalendarView({ screenings }: CalendarViewProps) {
   // Pre-compute per-film totals across ALL upcoming screenings (unfiltered)
   // so card counts always match the film detail page
   const filmTotals = useMemo(() => {
-    const totals = new Map<string, { count: number; cinemas: Map<string, { id: string; name: string; shortName?: string | null }> }>();
+    const totals = new Map<string, { count: number; cinemaCount: number; cinemas: Map<string, { id: string; name: string; shortName?: string | null }> }>();
+
+    // If server provided totals, use those (accurate across all future screenings)
+    if (serverFilmTotals) {
+      for (const t of serverFilmTotals) {
+        totals.set(t.filmId, {
+          count: t.count,
+          cinemaCount: t.cinemaCount,
+          cinemas: new Map(),
+        });
+      }
+      // Enrich with cinema details from loaded screenings (for singleCinema display)
+      for (const s of parsedScreenings) {
+        const entry = totals.get(s.film.id);
+        if (entry) {
+          entry.cinemas.set(s.cinema.id, { id: s.cinema.id, name: s.cinema.name, shortName: s.cinema.shortName });
+        }
+      }
+      return totals;
+    }
+
+    // Fallback: compute from loaded screenings (e.g. festival/season filters)
     for (const s of parsedScreenings) {
       if (!totals.has(s.film.id)) {
-        totals.set(s.film.id, { count: 0, cinemas: new Map() });
+        totals.set(s.film.id, { count: 0, cinemaCount: 0, cinemas: new Map() });
       }
       const entry = totals.get(s.film.id)!;
       entry.count++;
       entry.cinemas.set(s.cinema.id, { id: s.cinema.id, name: s.cinema.name, shortName: s.cinema.shortName });
     }
+    // Set cinemaCount from cinemas map in fallback path
+    for (const entry of totals.values()) {
+      entry.cinemaCount = entry.cinemas.size;
+    }
     return totals;
-  }, [parsedScreenings]);
+  }, [serverFilmTotals, parsedScreenings]);
 
   // Group screenings by film within each date (for film view mode)
   const groupedByDateThenFilm = useMemo(() => {
@@ -365,10 +397,14 @@ export function CalendarView({ screenings }: CalendarViewProps) {
             isRepertory: g.film.isRepertory,
           },
           screeningCount: filmTotals.get(g.film.id)?.count ?? g.screenings.length,
-          cinemaCount: filmTotals.get(g.film.id)?.cinemas.size ?? cinemaCount,
-          singleCinema: (filmTotals.get(g.film.id)?.cinemas.size ?? cinemaCount) === 1
+          cinemaCount: filmTotals.get(g.film.id)?.cinemaCount ?? cinemaCount,
+          singleCinema: (filmTotals.get(g.film.id)?.cinemaCount ?? cinemaCount) === 1
             ? (() => {
-                const c = filmTotals.get(g.film.id)!.cinemas.values().next().value!;
+                // Try server-enriched cinemas first, fall back to local screenings
+                const totalEntry = filmTotals.get(g.film.id);
+                const c = totalEntry?.cinemas.size
+                  ? totalEntry.cinemas.values().next().value!
+                  : uniqueCinemas.values().next().value!;
                 return { id: c.id, name: c.name, shortName: c.shortName };
               })()
             : undefined,

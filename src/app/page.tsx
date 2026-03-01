@@ -98,6 +98,32 @@ const getCachedActiveSeasons = unstable_cache(
   { revalidate: 3600, tags: ["seasons"] }
 );
 
+// Cache per-film screening totals across ALL future screenings
+// Lightweight GROUP BY (~40 rows) so homepage cards show accurate counts
+// matching the film detail page (which also queries all future screenings)
+const getCachedFilmTotals = unstable_cache(
+  async () => {
+    const now = new Date();
+    return db
+      .select({
+        filmId: screenings.filmId,
+        count: count(screenings.id),
+        cinemaCount: countDistinct(screenings.cinemaId),
+      })
+      .from(screenings)
+      .innerJoin(films, eq(screenings.filmId, films.id))
+      .where(
+        and(
+          gte(screenings.datetime, now),
+          or(eq(films.contentType, "film"), isNull(films.contentType))
+        )
+      )
+      .groupBy(screenings.filmId);
+  },
+  ["film-totals"],
+  { revalidate: 60, tags: ["screenings"] }
+);
+
 // Cache stats for SEO display (how many screenings, films, cinemas)
 const getCachedStats = unstable_cache(
   async () => {
@@ -171,12 +197,13 @@ export default async function Home() {
     );
   }
 
-  // Fetch cached data (60s cache for screenings, 1hr for cinemas/seasons, 5min for stats)
-  const [initialScreenings, allCinemas, activeSeasons, stats] = await Promise.all([
+  // Fetch cached data (60s cache for screenings/totals, 1hr for cinemas/seasons, 5min for stats)
+  const [initialScreenings, allCinemas, activeSeasons, stats, filmTotals] = await Promise.all([
     getCachedScreenings(dateKey),
     getCachedCinemas(),
     getCachedActiveSeasons(),
     getCachedStats(),
+    getCachedFilmTotals(),
   ]);
 
   // Extract unique formats from screenings (for format filter)
@@ -233,7 +260,7 @@ export default async function Home() {
       {/* Main Content - Full Width */}
       <main className="px-4 sm:px-6 lg:px-8 pb-6">
         {/* Calendar View with Load More */}
-        <CalendarViewWithLoader initialScreenings={initialScreenings} />
+        <CalendarViewWithLoader initialScreenings={initialScreenings} filmTotals={filmTotals} />
 
         {/* Empty State Helper */}
         {initialScreenings.length === 0 && (

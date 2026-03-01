@@ -5,6 +5,16 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-01: Fix Homepage Screening Counts
+**PR**: #129 | **Branch**: `fix/homepage-screening-counts` | **Files**: `src/app/page.tsx`, `src/components/calendar/calendar-view-loader.tsx`, `src/components/calendar/calendar-view.tsx`
+- Film cards on homepage showed screening counts from only the 3-day initial load, not all future screenings (e.g. "1 showing" instead of "5")
+- Added `getCachedFilmTotals` server-side `GROUP BY` query that aggregates total screenings and distinct cinemas per film across all future dates
+- Threaded server totals through `CalendarViewWithLoader` → `CalendarView` as authoritative source
+- Falls back to client-side computation when festival/season filter is active (server totals are global, filters need scoped counts)
+- Counts now match the film detail page from first render, regardless of progressive loading state
+
+---
+
 ## 2026-03-01: CR-02 — Extract Header Subcomponents
 **Branch**: `cr02-extract-header-subcomponents` | **Files**: `src/components/layout/header.tsx`, `src/components/layout/header/` (13 new)
 - Decomposed the 1,522-line `header.tsx` into 10 focused subcomponents under `src/components/layout/header/`
