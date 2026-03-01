@@ -37,8 +37,15 @@ interface Screening {
   };
 }
 
+interface FilmTotal {
+  filmId: string;
+  count: number;
+  cinemaCount: number;
+}
+
 interface CalendarViewWithLoaderProps {
   initialScreenings: Screening[];
+  filmTotals?: FilmTotal[];
 }
 
 interface FetchOptions {
@@ -85,7 +92,7 @@ async function fetchMoreScreenings({
   return data.screenings;
 }
 
-export function CalendarViewWithLoader({ initialScreenings }: CalendarViewWithLoaderProps) {
+export function CalendarViewWithLoader({ initialScreenings, filmTotals }: CalendarViewWithLoaderProps) {
   // Track load state (0 = initial 3 days, 1 = week 1 complete, 2-4 = additional weeks)
   const [manualLoadState, setManualLoadState] = useState(0);
   const maxLoadState = 4; // Up to 4 weeks (28 days)
@@ -312,7 +319,7 @@ export function CalendarViewWithLoader({ initialScreenings }: CalendarViewWithLo
       )}
 
       <ErrorBoundary>
-        <CalendarView screenings={allScreenings} />
+        <CalendarView screenings={allScreenings} serverFilmTotals={filmTotals} />
       </ErrorBoundary>
 
       {/* Infinite scroll sentinel & loading indicator */}
