@@ -449,8 +449,8 @@ export class CurzonScraper implements ChainScraper {
         }
       }
 
-      // Build booking URL
-      const bookingUrl = `${this.chainConfig.baseUrl}/ticketing/seats/${showtime.id}/`;
+      // Build booking URL (query-param format — Curzon moved from path-based to ?sessionId=)
+      const bookingUrl = `${this.chainConfig.baseUrl}/ticketing/seats/?sessionId=${showtime.id}`;
 
       // Check for accessibility features
       const eventDescriptions: string[] = [];
