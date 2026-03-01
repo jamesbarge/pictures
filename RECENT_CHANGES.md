@@ -5,6 +5,15 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-01: Enable Google Search Console + Bing Webmaster Tools
+**Branch**: `feature/enable-search-console` | **Files**: `src/app/layout.tsx`, `.env.local.example`
+- Uncommented and wired `verification` metadata block in root layout to emit `<meta name="google-site-verification">` and `<meta name="msvalidate.01">` tags
+- Verification codes read from `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` and `NEXT_PUBLIC_BING_SITE_VERIFICATION` env vars
+- Added env var documentation to `.env.local.example` with dashboard URLs
+- Existing `public/google7ea8fa19954d5e86.html` stays as primary Google verification; meta tag is belt-and-suspenders backup
+
+---
+
 ## 2026-03-01: Fix Curzon Booking URLs
 **Branch**: `fix/curzon-booking-urls` | **Files**: `src/scrapers/chains/curzon.ts`
 - Curzon changed their frontend routing from path-based (`/ticketing/seats/MAY1-32556/`) to query-param (`/ticketing/seats/?sessionId=MAY1-32556`)
