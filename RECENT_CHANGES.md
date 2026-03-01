@@ -5,6 +5,18 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-02-28: CR-03 — Unify Title Extraction
+**Branch**: `cr03-unify-title-extraction` | **Files**: `src/lib/title-extraction/` (6 new), 4 updated, 3 deleted
+- Consolidated two independent title extractors (AI-powered + pattern-based) into `src/lib/title-extraction/`
+- Shared `patterns.ts` with merged EVENT_PREFIXES, TITLE_SUFFIXES, NON_FILM_PATTERNS from both implementations
+- Pattern extractor (`extractFilmTitleSync`) for enrichment agent fast loops (sync, no API calls)
+- AI extractor (`extractFilmTitleAI`) for pipeline/scripts (async, Gemini-powered)
+- Unified `index.ts` with caching, batch, and search variation exports
+- Converted inline test cases to proper Vitest tests (pattern-extractor.test.ts)
+- Deleted `src/lib/title-extractor.ts` (332 lines) and `src/agents/enrichment/title-extractor.ts` (390 lines)
+
+---
+
 ## 2026-02-28: CR-04 — Admin Auth Middleware Factory
 **Branch**: `cr04-admin-auth-middleware` | **Files**: 24 files across `src/lib/auth.ts`, `src/app/api/admin/`, tests
 - Added `withAdminAuth()` HOF to `src/lib/auth.ts` — wraps the repeated `requireAdmin()` + `instanceof Response` check

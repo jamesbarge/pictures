@@ -18,7 +18,7 @@ import { db } from "@/db";
 import { films, screenings } from "@/db/schema";
 import { eq, isNull, gte, and } from "drizzle-orm";
 import { matchFilmToTMDB, getTMDBClient } from "@/lib/tmdb";
-import { extractFilmTitle } from "@/lib/title-extractor";
+import { extractFilmTitle } from "@/lib/title-extraction";
 import { cleanFilmTitle } from "@/scrapers/pipeline";
 import { decodeHtmlEntities } from "@/scripts/enrich-upcoming-films";
 import { enrichLetterboxdRatings } from "@/db/enrich-letterboxd";
