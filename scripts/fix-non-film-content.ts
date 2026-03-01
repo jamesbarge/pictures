@@ -8,7 +8,7 @@
 import { db } from "@/db";
 import { films, screenings } from "@/db/schema";
 import { eq, like, gte, and, sql } from "drizzle-orm";
-import type { ContentType } from "@/db/schema/films";
+import type { ContentType } from "@/types/film";
 
 interface Reclassification {
   pattern: string;
