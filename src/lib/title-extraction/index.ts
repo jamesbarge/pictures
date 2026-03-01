@@ -12,7 +12,7 @@ export { extractFilmTitleSync, type PatternExtractionResult } from "./pattern-ex
 export { extractFilmTitleAI, type AIExtractionResult } from "./ai-extractor";
 export { generateSearchVariations } from "./search-variants";
 
-import { extractFilmTitleAI, type AIExtractionResult } from "./ai-extractor";
+import { extractFilmTitleAI, isLikelyCleanTitle, type AIExtractionResult } from "./ai-extractor";
 
 /**
  * Hybrid title extraction: tries AI extraction (which uses a local heuristic
@@ -45,8 +45,11 @@ export async function extractFilmTitleCached(rawTitle: string): Promise<AIExtrac
 
 /**
  * Batch extract titles with deduplication and rate limiting.
- * Clean titles (high confidence) are processed without delay;
- * API-dependent extractions get 500ms rate limiting between calls.
+ *
+ * Two-pass approach: first classify titles as clean (no API needed) or
+ * needing extraction, then process each group appropriately. This ensures
+ * every Gemini API call gets a 500ms delay, even when Gemini returns
+ * "high" confidence for a successful extraction.
  */
 export async function batchExtractTitles(
   rawTitles: string[]
@@ -54,14 +57,25 @@ export async function batchExtractTitles(
   const results = new Map<string, AIExtractionResult>();
   const uniqueTitles = [...new Set(rawTitles)];
 
-  for (let i = 0; i < uniqueTitles.length; i++) {
-    const title = uniqueTitles[i];
+  // Pass 1: process clean titles locally (no API call, no delay)
+  const needsExtraction: string[] = [];
+
+  for (const title of uniqueTitles) {
+    if (isLikelyCleanTitle(title)) {
+      const result = await extractFilmTitle(title);
+      results.set(title, result);
+    } else {
+      needsExtraction.push(title);
+    }
+  }
+
+  // Pass 2: process ambiguous titles via API with rate limiting (~2 req/s)
+  for (let i = 0; i < needsExtraction.length; i++) {
+    const title = needsExtraction[i];
     const result = await extractFilmTitle(title);
     results.set(title, result);
 
-    // Rate limit between AI extractions (~2 req/s for Gemini)
-    // Skip delay for clean titles that didn't need an API call
-    if (result.confidence !== "high" && i < uniqueTitles.length - 1) {
+    if (i < needsExtraction.length - 1) {
       await new Promise((resolve) => setTimeout(resolve, 500));
     }
   }

@@ -50,7 +50,7 @@ function hasVersionSuffix(title: string): boolean {
  * Check if a title is likely already clean (no event prefixes).
  * Returns true if the title can skip the AI call.
  */
-function isLikelyCleanTitle(title: string): boolean {
+export function isLikelyCleanTitle(title: string): boolean {
   const normalized = title.toLowerCase().trim();
 
   for (const pattern of EVENT_PREFIX_PATTERNS) {
