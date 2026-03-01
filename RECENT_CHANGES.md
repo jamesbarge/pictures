@@ -5,6 +5,15 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-01: Fix Curzon Booking URLs
+**Branch**: `fix/curzon-booking-urls` | **Files**: `src/scrapers/chains/curzon.ts`
+- Curzon changed their frontend routing from path-based (`/ticketing/seats/MAY1-32556/`) to query-param (`/ticketing/seats/?sessionId=MAY1-32556`)
+- All 184 Curzon booking links in the QA audit were returning 404
+- Updated booking URL template in the scraper to use the new `?sessionId=` format
+- Ran one-time database migration to fix 216 existing rows
+
+---
+
 ## 2026-03-01: Fix Homepage Screening Counts
 **PR**: #129 | **Branch**: `fix/homepage-screening-counts` | **Files**: `src/app/page.tsx`, `src/components/calendar/calendar-view-loader.tsx`, `src/components/calendar/calendar-view.tsx`
 - Film cards on homepage showed screening counts from only the 3-day initial load, not all future screenings (e.g. "1 showing" instead of "5")
