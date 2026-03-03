@@ -5,6 +5,15 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-02-28: Front-End Audit Scripts + Data Fix Tooling
+**PR**: #123 | **Branch**: `chore/audit-scripts-and-changelogs` | **Files**: `scripts/audit/*`, `scripts/fix-*.ts`, `scripts/merge-duplicate-films.ts`, `.gitignore`
+- Added Playwright-based audit pipeline for cinemas, films, and screenings with structured report generation
+- Added one-off remediation scripts for title mismatches, contaminated booking URLs, non-film content cleanup, and duplicate film merges
+- Added archived changelog entry documenting the 897→624 issue-reduction run and remaining known gaps
+- Updated `.gitignore` to ignore generated audit output/artifacts from script runs
+
+---
+
 ## 2026-02-15: Upgrade Node.js from 20 to 22 LTS
 **PR**: #116 | **Branch**: `chore/upgrade-node-22` | **Files**: `.nvmrc`, `package.json`, `package-lock.json`, `.github/workflows/{test,scrape,scrape-playwright,social-outreach}.yml`
 - Upgraded project runtime baseline to Node 22 LTS and pinned local dev with `.nvmrc`
