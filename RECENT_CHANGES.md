@@ -5,6 +5,14 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-03: Fix Playwright Scraper Workflow Timeout
+**PR**: #133 | **Branch**: `fix/playwright-scrape-timeout` | **Files**: `.github/workflows/scrape-playwright.yml`
+- Investigated manual dispatch run on March 3, 2026 and confirmed `Scrape Chain Cinemas` was cancelled at the 60-minute job timeout while `Scrape Picturehouse` was still running
+- Increased chain job timeout from 60 to 120 minutes so Curzon + Picturehouse + Everyman can complete in one run
+- Added per-step timeouts for chain scrapers to keep bounded failure behavior without cancelling the whole job too early
+
+---
+
 ## 2026-02-12: Festival Data Audit & Corrections
 **PR**: #110 | **Branch**: `fix/festival-data-audit` | **Files**: `src/db/seed-festivals.ts`, `src/scrapers/festivals/festival-config.ts`, `src/scrapers/festivals/festival-config.test.ts`
 - Deactivated defunct festivals (Sundance London, EEFF), corrected 2026 festival metadata, and aligned venue IDs with canonical cinema registry slugs
