@@ -51,28 +51,45 @@ jobs:
         run: npx playwright install chromium --with-deps
 
       - name: Scrape Curzon
+        id: scrape_curzon
         if: github.event.inputs.scraper == '' || github.event.inputs.scraper == 'curzon'
         timeout-minutes: 40
+        continue-on-error: true
         run: npm run scrape:curzon
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
 
       - name: Scrape Picturehouse
+        id: scrape_picturehouse
         if: github.event.inputs.scraper == '' || github.event.inputs.scraper == 'picturehouse'
         timeout-minutes: 40
+        continue-on-error: true
         run: npm run scrape:picturehouse
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
 
       - name: Scrape Everyman
+        id: scrape_everyman
         if: github.event.inputs.scraper == '' || github.event.inputs.scraper == 'everyman'
         timeout-minutes: 20
+        continue-on-error: true
         run: npm run scrape:everyman
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+
+      - name: Evaluate chain scraper outcomes
+        if: always()
+        run: |
+          echo "Curzon: ${{ steps.scrape_curzon.outcome }}"
+          echo "Picturehouse: ${{ steps.scrape_picturehouse.outcome }}"
+          echo "Everyman: ${{ steps.scrape_everyman.outcome }}"
+          if [[ "${{ steps.scrape_curzon.outcome }}" == "failure" || "${{ steps.scrape_picturehouse.outcome }}" == "failure" || "${{ steps.scrape_everyman.outcome }}" == "failure" ]]; then
+            echo "One or more chain scrapers failed."
+            exit 1
+          fi
 
   scrape-independents:
     name: Scrape Playwright Independents
@@ -97,6 +114,7 @@ jobs:
         run: npx playwright install chromium --with-deps
 
       - name: Scrape BFI (backup to PDF import)
+        id: scrape_bfi
         if: github.event.inputs.scraper == '' || github.event.inputs.scraper == 'bfi'
         run: npm run scrape:bfi
         continue-on-error: true
@@ -105,39 +123,63 @@ jobs:
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
 
       - name: Scrape Barbican
+        id: scrape_barbican
         if: github.event.inputs.scraper == '' || github.event.inputs.scraper == 'barbican'
+        continue-on-error: true
         run: npm run scrape:barbican
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
 
       - name: Scrape Phoenix
+        id: scrape_phoenix
         if: github.event.inputs.scraper == '' || github.event.inputs.scraper == 'phoenix'
+        continue-on-error: true
         run: npm run scrape:phoenix
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
 
       - name: Scrape Electric
+        id: scrape_electric
         if: github.event.inputs.scraper == '' || github.event.inputs.scraper == 'electric'
+        continue-on-error: true
         run: npm run scrape:electric
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
 
       - name: Scrape Lexi
+        id: scrape_lexi
         if: github.event.inputs.scraper == '' || github.event.inputs.scraper == 'lexi'
+        continue-on-error: true
         run: npm run scrape:lexi
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
 
       - name: Scrape Regent Street
+        id: scrape_regent_street
         if: github.event.inputs.scraper == '' || github.event.inputs.scraper == 'regent-street'
+        continue-on-error: true
         run: npm run scrape:regent-street
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+
+      - name: Evaluate independent scraper outcomes
+        if: always()
+        run: |
+          echo "BFI: ${{ steps.scrape_bfi.outcome }}"
+          echo "Barbican: ${{ steps.scrape_barbican.outcome }}"
+          echo "Phoenix: ${{ steps.scrape_phoenix.outcome }}"
+          echo "Electric: ${{ steps.scrape_electric.outcome }}"
+          echo "Lexi: ${{ steps.scrape_lexi.outcome }}"
+          echo "Regent Street: ${{ steps.scrape_regent_street.outcome }}"
+          if [[ "${{ steps.scrape_bfi.outcome }}" == "failure" || "${{ steps.scrape_barbican.outcome }}" == "failure" || "${{ steps.scrape_phoenix.outcome }}" == "failure" || "${{ steps.scrape_electric.outcome }}" == "failure" || "${{ steps.scrape_lexi.outcome }}" == "failure" || "${{ steps.scrape_regent_street.outcome }}" == "failure" ]]; then
+            echo "One or more independent scrapers failed."
+            exit 1
+          fi
 
   notify-on-failure:
     name: Notify on Failure
