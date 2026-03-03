@@ -105,23 +105,8 @@ export const FESTIVAL_CONFIGS: Record<string, FestivalTaggingConfig> = {
     typicalMonths: [9, 10], // October-November
   },
 
-  eeff: {
-    slugBase: "eeff",
-    venues: ["genesis", "rio-dalston", "rich-mix"],
-    confidence: "TITLE",
-    titleKeywords: ["eeff", "east end film festival", "east end film"],
-    urlPatterns: [/eastendfilmfestival\.com/i],
-    typicalMonths: [6], // July
-  },
-
-  "sundance-london": {
-    slugBase: "sundance-london",
-    venues: ["curzon-soho", "picturehouse-central"],
-    confidence: "TITLE",
-    titleKeywords: ["sundance", "sundance london", "sundance:"],
-    urlPatterns: [/sundance\.org/i],
-    typicalMonths: [4], // May
-  },
+  // EEFF — ceased operations March 2020, dissolved July 2021 (deactivated in seed)
+  // Sundance London — last held 2019, never returned post-COVID (deactivated in seed)
 
   "bfi-lff": {
     slugBase: "bfi-lff",
@@ -208,16 +193,6 @@ export const WATCHDOG_PROBES: WatchdogProbe[] = [
   {
     slugBase: "docnroll",
     probeUrl: "https://www.docnrollfestival.com/programme",
-    signal: "content-hash",
-  },
-  {
-    slugBase: "eeff",
-    probeUrl: "https://eastendfilmfestival.com/programme",
-    signal: "content-hash",
-  },
-  {
-    slugBase: "sundance-london",
-    probeUrl: "https://www.sundance.org/festivals/london",
     signal: "content-hash",
   },
 ];

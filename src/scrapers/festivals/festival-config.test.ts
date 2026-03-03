@@ -7,8 +7,20 @@ import {
 } from "./festival-config";
 
 describe("FESTIVAL_CONFIGS", () => {
-  it("should have configs for all 13 London festivals", () => {
-    expect(Object.keys(FESTIVAL_CONFIGS)).toHaveLength(13);
+  it("should have configs for all currently supported London festivals", () => {
+    expect(Object.keys(FESTIVAL_CONFIGS)).toEqual([
+      "frightfest",
+      "liff",
+      "bfi-flare",
+      "raindance",
+      "lsff",
+      "lkff",
+      "open-city",
+      "ukjff",
+      "liaf",
+      "docnroll",
+      "bfi-lff",
+    ]);
   });
 
   it("should have valid slugBase for each config", () => {
@@ -54,7 +66,7 @@ describe("FESTIVAL_CONFIGS", () => {
 describe("getAllFestivalConfigs", () => {
   it("should return all configs as an array", () => {
     const configs = getAllFestivalConfigs();
-    expect(configs).toHaveLength(13);
+    expect(configs).toHaveLength(11);
   });
 });
 
@@ -75,12 +87,11 @@ describe("getFestivalConfigsForVenue", () => {
     expect(configs[0].slugBase).toBe("frightfest");
   });
 
-  it("should return configs for Genesis (LIFF and EEFF)", () => {
+  it("should return configs for Genesis (LIFF only)", () => {
     const configs = getFestivalConfigsForVenue("genesis");
     const slugs = configs.map((c) => c.slugBase);
     expect(slugs).toContain("liff");
-    expect(slugs).toContain("eeff");
-    expect(configs).toHaveLength(2);
+    expect(configs).toHaveLength(1);
   });
 
   it("should return empty for non-festival venues", () => {
@@ -99,8 +110,8 @@ describe("getFestivalConfigsForVenue", () => {
 });
 
 describe("WATCHDOG_PROBES", () => {
-  it("should have probes for all 13 festivals", () => {
-    expect(WATCHDOG_PROBES).toHaveLength(13);
+  it("should have probes for all currently supported festivals", () => {
+    expect(WATCHDOG_PROBES).toHaveLength(11);
   });
 
   it("should have valid probeUrls", () => {
