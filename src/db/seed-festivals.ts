@@ -8,7 +8,7 @@ import { festivals } from "./schema";
 import { eq } from "drizzle-orm";
 import { randomUUID } from "crypto";
 
-const londonFestivals = [
+export const londonFestivals = [
   // BFI London Film Festival - The flagship
   {
     id: randomUUID(),
