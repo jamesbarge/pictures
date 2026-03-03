@@ -717,5 +717,7 @@ export function createMain(
       await flushPendingRecords();
       process.exit(1);
     }
+
+    process.exit(0);
   };
 }

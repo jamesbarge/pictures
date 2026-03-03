@@ -5,6 +5,16 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-03: Fix Weekly Cinema Scrape Timeout (8 weeks broken)
+**Branch**: `fix/scraper-process-exit` | **Files**: `src/scrapers/runner-factory.ts`
+- Scraper processes completed work but never exited — postgres.js connection pool kept Node.js event loop alive
+- Every GitHub Actions step burned its full timeout (5-20 min), cumulative ~135 min exceeded 120-min job limit
+- 8 consecutive weekly runs cancelled since Jan 11; last success was Jan 4
+- Added `process.exit(0)` to success path in `createMain()` (mirrors existing `process.exit(1)` on failure)
+- One-line fix affects all 27 scrapers via shared runner factory
+
+---
+
 ## 2026-03-01: Enable Google Search Console + Bing Webmaster Tools
 **Branch**: `feature/enable-search-console` | **Files**: `src/app/layout.tsx`, `.env.local.example`
 - Uncommented and wired `verification` metadata block in root layout to emit `<meta name="google-site-verification">` and `<meta name="msvalidate.01">` tags
