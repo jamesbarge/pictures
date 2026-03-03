@@ -5,6 +5,15 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-02-15: Upgrade Node.js from 20 to 22 LTS
+**PR**: #116 | **Branch**: `chore/upgrade-node-22` | **Files**: `.nvmrc`, `package.json`, `package-lock.json`, `.github/workflows/{test,scrape,scrape-playwright,social-outreach}.yml`
+- Upgraded project runtime baseline to Node 22 LTS and pinned local dev with `.nvmrc`
+- Updated CI/scrape/social workflow Node versions from 20 to 22 for consistent environments
+- Updated PostHog packages and lockfile; raised `@types/node` to `^22` to align with runtime/tooling
+- Addresses PostHog engine requirements (`^20.20.0 || >=22.22.0`) and reduces environment drift
+
+---
+
 ## 2026-03-03: Fix Weekly Cinema Scrape Timeout (8 weeks broken)
 **Branch**: `fix/scraper-process-exit` | **Files**: `src/scrapers/runner-factory.ts`
 - Scraper processes completed work but never exited — postgres.js connection pool kept Node.js event loop alive
