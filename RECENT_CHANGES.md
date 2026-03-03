@@ -5,6 +5,14 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-02-12: Festival Data Audit & Corrections
+**PR**: #110 | **Branch**: `fix/festival-data-audit` | **Files**: `src/db/seed-festivals.ts`, `src/scrapers/festivals/festival-config.ts`, `src/scrapers/festivals/festival-config.test.ts`
+- Deactivated defunct festivals (Sundance London, EEFF), corrected 2026 festival metadata, and aligned venue IDs with canonical cinema registry slugs
+- Added missing festival entries used by current detection/tagging flow and exported `londonFestivals` for config↔seed alignment tests
+- Updated festival config/test expectations to the current active festival set and matching watchdog probes
+
+---
+
 ## 2026-02-28: Front-End Audit Scripts + Data Fix Tooling
 **PR**: #123 | **Branch**: `chore/audit-scripts-and-changelogs` | **Files**: `scripts/audit/*`, `scripts/fix-*.ts`, `scripts/merge-duplicate-films.ts`, `.gitignore`
 - Added Playwright-based audit pipeline for cinemas, films, and screenings with structured report generation
