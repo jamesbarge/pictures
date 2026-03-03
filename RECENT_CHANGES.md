@@ -6,7 +6,7 @@ When an entry is added here, also create a detailed file in /changelogs/
 -->
 
 ## 2026-03-03: Run All Playwright Scrapers Even If One Fails
-**PR**: TBD | **Branch**: `fix/playwright-scraper-step-resilience` | **Files**: `.github/workflows/scrape-playwright.yml`
+**PR**: #134 | **Branch**: `fix/playwright-scraper-step-resilience` | **Files**: `.github/workflows/scrape-playwright.yml`
 - Added `continue-on-error: true` to chain and independent scraper steps so one failure no longer skips remaining scrapers
 - Added explicit end-of-job outcome checks that fail the job if any scraper step failed, preserving alerting and red status
 - This fixes the March 3 manual run behavior where Curzon failure caused Picturehouse and Everyman to be skipped entirely
