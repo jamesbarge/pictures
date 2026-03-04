@@ -15,8 +15,8 @@ export async function sendVerificationAlert(result: VerificationResult): Promise
     return;
   }
 
-  // Classify verification failures: "fail" is P2, "warn" is P3
-  const tier: AlertTier = result.verdict === "fail" ? "P2" : "P3";
+  // Classify verification failures: "fail" is P1 (critical), "warn" is P3
+  const tier: AlertTier = result.verdict === "fail" ? "P1" : "P3";
 
   const issueLines = result.issues
     .map((i) => `- [${i.severity}] ${i.type}: ${i.detail}`)

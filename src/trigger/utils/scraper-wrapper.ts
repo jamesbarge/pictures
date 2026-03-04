@@ -2,9 +2,17 @@ import { runScraper, type ScraperRunnerConfig, type RunnerOptions, type RunnerRe
 import { verifyScraperOutput } from "../verification";
 import { sendVerificationAlert } from "../verification-alerts";
 
+/** 4s spacing between Gemini calls to stay within 15 RPM */
+const VERIFICATION_PACING_MS = 4_000;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
 /**
- * Run a scraper then fire-and-forget AI verification for each successful venue.
- * Returns the original RunnerResult — verification never blocks or fails the scrape.
+ * Run a scraper then sequentially verify each successful venue.
+ * Verification is best-effort (logged but non-blocking on failure).
+ * Results are persisted to scraper_runs.metadata via scraperRunId.
  */
 export async function runScraperAndVerify(
   config: ScraperRunnerConfig,
@@ -22,18 +30,25 @@ export async function runScraperAndVerify(
     for (const v of config.venues) venueNameMap.set(v.id, v.name);
   }
 
-  // Fire-and-forget verification for each successful venue
-  for (const vr of result.venueResults) {
-    if (!vr.success) continue;
-
-    verifyScraperOutput({
-      cinemaId: vr.venueId,
-      cinemaName: venueNameMap.get(vr.venueId) ?? vr.venueName,
-    })
-      .then((verification) => sendVerificationAlert(verification))
-      .catch((err) => {
-        console.warn(`[scraper-wrapper] verification failed for ${vr.venueId}:`, err);
+  // Sequentially verify each successful venue with pacing
+  const successfulVenues = result.venueResults.filter((vr) => vr.success);
+  for (let i = 0; i < successfulVenues.length; i++) {
+    const vr = successfulVenues[i];
+    try {
+      const verification = await verifyScraperOutput({
+        cinemaId: vr.venueId,
+        cinemaName: venueNameMap.get(vr.venueId) ?? vr.venueName,
+        scraperRunId: vr.scraperRunId,
       });
+      await sendVerificationAlert(verification);
+    } catch (err) {
+      console.warn(`[scraper-wrapper] verification failed for ${vr.venueId}:`, err);
+    }
+
+    // Pace between verification calls (skip after the last one)
+    if (i < successfulVenues.length - 1) {
+      await sleep(VERIFICATION_PACING_MS);
+    }
   }
 
   return result;

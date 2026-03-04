@@ -91,14 +91,20 @@ Return JSON with verdict and issues. If everything looks normal, verdict=pass wi
 
   let retries = 0;
   const maxRetries = 2;
+  const TIMEOUT_MS = 10_000;
 
   while (retries <= maxRetries) {
     try {
-      const raw = await generateText(prompt, {
-        model: GEMINI_MODELS.flashLite,
-        responseMimeType: "application/json",
-        responseJsonSchema: VERIFICATION_SCHEMA,
-      });
+      const raw = await Promise.race([
+        generateText(prompt, {
+          model: GEMINI_MODELS.flashLite,
+          responseMimeType: "application/json",
+          responseJsonSchema: VERIFICATION_SCHEMA,
+        }),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("Verification timed out after 10s")), TIMEOUT_MS)
+        ),
+      ]);
 
       const parsed = JSON.parse(stripCodeFences(raw));
 

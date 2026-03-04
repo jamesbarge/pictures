@@ -8,6 +8,7 @@
  * - Consistent health checks and pipeline processing
  */
 
+import { randomUUID } from "crypto";
 import type { CinemaScraper, RawScreening, ChainScraper, VenueConfig } from "./types";
 import { processScreenings, saveScreenings, ensureCinemaExists } from "./pipeline";
 import { db, isDatabaseAvailable } from "../db";
@@ -84,6 +85,8 @@ export interface VenueResult {
   durationMs: number;
   error?: string;
   retryCount: number;
+  /** Pre-generated UUID of the scraper_runs row (available after flush) */
+  scraperRunId?: string;
 }
 
 export interface RunnerResult {
@@ -184,6 +187,7 @@ async function getBaseline(cinemaId: string): Promise<{ count: number; tolerance
  * Fire-and-forget: errors are logged but never thrown.
  */
 async function recordScraperRun(params: {
+  id?: string;
   cinemaId: string;
   startedAt: Date;
   status: "success" | "failed" | "anomaly" | "partial";
@@ -230,6 +234,7 @@ async function recordScraperRun(params: {
     }
 
     await db.insert(scraperRuns).values({
+      ...(params.id ? { id: params.id } : {}),
       cinemaId: params.cinemaId,
       startedAt: params.startedAt,
       completedAt: new Date(),
@@ -353,7 +358,9 @@ async function runSingleVenue(
       });
 
       // Record successful scraper run (fire-and-forget)
+      const runId = randomUUID();
       pendingRecords.push(recordScraperRun({
+        id: runId,
         cinemaId: venue.id,
         startedAt: new Date(startTime),
         status: "success",
@@ -371,6 +378,7 @@ async function runSingleVenue(
         screeningsFailed: failed,
         durationMs,
         retryCount,
+        scraperRunId: runId,
       };
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
@@ -573,7 +581,9 @@ export async function runScraper(
           }
 
           // Record chain per-venue scraper run (fire-and-forget)
+          const chainRunId = randomUUID();
           pendingRecords.push(recordScraperRun({
+            id: chainRunId,
             cinemaId: venueId,
             startedAt: new Date(venueStartTime),
             status: venueBlocked ? "failed" : "success",
@@ -593,6 +603,7 @@ export async function runScraper(
             durationMs: Date.now() - venueStartTime,
             error: venueBlocked ? "scrape_blocked_by_diff_check" : undefined,
             retryCount: 0,
+            scraperRunId: venueBlocked ? undefined : chainRunId,
           });
         }
       } catch (error) {
