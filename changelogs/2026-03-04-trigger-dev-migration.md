@@ -1,6 +1,6 @@
 # Scraper Consolidation: Trigger.dev Migration
 
-**PR**: TBD
+**PR**: #135
 **Date**: 2026-03-04
 
 ## Changes
@@ -16,26 +16,33 @@
 - 1 multi-venue scraper (BFI: Southbank + IMAX)
 - 4 chain scraper tasks (Curzon, Picturehouse, Everyman, Odeon)
 - 6 enrichment/scheduled tasks (BFI PDF, BFI Changes, Letterboxd, Festival Reverse-Tag, Festival Watchdog, Eventive)
-- Daily orchestrator (`scrape-all`) with 3-wave execution pattern
+- Daily orchestrator (`scrape-all`) with 4-wave execution: chains → Playwright → Cheerio → Enrichment
+- All 24 independent tasks use `getVenueFromRegistry()` (cinema-registry as single source of truth)
+- `src/trigger/utils/venue-from-registry.ts` — maps `CinemaDefinition` → `VenueDefinition`
 
 ### AI Verification
 - `src/trigger/verification.ts` — post-scrape quality check using Gemini Flash Lite
 - Checks for HTML in titles, stale dates, domain mismatches, encoding issues
-- `src/trigger/verification-alerts.ts` — Telegram alerts with 2-week calibration period
+- `src/trigger/verification-alerts.ts` — Telegram alerts with 2-week calibration period, tiered (P2/P3)
+- `src/trigger/utils/scraper-wrapper.ts` — `runScraperAndVerify()` wires verification into all 28 tasks
+- Fixed `storeVerification()` race condition: uses `scraperRunId` directly instead of latest-by-cinema query
 - Extended `src/agents/types.ts` with 9 new `DataIssueType` values
 
 ### Gemini Multi-Model Support
 - Added `GEMINI_MODELS` constant (pro + flashLite) to `src/lib/gemini.ts`
 - Extended `generateText()` with optional `model`, `responseMimeType`, `responseJsonSchema` params
+- Fixed `responseJsonSchema` config mapping (was incorrectly mapped to `responseSchema`)
 - Backward-compatible — existing callers unchanged
 
 ### Admin API Migration
 - `src/config/feature-flags.ts` — `USE_TRIGGER_DEV` flag (`ORCHESTRATOR=trigger.dev`)
 - Updated `src/app/api/admin/scrape/route.ts` — conditional dispatch
 - Updated `src/app/api/admin/scrape/all/route.ts` — triggers orchestrator task
+- Added test coverage for Trigger.dev dispatch path (3 new tests)
 
-### Monitoring
-- `src/trigger/on-failure.ts` — shared onFailure handler (PostHog + Telegram)
+### Monitoring & Alerting
+- `src/trigger/on-failure.ts` — shared onFailure handler (PostHog + tiered Telegram alerts)
+- `src/trigger/utils/alert-tiers.ts` — P1/P2/P3 classification (P1: chain/orchestrator → immediate, P2: single scraper → warn, P3: partial → log)
 - `src/trigger/utils/telegram.ts` — Markdown-formatted alerts with severity emoji
 
 ### GH Actions

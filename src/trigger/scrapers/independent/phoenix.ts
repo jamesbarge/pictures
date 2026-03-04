@@ -1,18 +1,13 @@
 import { task } from "@trigger.dev/sdk/v3";
-import { runScraper, type SingleVenueConfig } from "@/scrapers/runner-factory";
+import { type SingleVenueConfig } from "@/scrapers/runner-factory";
+import { runScraperAndVerify } from "../../utils/scraper-wrapper";
+import { getVenueFromRegistry } from "../../utils/venue-from-registry";
 import { createPhoenixScraper } from "@/scrapers/cinemas/phoenix";
 import type { ScraperTaskPayload, ScraperTaskOutput } from "../../types";
 
 const config: SingleVenueConfig = {
   type: "single",
-  venue: {
-    id: "phoenix-east-finchley",
-    name: "Phoenix Cinema",
-    shortName: "Phoenix",
-    website: "https://phoenixcinema.co.uk",
-    address: { street: "52 High Road", area: "East Finchley", postcode: "N2 9PJ" },
-    features: ["independent","historic","repertory","art-deco"],
-  },
+  venue: getVenueFromRegistry("phoenix-east-finchley"),
   createScraper: () => createPhoenixScraper(),
 };
 
@@ -22,6 +17,6 @@ export const phoenixScraper = task({
   maxDuration: 600, // 10 min — Playwright scraper
   retry: { maxAttempts: 3 },
   run: async (_payload: ScraperTaskPayload): Promise<ScraperTaskOutput> => {
-    return runScraper(config, { useValidation: true });
+    return runScraperAndVerify(config, { useValidation: true });
   },
 });

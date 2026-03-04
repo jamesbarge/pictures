@@ -52,7 +52,7 @@ export async function generateText(
   const config: Record<string, unknown> = {};
   if (options?.systemPrompt) config.systemInstruction = options.systemPrompt;
   if (options?.responseMimeType) config.responseMimeType = options.responseMimeType;
-  if (options?.responseJsonSchema) config.responseSchema = options.responseJsonSchema;
+  if (options?.responseJsonSchema) config.responseJsonSchema = options.responseJsonSchema;
 
   const response = await getClient().models.generateContent({
     model: options?.model ?? MODEL,

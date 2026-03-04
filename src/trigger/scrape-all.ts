@@ -40,6 +40,12 @@ const CHEERIO_TASKS: TaskRef[] = [
   { id: "scraper-romford-lumiere" },
 ];
 
+const ENRICHMENT_TASKS: TaskRef[] = [
+  { id: "enrichment-letterboxd" },
+  { id: "enrichment-festival-reverse-tag" },
+  { id: "enrichment-bfi-changes" },
+];
+
 async function triggerBatch(taskRefs: TaskRef[], label: string) {
   const payload = { triggeredBy: "scrape-all-orchestrator" };
 
@@ -71,6 +77,9 @@ export const scrapeAll = schedules.task({
 
     // Wave 3: Cheerio independents (all concurrent)
     waveSummaries.push(await triggerBatch(CHEERIO_TASKS, "Cheerio"));
+
+    // Wave 4: Post-scrape enrichment
+    waveSummaries.push(await triggerBatch(ENRICHMENT_TASKS, "Enrichment"));
 
     const totalSucceeded = waveSummaries.reduce((s, w) => s + w.succeeded, 0);
     const totalFailed = waveSummaries.reduce((s, w) => s + w.failed, 0);

@@ -1,5 +1,6 @@
 import { task } from "@trigger.dev/sdk/v3";
-import { runScraper, type ChainConfig, type VenueDefinition } from "@/scrapers/runner-factory";
+import { type ChainConfig, type VenueDefinition } from "@/scrapers/runner-factory";
+import { runScraperAndVerify } from "../../utils/scraper-wrapper";
 import { createPicturehouseScraper } from "@/scrapers/chains/picturehouse";
 import { getActiveCinemasByChain, getCinemasByChain } from "@/config/cinema-registry";
 import type { ScraperTaskPayload, ScraperTaskOutput } from "../../types";
@@ -26,6 +27,6 @@ export const picturehouseScraper = task({
   maxDuration: 900, // 15 min — ~11 venues via Playwright
   retry: { maxAttempts: 0 },
   run: async (_payload: ScraperTaskPayload): Promise<ScraperTaskOutput> => {
-    return runScraper(buildConfig(), { useValidation: true });
+    return runScraperAndVerify(buildConfig(), { useValidation: true });
   },
 });

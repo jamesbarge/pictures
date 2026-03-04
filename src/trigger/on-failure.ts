@@ -1,5 +1,5 @@
 import { tasks } from "@trigger.dev/sdk/v3";
-import { sendTelegramAlert } from "./utils/telegram";
+import { classifyAlert, sendTieredAlert } from "./utils/alert-tiers";
 
 /**
  * Shared onFailure handler for all scraper tasks.
@@ -27,12 +27,6 @@ tasks.onFailure(async ({ task, error, ctx }) => {
     // PostHog not available — log and continue
   }
 
-  const isChain = task.startsWith("scraper-chain-");
-  const level = isChain ? "error" : "warn";
-
-  await sendTelegramAlert({
-    title: `Task Failed: ${task}`,
-    message: `Run: ${runId}\nError: ${message.slice(0, 500)}`,
-    level,
-  });
+  const tier = classifyAlert(task, message);
+  await sendTieredAlert(tier, { taskId: task, runId, error: message });
 });

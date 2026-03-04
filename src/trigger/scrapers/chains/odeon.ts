@@ -1,5 +1,6 @@
 import { task } from "@trigger.dev/sdk/v3";
-import { runScraper, type ChainConfig, type VenueDefinition } from "@/scrapers/runner-factory";
+import { type ChainConfig, type VenueDefinition } from "@/scrapers/runner-factory";
+import { runScraperAndVerify } from "../../utils/scraper-wrapper";
 import { createOdeonScraper, getActiveOdeonVenues } from "@/scrapers/chains/odeon";
 import type { ScraperTaskPayload, ScraperTaskOutput } from "../../types";
 
@@ -27,6 +28,6 @@ export const odeonScraper = task({
   maxDuration: 600, // 10 min — API-based, multiple venues
   retry: { maxAttempts: 0 },
   run: async (_payload: ScraperTaskPayload): Promise<ScraperTaskOutput> => {
-    return runScraper(buildConfig(), { useValidation: true });
+    return runScraperAndVerify(buildConfig(), { useValidation: true });
   },
 });

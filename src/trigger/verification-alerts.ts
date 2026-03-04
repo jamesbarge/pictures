@@ -1,4 +1,4 @@
-import { sendTelegramAlert } from "./utils/telegram";
+import { sendTieredAlert, type AlertTier } from "./utils/alert-tiers";
 import type { VerificationResult } from "./verification";
 
 const CALIBRATION_END = new Date("2026-03-18T00:00:00Z"); // 2 weeks from launch
@@ -9,22 +9,22 @@ export async function sendVerificationAlert(result: VerificationResult): Promise
 
   const isCalibrating = new Date() < CALIBRATION_END;
 
-  // During calibration, only log — don't send Telegram
+  // During calibration, only log — don't send alerts
   if (isCalibrating) {
     console.log(`[verification:calibration] ${result.cinemaId}: ${result.verdict}`, result.issues);
     return;
   }
 
-  // Only send immediate alerts for "fail" verdicts
-  if (result.verdict !== "fail") return;
+  // Classify verification failures: "fail" is P2, "warn" is P3
+  const tier: AlertTier = result.verdict === "fail" ? "P2" : "P3";
 
   const issueLines = result.issues
     .map((i) => `- [${i.severity}] ${i.type}: ${i.detail}`)
     .join("\n");
 
-  await sendTelegramAlert({
-    title: `Scraper Verification: ${result.cinemaId}`,
-    message: `Verdict: ${result.verdict}\n\n${issueLines}`,
-    level: "error",
+  await sendTieredAlert(tier, {
+    taskId: `verification-${result.cinemaId}`,
+    runId: result.checkedAt,
+    error: `Verdict: ${result.verdict}\n${issueLines}`,
   });
 }

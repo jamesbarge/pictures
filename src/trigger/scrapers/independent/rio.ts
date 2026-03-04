@@ -1,18 +1,13 @@
 import { task } from "@trigger.dev/sdk/v3";
-import { runScraper, type SingleVenueConfig } from "@/scrapers/runner-factory";
+import { type SingleVenueConfig } from "@/scrapers/runner-factory";
+import { runScraperAndVerify } from "../../utils/scraper-wrapper";
+import { getVenueFromRegistry } from "../../utils/venue-from-registry";
 import { createRioScraper } from "@/scrapers/cinemas/rio";
 import type { ScraperTaskPayload, ScraperTaskOutput } from "../../types";
 
 const config: SingleVenueConfig = {
   type: "single",
-  venue: {
-    id: "rio-dalston",
-    name: "Rio Cinema",
-    shortName: "Rio",
-    website: "https://riocinema.org.uk",
-    address: { street: "107 Kingsland High Street", area: "Dalston", postcode: "E8 2PB" },
-    features: ["independent","repertory","bar","35mm","art-deco"],
-  },
+  venue: getVenueFromRegistry("rio-dalston"),
   createScraper: () => createRioScraper(),
 };
 
@@ -20,6 +15,6 @@ export const rioScraper = task({
   id: "scraper-rio",
   retry: { maxAttempts: 3 },
   run: async (_payload: ScraperTaskPayload): Promise<ScraperTaskOutput> => {
-    return runScraper(config, { useValidation: true });
+    return runScraperAndVerify(config, { useValidation: true });
   },
 });

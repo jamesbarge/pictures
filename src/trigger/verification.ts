@@ -2,7 +2,7 @@ import { db } from "@/db";
 import { screenings } from "@/db/schema";
 import { films } from "@/db/schema/films";
 import { scraperRuns } from "@/db/schema/admin";
-import { eq, gte, desc, and } from "drizzle-orm";
+import { eq, gte, and } from "drizzle-orm";
 import { generateText, GEMINI_MODELS, stripCodeFences } from "@/lib/gemini";
 
 export interface VerificationIssue {
@@ -109,9 +109,9 @@ Return JSON with verdict and issues. If everything looks normal, verdict=pass wi
         checkedAt: now.toISOString(),
       };
 
-      // Store verification in the most recent scraper run
+      // Store verification in the specific scraper run
       if (params.scraperRunId) {
-        await storeVerification(params.cinemaId, result).catch(() => {});
+        await storeVerification(params.scraperRunId, result).catch(() => {});
       }
 
       return result;
@@ -136,21 +136,20 @@ Return JSON with verdict and issues. If everything looks normal, verdict=pass wi
   return { cinemaId: params.cinemaId, verdict: "warn", issues: [], checkedAt: now.toISOString() };
 }
 
-async function storeVerification(cinemaId: string, result: VerificationResult): Promise<void> {
-  const [latestRun] = await db
+async function storeVerification(scraperRunId: string, result: VerificationResult): Promise<void> {
+  const [run] = await db
     .select({ id: scraperRuns.id, metadata: scraperRuns.metadata })
     .from(scraperRuns)
-    .where(eq(scraperRuns.cinemaId, cinemaId))
-    .orderBy(desc(scraperRuns.startedAt))
+    .where(eq(scraperRuns.id, scraperRunId))
     .limit(1);
 
-  if (!latestRun) return;
+  if (!run) return;
 
-  const existingMeta = (latestRun.metadata ?? {}) as Record<string, unknown>;
+  const existingMeta = (run.metadata ?? {}) as Record<string, unknown>;
   await db
     .update(scraperRuns)
     .set({
       metadata: { ...existingMeta, verification: result } as typeof scraperRuns.$inferInsert["metadata"],
     })
-    .where(eq(scraperRuns.id, latestRun.id));
+    .where(eq(scraperRuns.id, run.id));
 }
