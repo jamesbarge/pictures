@@ -1,6 +1,6 @@
 /**
  * Admin Scrape All API
- * Triggers ALL scrapers via Inngest (including Playwright ones that may fail on Vercel)
+ * Triggers ALL scrapers via Inngest or Trigger.dev
  *
  * POST /api/admin/scrape/all
  */
@@ -8,6 +8,7 @@
 import { withAdminAuth } from "@/lib/auth";
 import { inngest } from "@/inngest/client";
 import { getActiveCinemas, getInngestCinemaId } from "@/config/cinema-registry";
+import { USE_TRIGGER_DEV } from "@/config/feature-flags";
 
 function buildScrapeAllEvents(triggeredBy: string) {
   const events: Array<{
@@ -72,9 +73,25 @@ function buildScrapeAllEvents(triggeredBy: string) {
 
 export const POST = withAdminAuth(async (_req, admin) => {
   try {
+    if (USE_TRIGGER_DEV) {
+      const { tasks } = await import("@trigger.dev/sdk/v3");
+
+      // Trigger the orchestrator task which handles waves internally
+      const handle = await tasks.trigger("scrape-all-orchestrator", {
+        triggeredBy: admin.userId,
+      });
+
+      return Response.json({
+        success: true,
+        message: "Scrape-all orchestrator triggered",
+        runId: handle.id,
+        orchestrator: "trigger.dev",
+      });
+    }
+
+    // --- Inngest path (default) ---
     const { events, queuedCinemas } = buildScrapeAllEvents(admin.userId);
 
-    // Send all events to Inngest
     const { ids } = await inngest.send(events);
 
     return Response.json({
@@ -83,6 +100,7 @@ export const POST = withAdminAuth(async (_req, admin) => {
       count: events.length,
       eventIds: ids,
       cinemas: queuedCinemas,
+      orchestrator: "inngest",
     });
   } catch (error) {
     console.error("Error triggering all scrapers:", error);

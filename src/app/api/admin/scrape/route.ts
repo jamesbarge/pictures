@@ -1,6 +1,6 @@
 /**
  * Admin Scrape API
- * Triggers a scraper for a specific cinema via Inngest
+ * Triggers a scraper for a specific cinema via Inngest or Trigger.dev
  * POST /api/admin/scrape
  */
 
@@ -12,6 +12,7 @@ import {
   getCanonicalId,
   getInngestCinemaId,
 } from "@/config/cinema-registry";
+import { USE_TRIGGER_DEV } from "@/config/feature-flags";
 
 // Get the cinema-to-scraper mapping from the canonical registry
 const CINEMA_TO_SCRAPER = getCinemaToScraperMap();
@@ -36,7 +37,35 @@ export const POST = withAdminAuth(async (request, admin) => {
       );
     }
 
-    // Get the scraper ID for Inngest
+    if (USE_TRIGGER_DEV) {
+      const { tasks } = await import("@trigger.dev/sdk/v3");
+      const { getTriggerTaskId } = await import("@/trigger/task-registry");
+
+      const taskId = getTriggerTaskId(canonicalId);
+      if (!taskId) {
+        return Response.json(
+          { error: `No Trigger.dev task for cinema: ${canonicalId}` },
+          { status: 400 }
+        );
+      }
+
+      const handle = await tasks.trigger(taskId, {
+        cinemaId: canonicalId,
+        triggeredBy: admin.userId,
+      });
+
+      return Response.json({
+        success: true,
+        message: `Scraper queued for ${cinema.name}`,
+        cinemaId: canonicalId,
+        cinemaName: cinema.name,
+        taskId,
+        runId: handle.id,
+        orchestrator: "trigger.dev",
+      });
+    }
+
+    // --- Inngest path (default) ---
     const scraperId = CINEMA_TO_SCRAPER[rawCinemaId] || CINEMA_TO_SCRAPER[canonicalId];
     if (!scraperId) {
       return Response.json(
@@ -45,11 +74,8 @@ export const POST = withAdminAuth(async (request, admin) => {
       );
     }
 
-    // Get the cinema ID that Inngest expects (may differ from canonical ID)
-    // Inngest's CHAIN_CINEMA_MAPPING and SCRAPER_REGISTRY still use some legacy IDs
     const inngestCinemaId = getInngestCinemaId(canonicalId);
 
-    // Send event to Inngest with the ID it expects
     const { ids } = await inngest.send({
       name: "scraper/run",
       data: {
@@ -62,10 +88,11 @@ export const POST = withAdminAuth(async (request, admin) => {
     return Response.json({
       success: true,
       message: `Scraper queued for ${cinema.name}`,
-      cinemaId: canonicalId, // Return canonical ID in response
+      cinemaId: canonicalId,
       cinemaName: cinema.name,
       scraperId,
       eventId: ids[0],
+      orchestrator: "inngest",
     });
   } catch (error) {
     console.error("Error triggering scraper:", error);

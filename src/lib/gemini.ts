@@ -7,7 +7,14 @@
 
 import { GoogleGenAI } from "@google/genai";
 
-const MODEL = "gemini-3.1-pro-preview";
+export const GEMINI_MODELS = {
+  pro: "gemini-3.1-pro-preview",
+  flashLite: "gemini-3.1-flash-lite-preview",
+} as const;
+
+export type GeminiModelId = (typeof GEMINI_MODELS)[keyof typeof GEMINI_MODELS];
+
+const MODEL = GEMINI_MODELS.pro;
 
 let ai: GoogleGenAI | null = null;
 
@@ -35,14 +42,22 @@ export function stripCodeFences(text: string): string {
  */
 export async function generateText(
   prompt: string,
-  options?: { systemPrompt?: string }
+  options?: {
+    systemPrompt?: string;
+    model?: GeminiModelId;
+    responseMimeType?: string;
+    responseJsonSchema?: Record<string, unknown>;
+  }
 ): Promise<string> {
+  const config: Record<string, unknown> = {};
+  if (options?.systemPrompt) config.systemInstruction = options.systemPrompt;
+  if (options?.responseMimeType) config.responseMimeType = options.responseMimeType;
+  if (options?.responseJsonSchema) config.responseJsonSchema = options.responseJsonSchema;
+
   const response = await getClient().models.generateContent({
-    model: MODEL,
+    model: options?.model ?? MODEL,
     contents: prompt,
-    config: options?.systemPrompt
-      ? { systemInstruction: options.systemPrompt }
-      : undefined,
+    config: Object.keys(config).length > 0 ? config : undefined,
   });
   return response.text ?? "";
 }

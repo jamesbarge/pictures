@@ -22,7 +22,16 @@ export type DataIssueType =
   | "duplicate_screening"
   | "missing_metadata"
   | "scraper_anomaly"
-  | "tmdb_mismatch";
+  | "tmdb_mismatch"
+  | "showtime_anomaly"
+  | "booking_url_anomaly"
+  | "stale_screening"
+  | "non_film_content"
+  | "suspicious_showtimes"
+  | "navigation_scrape"
+  | "html_in_title"
+  | "duplicate_titles"
+  | "encoding_issue";
 
 // Severity levels for issues
 export type IssueSeverity = "critical" | "warning" | "info";
