@@ -5,6 +5,15 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-04: Fix Trigger.dev Production Deploy
+**Commits**: `c8bdfc4`, `9a0ed6f` | **Branch**: `main` (direct) | **Files**: `package-lock.json`, `src/config/cinema-registry.ts`, `src/inngest/known-ids.ts`
+- Fixed `npm ci` failure: regenerated lockfile with npm 10 to include `magicast@0.3.5` nested peer dep
+- Added `regent-street` cinema to canonical registry (was in seed data but missing from registry, causing Trigger.dev indexer crash)
+- Added `regent-street` to Inngest known-ids for test coverage
+- All 28+ tasks now deployed to Trigger.dev production
+
+---
+
 ## 2026-03-04: Scraper Consolidation — Trigger.dev Migration
 **PR**: #135 | **Branch**: `feat/trigger-dev-migration` | **Files**: `src/trigger/**`, `trigger.config.ts`, `src/lib/gemini.ts`, `src/config/feature-flags.ts`, `src/agents/types.ts`, admin routes, GH Actions
 - Consolidated 28 scrapers (59 venues) from Inngest + GH Actions + Manual CLI onto Trigger.dev
