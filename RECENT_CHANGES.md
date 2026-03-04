@@ -5,6 +5,22 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-04: Scraper Consolidation — Trigger.dev Migration
+**PR**: TBD | **Branch**: `feat/trigger-dev-migration` | **Files**: `src/trigger/**`, `trigger.config.ts`, `src/lib/gemini.ts`, `src/config/feature-flags.ts`, `src/agents/types.ts`, admin routes, GH Actions
+- Consolidated 28 scrapers (59 venues) from Inngest + GH Actions + Manual CLI onto Trigger.dev
+- Created `src/trigger/` with task wrappers for all independent, chain, and enrichment scrapers
+- Added Playwright build extension for browser-based scrapers running in containers
+- Added AI verification system using Gemini Flash Lite for post-scrape data quality checks
+- Added Telegram alerting with severity-based routing (info/warn/error)
+- Created `scrape-all-orchestrator` with 3-wave execution: chains → Playwright → Cheerio
+- Feature-flagged admin routes: `ORCHESTRATOR=trigger.dev` env var switches from Inngest
+- Extended `gemini.ts` with multi-model support (pro + flashLite) and JSON schema constraints
+- Extended `DataIssueType` with 9 new verification-specific issue types
+- Disabled GH Actions schedule crons (kept `workflow_dispatch` as emergency fallback)
+- CI deployment via `.github/workflows/deploy-trigger.yml`
+
+---
+
 ## 2026-03-03: Run All Playwright Scrapers Even If One Fails
 **PR**: #134 | **Branch**: `fix/playwright-scraper-step-resilience` | **Files**: `.github/workflows/scrape-playwright.yml`
 - Added `continue-on-error: true` to chain and independent scraper steps so one failure no longer skips remaining scrapers

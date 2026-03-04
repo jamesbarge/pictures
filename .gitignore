@@ -57,6 +57,10 @@ docs/private/
 .tessl/
 .claude/
 tessl.json
+.agent/
+.agents/
+.kiro/
+.windsurf/
 
 # Claude Code auto-generated files
 .claude-worktrees/
