@@ -19,6 +19,7 @@ const config: SingleVenueConfig = {
 export const richMixScraper = task({
   id: "scraper-rich-mix",
   machine: { preset: "medium-1x" },
+  maxDuration: 600, // 10 min — Playwright scraper
   retry: { maxAttempts: 3 },
   run: async (_payload: ScraperTaskPayload): Promise<ScraperTaskOutput> => {
     return runScraper(config, { useValidation: true });

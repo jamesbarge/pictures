@@ -24,6 +24,7 @@ function buildConfig(): ChainConfig {
 export const odeonScraper = task({
   id: "scraper-chain-odeon",
   machine: { preset: "medium-1x" },
+  maxDuration: 600, // 10 min — API-based, multiple venues
   retry: { maxAttempts: 0 },
   run: async (_payload: ScraperTaskPayload): Promise<ScraperTaskOutput> => {
     return runScraper(buildConfig(), { useValidation: true });

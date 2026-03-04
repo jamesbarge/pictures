@@ -23,6 +23,7 @@ function buildConfig(): ChainConfig {
 export const everymanScraper = task({
   id: "scraper-chain-everyman",
   machine: { preset: "medium-1x" },
+  maxDuration: 900, // 15 min — ~14 venues via Playwright
   retry: { maxAttempts: 0 },
   run: async (_payload: ScraperTaskPayload): Promise<ScraperTaskOutput> => {
     return runScraper(buildConfig(), { useValidation: true });

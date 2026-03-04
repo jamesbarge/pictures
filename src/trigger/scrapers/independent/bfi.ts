@@ -32,6 +32,7 @@ const config: MultiVenueConfig = {
 export const bfiScraper = task({
   id: "scraper-bfi",
   machine: { preset: "medium-1x" },
+  maxDuration: 1800, // 30 min — 2 venues (Southbank + IMAX), Playwright + 90+ AI title extractions
   retry: { maxAttempts: 2 },
   run: async (payload: ScraperTaskPayload): Promise<ScraperTaskOutput> => {
     return runScraper(config, {
