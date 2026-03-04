@@ -61,6 +61,7 @@ tessl.json
 .agents/
 .kiro/
 .windsurf/
+.trigger/
 
 # Claude Code auto-generated files
 .claude-worktrees/

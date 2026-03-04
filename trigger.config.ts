@@ -9,6 +9,16 @@ export default defineConfig({
   maxDuration: 300, // 5 min default, overridden per-task
   dirs: ["src/trigger"],
   build: {
+    external: [
+      "playwright",
+      "playwright-core",
+      "chromium-bidi",
+      "puppeteer-extra",
+      "puppeteer-extra-plugin",
+      "puppeteer-extra-plugin-stealth",
+      "clone-deep",
+      "merge-deep",
+    ],
     extensions: [
       playwright({ browsers: ["chromium"] }),
       esbuildPlugin(
