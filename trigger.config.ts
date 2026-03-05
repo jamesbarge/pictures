@@ -6,7 +6,7 @@ export default defineConfig({
   project: "proj_spunycnifzfqcfwhimbb",
   runtime: "node",
   logLevel: "log",
-  maxDuration: 300, // 5 min default, overridden per-task
+  maxDuration: 600, // 10 min default — allows queue wait + execution time
   dirs: ["src/trigger"],
   build: {
     external: [
