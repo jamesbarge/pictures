@@ -2,7 +2,7 @@ import { schedules } from "@trigger.dev/sdk/v3";
 
 export const festivalWatchdog = schedules.task({
   id: "enrichment-festival-watchdog",
-  cron: "0 */6 * * *", // Every 6 hours
+  cron: "0 6 * * 4", // Weekly Thursday 6am UTC
   retry: { maxAttempts: 1 },
   run: async () => {
     const { checkProgrammeAvailability } = await import("@/scrapers/festivals/watchdog");

@@ -62,7 +62,7 @@ async function triggerBatch(taskRefs: TaskRef[], label: string) {
 
 export const scrapeAll = schedules.task({
   id: "scrape-all-orchestrator",
-  cron: "0 3 * * *", // 3am UTC daily
+  cron: "0 3 * * 1", // Weekly Monday 3am UTC
   maxDuration: 3600, // 60 min — waits for all 3 waves sequentially
   retry: { maxAttempts: 0 },
   run: async () => {
