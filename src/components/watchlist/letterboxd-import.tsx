@@ -44,7 +44,8 @@ type ImportState =
   | { step: "error"; error: ImportError; username: string };
 
 interface LetterboxdImportProps {
-  onClose: () => void;
+  /** Called when the user closes the panel. Optional on standalone pages. */
+  onClose?: () => void;
 }
 
 // ---------------------------------------------------------------------------
