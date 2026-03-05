@@ -24,7 +24,7 @@ function buildConfig(): ChainConfig {
 export const picturehouseScraper = task({
   id: "scraper-chain-picturehouse",
   machine: { preset: "medium-1x" },
-  maxDuration: 900, // 15 min — ~11 venues via Playwright
+  maxDuration: 1800, // 30 min — ~11 venues via Playwright
   retry: { maxAttempts: 0 },
   run: async (_payload: ScraperTaskPayload): Promise<ScraperTaskOutput> => {
     return runScraperAndVerify(buildConfig(), { useValidation: true });
