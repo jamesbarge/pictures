@@ -5,7 +5,7 @@
  * to the Vista OCAPI for fast, reliable showtime data.
  *
  * Website: https://www.curzon.com
- * API: https://vwc.curzon.com/WSVistaWebClient/ocapi/v1/
+ * API: https://digital-api.curzon.com/ocapi/v1/
  *
  * To add a new Curzon venue:
  * 1. Add venue config to CURZON_VENUES array below
@@ -220,7 +220,7 @@ export class CurzonScraper implements ChainScraper {
   chainConfig = CURZON_CONFIG;
   private page: Page | null = null;
   private authToken: string | null = null;
-  private apiBase = "https://vwc.curzon.com/WSVistaWebClient/ocapi/v1";
+  private apiBase = "https://digital-api.curzon.com/ocapi/v1";
 
   /**
    * Scrape all active venues
@@ -503,7 +503,7 @@ export class CurzonScraper implements ChainScraper {
     // Intercept requests to capture the JWT token
     this.page.on("request", (request) => {
       const url = request.url();
-      if (url.includes("vwc.curzon.com") && !this.authToken) {
+      if (url.includes("digital-api.curzon.com") && !this.authToken) {
         const authHeader = request.headers()["authorization"];
         if (authHeader && authHeader.startsWith("Bearer ")) {
           this.authToken = authHeader;
