@@ -1,4 +1,4 @@
-import { schedules, tasks } from "@trigger.dev/sdk/v3";
+import { schedules, batch } from "@trigger.dev/sdk/v3";
 import { sendTelegramAlert } from "./utils/telegram";
 
 type TaskRef = { id: string };
@@ -46,16 +46,36 @@ const ENRICHMENT_TASKS: TaskRef[] = [
   { id: "enrichment-bfi-changes" },
 ];
 
+function chunk<T>(arr: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) {
+    chunks.push(arr.slice(i, i + size));
+  }
+  return chunks;
+}
+
 async function triggerBatch(taskRefs: TaskRef[], label: string) {
   const payload = { triggeredBy: "scrape-all-orchestrator" };
 
-  // Trigger all tasks in parallel, wait for each to complete
-  const results = await Promise.allSettled(
-    taskRefs.map((t) => tasks.triggerAndWait(t.id, payload))
+  const results = await batch.triggerAndWait(
+    taskRefs.map((t) => ({ id: t.id, payload }))
   );
 
-  const succeeded = results.filter((r) => r.status === "fulfilled").length;
-  const failed = results.filter((r) => r.status === "rejected").length;
+  let succeeded = 0;
+  let failed = 0;
+  for (const run of results.runs) {
+    if (run.ok) {
+      succeeded++;
+    } else {
+      failed++;
+      console.log(
+        `[scrape-all] ${label} FAILED: ${run.taskIdentifier} — ${
+          run.error instanceof Error ? run.error.message : String(run.error ?? "unknown")
+        }`
+      );
+    }
+  }
+
   console.log(`[scrape-all] ${label}: ${succeeded} succeeded, ${failed} failed`);
   return { label, succeeded, failed, total: taskRefs.length };
 }
@@ -63,7 +83,7 @@ async function triggerBatch(taskRefs: TaskRef[], label: string) {
 export const scrapeAll = schedules.task({
   id: "scrape-all-orchestrator",
   cron: "0 3 * * 1", // Weekly Monday 3am UTC
-  maxDuration: 3600, // 60 min — waits for all 3 waves sequentially
+  maxDuration: 5400, // 90 min — sequential waves + chunking overhead
   retry: { maxAttempts: 0 },
   run: async () => {
     const startTime = Date.now();
@@ -72,11 +92,35 @@ export const scrapeAll = schedules.task({
     // Wave 1: Chain scrapers (4 concurrent)
     waveSummaries.push(await triggerBatch(CHAIN_TASKS, "Chains"));
 
-    // Wave 2: Playwright independents (all concurrent)
-    waveSummaries.push(await triggerBatch(PLAYWRIGHT_TASKS, "Playwright"));
+    // Wave 2: Playwright independents (chunked into batches of 4)
+    const playwrightChunks = chunk(PLAYWRIGHT_TASKS, 4);
+    let pwSucceeded = 0, pwFailed = 0;
+    for (const [i, chunkTasks] of playwrightChunks.entries()) {
+      const result = await triggerBatch(chunkTasks, `Playwright-${i + 1}`);
+      pwSucceeded += result.succeeded;
+      pwFailed += result.failed;
+    }
+    waveSummaries.push({
+      label: "Playwright",
+      succeeded: pwSucceeded,
+      failed: pwFailed,
+      total: PLAYWRIGHT_TASKS.length,
+    });
 
-    // Wave 3: Cheerio independents (all concurrent)
-    waveSummaries.push(await triggerBatch(CHEERIO_TASKS, "Cheerio"));
+    // Wave 3: Cheerio independents (chunked into batches of 6)
+    const cheerioChunks = chunk(CHEERIO_TASKS, 6);
+    let cheerioSucceeded = 0, cheerioFailed = 0;
+    for (const [i, chunkTasks] of cheerioChunks.entries()) {
+      const result = await triggerBatch(chunkTasks, `Cheerio-${i + 1}`);
+      cheerioSucceeded += result.succeeded;
+      cheerioFailed += result.failed;
+    }
+    waveSummaries.push({
+      label: "Cheerio",
+      succeeded: cheerioSucceeded,
+      failed: cheerioFailed,
+      total: CHEERIO_TASKS.length,
+    });
 
     // Wave 4: Post-scrape enrichment
     waveSummaries.push(await triggerBatch(ENRICHMENT_TASKS, "Enrichment"));
@@ -90,7 +134,7 @@ export const scrapeAll = schedules.task({
     );
 
     await sendTelegramAlert({
-      title: "Daily Scrape Complete",
+      title: "Weekly Scrape Complete",
       message: `Duration: ${durationMin}min\n${summaryLines.join("\n")}\n\nTotal: ${totalSucceeded} succeeded, ${totalFailed} failed`,
       level: totalFailed > 0 ? "warn" : "info",
     });

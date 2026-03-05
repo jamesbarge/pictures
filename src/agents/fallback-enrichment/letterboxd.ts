@@ -185,7 +185,7 @@ function parseRating(
   const ratingMeta = $('meta[name="twitter:data2"]').attr("content");
   if (!ratingMeta) return null;
 
-  const match = ratingMeta.match(/^([\d.]+)\s+out\s+of\s+5$/);
+  const match = ratingMeta.match(/^([\d.]+)\s+out\s+of\s+5(?:\s+stars)?$/);
   if (!match) return null;
 
   const rating = parseFloat(match[1]);
