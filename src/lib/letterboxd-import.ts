@@ -78,6 +78,7 @@ const MAX_ENTRIES = 500;
 const PAGE_DELAY_MS = 1000;
 const FETCH_TIMEOUT_MS = 15000;
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+const MAX_CACHE_ENTRIES = 50;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -92,7 +93,7 @@ function sleep(ms: number): Promise<void> {
  * Mirrors the pattern in src/lib/tmdb/match.ts but without stripping subtitles
  * (Letterboxd titles include the full title as the user expects it).
  */
-function normalizeTitle(title: string): string {
+export function normalizeTitle(title: string): string {
   return title
     .toLowerCase()
     .trim()
@@ -133,6 +134,11 @@ function parseTitleYear(raw: string): { title: string; year: number | null } {
 export async function scrapeLetterboxdWatchlist(
   username: string,
 ): Promise<LetterboxdEntry[]> {
+  // Validate username format (defense-in-depth; API route also validates)
+  if (!/^[a-zA-Z0-9_-]+$/.test(username) || username.length > 40) {
+    throw new LetterboxdImportError("user_not_found", "Invalid username format");
+  }
+
   const entries: LetterboxdEntry[] = [];
   let page = 1;
   let hasNextPage = true;
@@ -289,7 +295,7 @@ export async function matchAndEnrich(
     return { matched: [], unmatched: [] };
   }
 
-  // Step 1: Load all films
+  // Step 1: Load all films (filter to actual films, not events/live broadcasts)
   const allFilms = await db
     .select({
       id: films.id,
@@ -298,7 +304,8 @@ export async function matchAndEnrich(
       directors: films.directors,
       posterUrl: films.posterUrl,
     })
-    .from(films);
+    .from(films)
+    .where(or(eq(films.contentType, "film"), isNull(films.contentType)));
 
   // Step 2: Build normalized title -> films map
   const titleMap = new Map<string, typeof allFilms>();
@@ -463,8 +470,11 @@ export async function getOrCreateImportResults(
 
   // Check cache
   const cached = cache.get(key);
-  if (cached && cached.expiresAt > now) {
-    return cached.results;
+  if (cached) {
+    if (cached.expiresAt > now) {
+      return cached.results;
+    }
+    cache.delete(key); // Evict expired entry
   }
 
   // Scrape watchlist
@@ -481,6 +491,12 @@ export async function getOrCreateImportResults(
     username,
     capped,
   };
+
+  // Evict oldest entry if cache is full
+  if (cache.size >= MAX_CACHE_ENTRIES) {
+    const oldestKey = cache.keys().next().value;
+    if (oldestKey) cache.delete(oldestKey);
+  }
 
   // Cache results
   cache.set(key, {
