@@ -63,10 +63,17 @@ export function buildTitleCandidates(rawTitle: string): string[] {
   return [...candidates];
 }
 
+type FailureReason =
+  | "slug_404"
+  | "year_mismatch"
+  | "no_rating_meta"
+  | "rating_parse_error"
+  | "fetch_error";
+
 async function fetchLetterboxdRating(
   title: string,
   year?: number | null
-): Promise<{ rating: number; url: string } | null> {
+): Promise<{ rating: number; url: string; failureReason?: never } | { rating?: never; url?: never; failureReason: FailureReason } | null> {
   const slug = titleToSlug(title, year);
   const headers = {
     "User-Agent":
@@ -93,13 +100,31 @@ async function fetchLetterboxdRating(
     const response = await fetch(url, { headers });
 
     if (!response.ok) {
-      return null;
+      return { failureReason: "slug_404" };
     }
 
     const html = await response.text();
-    return parseRatingWithVerification(html, url, year);
+    const result = parseRatingWithVerification(html, url, year);
+    if (result) return result;
+
+    // Determine why verification failed
+    const $ = cheerio.load(html);
+    const ogTitle = $('meta[property="og:title"]').attr("content") || "";
+    const yearMatch = ogTitle.match(/\((\d{4})\)$/);
+    const pageYear = yearMatch ? parseInt(yearMatch[1], 10) : null;
+
+    if (year && pageYear && Math.abs(pageYear - year) > 1) {
+      return { failureReason: "year_mismatch" };
+    }
+
+    const ratingMeta = $('meta[name="twitter:data2"]').attr("content");
+    if (!ratingMeta) {
+      return { failureReason: "no_rating_meta" };
+    }
+
+    return { failureReason: "rating_parse_error" };
   } catch (error) {
-    return null;
+    return { failureReason: "fetch_error" };
   }
 }
 
@@ -250,10 +275,20 @@ export async function enrichLetterboxdRatings(
 
   let enriched = 0;
   let failed = 0;
+  const failureBreakdown: Record<string, number> = {
+    event_filtered: 0,
+    slug_404: 0,
+    year_mismatch: 0,
+    no_rating_meta: 0,
+    rating_parse_error: 0,
+    fetch_error: 0,
+    unknown: 0,
+  };
 
   // Filter out likely events before processing
   const filteredFilms = filmsToEnrich.filter(f => !isLikelyEvent(f.title));
   const skippedEvents = filmsToEnrich.length - filteredFilms.length;
+  failureBreakdown.event_filtered = skippedEvents;
   if (skippedEvents > 0) {
     console.log(`Skipped ${skippedEvents} likely events\n`);
   }
@@ -265,15 +300,27 @@ export async function enrichLetterboxdRatings(
       let result = await fetchLetterboxdRating(film.title, film.year);
 
       // If not found, try extracting a clean film title
-      if (!result) {
+      if (!result || ("failureReason" in result && result.failureReason)) {
+        const firstFailure = result && "failureReason" in result ? result.failureReason : null;
         const cleanTitle = extractFilmTitle(film.title);
         if (cleanTitle && cleanTitle !== film.title) {
           result = await fetchLetterboxdRating(cleanTitle, film.year);
         }
+        // If still failed, record the failure reason from the first attempt
+        if (!result || ("failureReason" in result && result.failureReason)) {
+          const reason = (result && "failureReason" in result ? result.failureReason : firstFailure) || "unknown";
+          failureBreakdown[reason] = (failureBreakdown[reason] || 0) + 1;
+          console.log(`✗ ${reason}`);
+          failed++;
+          // Rate limiting
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          continue;
+        }
       }
 
-      if (!result) {
-        console.log("✗ Not found");
+      if (!result || !("rating" in result) || !result.rating) {
+        failureBreakdown.unknown++;
+        console.log("✗ unknown");
         failed++;
         continue;
       }
@@ -295,13 +342,20 @@ export async function enrichLetterboxdRatings(
       await new Promise((resolve) => setTimeout(resolve, 500));
     } catch (error) {
       console.log(`✗ Error: ${error}`);
+      failureBreakdown.unknown++;
       failed++;
     }
   }
 
   console.log("\n📊 Summary:");
   console.log(`  ✓ Enriched: ${enriched}`);
-  console.log(`  ✗ Not found: ${failed}`);
+  console.log(`  ✗ Failed: ${failed}`);
+  console.log("\n📋 Failure breakdown:");
+  for (const [reason, count] of Object.entries(failureBreakdown)) {
+    if (count > 0) {
+      console.log(`  ${reason}: ${count}`);
+    }
+  }
 
   return { enriched, failed, total: filteredFilms.length };
 }

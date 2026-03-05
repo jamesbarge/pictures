@@ -5,6 +5,14 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-05: Post-First-Run Trigger.dev Fixes
+**Branch**: `fix/curzon-api-domain-migration` | **Files**: `src/scrapers/base.ts`, `src/db/enrich-letterboxd.ts`, `src/scrapers/bfi-pdf/programme-changes-parser.ts`
+- Health check: changed HEAD→GET with real browser User-Agent (fixes Close-Up and Olympic 0-result failures)
+- Letterboxd enrichment: added failure-reason logging (slug_404, year_mismatch, no_rating_meta, etc.) to diagnose 78/82 failures
+- BFI programme changes: added full browser headers (Sec-Fetch-*, Accept-Encoding, etc.) to fix 403 from cloud worker IPs
+
+---
+
 ## 2026-03-04: Fix Trigger.dev Production Deploy
 **Commits**: `c8bdfc4`, `9a0ed6f` | **Branch**: `main` (direct) | **Files**: `package-lock.json`, `src/config/cinema-registry.ts`, `src/inngest/known-ids.ts`
 - Fixed `npm ci` failure: regenerated lockfile with npm 10 to include `magicast@0.3.5` nested peer dep
