@@ -27,6 +27,8 @@ import {
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui";
 import { SafeSignInButton as SignInButton, SafeSignedOut as SignedOut } from "@/components/clerk-components-safe";
+import { LetterboxdImportTrigger } from "./letterboxd-import-trigger";
+import { LetterboxdImport } from "./letterboxd-import";
 
 interface Film {
   id: string;
@@ -71,6 +73,7 @@ export function WatchlistView({ films, screeningsByFilm }: WatchlistViewProps) {
   const [sortBy, setSortBy] = useState<SortOption>("next_screening");
   const [expandedFilms, setExpandedFilms] = useState<Set<string>>(new Set());
   const [syncBannerDismissed, setSyncBannerDismissed] = useState(false);
+  const [showImport, setShowImport] = useState(false);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Standard hydration pattern
@@ -164,7 +167,16 @@ export function WatchlistView({ films, screeningsByFilm }: WatchlistViewProps) {
   }
 
   if (watchlistIds.length === 0) {
-    return <EmptyWatchlist />;
+    return (
+      <>
+        <EmptyWatchlist onImport={() => setShowImport(true)} />
+        {showImport && (
+          <div className="mt-6 max-w-xl mx-auto">
+            <LetterboxdImport onClose={() => setShowImport(false)} />
+          </div>
+        )}
+      </>
+    );
   }
 
   return (
@@ -182,6 +194,10 @@ export function WatchlistView({ films, screeningsByFilm }: WatchlistViewProps) {
           {watchlistIds.length} film{watchlistIds.length !== 1 ? "s" : ""} on your watchlist
         </p>
         <div className="flex items-center gap-2">
+          <LetterboxdImportTrigger
+            isOpen={showImport}
+            onToggle={() => setShowImport((v) => !v)}
+          />
           <span className="text-sm text-text-tertiary">Sort by:</span>
           <select
             value={sortBy}
@@ -194,6 +210,11 @@ export function WatchlistView({ films, screeningsByFilm }: WatchlistViewProps) {
           </select>
         </div>
       </div>
+
+      {/* Letterboxd Import Panel */}
+      {showImport && (
+        <LetterboxdImport onClose={() => setShowImport(false)} />
+      )}
 
       {/* Currently Showing Section */}
       {currentlyShowing.length > 0 && (
@@ -455,7 +476,7 @@ function SyncBanner({ onDismiss }: { onDismiss: () => void }) {
   );
 }
 
-function EmptyWatchlist() {
+function EmptyWatchlist({ onImport }: { onImport: () => void }) {
   return (
     <div className="text-center py-16">
       <Heart className="w-16 h-16 text-text-tertiary mx-auto mb-4" aria-hidden="true" />
@@ -465,9 +486,17 @@ function EmptyWatchlist() {
       <p className="text-text-secondary mb-6 max-w-md mx-auto">
         Mark films you want to see from the calendar. They&apos;ll show up here.
       </p>
-      <Link href="/">
-        <Button variant="primary">Browse Screenings</Button>
-      </Link>
+      <div className="flex flex-col items-center gap-3">
+        <Button variant="primary" onClick={onImport}>
+          Import from Letterboxd
+        </Button>
+        <Link
+          href="/"
+          className="text-sm text-text-tertiary hover:text-text-secondary transition-colors"
+        >
+          or Browse Screenings
+        </Link>
+      </div>
     </div>
   );
 }
