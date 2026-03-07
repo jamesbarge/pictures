@@ -1,9 +1,67 @@
 /**
  * Date parsing utilities for cinema scrapers
  * Handles various date formats used by UK cinemas
+ *
+ * IMPORTANT: All dates are constructed as UTC and corrected for UK timezone (GMT/BST).
+ * Scrapers run on UTC servers (Trigger.dev), so we must explicitly account for BST
+ * (last Sunday of March 01:00 UTC through last Sunday of October 01:00 UTC).
  */
 
 import { addYears, isAfter } from "date-fns";
+
+/**
+ * Find the last Sunday of a given month (0-indexed).
+ * Used to compute BST start (March) and end (October) boundaries.
+ */
+export function lastSundayOfMonth(year: number, month: number): number {
+  const lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  for (let d = lastDay; d >= 1; d--) {
+    if (new Date(Date.UTC(year, month, d)).getUTCDay() === 0) return d;
+  }
+  return lastDay;
+}
+
+/**
+ * Check if a UK local datetime falls within British Summer Time (BST = UTC+1).
+ * BST runs from the last Sunday of March at 01:00 UTC to the last Sunday of October at 01:00 UTC.
+ *
+ * @param year - Full year
+ * @param month - 0-indexed month (0=Jan, 11=Dec)
+ * @param day - Day of month
+ * @param hours - Hour in UK local time (0-23)
+ */
+export function isUKSummerTime(year: number, month: number, day: number, hours: number): boolean {
+  if (month < 2 || month > 9) return false;
+  if (month > 2 && month < 9) return true;
+
+  const bstStartDay = lastSundayOfMonth(year, 2);
+  const bstEndDay = lastSundayOfMonth(year, 9);
+
+  if (month === 2) {
+    if (day > bstStartDay) return true;
+    if (day < bstStartDay) return false;
+    return hours >= 1;
+  }
+
+  // month === 9 (October)
+  if (day < bstEndDay) return true;
+  if (day > bstEndDay) return false;
+  return hours < 2;
+}
+
+/**
+ * Convert UK local time components to a UTC Date.
+ *
+ * Cinema websites display times in UK local time. During BST (UTC+1),
+ * "18:00" means 17:00 UTC. This function handles that conversion.
+ */
+export function ukLocalToUTC(year: number, month: number, day: number, hours: number, minutes: number): Date {
+  const utc = new Date(Date.UTC(year, month, day, hours, minutes, 0, 0));
+  if (isUKSummerTime(year, month, day, hours)) {
+    utc.setUTCHours(utc.getUTCHours() - 1);
+  }
+  return utc;
+}
 
 /**
  * Parse an ISO-like datetime string that represents UK local time.
@@ -11,21 +69,17 @@ import { addYears, isAfter } from "date-fns";
  * IMPORTANT: Use this when an API returns "2025-12-27T20:30" meaning UK local time
  * but WITHOUT a timezone indicator.
  *
- * JavaScript's new Date() behavior is inconsistent:
- * - "2025-12-27T20:30" (no seconds) → treated as UTC
- * - "2025-12-27T20:30:00" (with seconds) → treated as LOCAL time
- *
- * This function always parses the datetime components directly, avoiding
- * any timezone confusion regardless of server timezone or JS quirks.
+ * This function always parses the datetime components directly and converts
+ * to UTC accounting for BST.
  *
  * @param isoString - ISO-like string e.g. "2025-12-27T20:30"
- * @returns Date object representing that time in local timezone
+ * @returns Date object in UTC, correctly offset for BST when applicable
  */
 export function parseUKLocalDateTime(isoString: string): Date {
   const [datePart, timePart] = isoString.split("T");
   const [year, month, day] = datePart.split("-").map(Number);
   const [hours, minutes] = (timePart || "00:00").split(":").map(Number);
-  return new Date(year, month - 1, day, hours, minutes);
+  return ukLocalToUTC(year, month - 1, day, hours, minutes);
 }
 
 /**
@@ -41,14 +95,17 @@ export function parseScreeningDate(dateStr: string, referenceDate = new Date()):
 
   // Try ISO format first
   if (/^\d{4}-\d{2}-\d{2}/.test(cleaned)) {
-    const parsed = new Date(cleaned);
-    if (!isNaN(parsed.getTime())) return parsed;
+    if (cleaned.includes("T")) {
+      return parseUKLocalDateTime(cleaned);
+    }
+    const [year, month, day] = cleaned.split("-").map(Number);
+    return new Date(Date.UTC(year, month - 1, day));
   }
 
   // Try UK date format: 22/12/2024
   if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(cleaned)) {
     const [day, month, year] = cleaned.split("/").map(Number);
-    return new Date(year, month - 1, day);
+    return new Date(Date.UTC(year, month - 1, day));
   }
 
   // Try "Sun 22 Dec" or "Sunday 22 December" or "Friday 19th December" format
@@ -83,7 +140,7 @@ export function parseScreeningDate(dateStr: string, referenceDate = new Date()):
     const month = monthMap[monthStr.toLowerCase()];
     if (month === undefined) return null;
 
-    let parsed = new Date(year, month, day);
+    let parsed = new Date(Date.UTC(year, month, day));
 
     // If no year was specified and the date is in the past, assume next year
     if (!yearMatch && isAfter(referenceDate, parsed)) {
@@ -109,7 +166,7 @@ export function parseScreeningDate(dateStr: string, referenceDate = new Date()):
       september: 8, october: 9, november: 10, december: 11,
     };
 
-    return new Date(year, monthMap[monthStr], day);
+    return new Date(Date.UTC(year, monthMap[monthStr], day));
   }
 
   return null;
@@ -168,15 +225,20 @@ export function parseScreeningTime(timeStr: string): { hours: number; minutes: n
 }
 
 /**
- * Combine date and time into a full datetime
+ * Combine date and time into a full datetime, correctly handling BST.
+ * Uses the date's UTC components and converts the time via ukLocalToUTC.
  */
 export function combineDateAndTime(
   date: Date,
   time: { hours: number; minutes: number }
 ): Date {
-  const combined = new Date(date);
-  combined.setHours(time.hours, time.minutes, 0, 0);
-  return combined;
+  return ukLocalToUTC(
+    date.getUTCFullYear(),
+    date.getUTCMonth(),
+    date.getUTCDate(),
+    time.hours,
+    time.minutes,
+  );
 }
 
 /**

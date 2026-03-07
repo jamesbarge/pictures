@@ -13,6 +13,7 @@
 import { BaseScraper } from "../base";
 import type { RawScreening, ScraperConfig } from "../types";
 import { parse, getYear } from "date-fns";
+import { combineDateAndTime } from "../utils/date-parser";
 
 export class OlympicScraper extends BaseScraper {
   config: ScraperConfig = {
@@ -85,8 +86,7 @@ export class OlympicScraper extends BaseScraper {
           if (isNaN(hours) || isNaN(minutes)) return;
 
           // Create datetime
-          const datetime = new Date(parsedDate);
-          datetime.setHours(hours, minutes, 0, 0);
+          const datetime = combineDateAndTime(parsedDate, { hours, minutes });
 
           // Skip past screenings
           if (datetime < now) return;

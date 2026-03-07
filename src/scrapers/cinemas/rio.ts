@@ -9,6 +9,7 @@
 import { BaseScraper } from "../base";
 import type { RawScreening, ScraperConfig } from "../types";
 import { FestivalDetector } from "../festivals/festival-detector";
+import { combineDateAndTime } from "../utils/date-parser";
 
 interface RioPerformance {
   StartDate: string;      // "2025-12-19"
@@ -154,10 +155,9 @@ export class RioScraper extends BaseScraper {
     const hours = parseInt(timeStr.substring(0, 2), 10);
     const minutes = parseInt(timeStr.substring(2, 4), 10);
 
-    const date = new Date(dateStr);
-    date.setHours(hours, minutes, 0, 0);
-
-    return date;
+    const [year, month, day] = dateStr.split("-").map(Number);
+    const date = new Date(Date.UTC(year, month - 1, day));
+    return combineDateAndTime(date, { hours, minutes });
   }
 }
 

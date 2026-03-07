@@ -16,6 +16,7 @@
 import { BaseScraper } from "../base";
 import type { RawScreening, ScraperConfig } from "../types";
 import { FestivalDetector } from "../festivals/festival-detector";
+import { combineDateAndTime } from "../utils/date-parser";
 
 export class GardenCinemaScraper extends BaseScraper {
   config: ScraperConfig = {
@@ -56,7 +57,8 @@ export class GardenCinemaScraper extends BaseScraper {
       }
 
       // Parse the date
-      const date = new Date(dateStr);
+      const [y, m, d] = dateStr.split("-").map(Number);
+      const date = new Date(Date.UTC(y, m - 1, d));
       if (isNaN(date.getTime())) {
         console.warn(`[${this.config.cinemaId}] Invalid date: ${dateStr}`);
         return;
@@ -200,13 +202,13 @@ export class GardenCinemaScraper extends BaseScraper {
     }
 
     // Create date from ISO date string
-    const date = new Date(dateStr);
+    const [year, month, day] = dateStr.split("-").map(Number);
+    const date = new Date(Date.UTC(year, month - 1, day));
     if (isNaN(date.getTime())) {
       return null;
     }
 
-    date.setHours(hours, minutes, 0, 0);
-    return date;
+    return combineDateAndTime(date, { hours, minutes });
   }
 
   /**

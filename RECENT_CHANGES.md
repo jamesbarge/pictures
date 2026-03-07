@@ -5,6 +5,16 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-07: Fix BST Timezone Offset & AI Hallucination Guard
+**Branch**: `fix/scraper-logs` | **Files**: `src/scrapers/utils/date-parser.ts`, `src/lib/title-extraction/ai-extractor.ts`, `src/lib/title-extraction/patterns.ts`, `src/scrapers/utils/film-title-cleaner.ts`, 7 cinema scrapers
+- Fixed BST timezone offset: screenings in BST dates showed 1 hour ahead because scrapers used `new Date(year, month, day)` (server local = UTC on Trigger.dev). Changed all date construction to `Date.UTC()` + `ukLocalToUTC()` for correct UTC storage.
+- Added `lastSundayOfMonth()`, `isUKSummerTime()`, `ukLocalToUTC()` to date-parser for dynamic BST boundary detection.
+- Added AI hallucination guard: `hasWordOverlap()` rejects Gemini output with <30% word overlap (prevents "Slayer Part Two" from "Dune: Part Two").
+- Added `dune` to franchise patterns (`FRANCHISE_PATTERN` + `isFilmSeries`) and `part` to subtitle patterns.
+- Fixed 7 scrapers: arthouse-crouch-end, rio, garden, phoenix, olympic, david-lean, romford-lumiere.
+
+---
+
 ## 2026-03-05: Fix Orchestrator Batch Counting & Queue Contention
 **Branch**: `fix/orchestrator-batch-and-chunking` | **Files**: `src/trigger/scrape-all.ts`, `src/agents/fallback-enrichment/letterboxd.ts`
 - Replaced `Promise.allSettled(map(triggerAndWait))` with SDK's `batch.triggerAndWait()` — fixes massive undercounting (reported 4/31 succeeded vs actual 23/31)

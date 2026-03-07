@@ -230,7 +230,7 @@ export const LIVE_BROADCAST_KEYWORDS = ["opera", "theatre", "ballet", "nt live",
 
 /** Franchise patterns — titles with colons that are legitimate subtitles, not event prefixes */
 export const FRANCHISE_PATTERN =
-  /^(star\s+wars|indiana|harry|lord|mission|pirates|fast|jurassic|matrix|batman|spider|alien|terminator|mad|back|die|lethal|home|rocky|rambo|godfather|toy|finding|avengers|guardians|shrek|dark)/i;
+  /^(star\s+wars|indiana|harry|lord|mission|pirates|fast|jurassic|matrix|batman|spider|alien|terminator|mad|back|die|lethal|home|rocky|rambo|godfather|toy|finding|avengers|guardians|shrek|dark|dune)/i;
 
 /** Escape special regex characters in a string */
 export function escapeRegex(str: string): string {
