@@ -79,6 +79,7 @@ export class NickelScraper implements CinemaScraper {
           "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
           "Referer": "https://thenickel.co.uk/",
         },
+        signal: AbortSignal.timeout(30_000),
       });
 
       if (!response.ok) {
@@ -156,7 +157,7 @@ export class NickelScraper implements CinemaScraper {
 
   async healthCheck(): Promise<boolean> {
     try {
-      const response = await fetch(this.apiUrl, { method: "HEAD" });
+      const response = await fetch(this.apiUrl, { method: "HEAD", signal: AbortSignal.timeout(10_000) });
       return response.ok;
     } catch {
       return false;
