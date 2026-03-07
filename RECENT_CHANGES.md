@@ -5,6 +5,15 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-05: Fix Orchestrator Batch Counting & Queue Contention
+**Branch**: `fix/orchestrator-batch-and-chunking` | **Files**: `src/trigger/scrape-all.ts`, `src/agents/fallback-enrichment/letterboxd.ts`
+- Replaced `Promise.allSettled(map(triggerAndWait))` with SDK's `batch.triggerAndWait()` — fixes massive undercounting (reported 4/31 succeeded vs actual 23/31)
+- Chunked Playwright (batches of 4) and Cheerio (batches of 6) waves to prevent queue contention timeouts (8 tasks had durationMs=0)
+- Bumped orchestrator `maxDuration` from 3600→5400 (90 min) to accommodate sequential chunking
+- Fixed fallback Letterboxd regex to match "X.XX out of 5 stars" format (was only matching "out of 5")
+
+---
+
 ## 2026-03-05: Post-First-Run Trigger.dev Fixes
 **Branch**: `fix/curzon-api-domain-migration` | **Files**: `src/scrapers/base.ts`, `src/db/enrich-letterboxd.ts`, `src/scrapers/bfi-pdf/programme-changes-parser.ts`
 - Health check: changed HEAD→GET with real browser User-Agent (fixes Close-Up and Olympic 0-result failures)
