@@ -14,6 +14,21 @@ When an entry is added here, also create a detailed file in /changelogs/
 
 ---
 
+## 2026-03-05: Letterboxd Watchlist Import
+**Branch**: `feature/letterboxd-import` | **Files**: `src/lib/letterboxd-import.ts`, `src/app/api/letterboxd/preview/route.ts`, `src/app/api/user/import-letterboxd/route.ts`, `src/trigger/enrichment/letterboxd-import.ts`, `src/components/watchlist/letterboxd-import.tsx`, `src/components/watchlist/letterboxd-import-trigger.tsx`, `src/components/watchlist/watchlist-view.tsx`, `src/app/letterboxd/page.tsx`
+- Users enter a Letterboxd username to see which watchlist films are screening in London
+- Core scraper with Cheerio parsing, pagination, rate limiting, 500-entry cap
+- Film matching against local DB with title normalization and year ±1 tolerance
+- Screening enrichment with next-screening, count, and "last chance" badges
+- Preview API (unauthenticated) + import API (authenticated) with batch upsert
+- Trigger.dev background task for TMDB lookup of unmatched entries
+- 4-state UI component (idle/scraping/results/error) with PostHog analytics
+- Landing page at /letterboxd with dynamic stats
+- In-memory cache (1hr TTL, 50 entries max) for repeat lookups
+- 44 new unit tests (733 total, all passing)
+
+---
+
 ## 2026-03-05: Post-First-Run Trigger.dev Fixes
 **Branch**: `fix/curzon-api-domain-migration` | **Files**: `src/scrapers/base.ts`, `src/db/enrich-letterboxd.ts`, `src/scrapers/bfi-pdf/programme-changes-parser.ts`
 - Health check: changed HEAD→GET with real browser User-Agent (fixes Close-Up and Olympic 0-result failures)
