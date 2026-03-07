@@ -12,7 +12,7 @@ function sleep(ms: number): Promise<void> {
 /**
  * Run a scraper then sequentially verify each successful venue.
  * Verification is best-effort (logged but non-blocking on failure).
- * Results are persisted to scraper_runs.metadata via scraperRunId.
+ * Verification is best-effort — alerts are sent but DB persistence is skipped.
  */
 export async function runScraperAndVerify(
   config: ScraperRunnerConfig,
@@ -38,7 +38,6 @@ export async function runScraperAndVerify(
       const verification = await verifyScraperOutput({
         cinemaId: vr.venueId,
         cinemaName: venueNameMap.get(vr.venueId) ?? vr.venueName,
-        scraperRunId: vr.scraperRunId,
       });
       await sendVerificationAlert(verification);
     } catch (err) {

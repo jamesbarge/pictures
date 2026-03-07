@@ -21,9 +21,11 @@ export const SCRAPER_REGISTRY_IDS = new Set([
   "genesis",
   "peckhamplex",
   "the-nickel",
+  "nickel", // legacy alias for the-nickel
   "garden",
   "castle",
   "phoenix-east-finchley",
+  "phoenix", // legacy alias for phoenix-east-finchley
   "rich-mix",
   "close-up-cinema",
   "cine-lumiere",
