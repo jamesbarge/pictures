@@ -51,17 +51,17 @@ async function main() {
     console.log(`Screenings to migrate: ${count}`);
 
     if (!DRY_RUN) {
-      // Migrate screenings
+      // Delete orphan screenings (they duplicate existing Dune screenings)
       await db.execute(sql`
-        UPDATE screenings SET film_id = ${dune.id} WHERE film_id = ${slayer.id}
+        DELETE FROM screenings WHERE film_id = ${slayer.id}
       `);
-      console.log(`Migrated ${count} screenings to "${dune.title}".`);
+      console.log(`Deleted ${count} orphan screenings.`);
 
       // Delete orphan film
       await db.execute(sql`DELETE FROM films WHERE id = ${slayer.id}`);
       console.log(`Deleted orphan film "${slayer.title}".`);
     } else {
-      console.log(`[DRY RUN] Would migrate ${count} screenings and delete "${slayer.title}".`);
+      console.log(`[DRY RUN] Would delete ${count} orphan screenings and film "${slayer.title}".`);
     }
   }
 
@@ -77,7 +77,7 @@ async function main() {
     FROM screenings s
     JOIN films f ON f.id = s.film_id
     JOIN cinemas c ON c.id = s.cinema_id
-    WHERE c.slug = 'prince-charles'
+    WHERE c.id = 'prince-charles'
       AND s.datetime >= '2026-03-29T01:00:00Z'
       AND EXTRACT(MONTH FROM s.datetime) BETWEEN 3 AND 10
       AND s.datetime >= NOW()
@@ -103,6 +103,30 @@ async function main() {
     }
 
     if (!DRY_RUN) {
+      // First delete screenings that would collide after the time shift
+      // (these are duplicates where the correct time already exists)
+      const deleted = await db.execute(sql`
+        DELETE FROM screenings
+        WHERE id IN (
+          SELECT s.id
+          FROM screenings s
+          JOIN cinemas c ON c.id = s.cinema_id
+          WHERE c.id = 'prince-charles'
+            AND s.datetime >= '2026-03-29T01:00:00Z'
+            AND EXTRACT(MONTH FROM s.datetime) BETWEEN 3 AND 10
+            AND s.datetime >= NOW()
+            AND EXISTS (
+              SELECT 1 FROM screenings s2
+              WHERE s2.film_id = s.film_id
+                AND s2.cinema_id = s.cinema_id
+                AND s2.datetime = s.datetime - interval '1 hour'
+                AND s2.id != s.id
+            )
+        )
+      `);
+      console.log(`\nDeleted colliding duplicates.`);
+
+      // Now shift remaining screenings
       await db.execute(sql`
         UPDATE screenings
         SET datetime = datetime - interval '1 hour'
@@ -110,13 +134,13 @@ async function main() {
           SELECT s.id
           FROM screenings s
           JOIN cinemas c ON c.id = s.cinema_id
-          WHERE c.slug = 'prince-charles'
+          WHERE c.id = 'prince-charles'
             AND s.datetime >= '2026-03-29T01:00:00Z'
             AND EXTRACT(MONTH FROM s.datetime) BETWEEN 3 AND 10
             AND s.datetime >= NOW()
         )
       `);
-      console.log(`\nFixed ${screeningsToFix.length} screening times.`);
+      console.log(`Fixed remaining screening times.`);
     } else {
       console.log(`\n[DRY RUN] Would fix ${screeningsToFix.length} screening times.`);
     }
