@@ -26,9 +26,16 @@ import type { EnrichedFilm, ImportError } from "@/lib/letterboxd-import";
 // Types
 // ---------------------------------------------------------------------------
 
+interface UnmatchedEntry {
+  title: string;
+  year: number | null;
+  slug: string;
+}
+
 interface PreviewResponse {
   matched: EnrichedFilm[];
   pendingLookup: number;
+  unmatchedEntries: UnmatchedEntry[];
   total: number;
   username: string;
   capped: boolean;
@@ -179,7 +186,11 @@ export function LetterboxdImport({ onClose }: LetterboxdImportProps) {
       const res = await fetch("/api/user/import-letterboxd", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ filmIds, username: data.username }),
+        body: JSON.stringify({
+          filmIds,
+          username: data.username,
+          unmatchedEntries: data.unmatchedEntries,
+        }),
       });
 
       if (res.ok) {
@@ -219,13 +230,15 @@ export function LetterboxdImport({ onClose }: LetterboxdImportProps) {
         <h2 className="font-display text-text-primary text-base">
           Import from Letterboxd
         </h2>
-        <button
-          onClick={onClose}
-          className="p-1.5 rounded-lg text-text-tertiary hover:text-text-secondary hover:bg-background-tertiary transition-colors"
-          aria-label="Close import panel"
-        >
-          <X className="w-4 h-4" aria-hidden="true" />
-        </button>
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-text-tertiary hover:text-text-secondary hover:bg-background-tertiary transition-colors"
+            aria-label="Close import panel"
+          >
+            <X className="w-4 h-4" aria-hidden="true" />
+          </button>
+        )}
       </div>
 
       <div className="p-4">

@@ -8,13 +8,11 @@
  * - Consistent health checks and pipeline processing
  */
 
-import { randomUUID } from "crypto";
 import type { CinemaScraper, RawScreening, ChainScraper, VenueConfig } from "./types";
 import { processScreenings, saveScreenings, ensureCinemaExists } from "./pipeline";
 import { db, isDatabaseAvailable } from "../db";
 import { scraperRuns, cinemaBaselines } from "../db/schema/admin";
 import { eq } from "drizzle-orm";
-import { getCanonicalId } from "@/config/cinema-registry";
 
 // ============================================================================
 // Types
@@ -85,8 +83,6 @@ export interface VenueResult {
   durationMs: number;
   error?: string;
   retryCount: number;
-  /** Pre-generated UUID of the scraper_runs row (available after flush) */
-  scraperRunId?: string;
 }
 
 export interface RunnerResult {
@@ -187,7 +183,6 @@ async function getBaseline(cinemaId: string): Promise<{ count: number; tolerance
  * Fire-and-forget: errors are logged but never thrown.
  */
 async function recordScraperRun(params: {
-  id?: string;
   cinemaId: string;
   startedAt: Date;
   status: "success" | "failed" | "anomaly" | "partial";
@@ -234,7 +229,6 @@ async function recordScraperRun(params: {
     }
 
     await db.insert(scraperRuns).values({
-      ...(params.id ? { id: params.id } : {}),
       cinemaId: params.cinemaId,
       startedAt: params.startedAt,
       completedAt: new Date(),
@@ -266,8 +260,6 @@ async function runSingleVenue(
   const startTime = Date.now();
   let retryCount = 0;
   let lastError: Error | null = null;
-  // Resolve legacy venue IDs to canonical IDs for all pipeline operations
-  const canonicalId = getCanonicalId(venue.id);
 
   while (retryCount <= options.retryAttempts) {
     try {
@@ -298,13 +290,13 @@ async function runSingleVenue(
 
       if (screenings.length > 0) {
         if (options.useValidation) {
-          const result = await processScreenings(canonicalId, screenings);
+          const result = await processScreenings(venue.id, screenings);
           added = result.added;
           updated = result.updated;
           failed = result.failed;
           blocked = result.blocked;
         } else {
-          const result = await saveScreenings(canonicalId, screenings);
+          const result = await saveScreenings(venue.id, screenings);
           added = result.added;
           blocked = result.blocked;
         }
@@ -358,9 +350,7 @@ async function runSingleVenue(
       });
 
       // Record successful scraper run (fire-and-forget)
-      const runId = randomUUID();
       pendingRecords.push(recordScraperRun({
-        id: runId,
         cinemaId: venue.id,
         startedAt: new Date(startTime),
         status: "success",
@@ -378,7 +368,6 @@ async function runSingleVenue(
         screeningsFailed: failed,
         durationMs,
         retryCount,
-        scraperRunId: runId,
       };
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
@@ -476,9 +465,8 @@ export async function runScraper(
   try {
     if (config.type === "single") {
       // Single venue - simple case
-      const singleCanonicalId = getCanonicalId(config.venue.id);
       await ensureCinemaExists({
-        id: singleCanonicalId,
+        id: config.venue.id,
         name: config.venue.name,
         shortName: config.venue.shortName,
         chain: config.venue.chain,
@@ -498,9 +486,8 @@ export async function runScraper(
         : config.venues;
 
       for (const venue of venuesToScrape) {
-        const multiCanonicalId = getCanonicalId(venue.id);
         await ensureCinemaExists({
-          id: multiCanonicalId,
+          id: venue.id,
           name: venue.name,
           shortName: venue.shortName,
           chain: venue.chain,
@@ -529,9 +516,8 @@ export async function runScraper(
 
       // Ensure all venues exist
       for (const venue of venuesToScrape) {
-        const chainCanonicalId = getCanonicalId(venue.id);
         await ensureCinemaExists({
-          id: chainCanonicalId,
+          id: venue.id,
           name: venue.name,
           shortName: venue.shortName,
           chain: config.chainName,
@@ -553,20 +539,19 @@ export async function runScraper(
           const venue = venuesToScrape.find((v) => v.id === venueId);
           if (!venue) continue;
 
-          const chainResultCanonicalId = getCanonicalId(venueId);
           const venueStartTime = Date.now();
           let added = 0, updated = 0, failed = 0;
           let venueBlocked = false;
 
           if (screenings.length > 0) {
             if (options.useValidation) {
-              const pipelineResult = await processScreenings(chainResultCanonicalId, screenings);
+              const pipelineResult = await processScreenings(venueId, screenings);
               added = pipelineResult.added;
               updated = pipelineResult.updated;
               failed = pipelineResult.failed;
               venueBlocked = pipelineResult.blocked;
             } else {
-              const pipelineResult = await saveScreenings(chainResultCanonicalId, screenings);
+              const pipelineResult = await saveScreenings(venueId, screenings);
               added = pipelineResult.added;
               venueBlocked = pipelineResult.blocked;
             }
@@ -581,9 +566,7 @@ export async function runScraper(
           }
 
           // Record chain per-venue scraper run (fire-and-forget)
-          const chainRunId = randomUUID();
           pendingRecords.push(recordScraperRun({
-            id: chainRunId,
             cinemaId: venueId,
             startedAt: new Date(venueStartTime),
             status: venueBlocked ? "failed" : "success",
@@ -603,7 +586,6 @@ export async function runScraper(
             durationMs: Date.now() - venueStartTime,
             error: venueBlocked ? "scrape_blocked_by_diff_check" : undefined,
             retryCount: 0,
-            scraperRunId: venueBlocked ? undefined : chainRunId,
           });
         }
       } catch (error) {
@@ -728,7 +710,5 @@ export function createMain(
       await flushPendingRecords();
       process.exit(1);
     }
-
-    process.exit(0);
   };
 }

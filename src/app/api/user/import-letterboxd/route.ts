@@ -146,8 +146,13 @@ export async function POST(req: Request) {
       }
     }
 
+    const pendingCount = hasUnmatchedEntries(username, unmatchedEntries)
+      ? (unmatchedEntries as UnmatchedEntry[]).length
+      : 0;
+
     return NextResponse.json({
       saved: valuesToInsert.length,
+      pendingLookup: pendingCount,
       backgroundTaskTriggered,
     });
   } catch (error) {

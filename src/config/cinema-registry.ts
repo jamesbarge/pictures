@@ -519,24 +519,6 @@ const INDEPENDENT_CINEMAS: CinemaDefinition[] = [
     description: "Social enterprise cinema - 100% of profits go to charity.",
     bookingUrl: "https://thelexicinema.co.uk",
   },
-  {
-    id: "regent-street",
-    name: "Regent Street Cinema",
-    shortName: "Regent Street",
-    website: "https://www.regentstreetcinema.com",
-    address: { street: "309 Regent Street", area: "Marylebone", postcode: "W1B 2HW", borough: "Westminster" },
-    coordinates: { lat: 51.5171, lng: -0.1419 },
-    screens: 1,
-    chain: null,
-    scraperType: "playwright",
-    scraperModule: "cinemas/regent-street",
-    scraperFactory: "createRegentStreetScraper",
-    active: true,
-    features: ["historic", "accessible"],
-    programmingFocus: ["repertory", "arthouse", "events"],
-    description: "Birthplace of British cinema (1848 polytechnic hall). University of Westminster venue.",
-    bookingUrl: "https://www.regentstreetcinema.com/programme/",
-  },
 ];
 
 // ============================================================================
@@ -1330,6 +1312,8 @@ export function getChainIds(): ChainId[] {
  */
 const INNGEST_ID_OVERRIDES: Record<string, string> = {
   // Independent cinemas where Inngest uses legacy ID
+  "the-nickel": "nickel",
+  "phoenix-east-finchley": "phoenix",
   "electric": "electric-portobello",
   // Picturehouse chain where Inngest uses old naming convention
   "picturehouse-hackney": "hackney-picturehouse",

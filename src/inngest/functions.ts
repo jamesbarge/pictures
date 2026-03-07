@@ -69,7 +69,7 @@ const CHEERIO_CINEMAS = [
   "ica",
   "genesis",
   "peckhamplex",
-  "the-nickel",
+  "nickel",
   "garden",
   "castle",
   "rich-mix",
@@ -172,11 +172,11 @@ const getScraperRegistry = (): Record<string, () => Promise<ScraperEntry>> => ({
     );
   },
 
-  "the-nickel": async () => {
+  "nickel": async () => {
     const { createNickelScraper } = await import("@/scrapers/cinemas/the-nickel");
     return createIndependentEntry(
       {
-        id: "the-nickel",
+        id: "nickel",
         name: "The Nickel",
         shortName: "Nickel",
         website: "https://thenickel.co.uk",
@@ -220,11 +220,11 @@ const getScraperRegistry = (): Record<string, () => Promise<ScraperEntry>> => ({
     );
   },
 
-  "phoenix-east-finchley": async () => {
+  "phoenix": async () => {
     const { createPhoenixScraper } = await import("@/scrapers/cinemas/phoenix");
     return createIndependentEntry(
       {
-        id: "phoenix-east-finchley",
+        id: "phoenix",
         name: "Phoenix Cinema",
         shortName: "Phoenix",
         website: "https://phoenixcinema.co.uk",
@@ -468,11 +468,11 @@ const getScraperRegistry = (): Record<string, () => Promise<ScraperEntry>> => ({
     return createIndependentEntry(
       {
         id: "romford-lumiere",
-        name: "Lumière Romford",
-        shortName: "Lumière",
-        website: "https://www.lumiereromford.com",
-        address: { street: "Mercury Gardens", area: "Romford", postcode: "RM1 3EE" },
-        features: ["bar", "accessible", "community"],
+        name: "Lumiere Cinema Romford",
+        shortName: "Lumiere",
+        website: "https://lumiere-cinema.co.uk",
+        address: { street: "The Sapphire Ice and Leisure", area: "Romford", postcode: "RM1 3RL" },
+        features: ["independent", "modern"],
       },
       true, // Requires Playwright
       async () => createRomfordLumiereScraper()
@@ -899,70 +899,6 @@ export const scheduledLetterboxdEnrichment = inngest.createFunction(
   }
 );
 
-export const scheduledFestivalReverseTag = inngest.createFunction(
-  { id: "scheduled-festival-reverse-tag", retries: 1 },
-  { cron: "0 9 * * *" },
-  async ({ step }) => {
-    console.log("[Inngest] Starting scheduled festival reverse-tagging...");
-    const results = await step.run("reverse-tag-festivals", async () => {
-      const { reverseTagFestivals } = await import("@/scrapers/festivals/reverse-tagger");
-      return reverseTagFestivals();
-    });
-    const totalTagged = results.reduce((sum: number, r: { screeningsTagged: number }) => sum + r.screeningsTagged, 0);
-    console.log(`[Inngest] Festival reverse-tagging complete: ${totalTagged} screenings tagged`);
-    return { success: true, festivals: results.length, totalTagged, results };
-  }
-);
-
-export const scheduledFestivalWatchdog = inngest.createFunction(
-  { id: "scheduled-festival-watchdog", retries: 1 },
-  { cron: "0 */6 * * *" },
-  async ({ step }) => {
-    console.log("[Inngest] Starting festival programme watchdog...");
-    const results = await step.run("check-programmes", async () => {
-      const { checkProgrammeAvailability } = await import("@/scrapers/festivals/watchdog");
-      return checkProgrammeAvailability();
-    });
-    const detected = results.filter((r: { detected: boolean }) => r.detected).length;
-    if (detected > 0) {
-      await step.run("trigger-reverse-tag", async () => {
-        const { reverseTagFestivals } = await import("@/scrapers/festivals/reverse-tagger");
-        return reverseTagFestivals();
-      });
-    }
-    console.log(`[Inngest] Watchdog complete: ${results.length} checked, ${detected} detected`);
-    return { success: true, checked: results.length, detected, results };
-  }
-);
-
-/**
- * Inngest Function: Scheduled Eventive Festival Scrape
- *
- * Runs daily at 11:00 AM UTC (after venue scrapers) to scrape
- * Eventive-based festivals (FrightFest, UKJFF) within their watch windows.
- */
-export const scheduledEventiveScrape = inngest.createFunction(
-  { id: "scheduled-eventive-scrape", retries: 2 },
-  { cron: "0 11 * * *" }, // 11:00 AM UTC daily
-  async ({ step }) => {
-    console.log("[Inngest] Starting scheduled Eventive festival scrape...");
-    const results = await step.run("scrape-eventive-festivals", async () => {
-      const { scrapeActiveEventiveFestivals } = await import(
-        "@/scrapers/festivals/eventive-scraper"
-      );
-      return scrapeActiveEventiveFestivals();
-    });
-    const totalScreenings = results.reduce(
-      (sum: number, r: { screeningsTagged: number }) => sum + r.screeningsTagged,
-      0
-    );
-    console.log(
-      `[Inngest] Eventive scrape complete: ${results.length} festivals, ${totalScreenings} screenings`
-    );
-    return { success: true, festivals: results.length, totalScreenings, results };
-  }
-);
-
 // Export all functions for the serve handler
 export const functions = [
   runCinemaScraper,
@@ -971,7 +907,4 @@ export const functions = [
   scheduledBFIPDFImport,
   scheduledBFIChanges,
   scheduledLetterboxdEnrichment,
-  scheduledFestivalReverseTag,
-  scheduledFestivalWatchdog,
-  scheduledEventiveScrape,
 ];
