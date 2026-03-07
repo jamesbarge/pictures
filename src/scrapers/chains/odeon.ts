@@ -644,7 +644,7 @@ export class OdeonScraper implements ChainScraper {
 
   async healthCheck(): Promise<boolean> {
     try {
-      const response = await fetch(this.chainConfig.baseUrl, { method: "HEAD" });
+      const response = await fetch(this.chainConfig.baseUrl, { method: "HEAD", signal: AbortSignal.timeout(10_000) });
       return response.ok;
     } catch {
       return false;
