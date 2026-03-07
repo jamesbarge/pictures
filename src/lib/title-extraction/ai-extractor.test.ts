@@ -14,6 +14,7 @@ import {
   batchExtractTitles,
   extractFilmTitleCached,
   clearTitleCache,
+  hasWordOverlap,
 } from "./index";
 
 // Mock the Gemini client
@@ -84,6 +85,8 @@ describe("extractFilmTitle - clean titles (no API call needed)", () => {
       "Avengers: Endgame",
       "Guardians of the Galaxy: Vol 3",
       "Shrek: Forever After",
+      "Dune: Part Two",
+      "Dune: Part One",
     ];
 
     it.each(franchiseTitles)(
@@ -596,6 +599,73 @@ describe("extractFilmTitle - edge cases", () => {
     // This test documents current behavior
     const result = await extractFilmTitle("(500) Days of Summer");
     expect(result.filmTitle).toBeTruthy();
+  });
+});
+
+// =============================================================================
+// hasWordOverlap Tests
+// =============================================================================
+
+describe("hasWordOverlap", () => {
+  it("should detect overlap between similar titles", () => {
+    expect(hasWordOverlap("Dune: Part Two", "Dune: Part Two")).toBe(true);
+    expect(hasWordOverlap("Dune Part Two", "Part Two")).toBe(true);
+  });
+
+  it("should reject titles with no overlap", () => {
+    expect(hasWordOverlap("New: Moonlight Sonata Screening", "Slayer Part Two")).toBe(false);
+  });
+
+  it("should return true for empty strings (conservative)", () => {
+    expect(hasWordOverlap("", "Something")).toBe(true);
+    expect(hasWordOverlap("Something", "")).toBe(true);
+  });
+
+  it("should handle special characters", () => {
+    expect(hasWordOverlap("Star Wars: A New Hope", "Star Wars A New Hope")).toBe(true);
+  });
+
+  it("should ignore single-character words", () => {
+    // "a" is filtered out as too short
+    expect(hasWordOverlap("A Film", "Film")).toBe(true);
+  });
+
+  it("should be case-insensitive", () => {
+    expect(hasWordOverlap("THE MATRIX", "the matrix")).toBe(true);
+  });
+});
+
+// =============================================================================
+// AI Hallucination Guard Tests
+// =============================================================================
+
+describe("extractFilmTitle - hallucination guard", () => {
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("should reject AI output with no word overlap", async () => {
+    // AI returns something completely unrelated
+    mockGenerateText.mockResolvedValueOnce(
+      '{"title": "Slayer Part Two", "confidence": "high"}'
+    );
+
+    const result = await extractFilmTitle("New: Moonlight Sonata Screening");
+
+    // Should fall back to basic cleaning, not accept AI hallucination
+    expect(result.confidence).toBe("low");
+    expect(result.filmTitle).not.toBe("Slayer Part Two");
+  });
+
+  it("should accept AI output with sufficient overlap", async () => {
+    mockGenerateText.mockResolvedValueOnce(
+      '{"title": "The Muppets Christmas Carol", "canonical": "The Muppets Christmas Carol", "event": "kids screening", "confidence": "high"}'
+    );
+
+    const result = await extractFilmTitle("Saturday Morning Picture Club: The Muppets Christmas Carol");
+
+    expect(result.filmTitle).toBe("The Muppets Christmas Carol");
+    expect(result.confidence).toBe("high");
   });
 });
 

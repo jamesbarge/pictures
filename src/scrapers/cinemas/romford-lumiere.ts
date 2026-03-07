@@ -21,6 +21,7 @@ import type { CheerioAPI } from "../utils/cheerio-types";
 import { getBrowser, closeBrowser, createPage } from "../utils/browser";
 import type { Page } from "playwright";
 import { addDays, parse, format } from "date-fns";
+import { combineDateAndTime } from "../utils/date-parser";
 
 interface CineSyncMovieData {
   movie_id: string;
@@ -111,7 +112,7 @@ export class RomfordLumiereScraper {
       // Try to find and click on dates to load screenings
       // CineSync sites typically have a date picker or calendar view
       const today = new Date();
-      const endOfApril = new Date(2026, 3, 30); // April 30, 2026
+      const endOfApril = new Date(Date.UTC(2026, 3, 30)); // April 30, 2026
 
       // Calculate days to scrape (until end of April)
       const daysToScrape: Date[] = [];
@@ -403,7 +404,7 @@ export class RomfordLumiereScraper {
 
     const screenings: RawScreening[] = [];
     const now = new Date();
-    const endOfApril = new Date(2026, 3, 30);
+    const endOfApril = new Date(Date.UTC(2026, 3, 30));
 
     try {
       const html = await this.page.content();
@@ -558,7 +559,7 @@ export class RomfordLumiereScraper {
       // Try ISO format (2026-01-20)
       const isoMatch = dateText.match(/(\d{4})-(\d{2})-(\d{2})/);
       if (isoMatch) {
-        targetDate = new Date(parseInt(isoMatch[1]), parseInt(isoMatch[2]) - 1, parseInt(isoMatch[3]));
+        targetDate = new Date(Date.UTC(parseInt(isoMatch[1]), parseInt(isoMatch[2]) - 1, parseInt(isoMatch[3])));
       } else {
         // Try UK format (20/01/2026 or 20-01-2026)
         const ukMatch = dateText.match(/(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/);
@@ -567,7 +568,7 @@ export class RomfordLumiereScraper {
           const month = parseInt(ukMatch[2]) - 1;
           let year = parseInt(ukMatch[3]);
           if (year < 100) year += 2000;
-          targetDate = new Date(year, month, day);
+          targetDate = new Date(Date.UTC(year, month, day));
         } else {
           // Try text format (Monday 20 January, 20 Jan, Jan 20, etc.)
           const monthNames: Record<string, number> = {
@@ -603,11 +604,11 @@ export class RomfordLumiereScraper {
           if (foundMonth !== null && foundDay !== null) {
             // Assume current or next year
             const year = now.getFullYear();
-            targetDate = new Date(year, foundMonth, foundDay);
+            targetDate = new Date(Date.UTC(year, foundMonth, foundDay));
 
             // If the date is in the past, try next year
             if (targetDate < now) {
-              targetDate = new Date(year + 1, foundMonth, foundDay);
+              targetDate = new Date(Date.UTC(year + 1, foundMonth, foundDay));
             }
           } else {
             // Can't parse the date, use today
@@ -616,10 +617,8 @@ export class RomfordLumiereScraper {
         }
       }
 
-      // Set the time
-      targetDate.setHours(hours, minutes, 0, 0);
-
-      return targetDate;
+      // Set the time using BST-aware function
+      return combineDateAndTime(targetDate, { hours, minutes });
     } catch {
       return null;
     }

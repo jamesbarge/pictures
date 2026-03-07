@@ -13,6 +13,22 @@ import {
   FRANCHISE_PATTERN,
 } from "./patterns";
 
+/**
+ * Check if two titles share meaningful word overlap.
+ * Used to guard against AI hallucination — if the AI returns a title
+ * with <30% word overlap, it's likely a hallucination.
+ */
+export function hasWordOverlap(rawTitle: string, aiTitle: string, threshold = 0.3): boolean {
+  const normalize = (s: string) =>
+    s.toLowerCase().replace(/[^a-z0-9\s]/g, "").split(/\s+/).filter(w => w.length > 1);
+  const rawWords = normalize(rawTitle);
+  const aiWords = new Set(normalize(aiTitle));
+  if (rawWords.length === 0 || aiWords.size === 0) return true;
+  const overlapping = rawWords.filter(w => aiWords.has(w)).length;
+  const denominator = Math.min(rawWords.length, aiWords.size);
+  return overlapping / denominator >= threshold;
+}
+
 export interface AIExtractionResult {
   filmTitle: string;
   /** Base title for matching/deduplication (without version suffixes like "Final Cut") */
@@ -162,7 +178,19 @@ Examples:
 - "35mm: Casablanca (PG)" → {"title": "Casablanca", "canonical": "Casablanca", "event": "35mm screening", "confidence": "high"}`);
 
     const parsed = JSON.parse(stripCodeFences(text));
-    const displayTitle = cleanBasicCruft(parsed.title || rawTitle);
+    const aiTitle = parsed.title || "";
+
+    // Guard: reject AI output that bears no resemblance to input
+    if (!hasWordOverlap(rawTitle, aiTitle)) {
+      console.warn(`[TitleExtractor] AI hallucination detected: "${rawTitle}" → "${aiTitle}". Falling back.`);
+      return {
+        filmTitle: cleanBasicCruft(rawTitle),
+        canonicalTitle: cleanBasicCruft(rawTitle),
+        confidence: "low",
+      };
+    }
+
+    const displayTitle = cleanBasicCruft(aiTitle || rawTitle);
 
     return {
       filmTitle: displayTitle,

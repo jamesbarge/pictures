@@ -17,7 +17,7 @@
 
 import { BaseScraper } from "../base";
 import type { RawScreening, ScraperConfig } from "../types";
-import { parseScreeningDate } from "../utils/date-parser";
+import { parseScreeningDate, combineDateAndTime } from "../utils/date-parser";
 import type { CheerioAPI } from "../utils/cheerio-types";
 
 export class ArtHouseCrouchEndScraper extends BaseScraper {
@@ -141,11 +141,7 @@ export class ArtHouseCrouchEndScraper extends BaseScraper {
       hours = 0;
     }
 
-    // Create datetime by copying date and setting time
-    const datetime = new Date(date);
-    datetime.setHours(hours, minutes, 0, 0);
-
-    return datetime;
+    return combineDateAndTime(date, { hours, minutes });
   }
 
   private cleanTitle(title: string): string {

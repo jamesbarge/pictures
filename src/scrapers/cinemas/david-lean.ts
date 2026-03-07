@@ -13,6 +13,7 @@
 import { chromium } from "playwright";
 import type { RawScreening, ScraperConfig, CinemaScraper } from "../types";
 import { parse, getYear, addYears } from "date-fns";
+import { combineDateAndTime } from "../utils/date-parser";
 
 const DAVID_LEAN_CONFIG: ScraperConfig = {
   cinemaId: "david-lean",
@@ -176,8 +177,7 @@ export class DavidLeanScraper implements CinemaScraper {
     const dateStr = `${dayNum} ${monthName} ${currentYear}`;
     const parsedDate = parse(dateStr, "d MMM yyyy", new Date());
 
-    parsedDate.setHours(hours, minutes, 0, 0);
-    return parsedDate;
+    return combineDateAndTime(parsedDate, { hours, minutes });
   }
 
   private normalizeTime(timeStr: string): string {

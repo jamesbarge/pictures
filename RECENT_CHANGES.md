@@ -5,6 +5,40 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-07: Fix BST Timezone Offset & AI Hallucination Guard
+**Branch**: `fix/scraper-logs` | **Files**: `src/scrapers/utils/date-parser.ts`, `src/lib/title-extraction/ai-extractor.ts`, `src/lib/title-extraction/patterns.ts`, `src/scrapers/utils/film-title-cleaner.ts`, 7 cinema scrapers
+- Fixed BST timezone offset: screenings in BST dates showed 1 hour ahead because scrapers used `new Date(year, month, day)` (server local = UTC on Trigger.dev). Changed all date construction to `Date.UTC()` + `ukLocalToUTC()` for correct UTC storage.
+- Added `lastSundayOfMonth()`, `isUKSummerTime()`, `ukLocalToUTC()` to date-parser for dynamic BST boundary detection.
+- Added AI hallucination guard: `hasWordOverlap()` rejects Gemini output with <30% word overlap (prevents "Slayer Part Two" from "Dune: Part Two").
+- Added `dune` to franchise patterns (`FRANCHISE_PATTERN` + `isFilmSeries`) and `part` to subtitle patterns.
+- Fixed 7 scrapers: arthouse-crouch-end, rio, garden, phoenix, olympic, david-lean, romford-lumiere.
+
+---
+
+## 2026-03-05: Fix Orchestrator Batch Counting & Queue Contention
+**Branch**: `fix/orchestrator-batch-and-chunking` | **Files**: `src/trigger/scrape-all.ts`, `src/agents/fallback-enrichment/letterboxd.ts`
+- Replaced `Promise.allSettled(map(triggerAndWait))` with SDK's `batch.triggerAndWait()` — fixes massive undercounting (reported 4/31 succeeded vs actual 23/31)
+- Chunked Playwright (batches of 4) and Cheerio (batches of 6) waves to prevent queue contention timeouts (8 tasks had durationMs=0)
+- Bumped orchestrator `maxDuration` from 3600→5400 (90 min) to accommodate sequential chunking
+- Fixed fallback Letterboxd regex to match "X.XX out of 5 stars" format (was only matching "out of 5")
+
+---
+
+## 2026-03-05: Letterboxd Watchlist Import
+**Branch**: `feature/letterboxd-import` | **Files**: `src/lib/letterboxd-import.ts`, `src/app/api/letterboxd/preview/route.ts`, `src/app/api/user/import-letterboxd/route.ts`, `src/trigger/enrichment/letterboxd-import.ts`, `src/components/watchlist/letterboxd-import.tsx`, `src/components/watchlist/letterboxd-import-trigger.tsx`, `src/components/watchlist/watchlist-view.tsx`, `src/app/letterboxd/page.tsx`
+- Users enter a Letterboxd username to see which watchlist films are screening in London
+- Core scraper with Cheerio parsing, pagination, rate limiting, 500-entry cap
+- Film matching against local DB with title normalization and year ±1 tolerance
+- Screening enrichment with next-screening, count, and "last chance" badges
+- Preview API (unauthenticated) + import API (authenticated) with batch upsert
+- Trigger.dev background task for TMDB lookup of unmatched entries
+- 4-state UI component (idle/scraping/results/error) with PostHog analytics
+- Landing page at /letterboxd with dynamic stats
+- In-memory cache (1hr TTL, 50 entries max) for repeat lookups
+- 44 new unit tests (733 total, all passing)
+
+---
+
 ## 2026-03-05: Post-First-Run Trigger.dev Fixes
 **Branch**: `fix/curzon-api-domain-migration` | **Files**: `src/scrapers/base.ts`, `src/db/enrich-letterboxd.ts`, `src/scrapers/bfi-pdf/programme-changes-parser.ts`
 - Health check: changed HEAD→GET with real browser User-Agent (fixes Close-Up and Olympic 0-result failures)

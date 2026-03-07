@@ -9,7 +9,7 @@
  */
 
 export { extractFilmTitleSync, type PatternExtractionResult } from "./pattern-extractor";
-export { extractFilmTitleAI, type AIExtractionResult } from "./ai-extractor";
+export { extractFilmTitleAI, hasWordOverlap, type AIExtractionResult } from "./ai-extractor";
 export { generateSearchVariations } from "./search-variants";
 
 import { extractFilmTitleAI, isLikelyCleanTitle, type AIExtractionResult } from "./ai-extractor";
