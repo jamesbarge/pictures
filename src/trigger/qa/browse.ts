@@ -33,7 +33,7 @@ export const qaBrowse = task({
 
     // Pre-check: expected film count from DB
     const expectedScreenings = await db
-      .select({ id: screenings.id })
+      .select({ id: screenings.id, filmId: screenings.filmId })
       .from(screenings)
       .where(
         and(
@@ -41,7 +41,7 @@ export const qaBrowse = task({
           lte(screenings.datetime, new Date(`${dayAfterTomorrow}T00:00:00Z`))
         )
       );
-    const expectedFilmCount = new Set(expectedScreenings.map(() => "film")).size; // rough estimate
+    const expectedFilmCount = new Set(expectedScreenings.map((s) => s.filmId)).size;
     const expectedScreeningCount = expectedScreenings.length;
     console.log(`[qa-browse] DB expects ~${expectedScreeningCount} screenings for today+tomorrow`);
 

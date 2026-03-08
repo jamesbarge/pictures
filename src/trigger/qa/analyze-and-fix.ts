@@ -123,6 +123,51 @@ export const qaAnalyzeAndFix = task({
       console.log(`[qa-analyze] Found ${filmsWithTmdbNoLetterboxd.size} films missing Letterboxd`);
     }
 
+    // B3: Time mismatch detection — compare front-end screening times vs DB
+    for (const feScreening of browseOutput.screenings) {
+      if (!feScreening.datetime || !feScreening.cinemaName) continue;
+
+      const feDateMs = new Date(feScreening.datetime).getTime();
+      if (isNaN(feDateMs)) continue;
+
+      // Find corresponding DB screening by cinema + title + approximate date (same day)
+      const feNorm = normalizeTitle(feScreening.filmTitle);
+      const dbMatch = dbScreenings.find((db) => {
+        const dbNorm = normalizeTitle(db.filmTitle);
+        if (feNorm !== dbNorm) return false;
+
+        const feCinema = feScreening.cinemaName.toLowerCase();
+        const dbCinema = db.cinemaId.toLowerCase().replace(/-/g, " ");
+        if (!feCinema.includes(dbCinema) && !dbCinema.includes(feCinema)) return false;
+
+        // Same day (within 24h) to match the right screening
+        const dbDateMs = db.datetime.getTime();
+        return Math.abs(feDateMs - dbDateMs) < 24 * 60 * 60_000;
+      });
+
+      if (!dbMatch) continue;
+
+      const diffMs = Math.abs(feDateMs - dbMatch.datetime.getTime());
+      if (diffMs > 5 * 60_000) {
+        // >5 min difference → flag as time mismatch
+        issues.push({
+          type: "time_mismatch",
+          scope: "spot",
+          severity: "warning",
+          entityType: "screening",
+          entityId: dbMatch.screeningId,
+          description: `Time mismatch: front-end shows ${feScreening.datetime}, DB has ${dbMatch.datetime.toISOString()} (diff: ${Math.round(diffMs / 60_000)}min)`,
+          suggestedFix: `Update screening datetime to ${feScreening.datetime}`,
+          confidence: 0.85,
+          metadata: {
+            filmTitle: feScreening.filmTitle,
+            correctedDatetime: new Date(feScreening.datetime).toISOString(),
+            fromStructuredData: false, // DOM-extracted times — conservative
+          },
+        });
+      }
+    }
+
     // ── Step C: Parse Booking Check Results ────────────────────────
     for (const check of browseOutput.bookingChecks) {
       const bothFailed =
@@ -147,7 +192,7 @@ export const qaAnalyzeAndFix = task({
           description: `Broken booking link: ${check.url} (status: ${check.firstAttemptStatus}/${check.secondAttemptStatus})`,
           suggestedFix: null,
           confidence: 0.95,
-          metadata: { cinemaId: check.cinemaId, url: check.url },
+          metadata: { cinemaId: check.cinemaId, url: check.url, doubleChecked: true },
         });
       } else if (bothFailed && check.secondAttemptStatus === "not_attempted") {
         // Budget exhausted — flag for human review
@@ -160,7 +205,7 @@ export const qaAnalyzeAndFix = task({
           description: `Possibly broken booking link (not double-checked): ${check.url}`,
           suggestedFix: null,
           confidence: 0.5,
-          metadata: { cinemaId: check.cinemaId, url: check.url },
+          metadata: { cinemaId: check.cinemaId, url: check.url, doubleChecked: false },
         });
       }
     }
@@ -174,11 +219,30 @@ export const qaAnalyzeAndFix = task({
     }> = [];
 
     for (const feScreening of browseOutput.screenings) {
-      // Try to find matching DB screening
+      if (!feScreening.cinemaName || !feScreening.filmTitle) continue;
+      const feNorm = normalizeTitle(feScreening.filmTitle);
+
+      // Match by cinema name + datetime proximity (within 30 min), NOT bookingUrl
+      // bookingUrl joins produce false positives with generic URLs (e.g. David Lean Cinema)
       const dbMatch = dbScreenings.find((db) => {
-        const feNorm = normalizeTitle(feScreening.filmTitle);
         const dbNorm = normalizeTitle(db.filmTitle);
-        return feNorm !== dbNorm && feScreening.bookingUrl === db.bookingUrl;
+        if (feNorm === dbNorm) return false; // titles match — no mismatch
+
+        // Cinema name must be present in the DB cinemaId or vice versa
+        // (front-end has display name, DB has cinemaId — approximate match)
+        const feCinema = feScreening.cinemaName.toLowerCase();
+        const dbCinema = db.cinemaId.toLowerCase().replace(/-/g, " ");
+        const cinemaMatch = feCinema.includes(dbCinema) || dbCinema.includes(feCinema);
+        if (!cinemaMatch) return false;
+
+        // Datetime proximity: within 30 minutes
+        if (feScreening.datetime && db.datetime) {
+          const feDateMs = new Date(feScreening.datetime).getTime();
+          const dbDateMs = db.datetime.getTime();
+          if (Math.abs(feDateMs - dbDateMs) > 30 * 60_000) return false;
+        }
+
+        return true;
       });
       if (dbMatch) {
         titleMismatches.push({ dbScreening: dbMatch, frontEndTitle: feScreening.filmTitle });

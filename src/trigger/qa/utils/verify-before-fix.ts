@@ -53,7 +53,14 @@ export async function verifyBeforeFix(
       };
 
     case "broken_booking_link":
-      // Double-check already performed in browse task
+      // Only confirm if both attempts actually ran (not budget-exhausted)
+      if (issue.metadata?.doubleChecked === false) {
+        return {
+          confirmed: false,
+          method: "double_checked",
+          reason: "Link was not double-checked (budget exhausted) — flagged for manual review",
+        };
+      }
       return {
         confirmed: true,
         method: "double_checked",
@@ -82,7 +89,7 @@ async function verifyTmdbMismatch(
 ): Promise<VerificationOutcome> {
   const frontEndTitle = issue.metadata?.frontEndTitle as string | undefined;
   const currentTmdbId = issue.metadata?.currentTmdbId as number | undefined;
-  const existingConfidence = issue.metadata?.matchConfidence as
+  const existingConfidence = issue.metadata?.currentMatchConfidence as
     | number
     | undefined;
 

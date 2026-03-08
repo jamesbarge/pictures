@@ -214,17 +214,18 @@ export async function applyFix(
   }
 
   // Step 4: confirmed + not dry run → apply
+  const isFlagOnly = action === "flagged_broken_link" || action === "flagged_for_review";
   try {
     await executeFixOperation(issue);
-    await insertAuditRecord(issue, true);
+    await insertAuditRecord(issue, !isFlagOnly);
     console.log(
-      `[qa-fixer] Applied ${action} to ${issue.entityId}`
+      `[qa-fixer] ${isFlagOnly ? "Flagged" : "Applied"} ${action} to ${issue.entityId}`
     );
     return {
       issue,
-      applied: true,
+      applied: !isFlagOnly,
       action,
-      note: outcome.reason,
+      note: isFlagOnly ? "Flagged for review (no DB mutation)" : outcome.reason,
     };
   } catch (err) {
     const msg =
