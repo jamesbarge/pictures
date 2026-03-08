@@ -12,7 +12,8 @@
 
 import { schedules, task, tasks } from "@trigger.dev/sdk/v3";
 import { sendTelegramAlert } from "../utils/telegram";
-import type { QaBrowseOutput, QaAnalysisOutput, QaOrchestratorOutput } from "./types";
+import { createGitHubIssue } from "../utils/github-issues";
+import type { QaBrowseOutput, QaAnalysisOutput, QaOrchestratorOutput, ClassifiedIssue } from "./types";
 
 // ── Regular task: the actual pipeline (API-triggerable) ──────────────
 export const qaPipeline = task({
@@ -103,6 +104,9 @@ export const qaPipeline = task({
 
     // ── Step 3: Telegram Report ────────────────────────────────────
     await sendQaReport(browseOutput, analysisOutput, dryRun);
+
+    // ── Step 4: GitHub Issues for systemic problems ──────────────
+    await createSystemicGitHubIssues(analysisOutput, dryRun);
 
     return {
       browseStats: browseOutput.stats,
@@ -209,4 +213,66 @@ async function sendQaReport(
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function createSystemicGitHubIssues(
+  analysis: QaAnalysisOutput,
+  dryRun: boolean
+): Promise<void> {
+  try {
+    const systemic = analysis.issuesFound.filter(
+      (i: ClassifiedIssue) =>
+        i.scope === "systemic" &&
+        (i.severity === "critical" || i.severity === "warning")
+    );
+
+    if (systemic.length === 0) return;
+
+    // Group by issue type
+    const byType = new Map<string, ClassifiedIssue[]>();
+    for (const issue of systemic) {
+      const existing = byType.get(issue.type) ?? [];
+      existing.push(issue);
+      byType.set(issue.type, existing);
+    }
+
+    for (const [type, issues] of byType) {
+      const typeLabel = type.replace(/_/g, " ");
+      const title = `QA: ${issues.length} ${typeLabel} detected (systemic)`;
+
+      const tableRows = issues.slice(0, 20).map((i: ClassifiedIssue) => {
+        const entity = i.entityId.slice(0, 8);
+        return `| ${i.severity} | ${entity} | ${i.description.slice(0, 80)} |`;
+      });
+
+      const body = [
+        `## Systemic ${typeLabel}`,
+        "",
+        `The automated QA pipeline detected **${issues.length}** systemic ${typeLabel} issues.`,
+        dryRun ? "\n> **DRY RUN** — no fixes were applied.\n" : "",
+        "| Severity | Entity | Description |",
+        "|----------|--------|-------------|",
+        ...tableRows,
+        issues.length > 20 ? `\n_...and ${issues.length - 20} more_` : "",
+        "",
+        analysis.preventionReport
+          ? `## Prevention Recommendations\n\n${analysis.preventionReport.slice(0, 2000)}`
+          : "",
+        "",
+        `_Created by QA pipeline at ${new Date().toISOString()}_`,
+      ]
+        .filter(Boolean)
+        .join("\n");
+
+      await createGitHubIssue({
+        title,
+        body,
+        labels: ["qa-automated", "data-quality"],
+      });
+    }
+  } catch (err) {
+    // Never crash the pipeline over GitHub issue creation
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[qa] GitHub issue creation failed: ${msg}`);
+  }
 }

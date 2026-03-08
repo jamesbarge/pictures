@@ -1,0 +1,28 @@
+name: Post-Deploy Verification
+
+on:
+  deployment_status:
+
+jobs:
+  verify:
+    if: github.event.deployment_status.state == 'success' && github.event.deployment_status.environment == 'Production'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Trigger post-deploy verification
+        env:
+          TRIGGER_SECRET_KEY: ${{ secrets.TRIGGER_SECRET_KEY }}
+          DEPLOY_URL: ${{ github.event.deployment_status.target_url }}
+          DEPLOY_ENV: ${{ github.event.deployment_status.environment }}
+          COMMIT_SHA: ${{ github.event.deployment.sha }}
+        run: |
+          curl -sf -X POST "https://api.trigger.dev/api/v1/tasks/post-deploy-verify/trigger" \
+            -H "Authorization: Bearer $TRIGGER_SECRET_KEY" \
+            -H "Content-Type: application/json" \
+            -d "$(jq -n \
+              --arg url "$DEPLOY_URL" \
+              --arg env "$DEPLOY_ENV" \
+              --arg sha "$COMMIT_SHA" \
+              '{payload: {deploymentUrl: $url, environment: $env, commitSha: $sha}}'
+            )"
