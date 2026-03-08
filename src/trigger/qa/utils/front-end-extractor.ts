@@ -199,63 +199,52 @@ async function extractScreeningsFromDetail(
           }
         }
 
-        // If JSON-LD gave us results, prefer those
+        // If JSON-LD gave us ScreeningEvent results, prefer those
         if (results.length > 0) return results;
 
-        // Strategy 2: Extract from DOM structure
-        // Cinema sections are typically headed by h3 elements
-        const cinemaHeaders = Array.from(document.querySelectorAll("h3.font-display"));
+        // Strategy 2: Extract from actual pictures.london DOM structure
+        // Structure: div.bg-background-secondary (cinema card) contains:
+        //   h3.font-display (cinema name)
+        //   div.divide-y > div (screening rows) each containing:
+        //     div.w-28 > div (date text "Tue 10 Mar") + div (time "21:45")
+        //     a[target="_blank"] (booking link)
+        const cinemaCards = Array.from(
+          document.querySelectorAll(".bg-background-secondary")
+        );
 
-        for (const header of cinemaHeaders) {
-          const cinemaName = header.textContent?.trim() || "";
-          // Walk sibling/parent to find screening rows associated with this cinema
-          const section = header.closest("section") || header.parentElement;
-          if (!section) continue;
+        for (const card of cinemaCards) {
+          const h3 = card.querySelector("h3.font-display");
+          if (!h3) continue;
+          const cinemaName = h3.textContent?.trim() || "";
 
-          // Look for screening rows — typically contain a time element and a booking link
-          const rows = Array.from(section.querySelectorAll("[class*='screening'], tr, li, [data-screening]"));
-          // Fallback: look for any elements with <time> tags
-          const timeElements = rows.length > 0
-            ? rows
-            : Array.from(section.querySelectorAll("time")).map((t) => t.closest("div, li, tr") || t.parentElement);
+          // Each screening row is a direct child of div.divide-y
+          const divider = card.querySelector(".divide-y");
+          if (!divider) continue;
 
-          for (const row of timeElements) {
-            if (!row) continue;
+          const rows = Array.from(divider.children);
+          for (const row of rows) {
+            // Date container: div.w-28 with two child divs
+            const dateContainer = row.querySelector(".w-28");
+            if (!dateContainer) continue;
 
-            // Extract datetime — prefer <time datetime="..."> attribute
-            const timeEl = row.querySelector("time[datetime]");
-            let datetime = timeEl?.getAttribute("datetime") || "";
+            const dateDiv = dateContainer.querySelector(".text-text-primary");
+            const timeDiv = dateContainer.querySelector(".text-accent-highlight");
+            const dateText = dateDiv?.textContent?.trim() || ""; // "Tue 10 Mar"
+            const timeText = timeDiv?.textContent?.trim() || ""; // "21:45"
 
-            // Fallback: look for data attributes
-            if (!datetime) {
-              const dataTime =
-                row.getAttribute("data-datetime") ||
-                row.getAttribute("data-time") ||
-                row.getAttribute("data-start");
-              if (dataTime) datetime = dataTime;
-            }
-
-            // Fallback: parse displayed time text combined with date context
-            if (!datetime && timeEl) {
-              datetime = timeEl.textContent?.trim() || "";
-            }
-
-            // Skip if we couldn't get any time info
+            // Combine date + time into a parseable string
+            const datetime = dateText && timeText ? `${dateText} ${timeText}` : "";
             if (!datetime) continue;
 
             // Booking URL
-            const bookLink = row.querySelector('a[target="_blank"][rel="noopener noreferrer"]')
-              || row.querySelector('a[href*="book"]')
-              || row.querySelector("a[href^='http']");
+            const bookLink = row.querySelector('a[target="_blank"]');
             const bookingUrl = bookLink?.getAttribute("href") || "";
 
-            // Screen info
-            const screenEl = row.querySelector("[class*='screen'], [data-screen]");
-            const screen = screenEl?.textContent?.trim() || null;
-
-            // Format info (IMAX, 35mm, etc.)
-            const formatEl = row.querySelector("[class*='format'], [data-format], .badge");
-            const format = formatEl?.textContent?.trim() || null;
+            // Format badges (IMAX, 35mm, etc.)
+            const badges = Array.from(row.querySelectorAll(".badge, [class*='badge']"));
+            const format = badges.length > 0
+              ? badges.map((b) => b.textContent?.trim()).filter(Boolean).join(", ")
+              : null;
 
             results.push({
               filmSlug,
@@ -264,7 +253,7 @@ async function extractScreeningsFromDetail(
               cinemaId: null,
               datetime,
               bookingUrl,
-              screen,
+              screen: null,
               format,
             });
           }
