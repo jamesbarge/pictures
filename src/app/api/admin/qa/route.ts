@@ -20,7 +20,7 @@ export const POST = withAdminAuth(async (req, admin) => {
       // No body or invalid JSON — use default
     }
 
-    const handle = await tasks.trigger("qa-orchestrator", {
+    const handle = await tasks.trigger("qa-pipeline", {
       dryRun,
       triggeredBy: admin.userId,
     });

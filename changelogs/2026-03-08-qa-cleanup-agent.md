@@ -37,6 +37,14 @@
 
 - `src/agents/types.ts` — Added 2 new DataIssueType values
 - `src/trigger/utils/alert-tiers.ts` — Registered QA tasks in tier system
+- `src/trigger/qa/orchestrator.ts` — Split into `qaPipeline` (regular task) + `qaOrchestrator` (cron wrapper) so API triggers use a regular task type that Trigger.dev dispatches reliably
+- `src/app/api/admin/qa/route.ts` — Updated to trigger `qa-pipeline` instead of `qa-orchestrator`
+- `src/trigger/qa/utils/db-fixer.ts` — Made `insertAuditRecord` non-fatal (try/catch) to prevent audit trail DB errors from crashing the pipeline
+- `src/db/enrich-letterboxd.ts` — Exported `titleToSlug` for reuse
+
+## Production Fixes
+
+- Created `data_issues` table in production Supabase (schema existed in code but table was never migrated)
 
 ## Impact
 

@@ -1,33 +1,26 @@
 /**
  * QA Orchestrator — Daily QA Pipeline Coordinator
  *
- * Runs daily at 6am UTC. Coordinates:
- *   1. qa-browse (Playwright extraction)
- *   2. qa-analyze-and-fix (DB comparison + Gemini + auto-fix)
- *   3. Telegram summary report
+ * Two exported tasks:
+ *   1. qaOrchestrator (schedules.task) — Cron trigger, daily 6am UTC
+ *   2. qaPipeline (task) — The actual pipeline logic, API-triggerable
+ *
+ * The cron wrapper delegates to qaPipeline so that both scheduled runs
+ * and on-demand API triggers use the same regular task type, which
+ * Trigger.dev dispatches reliably.
  */
 
-import { schedules, tasks } from "@trigger.dev/sdk/v3";
+import { schedules, task, tasks } from "@trigger.dev/sdk/v3";
 import { sendTelegramAlert } from "../utils/telegram";
 import type { QaBrowseOutput, QaAnalysisOutput, QaOrchestratorOutput } from "./types";
 
-export const qaOrchestrator = schedules.task({
-  id: "qa-orchestrator",
-  cron: "0 6 * * *", // Daily 6am UTC (7am BST)
+// ── Regular task: the actual pipeline (API-triggerable) ──────────────
+export const qaPipeline = task({
+  id: "qa-pipeline",
   maxDuration: 3600, // 60 min budget
   retry: { maxAttempts: 0 },
-  run: async (payload): Promise<QaOrchestratorOutput> => {
-    const externalPayload = payload.externalId
-      ? undefined
-      : (payload as unknown as { dryRun?: boolean; triggeredBy?: string });
-    const dryRun = externalPayload?.dryRun ?? true; // Default true for safety
-
-    // Monday overlap guard: scrape-all runs at 3am UTC on Mondays
-    const now = new Date();
-    if (now.getUTCDay() === 1 && now.getUTCHours() < 5) {
-      console.log("[qa] Skipping — Monday early morning, scrape-all may be running");
-      return { skipped: true, reason: "monday_overlap_guard" };
-    }
+  run: async (payload: { dryRun?: boolean; triggeredBy?: string }): Promise<QaOrchestratorOutput> => {
+    const dryRun = payload.dryRun ?? true; // Default true for safety
 
     console.log(`[qa] Starting QA pipeline, dryRun=${dryRun}`);
 
@@ -117,6 +110,34 @@ export const qaOrchestrator = schedules.task({
       issueCount: analysisOutput.stats.totalIssues,
       fixCount: analysisOutput.stats.fixesApplied,
     };
+  },
+});
+
+// ── Scheduled task: thin cron wrapper ────────────────────────────────
+export const qaOrchestrator = schedules.task({
+  id: "qa-orchestrator",
+  cron: "0 6 * * *", // Daily 6am UTC (7am BST)
+  maxDuration: 3600,
+  retry: { maxAttempts: 0 },
+  run: async () => {
+    // Monday overlap guard: scrape-all runs at 3am UTC on Mondays
+    const now = new Date();
+    if (now.getUTCDay() === 1 && now.getUTCHours() < 5) {
+      console.log("[qa] Skipping — Monday early morning, scrape-all may be running");
+      return { skipped: true, reason: "monday_overlap_guard" };
+    }
+
+    // Delegate to the regular task (which is API-triggerable)
+    const handle = await tasks.triggerAndWait<typeof qaPipeline>(
+      "qa-pipeline",
+      { dryRun: true } // Cron runs default to dry-run for safety
+    );
+
+    if (!handle.ok) {
+      throw new Error(`QA pipeline failed: ${handle.error}`);
+    }
+
+    return handle.output;
   },
 });
 

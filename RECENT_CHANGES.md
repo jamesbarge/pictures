@@ -14,6 +14,9 @@ When an entry is added here, also create a detailed file in /changelogs/
 - Double-check verification gate before all DB writes (TMDB cross-reference, UNIQUE constraint check)
 - Gemini-powered prevention report with specific code/config recommendations
 - DRY_RUN=true by default for safe rollout; admin API at POST /api/admin/qa for on-demand triggers
+- Split orchestrator into `qaPipeline` (regular task, API-triggerable) + `qaOrchestrator` (cron wrapper) for reliable dispatching
+- Made audit trail (`insertAuditRecord`) non-fatal so DB issues don't crash the pipeline
+- Created missing `data_issues` table in production Supabase
 
 ---
 

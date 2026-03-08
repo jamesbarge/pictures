@@ -144,20 +144,26 @@ async function insertAuditRecord(
   issue: ClassifiedIssue,
   applied: boolean
 ): Promise<void> {
-  await db.insert(dataIssues).values({
-    id: crypto.randomUUID(),
-    type: mapToDataIssueType(issue.type),
-    severity: issue.severity,
-    entityType: issue.entityType,
-    entityId: issue.entityId,
-    description: issue.description,
-    suggestedFix: issue.suggestedFix,
-    confidence: issue.confidence,
-    status: applied ? "auto_fixed" : "open",
-    agentName: "qa-cleanup",
-    resolvedAt: applied ? new Date() : undefined,
-    resolvedBy: applied ? "qa-cleanup" : undefined,
-  });
+  try {
+    await db.insert(dataIssues).values({
+      id: crypto.randomUUID(),
+      type: mapToDataIssueType(issue.type),
+      severity: issue.severity,
+      entityType: issue.entityType,
+      entityId: issue.entityId,
+      description: issue.description,
+      suggestedFix: issue.suggestedFix,
+      confidence: issue.confidence,
+      status: applied ? "auto_fixed" : "open",
+      agentName: "qa-cleanup",
+      resolvedAt: applied ? new Date() : undefined,
+      resolvedBy: applied ? "qa-cleanup" : undefined,
+    });
+  } catch (err) {
+    // Audit trail failure must never crash the pipeline
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[qa-fixer] Audit record insert failed: ${msg}`);
+  }
 }
 
 // ── Public API ────────────────────────────────────────────────
