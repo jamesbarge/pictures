@@ -7,8 +7,7 @@
 
 import { db } from "@/db";
 import { screenings, films, dataIssues } from "@/db/schema";
-import { eq } from "drizzle-orm";
-import { enrichLetterboxdRatings } from "@/db/enrich-letterboxd";
+import { eq, inArray } from "drizzle-orm";
 import type {
   ClassifiedIssue,
   FixResult,
@@ -113,8 +112,11 @@ async function executeFixOperation(issue: ClassifiedIssue): Promise<void> {
     }
 
     case "missing_letterboxd":
-      await enrichLetterboxdRatings();
-      console.log("[qa-fixer] Ran Letterboxd enrichment");
+      // Flag only — inline enrichment is too slow for QA pipeline.
+      // The weekly enrichment-letterboxd task handles this.
+      console.log(
+        `[qa-fixer] Flagged missing Letterboxd for film ${issue.entityId}`
+      );
       break;
 
     case "broken_booking_link":
@@ -255,7 +257,46 @@ export async function applyFixes(
 ): Promise<FixResult[]> {
   const results: FixResult[] = [];
 
-  for (const issue of issues) {
+  // ── Bulk-delete stale screenings (single query instead of N) ──
+  const staleIssues = issues.filter((i) => i.type === "stale_screening");
+  const otherIssues = issues.filter((i) => i.type !== "stale_screening");
+
+  if (staleIssues.length > 0) {
+    const staleIds = staleIssues.map((i) => i.entityId);
+
+    if (dryRun) {
+      console.log(
+        `[qa-fixer] DRY RUN: would bulk-delete ${staleIds.length} stale screenings`
+      );
+      for (const issue of staleIssues) {
+        results.push({ issue, applied: false, action: "deleted_stale_screening", note: "dry run" });
+      }
+    } else {
+      try {
+        // Bulk delete in batches of 100
+        for (let i = 0; i < staleIds.length; i += 100) {
+          const batch = staleIds.slice(i, i + 100);
+          await db.delete(screenings).where(inArray(screenings.id, batch));
+        }
+        console.log(`[qa-fixer] Bulk-deleted ${staleIds.length} stale screenings`);
+        for (const issue of staleIssues) {
+          results.push({ issue, applied: true, action: "deleted_stale_screening", note: "bulk deleted" });
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(`[qa-fixer] Bulk stale delete failed: ${msg}`);
+        for (const issue of staleIssues) {
+          results.push({ issue, applied: false, action: "flagged_for_review", note: `Bulk delete failed: ${msg}` });
+        }
+      }
+    }
+
+    // Batch insert audit records for stale screenings
+    await batchInsertAuditRecords(staleIssues, !dryRun);
+  }
+
+  // ── Process remaining issues individually ──
+  for (const issue of otherIssues) {
     const result = await applyFix(issue, dryRun);
     results.push(result);
   }
@@ -264,4 +305,35 @@ export async function applyFixes(
     `[qa-fixer] Batch complete: ${results.filter((r) => r.applied).length}/${results.length} fixes applied`
   );
   return results;
+}
+
+async function batchInsertAuditRecords(
+  issues: ClassifiedIssue[],
+  applied: boolean
+): Promise<void> {
+  try {
+    const records = issues.map((issue) => ({
+      id: crypto.randomUUID(),
+      type: mapToDataIssueType(issue.type),
+      severity: issue.severity,
+      entityType: issue.entityType as "screening" | "film" | "cinema",
+      entityId: issue.entityId,
+      description: issue.description.slice(0, 500),
+      suggestedFix: issue.suggestedFix,
+      confidence: issue.confidence,
+      status: (applied ? "auto_fixed" : "open") as "open" | "auto_fixed",
+      agentName: "qa-cleanup",
+      resolvedAt: applied ? new Date() : undefined,
+      resolvedBy: applied ? "qa-cleanup" : undefined,
+    }));
+
+    // Insert in batches of 50
+    for (let i = 0; i < records.length; i += 50) {
+      await db.insert(dataIssues).values(records.slice(i, i + 50));
+    }
+    console.log(`[qa-fixer] Inserted ${records.length} audit records`);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[qa-fixer] Batch audit insert failed: ${msg}`);
+  }
 }
