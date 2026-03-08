@@ -9,7 +9,7 @@ import { eq, isNull, gte, and } from "drizzle-orm";
 import * as cheerio from "cheerio";
 
 // Convert title to Letterboxd URL slug
-function titleToSlug(title: string, year?: number | null): string {
+export function titleToSlug(title: string, year?: number | null): string {
   // Letterboxd uses lowercase, hyphenated slugs
   // Remove special characters, replace spaces with hyphens
   const slug = title

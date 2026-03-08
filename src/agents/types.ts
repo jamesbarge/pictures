@@ -31,7 +31,9 @@ export type DataIssueType =
   | "navigation_scrape"
   | "html_in_title"
   | "duplicate_titles"
-  | "encoding_issue";
+  | "encoding_issue"
+  | "front_end_db_mismatch"
+  | "booking_page_wrong_film";
 
 // Severity levels for issues
 export type IssueSeverity = "critical" | "warning" | "info";

@@ -16,13 +16,13 @@ export interface AlertContext {
  */
 export function classifyAlert(taskId: string, _error?: string): AlertTier {
   // P1: Orchestrator failures are always critical
-  if (taskId === "scrape-all-orchestrator") return "P1";
+  if (taskId === "scrape-all-orchestrator" || taskId === "qa-orchestrator") return "P1";
 
   // P1: Chain-wide failures affect many venues
   if (taskId.startsWith("scraper-chain-")) return "P1";
 
-  // P2: Individual scraper or enrichment failures
-  if (taskId.startsWith("scraper-") || taskId.startsWith("enrichment-")) return "P2";
+  // P2: Individual scraper, enrichment, or QA sub-task failures
+  if (taskId.startsWith("scraper-") || taskId.startsWith("enrichment-") || taskId.startsWith("qa-")) return "P2";
 
   // P3: Everything else (partial failures, warnings)
   return "P3";

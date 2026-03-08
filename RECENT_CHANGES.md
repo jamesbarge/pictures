@@ -5,6 +5,21 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-08: QA Cleanup Agent — Daily Front-End Verification Pipeline
+**Branch**: `feat/qa-cleanup-agent` | **Files**: `src/trigger/qa/*`, `src/app/api/admin/qa/route.ts`, `src/agents/types.ts`, `src/trigger/utils/alert-tiers.ts`
+- New daily QA pipeline (6am UTC): browses pictures.london with Playwright, compares against DB, auto-fixes discrepancies
+- 3-task architecture: `qa-browse` (Playwright extraction) → `qa-analyze-and-fix` (DB comparison + Gemini analysis + auto-fix) → Telegram report
+- Detects: stale screenings, broken booking links, TMDB mismatches, missing Letterboxd ratings, time mismatches
+- Scope classification: spot issues vs systemic patterns (e.g., all BFI links broken → cinema-level critical alert)
+- Double-check verification gate before all DB writes (TMDB cross-reference, UNIQUE constraint check)
+- Gemini-powered prevention report with specific code/config recommendations
+- DRY_RUN=true by default for safe rollout; admin API at POST /api/admin/qa for on-demand triggers
+- Split orchestrator into `qaPipeline` (regular task, API-triggerable) + `qaOrchestrator` (cron wrapper) for reliable dispatching
+- Made audit trail (`insertAuditRecord`) non-fatal so DB issues don't crash the pipeline
+- Created missing `data_issues` table in production Supabase
+
+---
+
 ## 2026-03-07: Fix BST Timezone Offset & AI Hallucination Guard
 **Branch**: `fix/scraper-logs` | **Files**: `src/scrapers/utils/date-parser.ts`, `src/lib/title-extraction/ai-extractor.ts`, `src/lib/title-extraction/patterns.ts`, `src/scrapers/utils/film-title-cleaner.ts`, 7 cinema scrapers
 - Fixed BST timezone offset: screenings in BST dates showed 1 hour ahead because scrapers used `new Date(year, month, day)` (server local = UTC on Trigger.dev). Changed all date construction to `Date.UTC()` + `ukLocalToUTC()` for correct UTC storage.
