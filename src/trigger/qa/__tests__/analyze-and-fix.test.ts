@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { normalizeTitle } from "../utils/title-utils";
+import { normalizeTitle, parseRelativeDatetime } from "../utils/title-utils";
 
 describe("normalizeTitle", () => {
   it("normalizes basic titles", () => {
@@ -141,6 +141,47 @@ describe("time mismatch detection", () => {
     const diffMinutes = Math.abs(expectedUtc.getTime() - dbStored.getTime()) / 60_000;
     expect(diffMinutes).toBe(60); // 1 hour off due to BST
     expect(diffMinutes > 5).toBe(true);
+  });
+});
+
+describe("parseRelativeDatetime", () => {
+  const ref = new Date("2026-03-08T11:00:00Z");
+
+  it("parses 'Today HH:MM'", () => {
+    const result = parseRelativeDatetime("Today 11:00", ref);
+    expect(result).toBeTruthy();
+    expect(new Date(result!).getHours()).toBe(11);
+    expect(new Date(result!).getMinutes()).toBe(0);
+    expect(new Date(result!).getDate()).toBe(8);
+  });
+
+  it("parses 'Tomorrow HH:MM'", () => {
+    const result = parseRelativeDatetime("Tomorrow 14:30", ref);
+    expect(result).toBeTruthy();
+    expect(new Date(result!).getDate()).toBe(9);
+    expect(new Date(result!).getHours()).toBe(14);
+    expect(new Date(result!).getMinutes()).toBe(30);
+  });
+
+  it("parses 'Day DD Mon HH:MM'", () => {
+    const result = parseRelativeDatetime("Thu 12 Mar 17:40", ref);
+    expect(result).toBeTruthy();
+    const d = new Date(result!);
+    expect(d.getDate()).toBe(12);
+    expect(d.getMonth()).toBe(2); // March = 2
+    expect(d.getHours()).toBe(17);
+    expect(d.getMinutes()).toBe(40);
+  });
+
+  it("returns null for unparseable strings", () => {
+    expect(parseRelativeDatetime("")).toBeNull();
+    expect(parseRelativeDatetime("invalid")).toBeNull();
+    expect(parseRelativeDatetime("Some random text")).toBeNull();
+  });
+
+  it("returns null for missing time", () => {
+    expect(parseRelativeDatetime("Today")).toBeNull();
+    expect(parseRelativeDatetime("Thu 12 Mar")).toBeNull();
   });
 });
 

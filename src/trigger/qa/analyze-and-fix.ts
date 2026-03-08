@@ -10,7 +10,7 @@ import { task } from "@trigger.dev/sdk/v3";
 import { db } from "@/db";
 import { screenings, films } from "@/db/schema";
 import { eq, gte, lte, and, lt } from "drizzle-orm";
-import { normalizeTitle } from "./utils/title-utils";
+import { normalizeTitle, parseRelativeDatetime } from "./utils/title-utils";
 import {
   analyzeTmdbMismatch,
   analyzeBookingPageContent,
@@ -77,6 +77,9 @@ export const qaAnalyzeAndFix = task({
 
     // ── Step B: Deterministic Checks ───────────────────────────────
 
+    // Reference date for parsing relative datetime strings ("Today 11:00")
+    const referenceDate = new Date(browseOutput.extractedAt);
+
     // B1: Stale screenings (datetime < now - 2h grace period)
     const now = new Date();
     const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60_000);
@@ -127,8 +130,11 @@ export const qaAnalyzeAndFix = task({
     for (const feScreening of browseOutput.screenings) {
       if (!feScreening.datetime || !feScreening.cinemaName) continue;
 
-      const feDateMs = new Date(feScreening.datetime).getTime();
-      if (isNaN(feDateMs)) continue;
+      // Parse relative datetime strings ("Today 11:00", "Thu 12 Mar 17:40")
+      const parsedIso = parseRelativeDatetime(feScreening.datetime, referenceDate);
+      if (!parsedIso) continue;
+
+      const feDateMs = new Date(parsedIso).getTime();
 
       // Find corresponding DB screening by cinema + title + approximate date (same day)
       const feNorm = normalizeTitle(feScreening.filmTitle);
@@ -156,12 +162,12 @@ export const qaAnalyzeAndFix = task({
           severity: "warning",
           entityType: "screening",
           entityId: dbMatch.screeningId,
-          description: `Time mismatch: front-end shows ${feScreening.datetime}, DB has ${dbMatch.datetime.toISOString()} (diff: ${Math.round(diffMs / 60_000)}min)`,
-          suggestedFix: `Update screening datetime to ${feScreening.datetime}`,
+          description: `Time mismatch: front-end shows "${feScreening.datetime}" (parsed: ${parsedIso}), DB has ${dbMatch.datetime.toISOString()} (diff: ${Math.round(diffMs / 60_000)}min)`,
+          suggestedFix: `Update screening datetime to ${parsedIso}`,
           confidence: 0.85,
           metadata: {
             filmTitle: feScreening.filmTitle,
-            correctedDatetime: new Date(feScreening.datetime).toISOString(),
+            correctedDatetime: parsedIso,
             fromStructuredData: false, // DOM-extracted times — conservative
           },
         });
@@ -237,7 +243,9 @@ export const qaAnalyzeAndFix = task({
 
         // Datetime proximity: within 30 minutes
         if (feScreening.datetime && db.datetime) {
-          const feDateMs = new Date(feScreening.datetime).getTime();
+          const parsedFe = parseRelativeDatetime(feScreening.datetime, referenceDate);
+          if (!parsedFe) return false;
+          const feDateMs = new Date(parsedFe).getTime();
           const dbDateMs = db.datetime.getTime();
           if (Math.abs(feDateMs - dbDateMs) > 30 * 60_000) return false;
         }
