@@ -364,9 +364,13 @@ function parseScreeningLine(line: string, pdfYear: number): ParsedScreening[] {
 
     const datetime = new Date(year, monthNum, parseInt(date, 10), parseInt(hours, 10), parseInt(minutes, 10));
 
-    // Map venue to cinema ID
+    // Map venue to cinema ID — reject unknown venues instead of defaulting
     const venueUpper = venue.toUpperCase();
-    const cinemaId = VENUE_MAP[venueUpper] || "bfi-southbank";
+    const cinemaId = VENUE_MAP[venueUpper];
+    if (!cinemaId) {
+      console.warn(`[BFI-PDF] Unknown venue "${venue}", skipping screening`);
+      continue;
+    }
 
     screenings.push({
       day: day.toUpperCase(),
@@ -381,6 +385,21 @@ function parseScreeningLine(line: string, pdfYear: number): ParsedScreening[] {
   }
 
   return screenings;
+}
+
+/**
+ * Detect garbled or suspicious titles from scraping errors.
+ */
+function isSuspiciousTitle(title: string): boolean {
+  // Starts with lowercase word (likely a fragment — "of 4K Restoration...")
+  if (/^[a-z]/.test(title) && !title.startsWith("de ") && !title.startsWith("la ") && !title.startsWith("el ")) {
+    return true;
+  }
+  // Contains obvious PDF parsing artifacts like "p12" page references
+  if (/\bp\d{1,2}$/.test(title)) return true;
+  // Extremely short titles
+  if (title.length < 3) return true;
+  return false;
 }
 
 /**
@@ -406,11 +425,18 @@ function convertToRawScreenings(films: ParsedFilm[], pdfLabel: string): RawScree
       else if (/preview/i.test(film.title)) eventType = "preview";
       else if (/premiere/i.test(film.title)) eventType = "premiere";
 
-      // Clean title
+      // Clean title — only strip prefix when followed by colon
+      // e.g. "Preview: Film" → "Film", but NOT "UK Premiere of 4K Restoration: X"
       const cleanTitle = film.title
         .replace(/\s*\+\s*(Q\s*&?\s*A|intro|discussion|panel).*$/i, "")
-        .replace(/^(Preview|UK Premiere|Premiere)[:\s]+/i, "")
+        .replace(/^(Preview|UK Premiere|Premiere):\s*/i, "")
         .trim();
+
+      // Reject titles that look garbled
+      if (isSuspiciousTitle(cleanTitle)) {
+        console.warn(`[BFI-PDF] Rejecting suspicious title: "${cleanTitle}" (from "${film.title}")`);
+        continue;
+      }
 
       const rawScreening: RawScreening = {
         filmTitle: cleanTitle,

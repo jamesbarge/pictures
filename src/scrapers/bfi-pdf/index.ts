@@ -19,3 +19,6 @@ export type { ProgrammeChange, ParsedChangeScreening, ProgrammeChangesResult } f
 
 export { runBFIImport, runProgrammeChangesImport, scrape } from "./importer";
 export type { ImportResult } from "./importer";
+
+export { runBFICleanup } from "./cleanup";
+export type { BFICleanupResult } from "./cleanup";

@@ -407,8 +407,9 @@ export class BFIScraper {
   private cleanTitle(title: string): string {
     return title
       .replace(/\s*\+\s*(Q\s*&?\s*A|intro|discussion|panel).*$/i, "")
-      .replace(/^(Preview|UK Premiere|Premiere)[:\s]+/i, "")
-      .replace(/\s*\(.*?\)\s*$/, "")
+      // Only strip prefix when followed by colon (e.g. "Preview: Film Title")
+      // NOT "UK Premiere of 4K Restoration: The Razor's Edge" (would leave "of 4K...")
+      .replace(/^(Preview|UK Premiere|Premiere):\s*/i, "")
       .trim();
   }
 
@@ -422,12 +423,34 @@ export class BFIScraper {
       if (s.datetime < now) return false;
       if (!s.bookingUrl || s.bookingUrl.trim() === "") return false;
 
+      // Reject titles that look garbled (common scraping artifacts)
+      if (this.isSuspiciousTitle(s.filmTitle)) {
+        console.warn(`[${this.config.cinemaId}] Rejecting suspicious title: "${s.filmTitle}"`);
+        return false;
+      }
+
       // Deduplicate by sourceId
       if (s.sourceId && seen.has(s.sourceId)) return false;
       if (s.sourceId) seen.add(s.sourceId);
 
       return true;
     });
+  }
+
+  /**
+   * Detect garbled or suspicious titles from scraping errors.
+   * Returns true if the title looks wrong and should be rejected.
+   */
+  private isSuspiciousTitle(title: string): boolean {
+    // Starts with lowercase word (likely a fragment — "of 4K Restoration...")
+    if (/^[a-z]/.test(title) && !title.startsWith("de ") && !title.startsWith("la ") && !title.startsWith("el ")) {
+      return true;
+    }
+    // Contains obvious PDF parsing artifacts
+    if (/\bp\d{1,2}$/.test(title)) return true; // "Hamnet p12"
+    // Extremely short single-word titles are suspicious
+    if (title.length < 3) return true;
+    return false;
   }
 
   async healthCheck(): Promise<boolean> {

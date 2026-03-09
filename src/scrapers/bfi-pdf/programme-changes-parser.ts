@@ -292,9 +292,13 @@ function parseScreeningsFromText(text: string): ParsedChangeScreening[] {
     if (/\bCC\b/.test(fullMatch)) accessibilityFlags.push("CC");
     if (/\bBSL\b/.test(fullMatch)) accessibilityFlags.push("BSL");
 
-    // Map venue
+    // Map venue — reject unknown venues instead of defaulting
     const venueUpper = venue.toUpperCase().replace("BFI ", "");
-    const cinemaId = VENUE_MAP[venueUpper] || "bfi-southbank";
+    const cinemaId = VENUE_MAP[venueUpper];
+    if (!cinemaId) {
+      console.warn(`[BFI-Changes] Unknown venue "${venue}", skipping screening`);
+      continue;
+    }
 
     screenings.push({
       datetime,
@@ -396,8 +400,9 @@ function extractNote(text: string): string {
 function cleanTitle(title: string): string {
   return title
     .replace(/\s*\+\s*(Q\s*&?\s*A|intro|discussion|panel).*$/i, "")
-    .replace(/^(Preview|UK Premiere|Premiere)[:\s]+/i, "")
-    .replace(/\s*\([^)]+\)\s*$/, "")
+    // Only strip prefix when followed by colon (e.g. "Preview: Film Title")
+    // NOT "UK Premiere of 4K Restoration: The Razor's Edge"
+    .replace(/^(Preview|UK Premiere|Premiere):\s*/i, "")
     .trim();
 }
 
