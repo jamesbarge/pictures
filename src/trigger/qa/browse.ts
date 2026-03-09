@@ -16,7 +16,7 @@ import type { QaBrowseOutput, BrowseError } from "./types";
 
 export const qaBrowse = task({
   id: "qa-browse",
-  machine: { preset: "medium-1x" },
+  machine: { preset: "large-1x" },
   maxDuration: 1800, // 30 min
   retry: { maxAttempts: 0 },
   run: async (payload: { dryRun: boolean }): Promise<QaBrowseOutput> => {
