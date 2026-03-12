@@ -5,6 +5,13 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-13: Kaizen — remove unused _payload params (batch 2)
+**PR**: #XX | **Files**: 5 independent scrapers (david-lean, genesis, rio, ica, peckhamplex)
+- Remove unused `_payload` param and `ScraperTaskPayload` import from 5 independent scraper task handlers
+- Kaizen automated refactoring (category: lint-fix)
+
+---
+
 ## 2026-03-13: Kaizen — remove unused _payload and _error params
 **PR**: #XX | **Files**: 3 chain scrapers, `alert-tiers.ts`, `on-failure.ts`
 - Remove unused `_payload` param from 3 chain scraper task handlers (curzon, everyman, picturehouse)
