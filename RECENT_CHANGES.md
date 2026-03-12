@@ -1430,3 +1430,10 @@ When an entry is added here, also create a detailed file in /changelogs/
 - Admin dashboard at `/admin/data-quality`
 
 ---
+
+## 2026-03-13: Kaizen — extract scoring constants in TMDB match.ts
+**PR**: #238 | **Files**: `src/lib/tmdb/match.ts`
+- Extracted 14 magic numbers from TMDB film matching algorithm into named constants
+- Kaizen automated refactoring (category: extract-constant)
+
+---
