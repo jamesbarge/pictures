@@ -9,6 +9,7 @@
  */
 
 import type { RawScreening, ScraperConfig, CinemaScraper, VenueConfig } from "../types";
+import { CHROME_USER_AGENT } from "../constants";
 import { checkHealth } from "../utils/health-check";
 
 // ============================================================================
@@ -138,7 +139,7 @@ export class ElectricScraper implements CinemaScraper {
       const response = await fetch(this.apiUrl, {
         headers: {
           "Accept": "application/json",
-          "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+          "User-Agent": CHROME_USER_AGENT,
           "Referer": "https://www.electriccinema.co.uk/",
         },
       });

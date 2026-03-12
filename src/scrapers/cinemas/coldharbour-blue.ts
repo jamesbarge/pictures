@@ -9,6 +9,7 @@
  */
 
 import type { RawScreening, ScraperConfig, CinemaScraper } from "../types";
+import { CHROME_USER_AGENT } from "../constants";
 import { parseUKLocalDateTime } from "../utils/date-parser";
 import { checkHealth } from "../utils/health-check";
 
@@ -91,7 +92,7 @@ export class ColdharbourBlueScraper implements CinemaScraper {
       const response = await fetch(`${this.apiUrl}?per_page=100`, {
         headers: {
           "Accept": "application/json",
-          "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+          "User-Agent": CHROME_USER_AGENT,
           "Referer": "https://www.coldharbourblue.com/",
         },
       });
