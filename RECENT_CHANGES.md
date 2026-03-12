@@ -5,6 +5,13 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-12: Kaizen — Organize imports in trigger QA and scraper-wrapper
+**PR**: #168 | **Files**: `db-fixer.ts`, `analyze-and-fix.ts`, `scraper-wrapper.ts`
+- Applied 3-tier import grouping (external → `@/` internal → relative) with blank line separators
+- Kaizen automated refactoring (category: import-organization)
+
+---
+
 ## 2026-03-12: Kaizen — Rename single-letter vars in booking-checker titleConfidence
 **PR**: #167 | **Files**: `booking-checker.ts`
 - Renamed `a`/`b` → `normalizedDetected`/`normalizedExpected`, `aTokens`/`bTokens` → `detectedBigrams`/`expectedBigrams`, `t` → `bigram`
