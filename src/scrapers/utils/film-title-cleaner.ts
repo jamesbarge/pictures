@@ -109,6 +109,16 @@ export const EVENT_PREFIXES = [
   /^rbo[:\s]+/i,
   /^nt\s+live[:\s]+/i,
   /^met\s+opera[:\s]+/i,
+
+  // Community / cultural screening series
+  /^screen\s+cuba\s+presents?[:\s]+/i,
+  /^shasha\s+movies?\s+presents?[:\s]+/i,
+  /^lafs\s+presents?[:\s]+/i,
+  /^lost\s+reels[:\s]+/i,
+  /^funeral\s+parade\s+presents?[:\s]+/i,
+  /^queer\s+east\s+presents?[:\s]+/i,
+  /^girls?\s+in\s+film\s+presents?[:\s]+/i,
+  /^east\s+london\s+doc\s+club[:\s]+/i,
 ];
 
 /**
@@ -131,6 +141,12 @@ export function cleanFilmTitle(title: string): string {
       break;
     }
   }
+
+  // Strip pagination artifacts from BFI titles (e.g. "The Chronology of Water p17")
+  cleaned = cleaned.replace(/\s+p\d{1,3}\s*$/i, "").trim();
+
+  // Strip "on 35mm" / "on 70mm" film format suffixes (PCC/Lost Reels style)
+  cleaned = cleaned.replace(/\s+on\s+(35mm|70mm)\s*$/i, "").trim();
 
   // Handle remaining colon-separated titles where film is after colon
   // but only if the part before colon looks like an event name (not a film title)
@@ -177,6 +193,10 @@ export function cleanFilmTitle(title: string): string {
     .replace(/\s*\[.*?\]\s*$/g, "")
     // Remove trailing "- 35mm", "- 70mm" format notes (already captured as format)
     .replace(/\s*-\s*(35mm|70mm|4k|imax)\s*$/i, "")
+    // Remove duration-prefixed event suffixes: "(60 mins) + Panel" — must come before Q&A strip
+    .replace(/\s*\(\d+\s*mins?\)\s*\+.*$/i, "")
+    // Remove complex event suffixes: "+ Live Recording of PPF Podcast...", "+ Panel hosted by..."
+    .replace(/\s*\+\s+[A-Z][\w\s]+(?:Q&A|Recording|Podcast|hosted\s+by).*$/i, "")
     // Remove trailing "+ Q&A" (including HTML-encoded &amp;) / "+ pre-recorded intro by ..." / "+ discussion with ..." / "+ Live Music"
     .replace(/\s*\+\s*(q\s*(&amp;|&)\s*a|discussion|intro|live\s+music)\b.*$/i, "")
     // Remove trailing format parentheticals like "(ON VHS)", "(ON 35MM)"

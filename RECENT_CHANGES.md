@@ -1,5 +1,15 @@
 # Recent Changes
 
+## 2026-03-12: Scraper title & classification pattern fixes
+**PR**: #255 | **Files**: `film-title-cleaner.ts`, `content-classifier.ts`, `bfi.ts`
+- Add 8 new event prefix patterns (Screen Cuba, Shasha Movies, LAFS, Lost Reels, Funeral Parade, Queer East, Girls in Film, East London Doc Club)
+- Add suffix stripping: pagination artifacts (p17), "on 35mm/70mm", complex Q&A/event, duration-prefixed
+- Expand quickClassify() with event, live broadcast, and concert patterns
+- BFI: clean pagination titles instead of rejecting them (recovers lost screenings)
+- 51 new tests covering all patterns
+
+---
+
 ## 2026-03-13: Fix CI Node version + regenerate lockfile
 **PR**: #252 | **Files**: `.github/workflows/*.yml`, `package-lock.json`, `package.json`, `.npmrc`
 - Bump ALL GitHub Actions workflows Node 22→24 to match Vercel production

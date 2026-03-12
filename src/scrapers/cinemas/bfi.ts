@@ -415,8 +415,8 @@ export class BFIScraper {
     if (/^[a-z]/.test(title) && !title.startsWith("de ") && !title.startsWith("la ") && !title.startsWith("el ")) {
       return true;
     }
-    // Contains obvious PDF parsing artifacts
-    if (/\bp\d{1,2}$/.test(title)) return true; // "Hamnet p12"
+    // Note: pagination artifacts like "Hamnet p12" are now cleaned by cleanFilmTitle()
+    // in the pipeline, so we no longer reject them here
     // Extremely short single-word titles are suspicious
     if (title.length < 3) return true;
     return false;
