@@ -1,5 +1,17 @@
 # Recent Changes
 
+## 2026-03-12: Enrichment pipeline — post-scrape trigger & daily sweep
+**PR**: #TBD | **Files**: `post-scrape.ts`, `daily-sweep.ts`, `title-variations.ts`, `scraper-wrapper.ts`, `enrichment.ts`
+- Add post-scrape enrichment trigger: automatically enrich unenriched films after each scraper run
+- Add daily enrichment sweep (4:30am UTC, skip Monday): TMDB matching, backfill, Letterboxd, poster sourcing
+- Add title variation strategy for TMDB search (7 variation generators from raw title)
+- Add enrichmentStatus JSONB column to films table for intelligent retry with backoff
+- Add cleanFilmTitleWithMetadata() returning stripped prefix/suffix metadata
+- Add Picturehouse showtime deduplication by datetime+screen
+- Telegram summary on sweep completion
+
+---
+
 ## 2026-03-12: Scraper title & classification pattern fixes
 **PR**: #255 | **Files**: `film-title-cleaner.ts`, `content-classifier.ts`, `bfi.ts`
 - Add 8 new event prefix patterns (Screen Cuba, Shasha Movies, LAFS, Lost Reels, Funeral Parade, Queer East, Girls in Film, East London Doc Club)

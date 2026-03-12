@@ -2,6 +2,7 @@ import { runScraper, type ScraperRunnerConfig, type RunnerOptions, type RunnerRe
 
 import { verifyScraperOutput } from "../verification";
 import { sendVerificationAlert } from "../verification-alerts";
+import { postScrapeEnrichment } from "../enrichment/post-scrape";
 
 /** 4s spacing between Gemini calls to stay within 15 RPM */
 const VERIFICATION_PACING_MS = 4_000;
@@ -38,7 +39,7 @@ export async function runScraperAndVerify(
     try {
       const verification = await verifyScraperOutput({
         cinemaId: vr.venueId,
-        cinemaName: venueNameMap.get(vr.venueId) ?? vr.venueName,
+        cinemaName: venueNameMap.get(vr.venueId) ?? vr.venueId,
       });
       await sendVerificationAlert(verification);
     } catch (err) {
@@ -48,6 +49,21 @@ export async function runScraperAndVerify(
     // Pace between verification calls (skip after the last one)
     if (i < successfulVenues.length - 1) {
       await sleep(VERIFICATION_PACING_MS);
+    }
+  }
+
+  // Trigger post-scrape enrichment for venues that added screenings
+  const venuesWithNewScreenings = result.venueResults.filter(
+    (vr) => vr.success && vr.screeningsAdded > 0
+  );
+  for (const vr of venuesWithNewScreenings) {
+    try {
+      await postScrapeEnrichment.trigger({
+        cinemaId: vr.venueId,
+        cinemaName: venueNameMap.get(vr.venueId) ?? vr.venueId,
+      });
+    } catch (err) {
+      console.warn(`[scraper-wrapper] post-scrape enrichment trigger failed for ${vr.venueId}:`, err);
     }
   }
 
