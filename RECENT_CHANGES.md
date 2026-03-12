@@ -21,7 +21,7 @@ When an entry is added here, also create a detailed file in /changelogs/
 ---
 
 ## 2026-03-12: Repo cleanup for designer fork
-**PR**: #XX | **Files**: `LICENSE`, `README.md`
+**PR**: #219 | **Files**: `LICENSE`, `README.md`
 - Added MIT LICENSE file (copyright 2025-2026 James Barge)
 - Replaced AI-focused Documentation Map with simpler pointer to ARCHITECTURE.md
 - Updated tech stack and env vars to reflect Gemini migration
