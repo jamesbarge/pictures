@@ -5,10 +5,11 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
-## 2026-03-13: Kaizen — remove unused imports from scraper runners
-**PR**: #XX | **Files**: `local-runner.ts`, `run-bfi-v2.ts`, `run-genesis-v2.ts`, `run-genesis-v2-basescraper.ts`, `run-rio-v2.ts`
-- Remove unused `runScraper` import from 4 runner scripts (only `createMain` is used)
-- Remove unused `desc` import from local-runner.ts
+## 2026-03-13: Kaizen — remove unused imports/params in scrapers and API routes
+**PR**: #XX | **Files**: `bfi-import/route.ts`, `reverse-tagger.ts`, `runner-factory.ts`, `season-linker.ts`
+- Remove unused `_request`/`_admin` params from bfi-import GET handler
+- Remove unused `sql` import from reverse-tagger.ts and season-linker.ts
+- Remove unused `RawScreening`/`VenueConfig` type imports from runner-factory.ts
 - Kaizen automated refactoring (category: lint-fix)
 
 ---

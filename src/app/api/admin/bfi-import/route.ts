@@ -59,7 +59,7 @@ export const POST = withAdminAuth(async (request, admin) => {
 });
 
 // GET endpoint to check status/info
-export const GET = withAdminAuth(async (_request, _admin) => {
+export const GET = withAdminAuth(async () => {
   return Response.json({
     endpoints: {
       fullImport: "POST /api/admin/bfi-import",

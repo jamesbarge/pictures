@@ -9,7 +9,7 @@
 import { db } from "@/db";
 import { seasons, seasonFilms, films } from "@/db/schema";
 import { levenshteinSimilarity } from "@/lib/levenshtein";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 
 // Cache of active seasons with their raw film titles (normalized)
 interface SeasonCache {
