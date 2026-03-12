@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 import { Metadata } from "next";
 import Link from "next/link";
-import { ChevronLeft, Film, Calendar } from "lucide-react";
+import { ChevronLeft, Calendar } from "lucide-react";
 import { db } from "@/db";
 import { seasons } from "@/db/schema";
 import { isNotNull, count, sql, desc } from "drizzle-orm";

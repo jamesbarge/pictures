@@ -2,7 +2,6 @@ import { MetadataRoute } from "next";
 import { db } from "@/db";
 import { films, cinemas, festivals } from "@/db/schema";
 import { eq, isNotNull } from "drizzle-orm";
-import { safeQuery } from "@/db/safe-query";
 
 // Force dynamic - sitemap queries database
 export const dynamic = "force-dynamic";

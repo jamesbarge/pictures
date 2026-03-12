@@ -5,6 +5,13 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-13: Kaizen — remove unused imports across 4 page files
+**PR**: #XX | **Files**: `sitemap.ts`, `cinemas/[slug]/page.tsx`, `directors/page.tsx`, `admin/analytics/page.tsx`
+- Removed unused `safeQuery`, `Film` (lucide-react), and `format` (date-fns) imports
+- Kaizen automated refactoring (category: dead-code)
+
+---
+
 ## 2026-03-12: CSP — gate `unsafe-eval` behind development mode
 **PR**: #207 | **Files**: `next.config.ts`
 - `'unsafe-eval'` now only included in CSP `script-src` during development (`NODE_ENV=development`)
