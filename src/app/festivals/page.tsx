@@ -15,7 +15,6 @@ import { ChevronLeft } from "lucide-react";
 import { getCurrentUserId } from "@/lib/auth";
 
 export default async function FestivalsPage() {
-  const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
   const userId = await getCurrentUserId();
 
   // Fetch festivals with optional follow status
