@@ -8,7 +8,7 @@
  * - Consistent health checks and pipeline processing
  */
 
-import type { CinemaScraper, RawScreening, ChainScraper, VenueConfig } from "./types";
+import type { CinemaScraper, ChainScraper } from "./types";
 import { processScreenings, saveScreenings, ensureCinemaExists } from "./pipeline";
 import { db, isDatabaseAvailable } from "../db";
 import { scraperRuns, cinemaBaselines } from "../db/schema/admin";

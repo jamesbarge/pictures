@@ -19,7 +19,7 @@ import {
   screenings,
   films,
 } from "@/db/schema";
-import { eq, and, gte, lte, inArray, sql } from "drizzle-orm";
+import { eq, and, gte, lte, inArray } from "drizzle-orm";
 import { FESTIVAL_CONFIGS } from "./festival-config";
 import type {
   FestivalTaggingConfig,
