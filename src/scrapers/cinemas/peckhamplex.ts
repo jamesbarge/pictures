@@ -25,17 +25,6 @@ const PECKHAMPLEX_CONFIG: ScraperConfig = {
   delayBetweenRequests: 2000,
 };
 
-const PECKHAMPLEX_VENUE = {
-  id: "peckhamplex",
-  name: "Peckhamplex",
-  shortName: "Peckhamplex",
-  area: "Peckham",
-  postcode: "SE15 4ST",
-  address: "95a Rye Lane",
-  features: ["independent", "affordable", "repertory"],
-  website: "https://www.peckhamplex.london",
-};
-
 // ============================================================================
 // Peckhamplex Scraper Implementation
 // ============================================================================

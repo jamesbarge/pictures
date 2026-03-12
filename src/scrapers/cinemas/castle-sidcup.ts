@@ -17,17 +17,6 @@ const CASTLE_SIDCUP_CONFIG: ScraperConfig = {
   delayBetweenRequests: 500,
 };
 
-const CASTLE_SIDCUP_VENUE = {
-  id: "castle-sidcup",
-  name: "Castle Sidcup",
-  shortName: "Castle Sidcup",
-  area: "Sidcup",
-  postcode: "DA14 6EP",
-  address: "2-4 Sidcup High Street",
-  features: ["independent", "community", "arthouse", "bar", "cafe"],
-  website: "https://castlesidcup.com",
-};
-
 interface SchemaOrgMovie {
   "@type": "Movie";
   name: string;
