@@ -5,6 +5,14 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-12: Kaizen — extract CHROME_USER_AGENT_FULL constant
+**PR**: #186 | **Files**: `constants.ts`, `base.ts`, `seasons/base.ts`, `veezi-scraper.ts`
+- Extracted hardcoded full Chrome UA string into shared `CHROME_USER_AGENT_FULL` constant
+- Replaced 4 occurrences across 4 files (8+ more remain for future cycles)
+- Kaizen automated refactoring (category: extract-constant)
+
+---
+
 ## 2026-03-12: Kaizen — add JSDoc to trigger utils (telegram, github-issues)
 **PR**: #185 | **Files**: `telegram.ts`, `github-issues.ts`
 - Added JSDoc to `sendTelegramAlert()` and `createGitHubIssue()` in trigger utils
