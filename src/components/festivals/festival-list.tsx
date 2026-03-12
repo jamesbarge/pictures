@@ -127,7 +127,7 @@ export function FestivalTimeline({ festivals }: { festivals: Festival[] }) {
       <div className="absolute left-4 top-0 bottom-0 w-px bg-border-subtle" />
 
       <div className="space-y-6">
-        {sortedFestivals.map((festival, index) => (
+        {sortedFestivals.map((festival) => (
           <div key={festival.id} className="relative pl-10">
             {/* Timeline dot */}
             <div

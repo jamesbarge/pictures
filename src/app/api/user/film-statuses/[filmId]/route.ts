@@ -105,7 +105,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 /**
  * DELETE /api/user/film-statuses/[filmId] - Remove a film status
  */
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
+export async function DELETE(_request: NextRequest, { params }: RouteParams) {
   try {
     const userId = await requireAuth();
     const { filmId } = await params;
