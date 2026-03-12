@@ -117,6 +117,7 @@ export interface FetchedPDF {
 }
 
 const GUIDE_PAGE_URL = "https://whatson.bfi.org.uk/Online/default.asp?BOparam::WScontent::loadArticle::permalink=bfisouthbankguide";
+
 /**
  * Fetches the BFI guide page and discovers available PDF downloads.
  * Handles Cloudflare protection by using browser-like headers.

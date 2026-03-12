@@ -1,5 +1,12 @@
 # Recent Changes
 
+## 2026-03-13: Kaizen — lint-fix BFI PDF scrapers, everyman, pipeline
+**PR**: #243 | **Files**: `fetcher.ts`, `pdf-parser.ts`, `programme-changes-parser.ts`, `everyman.ts`, `pipeline.ts`
+- Removed unused vars/params across 5 scraper files (6 warnings fixed, 77→71)
+- Kaizen automated refactoring (category: lint-fix)
+
+---
+
 ## 2026-03-13: Kaizen — deduplicate cron auth into shared verifyCronSecret
 **PR**: #242 | **Files**: `src/lib/auth.ts`, `src/app/api/cron/cleanup/route.ts`, `src/app/api/cron/posthog-sync/route.ts`, `src/app/api/cron/health-check/route.ts`
 - Extracted duplicated `verifyCronSecret()` from 3 cron routes into `src/lib/auth.ts`
