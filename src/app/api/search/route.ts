@@ -3,10 +3,11 @@
  * Searches films by title with upcoming screening counts
  */
 
+import { ilike, sql, count } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
+
 import { db } from "@/db";
 import { films, screenings } from "@/db/schema";
-import { ilike, sql, count } from "drizzle-orm";
 import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
 
 export async function GET(request: NextRequest) {
