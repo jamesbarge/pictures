@@ -37,12 +37,16 @@ export interface RateLimitResult {
 // Redis backend (distributed)
 // ---------------------------------------------------------------------------
 
-const hasRedis =
-  typeof process !== "undefined" &&
-  process.env.UPSTASH_REDIS_REST_URL &&
-  process.env.UPSTASH_REDIS_REST_TOKEN;
+// Vercel Marketplace Redis creates KV_REST_API_URL / KV_REST_API_TOKEN.
+// Also support UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN for direct Upstash setups.
+const redisUrl =
+  process.env.KV_REST_API_URL ?? process.env.UPSTASH_REDIS_REST_URL;
+const redisToken =
+  process.env.KV_REST_API_TOKEN ?? process.env.UPSTASH_REDIS_REST_TOKEN;
 
-const redis = hasRedis ? Redis.fromEnv() : null;
+const hasRedis = !!(redisUrl && redisToken);
+
+const redis = hasRedis ? new Redis({ url: redisUrl!, token: redisToken! }) : null;
 
 /**
  * Cache of Ratelimit instances keyed by "prefix:limit:windowSec".
@@ -137,8 +141,9 @@ function checkRateLimitInMemory(
 /**
  * Check rate limit for a given identifier (usually IP address).
  *
- * Uses Upstash Redis when UPSTASH_REDIS_REST_URL is configured,
- * otherwise falls back to an in-memory counter.
+ * Uses Upstash Redis when KV_REST_API_URL (Vercel Marketplace) or
+ * UPSTASH_REDIS_REST_URL is configured, otherwise falls back to
+ * an in-memory counter.
  */
 export async function checkRateLimit(
   identifier: string,
