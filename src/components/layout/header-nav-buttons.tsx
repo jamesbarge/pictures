@@ -9,7 +9,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Navigation, Heart, MapPin, Settings, User, Clapperboard, Menu, X, Leaf } from "lucide-react";
+import { Navigation, Heart, MapPin, Settings, User, Clapperboard, Menu, X, Leaf, Info } from "lucide-react";
 import {
   SafeSignInButton as SignInButton,
   SafeSignedIn as SignedIn,
@@ -32,6 +32,7 @@ const NAV_ITEMS = [
   { href: "/map", icon: MapPin, label: "Map" },
   { href: "/watchlist", icon: Heart, label: "Watchlist" },
   { href: "/settings", icon: Settings, label: "Settings" },
+  { href: "/about", icon: Info, label: "About" },
 ] as const;
 
 // Filter out feature-flagged nav items (evaluated once at build time since NEXT_PUBLIC_ vars are inlined)
@@ -55,18 +56,17 @@ function DesktopNavButton({
   hasIndicator?: boolean;
 }) {
   return (
-    <Link href={href} className="relative">
-      <button
-        className={cn(
-          "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
-          isActive
-            ? "bg-accent-primary/10 text-accent-primary"
-            : "text-text-secondary hover:text-text-primary hover:bg-background-hover"
-        )}
-      >
-        {icon}
-        <span>{label}</span>
-      </button>
+    <Link
+      href={href}
+      className={cn(
+        "relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
+        isActive
+          ? "bg-accent-primary/10 text-accent-primary"
+          : "text-text-secondary hover:text-text-primary hover:bg-background-hover"
+      )}
+    >
+      {icon}
+      <span>{label}</span>
 
       {/* Active indicator dot */}
       {hasIndicator && (
@@ -257,6 +257,13 @@ export function HeaderNavButtons({ mounted }: HeaderNavButtonsProps) {
           href="/settings"
           icon={<Settings className="w-4 h-4" />}
           label="Settings"
+        />
+
+        {/* About */}
+        <DesktopNavButton
+          href="/about"
+          icon={<Info className="w-4 h-4" />}
+          label="About"
         />
 
         {/* Auth UI */}
