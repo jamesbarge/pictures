@@ -29,6 +29,7 @@ export function hasWordOverlap(rawTitle: string, aiTitle: string, threshold = 0.
   return overlapping / denominator >= threshold;
 }
 
+/** Result of AI-powered title extraction via Gemini */
 export interface AIExtractionResult {
   filmTitle: string;
   /** Base title for matching/deduplication (without version suffixes like "Final Cut") */

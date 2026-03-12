@@ -14,6 +14,7 @@ const POSTER_ASPECT_RATIO = 2 / 3;
 const POSTER_WIDTH = 500; // Standard poster width
 const POSTER_HEIGHT = Math.round(POSTER_WIDTH / POSTER_ASPECT_RATIO); // 750
 
+/** Result of image processing, including the output URL and dimensions */
 export interface ProcessedImage {
   url: string;
   width: number;
@@ -21,6 +22,7 @@ export interface ProcessedImage {
   source: "processed" | "original" | "placeholder";
 }
 
+/** Options for image processing (resize, quality, caching) */
 export interface ImageProcessorOptions {
   /** Target width for the processed image */
   width?: number;

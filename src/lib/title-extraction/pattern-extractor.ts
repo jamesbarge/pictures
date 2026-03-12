@@ -23,6 +23,7 @@ import {
   escapeRegex,
 } from "./patterns";
 
+/** Result of sync pattern-based title extraction (no AI calls) */
 export interface PatternExtractionResult {
   originalTitle: string;
   extractedTitle: string;

@@ -13,8 +13,10 @@
 import { generateText, stripCodeFences } from "./gemini";
 import type { ContentType } from "@/types/film";
 
+/** Strategy for sourcing a poster image: TMDB lookup, scraper-provided URL, or AI generation */
 export type PosterStrategy = "tmdb" | "scraper_image" | "generate";
 
+/** Output of the content classifier: clean title, type, year, and poster strategy */
 export interface ClassificationResult {
   /** The clean film/event title, stripped of prefixes and suffixes */
   cleanTitle: string;
