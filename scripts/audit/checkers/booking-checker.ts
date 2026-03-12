@@ -212,7 +212,7 @@ async function checkSingleBookingLink(url: string): Promise<BookingCheckResult> 
       ok,
       redirectUrl: response.redirected ? response.url : undefined,
     };
-  } catch (error) {
+  } catch {
     // HEAD might be rejected — try GET
     try {
       const controller = new AbortController();
