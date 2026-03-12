@@ -1,5 +1,12 @@
 # Recent Changes
 
+## 2026-03-13: Kaizen — remove dead code in scrapers (4 files)
+**PR**: #TBD | **Files**: `electric-v2.ts`, `genesis-v2.ts`, `prince-charles.ts`, `veezi-scraper.ts`
+- Removed unused `venueIdToApiId` property, unused `$` Cheerio params, unused `delayMs` property
+- Kaizen automated refactoring (category: dead-code)
+
+---
+
 ## 2026-03-13: Kaizen — lint-fix agents, posthog-api, eventive, scripts
 **PR**: #246 | **Files**: `eventive-scraper.ts`, `posthog-api.ts`, `data-quality/index.ts`, `scraper-health/index.ts`, `reprocess-suspicious-matches.ts`
 - Removed unused vars/params/functions across 5 files (7 warnings fixed, 71→64)
