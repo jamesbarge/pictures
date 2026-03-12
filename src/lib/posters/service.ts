@@ -21,6 +21,11 @@ import { classifyContentCached } from "@/lib/content-classifier";
 import { isImageAccessible } from "@/lib/image-processor";
 import type { PosterResult, PosterSearchParams, PosterSource } from "./types";
 
+/**
+ * Multi-source poster resolver with intelligent fallback chain.
+ * For films: TMDB → OMDB → Fanart → Scraper → Placeholder.
+ * For non-films: Scraper → Placeholder.
+ */
 export class PosterService {
   private tmdb = getTMDBClient();
   private omdb = getOMDBClient();
@@ -273,6 +278,7 @@ export class PosterService {
 // Singleton instance
 let posterService: PosterService | null = null;
 
+/** Return the singleton PosterService instance, creating it on first call. */
 export function getPosterService(): PosterService {
   if (!posterService) {
     posterService = new PosterService();
