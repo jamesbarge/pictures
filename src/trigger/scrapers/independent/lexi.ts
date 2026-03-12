@@ -3,7 +3,7 @@ import { type SingleVenueConfig } from "@/scrapers/runner-factory";
 import { runScraperAndVerify } from "../../utils/scraper-wrapper";
 import { getVenueFromRegistry } from "../../utils/venue-from-registry";
 import { createLexiScraper } from "@/scrapers/cinemas/lexi";
-import type { ScraperTaskPayload, ScraperTaskOutput } from "../../types";
+import type { ScraperTaskOutput } from "../../types";
 
 const config: SingleVenueConfig = {
   type: "single",
@@ -16,7 +16,7 @@ export const lexiScraper = task({
   machine: { preset: "medium-1x" },
   maxDuration: 600, // 10 min — Playwright scraper
   retry: { maxAttempts: 3 },
-  run: async (_payload: ScraperTaskPayload): Promise<ScraperTaskOutput> => {
+  run: async (): Promise<ScraperTaskOutput> => {
     return runScraperAndVerify(config, { useValidation: true });
   },
 });
