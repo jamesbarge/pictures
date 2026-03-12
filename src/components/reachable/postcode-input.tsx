@@ -94,7 +94,7 @@ export function PostcodeInput({
           lat: result.latitude,
           lng: result.longitude,
         });
-      } catch (err) {
+      } catch {
         setStatus("invalid");
         setLocationName(null);
         onChange(postcode, null, "Failed to validate postcode");

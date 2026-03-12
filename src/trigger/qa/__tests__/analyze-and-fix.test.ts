@@ -133,7 +133,7 @@ describe("time mismatch detection", () => {
     // Front-end shows 7:30pm London time (BST = UTC+1)
     // So 7:30pm BST = 18:30 UTC
     // If DB stores 19:30 UTC, that's wrong (that's 8:30pm BST)
-    const frontEndLondonTime = "2026-07-15T19:30:00"; // displayed as 7:30pm BST
+    // Front-end shows 7:30pm London time (BST), i.e. "2026-07-15T19:30:00"
     // In BST (UTC+1), 7:30pm local = 6:30pm UTC
     const expectedUtc = new Date("2026-07-15T18:30:00Z");
     const dbStored = new Date("2026-07-15T19:30:00Z"); // Wrong — this is 8:30pm BST
