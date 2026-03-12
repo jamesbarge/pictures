@@ -59,6 +59,7 @@ export type ImportError =
   | "rate_limited"
   | "network_error";
 
+/** Typed error for Letterboxd import failures, carrying a machine-readable {@link ImportError} code. */
 export class LetterboxdImportError extends Error {
   code: ImportError;
 

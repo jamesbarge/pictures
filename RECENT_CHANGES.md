@@ -5,6 +5,13 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-12: Kaizen — Add JSDoc to undocumented exports in lib
+**PR**: #174 | **Files**: `posters/service.ts`, `travel-time.ts`, `letterboxd-import.ts`
+- Added JSDoc to 4 undocumented exports: PosterService class, getPosterService, groupByUrgency, LetterboxdImportError
+- Kaizen automated refactoring (category: jsdoc)
+
+---
+
 ## 2026-03-12: Kaizen — Extract shared normalizeUrl utility for scrapers
 **PR**: #173 | **Files**: `utils/url.ts`, `close-up.ts`, `garden.ts`
 - Extracted identical `normalizeUrl` method from 2 scrapers into shared `src/scrapers/utils/url.ts`

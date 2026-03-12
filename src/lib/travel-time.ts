@@ -187,6 +187,7 @@ export function getReachableScreenings(
  */
 export type UrgencyGroup = "leave_soon" | "leave_within_hour" | "later";
 
+/** Bucket reachable screenings by departure urgency: ≤30 min, 30–60 min, or 60+ min. */
 export function groupByUrgency(
   screenings: ReachableScreening[]
 ): Record<UrgencyGroup, ReachableScreening[]> {
