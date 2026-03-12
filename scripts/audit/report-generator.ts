@@ -5,7 +5,7 @@
 
 import { writeFileSync, mkdirSync } from "fs";
 import { dirname } from "path";
-import type { AuditResult, AuditIssue, CinemaDetailData } from "./types";
+import type { AuditResult, AuditIssue } from "./types";
 
 /**
  * Generate the Obsidian markdown report.

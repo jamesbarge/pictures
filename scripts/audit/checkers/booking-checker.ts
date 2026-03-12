@@ -9,13 +9,6 @@
 
 import type { AuditIssue } from "../types";
 
-/** Known cinema chain booking domains */
-const CINEMA_BOOKING_DOMAINS: Record<string, string[]> = {
-  curzon: ["curzon.com", "curzoncinemas.com"],
-  picturehouse: ["picturehouses.com", "picturehouses.co.uk"],
-  everyman: ["everymancinema.com"],
-  bfi: ["bfi.org.uk", "whatson.bfi.org.uk"],
-};
 
 /** Map cinema slugs to expected domains */
 const CINEMA_DOMAIN_MAP: Record<string, string[]> = {
