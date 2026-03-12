@@ -76,13 +76,13 @@ export async function closeBrowser(): Promise<void> {
  * Create a new page with anti-detection settings
  */
 export async function createPage(): Promise<Page> {
-  const b = await getBrowser();
+  const activeBrowser = await getBrowser();
 
   // Randomize viewport slightly to avoid fingerprinting
   const width = 1920 + Math.floor(Math.random() * 100);
   const height = 1080 + Math.floor(Math.random() * 50);
 
-  const context = await b.newContext({
+  const context = await activeBrowser.newContext({
     userAgent:
       "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     viewport: { width, height },

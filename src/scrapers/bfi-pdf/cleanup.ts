@@ -141,33 +141,33 @@ async function fetchBFIProgrammeTitles(): Promise<string[]> {
  * Strip BFI prefixes, Q&A/intro suffixes, and "The " prefix for matching.
  */
 function normalize(title: string): string {
-  let t = title.toLowerCase();
+  let normalized = title.toLowerCase();
 
   // Remove common BFI prefixes
-  t = t.replace(
+  normalized = normalized.replace(
     /^(relaxed screening:\s*|tv preview:\s*|preview:\s*|member picks:\s*|member exclusive:\s*|member salon:\s*|bfi member poll:\s*|uk premiere:\s*|uk premiere of 4k restoration:\s*|woman with a movie camera preview:\s*|funday:\s*|25 and under:\s*|\d+(?:st|nd|rd|th) anniversary(?:\s+screening)?:\s*|the war trilogy:\s*|the solidarity trilogy:\s*|season introduction talk \+ world premiere:\s*|opening night:\s*|closing night:\s*|family funday preview:\s*|library event:\s*|ghibliotheque presents:\s*|kinoteka gala screening:\s*|milktea presents – uk premiere:\s*|galentine's day:\s*|reece shearsmith presents:\s*|tribute to claudia cardinale:\s*|seniors' (?:free |paid )?matinee:\s*)/,
     ""
   );
 
   // Remove "+ intro/Q&A/discussion..." suffixes
-  t = t.replace(/\s*\+\s*(intro|q&a|extended intro|pre-recorded intro|discussion|in conversation).*$/i, "");
+  normalized = normalized.replace(/\s*\+\s*(intro|q&a|extended intro|pre-recorded intro|discussion|in conversation).*$/i, "");
 
   // Remove parenthetical suffixes like (4k Restoration), (Director's Cut), (IMAX)
-  t = t.replace(/\s*\([^)]*\)\s*$/, "");
+  normalized = normalized.replace(/\s*\([^)]*\)\s*$/, "");
 
   // Remove "The " prefix for matching
-  t = t.replace(/^the\s+/, "");
+  normalized = normalized.replace(/^the\s+/, "");
 
   // Collapse whitespace and trim
-  t = t.replace(/\s+/g, " ").trim();
+  normalized = normalized.replace(/\s+/g, " ").trim();
 
   // Normalize special characters
-  t = t.replace(/['']/g, "'");
-  t = t.replace(/[""]/g, '"');
-  t = t.replace(/–/g, "-");
-  t = t.replace(/â/g, "a");
+  normalized = normalized.replace(/['']/g, "'");
+  normalized = normalized.replace(/[""]/g, '"');
+  normalized = normalized.replace(/–/g, "-");
+  normalized = normalized.replace(/â/g, "a");
 
-  return t;
+  return normalized;
 }
 
 /**
