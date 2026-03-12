@@ -121,23 +121,33 @@ export const EVENT_PREFIXES = [
   /^east\s+london\s+doc\s+club[:\s]+/i,
 ];
 
+/** Result of cleaning a film title with metadata about what was stripped */
+export interface CleanTitleResult {
+  cleanedTitle: string;
+  strippedPrefix: string | null;
+  strippedSuffix: string | null;
+}
+
 /**
- * Clean a film title by removing common cruft from scrapers.
+ * Clean a film title and return metadata about what was stripped.
  *
- * Strips event prefixes, trailing years, BBFC ratings, format notes,
- * Q&A suffixes, and other non-title text from raw scraped film titles.
+ * Returns the cleaned title along with the stripped prefix and suffix,
+ * so the pipeline can preserve event context (e.g. in screening.eventDescription).
  */
-export function cleanFilmTitle(title: string): string {
+export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
   let cleaned = title
     // Collapse whitespace (including newlines)
     .replace(/\s+/g, " ")
     .trim();
 
+  let strippedPrefix: string | null = null;
+
   // Strip known event prefixes to extract actual film title
   for (const prefix of EVENT_PREFIXES) {
-    if (prefix.test(cleaned)) {
+    const match = cleaned.match(prefix);
+    if (match) {
+      strippedPrefix = match[0].replace(/[:\s]+$/, "").trim();
       cleaned = cleaned.replace(prefix, "").trim();
-      // Only strip one prefix (don't want to accidentally remove too much)
       break;
     }
   }
@@ -186,7 +196,10 @@ export function cleanFilmTitle(title: string): string {
   // Strip trailing year like "(1997)" or "(2026)" — year is used as TMDB hint, not title text
   cleaned = cleaned.replace(/\s*\(\d{4}\)\s*$/, "").trim();
 
-  return cleaned
+  // Capture state before suffix stripping to detect what was removed
+  const beforeSuffixStrip = cleaned;
+
+  cleaned = cleaned
     // Remove BBFC ratings: (U), (PG), (12), (12A), (15), (18), with optional asterisk
     .replace(/\s*\((U|PG|12A?|15|18)\*?\)\s*$/i, "")
     // Remove bracketed notes like [is a Christmas Movie]
@@ -208,4 +221,20 @@ export function cleanFilmTitle(title: string): string {
     // Remove "(Extended Edition)" / "(Extended Cut)" parentheticals
     .replace(/\s*\(extended\s+(edition|cut)\)\s*$/i, "")
     .trim();
+
+  const strippedSuffix = beforeSuffixStrip !== cleaned
+    ? beforeSuffixStrip.slice(cleaned.length).trim()
+    : null;
+
+  return { cleanedTitle: cleaned, strippedPrefix, strippedSuffix };
+}
+
+/**
+ * Clean a film title by removing common cruft from scrapers.
+ *
+ * Backward-compatible wrapper around cleanFilmTitleWithMetadata() that
+ * returns just the cleaned title string.
+ */
+export function cleanFilmTitle(title: string): string {
+  return cleanFilmTitleWithMetadata(title).cleanedTitle;
 }

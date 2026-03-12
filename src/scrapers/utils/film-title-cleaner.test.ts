@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { cleanFilmTitle, EVENT_PREFIXES } from "./film-title-cleaner";
+import { cleanFilmTitle, cleanFilmTitleWithMetadata, EVENT_PREFIXES } from "./film-title-cleaner";
 
 describe("cleanFilmTitle", () => {
   describe("existing event prefixes", () => {
@@ -136,6 +136,48 @@ describe("cleanFilmTitle", () => {
       expect(cleanFilmTitle("The Brutalist")).toBe("The Brutalist");
       expect(cleanFilmTitle("Anora")).toBe("Anora");
     });
+  });
+});
+
+describe("cleanFilmTitleWithMetadata", () => {
+  it("returns stripped prefix for event series", () => {
+    const result = cleanFilmTitleWithMetadata("Funeral Parade Presents: Eraserhead");
+    expect(result.cleanedTitle).toBe("Eraserhead");
+    expect(result.strippedPrefix).toBe("Funeral Parade Presents");
+    expect(result.strippedSuffix).toBeNull();
+  });
+
+  it("returns stripped suffix for Q&A", () => {
+    const result = cleanFilmTitleWithMetadata("Anora + Q&A");
+    expect(result.cleanedTitle).toBe("Anora");
+    expect(result.strippedPrefix).toBeNull();
+    expect(result.strippedSuffix).toBe("+ Q&A");
+  });
+
+  it("returns both prefix and suffix when present", () => {
+    const result = cleanFilmTitleWithMetadata("Lost Reels: Vertigo + Q&A");
+    expect(result.cleanedTitle).toBe("Vertigo");
+    expect(result.strippedPrefix).toBe("Lost Reels");
+    expect(result.strippedSuffix).toBe("+ Q&A");
+  });
+
+  it("returns nulls for clean titles", () => {
+    const result = cleanFilmTitleWithMetadata("Nosferatu");
+    expect(result.cleanedTitle).toBe("Nosferatu");
+    expect(result.strippedPrefix).toBeNull();
+    expect(result.strippedSuffix).toBeNull();
+  });
+
+  it("backward-compatible: cleanFilmTitle returns same string", () => {
+    const titles = [
+      "Funeral Parade Presents: Eraserhead",
+      "Anora + Q&A",
+      "Nosferatu",
+      "The Chronology of Water p17",
+    ];
+    for (const title of titles) {
+      expect(cleanFilmTitle(title)).toBe(cleanFilmTitleWithMetadata(title).cleanedTitle);
+    }
   });
 });
 
