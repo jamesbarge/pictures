@@ -9,7 +9,7 @@ import { db } from "@/db";
 import { films } from "@/db/schema";
 import { ilike, or, sql, asc } from "drizzle-orm";
 
-export const GET = withAdminAuth(async (req, _admin) => {
+export const GET = withAdminAuth(async (req) => {
   const request = req as NextRequest;
   const searchParams = request.nextUrl.searchParams;
   const query = searchParams.get("q")?.trim();

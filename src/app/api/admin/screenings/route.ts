@@ -21,7 +21,7 @@ interface CreateScreeningBody {
   eventDescription?: string | null;
 }
 
-export const POST = withAdminAuth(async (request, _admin) => {
+export const POST = withAdminAuth(async (request) => {
   try {
     const body: CreateScreeningBody = await request.json();
     const { filmId, cinemaId, datetime, bookingUrl, format, screen, eventType, eventDescription } = body;

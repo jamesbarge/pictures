@@ -13,7 +13,7 @@ import { handleApiError } from "@/lib/api-errors";
 import { runFullHealthCheck, getRecentHealthSnapshots, getCinemaHealthMetrics } from "@/lib/scraper-health";
 import { HEALTH_THRESHOLDS } from "@/db/schema/health-snapshots";
 
-export const GET = withAdminAuth(async (request, _admin) => {
+export const GET = withAdminAuth(async (request) => {
   const url = new URL(request.url);
   const cinemaId = url.searchParams.get("cinemaId");
   const includeHistory = url.searchParams.get("history") === "true";
