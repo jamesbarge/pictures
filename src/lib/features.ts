@@ -10,6 +10,7 @@ const FEATURE_FLAGS = {
 
 type FeatureName = keyof typeof FEATURE_FLAGS;
 
+/** Return `true` if the given feature flag is enabled at build time. */
 export function isFeatureEnabled(feature: FeatureName): boolean {
   return FEATURE_FLAGS[feature];
 }

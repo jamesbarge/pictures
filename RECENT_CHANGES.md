@@ -5,6 +5,16 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-12: Kaizen — add JSDoc to admin-emails and features exports
+**PR**: #182 | **Files**: `src/lib/admin-emails.ts`, `src/lib/features.ts`
+- Added JSDoc comments to 3 exported functions missing documentation
+- Kaizen automated refactoring (category: jsdoc)
+
+---
+
+<!--
+-->
+
 ## 2026-03-12: Kaizen — Extract shared checkHealth utility for scrapers
 **PR**: #181 | **Files**: `health-check.ts` (new), `castle.ts`, `lexi.ts`, `genesis.ts`
 - Created shared `checkHealth(url)` utility, replaced 3 identical healthCheck implementations
