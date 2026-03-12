@@ -13,6 +13,7 @@
 import { BOT_USER_AGENT } from "../constants";
 import type { RawScreening, ScraperConfig, CinemaScraper } from "../types";
 import { FestivalDetector } from "../festivals/festival-detector";
+import { checkHealth } from "../utils/health-check";
 
 const RICHMIX_CONFIG: ScraperConfig & { apiUrl: string } = {
   cinemaId: "rich-mix",
@@ -152,17 +153,9 @@ export class RichMixScraper implements CinemaScraper {
   }
 
   async healthCheck(): Promise<boolean> {
-    try {
-      const response = await fetch(this.config.baseUrl, {
-        method: "HEAD",
-        headers: {
-          "User-Agent": BOT_USER_AGENT,
-        },
-      });
-      return response.ok;
-    } catch {
-      return false;
-    }
+    return checkHealth(this.config.baseUrl, {
+      headers: { "User-Agent": BOT_USER_AGENT },
+    });
   }
 }
 

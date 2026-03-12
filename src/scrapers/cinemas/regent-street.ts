@@ -16,6 +16,7 @@
 import { chromium } from "playwright";
 
 import { BOT_USER_AGENT } from "../constants";
+import { checkHealth } from "../utils/health-check";
 import type { RawScreening, ScraperConfig, CinemaScraper } from "../types";
 
 const REGENT_STREET_CONFIG: ScraperConfig & { programmeUrl: string } = {
@@ -149,17 +150,9 @@ export class RegentStreetScraper implements CinemaScraper {
   }
 
   async healthCheck(): Promise<boolean> {
-    try {
-      const response = await fetch(this.config.baseUrl, {
-        method: "HEAD",
-        headers: {
-          "User-Agent": BOT_USER_AGENT,
-        },
-      });
-      return response.ok;
-    } catch {
-      return false;
-    }
+    return checkHealth(this.config.baseUrl, {
+      headers: { "User-Agent": BOT_USER_AGENT },
+    });
   }
 }
 
