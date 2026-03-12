@@ -5,8 +5,16 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-12: Security — fix admin auth bypass
+**PR**: #187 | **Files**: `middleware.ts`, `src/app/api/admin/bfi-import/route.ts`
+- Removed root middleware.ts that was shadowing the real admin-protected src/middleware.ts
+- Fixed bfi-import route to use withAdminAuth() instead of requireAuth()
+- Prevents non-admin authenticated users from accessing admin endpoints
+
+---
+
 ## 2026-03-12: Kaizen — extract CHROME_USER_AGENT_FULL constant
-**PR**: #186 | **Files**: `constants.ts`, `base.ts`, `seasons/base.ts`, `veezi-scraper.ts`
+**PR**: #192 | **Files**: `constants.ts`, `base.ts`, `seasons/base.ts`, `veezi-scraper.ts`
 - Extracted hardcoded full Chrome UA string into shared `CHROME_USER_AGENT_FULL` constant
 - Replaced 4 occurrences across 4 files (8+ more remain for future cycles)
 - Kaizen automated refactoring (category: extract-constant)
