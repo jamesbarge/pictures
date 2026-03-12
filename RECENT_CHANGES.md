@@ -5,6 +5,24 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-13: Kaizen — add JSDoc to UI component types
+**PR**: #XX | **Files**: `button.tsx`, `badge.tsx`, `input.tsx`
+- Added JSDoc to 8 exported types/interfaces across 3 core UI components
+- Kaizen automated refactoring (category: jsdoc)
+
+---
+
+## 2026-03-12: Remove all Odeon references from codebase
+**PR**: #XX | **Files**: 11 modified, 3 deleted
+- Deleted Odeon scraper (`src/scrapers/chains/odeon.ts`), trigger task, and CLI runner
+- Removed from orchestration (`scrape-all.ts`, `task-registry.ts`)
+- Removed from booking checker stealth list
+- Removed from UI meta descriptions, FAQ text, JSON-LD schemas
+- Updated test comments and seed data
+- We don't scrape Odeon and have no plans to — dead code removal
+
+---
+
 ## 2026-03-13: Kaizen — consolidate UA strings in fallback enrichment
 **PR**: #XX | **Files**: `agents/fallback-enrichment/letterboxd.ts`
 - Replaced 2 hardcoded User-Agent strings with `CHROME_USER_AGENT` constant

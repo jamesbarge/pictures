@@ -48,7 +48,7 @@ describe("Festival config ↔ seed alignment", () => {
   it("all scraped seed venue IDs should match canonical registry IDs", () => {
     for (const festival of londonFestivals) {
       for (const venueId of festival.venues) {
-        // Non-scraped venues (vue, odeon, jw3) won't be in registry — that's OK
+        // Non-scraped venues (vue, jw3) won't be in registry — that's OK
         // But any venue that IS in config should use canonical IDs
         const slugBase = festival.slug.replace(/-\d{4}$/, "");
         const config = FESTIVAL_CONFIGS[slugBase];

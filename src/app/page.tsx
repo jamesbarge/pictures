@@ -217,7 +217,7 @@ export default async function Home() {
   const faqItems = [
     {
       question: "What cinemas are in London?",
-      answer: `Pictures tracks ${stats.cinemaCount} cinemas across London, including BFI Southbank, Prince Charles Cinema, Curzon, Picturehouse, ICA, Barbican, Odeon, and more. These venues show everything from blockbusters to art house, repertory, and independent films.`,
+      answer: `Pictures tracks ${stats.cinemaCount} cinemas across London, including BFI Southbank, Prince Charles Cinema, Curzon, Picturehouse, ICA, Barbican, and more. These venues show everything from blockbusters to art house, repertory, and independent films.`,
     },
     {
       question: "How do I find film screenings in London?",

@@ -6,6 +6,7 @@
 import { forwardRef, type HTMLAttributes, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
+/** Visual style variant for the Badge component */
 export type BadgeVariant =
   | "default"
   | "primary"
@@ -16,8 +17,10 @@ export type BadgeVariant =
   | "gold"
   | "outline";
 
+/** Size preset for the Badge component */
 export type BadgeSize = "sm" | "md";
 
+/** Props for the Badge component used for status labels and metadata */
 export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
   variant?: BadgeVariant;
   size?: BadgeSize;

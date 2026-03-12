@@ -23,7 +23,7 @@ const BASE_URL = "https://pictures.london";
 export const metadata: Metadata = {
   title: "London Cinemas - Complete Directory",
   description:
-    "Directory of 20+ cinemas in London. Find art house, repertory, mainstream, and indie film venues including BFI Southbank, Prince Charles Cinema, Curzon, Picturehouse, Odeon, and more.",
+    "Directory of 20+ cinemas in London. Find art house, repertory, mainstream, and indie film venues including BFI Southbank, Prince Charles Cinema, Curzon, Picturehouse, and more.",
   alternates: {
     canonical: "/cinemas",
   },

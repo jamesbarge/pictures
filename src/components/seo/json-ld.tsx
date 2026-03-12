@@ -54,7 +54,7 @@ export function OrganizationSchema() {
     url: BASE_URL,
     logo: `${BASE_URL}/logo.png`,
     description:
-      "The definitive cinema listings for London cinephiles. Find screenings at cinemas including BFI Southbank, Prince Charles Cinema, ICA, Odeon, and more.",
+      "The definitive cinema listings for London cinephiles. Find screenings at cinemas including BFI Southbank, Prince Charles Cinema, ICA, and more.",
     sameAs: [],
     contactPoint: {
       "@type": "ContactPoint",
@@ -78,7 +78,7 @@ export function WebSiteSchema() {
     alternateName: "Pictures London Cinema Listings",
     url: BASE_URL,
     description:
-      "Find and track film screenings at London cinemas. Updated daily with showtimes from BFI, Prince Charles, Curzon, Picturehouse, Odeon, and more.",
+      "Find and track film screenings at London cinemas. Updated daily with showtimes from BFI, Prince Charles, Curzon, Picturehouse, and more.",
     potentialAction: {
       "@type": "SearchAction",
       target: {

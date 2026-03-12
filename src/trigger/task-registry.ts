@@ -10,7 +10,7 @@ const CHAIN_TASK_MAP: Record<string, string> = {
   curzon: "scraper-chain-curzon",
   picturehouse: "scraper-chain-picturehouse",
   everyman: "scraper-chain-everyman",
-  odeon: "scraper-chain-odeon",
+
 };
 
 // Independent cinema IDs → task IDs

@@ -26,7 +26,6 @@ export interface BookingUrlToCheck {
 function needsStealth(url: string): boolean {
   return (
     url.includes("bfi.org.uk") ||
-    url.includes("odeon.co.uk") ||
     url.includes("curzon.com")
   );
 }
