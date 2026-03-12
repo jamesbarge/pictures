@@ -1,5 +1,12 @@
 # Recent Changes
 
+
+## 2026-03-13: Kaizen — remove dead extractFilmsFromPage from romford-lumiere
+**PR**: #TBD | **Files**: `src/scrapers/cinemas/romford-lumiere.ts`
+- Removed unused 106-line private method extractFilmsFromPage()
+- Kaizen automated refactoring (category: dead-code)
+
+---
 ## 2026-03-13: Kaizen — extract shared slugify to scraper utils
 **PR**: #TBD | **Files**: `src/scrapers/utils/url.ts`, `src/scrapers/cinemas/garden.ts`, `src/scrapers/cinemas/romford-lumiere.ts`
 - Extracted identical `slugify` methods from garden.ts and romford-lumiere.ts into shared `src/scrapers/utils/url.ts`
