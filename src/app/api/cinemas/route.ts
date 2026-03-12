@@ -8,15 +8,12 @@ import { z } from "zod";
 import { handleApiError } from "@/lib/api-errors";
 import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
 import { getActiveCinemas } from "@/db/repositories/cinema";
+import { CACHE_10MIN } from "@/lib/cache-headers";
 
 const querySchema = z.object({
   chain: z.string().max(100).optional(),
   features: z.string().max(300).optional(), // comma-separated
 });
-
-const CACHE_HEADERS = {
-  "Cache-Control": "public, s-maxage=600, stale-while-revalidate=1200",
-};
 
 export async function GET(request: NextRequest) {
   try {
@@ -61,7 +58,7 @@ export async function GET(request: NextRequest) {
         cinemas: cinemaList,
         meta: { total: cinemaList.length },
       },
-      { headers: CACHE_HEADERS }
+      { headers: CACHE_10MIN }
     );
   } catch (error) {
     return handleApiError(error, "GET /api/cinemas");

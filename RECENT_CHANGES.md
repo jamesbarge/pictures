@@ -5,6 +5,14 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-12: Kaizen — Extract shared Cache-Control header constants
+**PR**: #155 | **Files**: `cache-headers.ts`, `screenings/route.ts`, `cinemas/route.ts`, `cinemas/[id]/route.ts`, `films/[id]/route.ts`
+- Created `src/lib/cache-headers.ts` with named constants for 3 cache tiers (2min, 5min, 10min)
+- Replaced duplicated local `CACHE_HEADERS` definitions in 4 API routes with shared imports
+- Kaizen automated refactoring (category: extract-constant)
+
+---
+
 ## 2026-03-12: Kaizen — Organize imports in API route files
 **PR**: #154 | **Files**: `films/search/route.ts`, `search/route.ts`, `user/import-letterboxd/route.ts`
 - Grouped imports: external packages first, then `@/` aliases, separated by blank lines
