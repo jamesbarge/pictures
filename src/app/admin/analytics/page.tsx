@@ -21,7 +21,7 @@ import {
   ShoppingCart,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { format, formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 
 interface DashboardSummary {
   totalUsers: number;
