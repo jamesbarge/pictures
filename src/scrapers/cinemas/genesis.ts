@@ -13,6 +13,7 @@
 import * as cheerio from "cheerio";
 import type { RawScreening, ScraperConfig, CinemaScraper } from "../types";
 import { FestivalDetector } from "../festivals/festival-detector";
+import { CHROME_USER_AGENT } from "../constants";
 
 // ============================================================================
 // Genesis Configuration
@@ -77,7 +78,7 @@ export class GenesisScraper implements CinemaScraper {
     const url = `${this.config.baseUrl}${path}`;
     const response = await fetch(url, {
       headers: {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+        "User-Agent": CHROME_USER_AGENT,
         "Accept": "text/html,application/xhtml+xml",
       },
     });
