@@ -5,7 +5,6 @@
  * Displays key dates: programme announcement, member sale, public sale
  */
 
-import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Calendar,
@@ -107,15 +106,11 @@ export function FestivalKeyDates({
   publicSaleDate,
   status,
 }: FestivalKeyDatesProps) {
-  const now = new Date();
   const start = new Date(startDate);
   const end = new Date(endDate);
   const programmeDate = programmAnnouncedDate
     ? new Date(programmAnnouncedDate)
     : null;
-
-  // For past festivals, all dates are in the past
-  const allPast = status === "past";
 
   return (
     <div>

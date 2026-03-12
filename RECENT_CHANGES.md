@@ -5,6 +5,13 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-12: Kaizen — Remove unused imports in festival components
+**PR**: #169 | **Files**: `festival-card.tsx`, `festival-key-dates.tsx`, `festival-list.tsx`
+- Removed 10 unused imports/variables (Calendar, Clock, isPast, isFuture, isWithinInterval, now, Card, allPast, useState, Filter, Button)
+- Kaizen automated refactoring (category: dead-code)
+
+---
+
 ## 2026-03-12: Kaizen — Organize imports in trigger QA and scraper-wrapper
 **PR**: #168 | **Files**: `db-fixer.ts`, `analyze-and-fix.ts`, `scraper-wrapper.ts`
 - Applied 3-tier import grouping (external → `@/` internal → relative) with blank line separators

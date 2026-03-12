@@ -5,12 +5,11 @@
  * Displays festivals grouped by status (ongoing, upcoming, past)
  */
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { FestivalCard, FestivalCardSkeleton, type FestivalCardProps } from "./festival-card";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Calendar, Filter } from "lucide-react";
+import { Calendar } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 
 type Festival = FestivalCardProps["festival"];
 
