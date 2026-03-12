@@ -15,6 +15,7 @@
 import * as cheerio from "cheerio";
 import { createHash } from "crypto";
 import { fetchWithRetry } from "../utils/fetch-with-retry";
+import { CHROME_USER_AGENT_FULL } from "../constants";
 
 /**
  * Fetches a URL, optionally through a proxy service.
@@ -31,7 +32,7 @@ async function proxyFetch(url: string, options: RequestInit = {}): Promise<Respo
     const directResponse = await fetch(url, {
       ...options,
       headers: {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "User-Agent": CHROME_USER_AGENT_FULL,
         "Accept": "application/pdf,*/*",
         "Accept-Language": "en-GB,en;q=0.9",
         ...options.headers,
@@ -84,7 +85,7 @@ async function proxyFetch(url: string, options: RequestInit = {}): Promise<Respo
   return fetch(url, {
     ...options,
     headers: {
-      "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "User-Agent": CHROME_USER_AGENT_FULL,
       "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
       "Accept-Language": "en-GB,en;q=0.9",
       ...options.headers,
@@ -261,6 +262,14 @@ export async function downloadPDF(info: PDFInfo): Promise<FetchedPDF> {
   }
 
   const arrayBuffer = await response.arrayBuffer();
+
+  const MAX_PDF_SIZE = 50 * 1024 * 1024; // 50MB
+  if (arrayBuffer.byteLength > MAX_PDF_SIZE) {
+    throw new Error(
+      `PDF too large: ${arrayBuffer.byteLength} bytes exceeds limit of ${MAX_PDF_SIZE} bytes`
+    );
+  }
+
   const buffer = Buffer.from(arrayBuffer);
 
   // Calculate content hash for change detection

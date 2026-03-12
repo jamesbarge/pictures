@@ -18,6 +18,7 @@ import { films } from "@/db/schema/films";
 import { screenings } from "@/db/schema/screenings";
 import { eq, gte, inArray, and, sql } from "drizzle-orm";
 import { fetchWithRetry } from "../utils/fetch-with-retry";
+import { CHROME_USER_AGENT_FULL } from "../constants";
 
 const BFI_CINEMA_IDS = ["bfi-southbank", "bfi-imax"];
 
@@ -69,8 +70,7 @@ async function proxyFetch(url: string): Promise<Response> {
 
   return fetch(url, {
     headers: {
-      "User-Agent":
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+      "User-Agent": CHROME_USER_AGENT_FULL,
       Accept:
         "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
       "Accept-Language": "en-GB,en-US;q=0.9,en;q=0.8",

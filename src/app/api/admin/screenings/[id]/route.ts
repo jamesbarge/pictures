@@ -20,7 +20,10 @@ const updateScreeningSchema = z.object({
   filmId: z.string().uuid().optional(),
   cinemaId: z.string().min(1).optional(),
   datetime: z.string().datetime().optional(),
-  bookingUrl: z.string().url().optional(),
+  bookingUrl: z.string().url().refine(
+    (url) => url.startsWith("http://") || url.startsWith("https://"),
+    { message: "Booking URL must use http or https protocol" }
+  ).optional(),
   format: z.string().nullable().optional(),
   screen: z.string().nullable().optional(),
   eventType: z.string().nullable().optional(),

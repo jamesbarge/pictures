@@ -122,8 +122,10 @@ export function validateScreening(screening: RawScreening): ValidationResult {
   // 3. Booking URL validation
   if (!bookingUrl || bookingUrl.trim() === "") {
     warnings.push("missing_booking_url: No booking URL provided");
+  } else if (bookingUrl.length > 2000) {
+    errors.push("booking_url_too_long: Booking URL exceeds 2000 characters");
   } else if (!bookingUrl.startsWith("http://") && !bookingUrl.startsWith("https://")) {
-    errors.push("invalid_booking_url: Booking URL must start with http:// or https://");
+    errors.push("invalid_booking_url_protocol: Booking URL must use http or https protocol");
   } else if (bookingUrl.includes("undefined") || bookingUrl.includes("null")) {
     errors.push("malformed_booking_url: Booking URL contains 'undefined' or 'null'");
   }
