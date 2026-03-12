@@ -5,6 +5,15 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-12: Kaizen — Rename cryptic single-letter variables
+**PR**: #160 | **Files**: `cleanup.ts`, `browser.ts`, `scrape-all.ts`
+- Renamed `t` → `normalized` in BFI title normalize function (8 occurrences)
+- Renamed `b` → `activeBrowser` to avoid shadowing module-level `browser` singleton
+- Renamed `arr` → `items` in generic `chunk()` utility
+- Kaizen automated refactoring (category: naming)
+
+---
+
 ## 2026-03-12: Kaizen — Add JSDoc to rate-limit and gemini exports
 **PR**: #159 | **Files**: `rate-limit.ts`, `gemini.ts`
 - Added JSDoc to 6 exported symbols missing documentation (interfaces, types, constants)
