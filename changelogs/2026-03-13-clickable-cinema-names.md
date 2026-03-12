@@ -1,6 +1,6 @@
 # Make Cinema Names Clickable on Film Detail Pages
 
-**PR**: #XX
+**PR**: #238
 **Date**: 2026-03-13
 
 ## Changes
