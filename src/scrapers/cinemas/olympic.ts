@@ -10,9 +10,10 @@
  * Cheerio-based scraper - suitable for serverless cloud execution
  */
 
+import { parse, getYear } from "date-fns";
+
 import { BaseScraper } from "../base";
 import type { RawScreening, ScraperConfig } from "../types";
-import { parse, getYear } from "date-fns";
 import { combineDateAndTime } from "../utils/date-parser";
 
 export class OlympicScraper extends BaseScraper {

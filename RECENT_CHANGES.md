@@ -5,6 +5,13 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-12: Kaizen — Organize imports in cinema scrapers
+**PR**: #175 | **Files**: `phoenix.ts`, `david-lean.ts`, `olympic.ts`
+- Grouped external imports (date-fns, playwright) above relative imports with blank line separator
+- Kaizen automated refactoring (category: import-organization)
+
+---
+
 ## 2026-03-12: Kaizen — Add JSDoc to undocumented exports in lib
 **PR**: #174 | **Files**: `posters/service.ts`, `travel-time.ts`, `letterboxd-import.ts`
 - Added JSDoc to 4 undocumented exports: PosterService class, getPosterService, groupByUrgency, LetterboxdImportError
