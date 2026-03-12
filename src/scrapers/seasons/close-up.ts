@@ -237,8 +237,8 @@ export class CloseUpSeasonScraper extends BaseSeasonScraper {
         if (Array.isArray(parsed)) {
           return parsed as CloseUpShow[];
         }
-      } catch (e) {
-        console.warn(`[${this.config.cinemaId}] Failed to parse JSON:`, e);
+      } catch (error) {
+        console.warn(`[${this.config.cinemaId}] Failed to parse JSON:`, error);
       }
     }
 

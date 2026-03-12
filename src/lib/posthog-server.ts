@@ -119,7 +119,7 @@ export function extractDistinctIdFromCookies(
       const decodedCookie = decodeURIComponent(postHogCookieMatch[1]);
       const postHogData = JSON.parse(decodedCookie);
       return postHogData.distinct_id;
-    } catch (e) {
+    } catch {
       // Cookie parsing failed - not critical
       return undefined;
     }
