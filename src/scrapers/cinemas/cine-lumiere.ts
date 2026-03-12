@@ -18,13 +18,6 @@ import {
 } from "../utils/date-parser";
 import type { CheerioAPI } from "../utils/cheerio-types";
 
-interface FilmPerformance {
-  filmTitle: string;
-  dateStr: string;
-  timeStr: string;
-  bookingUrl: string;
-}
-
 export class CineLumiereScraper extends BaseScraper {
   config: ScraperConfig = {
     cinemaId: "cine-lumiere",

@@ -11,7 +11,7 @@
 
 import { chromium } from "playwright";
 import type { RawScreening, ScraperConfig, CinemaScraper } from "../types";
-import { parse, getYear, addYears } from "date-fns";
+import { parse, getYear } from "date-fns";
 import { combineDateAndTime } from "../utils/date-parser";
 
 const PHOENIX_CONFIG: ScraperConfig & { programmeUrl: string } = {
@@ -21,11 +21,6 @@ const PHOENIX_CONFIG: ScraperConfig & { programmeUrl: string } = {
   requestsPerMinute: 10,
   delayBetweenRequests: 1000,
 };
-
-interface PhoenixFilm {
-  title: string;
-  pageUrl: string;
-}
 
 export class PhoenixScraper implements CinemaScraper {
   config = PHOENIX_CONFIG;

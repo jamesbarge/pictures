@@ -20,7 +20,7 @@ import type { RawScreening, ScraperConfig } from "../types";
 import type { CheerioAPI } from "../utils/cheerio-types";
 import { getBrowser, closeBrowser, createPage } from "../utils/browser";
 import type { Page } from "playwright";
-import { addDays, parse, format } from "date-fns";
+import { addDays, format } from "date-fns";
 import { combineDateAndTime } from "../utils/date-parser";
 
 interface CineSyncMovieData {
@@ -32,14 +32,6 @@ interface CineSyncMovieData {
   runtime?: number;
   release_date?: string;
   director?: string;
-}
-
-interface CineSyncShowtime {
-  session_id: string;
-  session_datetime: string; // ISO datetime
-  screen_name?: string;
-  format?: string;
-  booking_url?: string;
 }
 
 export class RomfordLumiereScraper {

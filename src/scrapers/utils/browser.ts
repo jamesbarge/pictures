@@ -6,7 +6,7 @@
 
 import { chromium } from "playwright-extra";
 import StealthPlugin from "puppeteer-extra-plugin-stealth";
-import type { Browser, Page, BrowserContext } from "playwright";
+import type { Browser, Page } from "playwright";
 
 // Add stealth plugin with all evasions enabled
 const stealth = StealthPlugin();
