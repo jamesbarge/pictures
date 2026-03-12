@@ -6,11 +6,15 @@
  * this file covers identity: name, domain, hex literals used in code, and palette.
  */
 
+import { isFeatureEnabled } from "./features";
+
 export const brand = {
   name: "Pictures",
   shortName: "Pictures",
   /** SEO-oriented tagline used in page titles */
-  tagline: "London Cinema Listings | Showtimes | Festivals",
+  tagline: isFeatureEnabled("festivals")
+    ? "London Cinema Listings | Showtimes | Festivals"
+    : "London Cinema Listings | Showtimes",
   /** Shorter name used in PWA manifest (visible on home screen / app switcher) */
   pwaName: "Pictures - London Cinema Listings",
   description:
