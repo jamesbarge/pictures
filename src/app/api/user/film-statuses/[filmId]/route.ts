@@ -3,8 +3,22 @@ import { db } from "@/db";
 import { userFilmStatuses } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import { requireAuth } from "@/lib/auth";
-import { handleApiError } from "@/lib/api-errors";
+import { BadRequestError, handleApiError } from "@/lib/api-errors";
 import { syncUserToPostHog } from "@/lib/posthog-supabase-sync";
+import { z } from "zod";
+
+const updateFilmStatusSchema = z.object({
+  status: z.enum(["want_to_see", "seen", "not_interested"]),
+  addedAt: z.string().datetime().optional(),
+  seenAt: z.string().datetime().nullable().optional(),
+  rating: z.number().int().min(0).max(5).nullable().optional(),
+  notes: z.string().max(1000).nullable().optional(),
+  filmTitle: z.string().max(200).nullable().optional(),
+  filmYear: z.number().int().min(1888).max(2100).nullable().optional(),
+  filmDirectors: z.array(z.string().max(200)).max(20).nullable().optional(),
+  filmPosterUrl: z.string().url().max(500).nullable().optional(),
+  updatedAt: z.string().datetime().optional(),
+});
 
 interface RouteParams {
   params: Promise<{ filmId: string }>;
@@ -17,8 +31,10 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
     const userId = await requireAuth();
     const { filmId } = await params;
-    const body = await request.json();
-
+    const parseResult = updateFilmStatusSchema.safeParse(await request.json());
+    if (!parseResult.success) {
+      throw new BadRequestError("Invalid request body", parseResult.error.flatten());
+    }
     const {
       status,
       addedAt,
@@ -30,7 +46,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       filmDirectors,
       filmPosterUrl,
       updatedAt,
-    } = body;
+    } = parseResult.data;
 
     // Check if entry exists
     const existing = await db.query.userFilmStatuses.findFirst({
