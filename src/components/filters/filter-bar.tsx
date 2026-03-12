@@ -44,6 +44,7 @@ function FilterBarContent({ festivals }: { festivals: { id: string; name: string
 
   // Sync URL params to store
   useEffect(() => {
+    if (!festivalsEnabled) return;
     const festivalSlug = searchParams.get("festival");
     if (festivalSlug && festivalSlug !== filters.festivalSlug) {
       filters.setFestivalFilter(festivalSlug);

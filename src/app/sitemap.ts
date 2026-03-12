@@ -2,6 +2,7 @@ import { MetadataRoute } from "next";
 import { db } from "@/db";
 import { films, cinemas, festivals } from "@/db/schema";
 import { eq, isNotNull } from "drizzle-orm";
+import { isFeatureEnabled } from "@/lib/features";
 import { brand } from "@/lib/brand";
 
 // Force dynamic - sitemap queries database
@@ -16,7 +17,7 @@ const BASE_URL = brand.baseUrl;
  * - Static pages (home, map, festivals, watchlist)
  * - All film pages with screenings
  * - All cinema pages
- * - All festival pages
+ * - All festival pages (when feature is enabled)
  *
  * Priority strategy:
  * - 1.0: Home page (main entry point)
@@ -36,12 +37,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "daily",
       priority: 1.0,
     },
-    {
-      url: `${BASE_URL}/festivals`,
-      lastModified: now,
-      changeFrequency: "weekly",
-      priority: 0.8,
-    },
+    ...(isFeatureEnabled("festivals")
+      ? [
+          {
+            url: `${BASE_URL}/festivals`,
+            lastModified: now,
+            changeFrequency: "weekly" as const,
+            priority: 0.8,
+          },
+        ]
+      : []),
     {
       url: `${BASE_URL}/cinemas`,
       lastModified: now,
@@ -100,21 +105,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.9,
   }));
 
-  // Fetch all active festivals
-  const allFestivals = await db
-    .select({
-      slug: festivals.slug,
-      updatedAt: festivals.updatedAt,
-    })
-    .from(festivals)
-    .where(eq(festivals.isActive, true));
+  // Fetch all active festivals (only when feature is enabled)
+  let festivalPages: MetadataRoute.Sitemap = [];
+  if (isFeatureEnabled("festivals")) {
+    const allFestivals = await db
+      .select({
+        slug: festivals.slug,
+        updatedAt: festivals.updatedAt,
+      })
+      .from(festivals)
+      .where(eq(festivals.isActive, true));
 
-  const festivalPages: MetadataRoute.Sitemap = allFestivals.map((festival) => ({
-    url: `${BASE_URL}/festivals/${festival.slug}`,
-    lastModified: festival.updatedAt || now,
-    changeFrequency: "weekly" as const,
-    priority: 0.8,
-  }));
+    festivalPages = allFestivals.map((festival) => ({
+      url: `${BASE_URL}/festivals/${festival.slug}`,
+      lastModified: festival.updatedAt || now,
+      changeFrequency: "weekly" as const,
+      priority: 0.8,
+    }));
+  }
 
   return [...staticPages, ...cinemaPages, ...festivalPages, ...filmPages];
 }

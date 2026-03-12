@@ -282,13 +282,21 @@ describe("useFilters store", () => {
       expect(useFilters.getState().getActiveFilterCount()).toBe(1);
     });
 
-    it("should count festival filters", () => {
+    it("should not count festival filters when feature flag is off", () => {
       useFilters.setState({ festivalSlug: "lff" });
-      expect(useFilters.getState().getActiveFilterCount()).toBe(1);
+      // Festival flag is off in test env, so festival filters are not counted
+      expect(useFilters.getState().getActiveFilterCount()).toBe(0);
 
       useFilters.setState({ festivalSlug: "lff", festivalOnly: true });
-      expect(useFilters.getState().getActiveFilterCount()).toBe(2);
+      expect(useFilters.getState().getActiveFilterCount()).toBe(0);
     });
+
+
+
+
+
+
+
 
     it("should count onlySingleShowings", () => {
       useFilters.setState({ onlySingleShowings: true });
@@ -304,10 +312,10 @@ describe("useFilters store", () => {
         decades: ["1970s"],        // +1
         genres: ["Horror"],        // +1
         hideSeen: true,            // +1
-        festivalSlug: "lff",       // +1
+        festivalSlug: "lff",       // +0 (feature flag off)
         onlySingleShowings: true,  // +1
       });
-      expect(useFilters.getState().getActiveFilterCount()).toBe(10);
+      expect(useFilters.getState().getActiveFilterCount()).toBe(9);
     });
   });
 

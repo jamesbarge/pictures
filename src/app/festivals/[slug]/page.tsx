@@ -211,6 +211,10 @@ export default async function FestivalPage({ params }: FestivalPageProps) {
 
 // Generate metadata
 export async function generateMetadata({ params }: FestivalPageProps) {
+  if (!isFeatureEnabled("festivals")) {
+    return { title: "Not Found" };
+  }
+
   const { slug } = await params;
 
   const result = await db
