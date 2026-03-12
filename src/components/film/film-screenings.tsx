@@ -10,6 +10,7 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
+import Link from "next/link";
 import { format, isSameDay, getHours, startOfDay, endOfDay } from "date-fns";
 import { MapPin, ExternalLink, Search, Filter } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -358,7 +359,11 @@ export function FilmScreenings({ screenings, film }: FilmScreeningsProps) {
               {/* Cinema Header */}
               <div className="px-4 py-3 border-b border-border-subtle flex items-center justify-between">
                 <div>
-                  <h3 className="font-display text-lg text-text-primary">{cinema.name}</h3>
+                  <h3 className="font-display text-lg">
+                    <Link href={`/cinemas/${cinema.id}`} className="text-text-primary hover:text-accent-primary transition-colors">
+                      {cinema.name}
+                    </Link>
+                  </h3>
                   {cinema.address?.area && (
                     <p className="text-sm text-text-tertiary flex items-center gap-1 mt-0.5">
                       <MapPin className="w-3 h-3" aria-hidden="true" />
