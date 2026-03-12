@@ -6,12 +6,14 @@ import { scraperRuns } from "@/db/schema/admin";
 import { films } from "@/db/schema/films";
 import { generateText, GEMINI_MODELS, stripCodeFences } from "@/lib/gemini";
 
+/** A single issue surfaced by the post-scrape verification check. */
 export interface VerificationIssue {
   type: string;
   severity: "error" | "warn" | "info";
   detail: string;
 }
 
+/** Aggregate result of verifying a cinema's scraper output. */
 export interface VerificationResult {
   cinemaId: string;
   verdict: "pass" | "warn" | "fail";
@@ -39,6 +41,12 @@ const VERIFICATION_SCHEMA = {
   required: ["verdict", "issues"],
 };
 
+/**
+ * Run AI-powered verification on a cinema's recent scraper output.
+ *
+ * Compares recent screenings, films, and scraper-run metadata against
+ * expected patterns and returns a pass/warn/fail verdict with issues.
+ */
 export async function verifyScraperOutput(params: {
   cinemaId: string;
   cinemaName: string;
