@@ -4,7 +4,7 @@
  */
 
 import type { FilmStatus, FilmStatusEntry } from "@/stores/film-status";
-import type { FilterState, TimeOfDay, ProgrammingType } from "@/stores/filters";
+import type { FilterState } from "@/stores/filters";
 
 // =============================================================================
 // Date Fixtures
