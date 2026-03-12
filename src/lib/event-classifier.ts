@@ -152,7 +152,7 @@ Return ONLY valid JSON, no explanation.`;
       if (isRateLimit && attempt < maxRetries - 1) {
         // Exponential backoff: 15s, 30s, 60s (respects 5 req/min limit)
         const waitTime = 15000 * Math.pow(2, attempt);
-        console.log(
+        console.warn(
           `[EventClassifier] Rate limited, waiting ${waitTime / 1000}s before retry ${attempt + 2}/${maxRetries}...`
         );
         await new Promise((r) => setTimeout(r, waitTime));

@@ -51,7 +51,7 @@ export class PosterService {
       }
 
       // No image available - use placeholder
-      console.log(`No image found for ${contentType}: "${title}"`);
+      console.warn(`No image found for ${contentType}: "${title}"`);
       return {
         url: getPosterPlaceholderUrl(title, year),
         source: "placeholder",
@@ -125,7 +125,7 @@ export class PosterService {
     }
 
     // 6. Generate placeholder as last resort
-    console.log(`No poster found for "${title}" (${year}) after trying: ${attempted.join(", ")}`);
+    console.warn(`No poster found for "${title}" (${year}) after trying: ${attempted.join(", ")}`);
     return {
       url: getPosterPlaceholderUrl(title, year),
       source: "placeholder",
