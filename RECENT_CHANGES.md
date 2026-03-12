@@ -6,6 +6,13 @@ When an entry is added here, also create a detailed file in /changelogs/
 -->
 
 
+## 2026-03-13: Kaizen — add JSDoc to travel-time, auth, and film-similarity types
+**PR**: #XX | **Files**: `travel-time.ts`, `auth.ts`, `film-similarity.ts`
+- Added JSDoc to 4 interfaces: Screening, ReachableScreening, AdminAuthContext, SimilarFilm
+- Kaizen automated refactoring (category: jsdoc)
+
+---
+
 ## 2026-03-13: Kaizen — add JSDoc to scraper core types and metadata parser
 **PR**: #XX | **Files**: `types.ts`, `metadata-parser.ts`
 - Added JSDoc to 6 exported interfaces: RawScreening, ScraperConfig, ScraperResult, CinemaScraper, BookingSystemConfig, FilmMetadata

@@ -19,6 +19,7 @@ const HIGH_CONFIDENCE_THRESHOLD = 0.6; // Auto-accept match
 const LOW_CONFIDENCE_THRESHOLD = 0.35; // Consider for Claude confirmation
 const MINIMUM_THRESHOLD = 0.25; // Below this, don't even consider
 
+/** A film record with its trigram similarity score, returned by the pg_trgm query */
 interface SimilarFilm {
   id: string;
   title: string;
