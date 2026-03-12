@@ -220,7 +220,7 @@ function tryParseFilm(
       const screenings = parseScreeningLine(line, pdfYear);
       film.screenings.push(...screenings);
       i++;
-    } else if (isDescriptionLine(line, film)) {
+    } else if (isDescriptionLine(line)) {
       // Description lines - skip but continue
       if (!film.description) {
         film.description = line;
@@ -265,7 +265,7 @@ function isMetadataLine(line: string): boolean {
 /**
  * Check if line is part of film description
  */
-function isDescriptionLine(line: string, film: ParsedFilm): boolean {
+function isDescriptionLine(line: string): boolean {
   // Description lines are typically longer prose
   if (line.length < 20) return false;
   if (isScreeningLine(line)) return false;
