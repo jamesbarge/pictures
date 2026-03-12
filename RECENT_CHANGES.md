@@ -5,6 +5,13 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-12: Kaizen — Remove unused imports in components
+**PR**: #177 | **Files**: `festival-programme.tsx`, `festival-venues.tsx`, `screening-filters.tsx`, `mobile-date-picker-modal.tsx`
+- Removed unused imports: `festivals`, `and`, `Card`, `cn`, `format`
+- Kaizen automated refactoring (category: dead-code)
+
+---
+
 ## 2026-03-12: Kaizen — Remove unused variables and imports
 **PR**: #176 | **Files**: `castle-sidcup.ts`, `peckhamplex.ts`, `film-similarity.ts`, `image-processor.ts`, `user-sync-service.ts`
 - Removed unused `CASTLE_SIDCUP_VENUE` and `PECKHAMPLEX_VENUE` constants from scrapers

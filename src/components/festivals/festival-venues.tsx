@@ -7,7 +7,6 @@
 
 import Link from "next/link";
 import { MapPin, ChevronRight } from "lucide-react";
-import { Card } from "@/components/ui/card";
 
 interface Venue {
   id: string;

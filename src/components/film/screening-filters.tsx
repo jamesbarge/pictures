@@ -6,7 +6,6 @@
 "use client";
 
 import { X } from "lucide-react";
-import { cn } from "@/lib/cn";
 import { CinemaSearchFilter } from "./cinema-search-filter";
 import { TimeRangeFilter } from "./time-range-filter";
 import { ScreeningDateFilter } from "./screening-date-filter";
