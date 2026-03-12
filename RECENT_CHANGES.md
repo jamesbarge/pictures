@@ -5,6 +5,13 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-12: Kaizen — Add JSDoc to trigger task-registry and verification
+**PR**: #166 | **Files**: `task-registry.ts`, `verification.ts`
+- Added JSDoc to `getTriggerTaskId`, `getAllTriggerTaskIds`, `VerificationIssue`, `VerificationResult`, `verifyScraperOutput`
+- Kaizen automated refactoring (category: jsdoc)
+
+---
+
 ## 2026-03-12: Kaizen — Extract shared levenshteinDistance utility
 **PR**: #165 | **Files**: `levenshtein.ts`, `season-linker.ts`, `pipeline.ts`, `confidence.ts`, `match.ts`
 - Extracted 4 identical copies of `levenshteinDistance` into `src/lib/levenshtein.ts`

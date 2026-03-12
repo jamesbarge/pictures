@@ -42,6 +42,7 @@ const INDEPENDENT_TASK_MAP: Record<string, string> = {
   "rich-mix": "scraper-rich-mix",
 };
 
+/** Resolve a cinema ID to its Trigger.dev task ID, or `null` if unmapped. */
 export function getTriggerTaskId(cinemaId: string): string | null {
   // Check independent first
   if (INDEPENDENT_TASK_MAP[cinemaId]) {
@@ -57,6 +58,7 @@ export function getTriggerTaskId(cinemaId: string): string | null {
   return null;
 }
 
+/** Return the deduplicated set of all registered Trigger.dev task IDs. */
 export function getAllTriggerTaskIds(): string[] {
   const ids = new Set([
     ...Object.values(CHAIN_TASK_MAP),
