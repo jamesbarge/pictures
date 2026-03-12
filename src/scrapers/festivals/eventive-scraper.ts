@@ -112,13 +112,13 @@ export async function scrapeEventiveFestival(
     // If event has no films, use the event name as the film title
     if (resolvedFilms.length === 0) {
       screenings.push(
-        createScreening(event, null, cinemaId, festivalSlug, config.slugBase)
+        createScreening(event, null, cinemaId, festivalSlug)
       );
     } else {
       // Create one screening per film in the event
       for (const film of resolvedFilms) {
         screenings.push(
-          createScreening(event, film, cinemaId, festivalSlug, config.slugBase)
+          createScreening(event, film, cinemaId, festivalSlug)
         );
       }
     }
@@ -138,8 +138,7 @@ function createScreening(
   event: EventiveEvent,
   film: EventiveFilm | null,
   cinemaId: string,
-  festivalSlug: string,
-  _slugBase: string
+  festivalSlug: string
 ): RawScreening & { cinemaId: string } {
   const title = film?.name ?? event.name;
   const section = event.tags?.[0] ?? film?.sections?.[0];
