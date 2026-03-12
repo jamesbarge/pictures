@@ -1,10 +1,10 @@
 # Fix CI Node Version + Regenerate Lockfile
 
-**PR**: #TBD
+**PR**: #252
 **Date**: 2026-03-13
 
 ## Changes
-- Bumped GitHub Actions Node.js from 22 to 24 in both unit-test and E2E jobs to match Vercel production (`nodeVersion: "24.x"`)
+- Bumped ALL GitHub Actions workflows (test, deploy-trigger, scrape, scrape-playwright, social-outreach) from Node 22 to 24 to match Vercel production
 - Regenerated `package-lock.json` to resolve missing `magicast@0.3.5` transitive dependency
 - Added `.npmrc` with `legacy-peer-deps=true` to handle `@opentelemetry/sdk-trace-base` peer dep conflict between `@posthog/ai` (wants `^2.2.0`) and `@trigger.dev/core` (pins `2.0.1`)
 - Added `@testing-library/dom` as explicit dev dependency (required peer dep of `@testing-library/react` that was silently missing)

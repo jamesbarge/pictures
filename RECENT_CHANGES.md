@@ -1,8 +1,8 @@
 # Recent Changes
 
 ## 2026-03-13: Fix CI Node version + regenerate lockfile
-**PR**: #252 | **Files**: `.github/workflows/test.yml`, `package-lock.json`, `package.json`, `.npmrc`
-- Bump GitHub Actions Node 22→24 to match Vercel production
+**PR**: #252 | **Files**: `.github/workflows/*.yml`, `package-lock.json`, `package.json`, `.npmrc`
+- Bump ALL GitHub Actions workflows Node 22→24 to match Vercel production
 - Regenerate package-lock.json to resolve missing transitive deps (magicast)
 - Add .npmrc with legacy-peer-deps for @posthog/ai ↔ @trigger.dev OpenTelemetry conflict
 - Add @testing-library/dom as explicit dev dep (peer dep of @testing-library/react)
