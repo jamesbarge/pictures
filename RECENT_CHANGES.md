@@ -5,6 +5,14 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-12: Kaizen — Add JSDoc to rate-limit and gemini exports
+**PR**: #159 | **Files**: `rate-limit.ts`, `gemini.ts`
+- Added JSDoc to 6 exported symbols missing documentation (interfaces, types, constants)
+- Converted `//` field comments to `/** */` for IDE tooltip visibility
+- Kaizen automated refactoring (category: jsdoc)
+
+---
+
 ## 2026-03-12: Kaizen — Extract shared buildChainConfig helper
 **PR**: #158 | **Files**: `venue-from-registry.ts`, `curzon.ts`, `picturehouse.ts`, `everyman.ts`
 - Extracted duplicated `buildConfig()` from 3 chain trigger files into shared `buildChainConfig` helper
