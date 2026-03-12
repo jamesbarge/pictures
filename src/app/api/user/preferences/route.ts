@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { userPreferences } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { requireAuth, unauthorizedResponse } from "@/lib/auth";
+import { requireAuth } from "@/lib/auth";
+import { handleApiError } from "@/lib/api-errors";
 import type { StoredPreferences, StoredFilters } from "@/db/schema/user-preferences";
 
 /**
@@ -30,11 +31,7 @@ export async function GET() {
       updatedAt: prefs.updatedAt.toISOString(),
     });
   } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return unauthorizedResponse();
-    }
-    console.error("Preferences fetch error:", error);
-    return NextResponse.json({ error: "Failed to fetch preferences" }, { status: 500 });
+    return handleApiError(error, "GET /api/user/preferences");
   }
 }
 
@@ -86,10 +83,6 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return unauthorizedResponse();
-    }
-    console.error("Preferences update error:", error);
-    return NextResponse.json({ error: "Failed to update preferences" }, { status: 500 });
+    return handleApiError(error, "PUT /api/user/preferences");
   }
 }

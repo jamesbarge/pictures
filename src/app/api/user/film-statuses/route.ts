@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { userFilmStatuses } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
-import { requireAuth, unauthorizedResponse } from "@/lib/auth";
+import { requireAuth } from "@/lib/auth";
+import { handleApiError } from "@/lib/api-errors";
 import { z } from "zod";
 
 // Validation schema for film status
@@ -44,11 +45,7 @@ export async function GET() {
 
     return NextResponse.json({ statuses: statusMap });
   } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return unauthorizedResponse();
-    }
-    console.error("Film statuses fetch error:", error);
-    return NextResponse.json({ error: "Failed to fetch film statuses" }, { status: 500 });
+    return handleApiError(error, "GET /api/user/film-statuses");
   }
 }
 
@@ -155,10 +152,6 @@ export async function POST(request: NextRequest) {
       }
     });
   } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return unauthorizedResponse();
-    }
-    console.error("Film statuses sync error:", error);
-    return NextResponse.json({ error: "Failed to sync film statuses" }, { status: 500 });
+    return handleApiError(error, "POST /api/user/film-statuses");
   }
 }

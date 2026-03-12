@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { requireAuth, unauthorizedResponse } from "@/lib/auth";
+import { requireAuth } from "@/lib/auth";
+import { handleApiError } from "@/lib/api-errors";
 import { currentUser } from "@clerk/nextjs/server";
 
 /**
@@ -36,10 +37,6 @@ export async function GET() {
 
     return NextResponse.json({ user });
   } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return unauthorizedResponse();
-    }
-    console.error("User fetch error:", error);
-    return NextResponse.json({ error: "Failed to fetch user" }, { status: 500 });
+    return handleApiError(error, "GET /api/user");
   }
 }

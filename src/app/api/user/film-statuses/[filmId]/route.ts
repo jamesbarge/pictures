@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { userFilmStatuses } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
-import { requireAuth, unauthorizedResponse } from "@/lib/auth";
+import { requireAuth } from "@/lib/auth";
+import { handleApiError } from "@/lib/api-errors";
 import { syncUserToPostHog } from "@/lib/posthog-supabase-sync";
 
 interface RouteParams {
@@ -81,11 +82,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return unauthorizedResponse();
-    }
-    console.error("Film status update error:", error);
-    return NextResponse.json({ error: "Failed to update film status" }, { status: 500 });
+    return handleApiError(error, "PUT /api/user/film-statuses/[filmId]");
   }
 }
 
@@ -113,10 +110,6 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return unauthorizedResponse();
-    }
-    console.error("Film status delete error:", error);
-    return NextResponse.json({ error: "Failed to delete film status" }, { status: 500 });
+    return handleApiError(error, "DELETE /api/user/film-statuses/[filmId]");
   }
 }

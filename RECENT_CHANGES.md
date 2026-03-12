@@ -5,6 +5,14 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-12: Kaizen — Standardize error handling in user API routes
+**PR**: #156 | **Files**: `user/route.ts`, `user/preferences/route.ts`, `user/film-statuses/route.ts`, `user/film-statuses/[filmId]/route.ts`
+- Migrated 7 catch blocks from manual `console.error` + `NextResponse.json` to shared `handleApiError`
+- Removed `unauthorizedResponse` imports (now handled by `handleApiError`)
+- Kaizen automated refactoring (category: error-handling)
+
+---
+
 ## 2026-03-12: Kaizen — Extract shared Cache-Control header constants
 **PR**: #155 | **Files**: `cache-headers.ts`, `screenings/route.ts`, `cinemas/route.ts`, `cinemas/[id]/route.ts`, `films/[id]/route.ts`
 - Created `src/lib/cache-headers.ts` with named constants for 3 cache tiers (2min, 5min, 10min)
