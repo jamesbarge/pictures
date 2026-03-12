@@ -23,6 +23,22 @@ import {
   escapeRegex,
 } from "./patterns";
 
+/** Confidence when no extraction is needed — title used as-is */
+const FULL_CONFIDENCE = 1.0;
+/** Confidence for "X presents: Y" pattern extraction */
+const PRESENTS_CONFIDENCE = 0.95;
+/** Confidence for sing-a-long pattern extraction */
+const SINGALONG_CONFIDENCE = 0.9;
+/** Maximum confidence when an event prefix is stripped */
+const PREFIX_MAX_CONFIDENCE = 0.9;
+/** Maximum confidence when a title suffix is stripped */
+const SUFFIX_MAX_CONFIDENCE = 0.85;
+/** Maximum confidence when extracting first film from a double feature */
+const DOUBLE_FEATURE_MAX_CONFIDENCE = 0.7;
+/** Confidence for festival compilation titles (low — likely not a single film) */
+const FESTIVAL_COMPILATION_CONFIDENCE = 0.3;
+
+
 /** Result of sync pattern-based title extraction (no AI calls) */
 export interface PatternExtractionResult {
   originalTitle: string;
@@ -46,7 +62,7 @@ export function extractFilmTitleSync(title: string): PatternExtractionResult {
   let isCompilation = false;
   let isLiveBroadcast = false;
   let method = "none";
-  let confidence = 1.0;
+  let confidence = FULL_CONFIDENCE;
 
   // Check for non-film events early
   for (const pattern of NON_FILM_PATTERNS) {
@@ -57,7 +73,7 @@ export function extractFilmTitleSync(title: string): PatternExtractionResult {
         isCompilation: false,
         isLiveBroadcast: false,
         isNonFilm: true,
-        confidence: 0,
+        confidence: 0, // non-film: no confidence
         extractionMethod: "non_film_detected",
       };
     }
@@ -76,7 +92,7 @@ export function extractFilmTitleSync(title: string): PatternExtractionResult {
   if (presentsMatch) {
     extracted = presentsMatch[1];
     method = "presents_pattern";
-    confidence = 0.95;
+    confidence = PRESENTS_CONFIDENCE;
   }
 
   // Check for sing-a-long pattern
@@ -84,7 +100,7 @@ export function extractFilmTitleSync(title: string): PatternExtractionResult {
   if (singalongMatch) {
     extracted = singalongMatch[1];
     method = "singalong_pattern";
-    confidence = 0.9;
+    confidence = SINGALONG_CONFIDENCE;
   }
 
   // Check for event prefixes (colon-separated)
@@ -94,7 +110,7 @@ export function extractFilmTitleSync(title: string): PatternExtractionResult {
       // Check if this is a festival compilation
       if (FESTIVAL_PREFIXES.includes(prefix.toUpperCase())) {
         isCompilation = true;
-        confidence = 0.3;
+        confidence = FESTIVAL_COMPILATION_CONFIDENCE;
       }
 
       // Check if this is a live broadcast
@@ -104,7 +120,7 @@ export function extractFilmTitleSync(title: string): PatternExtractionResult {
 
       extracted = extracted.replace(prefixPattern, "");
       method = method === "none" ? "prefix_removal" : method + "+prefix_removal";
-      if (!isCompilation) confidence = Math.min(confidence, 0.9);
+      if (!isCompilation) confidence = Math.min(confidence, PREFIX_MAX_CONFIDENCE);
       break;
     }
   }
@@ -114,7 +130,7 @@ export function extractFilmTitleSync(title: string): PatternExtractionResult {
     if (suffixPattern.test(extracted)) {
       extracted = extracted.replace(suffixPattern, "").trim();
       method = method === "none" ? "suffix_removal" : method + "+suffix_removal";
-      confidence = Math.min(confidence, 0.85);
+      confidence = Math.min(confidence, SUFFIX_MAX_CONFIDENCE);
     }
   }
 
@@ -124,7 +140,7 @@ export function extractFilmTitleSync(title: string): PatternExtractionResult {
     if (doubleMatch) {
       extracted = doubleMatch[1].trim();
       method = method === "none" ? "double_feature" : method + "+double_feature";
-      confidence = Math.min(confidence, 0.7);
+      confidence = Math.min(confidence, DOUBLE_FEATURE_MAX_CONFIDENCE);
     }
   }
 
@@ -154,7 +170,7 @@ export function extractFilmTitleSync(title: string): PatternExtractionResult {
     isCompilation: false,
     isLiveBroadcast: false,
     isNonFilm: false,
-    confidence: 1.0,
+    confidence: FULL_CONFIDENCE,
     extractionMethod: "none",
   };
 }
