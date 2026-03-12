@@ -5,6 +5,15 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-12: Brand config extraction
+**PR**: #228 | **Files**: `src/lib/brand.ts`, `src/app/manifest.ts`, + 22 modified files
+- Centralize all hardcoded brand values (site name, URLs, descriptions, social handles, theme colors) into `src/lib/brand.ts`
+- Replace static `public/manifest.json` with dynamic `src/app/manifest.ts` reading from brand config
+- Update 22 files across pages, components, SEO, and trigger tasks to import from `brand.ts`
+- Future rebranding is now a single-file change
+
+---
+
 ## 2026-03-13: Kaizen — extract TMDB client constants
 **PR**: #XX | **Files**: `src/lib/tmdb/client.ts`
 - Extract magic values to named constants: `TMDB_CACHE_REVALIDATE_SEC`, `DIRECTOR_JOB`, `MAX_CAST_MEMBERS`
