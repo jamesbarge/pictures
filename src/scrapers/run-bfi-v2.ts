@@ -6,7 +6,7 @@
  *   npm run scrape:bfi-v2 -- southbank # Scrape specific venue
  */
 
-import { runScraper, createMain, type MultiVenueConfig } from "./runner-factory";
+import { createMain, type MultiVenueConfig } from "./runner-factory";
 import { createBFIScraper } from "./cinemas/bfi";
 
 // Define BFI venues

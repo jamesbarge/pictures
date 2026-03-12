@@ -5,7 +5,7 @@
  *   npm run scrape:rio-v2
  */
 
-import { runScraper, createMain, type SingleVenueConfig } from "./runner-factory";
+import { createMain, type SingleVenueConfig } from "./runner-factory";
 import { createRioScraper } from "./cinemas/rio";
 
 // Configure the single venue scraper

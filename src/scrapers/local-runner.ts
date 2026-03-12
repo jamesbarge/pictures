@@ -13,7 +13,7 @@
 
 import { db } from "@/db";
 import { screenings, cinemas } from "@/db/schema";
-import { sql, desc, eq } from "drizzle-orm";
+import { sql, eq } from "drizzle-orm";
 import { spawn } from "child_process";
 import * as readline from "readline";
 

@@ -5,6 +5,14 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-13: Kaizen — remove unused imports from scraper runners
+**PR**: #XX | **Files**: `local-runner.ts`, `run-bfi-v2.ts`, `run-genesis-v2.ts`, `run-genesis-v2-basescraper.ts`, `run-rio-v2.ts`
+- Remove unused `runScraper` import from 4 runner scripts (only `createMain` is used)
+- Remove unused `desc` import from local-runner.ts
+- Kaizen automated refactoring (category: lint-fix)
+
+---
+
 ## 2026-03-13: Kaizen — clean all remaining lint warnings in src/trigger/
 **PR**: #XX | **Files**: `nickel.ts`, `analyze-and-fix.ts`, `scope-classifier.ts`
 - Remove last unused `_payload` param (nickel.ts — completes the 23-file cleanup)
