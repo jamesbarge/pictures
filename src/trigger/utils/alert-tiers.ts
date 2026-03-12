@@ -16,7 +16,7 @@ export interface AlertContext {
  * - P2: Individual scraper/enrichment failure (daily digest — logged for now)
  * - P3: Partial failure, warnings (weekly summary — logged for now)
  */
-export function classifyAlert(taskId: string, _error?: string): AlertTier {
+export function classifyAlert(taskId: string): AlertTier {
   // P1: Orchestrator failures are always critical
   if (taskId === "scrape-all-orchestrator" || taskId === "qa-orchestrator") return "P1";
 

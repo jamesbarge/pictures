@@ -27,6 +27,6 @@ tasks.onFailure(async ({ task, error, ctx }) => {
     // PostHog not available — log and continue
   }
 
-  const tier = classifyAlert(task, message);
+  const tier = classifyAlert(task);
   await sendTieredAlert(tier, { taskId: task, runId, error: message });
 });
