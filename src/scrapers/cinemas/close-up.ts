@@ -18,6 +18,7 @@
 import * as cheerio from "cheerio";
 import { BaseScraper } from "../base";
 import type { RawScreening, ScraperConfig } from "../types";
+import { normalizeUrl } from "../utils/url";
 import { FestivalDetector } from "../festivals/festival-detector";
 
 interface CloseUpShow {
@@ -106,7 +107,7 @@ export class CloseUpCinemaScraper extends BaseScraper {
 
             let bookingUrl = show.blink;
             if (!bookingUrl && show.film_url) {
-              bookingUrl = this.normalizeUrl(show.film_url);
+              bookingUrl = normalizeUrl(show.film_url, this.config.baseUrl);
             }
             if (!bookingUrl) continue;
 
@@ -161,7 +162,7 @@ export class CloseUpCinemaScraper extends BaseScraper {
       const datetime = this.parseHtmlDateTime(day, month, hour, minute, ampm);
       if (!datetime || datetime < now) return;
 
-      const bookingUrl = href ? this.normalizeUrl(href) : null;
+      const bookingUrl = href ? normalizeUrl(href, this.config.baseUrl) : null;
       if (!bookingUrl) return;
 
       const dedupeKey = `${title.trim().toLowerCase()}-${datetime.toISOString()}`;
@@ -198,7 +199,7 @@ export class CloseUpCinemaScraper extends BaseScraper {
         const datetime = this.combineDateAndTime(pageDate, hour, minute, ampm);
         if (!datetime || datetime < now) return;
 
-        const bookingUrl = href ? this.normalizeUrl(href) : null;
+        const bookingUrl = href ? normalizeUrl(href, this.config.baseUrl) : null;
         if (!bookingUrl) return;
 
         const dedupeKey = `${title.trim().toLowerCase()}-${datetime.toISOString()}`;
@@ -389,18 +390,6 @@ export class CloseUpCinemaScraper extends BaseScraper {
     return new Date(year, month, day, hours, minutes, seconds);
   }
 
-  /**
-   * Normalize URL - ensure it's absolute
-   */
-  private normalizeUrl(url: string): string {
-    if (url.startsWith("http")) {
-      return url;
-    }
-    if (url.startsWith("/")) {
-      return `${this.config.baseUrl}${url}`;
-    }
-    return `${this.config.baseUrl}/${url}`;
-  }
 }
 
 export function createCloseUpCinemaScraper(): CloseUpCinemaScraper {

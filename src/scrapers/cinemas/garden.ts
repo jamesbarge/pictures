@@ -17,6 +17,7 @@ import { BaseScraper } from "../base";
 import type { RawScreening, ScraperConfig } from "../types";
 import { FestivalDetector } from "../festivals/festival-detector";
 import { combineDateAndTime } from "../utils/date-parser";
+import { normalizeUrl } from "../utils/url";
 
 export class GardenCinemaScraper extends BaseScraper {
   config: ScraperConfig = {
@@ -118,13 +119,13 @@ export class GardenCinemaScraper extends BaseScraper {
           // Create sourceId for deduplication
           const sourceId = `garden-${this.slugify(title)}-${datetime.toISOString()}`;
 
-          const normalizedBookingUrl = this.normalizeUrl(bookingUrl);
+          const normalizedBookingUrl = normalizeUrl(bookingUrl, this.config.baseUrl);
           screenings.push({
             filmTitle: title,
             datetime,
             bookingUrl: normalizedBookingUrl,
             sourceId,
-            posterUrl: posterUrl ? this.normalizeUrl(posterUrl) : undefined,
+            posterUrl: posterUrl ? normalizeUrl(posterUrl, this.config.baseUrl) : undefined,
             year,
             director,
             ...FestivalDetector.detect("garden", title, datetime, normalizedBookingUrl),
@@ -222,18 +223,6 @@ export class GardenCinemaScraper extends BaseScraper {
       .substring(0, 50);
   }
 
-  /**
-   * Normalize URL - ensure it's absolute
-   */
-  private normalizeUrl(url: string): string {
-    if (url.startsWith("http")) {
-      return url;
-    }
-    if (url.startsWith("/")) {
-      return `${this.config.baseUrl}${url}`;
-    }
-    return `${this.config.baseUrl}/${url}`;
-  }
 }
 
 export function createGardenCinemaScraper(): GardenCinemaScraper {
