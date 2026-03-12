@@ -5,6 +5,14 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-13: Kaizen — remove unused _payload and _error params
+**PR**: #XX | **Files**: 3 chain scrapers, `alert-tiers.ts`, `on-failure.ts`
+- Remove unused `_payload` param from 3 chain scraper task handlers (curzon, everyman, picturehouse)
+- Remove unused `_error` param from `classifyAlert` function and its call site
+- Kaizen automated refactoring (category: lint-fix)
+
+---
+
 ## 2026-03-13: Kaizen — extract TMDB client constants
 **PR**: #XX | **Files**: `src/lib/tmdb/client.ts`
 - Extract magic values to named constants: `TMDB_CACHE_REVALIDATE_SEC`, `DIRECTOR_JOB`, `MAX_CAST_MEMBERS`
