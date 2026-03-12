@@ -5,6 +5,14 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-12: Security — replace sql.raw() with parameterized queries in verify-screening-integrity
+**PR**: #206 | **Files**: `scripts/verify-screening-integrity.ts`
+- Replaced `sql.raw()` + string interpolation with Drizzle's parameterized `sql` template literal
+- Uses `sql.join()` with OR conditions instead of an interpolated IN clause
+- Eliminates a SQL injection antipattern that could be copied to user-facing code
+
+---
+
 ## 2026-03-12: Extend scraper sanitization to all text fields
 **PR**: #205 | **Files**: `src/scrapers/utils/screening-validator.ts`, `src/scrapers/utils/screening-validator.test.ts`
 - Extended `sanitizeScreening()` to strip HTML from `eventDescription`, `screen`, `format`, and `director` (previously only `filmTitle` was sanitized)
