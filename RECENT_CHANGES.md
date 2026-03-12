@@ -5,6 +5,14 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-12: Kaizen — Extract shared buildChainConfig helper
+**PR**: #158 | **Files**: `venue-from-registry.ts`, `curzon.ts`, `picturehouse.ts`, `everyman.ts`
+- Extracted duplicated `buildConfig()` from 3 chain trigger files into shared `buildChainConfig` helper
+- Reuses existing `cinemaToVenue` mapping, eliminating ~45 lines of copy-pasted code
+- Kaizen automated refactoring (category: duplicate-pattern)
+
+---
+
 ## 2026-03-12: Kaizen — Promote failure-condition logs to console.warn
 **PR**: #157 | **Files**: `posters/service.ts`, `scraper-health/alerts.ts`, `event-classifier.ts`
 - Promoted 5 `console.log` calls to `console.warn` where they report failure conditions or missing config

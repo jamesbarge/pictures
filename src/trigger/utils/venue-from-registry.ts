@@ -1,5 +1,6 @@
-import { getCinemaById, type CinemaDefinition } from "@/config/cinema-registry";
-import type { VenueDefinition } from "@/scrapers/runner-factory";
+import { getCinemaById, getCinemasByChain, getActiveCinemasByChain, type CinemaDefinition, type ChainId } from "@/config/cinema-registry";
+import type { VenueDefinition, ChainConfig } from "@/scrapers/runner-factory";
+import type { ChainScraper } from "@/scrapers/types";
 
 /**
  * Convert a CinemaDefinition from the registry into a VenueDefinition
@@ -18,6 +19,26 @@ export function cinemaToVenue(cinema: CinemaDefinition): VenueDefinition {
       postcode: cinema.address.postcode,
     },
     features: cinema.features,
+  };
+}
+
+/**
+ * Build a ChainConfig from the cinema registry for a given chain.
+ * Replaces the duplicated buildConfig() functions in chain trigger files.
+ */
+export function buildChainConfig(
+  chainKey: ChainId,
+  chainName: string,
+  createScraper: () => ChainScraper
+): ChainConfig {
+  const all = getCinemasByChain(chainKey);
+  const active = getActiveCinemasByChain(chainKey);
+  return {
+    type: "chain",
+    chainName,
+    venues: all.map(cinemaToVenue),
+    createScraper,
+    getActiveVenueIds: () => active.map((c) => c.id),
   };
 }
 
