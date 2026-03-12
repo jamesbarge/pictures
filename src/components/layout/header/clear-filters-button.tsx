@@ -4,6 +4,9 @@ import { X } from "lucide-react";
 import { useFilters } from "@/stores/filters";
 import { usePreferences } from "@/stores/preferences";
 import { Button } from "@/components/ui";
+import { isFeatureEnabled } from "@/lib/features";
+
+const festivalsEnabled = isFeatureEnabled("festivals");
 
 /** Clear All Filters Button */
 export function ClearFiltersButton({ fullWidth }: { fullWidth?: boolean } = {}) {
@@ -22,8 +25,8 @@ export function ClearFiltersButton({ fullWidth }: { fullWidth?: boolean } = {}) 
     filters.decades.length +
     filters.genres.length +
     filters.timesOfDay.length +
-    (filters.festivalSlug ? 1 : 0) +
-    (filters.festivalOnly ? 1 : 0) +
+    (festivalsEnabled && filters.festivalSlug ? 1 : 0) +
+    (festivalsEnabled && filters.festivalOnly ? 1 : 0) +
     (filters.seasonSlug ? 1 : 0) +
     (filters.hideSeen ? 1 : 0) +
     (filters.onlySingleShowings ? 1 : 0);

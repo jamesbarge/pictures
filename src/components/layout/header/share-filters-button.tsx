@@ -6,6 +6,9 @@ import { cn } from "@/lib/cn";
 import { useFilters } from "@/stores/filters";
 import { Button } from "@/components/ui";
 import { useUrlFilters } from "@/hooks/useUrlFilters";
+import { isFeatureEnabled } from "@/lib/features";
+
+const festivalsEnabled = isFeatureEnabled("festivals");
 
 /** Share Filters Button - copies shareable URL to clipboard */
 export function ShareFiltersButton({ fullWidth }: { fullWidth?: boolean } = {}) {
@@ -24,8 +27,8 @@ export function ShareFiltersButton({ fullWidth }: { fullWidth?: boolean } = {}) 
     filters.decades.length +
     filters.genres.length +
     filters.timesOfDay.length +
-    (filters.festivalSlug ? 1 : 0) +
-    (filters.festivalOnly ? 1 : 0) +
+    (festivalsEnabled && filters.festivalSlug ? 1 : 0) +
+    (festivalsEnabled && filters.festivalOnly ? 1 : 0) +
     (filters.seasonSlug ? 1 : 0) +
     (filters.hideSeen ? 1 : 0) +
     (filters.onlySingleShowings ? 1 : 0);

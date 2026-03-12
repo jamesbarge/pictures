@@ -20,6 +20,9 @@ import {
   hasFilterParams,
   type ShareableFilters,
 } from "@/lib/url-filters";
+import { isFeatureEnabled } from "@/lib/features";
+
+const festivalsEnabled = isFeatureEnabled("festivals");
 
 interface UseUrlFiltersOptions {
   /**
@@ -81,10 +84,10 @@ export function useUrlFilters(options: UseUrlFiltersOptions = {}) {
       if (urlFilters.genres?.length) {
         filters.setGenres(urlFilters.genres);
       }
-      if (urlFilters.festivalSlug) {
+      if (festivalsEnabled && urlFilters.festivalSlug) {
         filters.setFestivalFilter(urlFilters.festivalSlug);
       }
-      if (urlFilters.festivalOnly) {
+      if (festivalsEnabled && urlFilters.festivalOnly) {
         filters.setFestivalOnly(true);
       }
       if (urlFilters.onlySingleShowings) {
@@ -131,8 +134,8 @@ export function useUrlFilters(options: UseUrlFiltersOptions = {}) {
       decades: filters.decades,
       genres: filters.genres,
       timesOfDay: filters.timesOfDay,
-      festivalSlug: filters.festivalSlug,
-      festivalOnly: filters.festivalOnly,
+      festivalSlug: festivalsEnabled ? filters.festivalSlug : null,
+      festivalOnly: festivalsEnabled ? filters.festivalOnly : false,
       onlySingleShowings: filters.onlySingleShowings,
     };
   }, [filters]);

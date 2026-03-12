@@ -38,6 +38,7 @@ const NAV_ITEMS = [
 // Filter out feature-flagged nav items (evaluated once at build time since NEXT_PUBLIC_ vars are inlined)
 const VISIBLE_NAV_ITEMS = NAV_ITEMS.filter((item) => {
   if (item.href === "/seasons" && !isFeatureEnabled("seasons")) return false;
+  if (item.href === "/festivals" && !isFeatureEnabled("festivals")) return false;
   return true;
 });
 
@@ -220,12 +221,14 @@ export function HeaderNavButtons({ mounted }: HeaderNavButtonsProps) {
           label="What Can I Catch?"
         />
 
-        {/* Festivals */}
-        <DesktopNavButton
-          href="/festivals"
-          icon={<Clapperboard className="w-4 h-4" />}
-          label="Festivals"
-        />
+        {/* Festivals (feature-flagged) */}
+        {isFeatureEnabled("festivals") && (
+          <DesktopNavButton
+            href="/festivals"
+            icon={<Clapperboard className="w-4 h-4" />}
+            label="Festivals"
+          />
+        )}
 
         {/* Seasons (feature-flagged) */}
         {isFeatureEnabled("seasons") && (

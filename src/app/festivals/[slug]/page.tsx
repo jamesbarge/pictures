@@ -18,12 +18,17 @@ import { FestivalKeyDates } from "@/components/festivals/festival-key-dates";
 import { FestivalVenues } from "@/components/festivals/festival-venues";
 import { FollowButton } from "@/components/festivals/follow-button";
 import { FestivalProgramme } from "@/components/festivals/festival-programme";
+import { isFeatureEnabled } from "@/lib/features";
 
 interface FestivalPageProps {
   params: Promise<{ slug: string }>;
 }
 
 export default async function FestivalPage({ params }: FestivalPageProps) {
+  if (!isFeatureEnabled("festivals")) {
+    notFound();
+  }
+
   const { slug } = await params;
   const userId = await getCurrentUserId();
 
@@ -206,6 +211,10 @@ export default async function FestivalPage({ params }: FestivalPageProps) {
 
 // Generate metadata
 export async function generateMetadata({ params }: FestivalPageProps) {
+  if (!isFeatureEnabled("festivals")) {
+    return { title: "Not Found" };
+  }
+
   const { slug } = await params;
 
   const result = await db

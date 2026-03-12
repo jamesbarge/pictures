@@ -319,9 +319,9 @@ export const useFilters = create<FilterState & FilterActions>()(
         count += state.decades.length;
         count += state.genres.length;
         count += state.timesOfDay.length;
-        // Festival filters
-        if (state.festivalSlug) count++;
-        if (state.festivalOnly) count++;
+        // Festival filters (only count if feature is enabled)
+        if (isFeatureEnabled("festivals") && state.festivalSlug) count++;
+        if (isFeatureEnabled("festivals") && state.festivalOnly) count++;
         // Season filters
         if (state.seasonSlug) count++;
         if (state.hideSeen) count++;
@@ -358,11 +358,15 @@ export const useFilters = create<FilterState & FilterActions>()(
     }),
     {
       name: "pictures-filters",
-      // Clear seasonSlug on hydration if seasons feature is disabled
+      // Clear feature-flagged filters on hydration if features are disabled
       // Prevents stale localStorage values from silently filtering screenings
       onRehydrateStorage: () => (state) => {
         if (state && !isFeatureEnabled("seasons") && state.seasonSlug) {
           state.seasonSlug = null;
+        }
+        if (state && !isFeatureEnabled("festivals") && (state.festivalSlug || state.festivalOnly)) {
+          state.festivalSlug = null;
+          state.festivalOnly = false;
         }
       },
       // Don't persist search terms or date range - they should reset each session
