@@ -14,6 +14,7 @@ import { useHydrated } from "@/hooks/useHydrated";
 import { Bell, Check } from "lucide-react";
 import { cn } from "@/lib/cn";
 
+/** Props for the FollowButton component that handles festival follow/unfollow with optimistic updates */
 export interface FollowButtonProps {
   festivalId: string;
   festivalName: string;

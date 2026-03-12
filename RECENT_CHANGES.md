@@ -5,6 +5,13 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-13: Kaizen — add JSDoc to festival and filter component types
+**PR**: #XX | **Files**: `follow-button.tsx`, `date-filter.tsx`, `festival-card.tsx`
+- Added JSDoc to `FollowButtonProps`, `DatePeriod`, `DateFilterProps`, `FestivalCardProps`
+- Kaizen automated refactoring (category: jsdoc)
+
+---
+
 ## 2026-03-13: Kaizen — extract STALE_TIME_MS constant in calendar loader
 **PR**: #XX | **Files**: `calendar-view-loader.tsx`
 - Extracted `5 * 60 * 1000` repeated 5 times into named `STALE_TIME_MS` constant

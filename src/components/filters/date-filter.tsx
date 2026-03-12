@@ -9,6 +9,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/cn";
 
+/** Predefined date range filter options for the screening calendar */
 export type DatePeriod = "today" | "tomorrow" | "week" | "weekend" | "all";
 
 const periods: { value: DatePeriod; label: string }[] = [
@@ -19,6 +20,7 @@ const periods: { value: DatePeriod; label: string }[] = [
   { value: "all", label: "All" },
 ];
 
+/** Props for the DateFilter pill selector component */
 interface DateFilterProps {
   currentPeriod: DatePeriod;
 }
