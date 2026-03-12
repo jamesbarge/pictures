@@ -55,6 +55,7 @@ export abstract class BaseScraper implements CinemaScraper {
    */
   protected validate(screenings: RawScreening[]): RawScreening[] {
     const now = new Date();
+    const seen = new Set<string>();
 
     return screenings.filter((s) => {
       // Must have title
@@ -74,6 +75,12 @@ export abstract class BaseScraper implements CinemaScraper {
       if (!s.bookingUrl || s.bookingUrl.trim() === "") {
         return false;
       }
+
+      // Deduplicate by sourceId
+      if (s.sourceId && seen.has(s.sourceId)) {
+        return false;
+      }
+      if (s.sourceId) seen.add(s.sourceId);
 
       return true;
     });

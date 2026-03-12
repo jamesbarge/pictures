@@ -5,6 +5,14 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-12: Kaizen — Move sourceId dedup into BaseScraper.validate()
+**PR**: #151 | **Files**: `base.ts`, `rich-mix-v2.ts`, `electric-v2.ts`, `riverside-v2.ts`, `castle-v2.ts`
+- Moved sourceId deduplication from 4 identical v2 scraper overrides into `BaseScraper.validate()`
+- Eliminates ~40 lines of copy-pasted code across scraper files
+- Kaizen automated refactoring (category: duplicate-pattern)
+
+---
+
 ## 2026-03-12: Kaizen — Promote failure console.log to console.warn in scrapers
 **PR**: #150 | **Files**: `close-up.ts`, `rich-mix-v2.ts`, `rich-mix.ts`, `rio.ts`, `fetch-with-retry.ts`
 - Promoted `console.log` to `console.warn` for 7 error/failure messages across 5 scraper files
