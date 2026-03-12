@@ -5,6 +5,13 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-12: Kaizen — Extract shared User-Agent constants for scrapers
+**PR**: #148 | **Files**: `src/scrapers/constants.ts`, `src/scrapers/cinemas/{the-nickel,lexi,genesis,castle}.ts`
+- Created `CHROME_USER_AGENT` and `BOT_USER_AGENT` constants, replaced inline strings in 4 scrapers
+- Kaizen automated refactoring (category: extract-constant)
+
+---
+
 ## 2026-03-12: Kaizen — Remove dead exports from scraper config/venue constants
 **PR**: #147 | **Files**: `src/scrapers/cinemas/coldharbour-blue.ts`, `src/scrapers/cinemas/peckhamplex.ts`, `src/scrapers/cinemas/castle-sidcup.ts`
 - Removed `export` from 5 constants (CONFIG/VENUE) that were never imported outside their own files

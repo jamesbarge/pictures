@@ -10,6 +10,7 @@
 
 import type { RawScreening, ScraperConfig, CinemaScraper } from "../types";
 import { parseUKLocalDateTime } from "../utils/date-parser";
+import { CHROME_USER_AGENT } from "../constants";
 
 // ============================================================================
 // The Nickel Configuration
@@ -76,7 +77,7 @@ export class NickelScraper implements CinemaScraper {
       const response = await fetch(`${this.apiUrl}?limit=100`, {
         headers: {
           "Accept": "application/json",
-          "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+          "User-Agent": CHROME_USER_AGENT,
           "Referer": "https://thenickel.co.uk/",
         },
         signal: AbortSignal.timeout(30_000),
