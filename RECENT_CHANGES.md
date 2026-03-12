@@ -5,6 +5,13 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-12: Kaizen — Extract shared checkHealth utility for scrapers
+**PR**: #181 | **Files**: `health-check.ts` (new), `castle.ts`, `lexi.ts`, `genesis.ts`
+- Created shared `checkHealth(url)` utility, replaced 3 identical healthCheck implementations
+- Kaizen automated refactoring (category: duplicate-pattern)
+
+---
+
 ## 2026-03-12: Kaizen — Remove debug console.logs from API routes
 **PR**: #180 | **Files**: `travel-times/route.ts`, `posters/service.ts`
 - Removed ungated debug `console.log` from walking fallback path and AI title cleaning
