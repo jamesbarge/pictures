@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { db } from "@/db";
 import { films, screenings, cinemas } from "@/db/schema";
+import { CACHE_5MIN, CACHE_10MIN } from "@/lib/cache-headers";
 import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
 import type { CinemaAddress } from "@/types/cinema";
 
@@ -98,10 +99,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         { results: filmResults, cinemas: formattedCinemas },
         {
-          headers: {
-            // Cache browse results for 10 minutes (very stable data)
-            "Cache-Control": "public, s-maxage=600, stale-while-revalidate=1200",
-          },
+          headers: CACHE_10MIN,
         }
       );
     }
@@ -165,10 +163,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       { results: filmResults, cinemas: formattedCinemas },
       {
-        headers: {
-          // Cache search results for 5 minutes
-          "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
-        },
+        headers: CACHE_5MIN,
       }
     );
   } catch (error) {

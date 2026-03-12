@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { db } from "@/db";
 import { films, screenings } from "@/db/schema";
+import { CACHE_5MIN } from "@/lib/cache-headers";
 import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
 
 export async function GET(request: NextRequest) {
@@ -66,10 +67,7 @@ export async function GET(request: NextRequest) {
       })),
     },
     {
-      headers: {
-        // Cache for 5 minutes at edge, serve stale for 10 min while revalidating
-        "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
-      },
+      headers: CACHE_5MIN,
     }
   );
 }
