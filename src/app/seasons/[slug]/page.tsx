@@ -23,8 +23,9 @@ import { eq, and, gte, inArray } from "drizzle-orm";
 import { format } from "date-fns";
 import { BreadcrumbSchema } from "@/components/seo/json-ld";
 import { isFeatureEnabled } from "@/lib/features";
+import { brand } from "@/lib/brand";
 
-const BASE_URL = "https://pictures.london";
+const BASE_URL = brand.baseUrl;
 
 interface SeasonPageProps {
   params: Promise<{ slug: string }>;

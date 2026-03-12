@@ -6,6 +6,7 @@
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { CookieConsentSettings } from "@/components/cookie-consent-banner";
+import { brand } from "@/lib/brand";
 
 export default function PrivacyPage() {
   return (
@@ -287,10 +288,10 @@ export default function PrivacyPage() {
               For privacy-related questions or to exercise your rights, contact
               us at:{" "}
               <a
-                href="mailto:hello@pictures.london"
+                href={`mailto:${brand.email}`}
                 className="text-accent-primary hover:underline"
               >
-                hello@pictures.london
+                {brand.email}
               </a>
             </p>
             <p className="text-text-secondary mt-3">
@@ -327,7 +328,7 @@ export default function PrivacyPage() {
 }
 
 export const metadata = {
-  title: "Privacy Policy | Pictures",
+  title: `Privacy Policy | ${brand.name}`,
   description:
     "How Pictures collects, uses, and protects your personal data. UK GDPR compliant.",
 };

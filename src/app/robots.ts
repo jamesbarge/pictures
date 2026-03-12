@@ -1,6 +1,7 @@
 import { MetadataRoute } from "next";
+import { brand } from "@/lib/brand";
 
-const BASE_URL = "https://pictures.london";
+const BASE_URL = brand.baseUrl;
 
 /**
  * Robots.txt configuration for Pictures

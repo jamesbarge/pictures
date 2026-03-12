@@ -10,10 +10,11 @@
 import type { Browser, BrowserContext, Page } from "playwright";
 import type { FrontEndFilm, FrontEndScreening, BrowseError } from "../types";
 import { CHROME_USER_AGENT_FULL } from "@/scrapers/constants";
+import { brand } from "@/lib/brand";
 
 // ── Configuration ──────────────────────────────────────────────────
 
-const BASE_URL = "https://pictures.london";
+const BASE_URL = brand.baseUrl;
 const WORKER_COUNT = 3;
 const DELAY_BETWEEN_PAGES_MS = 500;
 

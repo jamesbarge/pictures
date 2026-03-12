@@ -2,8 +2,9 @@ import type { Film } from "@/types/film";
 import type { Cinema } from "@/types/cinema";
 import type { Screening } from "@/types/screening";
 import type { FestivalSelect } from "@/db/schema/festivals";
+import { brand } from "@/lib/brand";
 
-const BASE_URL = "https://pictures.london";
+const BASE_URL = brand.baseUrl;
 
 /**
  * JSON-LD Schema Components for SEO and GEO
@@ -50,7 +51,7 @@ export function OrganizationSchema() {
   const data = {
     "@context": "https://schema.org",
     "@type": "Organization",
-    name: "Pictures",
+    name: brand.name,
     url: BASE_URL,
     logo: `${BASE_URL}/logo.png`,
     description:
@@ -74,8 +75,8 @@ export function WebSiteSchema() {
   const data = {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    name: "Pictures",
-    alternateName: "Pictures London Cinema Listings",
+    name: brand.name,
+    alternateName: `${brand.name} London Cinema Listings`,
     url: BASE_URL,
     description:
       "Find and track film screenings at London cinemas. Updated daily with showtimes from BFI, Prince Charles, Curzon, Picturehouse, and more.",

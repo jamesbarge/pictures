@@ -6,20 +6,21 @@
 import { Metadata } from "next";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
+import { brand } from "@/lib/brand";
 
-const BASE_URL = "https://pictures.london";
+const BASE_URL = brand.baseUrl;
 const CONTACT_EMAIL = "jdwbarge@gmail.com";
 const LAST_UPDATED = "31 December 2024";
 
 export const metadata: Metadata = {
-  title: "Terms of Service - Pictures",
+  title: `Terms of Service - ${brand.name}`,
   description:
     "Terms of service for Pictures, London cinema listings. Read our terms and conditions.",
   alternates: {
     canonical: "/terms",
   },
   openGraph: {
-    title: "Terms of Service - Pictures",
+    title: `Terms of Service - ${brand.name}`,
     description: "Terms of service for Pictures, London cinema listings.",
     url: `${BASE_URL}/terms`,
     type: "website",

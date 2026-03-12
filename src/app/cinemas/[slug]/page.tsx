@@ -18,6 +18,7 @@ import {
   BreadcrumbSchema,
 } from "@/components/seo/json-ld";
 import type { Cinema } from "@/types/cinema";
+import { brand } from "@/lib/brand";
 
 export const dynamic = "force-dynamic"; // Avoid build timeout on DB connection
 
@@ -336,7 +337,7 @@ export async function generateMetadata({
   params,
 }: CinemaPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const BASE_URL = "https://pictures.london";
+  const BASE_URL = brand.baseUrl;
 
   const cinema = await db
     .select()

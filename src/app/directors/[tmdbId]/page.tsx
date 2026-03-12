@@ -22,8 +22,9 @@ import { format } from "date-fns";
 import { getTMDBClient, TMDBClient } from "@/lib/tmdb";
 import { BreadcrumbSchema } from "@/components/seo/json-ld";
 import { isFeatureEnabled } from "@/lib/features";
+import { brand } from "@/lib/brand";
 
-const BASE_URL = "https://pictures.london";
+const BASE_URL = brand.baseUrl;
 
 interface DirectorPageProps {
   params: Promise<{ tmdbId: string }>;

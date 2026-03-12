@@ -15,10 +15,11 @@ import {
   FAQSchema,
   BreadcrumbSchema,
 } from "@/components/seo/json-ld";
+import { brand } from "@/lib/brand";
 
 export const dynamic = "force-dynamic"; // Avoid build timeout on DB connection
 
-const BASE_URL = "https://pictures.london";
+const BASE_URL = brand.baseUrl;
 
 export const metadata: Metadata = {
   title: "London Cinemas - Complete Directory",

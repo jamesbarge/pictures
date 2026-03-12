@@ -11,6 +11,7 @@ import { Share2, Check } from "lucide-react";
 import { format as formatDate } from "date-fns";
 import { cn } from "@/lib/cn";
 import { usePostHog } from "posthog-js/react";
+import { brand } from "@/lib/brand";
 
 interface ShareScreeningButtonProps {
   filmTitle: string;
@@ -74,7 +75,7 @@ export function ShareScreeningButton({
   const [copied, setCopied] = useState(false);
   const posthog = usePostHog();
 
-  const shareUrl = `https://pictures.london/film/${filmId}`;
+  const shareUrl = `${brand.baseUrl}/film/${filmId}`;
 
   const shareText = buildShareText({
     filmTitle,

@@ -8,6 +8,7 @@ import { ClerkProviderConditional } from "@/components/clerk-provider-conditiona
 import { Providers } from "@/components/providers";
 import { OrganizationSchema } from "@/components/seo/json-ld";
 import { Footer } from "@/components/layout/footer";
+import { brand } from "@/lib/brand";
 import "./globals.css";
 
 const dmSans = DM_Sans({
@@ -45,7 +46,7 @@ const ttSlabs = localFont({
   display: "swap",
 });
 
-const BASE_URL = "https://pictures.london";
+const BASE_URL = brand.baseUrl;
 
 /**
  * Comprehensive metadata for SEO and social sharing
@@ -55,8 +56,8 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     // Basic metadata
   title: {
-    default: "Pictures - London Cinema Listings | Showtimes | Festivals",
-    template: "%s | Pictures",
+    default: `${brand.name} - ${brand.tagline}`,
+    template: `%s | ${brand.name}`,
   },
   description:
     "Find screenings at London cinemas. Daily updated listings from BFI Southbank, Prince Charles Cinema, Curzon, Picturehouse, ICA, Barbican, and 20+ venues.",
@@ -84,8 +85,8 @@ export async function generateMetadata(): Promise<Metadata> {
     type: "website",
     locale: "en_GB",
     url: BASE_URL,
-    siteName: "Pictures",
-    title: "Pictures - London Cinema Listings | Showtimes | Festivals",
+    siteName: brand.name,
+    title: `${brand.name} - ${brand.tagline}`,
     description:
       "Find screenings at London cinemas. BFI, Prince Charles, Curzon, Picturehouse, ICA, and more. Updated daily.",
     images: [
@@ -93,7 +94,7 @@ export async function generateMetadata(): Promise<Metadata> {
         url: `${BASE_URL}/og-image.png`,
         width: 1200,
         height: 630,
-        alt: "Pictures - London Cinema Listings",
+        alt: `${brand.name} - London Cinema Listings`,
       },
     ],
   },
@@ -101,11 +102,11 @@ export async function generateMetadata(): Promise<Metadata> {
   // Twitter Card
   twitter: {
     card: "summary_large_image",
-    title: "Pictures - London Cinema Listings | Showtimes | Festivals",
+    title: `${brand.name} - ${brand.tagline}`,
     description:
       "Find screenings at London cinemas. Updated daily with showtimes from 20+ venues.",
     images: [`${BASE_URL}/og-image.png`],
-    creator: "@pictureslondon",
+    creator: brand.social.twitter,
   },
 
   // Robots directives
@@ -137,9 +138,6 @@ export async function generateMetadata(): Promise<Metadata> {
     ],
   },
 
-  // Web App Manifest for PWA
-  manifest: "/manifest.json",
-
   // Verification — env vars set in .env.local after registering with each dashboard
   verification: {
     google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,
@@ -149,8 +147,8 @@ export async function generateMetadata(): Promise<Metadata> {
   },
 
     // App info
-    applicationName: "Pictures",
-    authors: [{ name: "Pictures" }],
+    applicationName: brand.name,
+    authors: [{ name: brand.name }],
     generator: "Next.js",
     category: "Entertainment",
   };
@@ -162,7 +160,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#1E3A5F",
+  themeColor: brand.colors.primary,
 };
 
 export default function RootLayout({
