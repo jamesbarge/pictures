@@ -1,5 +1,12 @@
 # Recent Changes
 
+## 2026-03-13: Kaizen — fix lint warnings in scripts
+**PR**: #TBD | **Files**: 4 script files + generate-favicons.mjs
+- Removed unused imports (sql, writeFileSync), unused variables (result, deleted), and unused constant (CURZON_SLUGS)
+- Kaizen automated refactoring (category: lint-fix)
+
+---
+
 ## 2026-03-12: Enrichment pipeline — post-scrape trigger & daily sweep
 **PR**: #TBD | **Files**: `post-scrape.ts`, `daily-sweep.ts`, `title-variations.ts`, `scraper-wrapper.ts`, `enrichment.ts`
 - Add post-scrape enrichment trigger: automatically enrich unenriched films after each scraper run

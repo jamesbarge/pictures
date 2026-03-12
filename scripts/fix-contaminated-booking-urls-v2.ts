@@ -10,18 +10,6 @@
 import { db } from "@/db";
 import { sql } from "drizzle-orm";
 
-const CURZON_SLUGS = [
-  "curzon-soho",
-  "curzon-mayfair",
-  "curzon-bloomsbury",
-  "curzon-aldgate",
-  "curzon-victoria",
-  "curzon-hoxton",
-  "curzon-kingston",
-  "curzon-camden",
-  "curzon-wimbledon",
-  "curzon-richmond",
-];
 
 async function main() {
   const DRY_RUN = process.argv.includes("--dry-run");

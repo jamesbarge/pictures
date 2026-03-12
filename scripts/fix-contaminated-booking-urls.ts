@@ -9,7 +9,7 @@
 
 import { db } from "@/db";
 import { screenings, cinemas, films } from "@/db/schema";
-import { eq, and, like, gte, sql, not, inArray } from "drizzle-orm";
+import { eq, and, like, gte, not, inArray } from "drizzle-orm";
 
 const DRY_RUN = process.argv.includes("--dry-run");
 
@@ -72,7 +72,7 @@ async function main() {
   if (!DRY_RUN && contaminated.length > 0) {
     // Clear the booking URLs (set to empty string since column may be NOT NULL)
     const ids = contaminated.map((s) => s.id);
-    const result = await db
+    await db
       .update(screenings)
       .set({ bookingUrl: "", updatedAt: new Date() })
       .where(inArray(screenings.id, ids));
