@@ -5,6 +5,13 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-13: Kaizen — remove unused _admin params from admin route handlers
+**PR**: #XX | **Files**: 5 admin API routes
+- Remove unused `_admin` callback parameter from 5 `withAdminAuth` handlers
+- Kaizen automated refactoring (category: dead-code)
+
+---
+
 ## 2026-03-13: Kaizen — remove unused variables in postcode-input, post-deploy, test
 **PR**: #XX | **Files**: `src/components/reachable/postcode-input.tsx`, `src/trigger/ops/post-deploy-verify.ts`, `src/trigger/qa/__tests__/analyze-and-fix.test.ts`
 - Remove unused `err` catch binding, unused `tomorrow` variable, unused test documentary variable

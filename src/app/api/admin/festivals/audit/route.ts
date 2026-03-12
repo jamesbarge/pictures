@@ -16,7 +16,7 @@ import {
 } from "@/db/schema";
 import { eq, and, gte, lte, inArray, notInArray } from "drizzle-orm";
 
-export const GET = withAdminAuth(async (request, _admin) => {
+export const GET = withAdminAuth(async (request) => {
   const { searchParams } = new URL(request.url);
   const slug = searchParams.get("slug");
 
