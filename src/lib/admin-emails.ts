@@ -11,6 +11,7 @@ function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
+/** Return the list of admin emails, from `ADMIN_EMAILS` env var or the built-in default. */
 export function getAdminEmailAllowlist(): string[] {
   const fromEnv = process.env.ADMIN_EMAILS
     ?.split(",")
@@ -24,6 +25,7 @@ export function getAdminEmailAllowlist(): string[] {
   return [...DEFAULT_ADMIN_EMAILS];
 }
 
+/** Check whether the given email is on the admin allowlist. */
 export function isAdminEmail(email: string | null | undefined): boolean {
   if (!email) return false;
   return getAdminEmailAllowlist().includes(normalizeEmail(email));
