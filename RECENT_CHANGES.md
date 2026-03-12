@@ -6,6 +6,13 @@ When an entry is added here, also create a detailed file in /changelogs/
 -->
 
 
+## 2026-03-12: Security — remove `unsafe-eval` from CSP script-src
+**PR**: #XX | **Files**: `next.config.ts`
+- Removed `'unsafe-eval'` from the Content-Security-Policy `script-src` directive
+- Strengthens XSS protection by preventing eval-based script injection
+
+---
+
 ## 2026-03-13: Kaizen — add JSDoc to travel-time, auth, and film-similarity types
 **PR**: #XX | **Files**: `travel-time.ts`, `auth.ts`, `film-similarity.ts`
 - Added JSDoc to 4 interfaces: Screening, ReachableScreening, AdminAuthContext, SimilarFilm
