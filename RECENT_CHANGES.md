@@ -5,6 +5,13 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-12: Kaizen — Promote failure-condition logs to console.warn
+**PR**: #157 | **Files**: `posters/service.ts`, `scraper-health/alerts.ts`, `event-classifier.ts`
+- Promoted 5 `console.log` calls to `console.warn` where they report failure conditions or missing config
+- Kaizen automated refactoring (category: console-cleanup)
+
+---
+
 ## 2026-03-12: Kaizen — Standardize error handling in user API routes
 **PR**: #156 | **Files**: `user/route.ts`, `user/preferences/route.ts`, `user/film-statuses/route.ts`, `user/film-statuses/[filmId]/route.ts`
 - Migrated 7 catch blocks from manual `console.error` + `NextResponse.json` to shared `handleApiError`

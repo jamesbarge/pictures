@@ -53,11 +53,11 @@ export async function sendHealthAlerts(result: HealthCheckResult): Promise<void>
   if (slackWebhookUrl) {
     await sendSlackNotification(slackWebhookUrl, result);
   } else {
-    console.log("[health-alerts] Slack webhook not configured, skipping notification");
+    console.warn("[health-alerts] Slack webhook not configured, skipping notification");
     // Log alerts to console for visibility
     for (const alert of result.alerts) {
       const icon = alert.alertType.startsWith("critical") ? "[CRITICAL]" : "[WARNING]";
-      console.log(`[health-alerts] ${icon} ${alert.message}`);
+      console.warn(`[health-alerts] ${icon} ${alert.message}`);
     }
   }
 }
