@@ -9,6 +9,9 @@ import { Loader2, X, Clapperboard, Film } from "lucide-react";
 import { useFilters } from "@/stores/filters";
 import { useUrlFilters } from "@/hooks/useUrlFilters";
 
+/** How long fetched screening data stays fresh before React Query refetches (5 min) */
+const STALE_TIME_MS = 5 * 60 * 1000;
+
 interface Screening {
   id: string;
   datetime: Date;
@@ -148,7 +151,7 @@ export function CalendarViewWithLoader({ initialScreenings, filmTotals }: Calend
     queryKey: ["screenings", "initial-filter", festivalSlug, seasonSlug],
     queryFn: () => fetchMoreScreenings({ startDay: 0, endDay: 3, festivalSlug, festivalOnly, seasonSlug }),
     enabled: !!festivalSlug || !!seasonSlug, // Only fetch when a filter is active
-    staleTime: 5 * 60 * 1000,
+    staleTime: STALE_TIME_MS,
   });
 
   // Fetch rest of week 1 (days 4-7) - server only sends 3 days for fast initial load
@@ -156,7 +159,7 @@ export function CalendarViewWithLoader({ initialScreenings, filmTotals }: Calend
     queryKey: ["screenings", "week1-rest", filterKey],
     queryFn: () => fetchMoreScreenings({ startDay: 3, endDay: 7, festivalSlug, festivalOnly, seasonSlug }),
     enabled: loadState >= 1,
-    staleTime: 5 * 60 * 1000,
+    staleTime: STALE_TIME_MS,
   });
 
   // Fetch week 2 (days 8-14)
@@ -164,7 +167,7 @@ export function CalendarViewWithLoader({ initialScreenings, filmTotals }: Calend
     queryKey: ["screenings", "week2", filterKey],
     queryFn: () => fetchMoreScreenings({ startDay: 7, endDay: 14, festivalSlug, festivalOnly, seasonSlug }),
     enabled: loadState >= 2,
-    staleTime: 5 * 60 * 1000,
+    staleTime: STALE_TIME_MS,
   });
 
   // Fetch week 3 (days 15-21)
@@ -172,7 +175,7 @@ export function CalendarViewWithLoader({ initialScreenings, filmTotals }: Calend
     queryKey: ["screenings", "week3", filterKey],
     queryFn: () => fetchMoreScreenings({ startDay: 14, endDay: 21, festivalSlug, festivalOnly, seasonSlug }),
     enabled: loadState >= 3,
-    staleTime: 5 * 60 * 1000,
+    staleTime: STALE_TIME_MS,
   });
 
   // Fetch week 4 (days 22-28)
@@ -180,7 +183,7 @@ export function CalendarViewWithLoader({ initialScreenings, filmTotals }: Calend
     queryKey: ["screenings", "week4", filterKey],
     queryFn: () => fetchMoreScreenings({ startDay: 21, endDay: 28, festivalSlug, festivalOnly, seasonSlug }),
     enabled: loadState >= 4,
-    staleTime: 5 * 60 * 1000,
+    staleTime: STALE_TIME_MS,
   });
 
   // Merge all loaded screenings
