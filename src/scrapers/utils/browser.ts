@@ -7,6 +7,7 @@
 import { chromium } from "playwright-extra";
 import StealthPlugin from "puppeteer-extra-plugin-stealth";
 import type { Browser, Page } from "playwright";
+import { CHROME_USER_AGENT_FULL } from "../constants";
 
 // Add stealth plugin with all evasions enabled
 const stealth = StealthPlugin();
@@ -83,8 +84,7 @@ export async function createPage(): Promise<Page> {
   const height = 1080 + Math.floor(Math.random() * 50);
 
   const context = await activeBrowser.newContext({
-    userAgent:
-      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    userAgent: CHROME_USER_AGENT_FULL,
     viewport: { width, height },
     locale: "en-GB",
     timezoneId: "Europe/London",

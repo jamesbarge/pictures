@@ -9,6 +9,7 @@
 
 import type { Browser, BrowserContext, Page } from "playwright";
 import type { FrontEndFilm, FrontEndScreening, BrowseError } from "../types";
+import { CHROME_USER_AGENT_FULL } from "@/scrapers/constants";
 
 // ── Configuration ──────────────────────────────────────────────────
 
@@ -295,8 +296,7 @@ export async function extractFrontEndData(
   for (let i = 0; i < WORKER_COUNT; i++) {
     contexts.push(
       await browser.newContext({
-        userAgent:
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        userAgent: CHROME_USER_AGENT_FULL,
         viewport: { width: 1280, height: 800 },
       }),
     );
