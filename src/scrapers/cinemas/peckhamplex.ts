@@ -18,14 +18,14 @@ import type { CheerioAPI } from "../utils/cheerio-types";
 // Peckhamplex Configuration
 // ============================================================================
 
-export const PECKHAMPLEX_CONFIG: ScraperConfig = {
+const PECKHAMPLEX_CONFIG: ScraperConfig = {
   cinemaId: "peckhamplex",
   baseUrl: "https://www.peckhamplex.london",
   requestsPerMinute: 10,
   delayBetweenRequests: 2000,
 };
 
-export const PECKHAMPLEX_VENUE = {
+const PECKHAMPLEX_VENUE = {
   id: "peckhamplex",
   name: "Peckhamplex",
   shortName: "Peckhamplex",

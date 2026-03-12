@@ -15,7 +15,7 @@ import { parseUKLocalDateTime } from "../utils/date-parser";
 // Coldharbour Blue Configuration
 // ============================================================================
 
-export const COLDHARBOUR_CONFIG: ScraperConfig = {
+const COLDHARBOUR_CONFIG: ScraperConfig = {
   cinemaId: "coldharbour-blue",
   baseUrl: "https://www.coldharbourblue.com",
   requestsPerMinute: 30,
