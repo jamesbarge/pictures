@@ -5,6 +5,13 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-12: Kaizen — Rename single-letter vars in booking-checker titleConfidence
+**PR**: #167 | **Files**: `booking-checker.ts`
+- Renamed `a`/`b` → `normalizedDetected`/`normalizedExpected`, `aTokens`/`bTokens` → `detectedBigrams`/`expectedBigrams`, `t` → `bigram`
+- Kaizen automated refactoring (category: naming)
+
+---
+
 ## 2026-03-12: Kaizen — Add JSDoc to trigger task-registry and verification
 **PR**: #166 | **Files**: `task-registry.ts`, `verification.ts`
 - Added JSDoc to `getTriggerTaskId`, `getAllTriggerTaskIds`, `VerificationIssue`, `VerificationResult`, `verifyScraperOutput`
