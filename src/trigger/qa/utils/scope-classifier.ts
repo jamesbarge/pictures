@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import { screenings } from "@/db/schema";
 import { and, eq, gte } from "drizzle-orm";
-import type { ClassifiedIssue, IssueScope } from "../types";
+import type { ClassifiedIssue } from "../types";
 
 /**
  * Classifies QA issues as "spot" (just this screening) or "systemic"
