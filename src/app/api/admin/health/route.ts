@@ -9,6 +9,7 @@
  */
 
 import { withAdminAuth } from "@/lib/auth";
+import { handleApiError } from "@/lib/api-errors";
 import { runFullHealthCheck, getRecentHealthSnapshots, getCinemaHealthMetrics } from "@/lib/scraper-health";
 import { HEALTH_THRESHOLDS } from "@/db/schema/health-snapshots";
 
@@ -58,13 +59,6 @@ export const GET = withAdminAuth(async (request, _admin) => {
       alerts: result.alerts,
     });
   } catch (error) {
-    console.error("[admin/health] Error:", error);
-    return Response.json(
-      {
-        error: "Health check failed",
-        message: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
+    return handleApiError(error, "admin/health");
   }
 });

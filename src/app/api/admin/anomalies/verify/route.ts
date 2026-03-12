@@ -8,6 +8,7 @@
  */
 
 import { withAdminAuth } from "@/lib/auth";
+import { handleApiError } from "@/lib/api-errors";
 import { generateText, stripCodeFences } from "@/lib/gemini";
 import { db } from "@/db";
 import { cinemas, screenings } from "@/db/schema";
@@ -94,11 +95,7 @@ Date: ${format(now, "EEEE, d MMMM yyyy")}
       suggestedAction: result.suggestedAction,
     } as VerifyResponse);
   } catch (error) {
-    console.error("Error in AI verify:", error);
-    return Response.json(
-      { error: "Failed to analyze anomaly" },
-      { status: 500 }
-    );
+    return handleApiError(error, "admin/anomalies/verify");
   }
 });
 
