@@ -5,8 +5,16 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-13: Kaizen — remove remaining unused _admin params (batch 2)
+**PR**: #XX | **Files**: 4 admin API routes (health, films/search, screenings, scrape-eventive)
+- Remove unused `_admin` callback parameter from remaining 4 `withAdminAuth` handlers
+- Completes admin route cleanup started in PR #223
+- Kaizen automated refactoring (category: dead-code)
+
+---
+
 ## 2026-03-13: Kaizen — remove unused _admin params from admin route handlers
-**PR**: #XX | **Files**: 5 admin API routes
+**PR**: #223 | **Files**: 5 admin API routes
 - Remove unused `_admin` callback parameter from 5 `withAdminAuth` handlers
 - Kaizen automated refactoring (category: dead-code)
 

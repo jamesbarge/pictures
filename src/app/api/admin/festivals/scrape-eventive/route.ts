@@ -12,7 +12,7 @@ import {
   EVENTIVE_FESTIVALS,
 } from "@/scrapers/festivals/eventive-scraper";
 
-export const POST = withAdminAuth(async (request, _admin) => {
+export const POST = withAdminAuth(async (request) => {
   try {
     const body = await request.json().catch(() => ({}));
     const { festival, year } = body as {
