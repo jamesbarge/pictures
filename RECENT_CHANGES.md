@@ -5,6 +5,15 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+
+## 2026-03-12: Security — add security headers
+**PR**: #188 | **Files**: `next.config.ts`
+- Added Content-Security-Policy, HSTS, X-Frame-Options, X-Content-Type-Options
+- Added Referrer-Policy and Permissions-Policy headers
+- CSP configured for Next.js, PostHog, TMDB images, Clerk auth, Google Fonts, and Vercel Analytics
+
+---
+
 ## 2026-03-12: Security — fix XSS in JSON-LD and sanitize scraped data
 **PR**: #189 | **Files**: `src/components/seo/json-ld.tsx`, `src/scrapers/utils/screening-validator.ts`
 - Escape `<` in JSON-LD output to prevent script tag breakout
