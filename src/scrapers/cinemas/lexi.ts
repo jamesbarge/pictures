@@ -13,6 +13,7 @@
 
 import type { RawScreening, ScraperConfig, CinemaScraper } from "../types";
 import { CHROME_USER_AGENT } from "../constants";
+import { checkHealth } from "../utils/health-check";
 
 export const LEXI_CONFIG: ScraperConfig = {
   cinemaId: "lexi",
@@ -284,12 +285,7 @@ export class LexiScraper implements CinemaScraper {
   }
 
   async healthCheck(): Promise<boolean> {
-    try {
-      const response = await fetch(this.config.baseUrl, { method: "HEAD" });
-      return response.ok;
-    } catch {
-      return false;
-    }
+    return checkHealth(this.config.baseUrl);
   }
 }
 

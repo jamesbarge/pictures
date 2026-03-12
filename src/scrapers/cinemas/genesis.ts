@@ -13,6 +13,7 @@
 import * as cheerio from "cheerio";
 import type { RawScreening, ScraperConfig, CinemaScraper } from "../types";
 import { FestivalDetector } from "../festivals/festival-detector";
+import { checkHealth } from "../utils/health-check";
 import { CHROME_USER_AGENT } from "../constants";
 
 // ============================================================================
@@ -317,14 +318,7 @@ export class GenesisScraper implements CinemaScraper {
   }
 
   async healthCheck(): Promise<boolean> {
-    try {
-      const response = await fetch(this.config.baseUrl, {
-        method: "HEAD",
-      });
-      return response.ok;
-    } catch {
-      return false;
-    }
+    return checkHealth(this.config.baseUrl);
   }
 }
 
