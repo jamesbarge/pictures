@@ -5,6 +5,13 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-13: Kaizen — add JSDoc to UI component types
+**PR**: #XX | **Files**: `button.tsx`, `badge.tsx`, `input.tsx`
+- Added JSDoc to 8 exported types/interfaces across 3 core UI components
+- Kaizen automated refactoring (category: jsdoc)
+
+---
+
 ## 2026-03-12: Remove all Odeon references from codebase
 **PR**: #XX | **Files**: 11 modified, 3 deleted
 - Deleted Odeon scraper (`src/scrapers/chains/odeon.ts`), trigger task, and CLI runner

@@ -8,9 +8,12 @@
 import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
+/** Visual style variant for the Button component */
 export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "gold";
+/** Size preset controlling padding and font size */
 export type ButtonSize = "sm" | "md" | "lg";
 
+/** Props for the Button design system primitive */
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
   size?: ButtonSize;

@@ -11,8 +11,10 @@ import {
 } from "react";
 import { cn } from "@/lib/cn";
 
+/** Size preset controlling height and font size of the Input component */
 export type InputSize = "sm" | "md" | "lg";
 
+/** Props for the Input design system primitive with icons, validation, and clear support */
 export interface InputProps
   extends Omit<InputHTMLAttributes<HTMLInputElement>, "size"> {
   size?: InputSize;
@@ -158,7 +160,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   );
 });
 
-// Search-specific input variant
+/** Props for the SearchInput variant with built-in search icon and clearable behavior */
 export interface SearchInputProps extends Omit<InputProps, "leftIcon" | "clearable"> {
   onSearch?: (value: string) => void;
 }
