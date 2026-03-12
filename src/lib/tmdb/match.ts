@@ -15,6 +15,22 @@ import { getTMDBClient } from "./client";
 import type { TMDBSearchResult } from "./types";
 import { analyzeTitleAmbiguity, hasSufficientMetadata } from "./ambiguity";
 
+/** Scoring constants for the TMDB film matching algorithm */
+const MAX_SEARCH_CANDIDATES = 10;
+const MIN_TITLE_SIMILARITY = 0.6;
+const TITLE_SIMILARITY_WEIGHT = 0.7;
+const YEAR_EXACT_BONUS = 0.2;
+const YEAR_CLOSE_BONUS = 0.1;
+const MAX_POPULARITY_BONUS = 0.03;
+const POPULARITY_DIVISOR = 1000;
+const COMPETITOR_THRESHOLD_RATIO = 0.95;
+const HIGH_COMPETITION_PENALTY = 0.15;
+const MODERATE_COMPETITION_PENALTY = 0.08;
+const MIN_MATCH_CONFIDENCE = 0.6;
+const YEAR_MATCH_PENALTY_RECOVERY = 0.5;
+const REPERTORY_AGE_YEARS = 2;
+const RATE_LIMIT_DELAY_MS = 250;
+
 interface MatchHints {
   year?: number;
   director?: string;
@@ -88,7 +104,7 @@ export function isRepertoryFilm(releaseDate: string | undefined): boolean {
   const year = parseInt(releaseDate.split("-")[0], 10);
   const currentYear = new Date().getFullYear();
   // Films more than 2 years old are considered repertory
-  return year < currentYear - 2;
+  return year < currentYear - REPERTORY_AGE_YEARS;
 }
 
 /**
@@ -167,7 +183,7 @@ function findBestMatch(
     score: number;
   }> = [];
 
-  for (const result of results.slice(0, 10)) {
+  for (const result of results.slice(0, MAX_SEARCH_CANDIDATES)) {
     // Calculate title similarity
     const titleSimilarity = Math.max(
       calculateSimilarity(searchTitle, result.title),
@@ -175,25 +191,25 @@ function findBestMatch(
     );
 
     // Skip if title similarity too low
-    if (titleSimilarity < 0.6) continue;
+    if (titleSimilarity < MIN_TITLE_SIMILARITY) continue;
 
     // Year bonus - exact match or close
     let yearBonus = 0;
     if (hints?.year && result.release_date) {
       const resultYear = parseInt(result.release_date.split("-")[0], 10);
       if (resultYear === hints.year) {
-        yearBonus = 0.2;
+        yearBonus = YEAR_EXACT_BONUS;
       } else if (Math.abs(resultYear - hints.year) === 1) {
-        yearBonus = 0.1;
+        yearBonus = YEAR_CLOSE_BONUS;
       }
     }
 
     // Popularity bonus - REDUCED from 0.1 to 0.03 to prevent blockbuster bias
     // A film with popularity 1000 gets only 3% boost, not 10%
-    const popularityBonus = Math.min(result.popularity / 1000, 0.03);
+    const popularityBonus = Math.min(result.popularity / POPULARITY_DIVISOR, MAX_POPULARITY_BONUS);
 
     // Calculate total score
-    const score = titleSimilarity * 0.7 + yearBonus + popularityBonus;
+    const score = titleSimilarity * TITLE_SIMILARITY_WEIGHT + yearBonus + popularityBonus;
 
     scoredResults.push({ result, titleSimilarity, score });
   }
@@ -208,16 +224,16 @@ function findBestMatch(
   // Calculate match count penalty
   // If many films have similar scores, reduce confidence
   // This catches cases like "Ten" where 5 films all score 0.85
-  const competitorThreshold = best.score * 0.95; // Within 5% of best score
+  const competitorThreshold = best.score * COMPETITOR_THRESHOLD_RATIO; // Within 5% of best score
   const closeCompetitors = scoredResults.filter(
     (r) => r.score >= competitorThreshold
   ).length;
 
   let matchCountPenalty = 0;
   if (closeCompetitors >= 4) {
-    matchCountPenalty = 0.15; // Many competitors - high uncertainty
+    matchCountPenalty = HIGH_COMPETITION_PENALTY; // Many competitors - high uncertainty
   } else if (closeCompetitors >= 2) {
-    matchCountPenalty = 0.08; // Some competitors - moderate uncertainty
+    matchCountPenalty = MODERATE_COMPETITION_PENALTY; // Some competitors - moderate uncertainty
   }
 
   // Apply penalty to confidence (not to score used for ranking)
@@ -231,14 +247,14 @@ function findBestMatch(
     if (bestYear === hints.year) {
       // Recover half the penalty if year matches exactly
       finalConfidence = Math.min(
-        adjustedConfidence + matchCountPenalty * 0.5,
+        adjustedConfidence + matchCountPenalty * YEAR_MATCH_PENALTY_RECOVERY,
         1
       );
     }
   }
 
   // Only return if confidence is above threshold
-  if (finalConfidence >= 0.6) {
+  if (finalConfidence >= MIN_MATCH_CONFIDENCE) {
     return {
       tmdbId: best.result.id,
       confidence: finalConfidence,
@@ -275,7 +291,7 @@ export async function batchMatchFilms(
 
     // Rate limiting: ~4 requests per second
     if (i < films.length - 1) {
-      await new Promise((resolve) => setTimeout(resolve, 250));
+      await new Promise((resolve) => setTimeout(resolve, RATE_LIMIT_DELAY_MS));
     }
   }
 
