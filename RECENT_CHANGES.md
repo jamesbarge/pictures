@@ -5,6 +5,14 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-12: Persistent navigation on subpages
+**PR**: #XX | **Files**: `subpage-nav.tsx`, `settings/page.tsx`, `watchlist/page.tsx`, `about/page.tsx`, `film/[id]/page.tsx`, `letterboxd/page.tsx`
+- Replaced per-page "Back to Calendar" links with `SubpageNav` component
+- SubpageNav renders the same logo + `HeaderNavButtons` as the homepage header
+- Map and Reachable pages keep their custom headers (they have functional controls)
+- Consistent navigation across all subpages
+
+---
 
 ## 2026-03-13: Kaizen — add JSDoc to travel-time, auth, and film-similarity types
 **PR**: #XX | **Files**: `travel-time.ts`, `auth.ts`, `film-similarity.ts`

@@ -6,7 +6,8 @@
 
 import { Metadata } from "next";
 import Link from "next/link";
-import { ChevronLeft, Film, Calendar, MapPin, ExternalLink } from "lucide-react";
+import { Film, Calendar, MapPin, ExternalLink } from "lucide-react";
+import { SubpageNav } from "@/components/layout/subpage-nav";
 import { db } from "@/db";
 import { cinemas, screenings } from "@/db/schema";
 import { eq, gte, count, countDistinct } from "drizzle-orm";
@@ -111,18 +112,7 @@ export default async function AboutPage() {
       <FAQSchema items={faqItems} />
       <BreadcrumbSchema items={breadcrumbs} />
 
-      {/* Back Navigation */}
-      <div className="sticky top-0 z-50 bg-background-primary border-b border-border-subtle">
-        <div className="max-w-3xl mx-auto px-4 py-3">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-1 text-text-secondary hover:text-text-primary transition-colors"
-          >
-            <ChevronLeft className="w-5 h-5" />
-            <span>Back to Calendar</span>
-          </Link>
-        </div>
-      </div>
+      <SubpageNav />
 
       {/* Content */}
       <div className="max-w-3xl mx-auto px-4 py-8">
