@@ -152,20 +152,20 @@ const SCRAPERS: ScraperDefinition[] = [
     },
   },
   {
-    id: "nickel",
+    id: "the-nickel",
     name: "The Nickel",
     type: "independent",
     createConfig: async () => {
-      const { createNickelScraper } = await import("./cinemas/the-nickel");
+      const { createNickelScraper, NICKEL_VENUE } = await import("./cinemas/the-nickel");
       return {
         type: "single",
         venue: {
-          id: "nickel",
-          name: "The Nickel",
-          shortName: "Nickel",
-          website: "https://thenickel.co.uk",
-          address: { street: "194 Upper Street", area: "Islington", postcode: "N1 1RQ" },
-          features: ["independent", "bar", "restaurant"],
+          id: NICKEL_VENUE.id,
+          name: NICKEL_VENUE.name,
+          shortName: NICKEL_VENUE.shortName,
+          website: NICKEL_VENUE.website,
+          address: { street: NICKEL_VENUE.address, area: NICKEL_VENUE.area, postcode: NICKEL_VENUE.postcode },
+          features: NICKEL_VENUE.features,
         },
         createScraper: () => createNickelScraper(),
       } satisfies SingleVenueConfig;

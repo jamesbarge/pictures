@@ -5,6 +5,17 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-11: Fix Duplicate Screenings at Same Cinema/Time
+**Branch**: `data-loop` | **Files**: `src/scrapers/pipeline.ts`, `src/scrapers/utils/screening-classification.ts`, `src/scrapers/cli.ts`, `scripts/merge-nickel-cinemas.ts`
+- Root cause: CLI registered The Nickel as `id: "nickel"` while scraper config used `cinemaId: "the-nickel"`, creating two cinema records with parallel screenings
+- Fixed CLI entry to use `the-nickel` and reference `NICKEL_VENUE` config directly
+- Merged 47 duplicate screenings from `nickel` → `the-nickel` and deleted stale cinema record
+- Added `normalizeTimestamp()` in pipeline.ts to zero seconds/ms on all screening timestamps (prevents future sub-minute drift)
+- Added Layer 1.5 to `checkForDuplicate()` with ±2min time-window dedup + widened Layer 2 to ±2min window
+- Diagnostic/cleanup scripts for near-duplicate screening detection
+
+---
+
 ## 2026-03-08: QA Cleanup Agent — Daily Front-End Verification Pipeline
 **Branch**: `feat/qa-cleanup-agent` | **Files**: `src/trigger/qa/*`, `src/app/api/admin/qa/route.ts`, `src/agents/types.ts`, `src/trigger/utils/alert-tiers.ts`
 - New daily QA pipeline (6am UTC): browses pictures.london with Playwright, compares against DB, auto-fixes discrepancies

@@ -8,7 +8,7 @@
 
 import { db } from "@/db";
 import { films, screenings as screeningsTable } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, gte, lte } from "drizzle-orm";
 import {
   classifyEventCached,
   likelyNeedsClassification,
@@ -146,14 +146,36 @@ export async function checkForDuplicate(
     return { duplicate, shouldSkip: false };
   }
 
-  // Secondary dedup guard: check for same (cinemaId, datetime) with a different filmId
+  // Layer 1.5: Same filmId + cinemaId within ±2 minutes (catches sub-minute timestamp drift)
+  const windowStart = new Date(datetime.getTime() - 120_000);
+  const windowEnd = new Date(datetime.getTime() + 120_000);
+  const [nearDuplicate] = await db
+    .select()
+    .from(screeningsTable)
+    .where(
+      and(
+        eq(screeningsTable.filmId, filmId),
+        eq(screeningsTable.cinemaId, cinemaId),
+        gte(screeningsTable.datetime, windowStart),
+        lte(screeningsTable.datetime, windowEnd)
+      )
+    )
+    .limit(1);
+
+  if (nearDuplicate) {
+    return { duplicate: nearDuplicate, shouldSkip: false };
+  }
+
+  // Secondary dedup guard: check for same (cinemaId, ±2min window) with a different filmId
+  // Widened from exact datetime to catch sub-minute timestamp drift across duplicate film records
   const [sameTimeDifferentFilm] = await db
     .select({ filmId: screeningsTable.filmId })
     .from(screeningsTable)
     .where(
       and(
         eq(screeningsTable.cinemaId, cinemaId),
-        eq(screeningsTable.datetime, datetime)
+        gte(screeningsTable.datetime, windowStart),
+        lte(screeningsTable.datetime, windowEnd)
       )
     )
     .limit(1);

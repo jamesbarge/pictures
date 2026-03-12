@@ -64,6 +64,18 @@ export function normalizeTitle(title: string): string {
 }
 
 /**
+ * Normalize a screening timestamp by zeroing seconds and milliseconds.
+ * Screenings don't need second-level precision, and sub-minute differences
+ * between scrapers (e.g., Unix timestamps vs parsed "14:30") would bypass
+ * the unique constraint on (filmId, cinemaId, datetime).
+ */
+function normalizeTimestamp(datetime: Date): Date {
+  const normalized = new Date(datetime);
+  normalized.setSeconds(0, 0);
+  return normalized;
+}
+
+/**
  * Process raw screenings through the full pipeline
  *
  * IMPORTANT: This function ONLY ADDS or UPDATES screenings.
@@ -173,9 +185,10 @@ export async function processScreenings(
       // This ensures films are associated with seasons as soon as they're scraped
       await linkFilmToMatchingSeasons(filmId, firstScreening.filmTitle);
 
-      // Insert screenings
+      // Insert screenings (normalize timestamps to zero seconds/ms)
       for (const screening of filmScreenings) {
-        const added = await insertScreening(filmId, cinemaId, screening);
+        const normalizedScreening = { ...screening, datetime: normalizeTimestamp(screening.datetime) };
+        const added = await insertScreening(filmId, cinemaId, normalizedScreening);
         if (added) {
           result.added++;
         } else {

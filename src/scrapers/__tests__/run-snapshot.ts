@@ -85,7 +85,7 @@ const SCRAPERS: ScraperEntry[] = [
     createScraper: () => createPeckhamplexScraper(),
   },
   {
-    cinemaId: "nickel",
+    cinemaId: "the-nickel",
     name: "The Nickel",
     createScraper: () => createNickelScraper(),
   },
