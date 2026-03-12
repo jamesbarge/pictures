@@ -5,6 +5,13 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-13: Kaizen — extract STALE_TIME_MS constant in calendar loader
+**PR**: #XX | **Files**: `calendar-view-loader.tsx`
+- Extracted `5 * 60 * 1000` repeated 5 times into named `STALE_TIME_MS` constant
+- Kaizen automated refactoring (category: extract-constant)
+
+---
+
 ## 2026-03-13: Kaizen — remove unused variables in reachable and festivals
 **PR**: #XX | **Files**: `reachable-page-client.tsx`, `festivals/[slug]/route.ts`
 - Removed unused `hasValidInputs` destructuring and `screeningIds` variable
