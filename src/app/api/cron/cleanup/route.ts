@@ -12,17 +12,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { screenings, films } from "@/db/schema";
 import { lt, notInArray } from "drizzle-orm";
-
-/**
- * Verify the request is from Vercel Cron
- */
-function verifyCronSecret(request: NextRequest): boolean {
-  const authHeader = request.headers.get("authorization");
-  if (!authHeader) return false;
-
-  const token = authHeader.replace("Bearer ", "");
-  return token === process.env.CRON_SECRET;
-}
+import { verifyCronSecret } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
   // Verify cron secret
