@@ -3,7 +3,7 @@ import { type SingleVenueConfig } from "@/scrapers/runner-factory";
 import { runScraperAndVerify } from "../../utils/scraper-wrapper";
 import { getVenueFromRegistry } from "../../utils/venue-from-registry";
 import { createOlympicScraper } from "@/scrapers/cinemas/olympic";
-import type { ScraperTaskPayload, ScraperTaskOutput } from "../../types";
+import type { ScraperTaskOutput } from "../../types";
 
 const config: SingleVenueConfig = {
   type: "single",
@@ -14,7 +14,7 @@ const config: SingleVenueConfig = {
 export const olympicScraper = task({
   id: "scraper-olympic",
   retry: { maxAttempts: 3 },
-  run: async (_payload: ScraperTaskPayload): Promise<ScraperTaskOutput> => {
+  run: async (): Promise<ScraperTaskOutput> => {
     return runScraperAndVerify(config, { useValidation: true });
   },
 });

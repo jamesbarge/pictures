@@ -5,6 +5,44 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-13: Kaizen — remove unused _payload params (batch 5)
+**PR**: #XX | **Files**: `electric.ts`, `lexi.ts`
+- Remove unused `_payload` param from 2 more independent scraper task handlers
+- Continues cleanup — 20 of 23 now done, 3 remaining
+- Kaizen automated refactoring (category: lint-fix)
+
+---
+
+## 2026-03-13: Kaizen — remove unused _payload params (batch 4)
+**PR**: #232 | **Files**: `coldharbour-blue.ts`, `romford-lumiere.ts`, `garden.ts`, `olympic.ts`, `close-up.ts`
+- Remove unused `_payload` param and `ScraperTaskPayload` import from 5 independent scraper task handlers
+- Kaizen automated refactoring (category: lint-fix)
+
+---
+
+## 2026-03-13: Kaizen — remove unused _payload params (batch 3)
+**PR**: #XX | **Files**: `arthouse.ts`, `barbican.ts`, `castle-sidcup.ts`, `castle.ts`, `cine-lumiere.ts`
+- Remove unused `_payload` param from 5 independent scraper task handlers
+- Continues cleanup from PRs #226, #227
+- Kaizen automated refactoring (category: lint-fix)
+
+---
+
+## 2026-03-13: Kaizen — remove unused _payload params (batch 2)
+**PR**: #227 | **Files**: 5 independent scrapers (david-lean, genesis, rio, ica, peckhamplex)
+- Remove unused `_payload` param and `ScraperTaskPayload` import from 5 independent scraper task handlers
+- Kaizen automated refactoring (category: lint-fix)
+
+---
+
+## 2026-03-13: Kaizen — remove unused _payload and _error params
+**PR**: #XX | **Files**: 3 chain scrapers, `alert-tiers.ts`, `on-failure.ts`
+- Remove unused `_payload` param from 3 chain scraper task handlers (curzon, everyman, picturehouse)
+- Remove unused `_error` param from `classifyAlert` function and its call site
+- Kaizen automated refactoring (category: lint-fix)
+
+---
+
 ## 2026-03-12: Brand config extraction
 **PR**: #228 | **Files**: `src/lib/brand.ts`, `src/app/manifest.ts`, + 22 modified files
 - Centralize all hardcoded brand values (site name, URLs, descriptions, social handles, theme colors) into `src/lib/brand.ts`
