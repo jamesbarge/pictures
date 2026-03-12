@@ -27,6 +27,9 @@ import { getCinemaById, getActiveCinemasByChain, getActiveCinemas } from "@/conf
 // Types
 // ============================================================================
 
+/** Alert severity/type matching the health_snapshots DB column */
+export type AlertType = "critical_stale" | "warning_stale" | "critical_volume" | "warning_volume" | "anomaly";
+
 export interface CinemaHealthMetrics {
   cinemaId: string;
   cinemaName: string;
@@ -55,7 +58,7 @@ export interface CinemaHealthMetrics {
   percentOfChainMedian: number | null;
 
   // Alert status
-  alertType: string | null;
+  alertType: AlertType | null;
 }
 
 export interface HealthCheckResult {
@@ -71,7 +74,7 @@ export interface HealthCheckResult {
 export interface HealthAlert {
   cinemaId: string;
   cinemaName: string;
-  alertType: "critical_stale" | "warning_stale" | "critical_volume" | "warning_volume" | "anomaly";
+  alertType: AlertType;
   message: string;
   hoursSinceLastScrape: number | null;
   screeningsCount: number;
@@ -190,7 +193,7 @@ export async function getCinemaHealthMetrics(cinemaId: string): Promise<CinemaHe
   const isAnomaly = anomalyReasons.length > 0;
 
   // Determine alert type
-  let alertType: string | null = null;
+  let alertType: AlertType | null = null;
   if (anomalyReasons.includes(ANOMALY_REASONS.CRITICAL_STALE)) {
     alertType = "critical_stale";
   } else if (anomalyReasons.includes(ANOMALY_REASONS.ZERO_SCREENINGS)) {
@@ -243,7 +246,7 @@ export async function runFullHealthCheck(): Promise<HealthCheckResult> {
         alerts.push({
           cinemaId: cinema.id,
           cinemaName: cinema.name,
-          alertType: cinemaMetrics.alertType as HealthAlert["alertType"],
+          alertType: cinemaMetrics.alertType,
           message: generateAlertMessage(cinemaMetrics),
           hoursSinceLastScrape: cinemaMetrics.hoursSinceLastScrape,
           screeningsCount: cinemaMetrics.totalFutureScreenings,
@@ -293,7 +296,7 @@ export async function saveHealthSnapshot(metrics: CinemaHealthMetrics): Promise<
     chainMedian: metrics.chainMedian,
     percentOfChainMedian: metrics.percentOfChainMedian,
     triggeredAlert: metrics.alertType !== null,
-    alertType: metrics.alertType as any,
+    alertType: metrics.alertType,
   });
 
   return id;
