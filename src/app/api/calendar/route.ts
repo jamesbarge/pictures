@@ -11,6 +11,8 @@
  */
 
 import { NextRequest } from "next/server";
+
+import { handleApiError } from "@/lib/api-errors";
 import { db } from "@/db";
 import { screenings, films, cinemas } from "@/db/schema";
 import { eq, gte, and } from "drizzle-orm";
@@ -184,10 +186,6 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Calendar export error:", error);
-    return Response.json(
-      { error: "Failed to generate calendar" },
-      { status: 500 }
-    );
+    return handleApiError(error, "GET /api/calendar");
   }
 }

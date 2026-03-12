@@ -8,7 +8,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { userFestivalInterests, users } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
-import { requireAuth, unauthorizedResponse, getCurrentUserId } from "@/lib/auth";
+import { handleApiError } from "@/lib/api-errors";
+import { requireAuth, getCurrentUserId } from "@/lib/auth";
 import type { FestivalInterestLevel } from "@/db/schema/festivals";
 
 interface RouteParams {
@@ -61,14 +62,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json({ success: true, following: true });
   } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return unauthorizedResponse();
-    }
-    console.error("Festival follow error:", error);
-    return NextResponse.json(
-      { error: "Failed to follow festival" },
-      { status: 500 }
-    );
+    return handleApiError(error, "PUT /api/user/festivals/follows/[festivalId]");
   }
 }
 
@@ -91,14 +85,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json({ success: true, following: false });
   } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return unauthorizedResponse();
-    }
-    console.error("Festival unfollow error:", error);
-    return NextResponse.json(
-      { error: "Failed to unfollow festival" },
-      { status: 500 }
-    );
+    return handleApiError(error, "DELETE /api/user/festivals/follows/[festivalId]");
   }
 }
 
