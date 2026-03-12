@@ -12,6 +12,7 @@ import { MapPin, Ticket } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import Link from "next/link";
 
+/** Props for the FestivalCard component that displays festival details, dates, and follow status */
 export interface FestivalCardProps {
   festival: {
     id: string;
