@@ -6,6 +6,14 @@ When an entry is added here, also create a detailed file in /changelogs/
 -->
 
 
+## 2026-03-12: Kaizen — use CHROME_USER_AGENT_FULL in remaining scrapers
+**PR**: #XX | **Files**: `peckhamplex.ts`, `browser.ts`, `front-end-extractor.ts`, `booking-checker.ts`
+- Replaced 4 hardcoded Chrome UA strings with shared `CHROME_USER_AGENT_FULL` constant
+- Completes the extract-constant arc (only 1 occurrence remains in booking-page-scraper.ts)
+- Kaizen automated refactoring (category: duplicate-pattern)
+
+---
+
 ## 2026-03-12: Kaizen — use CHROME_USER_AGENT_FULL in BFI PDF scrapers
 **PR**: #XX | **Files**: `bfi-pdf/fetcher.ts`, `bfi-pdf/programme-changes-parser.ts`, `bfi-pdf/cleanup.ts`
 - Replaced 4 hardcoded Chrome UA strings with shared `CHROME_USER_AGENT_FULL` constant
