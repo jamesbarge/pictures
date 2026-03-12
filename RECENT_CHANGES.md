@@ -5,6 +5,14 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-12: Kaizen — Add JSDoc to filter-constants.ts exports
+**PR**: #152 | **Files**: `src/lib/filter-constants.ts`
+- Added JSDoc to 10 exported constants and functions (DECADES, COMMON_GENRES, FORMAT_OPTIONS, TIME_PRESETS, 6 helper functions)
+- Converted 3 inline `//` comments to proper `/** */` JSDoc format
+- Kaizen automated refactoring (category: jsdoc)
+
+---
+
 ## 2026-03-12: Kaizen — Move sourceId dedup into BaseScraper.validate()
 **PR**: #151 | **Files**: `base.ts`, `rich-mix-v2.ts`, `electric-v2.ts`, `riverside-v2.ts`, `castle-v2.ts`
 - Moved sourceId deduplication from 4 identical v2 scraper overrides into `BaseScraper.validate()`
