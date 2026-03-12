@@ -6,6 +6,15 @@ When an entry is added here, also create a detailed file in /changelogs/
 -->
 
 
+## 2026-03-12: Styled error boundaries for subpages
+**PR**: #XX | **Files**: `settings/error.tsx`, `watchlist/error.tsx`, `map/error.tsx`, `reachable/error.tsx`, `letterboxd/error.tsx`, `film/[id]/error.tsx`
+- Added branded error boundaries to 6 subpages
+- Each reports to PostHog with try/catch safety (won't crash if PostHog unavailable)
+- Shows ":(" emoticon, "Try again" button, and "Go home" link
+- Dev-only error details section
+
+---
+
 ## 2026-03-12: Kaizen — use CHROME_USER_AGENT_FULL in remaining scrapers
 **PR**: #XX | **Files**: `peckhamplex.ts`, `browser.ts`, `front-end-extractor.ts`, `booking-checker.ts`
 - Replaced 4 hardcoded Chrome UA strings with shared `CHROME_USER_AGENT_FULL` constant
