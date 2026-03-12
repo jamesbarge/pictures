@@ -5,6 +5,14 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-12: Kaizen — Promote failure console.log to console.warn in scrapers
+**PR**: #150 | **Files**: `close-up.ts`, `rich-mix-v2.ts`, `rich-mix.ts`, `rio.ts`, `fetch-with-retry.ts`
+- Promoted `console.log` to `console.warn` for 7 error/failure messages across 5 scraper files
+- Fixed `catch (e)` → `catch (error)` in close-up.ts (missed in previous error-handling pass)
+- Kaizen automated refactoring (category: console-cleanup)
+
+---
+
 ## 2026-03-12: Kaizen — Standardize catch variable naming in scraper utils
 **PR**: #149 | **Files**: `src/scrapers/utils/{veezi-scraper,film-matching,screening-classification}.ts`
 - Renamed `catch (e)` to `catch (error)` across 5 catch blocks to match project convention

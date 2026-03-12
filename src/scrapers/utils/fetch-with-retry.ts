@@ -14,9 +14,9 @@ export async function fetchWithRetry(url: string, options?: RequestInit, label =
     const response = await fetch(url, options);
     if (response.ok || response.status < 500) return response;
     // Server error — worth retrying
-    console.log(`${label} returned ${response.status}, retrying in 2s...`);
+    console.warn(`${label} returned ${response.status}, retrying in 2s...`);
   } catch (error) {
-    console.log(`${label} failed: ${error instanceof Error ? error.message : error}, retrying in 2s...`);
+    console.warn(`${label} failed: ${error instanceof Error ? error.message : error}, retrying in 2s...`);
   }
   await new Promise((resolve) => setTimeout(resolve, 2000));
   return fetch(url, options);

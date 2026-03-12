@@ -100,7 +100,7 @@ export class RichMixScraper implements CinemaScraper {
           // Parse datetime - format is "2025-12-30 14:30:00" (local time)
           const datetime = this.parseDateTime(instance.start);
           if (!datetime) {
-            console.log(`[${this.config.cinemaId}] Failed to parse datetime: ${instance.start}`);
+            console.warn(`[${this.config.cinemaId}] Failed to parse datetime: ${instance.start}`);
             continue;
           }
 
