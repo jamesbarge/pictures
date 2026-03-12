@@ -14,6 +14,8 @@
  * 2. Find the venue's theater ID from the website (format: X0712, G011I, etc.)
  */
 
+import { CHROME_USER_AGENT } from "../constants";
+
 import type { ChainConfig, VenueConfig, RawScreening, ChainScraper } from "../types";
 import { addDays, format } from "date-fns";
 
@@ -368,7 +370,7 @@ export class EverymanScraper implements ChainScraper {
       const response = await fetch(url, {
         headers: {
           'Accept': 'application/json',
-          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+          'User-Agent': CHROME_USER_AGENT,
         },
       });
 
@@ -396,7 +398,7 @@ export class EverymanScraper implements ChainScraper {
       const response = await fetch(url, {
         headers: {
           'Accept': 'application/json',
-          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+          'User-Agent': CHROME_USER_AGENT,
         },
       });
 
@@ -422,7 +424,7 @@ export class EverymanScraper implements ChainScraper {
       const response = await fetch(url, {
         headers: {
           'Accept': 'application/json',
-          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+          'User-Agent': CHROME_USER_AGENT,
         },
       });
 

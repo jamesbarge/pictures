@@ -11,6 +11,7 @@
  */
 
 import type { ChainConfig, VenueConfig, RawScreening, ChainScraper } from "../types";
+import { CHROME_USER_AGENT } from "../constants";
 
 // ============================================================================
 // Picturehouse Venue Configurations
@@ -221,7 +222,7 @@ export class PicturehouseScraper implements ChainScraper {
         method: "POST",
         body: formData,
         headers: {
-          "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+          "User-Agent": CHROME_USER_AGENT,
           "Accept": "application/json",
         },
       });

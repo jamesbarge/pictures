@@ -13,6 +13,7 @@
  */
 
 import type { ChainConfig, VenueConfig, RawScreening, ChainScraper } from "../types";
+import { CHROME_USER_AGENT } from "../constants";
 import { FestivalDetector } from "../festivals/festival-detector";
 import { getBrowser, closeBrowser, createPage } from "../utils/browser";
 import type { Page } from "playwright";
@@ -377,7 +378,7 @@ export class CurzonScraper implements ChainScraper {
       headers: {
         "Authorization": this.authToken!,
         "Accept": "application/json",
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+        "User-Agent": CHROME_USER_AGENT,
       },
     });
   }

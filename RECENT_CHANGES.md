@@ -5,6 +5,13 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-12: Kaizen — Replace inline User-Agent strings with CHROME_USER_AGENT
+**PR**: #170 | **Files**: `watchdog.ts`, `picturehouse.ts`, `curzon.ts`, `everyman.ts`
+- Replaced 5 inline UA strings with shared `CHROME_USER_AGENT` constant
+- Kaizen automated refactoring (category: extract-constant)
+
+---
+
 ## 2026-03-12: Kaizen — Remove unused imports in festival components
 **PR**: #169 | **Files**: `festival-card.tsx`, `festival-key-dates.tsx`, `festival-list.tsx`
 - Removed 10 unused imports/variables (Calendar, Clock, isPast, isFuture, isWithinInterval, now, Card, allPast, useState, Filter, Button)
