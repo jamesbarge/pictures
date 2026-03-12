@@ -6,6 +6,13 @@ When an entry is added here, also create a detailed file in /changelogs/
 -->
 
 
+## 2026-03-12: Kaizen — use shared UA constants in 4 more scrapers
+**PR**: #XX | **Files**: `coldharbour-blue.ts`, `castle-sidcup.ts`, `electric.ts`, `phoenix.ts`
+- Replaced hardcoded User-Agent strings with `CHROME_USER_AGENT` and `BOT_USER_AGENT` from shared constants
+- Kaizen automated refactoring (category: extract-constant)
+
+---
+
 ## 2026-03-12: Kaizen — add JSDoc to postcode and geo-utils types
 **PR**: #XX | **Files**: `src/lib/postcode.ts`, `src/lib/geo-utils.ts`
 - Added JSDoc to 5 exported types/interfaces (`PostcodeResult`, `PostcodeLookupResponse`, `PostcodeValidationResponse`, `MapAreaPolygon`, `MapArea`)
