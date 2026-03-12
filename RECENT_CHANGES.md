@@ -1,5 +1,13 @@
 # Recent Changes
 
+## 2026-03-13: Kaizen — lint-fix unused vars/imports in scripts (5 files)
+**PR**: #TBD | **Files**: 5 scripts files
+- Removed unused CURZON_SLUGS constant, unused sql/writeFileSync imports, unused variable assignments
+- Warnings reduced from 49 to 44
+- Kaizen automated refactoring (category: lint-fix)
+
+---
+
 ## 2026-03-13: Kaizen — fix lint warnings in scripts
 **PR**: #TBD | **Files**: 4 script files + generate-favicons.mjs
 - Removed unused imports (sql, writeFileSync), unused variables (result, deleted), and unused constant (CURZON_SLUGS)
