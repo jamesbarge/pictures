@@ -8,8 +8,8 @@
 import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FollowButton } from "./follow-button";
-import { Calendar, MapPin, Ticket, Clock } from "lucide-react";
-import { format, formatDistanceToNow, isPast, isFuture, isWithinInterval } from "date-fns";
+import { MapPin, Ticket } from "lucide-react";
+import { format, formatDistanceToNow } from "date-fns";
 import Link from "next/link";
 
 export interface FestivalCardProps {
@@ -38,7 +38,6 @@ export interface FestivalCardProps {
 export function FestivalCard({ festival }: FestivalCardProps) {
   const startDate = new Date(festival.startDate);
   const endDate = new Date(festival.endDate);
-  const now = new Date();
 
   // Format date range
   const formatDateRange = () => {
