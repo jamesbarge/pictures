@@ -10,9 +10,10 @@
  * Playwright-based scraper for dynamic content
  */
 
-import { chromium } from "playwright";
-import type { RawScreening, ScraperConfig, CinemaScraper } from "../types";
 import { parse, getYear, addYears } from "date-fns";
+import { chromium } from "playwright";
+
+import type { RawScreening, ScraperConfig, CinemaScraper } from "../types";
 import { combineDateAndTime } from "../utils/date-parser";
 
 const DAVID_LEAN_CONFIG: ScraperConfig = {

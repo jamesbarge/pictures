@@ -9,9 +9,10 @@
  * Website uses a classic ASP.NET/DLL system with /PhoenixCinemaLondon.dll endpoints.
  */
 
-import { chromium } from "playwright";
-import type { RawScreening, ScraperConfig, CinemaScraper } from "../types";
 import { parse, getYear } from "date-fns";
+import { chromium } from "playwright";
+
+import type { RawScreening, ScraperConfig, CinemaScraper } from "../types";
 import { combineDateAndTime } from "../utils/date-parser";
 
 const PHOENIX_CONFIG: ScraperConfig & { programmeUrl: string } = {
