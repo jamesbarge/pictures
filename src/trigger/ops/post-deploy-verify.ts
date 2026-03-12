@@ -82,7 +82,6 @@ export const postDeployVerify = task({
     try {
       const today = new Date();
       today.setUTCHours(0, 0, 0, 0);
-      const tomorrow = new Date(today.getTime() + 86_400_000);
 
       const result = await db
         .select({ total: count() })
