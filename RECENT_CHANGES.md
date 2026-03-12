@@ -5,6 +5,13 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-12: Extend scraper sanitization to all text fields
+**PR**: #205 | **Files**: `src/scrapers/utils/screening-validator.ts`, `src/scrapers/utils/screening-validator.test.ts`
+- Extended `sanitizeScreening()` to strip HTML from `eventDescription`, `screen`, `format`, and `director` (previously only `filmTitle` was sanitized)
+- Defense-in-depth: React already escapes text, but stripping HTML at the data layer prevents stray tags from appearing to users
+
+---
+
 ## 2026-03-13: Kaizen — add JSDoc to Trigger.dev task types
 **PR**: #XX | **Files**: `trigger/types.ts`, `trigger/utils/alert-tiers.ts`, `trigger/qa/types.ts`
 - Added JSDoc to 11 interfaces/types across Trigger.dev task definitions

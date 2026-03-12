@@ -24,6 +24,10 @@ export function sanitizeScreening(screening: RawScreening): RawScreening {
   return {
     ...screening,
     filmTitle: stripHtml(screening.filmTitle),
+    ...(screening.eventDescription && { eventDescription: stripHtml(screening.eventDescription) }),
+    ...(screening.screen && { screen: stripHtml(screening.screen) }),
+    ...(screening.format && { format: stripHtml(screening.format) }),
+    ...(screening.director && { director: stripHtml(screening.director) }),
   };
 }
 
