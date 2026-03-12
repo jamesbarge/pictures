@@ -1,5 +1,15 @@
 # Recent Changes
 
+## 2026-03-13: Fix CI Node version + regenerate lockfile
+**PR**: #252 | **Files**: `.github/workflows/*.yml`, `package-lock.json`, `package.json`, `.npmrc`
+- Bump ALL GitHub Actions workflows Node 22→24 to match Vercel production
+- Regenerate package-lock.json to resolve missing transitive deps (magicast)
+- Add .npmrc with legacy-peer-deps for @posthog/ai ↔ @trigger.dev OpenTelemetry conflict
+- Add @testing-library/dom as explicit dev dep (peer dep of @testing-library/react)
+- Fixes "Checks Failed" blocking Vercel production deployment promotion since PR #238
+
+---
+
 ## 2026-03-13: Kaizen — extract confidence constants in pattern-extractor
 **PR**: #TBD | **Files**: `src/lib/title-extraction/pattern-extractor.ts`
 - Extracted 7 magic confidence numbers into named constants (FULL_CONFIDENCE, PRESENTS_CONFIDENCE, etc.)
