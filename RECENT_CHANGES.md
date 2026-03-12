@@ -6,6 +6,13 @@ When an entry is added here, also create a detailed file in /changelogs/
 -->
 
 
+## 2026-03-13: Kaizen — add JSDoc to scraper core types and metadata parser
+**PR**: #XX | **Files**: `types.ts`, `metadata-parser.ts`
+- Added JSDoc to 6 exported interfaces: RawScreening, ScraperConfig, ScraperResult, CinemaScraper, BookingSystemConfig, FilmMetadata
+- Kaizen automated refactoring (category: jsdoc)
+
+---
+
 ## 2026-03-13: Kaizen — use shared UA constants in remaining files
 **PR**: #XX | **Files**: `enrich-letterboxd.ts`, `seasons/base.ts`, `debug-genesis-structure.ts`
 - Replaced hardcoded User-Agent strings with `CHROME_USER_AGENT` and `BOT_USER_AGENT` from shared constants

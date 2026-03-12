@@ -11,6 +11,7 @@
  * - Freeform text with embedded year/director
  */
 
+/** Parsed metadata (director, year, runtime, country) extracted from cinema listing text */
 export interface FilmMetadata {
   director?: string;
   year?: number;
