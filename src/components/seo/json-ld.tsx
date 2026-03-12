@@ -29,8 +29,9 @@ interface JsonLdProps {
  * This is critical for Google and AI crawlers to see structured data
  */
 function JsonLd({ id, data }: JsonLdProps) {
-  // Serialize to JSON string - JSON.stringify handles escaping
-  const jsonString = JSON.stringify(data);
+  // Escape < to prevent script tag breakout in JSON-LD
+  // JSON.stringify does NOT escape </script> which can break out of the tag
+  const jsonString = JSON.stringify(data).replace(/</g, "\\u003c");
 
   return (
     <script

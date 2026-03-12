@@ -5,6 +5,14 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-12: Security — fix XSS in JSON-LD and sanitize scraped data
+**PR**: #189 | **Files**: `src/components/seo/json-ld.tsx`, `src/scrapers/utils/screening-validator.ts`
+- Escape `<` in JSON-LD output to prevent script tag breakout
+- Add HTML tag stripping to scraped text fields in screening validator
+- Add unit tests for JSON-LD XSS prevention and screening sanitization
+
+---
+
 ## 2026-03-12: Security — fix cron auth bypass in non-production
 **PR**: #186 | **Files**: `src/app/api/cron/cleanup/route.ts`, `src/app/api/cron/posthog-sync/route.ts`
 - Removed NODE_ENV === "production" gate from cron secret verification

@@ -10,6 +10,23 @@
 
 import type { RawScreening } from "../types";
 
+/**
+ * Strip HTML tags from text to prevent stored XSS
+ */
+function stripHtml(text: string): string {
+  return text.replace(/<[^>]*>/g, "").trim();
+}
+
+/**
+ * Sanitize a screening's text fields by stripping HTML tags
+ */
+export function sanitizeScreening(screening: RawScreening): RawScreening {
+  return {
+    ...screening,
+    filmTitle: stripHtml(screening.filmTitle),
+  };
+}
+
 export interface ValidationResult {
   valid: boolean;
   errors: string[];    // Fatal - screening should be rejected
@@ -149,7 +166,7 @@ export function validateScreenings(screenings: RawScreening[]): {
     }
 
     if (result.valid) {
-      validScreenings.push(screening);
+      validScreenings.push(sanitizeScreening(screening));
 
       // Log warnings for valid screenings
       if (result.warnings.length > 0) {
