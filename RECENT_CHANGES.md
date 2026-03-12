@@ -5,6 +5,13 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-13: Kaizen — remove unused variables in reachable and festivals
+**PR**: #XX | **Files**: `reachable-page-client.tsx`, `festivals/[slug]/route.ts`
+- Removed unused `hasValidInputs` destructuring and `screeningIds` variable
+- Kaizen automated refactoring (category: dead-code)
+
+---
+
 ## 2026-03-13: Kaizen — consolidate UA strings in image-processor
 **PR**: #XX | **Files**: `lib/image-processor.ts`
 - Replaced 2 hardcoded User-Agent strings with `CHROME_USER_AGENT` constant
