@@ -78,7 +78,6 @@ export function ReachablePageClient({
     setTravelTimes,
     setCalculating,
     setError,
-    hasValidInputs,
   } = useReachable();
 
   // Local state for input validation

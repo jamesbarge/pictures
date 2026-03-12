@@ -226,7 +226,6 @@ export async function GET(
       // If user is logged in, get their schedule status for these screenings
       const userScheduleMap = new Map<string, { status: string }>();
       if (userId && screeningResults.length > 0) {
-        const screeningIds = screeningResults.map((s) => s.id);
         const scheduleItems = await db
           .select({
             screeningId: userFestivalSchedule.screeningId,
