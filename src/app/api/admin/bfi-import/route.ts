@@ -7,16 +7,9 @@
  * - changesOnly=true: Only import programme changes (faster)
  */
 
-import { requireAuth, unauthorizedResponse } from "@/lib/auth";
+import { withAdminAuth } from "@/lib/auth";
 
-export async function POST(request: Request) {
-  let userId: string;
-  try {
-    userId = await requireAuth();
-  } catch {
-    return unauthorizedResponse();
-  }
-
+export const POST = withAdminAuth(async (request, admin) => {
   const url = new URL(request.url);
   const changesOnly = url.searchParams.get("changesOnly") === "true";
 
@@ -34,7 +27,7 @@ export async function POST(request: Request) {
         lastUpdated: result.changesInfo?.lastUpdated,
         durationMs: result.durationMs,
         errors: result.errors,
-        triggeredBy: userId,
+        triggeredBy: admin.userId,
       });
     } else {
       // Full PDF import (slower, weekly use)
@@ -50,7 +43,7 @@ export async function POST(request: Request) {
         saved: result.savedScreenings,
         durationMs: result.durationMs,
         errors: result.errors,
-        triggeredBy: userId,
+        triggeredBy: admin.userId,
       });
     }
   } catch (error) {
@@ -63,16 +56,10 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-}
+});
 
 // GET endpoint to check status/info
-export async function GET() {
-  try {
-    await requireAuth();
-  } catch {
-    return unauthorizedResponse();
-  }
-
+export const GET = withAdminAuth(async (_request, _admin) => {
   return Response.json({
     endpoints: {
       fullImport: "POST /api/admin/bfi-import",
@@ -84,4 +71,4 @@ export async function GET() {
       changesOnly: "Daily 10:00 AM UTC (via Inngest)",
     },
   });
-}
+});
