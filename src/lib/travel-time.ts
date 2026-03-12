@@ -98,6 +98,7 @@ async function fetchTravelTimesBatch(
 // Screening Filtering
 // ============================================================================
 
+/** A screening with its associated cinema and film data, used for travel-time filtering */
 export interface Screening {
   id: string;
   datetime: string;
@@ -113,6 +114,7 @@ export interface Screening {
   };
 }
 
+/** A screening that the user can reach in time, with travel duration and departure info */
 export interface ReachableScreening extends Screening {
   travelMinutes: number;
   travelMode: string;
