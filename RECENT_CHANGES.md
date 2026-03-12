@@ -5,6 +5,14 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-12: CSP — gate `unsafe-eval` behind development mode
+**PR**: #207 | **Files**: `next.config.ts`
+- `'unsafe-eval'` now only included in CSP `script-src` during development (`NODE_ENV=development`)
+- Required for React's dev-mode error overlays and Fast Refresh
+- Production CSP remains hardened (no `unsafe-eval`)
+
+---
+
 ## 2026-03-12: Security — replace sql.raw() with parameterized queries in verify-screening-integrity
 **PR**: #206 | **Files**: `scripts/verify-screening-integrity.ts`
 - Replaced `sql.raw()` + string interpolation with Drizzle's parameterized `sql` template literal
