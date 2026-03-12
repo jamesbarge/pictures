@@ -4,7 +4,7 @@ import { screenings, cinemas } from "@/db/schema";
 import { eq, gte, count, countDistinct } from "drizzle-orm";
 import { unstable_cache } from "next/cache";
 import { LetterboxdImport } from "@/components/watchlist/letterboxd-import";
-import Link from "next/link";
+import { SubpageNav } from "@/components/layout/subpage-nav";
 
 export const dynamic = "force-dynamic";
 
@@ -50,14 +50,7 @@ export default async function LetterboxdPage() {
 
   return (
     <>
-      <nav className="border-b border-border-subtle px-4 py-4">
-        <Link
-          href="/"
-          className="text-lg font-display text-text-primary hover:text-accent-primary transition-colors"
-        >
-          Pictures
-        </Link>
-      </nav>
+      <SubpageNav />
       <main className="mx-auto max-w-2xl px-4 py-12 sm:py-16">
         <div className="text-center mb-10">
           <h1 className="text-3xl sm:text-4xl font-display text-text-primary mb-4">

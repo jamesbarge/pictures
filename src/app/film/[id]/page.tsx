@@ -8,8 +8,7 @@
 export const dynamic = "force-dynamic";
 
 import { notFound } from "next/navigation";
-import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
+import { SubpageNav } from "@/components/layout/subpage-nav";
 import { db } from "@/db";
 import { films, screenings, cinemas } from "@/db/schema";
 import { eq, gte, and } from "drizzle-orm";
@@ -105,18 +104,7 @@ export default async function FilmPage({ params }: FilmPageProps) {
         directors={filmData.directors}
       />
 
-      {/* Back Navigation */}
-      <div className="sticky top-0 z-50 bg-background-primary border-b border-border-subtle">
-        <div className="max-w-4xl mx-auto px-4 py-3">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-1 text-text-secondary hover:text-text-primary transition-colors"
-          >
-            <ChevronLeft className="w-5 h-5" />
-            <span>Back to Calendar</span>
-          </Link>
-        </div>
-      </div>
+      <SubpageNav />
 
       {/* Film Header */}
       <FilmHeader film={filmData} />

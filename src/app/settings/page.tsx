@@ -3,8 +3,7 @@
  * User preferences and hidden films management
  */
 
-import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
+import { SubpageNav } from "@/components/layout/subpage-nav";
 import { ThemeSetting } from "@/components/settings/theme-setting";
 import { NotInterestedList } from "@/components/settings/not-interested-list";
 import { CalendarViewSetting } from "@/components/settings/calendar-view-setting";
@@ -13,18 +12,7 @@ import { CookieConsentSettings } from "@/components/cookie-consent-banner";
 export default function SettingsPage() {
   return (
     <div className="min-h-screen bg-background-primary pb-24">
-      {/* Header */}
-      <div className="sticky top-0 z-50 bg-background-primary border-b border-border-subtle">
-        <div className="max-w-4xl mx-auto px-4 py-3">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-1 text-text-secondary hover:text-text-primary transition-colors"
-          >
-            <ChevronLeft className="w-5 h-5" />
-            <span>Back to Calendar</span>
-          </Link>
-        </div>
-      </div>
+      <SubpageNav />
 
       {/* Content */}
       <div className="max-w-4xl mx-auto px-4 py-8">
