@@ -7,6 +7,7 @@
 // Raw Data Types
 // ============================================================================
 
+/** A single screening extracted from a cinema website before database insertion */
 export interface RawScreening {
   filmTitle: string;
   datetime: Date;
@@ -34,6 +35,7 @@ export interface RawScreening {
 // Scraper Configuration
 // ============================================================================
 
+/** Configuration for a single-venue cinema scraper */
 export interface ScraperConfig {
   cinemaId: string;
   baseUrl: string;
@@ -41,6 +43,7 @@ export interface ScraperConfig {
   delayBetweenRequests: number;
 }
 
+/** Output of a scraper run: screenings collected plus metadata about the run */
 export interface ScraperResult {
   cinemaId: string;
   screenings: RawScreening[];
@@ -49,6 +52,7 @@ export interface ScraperResult {
   error?: string;
 }
 
+/** Contract for a single-venue cinema scraper implementation */
 export interface CinemaScraper {
   config: ScraperConfig;
   scrape(): Promise<RawScreening[]>;
@@ -136,6 +140,7 @@ export type BookingSystem =
   | "custom"         // Custom/proprietary
   | "unknown";
 
+/** Detected booking system configuration for a cinema website */
 export interface BookingSystemConfig {
   system: BookingSystem;
   /** API endpoint if discoverable */
