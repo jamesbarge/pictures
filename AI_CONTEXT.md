@@ -3,7 +3,7 @@
 Use this file as the single navigation entry point for AI agents and contributors.
 
 ## Read Order (Always)
-1. `AGENTS.md` - canonical working rules and guardrails
+1. `CLAUDE.md` - canonical working rules and guardrails
 2. `RECENT_CHANGES.md` - latest shipped changes (kept to ~20 entries)
 3. `ARCHITECTURE.md` - system map and data flow
 4. Task-specific docs from the table below
@@ -19,8 +19,8 @@ Use this file as the single navigation entry point for AI agents and contributor
 | Outreach pipeline | `scripts/social-outreach/README.md` | `.github/workflows/social-outreach.yml` |
 
 ## Documentation Map
-- Canonical agent rules: `AGENTS.md`
-- Claude compatibility shim: `CLAUDE.md`
+- Canonical rules: `CLAUDE.md`
+- Domain rules: `.claude/rules/`
 - Architecture overview: `ARCHITECTURE.md`
 - Scraper maintenance playbook: `src/scrapers/SCRAPING_PLAYBOOK.md`
 - Quick release context: `RECENT_CHANGES.md`

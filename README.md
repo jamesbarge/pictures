@@ -211,8 +211,8 @@ src/
 ## Documentation Map
 
 - `AI_CONTEXT.md` - single entry point for agent/doc navigation
-- `AGENTS.md` - canonical engineering and workflow rules
-- `CLAUDE.md` - Claude compatibility shim pointing back to canonical rules
+- `CLAUDE.md` - canonical engineering and workflow rules
+- `.claude/rules/` - domain-specific rules (scrapers, database, data-quality, frontend)
 - `ARCHITECTURE.md` - deeper architecture and data-flow reference
 - `src/scrapers/SCRAPING_PLAYBOOK.md` - scraper operational playbook
 - `RECENT_CHANGES.md` - last ~20 shipped changes
