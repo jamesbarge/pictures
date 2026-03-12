@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 
+const isDev = process.env.NODE_ENV === "development";
+
 const nextConfig: NextConfig = {
   reactCompiler: true,
   // Increase timeout for ISR static generation (querying 3000 screenings)
@@ -56,7 +58,7 @@ const nextConfig: NextConfig = {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' https://*.clerk.accounts.dev https://challenges.cloudflare.com",
+              `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://*.clerk.accounts.dev https://challenges.cloudflare.com`,
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: https://image.tmdb.org https://images.savoysystems.co.uk https://player.bfi.org.uk https://d13jj08vfqimqg.cloudfront.net https://ticketlab.co.uk https://img.clerk.com",
               "font-src 'self' https://fonts.gstatic.com",
