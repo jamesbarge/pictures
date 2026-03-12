@@ -103,16 +103,6 @@ export class RiversideScraperV2 extends BaseScraper {
     return screenings;
   }
 
-  protected validate(screenings: RawScreening[]): RawScreening[] {
-    const baseValidated = super.validate(screenings);
-    const seen = new Set<string>();
-
-    return baseValidated.filter((s) => {
-      if (s.sourceId && seen.has(s.sourceId)) return false;
-      if (s.sourceId) seen.add(s.sourceId);
-      return true;
-    });
-  }
 }
 
 export function createRiversideScraperV2(): RiversideScraperV2 {

@@ -134,16 +134,6 @@ export class RichMixScraperV2 extends BaseScraper {
     );
   }
 
-  protected validate(screenings: RawScreening[]): RawScreening[] {
-    const baseValidated = super.validate(screenings);
-    const seen = new Set<string>();
-
-    return baseValidated.filter((s) => {
-      if (s.sourceId && seen.has(s.sourceId)) return false;
-      if (s.sourceId) seen.add(s.sourceId);
-      return true;
-    });
-  }
 }
 
 export function createRichMixScraperV2(): RichMixScraperV2 {
