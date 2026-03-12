@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { FestivalDetector } from "./festival-detector";
-import { FESTIVAL_CONFIGS } from "./festival-config";
 
 // Mock the database module
 vi.mock("@/db", () => ({
