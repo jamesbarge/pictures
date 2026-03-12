@@ -77,7 +77,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 /**
  * DELETE - Unfollow a festival
  */
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
+export async function DELETE(_request: NextRequest, { params }: RouteParams) {
   try {
     const userId = await requireAuth();
     const { festivalId } = await params;
@@ -100,7 +100,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 /**
  * GET - Check if user follows a festival
  */
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(_request: NextRequest, { params }: RouteParams) {
   try {
     const userId = await getCurrentUserId();
     const { festivalId } = await params;
