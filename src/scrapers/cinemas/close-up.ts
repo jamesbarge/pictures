@@ -319,8 +319,8 @@ export class CloseUpCinemaScraper extends BaseScraper {
           console.log(`[${this.config.cinemaId}] Extracted ${parsed.length} shows from JSON string`);
           return parsed as CloseUpShow[];
         }
-      } catch (e) {
-        console.log(`[${this.config.cinemaId}] Failed to parse shows JSON string:`, e);
+      } catch (error) {
+        console.warn(`[${this.config.cinemaId}] Failed to parse shows JSON string:`, error);
       }
     }
 
@@ -345,7 +345,7 @@ export class CloseUpCinemaScraper extends BaseScraper {
       }
     }
 
-    console.log(`[${this.config.cinemaId}] Could not find shows variable in page`);
+    console.warn(`[${this.config.cinemaId}] Could not find shows variable in page`);
     return null;
   }
 

@@ -105,7 +105,7 @@ export class RioScraper extends BaseScraper {
     const jsonStr = html.slice(jsonStart, jsonEnd);
 
     if (!jsonStr || braceCount !== 0) {
-      console.log(`[${this.config.cinemaId}] Failed to extract Events JSON`);
+      console.warn(`[${this.config.cinemaId}] Failed to extract Events JSON`);
       return [];
     }
 
