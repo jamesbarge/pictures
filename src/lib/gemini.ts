@@ -7,11 +7,13 @@
 
 import { GoogleGenAI } from "@google/genai";
 
+/** Available Gemini model identifiers, keyed by capability tier. */
 export const GEMINI_MODELS = {
   pro: "gemini-3.1-pro-preview",
   flashLite: "gemini-3.1-flash-lite-preview",
 } as const;
 
+/** Union of valid Gemini model ID strings derived from {@link GEMINI_MODELS}. */
 export type GeminiModelId = (typeof GEMINI_MODELS)[keyof typeof GEMINI_MODELS];
 
 const MODEL = GEMINI_MODELS.pro;
@@ -62,8 +64,11 @@ export async function generateText(
   return response.text ?? "";
 }
 
+/** Return value of {@link generateTextWithUsage}, bundling the response text with token count. */
 export interface GenerateResult {
+  /** The generated text content. */
   text: string;
+  /** Total tokens consumed (prompt + completion). */
   tokensUsed: number;
 }
 

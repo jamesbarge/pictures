@@ -32,6 +32,7 @@ function cleanup() {
   }
 }
 
+/** Configuration for a rate limit rule applied to an API route. */
 export interface RateLimitConfig {
   /** Maximum number of requests per window */
   limit: number;
@@ -41,10 +42,14 @@ export interface RateLimitConfig {
   prefix?: string;
 }
 
+/** Result of a rate limit check for a given identifier. */
 export interface RateLimitResult {
+  /** Whether the request is within the rate limit. */
   success: boolean;
+  /** Number of requests remaining in the current window. */
   remaining: number;
-  resetIn: number; // seconds until reset
+  /** Seconds until the rate limit window resets. */
+  resetIn: number;
 }
 
 /**
@@ -121,7 +126,7 @@ export function getClientIP(request: Request): string {
   return "unknown";
 }
 
-// Preset configurations for common use cases
+/** Preset rate limit configurations for common API route categories. */
 export const RATE_LIMITS = {
   // Public API endpoints - generous limits
   public: { limit: 100, windowSec: 60 } as RateLimitConfig,
