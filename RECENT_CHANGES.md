@@ -5,6 +5,13 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-12: Kaizen — Remove unused imports in scraper files
+**PR**: #145 | **Files**: `src/scrapers/cinemas/cine-lumiere.ts`, `src/scrapers/cinemas/phoenix.ts`, `src/scrapers/cinemas/romford-lumiere.ts`, `src/scrapers/utils/browser.ts`, `src/scrapers/utils/date-parser.test.ts`
+- Removed unused imports (`addYears`, `parse`, `BrowserContext`, `vi`, `beforeEach`) and unused interfaces (`FilmPerformance`, `PhoenixFilm`, `CineSyncShowtime`)
+- Kaizen automated refactoring (category: lint-fix)
+
+---
+
 ## 2026-03-11: Fix Duplicate Screenings at Same Cinema/Time
 **Branch**: `data-loop` | **Files**: `src/scrapers/pipeline.ts`, `src/scrapers/utils/screening-classification.ts`, `src/scrapers/cli.ts`, `scripts/merge-nickel-cinemas.ts`
 - Root cause: CLI registered The Nickel as `id: "nickel"` while scraper config used `cinemaId: "the-nickel"`, creating two cinema records with parallel screenings
