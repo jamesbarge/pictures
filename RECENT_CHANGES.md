@@ -5,6 +5,14 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-12: Kaizen — Standardize error handling in festival follows and calendar routes
+**PR**: #163 | **Files**: `festivals/follows/[festivalId]/route.ts`, `calendar/route.ts`
+- Replaced 3 manual catch blocks with `handleApiError` (2 in festival follows, 1 in calendar)
+- Removed unused `unauthorizedResponse` import from festival follows route
+- Kaizen automated refactoring (category: error-handling)
+
+---
+
 ## 2026-03-12: Kaizen — Replace remaining inline cache headers with shared constants
 **PR**: #162 | **Files**: `films/search/route.ts`, `festivals/route.ts`, `festivals/[slug]/route.ts`, `search/route.ts`
 - Replaced 5 inline Cache-Control strings with `CACHE_5MIN`, `CACHE_10MIN`, `CACHE_2MIN` from `cache-headers.ts`
