@@ -12,6 +12,13 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-13: Make cinema names clickable on film detail pages
+**PR**: #238 | **Files**: `src/components/film/film-screenings.tsx`
+- Cinema names in the screenings list now link to `/cinemas/{id}`
+- Hover styling matches existing pattern (accent color + transition)
+
+---
+
 ## 2026-03-13: Kaizen — fix lint warnings in BFI PDF parsers, Everyman, and seasons
 **PR**: #XX | **Files**: `fetcher.ts`, `pdf-parser.ts`, `programme-changes-parser.ts`, `everyman.ts`, `close-up.ts`
 - Remove unused `PDF_BASE_URL` constant from BFI PDF fetcher
