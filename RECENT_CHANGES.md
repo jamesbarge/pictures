@@ -5,6 +5,13 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-13: Kaizen — consolidate UA strings in fallback enrichment
+**PR**: #XX | **Files**: `agents/fallback-enrichment/letterboxd.ts`
+- Replaced 2 hardcoded User-Agent strings with `CHROME_USER_AGENT` constant
+- Kaizen automated refactoring (category: extract-constant)
+
+---
+
 ## 2026-03-13: Kaizen — remove unused imports across 4 page files
 **PR**: #XX | **Files**: `sitemap.ts`, `cinemas/[slug]/page.tsx`, `directors/page.tsx`, `admin/analytics/page.tsx`
 - Removed unused `safeQuery`, `Film` (lucide-react), and `format` (date-fns) imports
