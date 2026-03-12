@@ -1,5 +1,12 @@
 # Recent Changes
 
+## 2026-03-13: Kaizen — extract ambiguity scoring constants
+**PR**: #TBD | **Files**: `src/lib/tmdb/ambiguity.ts`
+- Extracted 15 magic numbers into named constants for title ambiguity scoring
+- Kaizen automated refactoring (category: extract-constant)
+
+---
+
 ## 2026-03-13: Kaizen — remove dead code in scrapers (4 files)
 **PR**: #TBD | **Files**: `electric-v2.ts`, `genesis-v2.ts`, `prince-charles.ts`, `veezi-scraper.ts`
 - Removed unused `venueIdToApiId` property, unused `$` Cheerio params, unused `delayMs` property
