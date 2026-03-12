@@ -10,6 +10,7 @@
  * 3 screens: Screen 1 (181 seats), Screen 2 (132 seats), Screen 3 (59 seats)
  */
 
+import { BOT_USER_AGENT } from "../constants";
 import type { RawScreening, ScraperConfig, CinemaScraper } from "../types";
 import { FestivalDetector } from "../festivals/festival-detector";
 
@@ -155,7 +156,7 @@ export class RichMixScraper implements CinemaScraper {
       const response = await fetch(this.config.baseUrl, {
         method: "HEAD",
         headers: {
-          "User-Agent": "Mozilla/5.0 (compatible; PicturesBot/1.0)",
+          "User-Agent": BOT_USER_AGENT,
         },
       });
       return response.ok;
