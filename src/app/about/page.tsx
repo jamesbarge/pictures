@@ -78,7 +78,7 @@ export default async function AboutPage() {
   const faqItems = [
     {
       question: "What is Pictures?",
-      answer: `Pictures is a cinema calendar that aggregates film listings from ${stats.cinemaCount} London cinemas. We update daily with the latest showtimes from venues like BFI Southbank, Prince Charles Cinema, Curzon, Odeon, and more.`,
+      answer: `Pictures is a cinema calendar that aggregates film listings from ${stats.cinemaCount} London cinemas. We update daily with the latest showtimes from venues like BFI Southbank, Prince Charles Cinema, Curzon, and more.`,
     },
     {
       question: "Which cinemas does Pictures cover?",

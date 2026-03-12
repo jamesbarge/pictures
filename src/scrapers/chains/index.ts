@@ -3,7 +3,7 @@
  *
  * Exports all chain cinema scrapers for easy import
  * To add a new chain:
- * 1. Create a new file in this directory (e.g., odeon.ts)
+ * 1. Create a new file in this directory (e.g., mychain.ts)
  * 2. Export it here
  */
 

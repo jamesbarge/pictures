@@ -7,7 +7,7 @@ const CHAIN_TASKS: TaskRef[] = [
   { id: "scraper-chain-curzon" },
   { id: "scraper-chain-picturehouse" },
   { id: "scraper-chain-everyman" },
-  { id: "scraper-chain-odeon" },
+
 ];
 
 const PLAYWRIGHT_TASKS: TaskRef[] = [

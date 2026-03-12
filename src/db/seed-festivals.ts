@@ -38,7 +38,7 @@ export const londonFestivals = [
     shortName: "FrightFest",
     year: 2026,
     description:
-      "The UK's premier horror and fantasy film festival. Five days of premieres, cult classics, and genre-bending cinema at ODEON Luxe Leicester Square and Prince Charles Cinema.",
+      "The UK's premier horror and fantasy film festival. Five days of premieres, cult classics, and genre-bending cinema at Prince Charles Cinema.",
     websiteUrl: "https://www.frightfest.co.uk",
     logoUrl: null,
     startDate: "2026-08-27", // Usually late August bank holiday weekend

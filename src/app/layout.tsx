@@ -59,7 +59,7 @@ export async function generateMetadata(): Promise<Metadata> {
     template: "%s | Pictures",
   },
   description:
-    "Find screenings at London cinemas. Daily updated listings from BFI Southbank, Prince Charles Cinema, Curzon, Picturehouse, ICA, Barbican, Odeon, and 20+ venues.",
+    "Find screenings at London cinemas. Daily updated listings from BFI Southbank, Prince Charles Cinema, Curzon, Picturehouse, ICA, Barbican, and 20+ venues.",
   keywords: [
     "London cinema",
     "film listings",
@@ -87,7 +87,7 @@ export async function generateMetadata(): Promise<Metadata> {
     siteName: "Pictures",
     title: "Pictures - London Cinema Listings | Showtimes | Festivals",
     description:
-      "Find screenings at London cinemas. BFI, Prince Charles, Curzon, Picturehouse, ICA, Odeon, and more. Updated daily.",
+      "Find screenings at London cinemas. BFI, Prince Charles, Curzon, Picturehouse, ICA, and more. Updated daily.",
     images: [
       {
         url: `${BASE_URL}/og-image.png`,
