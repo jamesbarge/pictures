@@ -72,7 +72,6 @@ function MapTilesFixer() {
         // Restore after a frame
         requestAnimationFrame(() => {
           mapDiv.style.width = originalWidth;
-          console.log("[MapTilesFixer] Triggered tile refresh via DOM resize");
         });
       }
     };
@@ -100,7 +99,6 @@ export function CinemaMap({ cinemas, mapArea, onAreaChange }: CinemaMapProps) {
 
     const updateSize = () => {
       const rect = container.getBoundingClientRect();
-      console.log("[CinemaMap] Container size:", rect.width, rect.height);
       setContainerSize({ width: rect.width, height: rect.height });
     };
 
@@ -121,7 +119,6 @@ export function CinemaMap({ cinemas, mapArea, onAreaChange }: CinemaMapProps) {
       if (!hasRemounted.current) {
         hasRemounted.current = true;
         setMapKey((k) => k + 1);
-        console.log("[CinemaMap] Forcing map remount to fix tiles");
       }
     }, 800);
 

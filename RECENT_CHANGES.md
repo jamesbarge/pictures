@@ -5,6 +5,13 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-12: Kaizen — Remove debug console.log from map components
+**PR**: #172 | **Files**: `cinema-map.tsx`, `map-provider.tsx`
+- Removed 4 ungated `console.log` calls leaking into production browser console
+- Kaizen automated refactoring (category: console-cleanup)
+
+---
+
 ## 2026-03-12: Kaizen — Standardize error handling in admin API routes
 **PR**: #171 | **Files**: `admin/health/route.ts`, `admin/bfi/status/route.ts`, `admin/anomalies/verify/route.ts`
 - Replaced 3 manual try/catch error patterns with `handleApiError` from `@/lib/api-errors`
