@@ -55,6 +55,34 @@ describe("sanitizeScreening", () => {
     expect(result.format).toBe("35mm");
     expect(result.screen).toBe("Screen 1");
   });
+
+  it("should strip HTML from all text fields", () => {
+    const screening = makeScreening({
+      filmTitle: "<b>Test</b> Film",
+      eventDescription: "<p>A special <em>screening</em></p>",
+      screen: "Screen <br/>1",
+      format: "<span>35mm</span>",
+      director: "<a href='x'>Christopher Nolan</a>",
+    });
+    const sanitized = sanitizeScreening(screening);
+    expect(sanitized.filmTitle).toBe("Test Film");
+    expect(sanitized.eventDescription).toBe("A special screening");
+    expect(sanitized.screen).toBe("Screen 1");
+    expect(sanitized.format).toBe("35mm");
+    expect(sanitized.director).toBe("Christopher Nolan");
+  });
+
+  it("should not add undefined fields when optional fields are missing", () => {
+    const screening = makeScreening({
+      filmTitle: "<b>Film</b>",
+    });
+    const sanitized = sanitizeScreening(screening);
+    expect(sanitized.filmTitle).toBe("Film");
+    expect(sanitized.eventDescription).toBeUndefined();
+    expect(sanitized.screen).toBeUndefined();
+    expect(sanitized.format).toBeUndefined();
+    expect(sanitized.director).toBeUndefined();
+  });
 });
 
 describe("validateScreenings sanitization", () => {
