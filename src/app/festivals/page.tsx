@@ -6,6 +6,7 @@
 // Force dynamic rendering for user-specific follow status
 export const dynamic = "force-dynamic";
 
+import { notFound } from "next/navigation";
 import { db } from "@/db";
 import { festivals, userFestivalInterests } from "@/db/schema";
 import { eq, and, asc, sql } from "drizzle-orm";
@@ -13,8 +14,13 @@ import { FestivalList } from "@/components/festivals";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { getCurrentUserId } from "@/lib/auth";
+import { isFeatureEnabled } from "@/lib/features";
 
 export default async function FestivalsPage() {
+  if (!isFeatureEnabled("festivals")) {
+    notFound();
+  }
+
   const userId = await getCurrentUserId();
 
   // Fetch festivals with optional follow status

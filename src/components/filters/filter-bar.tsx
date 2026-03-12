@@ -21,6 +21,9 @@ import {
   type TimeOfDay,
 } from "@/stores/filters";
 import { DateRangePicker } from "./date-range-picker";
+import { isFeatureEnabled } from "@/lib/features";
+
+const festivalsEnabled = isFeatureEnabled("festivals");
 
 interface FilterBarProps {
   festivals?: { id: string; name: string; slug: string }[];
@@ -62,7 +65,7 @@ function FilterBarContent({ festivals }: { festivals: { id: string; name: string
       filters.timesOfDay.length +
       (filters.hideSeen ? 1 : 0) +
       (filters.onlySingleShowings ? 1 : 0) +
-      (filters.festivalSlug ? 1 : 0)
+      (festivalsEnabled && filters.festivalSlug ? 1 : 0)
     : 0;
 
   return (
@@ -72,8 +75,8 @@ function FilterBarContent({ festivals }: { festivals: { id: string; name: string
           {/* Date Range Picker */}
           <DateRangePicker />
 
-          {/* Festival Filter (conditional) */}
-          {(festivals.length > 0 || filters.festivalSlug) && (
+          {/* Festival Filter (conditional, feature-flagged) */}
+          {festivalsEnabled && (festivals.length > 0 || filters.festivalSlug) && (
             <FilterDropdown
               label="Festival"
               options={festivals.map(f => ({ value: f.slug, label: f.name }))}
@@ -322,8 +325,8 @@ function ActiveFilterPills({ festivals = [] }: { festivals?: { id: string; name:
   addArrayPills(filters.genres, pills, (g) => g, filters.toggleGenre);
   addArrayPills(filters.timesOfDay, pills, (t) => getTimeOfDayLabel(t).split(" ")[0], filters.toggleTimeOfDay);
 
-  // Festival
-  if (filters.festivalSlug) {
+  // Festival (feature-flagged)
+  if (festivalsEnabled && filters.festivalSlug) {
     const festival = festivals.find((f) => f.slug === filters.festivalSlug);
     pills.push({
       label: festival ? festival.name : "Festival",

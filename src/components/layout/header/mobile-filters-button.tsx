@@ -3,6 +3,9 @@
 import { SlidersHorizontal, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useFilters } from "@/stores/filters";
+import { isFeatureEnabled } from "@/lib/features";
+
+const festivalsEnabled = isFeatureEnabled("festivals");
 
 /** Mobile Filters Button with active count indicator */
 export function MobileFiltersButton({
@@ -28,8 +31,8 @@ export function MobileFiltersButton({
       filters.decades.length +
       filters.genres.length +
       filters.timesOfDay.length +
-      (filters.festivalSlug ? 1 : 0) +
-      (filters.festivalOnly ? 1 : 0) +
+      (festivalsEnabled && filters.festivalSlug ? 1 : 0) +
+      (festivalsEnabled && filters.festivalOnly ? 1 : 0) +
       (filters.seasonSlug ? 1 : 0) +
       (filters.hideSeen ? 1 : 0) +
       (filters.onlySingleShowings ? 1 : 0)

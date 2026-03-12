@@ -8,6 +8,9 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import { Loader2, X, Clapperboard, Film } from "lucide-react";
 import { useFilters } from "@/stores/filters";
 import { useUrlFilters } from "@/hooks/useUrlFilters";
+import { isFeatureEnabled } from "@/lib/features";
+
+const festivalsEnabled = isFeatureEnabled("festivals");
 
 /** How long fetched screening data stays fresh before React Query refetches (5 min) */
 const STALE_TIME_MS = 5 * 60 * 1000;
@@ -106,10 +109,12 @@ export function CalendarViewWithLoader({ initialScreenings, filmTotals }: Calend
   // Get date filter from store to auto-load when user selects future dates
   const dateTo = useFilters((state) => state.dateTo);
 
-  // Festival filter from store
-  const festivalSlug = useFilters((state) => state.festivalSlug);
-  const festivalOnly = useFilters((state) => state.festivalOnly);
+  // Festival filter from store (nullified when feature flag is off)
+  const rawFestivalSlug = useFilters((state) => state.festivalSlug);
+  const rawFestivalOnly = useFilters((state) => state.festivalOnly);
   const clearFestivalFilter = useFilters((state) => state.clearFestivalFilter);
+  const festivalSlug = festivalsEnabled ? rawFestivalSlug : null;
+  const festivalOnly = festivalsEnabled ? rawFestivalOnly : false;
 
   // Season filter from store
   const seasonSlug = useFilters((state) => state.seasonSlug);
