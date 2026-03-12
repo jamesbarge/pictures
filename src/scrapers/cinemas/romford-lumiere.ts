@@ -16,6 +16,7 @@
  */
 
 import * as cheerio from "cheerio";
+import { BOT_USER_AGENT } from "../constants";
 import type { RawScreening, ScraperConfig } from "../types";
 import type { CheerioAPI } from "../utils/cheerio-types";
 import { getBrowser, closeBrowser, createPage } from "../utils/browser";
@@ -662,7 +663,7 @@ export class RomfordLumiereScraper {
       const response = await fetch(this.config.baseUrl, {
         method: "HEAD",
         headers: {
-          "User-Agent": "Mozilla/5.0 (compatible; PicturesBot/1.0)",
+          "User-Agent": BOT_USER_AGENT,
         },
       });
       return response.ok;

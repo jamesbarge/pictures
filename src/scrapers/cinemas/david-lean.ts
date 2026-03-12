@@ -13,6 +13,7 @@
 import { parse, getYear, addYears } from "date-fns";
 import { chromium } from "playwright";
 
+import { BOT_USER_AGENT } from "../constants";
 import type { RawScreening, ScraperConfig, CinemaScraper } from "../types";
 import { combineDateAndTime } from "../utils/date-parser";
 
@@ -204,7 +205,7 @@ export class DavidLeanScraper implements CinemaScraper {
       const response = await fetch(this.config.baseUrl, {
         method: "HEAD",
         headers: {
-          "User-Agent": "Mozilla/5.0 (compatible; PicturesBot/1.0)",
+          "User-Agent": BOT_USER_AGENT,
         },
       });
       return response.ok;
