@@ -253,6 +253,7 @@ export async function matchAndCreateFromTMDB(
     matchConfidence: match.confidence ?? null,
     matchStrategy: "auto-with-year",
     matchedAt: new Date(),
+    enrichmentStatus: null,
     createdAt: new Date(),
     updatedAt: new Date(),
   });
@@ -331,6 +332,7 @@ export async function createFilmWithoutTMDB(
     matchConfidence: null,
     matchStrategy: null,
     matchedAt: null,
+    enrichmentStatus: null,
     createdAt: new Date(),
     updatedAt: new Date(),
   });

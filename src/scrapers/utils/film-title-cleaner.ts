@@ -109,28 +109,54 @@ export const EVENT_PREFIXES = [
   /^rbo[:\s]+/i,
   /^nt\s+live[:\s]+/i,
   /^met\s+opera[:\s]+/i,
+
+  // Community / cultural screening series
+  /^screen\s+cuba\s+presents?[:\s]+/i,
+  /^shasha\s+movies?\s+presents?[:\s]+/i,
+  /^lafs\s+presents?[:\s]+/i,
+  /^lost\s+reels[:\s]+/i,
+  /^funeral\s+parade\s+presents?[:\s]+/i,
+  /^queer\s+east\s+presents?[:\s]+/i,
+  /^girls?\s+in\s+film\s+presents?[:\s]+/i,
+  /^east\s+london\s+doc\s+club[:\s]+/i,
 ];
 
+/** Result of cleaning a film title with metadata about what was stripped */
+export interface CleanTitleResult {
+  cleanedTitle: string;
+  strippedPrefix: string | null;
+  strippedSuffix: string | null;
+}
+
 /**
- * Clean a film title by removing common cruft from scrapers.
+ * Clean a film title and return metadata about what was stripped.
  *
- * Strips event prefixes, trailing years, BBFC ratings, format notes,
- * Q&A suffixes, and other non-title text from raw scraped film titles.
+ * Returns the cleaned title along with the stripped prefix and suffix,
+ * so the pipeline can preserve event context (e.g. in screening.eventDescription).
  */
-export function cleanFilmTitle(title: string): string {
+export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
   let cleaned = title
     // Collapse whitespace (including newlines)
     .replace(/\s+/g, " ")
     .trim();
 
+  let strippedPrefix: string | null = null;
+
   // Strip known event prefixes to extract actual film title
   for (const prefix of EVENT_PREFIXES) {
-    if (prefix.test(cleaned)) {
+    const match = cleaned.match(prefix);
+    if (match) {
+      strippedPrefix = match[0].replace(/[:\s]+$/, "").trim();
       cleaned = cleaned.replace(prefix, "").trim();
-      // Only strip one prefix (don't want to accidentally remove too much)
       break;
     }
   }
+
+  // Strip pagination artifacts from BFI titles (e.g. "The Chronology of Water p17")
+  cleaned = cleaned.replace(/\s+p\d{1,3}\s*$/i, "").trim();
+
+  // Strip "on 35mm" / "on 70mm" film format suffixes (PCC/Lost Reels style)
+  cleaned = cleaned.replace(/\s+on\s+(35mm|70mm)\s*$/i, "").trim();
 
   // Handle remaining colon-separated titles where film is after colon
   // but only if the part before colon looks like an event name (not a film title)
@@ -170,13 +196,20 @@ export function cleanFilmTitle(title: string): string {
   // Strip trailing year like "(1997)" or "(2026)" — year is used as TMDB hint, not title text
   cleaned = cleaned.replace(/\s*\(\d{4}\)\s*$/, "").trim();
 
-  return cleaned
+  // Capture state before suffix stripping to detect what was removed
+  const beforeSuffixStrip = cleaned;
+
+  cleaned = cleaned
     // Remove BBFC ratings: (U), (PG), (12), (12A), (15), (18), with optional asterisk
     .replace(/\s*\((U|PG|12A?|15|18)\*?\)\s*$/i, "")
     // Remove bracketed notes like [is a Christmas Movie]
     .replace(/\s*\[.*?\]\s*$/g, "")
     // Remove trailing "- 35mm", "- 70mm" format notes (already captured as format)
     .replace(/\s*-\s*(35mm|70mm|4k|imax)\s*$/i, "")
+    // Remove duration-prefixed event suffixes: "(60 mins) + Panel" — must come before Q&A strip
+    .replace(/\s*\(\d+\s*mins?\)\s*\+.*$/i, "")
+    // Remove complex event suffixes: "+ Live Recording of PPF Podcast...", "+ Panel hosted by..."
+    .replace(/\s*\+\s+[A-Z][\w\s]+(?:Q&A|Recording|Podcast|hosted\s+by).*$/i, "")
     // Remove trailing "+ Q&A" (including HTML-encoded &amp;) / "+ pre-recorded intro by ..." / "+ discussion with ..." / "+ Live Music"
     .replace(/\s*\+\s*(q\s*(&amp;|&)\s*a|discussion|intro|live\s+music)\b.*$/i, "")
     // Remove trailing format parentheticals like "(ON VHS)", "(ON 35MM)"
@@ -188,4 +221,20 @@ export function cleanFilmTitle(title: string): string {
     // Remove "(Extended Edition)" / "(Extended Cut)" parentheticals
     .replace(/\s*\(extended\s+(edition|cut)\)\s*$/i, "")
     .trim();
+
+  const strippedSuffix = beforeSuffixStrip !== cleaned
+    ? beforeSuffixStrip.slice(cleaned.length).trim()
+    : null;
+
+  return { cleanedTitle: cleaned, strippedPrefix, strippedSuffix };
+}
+
+/**
+ * Clean a film title by removing common cruft from scrapers.
+ *
+ * Backward-compatible wrapper around cleanFilmTitleWithMetadata() that
+ * returns just the cleaned title string.
+ */
+export function cleanFilmTitle(title: string): string {
+  return cleanFilmTitleWithMetadata(title).cleanedTitle;
 }

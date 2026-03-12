@@ -307,7 +307,59 @@ export class PicturehouseScraper implements ChainScraper {
       }
     }
 
-    return screenings;
+    return this.deduplicateShowtimes(screenings);
+  }
+
+  /**
+   * Deduplicate screenings at the same datetime + screen.
+   *
+   * The API can return the same screening under different movie entries
+   * (e.g. "The Brutalist" and "The Brutalist + Q&A" at the same time/screen).
+   * When duplicates exist, keep the one with the shorter/cleaner title
+   * and preserve event context from the longer variant.
+   */
+  private deduplicateShowtimes(screenings: RawScreening[]): RawScreening[] {
+    const groups = new Map<string, RawScreening[]>();
+
+    for (const screening of screenings) {
+      const key = `${screening.datetime.toISOString()}|${screening.screen || ""}`;
+      const group = groups.get(key);
+      if (group) {
+        group.push(screening);
+      } else {
+        groups.set(key, [screening]);
+      }
+    }
+
+    const deduped: RawScreening[] = [];
+    for (const group of groups.values()) {
+      if (group.length === 1) {
+        deduped.push(group[0]);
+        continue;
+      }
+
+      // Sort by title length ascending — shorter title is likely the cleaner one
+      group.sort((a, b) => a.filmTitle.length - b.filmTitle.length);
+      const kept = group[0];
+
+      // Preserve event context from longer variants if the kept one has none
+      for (const other of group.slice(1)) {
+        if (!kept.eventType && other.eventType) {
+          kept.eventType = other.eventType;
+        }
+        if (!kept.eventDescription && other.eventDescription) {
+          kept.eventDescription = other.eventDescription;
+        }
+      }
+
+      deduped.push(kept);
+    }
+
+    if (deduped.length < screenings.length) {
+      console.log(`[picturehouse] Dedup: ${screenings.length} → ${deduped.length} screenings`);
+    }
+
+    return deduped;
   }
 
   /**

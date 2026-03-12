@@ -373,6 +373,7 @@ export const qaAnalyzeAndFix = task({
           })),
           scraperSchedules: [
             "scrape-all-orchestrator: Weekly Monday 3am UTC",
+            "enrichment-daily-sweep: Daily 4:30am UTC (skip Mon)",
             "enrichment-letterboxd: Weekly Monday 8am UTC",
             "enrichment-festival-reverse-tag: Weekly Monday 9am UTC",
             "qa-orchestrator: Daily 6am UTC",

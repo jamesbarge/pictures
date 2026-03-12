@@ -49,6 +49,11 @@ function quickClassify(rawTitle: string): ClassificationResult | null {
     { pattern: /^reading\s+group/i, type: "event" as ContentType },
     { pattern: /^baby\s+comptines/i, type: "event" as ContentType },
     { pattern: /^mystery\s+movie/i, type: "film" as ContentType }, // This is still a film screening
+    // Additional event patterns from patrol logs
+    { pattern: /\bmusical\s+bingo\b/i, type: "event" as ContentType },
+    { pattern: /\bcomedy\s+(club|night)\b/i, type: "event" as ContentType },
+    { pattern: /\bmember\s+(poll|quiz)\b/i, type: "event" as ContentType },
+    { pattern: /\bin\s+conversation\s+with\b/i, type: "event" as ContentType },
   ];
 
   for (const { pattern, type } of nonFilmPatterns) {
@@ -69,11 +74,13 @@ function quickClassify(rawTitle: string): ClassificationResult | null {
     /^nt\s+live[:\s]/i,
     /^met\s+opera\s+(live|encore)[:\s]/i,
     /^royal\s+opera\s+house[:\s]/i,
-    /^roh\s+live[:\s]/i,
+    /^the\s+royal\s+opera[:\s]/i,
+    /^roh\s+(live|encore|cinema)[:\s]/i,
     /^royal\s+ballet[:\s]/i,
     /^bolshoi\s+ballet[:\s]/i,
-    /^rbo\s+cinema\s+season/i,
+    /^rbo\s+(cinema\s+season|encore|cinema)[:\s]/i,
     /^berliner\s+philharmoniker/i,
+    /^exhibition\s+on\s+screen[:\s]/i,
   ];
 
   for (const pattern of liveBroadcastPatterns) {
@@ -92,6 +99,24 @@ function quickClassify(rawTitle: string): ClassificationResult | null {
         posterStrategy: "scraper_image",
         confidence: "high",
         eventType: "live broadcast",
+      };
+    }
+  }
+
+  // Quick detection of concerts
+  const concertPatterns = [
+    /\bin\s+concert\b/i,
+  ];
+
+  for (const pattern of concertPatterns) {
+    if (pattern.test(normalized)) {
+      return {
+        cleanTitle: rawTitle.trim(),
+        year: null,
+        contentType: "concert",
+        posterStrategy: "scraper_image",
+        confidence: "high",
+        eventType: "concert",
       };
     }
   }
@@ -146,6 +171,15 @@ function isLikelyCleanFilmTitle(title: string): boolean {
     /^reclaim\s+the\s+frame/i,
     /^doc\s*'?n'?\s*roll/i,
     /^exhibition\s+on\s+screen/i,
+    // Community/cultural screening series
+    /^screen\s+cuba\s+presents?/i,
+    /^shasha\s+movies?\s+presents?/i,
+    /^lafs\s+presents?/i,
+    /^lost\s+reels/i,
+    /^funeral\s+parade\s+presents?/i,
+    /^queer\s+east\s+presents?/i,
+    /^girls?\s+in\s+film\s+presents?/i,
+    /^east\s+london\s+doc\s+club/i,
     // Suffix patterns
     /\+\s*q\s*&?\s*a\s*$/i,
     /with\s+shadow\s+cast/i,
