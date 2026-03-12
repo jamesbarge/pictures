@@ -17,7 +17,7 @@ import { BaseScraper } from "../base";
 import type { RawScreening, ScraperConfig } from "../types";
 import { FestivalDetector } from "../festivals/festival-detector";
 import { combineDateAndTime } from "../utils/date-parser";
-import { normalizeUrl } from "../utils/url";
+import { normalizeUrl, slugify } from "../utils/url";
 
 export class GardenCinemaScraper extends BaseScraper {
   config: ScraperConfig = {
@@ -117,7 +117,7 @@ export class GardenCinemaScraper extends BaseScraper {
           }
 
           // Create sourceId for deduplication
-          const sourceId = `garden-${this.slugify(title)}-${datetime.toISOString()}`;
+          const sourceId = `garden-${slugify(title)}-${datetime.toISOString()}`;
 
           const normalizedBookingUrl = normalizeUrl(bookingUrl, this.config.baseUrl);
           screenings.push({
@@ -212,16 +212,6 @@ export class GardenCinemaScraper extends BaseScraper {
     return combineDateAndTime(date, { hours, minutes });
   }
 
-  /**
-   * Create a URL-safe slug from a title
-   */
-  private slugify(title: string): string {
-    return title
-      .toLowerCase()
-      .replace(/[^\w\s-]/g, "")
-      .replace(/\s+/g, "-")
-      .substring(0, 50);
-  }
 
 }
 
