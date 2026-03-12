@@ -7,6 +7,7 @@
  * @see https://postcodes.io/
  */
 
+/** Parsed postcode data returned by postcodes.io */
 export interface PostcodeResult {
   postcode: string;
   latitude: number;
@@ -17,12 +18,14 @@ export interface PostcodeResult {
   region: string | null;  // e.g., "London"
 }
 
+/** Raw JSON response from postcodes.io single-postcode lookup */
 export interface PostcodeLookupResponse {
   status: number;
   result: PostcodeResult | null;
   error?: string;
 }
 
+/** Raw JSON response from postcodes.io validation endpoint */
 export interface PostcodeValidationResponse {
   status: number;
   result: boolean;

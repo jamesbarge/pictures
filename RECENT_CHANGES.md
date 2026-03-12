@@ -6,6 +6,13 @@ When an entry is added here, also create a detailed file in /changelogs/
 -->
 
 
+## 2026-03-12: Kaizen — add JSDoc to postcode and geo-utils types
+**PR**: #XX | **Files**: `src/lib/postcode.ts`, `src/lib/geo-utils.ts`
+- Added JSDoc to 5 exported types/interfaces (`PostcodeResult`, `PostcodeLookupResponse`, `PostcodeValidationResponse`, `MapAreaPolygon`, `MapArea`)
+- Kaizen automated refactoring (category: jsdoc)
+
+---
+
 ## 2026-03-12: Kaizen — use CHROME_USER_AGENT_FULL in remaining scrapers
 **PR**: #XX | **Files**: `peckhamplex.ts`, `browser.ts`, `front-end-extractor.ts`, `booking-checker.ts`
 - Replaced 4 hardcoded Chrome UA strings with shared `CHROME_USER_AGENT_FULL` constant
