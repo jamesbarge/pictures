@@ -16,6 +16,7 @@ import {
   getScreeningsBySeason,
   type ScreeningFilters,
 } from "@/db/repositories";
+import { CACHE_5MIN } from "@/lib/cache-headers";
 
 // Input validation schema
 const querySchema = z.object({
@@ -33,10 +34,6 @@ const querySchema = z.object({
   cursor: z.string().max(200).optional(),
   limit: z.coerce.number().int().min(1).max(500).optional(),
 });
-
-const CACHE_HEADERS = {
-  "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
-};
 
 export async function GET(request: NextRequest) {
   try {
@@ -116,7 +113,7 @@ export async function GET(request: NextRequest) {
             festival: params.festival,
           },
         },
-        { headers: CACHE_HEADERS }
+        { headers: CACHE_5MIN }
       );
     }
 
@@ -142,7 +139,7 @@ export async function GET(request: NextRequest) {
             seasonName: season.name,
           },
         },
-        { headers: CACHE_HEADERS }
+        { headers: CACHE_5MIN }
       );
     }
 
@@ -164,7 +161,7 @@ export async function GET(request: NextRequest) {
             limit: pageLimit,
           },
         },
-        { headers: CACHE_HEADERS }
+        { headers: CACHE_5MIN }
       );
     }
 
@@ -180,7 +177,7 @@ export async function GET(request: NextRequest) {
           endDate: endDate.toISOString(),
         },
       },
-      { headers: CACHE_HEADERS }
+      { headers: CACHE_5MIN }
     );
   } catch (error) {
     return handleApiError(error, "GET /api/screenings");

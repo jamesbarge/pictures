@@ -11,14 +11,11 @@ import {
   getCinemaById,
   getUpcomingScreeningsForCinema,
 } from "@/db/repositories/cinema";
+import { CACHE_5MIN } from "@/lib/cache-headers";
 
 const paramsSchema = z.object({
   id: z.string().min(1).max(100),
 });
-
-const CACHE_HEADERS = {
-  "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
-};
 
 export async function GET(
   request: NextRequest,
@@ -64,7 +61,7 @@ export async function GET(
         screenings: cinemaScreenings,
         meta: { screeningCount: cinemaScreenings.length },
       },
-      { headers: CACHE_HEADERS }
+      { headers: CACHE_5MIN }
     );
   } catch (error) {
     return handleApiError(error, "GET /api/cinemas/[id]");

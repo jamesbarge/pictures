@@ -8,14 +8,11 @@ import { z } from "zod";
 import { NotFoundError, handleApiError } from "@/lib/api-errors";
 import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
 import { getFilmById, getUpcomingScreeningsForFilm } from "@/db/repositories/film";
+import { CACHE_5MIN } from "@/lib/cache-headers";
 
 const paramsSchema = z.object({
   id: z.string().uuid(),
 });
-
-const CACHE_HEADERS = {
-  "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
-};
 
 export async function GET(
   request: NextRequest,
@@ -61,7 +58,7 @@ export async function GET(
         screenings: filmScreenings,
         meta: { screeningCount: filmScreenings.length },
       },
-      { headers: CACHE_HEADERS }
+      { headers: CACHE_5MIN }
     );
   } catch (error) {
     return handleApiError(error, "GET /api/films/[id]");
