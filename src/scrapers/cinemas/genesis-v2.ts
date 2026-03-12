@@ -125,7 +125,7 @@ export class GenesisScraper extends BaseScraper {
       }
 
       // Find the date context - Genesis typically shows dates as section headers
-      const dateContext = this.findDateContext($, $link);
+      const dateContext = this.findDateContext($link);
       if (!dateContext) {
         console.log(`[genesis] No date context found for ${timeText}`);
         return;
@@ -184,7 +184,6 @@ export class GenesisScraper extends BaseScraper {
   }
 
   private findDateContext(
-    $: CheerioAPI,
     $link: CheerioSelection
   ): string | null {
     // NEW: Genesis now uses tabbed panels with IDs like panel_20250104 (YYYYMMDD)

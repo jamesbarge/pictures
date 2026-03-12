@@ -62,11 +62,8 @@ interface VeeziJsonLdEvent {
 
 export class VeeziScraper {
   private venue: VeeziVenueConfig;
-  private delayMs: number;
-
-  constructor(venue: VeeziVenueConfig, delayMs = 2000) {
+  constructor(venue: VeeziVenueConfig) {
     this.venue = venue;
-    this.delayMs = delayMs;
   }
 
   /**

@@ -80,12 +80,6 @@ export class ElectricScraperV2 extends BaseScraper {
     "602": "electric-white-city",
   };
 
-  // Reverse map: venue ID to API cinema ID
-  private venueIdToApiId: Record<string, string> = {
-    "electric-portobello": "603",
-    "electric-white-city": "602",
-  };
-
   constructor(venueId?: string) {
     super();
     this.targetVenueId = venueId || null;

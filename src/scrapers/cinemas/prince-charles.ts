@@ -84,7 +84,7 @@ export class PrinceCharlesScraper extends BaseScraper {
         currentDate = parseScreeningDate(dateText);
       } else if (tagName === "li" && currentDate) {
         // Showtime entry
-        const screening = this.parseShowtimeLi($, $el, title, currentDate, defaultFormat, metadata);
+        const screening = this.parseShowtimeLi($el, title, currentDate, defaultFormat, metadata);
         if (screening) {
           screenings.push(screening);
         }
@@ -95,7 +95,6 @@ export class PrinceCharlesScraper extends BaseScraper {
   }
 
   private parseShowtimeLi(
-    $: CheerioAPI,
     $li: CheerioSelection,
     filmTitle: string,
     date: Date,
