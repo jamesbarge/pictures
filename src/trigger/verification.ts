@@ -1,8 +1,9 @@
+import { eq, gte, and } from "drizzle-orm";
+
 import { db } from "@/db";
 import { screenings } from "@/db/schema";
-import { films } from "@/db/schema/films";
 import { scraperRuns } from "@/db/schema/admin";
-import { eq, gte, and } from "drizzle-orm";
+import { films } from "@/db/schema/films";
 import { generateText, GEMINI_MODELS, stripCodeFences } from "@/lib/gemini";
 
 export interface VerificationIssue {
