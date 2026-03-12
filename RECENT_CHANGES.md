@@ -1,5 +1,14 @@
 # Recent Changes
 
+## 2026-03-13: Kaizen — fix lint warnings in eventive-scraper, posthog-api, scraper-health
+**PR**: #XX | **Files**: `eventive-scraper.ts`, `posthog-api.ts`, `scraper-health/index.ts`
+- Remove unused `_slugBase` param from eventive createScreening() and call sites
+- Convert unused `projectId` assignments to `void getProjectId()` (preserves env validation)
+- Remove unused `config` assignment from scraper-health runHealthCheckAllCinemas()
+- Kaizen automated refactoring (category: lint-fix)
+
+---
+
 ## 2026-03-13: Kaizen — lint-fix BFI PDF scrapers, everyman, pipeline
 **PR**: #243 | **Files**: `fetcher.ts`, `pdf-parser.ts`, `programme-changes-parser.ts`, `everyman.ts`, `pipeline.ts`
 - Removed unused vars/params across 5 scraper files (6 warnings fixed, 77→71)

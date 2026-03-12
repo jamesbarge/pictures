@@ -374,7 +374,7 @@ export async function getDashboardSummary(dateFrom = "-7d"): Promise<{
   topEvents: Array<{ name: string; count: number }>;
   recentRecordings: PostHogSessionRecording[];
 }> {
-  const projectId = getProjectId();
+  void getProjectId(); // validate env var is configured
 
   // Run queries in parallel
   const [persons, eventDefs, recordings] = await Promise.all([
@@ -416,7 +416,7 @@ export async function getFilmEngagement(dateFrom = "-7d"): Promise<{
   bookingClicks: Array<{ filmId: string; filmTitle: string; count: number }>;
   watchlistAdds: Array<{ filmId: string; filmTitle: string; count: number }>;
 }> {
-  const projectId = getProjectId();
+  void getProjectId(); // validate env var is configured
 
   // Query film_viewed events with breakdown by film_id
   const viewsResult = await queryTrend({

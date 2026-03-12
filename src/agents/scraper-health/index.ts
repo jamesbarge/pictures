@@ -212,7 +212,6 @@ export async function runHealthCheckAllCinemas(): Promise<
   AgentResult<ScraperHealthReport[]>
 > {
   const startTime = Date.now();
-  const config = AGENT_CONFIGS.scraperHealth;
 
   try {
     const cinemas = await db.select().from(schema.cinemas);
