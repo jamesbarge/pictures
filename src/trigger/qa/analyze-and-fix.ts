@@ -7,7 +7,7 @@
  */
 
 import { task } from "@trigger.dev/sdk/v3";
-import { eq, gte, lte, and, lt } from "drizzle-orm";
+import { eq, gte, lte, and } from "drizzle-orm";
 
 import { db } from "@/db";
 import { screenings, films } from "@/db/schema";
@@ -16,7 +16,6 @@ import type {
   QaBrowseOutput,
   QaAnalysisOutput,
   ClassifiedIssue,
-  QaIssueType,
 } from "./types";
 import { applyFixes } from "./utils/db-fixer";
 import {
@@ -259,18 +258,6 @@ export const qaAnalyzeAndFix = task({
       }
     }
 
-    // Also check low-confidence matches
-    const lowConfidenceFilms = dbScreenings.filter(
-      (s) => s.matchConfidence !== null && s.matchConfidence < 0.6
-    );
-    // Deduplicate by filmId
-    const seenFilmIds = new Set<string>();
-    const uniqueLowConf = lowConfidenceFilms.filter((s) => {
-      if (seenFilmIds.has(s.filmId)) return false;
-      seenFilmIds.add(s.filmId);
-      return true;
-    });
-
     // AI analysis for TMDB mismatches (rate limited)
     for (const mismatch of titleMismatches.slice(0, 10)) {
       try {
@@ -341,7 +328,7 @@ export const qaAnalyzeAndFix = task({
     // D3: Batch anomaly review (consolidated Gemini call)
     if (issues.length > 0) {
       try {
-        const discrepancies = issues.slice(0, 20).map((issue, i) => ({
+        const discrepancies = issues.slice(0, 20).map((issue) => ({
           type: issue.type,
           filmTitle: String(issue.metadata?.filmTitle ?? issue.description.slice(0, 50)),
           detail: issue.description,

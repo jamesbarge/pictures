@@ -5,6 +5,14 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-13: Kaizen — finish _payload cleanup + QA lint fixes
+**PR**: #XX | **Files**: `nickel.ts`, `analyze-and-fix.ts`, `scope-classifier.ts`
+- Remove last unused `_payload` param (nickel.ts) — completes 23/23 scraper cleanup
+- Remove unused imports (`lt`, `QaIssueType`, `IssueScope`), dead code (`uniqueLowConf`), unused param (`i`)
+- Kaizen automated refactoring (category: lint-fix)
+
+---
+
 ## 2026-03-13: Kaizen — remove unused _payload params (batch 6)
 **PR**: #XX | **Files**: `riverside.ts`, `rich-mix.ts`, `regent-street.ts`, `prince-charles.ts`, `phoenix.ts`
 - Remove unused `_payload` param from 5 independent scraper task handlers
