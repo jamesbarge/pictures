@@ -205,7 +205,6 @@ export class PosterService {
       // This extracts the actual film title from event names like "Classic Matinee: Sunset Boulevard"
       const classification = await classifyContentCached(title);
       if (classification.cleanTitle !== title && classification.confidence !== "low") {
-        console.log(`  -> AI cleaned title: "${title}" -> "${classification.cleanTitle}"`);
         const cleanedResults = await this.tmdb.searchFilms(classification.cleanTitle, year);
         if (cleanedResults.results.length > 0) {
           const best = cleanedResults.results[0];
