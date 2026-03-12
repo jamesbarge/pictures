@@ -8,7 +8,7 @@
 
 import * as cheerio from "cheerio";
 import type { CheerioAPI } from "../utils/cheerio-types";
-import { CHROME_USER_AGENT_FULL } from "../constants";
+import { BOT_USER_AGENT, CHROME_USER_AGENT_FULL } from "../constants";
 import type {
   RawSeason,
   RawSeasonFilm,
@@ -321,7 +321,7 @@ export abstract class BaseSeasonScraper implements SeasonScraper {
       const response = await fetch(url, {
         method: "HEAD",
         headers: {
-          "User-Agent": "Mozilla/5.0 (compatible; PicturesBot/1.0)",
+          "User-Agent": BOT_USER_AGENT,
         },
       });
       return response.ok;
