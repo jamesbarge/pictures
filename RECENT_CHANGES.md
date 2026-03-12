@@ -5,6 +5,14 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-12: Kaizen — Rename remaining catch (e) to catch (error) across codebase
+**PR**: #153 | **Files**: `seasons/close-up.ts`, `classify-events.ts`, `posthog-server.ts`, `film-similarity.ts`
+- Renamed `catch (e)` to `catch (error)` in 3 files, removed unused catch binding in 1 file
+- Eliminates all remaining `catch (e)` instances in the codebase
+- Kaizen automated refactoring (category: naming)
+
+---
+
 ## 2026-03-12: Kaizen — Add JSDoc to filter-constants.ts exports
 **PR**: #152 | **Files**: `src/lib/filter-constants.ts`
 - Added JSDoc to 10 exported constants and functions (DECADES, COMMON_GENRES, FORMAT_OPTIONS, TIME_PRESETS, 6 helper functions)

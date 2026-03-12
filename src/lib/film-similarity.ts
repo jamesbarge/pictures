@@ -99,8 +99,8 @@ Respond with JSON only:
       confidence: typeof json.confidence === "number" ? json.confidence : 0.5,
       reasoning: json.reasoning || "",
     };
-  } catch (e) {
-    console.warn("[FilmSimilarity] Claude confirmation failed:", e);
+  } catch (error) {
+    console.warn("[FilmSimilarity] Claude confirmation failed:", error);
     // Default to no match on error
     return { isMatch: false, confidence: 0, reasoning: "API error" };
   }

@@ -105,8 +105,8 @@ async function classifyEvents() {
         } else {
           console.log(`  - "${film.title}" → no special event detected`);
         }
-      } catch (e) {
-        console.error(`  ✗ Failed: "${film.title}"`, e);
+      } catch (error) {
+        console.error(`  ✗ Failed: "${film.title}"`, error);
         failed++;
       }
     }
