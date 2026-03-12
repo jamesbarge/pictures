@@ -8,17 +8,19 @@
 
 "use client";
 
-import Link from "next/link";
-import { FilmPoster } from "@/components/film/film-poster";
 import { format } from "date-fns";
+import Link from "next/link";
+import { usePostHog } from "posthog-js/react";
+import { memo } from "react";
+
+import { FilmPoster } from "@/components/film/film-poster";
+import { useHydrated } from "@/hooks/useHydrated";
+import { usePrefetch } from "@/hooks/usePrefetch";
 import { cn } from "@/lib/cn";
 import { POSTER_BLUR_PLACEHOLDER, getSpecialFormat } from "@/lib/constants";
 import { useFilmStatus } from "@/stores/film-status";
 import { useFilters } from "@/stores/filters";
-import { memo } from "react";
-import { useHydrated } from "@/hooks/useHydrated";
-import { usePostHog } from "posthog-js/react";
-import { usePrefetch } from "@/hooks/usePrefetch";
+
 import { FilmStatusButtons } from "./film-status-buttons";
 
 type AvailabilityStatus = "available" | "low" | "sold_out" | "returns" | "unknown" | null;

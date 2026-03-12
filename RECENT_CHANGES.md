@@ -5,6 +5,14 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-12: Kaizen — Group imports by external/internal/relative
+**PR**: #161 | **Files**: `verification.ts`, `screening-card.tsx`, `film-card.tsx`
+- Separated external package imports from internal `@/` imports with blank lines
+- Alphabetized imports within each group
+- Kaizen automated refactoring (category: import-organization)
+
+---
+
 ## 2026-03-12: Kaizen — Rename cryptic single-letter variables
 **PR**: #160 | **Files**: `cleanup.ts`, `browser.ts`, `scrape-all.ts`
 - Renamed `t` → `normalized` in BFI title normalize function (8 occurrences)
