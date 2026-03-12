@@ -93,17 +93,17 @@ async function extractTime(page: Page): Promise<string | null> {
 /** Simple string-similarity score (0-1) comparing detected vs expected title. */
 function titleConfidence(detected: string | null, expected: string): number {
   if (!detected) return 0;
-  const a = detected.toLowerCase().replace(/[^a-z0-9]/g, "");
-  const b = expected.toLowerCase().replace(/[^a-z0-9]/g, "");
-  if (a === b) return 1;
-  if (a.includes(b) || b.includes(a)) return 0.8;
-  // Rough token overlap
-  const aTokens = new Set(a.match(/.{2}/g) ?? []);
-  const bTokens = new Set(b.match(/.{2}/g) ?? []);
-  if (aTokens.size === 0 || bTokens.size === 0) return 0;
+  const normalizedDetected = detected.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const normalizedExpected = expected.toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (normalizedDetected === normalizedExpected) return 1;
+  if (normalizedDetected.includes(normalizedExpected) || normalizedExpected.includes(normalizedDetected)) return 0.8;
+  // Rough bigram overlap
+  const detectedBigrams = new Set(normalizedDetected.match(/.{2}/g) ?? []);
+  const expectedBigrams = new Set(normalizedExpected.match(/.{2}/g) ?? []);
+  if (detectedBigrams.size === 0 || expectedBigrams.size === 0) return 0;
   let overlap = 0;
-  for (const t of aTokens) if (bTokens.has(t)) overlap++;
-  return overlap / Math.max(aTokens.size, bTokens.size);
+  for (const bigram of detectedBigrams) if (expectedBigrams.has(bigram)) overlap++;
+  return overlap / Math.max(detectedBigrams.size, expectedBigrams.size);
 }
 
 // ── Single URL check ───────────────────────────────────────────
