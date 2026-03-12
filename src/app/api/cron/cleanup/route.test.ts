@@ -80,7 +80,7 @@ describe("Cleanup Cron Route", () => {
     vi.stubEnv("NODE_ENV", "test");
   });
 
-  it("should allow requests without auth in development", async () => {
+  it("should reject requests without auth in all environments", async () => {
     vi.stubEnv("NODE_ENV", "development");
     vi.resetModules();
 
@@ -89,16 +89,21 @@ describe("Cleanup Cron Route", () => {
     const request = new NextRequest("http://localhost/api/cron/cleanup");
     const response = await GET(request);
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(401);
   });
 
   it("should return cleanup results", async () => {
     vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("CRON_SECRET", "test-secret");
     vi.resetModules();
 
     const { GET } = await import("./route");
 
-    const request = new NextRequest("http://localhost/api/cron/cleanup");
+    const request = new NextRequest("http://localhost/api/cron/cleanup", {
+      headers: {
+        authorization: "Bearer test-secret",
+      },
+    });
     const response = await GET(request);
     const body = await response.json();
 

@@ -25,8 +25,8 @@ function verifyCronSecret(request: NextRequest): boolean {
 }
 
 export async function GET(request: NextRequest) {
-  // In production, verify the cron secret
-  if (process.env.NODE_ENV === "production" && !verifyCronSecret(request)) {
+  // Verify cron secret
+  if (!verifyCronSecret(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
