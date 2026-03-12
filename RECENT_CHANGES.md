@@ -5,6 +5,14 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-12: Kaizen — prefix unused request params, remove unused index
+**PR**: #XX | **Files**: `src/app/api/festivals/[slug]/follow/route.ts`, `src/app/api/user/festivals/follows/[festivalId]/route.ts`, `src/app/api/user/film-statuses/[filmId]/route.ts`, `src/components/festivals/festival-list.tsx`
+- Prefix unused `request` params with `_` in 3 API route handlers
+- Remove unused `index` param from festival-list map callback
+- Kaizen automated refactoring (category: dead-code)
+
+---
+
 ## 2026-03-12: Repo cleanup for designer fork
 **PR**: #XX | **Files**: `LICENSE`, `README.md`
 - Added MIT LICENSE file (copyright 2025-2026 James Barge)
