@@ -5,6 +5,14 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-12: Kaizen — extend checkHealth with options, convert final 4 scrapers
+**PR**: #184 | **Files**: `health-check.ts`, `david-lean.ts`, `regent-street.ts`, `rich-mix.ts`, `the-nickel.ts`
+- Added optional `fetchOptions` param to `checkHealth()` for headers/signals
+- Converted last 4 manual healthCheck implementations to use shared utility
+- Kaizen automated refactoring (category: duplicate-pattern)
+
+---
+
 ## 2026-03-12: Kaizen — adopt checkHealth in 4 more scrapers
 **PR**: #183 | **Files**: `coldharbour-blue.ts`, `electric.ts`, `peckhamplex.ts`, `castle-sidcup.ts`
 - Replaced 4 identical healthCheck implementations with shared `checkHealth()` utility

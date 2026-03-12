@@ -11,6 +11,7 @@
 import type { RawScreening, ScraperConfig, CinemaScraper } from "../types";
 import { parseUKLocalDateTime } from "../utils/date-parser";
 import { CHROME_USER_AGENT } from "../constants";
+import { checkHealth } from "../utils/health-check";
 
 // ============================================================================
 // The Nickel Configuration
@@ -157,12 +158,9 @@ export class NickelScraper implements CinemaScraper {
   }
 
   async healthCheck(): Promise<boolean> {
-    try {
-      const response = await fetch(this.apiUrl, { method: "HEAD", signal: AbortSignal.timeout(10_000) });
-      return response.ok;
-    } catch {
-      return false;
-    }
+    return checkHealth(this.apiUrl, {
+      signal: AbortSignal.timeout(10_000),
+    });
   }
 }
 
