@@ -116,25 +116,26 @@ async function runAssertions(): Promise<AssertionResult[]> {
     ["olympic", "olympic-studios"],
   ];
 
-  // Build the pairs as a VALUES clause
-  const pairConditions = splitPairs
-    .map(([legacy, canonical]) => `('${legacy}','${canonical}')`)
-    .join(",");
+  // Build parameterized OR conditions (avoids sql.raw + string interpolation)
+  const pairConditions = splitPairs.map(
+    ([legacy, canonical]) =>
+      sql`(s1.cinema_id = ${legacy} AND s2.cinema_id = ${canonical})`
+  );
 
   const splitRows = await db.execute<{
     legacy: string;
     canonical: string;
     count: string;
   }>(
-    sql.raw(`
+    sql`
       SELECT s1.cinema_id as legacy, s2.cinema_id as canonical, COUNT(*)::text as count
       FROM screenings s1
       JOIN screenings s2 ON s1.film_id = s2.film_id
         AND s1.datetime = s2.datetime
         AND s1.cinema_id != s2.cinema_id
-      WHERE (s1.cinema_id, s2.cinema_id) IN (${pairConditions})
+      WHERE ${sql.join(pairConditions, sql` OR `)}
       GROUP BY s1.cinema_id, s2.cinema_id
-    `)
+    `
   );
 
   if (splitRows.length === 0) {
