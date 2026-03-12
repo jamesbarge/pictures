@@ -4,6 +4,8 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+
+import { CACHE_5MIN } from "@/lib/cache-headers";
 import { db } from "@/db";
 import { festivals, userFestivalInterests } from "@/db/schema";
 import { eq, and, gte, asc, sql } from "drizzle-orm";
@@ -189,10 +191,7 @@ export async function GET(request: NextRequest) {
         },
       },
       {
-        headers: {
-          // Cache for 5 minutes, serve stale for 10 min while revalidating
-          "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
-        },
+        headers: CACHE_5MIN,
       }
     );
   } catch (error) {

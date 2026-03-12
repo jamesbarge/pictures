@@ -5,6 +5,14 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-12: Kaizen — Replace remaining inline cache headers with shared constants
+**PR**: #162 | **Files**: `films/search/route.ts`, `festivals/route.ts`, `festivals/[slug]/route.ts`, `search/route.ts`
+- Replaced 5 inline Cache-Control strings with `CACHE_5MIN`, `CACHE_10MIN`, `CACHE_2MIN` from `cache-headers.ts`
+- Completes migration started in PR #155 — all API routes now use shared constants
+- Kaizen automated refactoring (category: extract-constant)
+
+---
+
 ## 2026-03-12: Kaizen — Group imports by external/internal/relative
 **PR**: #161 | **Files**: `verification.ts`, `screening-card.tsx`, `film-card.tsx`
 - Separated external package imports from internal `@/` imports with blank lines
