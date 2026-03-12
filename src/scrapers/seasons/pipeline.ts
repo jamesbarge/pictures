@@ -222,7 +222,7 @@ async function linkFilmsToSeason(
       try {
         await db.insert(seasonFilms).values(association);
         linked++;
-      } catch (error) {
+      } catch {
         // Likely duplicate - ignore
         console.warn(
           `[SeasonPipeline] Duplicate film association: ${rawFilm.title}`
