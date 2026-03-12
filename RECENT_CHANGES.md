@@ -5,6 +5,13 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-12: Kaizen — Replace `as any` with proper AlertType in scraper health
+**PR**: #146 | **Files**: `src/lib/scraper-health/index.ts`
+- Extracted `AlertType` union type, replaced `string | null` with `AlertType | null`, removed `as any` and `as HealthAlert["alertType"]` casts
+- Kaizen automated refactoring (category: type-safety)
+
+---
+
 ## 2026-03-12: Kaizen — Remove unused imports in scraper files
 **PR**: #145 | **Files**: `src/scrapers/cinemas/cine-lumiere.ts`, `src/scrapers/cinemas/phoenix.ts`, `src/scrapers/cinemas/romford-lumiere.ts`, `src/scrapers/utils/browser.ts`, `src/scrapers/utils/date-parser.test.ts`
 - Removed unused imports (`addYears`, `parse`, `BrowserContext`, `vi`, `beforeEach`) and unused interfaces (`FilmPerformance`, `PhoenixFilm`, `CineSyncShowtime`)
