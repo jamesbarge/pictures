@@ -47,8 +47,6 @@ function getFestivalStatus(
 ): { status: FestivalStatus; isCurrentlyRunning: boolean } {
   const isCurrentlyRunning = now >= startDate && now <= endDate;
   const isPast = now > endDate;
-  const isUpcoming = now < startDate;
-
   if (isPast) {
     return { status: "past", isCurrentlyRunning: false };
   }
@@ -69,7 +67,6 @@ function getFestivalStatus(
 
 export default async function FestivalsAdminPage() {
   const now = new Date();
-  const today = format(now, "yyyy-MM-dd");
 
   // Get all active festivals with screening counts
   const festivalsData = await db

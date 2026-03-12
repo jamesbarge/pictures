@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Map,
   useMap,
@@ -60,7 +60,6 @@ function MapTilesFixer() {
       const mapDiv = (map as unknown as { getDiv?: () => HTMLElement }).getDiv?.();
       if (mapDiv) {
         const originalWidth = mapDiv.style.width;
-        const originalHeight = mapDiv.style.height;
 
         // Shrink by significant amount to trigger tile recalculation
         const currentWidth = mapDiv.offsetWidth;

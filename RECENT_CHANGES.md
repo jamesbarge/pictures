@@ -5,6 +5,13 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-13: Kaizen — remove unused variables and imports
+**PR**: #XX | **Files**: `festivals/page.tsx`, `admin/festivals/page.tsx`, `cinema-map.tsx`
+- Removed unused `today`, `isUpcoming`, `originalHeight` vars and `useCallback`/`useMemo` imports
+- Kaizen automated refactoring (category: dead-code)
+
+---
+
 ## 2026-03-13: Kaizen — complete JSDoc for QA pipeline types
 **PR**: #XX | **Files**: `trigger/qa/types.ts`
 - Added JSDoc to all 10 remaining undocumented types in QA pipeline
