@@ -20,10 +20,10 @@ function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-function makeAttempt(success: boolean, reason?: string): EnrichmentAttempt {
+function makeAttempt(success: boolean, prevAttempts: number, reason?: string): EnrichmentAttempt {
   return {
     lastAttempt: new Date().toISOString(),
-    attempts: 1,
+    attempts: prevAttempts + 1,
     success,
     ...(reason ? { failureReason: reason } : {}),
   };
@@ -99,9 +99,10 @@ export const postScrapeEnrichment = task({
             });
           if (match && (match.confidence ?? 0) >= 0.7) {
             // Update film with TMDB data
+            const prevAttempts = status?.tmdbMatch?.attempts ?? 0;
             const updatedStatus: EnrichmentStatus = {
               ...(status ?? {}),
-              tmdbMatch: makeAttempt(true),
+              tmdbMatch: makeAttempt(true, prevAttempts),
             };
 
             await db.update(films).set({

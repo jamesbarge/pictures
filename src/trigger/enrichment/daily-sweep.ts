@@ -28,10 +28,10 @@ function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-function makeAttempt(success: boolean, reason?: string): EnrichmentAttempt {
+function makeAttempt(success: boolean, prevAttempts: number, reason?: string): EnrichmentAttempt {
   return {
     lastAttempt: new Date().toISOString(),
-    attempts: 1,
+    attempts: prevAttempts + 1,
     success,
     ...(reason ? { failureReason: reason } : {}),
   };
@@ -40,6 +40,9 @@ function makeAttempt(success: boolean, reason?: string): EnrichmentAttempt {
 function shouldSkip(status: EnrichmentStatus | null, field: keyof EnrichmentStatus, now: Date): boolean {
   const attempt = status?.[field];
   if (!attempt) return false;
+
+  // Already succeeded — no need to retry
+  if (attempt.success) return true;
 
   const lastAttempt = new Date(attempt.lastAttempt);
   const daysSince = (now.getTime() - lastAttempt.getTime()) / (1000 * 60 * 60 * 24);
@@ -124,9 +127,10 @@ export const dailyEnrichmentSweep = schedules.task({
           });
 
           if (match && match.confidence >= 0.7) {
+            const prevAttempts = status?.tmdbMatch?.attempts ?? 0;
             const updatedStatus: EnrichmentStatus = {
               ...(status ?? {}),
-              tmdbMatch: makeAttempt(true),
+              tmdbMatch: makeAttempt(true, prevAttempts),
             };
 
             await db.update(films).set({
@@ -234,9 +238,10 @@ export const dailyEnrichmentSweep = schedules.task({
             updates.backdropUrl = `https://image.tmdb.org/t/p/w1280${details.details.backdrop_path}`;
           }
 
+          const prevAttempts = status?.tmdbBackfill?.attempts ?? 0;
           const updatedStatus: EnrichmentStatus = {
             ...(status ?? {}),
-            tmdbBackfill: makeAttempt(true),
+            tmdbBackfill: makeAttempt(true, prevAttempts),
           };
           updates.enrichmentStatus = updatedStatus;
 
@@ -321,11 +326,12 @@ export const dailyEnrichmentSweep = schedules.task({
           });
 
           if (result.source !== "placeholder") {
+            const prevAttempts = status?.poster?.attempts ?? 0;
             await db.update(films).set({
               posterUrl: result.url,
               enrichmentStatus: {
                 ...(status ?? {}),
-                poster: makeAttempt(true),
+                poster: makeAttempt(true, prevAttempts),
               },
               updatedAt: new Date(),
             }).where(eq(films.id, film.filmId));
