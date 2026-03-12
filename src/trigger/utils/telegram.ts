@@ -6,6 +6,7 @@ const EMOJI: Record<AlertLevel, string> = {
   error: "🚨",
 };
 
+/** Send a formatted alert to the configured Telegram chat. Returns false if credentials are missing or the request fails. */
 export async function sendTelegramAlert(params: {
   title: string;
   message: string;

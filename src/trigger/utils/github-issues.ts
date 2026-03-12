@@ -20,6 +20,7 @@ interface IssueResult {
   created: boolean; // false = comment added to existing issue
 }
 
+/** Create or update a GitHub issue for a QA alert. Deduplicates by searching for an existing open issue with the same title. */
 export async function createGitHubIssue(
   params: CreateIssueParams
 ): Promise<IssueResult | null> {
