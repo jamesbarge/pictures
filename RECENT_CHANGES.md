@@ -5,6 +5,14 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-13: Kaizen — add JSDoc to Trigger.dev task types
+**PR**: #XX | **Files**: `trigger/types.ts`, `trigger/utils/alert-tiers.ts`, `trigger/qa/types.ts`
+- Added JSDoc to 11 interfaces/types across Trigger.dev task definitions
+- Covers scraper task payload, alert tiers, and QA pipeline types
+- Kaizen automated refactoring (category: jsdoc)
+
+---
+
 ## 2026-03-12: Persistent navigation on subpages
 **PR**: #XX | **Files**: `subpage-nav.tsx`, `settings/page.tsx`, `watchlist/page.tsx`, `about/page.tsx`, `film/[id]/page.tsx`, `letterboxd/page.tsx`
 - Replaced per-page "Back to Calendar" links with `SubpageNav` component
