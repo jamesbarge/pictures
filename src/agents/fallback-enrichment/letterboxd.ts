@@ -10,6 +10,8 @@
 
 import * as cheerio from "cheerio";
 
+import { CHROME_USER_AGENT } from "@/scrapers/constants";
+
 /**
  * Convert a film title to Letterboxd URL slug
  */
@@ -37,11 +39,7 @@ export async function fetchLetterboxdRating(
   year?: number | null
 ): Promise<{ rating: number; url: string } | null> {
   const slug = titleToSlug(title);
-  const headers = {
-    "User-Agent":
-      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
-    Accept: "text/html",
-  };
+  const headers = { "User-Agent": CHROME_USER_AGENT, Accept: "text/html" };
 
   try {
     // Try year-suffixed URL first for disambiguation
@@ -86,11 +84,7 @@ export async function fetchLetterboxdPoster(
   year?: number | null
 ): Promise<{ posterUrl: string; url: string } | null> {
   const slug = titleToSlug(title);
-  const headers = {
-    "User-Agent":
-      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
-    Accept: "text/html",
-  };
+  const headers = { "User-Agent": CHROME_USER_AGENT, Accept: "text/html" };
 
   try {
     // Try year-suffixed URL first for disambiguation
