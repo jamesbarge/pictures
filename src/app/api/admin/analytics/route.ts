@@ -17,7 +17,7 @@ import {
   getCinemaEngagement,
 } from "@/lib/posthog-api";
 
-export const GET = withAdminAuth(async (req, _admin) => {
+export const GET = withAdminAuth(async (req) => {
   try {
     const request = req as NextRequest;
     const searchParams = request.nextUrl.searchParams;

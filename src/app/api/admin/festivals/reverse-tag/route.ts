@@ -15,7 +15,7 @@ import {
   reverseTagFestival,
 } from "@/scrapers/festivals/reverse-tagger";
 
-export const POST = withAdminAuth(async (request, _admin) => {
+export const POST = withAdminAuth(async (request) => {
   try {
     const body = await request.json().catch(() => ({}));
     const { festivalSlug } = body as { festivalSlug?: string };

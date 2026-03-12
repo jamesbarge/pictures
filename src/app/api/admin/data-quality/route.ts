@@ -12,7 +12,7 @@ import { NextRequest } from "next/server";
 
 export const maxDuration = 60;
 
-export const GET = withAdminAuth(async (req, _admin) => {
+export const GET = withAdminAuth(async (req) => {
   const request = req as NextRequest;
   const upcomingOnly = request.nextUrl.searchParams.get("upcomingOnly") === "true";
   const limitParam = request.nextUrl.searchParams.get("limit");

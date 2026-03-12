@@ -29,7 +29,7 @@ interface VerifyResponse {
   suggestedAction?: string;
 }
 
-export const POST = withAdminAuth(async (request, _admin) => {
+export const POST = withAdminAuth(async (request) => {
   try {
     const body: VerifyRequest = await request.json();
     const { cinemaId, anomalyType, todayCount, lastWeekCount } = body;
