@@ -185,10 +185,6 @@ export async function POST(request: Request) {
         .map((d) => `${d.lat},${d.lng}`)
         .join("|");
 
-      console.log(
-        `Attempting walking fallback for ${fallbackDestinations.length} destinations`
-      );
-
       const fallbackData = await fetchGoogleTimes(
         originsParam,
         fallbackDestinationsParam,
