@@ -17,13 +17,12 @@ import { extractFilmCards, checkFilmCard, checkFilmDetail, checkDuplicateCards }
 import { checkBookingLinks } from "./checkers/booking-checker";
 import { extractScreenings, checkScreeningPatterns } from "./checkers/screening-checker";
 import { generateObsidianReport, saveJsonResults } from "./report-generator";
-import type { AuditIssue, AuditResult, AuditSummary, CinemaDetailData, CinemaListEntry, FilmCardData, FilmDetailData } from "./types";
+import type { AuditIssue, AuditResult, AuditSummary, CinemaDetailData, FilmCardData } from "./types";
 
 // ── Configuration ──────────────────────────────────────────────────
 
 const WORKER_COUNT = 10;
 const DELAY_BETWEEN_PAGES_MS = 500;
-const BASE_URL = "https://pictures.london";
 const OBSIDIAN_VAULT = "/Users/jamesbarge/Documents/Obsidian Vault/Pictures";
 
 const today = new Date().toISOString().split("T")[0];

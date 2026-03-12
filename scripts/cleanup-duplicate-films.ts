@@ -16,7 +16,7 @@
 
 import { db } from "../src/db";
 import { films, screenings } from "../src/db/schema";
-import { sql, eq, inArray } from "drizzle-orm";
+import { sql, inArray } from "drizzle-orm";
 
 // -- Types -------------------------------------------------------------------
 

@@ -1,5 +1,12 @@
 # Recent Changes
 
+## 2026-03-13: Kaizen — remove unused variables and imports in scripts
+**PR**: #TBD | **Files**: 4 audit/cleanup scripts
+- Removed unused type imports, constants, and variable mappings (4 files)
+- Kaizen automated refactoring (category: dead-code)
+
+---
+
 
 ## 2026-03-13: Kaizen — remove dead extractFilmsFromPage from romford-lumiere
 **PR**: #TBD | **Files**: `src/scrapers/cinemas/romford-lumiere.ts`
