@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
   try {
     // Rate limit check
     const ip = getClientIP(request);
-    const rateLimitResult = checkRateLimit(ip, { ...RATE_LIMITS.public, prefix: "screenings" });
+    const rateLimitResult = await checkRateLimit(ip, { ...RATE_LIMITS.public, prefix: "screenings" });
     if (!rateLimitResult.success) {
       return NextResponse.json(
         { error: "Too many requests", screenings: [] },

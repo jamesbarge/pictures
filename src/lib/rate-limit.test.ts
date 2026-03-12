@@ -1,100 +1,72 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { checkRateLimit, getClientIP, RATE_LIMITS } from "./rate-limit";
 
-describe("checkRateLimit", () => {
+// Tests run without UPSTASH_REDIS_REST_URL, so they exercise the in-memory fallback.
+
+describe("checkRateLimit (in-memory fallback)", () => {
   beforeEach(() => {
-    // Reset the rate limit store between tests by advancing time
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2025-01-01T12:00:00Z"));
   });
 
-  it("should allow requests within the limit", () => {
+  it("should allow requests within the limit", async () => {
     const config = { limit: 5, windowSec: 60, prefix: "test1" };
-
-    // First request should succeed
-    const result1 = checkRateLimit("192.168.1.1", config);
+    const result1 = await checkRateLimit("192.168.1.1", config);
     expect(result1.success).toBe(true);
     expect(result1.remaining).toBe(4);
-
-    // Subsequent requests should also succeed
-    const result2 = checkRateLimit("192.168.1.1", config);
+    const result2 = await checkRateLimit("192.168.1.1", config);
     expect(result2.success).toBe(true);
     expect(result2.remaining).toBe(3);
   });
 
-  it("should block requests exceeding the limit", () => {
+  it("should block requests exceeding the limit", async () => {
     const config = { limit: 3, windowSec: 60, prefix: "test2" };
-
-    // Use up the limit
-    checkRateLimit("192.168.1.2", config);
-    checkRateLimit("192.168.1.2", config);
-    checkRateLimit("192.168.1.2", config);
-
-    // Fourth request should be blocked
-    const result = checkRateLimit("192.168.1.2", config);
+    await checkRateLimit("192.168.1.2", config);
+    await checkRateLimit("192.168.1.2", config);
+    await checkRateLimit("192.168.1.2", config);
+    const result = await checkRateLimit("192.168.1.2", config);
     expect(result.success).toBe(false);
     expect(result.remaining).toBe(0);
   });
 
-  it("should reset after the time window", () => {
+  it("should reset after the time window", async () => {
     const config = { limit: 2, windowSec: 60, prefix: "test3" };
-
-    // Use up the limit
-    checkRateLimit("192.168.1.3", config);
-    checkRateLimit("192.168.1.3", config);
-
-    // Third request should fail
-    expect(checkRateLimit("192.168.1.3", config).success).toBe(false);
-
-    // Advance time past the window
+    await checkRateLimit("192.168.1.3", config);
+    await checkRateLimit("192.168.1.3", config);
+    const blocked = await checkRateLimit("192.168.1.3", config);
+    expect(blocked.success).toBe(false);
     vi.advanceTimersByTime(61 * 1000);
-
-    // Should succeed again
-    const result = checkRateLimit("192.168.1.3", config);
+    const result = await checkRateLimit("192.168.1.3", config);
     expect(result.success).toBe(true);
     expect(result.remaining).toBe(1);
   });
 
-  it("should track different IPs separately", () => {
+  it("should track different IPs separately", async () => {
     const config = { limit: 2, windowSec: 60, prefix: "test4" };
-
-    // Use up limit for IP1
-    checkRateLimit("10.0.0.1", config);
-    checkRateLimit("10.0.0.1", config);
-    expect(checkRateLimit("10.0.0.1", config).success).toBe(false);
-
-    // IP2 should still have quota
-    const result = checkRateLimit("10.0.0.2", config);
+    await checkRateLimit("10.0.0.1", config);
+    await checkRateLimit("10.0.0.1", config);
+    expect((await checkRateLimit("10.0.0.1", config)).success).toBe(false);
+    const result = await checkRateLimit("10.0.0.2", config);
     expect(result.success).toBe(true);
     expect(result.remaining).toBe(1);
   });
 
-  it("should track different prefixes separately", () => {
+  it("should track different prefixes separately", async () => {
     const config1 = { limit: 2, windowSec: 60, prefix: "api1" };
     const config2 = { limit: 2, windowSec: 60, prefix: "api2" };
-
-    // Use up limit for prefix1
-    checkRateLimit("192.168.1.5", config1);
-    checkRateLimit("192.168.1.5", config1);
-    expect(checkRateLimit("192.168.1.5", config1).success).toBe(false);
-
-    // Same IP with different prefix should still work
-    const result = checkRateLimit("192.168.1.5", config2);
+    await checkRateLimit("192.168.1.5", config1);
+    await checkRateLimit("192.168.1.5", config1);
+    expect((await checkRateLimit("192.168.1.5", config1)).success).toBe(false);
+    const result = await checkRateLimit("192.168.1.5", config2);
     expect(result.success).toBe(true);
   });
 
-  it("should return correct resetIn time", () => {
+  it("should return correct resetIn time", async () => {
     const config = { limit: 2, windowSec: 120, prefix: "test6" };
-
-    // Make a request
-    const result1 = checkRateLimit("192.168.1.6", config);
+    const result1 = await checkRateLimit("192.168.1.6", config);
     expect(result1.resetIn).toBe(120);
-
-    // Advance 30 seconds
     vi.advanceTimersByTime(30 * 1000);
-
-    // Check remaining time
-    const result2 = checkRateLimit("192.168.1.6", config);
+    const result2 = await checkRateLimit("192.168.1.6", config);
     expect(result2.resetIn).toBe(90);
   });
 });

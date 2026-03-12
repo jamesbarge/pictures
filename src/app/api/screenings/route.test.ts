@@ -8,7 +8,7 @@ import { NextRequest } from "next/server";
 
 // Mock rate limiting
 vi.mock("@/lib/rate-limit", () => ({
-  checkRateLimit: vi.fn().mockReturnValue({ success: true, remaining: 99, resetIn: 60 }),
+  checkRateLimit: vi.fn().mockResolvedValue({ success: true, remaining: 99, resetIn: 60 }),
   getClientIP: vi.fn().mockReturnValue("127.0.0.1"),
   RATE_LIMITS: {
     public: { limit: 100, windowSec: 60 },
@@ -46,7 +46,7 @@ describe("Screenings API", () => {
 
   describe("rate limiting", () => {
     it("should return 200 when rate limit passes", async () => {
-      vi.mocked(checkRateLimit).mockReturnValueOnce({
+      vi.mocked(checkRateLimit).mockResolvedValueOnce({
         success: true,
         remaining: 99,
         resetIn: 60,
@@ -63,7 +63,7 @@ describe("Screenings API", () => {
     });
 
     it("should return 429 when rate limit exceeded", async () => {
-      vi.mocked(checkRateLimit).mockReturnValueOnce({
+      vi.mocked(checkRateLimit).mockResolvedValueOnce({
         success: false,
         remaining: 0,
         resetIn: 45,
@@ -79,7 +79,7 @@ describe("Screenings API", () => {
     });
 
     it("should include Retry-After header on 429", async () => {
-      vi.mocked(checkRateLimit).mockReturnValueOnce({
+      vi.mocked(checkRateLimit).mockResolvedValueOnce({
         success: false,
         remaining: 0,
         resetIn: 30,

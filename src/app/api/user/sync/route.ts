@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
   try {
     // Rate limit check
     const ip = getClientIP(request);
-    const rateLimitResult = checkRateLimit(ip, { ...RATE_LIMITS.sync, prefix: "sync" });
+    const rateLimitResult = await checkRateLimit(ip, { ...RATE_LIMITS.sync, prefix: "sync" });
     if (!rateLimitResult.success) {
       throw new RateLimitError(
         "Too many requests. Please try again later.",

@@ -23,7 +23,7 @@ export async function GET(
 ) {
   try {
     const ip = getClientIP(request);
-    const rateLimitResult = checkRateLimit(ip, {
+    const rateLimitResult = await checkRateLimit(ip, {
       ...RATE_LIMITS.public,
       prefix: "cinemas-detail",
     });

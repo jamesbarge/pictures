@@ -18,7 +18,7 @@ const querySchema = z.object({
 export async function GET(request: NextRequest) {
   // Rate limit check
   const ip = getClientIP(request);
-  const rateLimitResult = checkRateLimit(ip, { ...RATE_LIMITS.search, prefix: "search" });
+  const rateLimitResult = await checkRateLimit(ip, { ...RATE_LIMITS.search, prefix: "search" });
   if (!rateLimitResult.success) {
     return NextResponse.json(
       { error: "Too many requests", results: [] },
