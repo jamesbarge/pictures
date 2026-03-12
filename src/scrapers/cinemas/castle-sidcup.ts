@@ -10,14 +10,14 @@
 
 import type { RawScreening, ScraperConfig, CinemaScraper } from "../types";
 
-export const CASTLE_SIDCUP_CONFIG: ScraperConfig = {
+const CASTLE_SIDCUP_CONFIG: ScraperConfig = {
   cinemaId: "castle-sidcup",
   baseUrl: "https://castlesidcup.com",
   requestsPerMinute: 30,
   delayBetweenRequests: 500,
 };
 
-export const CASTLE_SIDCUP_VENUE = {
+const CASTLE_SIDCUP_VENUE = {
   id: "castle-sidcup",
   name: "Castle Sidcup",
   shortName: "Castle Sidcup",

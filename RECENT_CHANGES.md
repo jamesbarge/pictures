@@ -5,6 +5,13 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-12: Kaizen — Remove dead exports from scraper config/venue constants
+**PR**: #147 | **Files**: `src/scrapers/cinemas/coldharbour-blue.ts`, `src/scrapers/cinemas/peckhamplex.ts`, `src/scrapers/cinemas/castle-sidcup.ts`
+- Removed `export` from 5 constants (CONFIG/VENUE) that were never imported outside their own files
+- Kaizen automated refactoring (category: dead-code)
+
+---
+
 ## 2026-03-12: Kaizen — Replace `as any` with proper AlertType in scraper health
 **PR**: #146 | **Files**: `src/lib/scraper-health/index.ts`
 - Extracted `AlertType` union type, replaced `string | null` with `AlertType | null`, removed `as any` and `as HealthAlert["alertType"]` casts
