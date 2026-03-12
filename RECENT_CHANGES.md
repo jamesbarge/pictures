@@ -5,6 +5,25 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-12: Distributed rate limiting with Upstash Redis
+**PR**: #XX | **Files**: `src/lib/rate-limit.ts`, 7 API routes, 3 test files
+- Replace in-memory `Map` rate limiter with `@upstash/ratelimit` sliding window
+- Distributed across all Vercel serverless instances via Redis
+- Graceful fallback to in-memory when `UPSTASH_REDIS_REST_URL` is not set (local dev/CI)
+- Security remediation: CVSS 4.3 — prevents rate limit bypass via instance rotation
+
+---
+
+## 2026-03-12: Health audit cleanup — consolidate Claude Code configuration
+**PR**: #XX | **Files**: `CLAUDE.md`, `AGENTS.md`, `AI_CONTEXT.md`, `README.md`, `.claude/rules/*`, `.claude/settings.local.json`
+- Merged AGENTS.md rules into CLAUDE.md as single source of truth
+- Extracted domain rules into `.claude/rules/` (scrapers, database, data-quality, frontend)
+- Added deployment gate, inline secrets, and PR review gate rules
+- Removed 129 stale/broken/dangerous entries from settings.local.json
+- AGENTS.md reduced to 3-line redirect stub
+
+---
+
 ## 2026-03-13: Kaizen — add JSDoc to festival and filter component types
 **PR**: #XX | **Files**: `follow-button.tsx`, `date-filter.tsx`, `festival-card.tsx`
 - Added JSDoc to `FollowButtonProps`, `DatePeriod`, `DateFilterProps`, `FestivalCardProps`
