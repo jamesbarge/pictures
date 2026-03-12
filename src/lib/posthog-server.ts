@@ -70,20 +70,6 @@ export function setServerUserProperties(
 }
 
 /**
- * Alias an anonymous user to an authenticated user
- * This links pre-signup behavior to the authenticated user
- */
-export function aliasServerUser(anonymousId: string, userId: string) {
-  const client = getPostHogServer();
-  if (!client) return;
-
-  client.alias({
-    distinctId: userId,
-    alias: anonymousId,
-  });
-}
-
-/**
  * Capture an exception server-side
  * Useful for API routes, server actions, and background jobs
  */
