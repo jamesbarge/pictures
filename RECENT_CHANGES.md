@@ -5,6 +5,15 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-12: Repo cleanup for designer fork
+**PR**: #XX | **Files**: `LICENSE`, `README.md`
+- Added MIT LICENSE file (copyright 2025-2026 James Barge)
+- Replaced AI-focused Documentation Map with simpler pointer to ARCHITECTURE.md
+- Updated tech stack and env vars to reflect Gemini migration
+- Cleaned up 120 untracked files, 120+ stale branches, 2 orphaned worktrees
+
+---
+
 ## 2026-03-12: Distributed rate limiting with Upstash Redis
 **PR**: #XX | **Files**: `src/lib/rate-limit.ts`, 7 API routes, 3 test files
 - Replace in-memory `Map` rate limiter with `@upstash/ratelimit` sliding window

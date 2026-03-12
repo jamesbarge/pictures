@@ -39,7 +39,7 @@ London has an incredible cinema scene, but finding what's showing means checking
 | Hosting | Vercel |
 | Scraping | Playwright + Cheerio |
 | Scheduling | Inngest (daily) + GitHub Actions (weekly) |
-| AI Agents | Claude Agent SDK |
+| AI | Google Gemini (enrichment) + Claude Agent SDK (automation) |
 | Styling | Tailwind CSS v4 |
 
 ---
@@ -97,8 +97,8 @@ NEXT_PUBLIC_POSTHOG_KEY=phc_...
 NEXT_PUBLIC_POSTHOG_HOST=https://eu.i.posthog.com
 POSTHOG_API_KEY=phx_...
 
-# Claude Agents (optional)
-ANTHROPIC_API_KEY=sk-ant-...
+# AI Enrichment (optional)
+GEMINI_API_KEY=your_key
 
 # Cron Security
 CRON_SECRET=random_string
@@ -208,15 +208,9 @@ src/
 └── lib/                 # Utilities & helpers
 ```
 
-## Documentation Map
+## Documentation
 
-- `AI_CONTEXT.md` - single entry point for agent/doc navigation
-- `CLAUDE.md` - canonical engineering and workflow rules
-- `.claude/rules/` - domain-specific rules (scrapers, database, data-quality, frontend)
-- `ARCHITECTURE.md` - deeper architecture and data-flow reference
-- `src/scrapers/SCRAPING_PLAYBOOK.md` - scraper operational playbook
-- `RECENT_CHANGES.md` - last ~20 shipped changes
-- `changelogs/` - full historical change archive
+See `ARCHITECTURE.md` for a deeper look at the data flow, scraper architecture, and system design.
 
 ---
 
@@ -232,7 +226,7 @@ src/
 
 - **Screening times**: Scraped directly from cinema websites
 - **Film metadata**: [TMDB](https://www.themoviedb.org) API
-- **Enrichment**: Claude AI for difficult title matching
+- **Enrichment**: Google Gemini AI for difficult title matching
 
 ---
 
