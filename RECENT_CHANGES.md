@@ -1,5 +1,13 @@
 # Recent Changes
 
+## 2026-03-13: Gate brand tagline behind festivals feature flag
+**PR**: #247 | **Files**: `src/lib/brand.ts`
+- Page `<title>` still advertised "Festivals" even though the feature was hidden via PR #230
+- Conditionally include "Festivals" in `brand.tagline` using `isFeatureEnabled("festivals")`
+- Also promoted stale Vercel deployment — production was stuck on pre-PR#230 code due to a manual redeploy breaking auto-promotion
+
+---
+
 ## 2026-03-13: Kaizen — extract ambiguity scoring constants
 **PR**: #TBD | **Files**: `src/lib/tmdb/ambiguity.ts`
 - Extracted 15 magic numbers into named constants for title ambiguity scoring
