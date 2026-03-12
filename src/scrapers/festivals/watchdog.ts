@@ -17,6 +17,7 @@ import { db } from "@/db";
 import { festivals } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { createHash } from "crypto";
+import { CHROME_USER_AGENT } from "../constants";
 import { WATCHDOG_PROBES } from "./festival-config";
 import type { WatchdogProbe } from "./types";
 
@@ -122,8 +123,7 @@ async function probeForProgramme(
   try {
     const response = await fetch(url, {
       headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+        "User-Agent": CHROME_USER_AGENT,
         Accept: "text/html,application/xhtml+xml",
       },
       signal: AbortSignal.timeout(15000),
