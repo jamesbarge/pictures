@@ -7,6 +7,7 @@ import { db } from "./index";
 import { films, screenings } from "./schema";
 import { eq, isNull, gte, and } from "drizzle-orm";
 import * as cheerio from "cheerio";
+import { CHROME_USER_AGENT } from "@/scrapers/constants";
 
 // Convert title to Letterboxd URL slug
 export function titleToSlug(title: string, year?: number | null): string {
@@ -76,8 +77,7 @@ async function fetchLetterboxdRating(
 ): Promise<{ rating: number; url: string; failureReason?: never } | { rating?: never; url?: never; failureReason: FailureReason } | null> {
   const slug = titleToSlug(title, year);
   const headers = {
-    "User-Agent":
-      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+    "User-Agent": CHROME_USER_AGENT,
     Accept: "text/html",
   };
 

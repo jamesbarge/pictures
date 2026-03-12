@@ -1,4 +1,5 @@
 import * as cheerio from "cheerio";
+import { CHROME_USER_AGENT } from "./constants";
 
 async function debug() {
   const url = "https://genesiscinema.co.uk/event/105991";
@@ -6,7 +7,7 @@ async function debug() {
 
   const response = await fetch(url, {
     headers: {
-      "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+      "User-Agent": CHROME_USER_AGENT,
     },
   });
   const html = await response.text();

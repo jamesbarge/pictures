@@ -6,6 +6,13 @@ When an entry is added here, also create a detailed file in /changelogs/
 -->
 
 
+## 2026-03-13: Kaizen — use shared UA constants in remaining files
+**PR**: #XX | **Files**: `enrich-letterboxd.ts`, `seasons/base.ts`, `debug-genesis-structure.ts`
+- Replaced hardcoded User-Agent strings with `CHROME_USER_AGENT` and `BOT_USER_AGENT` from shared constants
+- Kaizen automated refactoring (category: extract-constant)
+
+---
+
 ## 2026-03-12: Kaizen — add JSDoc to classifier, image-processor, and title-extraction types
 **PR**: #XX | **Files**: `content-classifier.ts`, `image-processor.ts`, `pattern-extractor.ts`, `ai-extractor.ts`
 - Added JSDoc to 6 exported types/interfaces across content classification and title extraction modules
