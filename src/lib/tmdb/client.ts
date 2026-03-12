@@ -16,6 +16,9 @@ import type {
 
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 const TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p";
+const TMDB_CACHE_REVALIDATE_SEC = 24 * 60 * 60; // 24 hours
+const DIRECTOR_JOB = "Director";
+const MAX_CAST_MEMBERS = 10;
 
 export class TMDBClient {
   private apiKey: string;
@@ -36,7 +39,7 @@ export class TMDBClient {
     }
 
     const response = await fetch(url.toString(), {
-      next: { revalidate: 86400 }, // Cache for 24 hours
+      next: { revalidate: TMDB_CACHE_REVALIDATE_SEC },
     });
 
     if (!response.ok) {
@@ -117,10 +120,10 @@ export class TMDBClient {
     ]);
 
     const directors = credits.crew
-      .filter((c) => c.job === "Director")
+      .filter((c) => c.job === DIRECTOR_JOB)
       .map((c) => c.name);
 
-    const cast = credits.cast.slice(0, 10).map((c) => ({
+    const cast = credits.cast.slice(0, MAX_CAST_MEMBERS).map((c) => ({
       name: c.name,
       character: c.character,
       order: c.order,
@@ -196,7 +199,7 @@ export class TMDBClient {
 
     // Filter to directed films only
     const directedFilms = credits.crew
-      .filter((c) => c.job === "Director")
+      .filter((c) => c.job === DIRECTOR_JOB)
       .sort((a, b) => {
         // Sort by release date descending
         const dateA = a.release_date || "";

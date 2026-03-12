@@ -5,6 +5,13 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-13: Kaizen — extract TMDB client constants
+**PR**: #XX | **Files**: `src/lib/tmdb/client.ts`
+- Extract magic values to named constants: `TMDB_CACHE_REVALIDATE_SEC`, `DIRECTOR_JOB`, `MAX_CAST_MEMBERS`
+- Kaizen automated refactoring (category: extract-constant)
+
+---
+
 ## 2026-03-13: Kaizen — remove remaining unused _admin params (batch 2)
 **PR**: #XX | **Files**: 4 admin API routes (health, films/search, screenings, scrape-eventive)
 - Remove unused `_admin` callback parameter from remaining 4 `withAdminAuth` handlers
