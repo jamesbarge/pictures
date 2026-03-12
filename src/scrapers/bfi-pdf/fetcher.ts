@@ -261,6 +261,14 @@ export async function downloadPDF(info: PDFInfo): Promise<FetchedPDF> {
   }
 
   const arrayBuffer = await response.arrayBuffer();
+
+  const MAX_PDF_SIZE = 50 * 1024 * 1024; // 50MB
+  if (arrayBuffer.byteLength > MAX_PDF_SIZE) {
+    throw new Error(
+      `PDF too large: ${arrayBuffer.byteLength} bytes exceeds limit of ${MAX_PDF_SIZE} bytes`
+    );
+  }
+
   const buffer = Buffer.from(arrayBuffer);
 
   // Calculate content hash for change detection

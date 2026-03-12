@@ -6,6 +6,16 @@ When an entry is added here, also create a detailed file in /changelogs/
 -->
 
 
+## 2026-03-12: Security — add response size limits and URL protocol validation
+**PR**: #190 | **Files**: `fetch-with-retry.ts`, `bfi-pdf/fetcher.ts`, `screening-validator.ts`, `admin/screenings/[id]/route.ts`
+- Added 10MB response size limit to fetchWithRetry()
+- Added 50MB PDF size limit to BFI PDF fetcher
+- Added URL length validation and clearer protocol error messages
+- Refined admin screening bookingUrl Zod to require http(s)
+
+---
+
+
 ## 2026-03-12: Security — add Zod validation to user API routes
 **PR**: #191 | **Files**: `film-statuses/[filmId]/route.ts`, `festivals/follows/[festivalId]/route.ts`, `preferences/route.ts`, `sync/route.ts`
 - Added Zod schemas with type validation, string length limits, and array size limits
