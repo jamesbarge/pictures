@@ -133,8 +133,8 @@ export async function findFilmBySimilarity(
       );
       return match.filmId;
     }
-  } catch (e) {
-    console.warn(`[Pipeline] Similarity search failed for "${matchingTitle}":`, e);
+  } catch (error) {
+    console.warn(`[Pipeline] Similarity search failed for "${matchingTitle}":`, error);
   }
 
   return null;

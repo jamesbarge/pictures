@@ -5,6 +5,13 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-12: Kaizen — Standardize catch variable naming in scraper utils
+**PR**: #149 | **Files**: `src/scrapers/utils/{veezi-scraper,film-matching,screening-classification}.ts`
+- Renamed `catch (e)` to `catch (error)` across 5 catch blocks to match project convention
+- Kaizen automated refactoring (category: error-handling)
+
+---
+
 ## 2026-03-12: Kaizen — Extract shared User-Agent constants for scrapers
 **PR**: #148 | **Files**: `src/scrapers/constants.ts`, `src/scrapers/cinemas/{the-nickel,lexi,genesis,castle}.ts`
 - Created `CHROME_USER_AGENT` and `BOT_USER_AGENT` constants, replaced inline strings in 4 scrapers
