@@ -14,6 +14,7 @@ export type ProgrammingType = "repertory" | "new_release" | "special_event" | "p
 // Constants
 // ============================================================================
 
+/** Available decade ranges for film filtering */
 export const DECADES = [
   "Pre-1950",
   "1950s",
@@ -26,6 +27,7 @@ export const DECADES = [
   "2020s",
 ] as const;
 
+/** Common film genres used in filter UI */
 export const COMMON_GENRES = [
   "Drama",
   "Comedy",
@@ -38,6 +40,7 @@ export const COMMON_GENRES = [
   "Animation",
 ] as const;
 
+/** Screening format options (35mm, IMAX, etc.) with display labels */
 export const FORMAT_OPTIONS = [
   { value: "35mm", label: "35mm" },
   { value: "70mm", label: "70mm" },
@@ -47,7 +50,7 @@ export const FORMAT_OPTIONS = [
   { value: "dolby_cinema", label: "Dolby Cinema" },
 ] as const;
 
-// Time presets for common screening windows
+/** Time presets for common screening windows (morning, afternoon, evening, late) */
 export const TIME_PRESETS = [
   { label: "Morning", shortLabel: "AM", from: 0, to: 11, description: "Before 12pm" },
   { label: "Afternoon", shortLabel: "Aft", from: 12, to: 16, description: "12pm - 5pm" },
@@ -59,6 +62,7 @@ export const TIME_PRESETS = [
 // Helper Functions
 // ============================================================================
 
+/** Get a human-readable label for a time-of-day category */
 export function getTimeOfDayLabel(time: TimeOfDay): string {
   const labels: Record<TimeOfDay, string> = {
     morning: "Morning (before 12pm)",
@@ -69,6 +73,7 @@ export function getTimeOfDayLabel(time: TimeOfDay): string {
   return labels[time];
 }
 
+/** Map an hour (0-23) to its time-of-day category */
 export function getTimeOfDayFromHour(hour: number): TimeOfDay {
   if (hour < 12) return "morning";
   if (hour < 17) return "afternoon";
@@ -76,6 +81,7 @@ export function getTimeOfDayFromHour(hour: number): TimeOfDay {
   return "late_night";
 }
 
+/** Get a human-readable label for a programming type */
 export function getProgrammingTypeLabel(type: ProgrammingType): string {
   const labels: Record<ProgrammingType, string> = {
     repertory: "Repertory / Classic",
@@ -91,7 +97,7 @@ export function isIndependentCinema(chain: string | null): boolean {
   return chain === null || chain === "BFI";
 }
 
-// Format hour to 12h display (e.g., 14 -> "2pm", 9 -> "9am")
+/** Format hour to 12h display (e.g., 14 → "2pm", 9 → "9am") */
 export function formatHour(hour: number): string {
   if (hour === 0) return "12am";
   if (hour === 12) return "12pm";
@@ -99,7 +105,7 @@ export function formatHour(hour: number): string {
   return `${hour - 12}pm`;
 }
 
-// Format time range for display
+/** Format a time range for display (e.g., "2pm - 9pm", "After 5pm") */
 export function formatTimeRange(from: number | null, to: number | null): string {
   if (from === null && to === null) return "Any Time";
   if (from !== null && to === null) return `After ${formatHour(from)}`;
@@ -108,7 +114,7 @@ export function formatTimeRange(from: number | null, to: number | null): string 
   return `${formatHour(from!)} - ${formatHour(to! + 1)}`;
 }
 
-// Check if a time range matches a preset
+/** Check if a time range matches a preset */
 export function matchesTimePreset(
   from: number | null,
   to: number | null,
