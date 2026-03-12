@@ -14,7 +14,7 @@ import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
 export async function GET(request: NextRequest) {
   // Rate limit check
   const ip = getClientIP(request);
-  const rateLimitResult = checkRateLimit(ip, { ...RATE_LIMITS.search, prefix: "search-legacy" });
+  const rateLimitResult = await checkRateLimit(ip, { ...RATE_LIMITS.search, prefix: "search-legacy" });
   if (!rateLimitResult.success) {
     return NextResponse.json(
       { error: "Too many requests", films: [] },

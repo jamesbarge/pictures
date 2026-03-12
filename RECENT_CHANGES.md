@@ -13,6 +13,15 @@ When an entry is added here, also create a detailed file in /changelogs/
 
 ---
 
+## 2026-03-12: Repo cleanup for designer fork
+**PR**: #XX | **Files**: `LICENSE`, `README.md`
+- Added MIT LICENSE file (copyright 2025-2026 James Barge)
+- Replaced AI-focused Documentation Map with simpler pointer to ARCHITECTURE.md
+- Updated tech stack and env vars to reflect Gemini migration
+- Cleaned up 120 untracked files, 120+ stale branches, 2 orphaned worktrees
+
+---
+
 ## 2026-03-12: Distributed rate limiting with Upstash Redis
 **PR**: #XX | **Files**: `src/lib/rate-limit.ts`, 7 API routes, 3 test files
 - Replace in-memory `Map` rate limiter with `@upstash/ratelimit` sliding window
@@ -32,10 +41,28 @@ When an entry is added here, also create a detailed file in /changelogs/
 
 ---
 
+## 2026-03-12: Distributed rate limiting with Upstash Redis
+**PR**: #XX | **Files**: `src/lib/rate-limit.ts`, 7 API routes, 3 test files
+- Replace in-memory Map rate limiter with @upstash/ratelimit sliding window
+- Distributed across all Vercel serverless instances via Redis
+- Graceful fallback to in-memory when UPSTASH_REDIS_REST_URL is not set
+- Security remediation: CVSS 4.3 — prevents rate limit bypass via instance rotation
+
+---
+
 ## 2026-03-13: Kaizen — add JSDoc to festival and filter component types
 **PR**: #XX | **Files**: `follow-button.tsx`, `date-filter.tsx`, `festival-card.tsx`
 - Added JSDoc to `FollowButtonProps`, `DatePeriod`, `DateFilterProps`, `FestivalCardProps`
 - Kaizen automated refactoring (category: jsdoc)
+
+---
+
+## 2026-03-12: Distributed rate limiting with Upstash Redis
+**PR**: #XX | **Files**: `src/lib/rate-limit.ts`, 7 API routes, 3 test files
+- Replace in-memory Map rate limiter with @upstash/ratelimit sliding window
+- Distributed across all Vercel serverless instances via Redis
+- Graceful fallback to in-memory when UPSTASH_REDIS_REST_URL is not set
+- Security remediation: CVSS 4.3 — prevents rate limit bypass via instance rotation
 
 ---
 
@@ -46,10 +73,28 @@ When an entry is added here, also create a detailed file in /changelogs/
 
 ---
 
+## 2026-03-12: Distributed rate limiting with Upstash Redis
+**PR**: #XX | **Files**: `src/lib/rate-limit.ts`, 7 API routes, 3 test files
+- Replace in-memory Map rate limiter with @upstash/ratelimit sliding window
+- Distributed across all Vercel serverless instances via Redis
+- Graceful fallback to in-memory when UPSTASH_REDIS_REST_URL is not set
+- Security remediation: CVSS 4.3 — prevents rate limit bypass via instance rotation
+
+---
+
 ## 2026-03-13: Kaizen — remove unused variables in reachable and festivals
 **PR**: #XX | **Files**: `reachable-page-client.tsx`, `festivals/[slug]/route.ts`
 - Removed unused `hasValidInputs` destructuring and `screeningIds` variable
 - Kaizen automated refactoring (category: dead-code)
+
+---
+
+## 2026-03-12: Distributed rate limiting with Upstash Redis
+**PR**: #XX | **Files**: `src/lib/rate-limit.ts`, 7 API routes, 3 test files
+- Replace in-memory Map rate limiter with @upstash/ratelimit sliding window
+- Distributed across all Vercel serverless instances via Redis
+- Graceful fallback to in-memory when UPSTASH_REDIS_REST_URL is not set
+- Security remediation: CVSS 4.3 — prevents rate limit bypass via instance rotation
 
 ---
 
@@ -60,10 +105,28 @@ When an entry is added here, also create a detailed file in /changelogs/
 
 ---
 
+## 2026-03-12: Distributed rate limiting with Upstash Redis
+**PR**: #XX | **Files**: `src/lib/rate-limit.ts`, 7 API routes, 3 test files
+- Replace in-memory Map rate limiter with @upstash/ratelimit sliding window
+- Distributed across all Vercel serverless instances via Redis
+- Graceful fallback to in-memory when UPSTASH_REDIS_REST_URL is not set
+- Security remediation: CVSS 4.3 — prevents rate limit bypass via instance rotation
+
+---
+
 ## 2026-03-13: Kaizen — remove unused variables and imports
 **PR**: #XX | **Files**: `festivals/page.tsx`, `admin/festivals/page.tsx`, `cinema-map.tsx`
 - Removed unused `today`, `isUpcoming`, `originalHeight` vars and `useCallback`/`useMemo` imports
 - Kaizen automated refactoring (category: dead-code)
+
+---
+
+## 2026-03-12: Distributed rate limiting with Upstash Redis
+**PR**: #XX | **Files**: `src/lib/rate-limit.ts`, 7 API routes, 3 test files
+- Replace in-memory Map rate limiter with @upstash/ratelimit sliding window
+- Distributed across all Vercel serverless instances via Redis
+- Graceful fallback to in-memory when UPSTASH_REDIS_REST_URL is not set
+- Security remediation: CVSS 4.3 — prevents rate limit bypass via instance rotation
 
 ---
 
@@ -72,6 +135,15 @@ When an entry is added here, also create a detailed file in /changelogs/
 - Added JSDoc to all 10 remaining undocumented types in QA pipeline
 - Covers BrowseError, BrowseStats, QaAnalysisInput/Output, AnalysisStats, IssueScope, QaIssueType, FixAction, VerificationOutcome, QaOrchestratorInput
 - Kaizen automated refactoring (category: jsdoc)
+
+---
+
+## 2026-03-12: Distributed rate limiting with Upstash Redis
+**PR**: #XX | **Files**: `src/lib/rate-limit.ts`, 7 API routes, 3 test files
+- Replace in-memory Map rate limiter with @upstash/ratelimit sliding window
+- Distributed across all Vercel serverless instances via Redis
+- Graceful fallback to in-memory when UPSTASH_REDIS_REST_URL is not set
+- Security remediation: CVSS 4.3 — prevents rate limit bypass via instance rotation
 
 ---
 
@@ -93,10 +165,28 @@ When an entry is added here, also create a detailed file in /changelogs/
 
 ---
 
+## 2026-03-12: Distributed rate limiting with Upstash Redis
+**PR**: #XX | **Files**: `src/lib/rate-limit.ts`, 7 API routes, 3 test files
+- Replace in-memory Map rate limiter with @upstash/ratelimit sliding window
+- Distributed across all Vercel serverless instances via Redis
+- Graceful fallback to in-memory when UPSTASH_REDIS_REST_URL is not set
+- Security remediation: CVSS 4.3 — prevents rate limit bypass via instance rotation
+
+---
+
 ## 2026-03-13: Kaizen — consolidate UA strings in fallback enrichment
 **PR**: #XX | **Files**: `agents/fallback-enrichment/letterboxd.ts`
 - Replaced 2 hardcoded User-Agent strings with `CHROME_USER_AGENT` constant
 - Kaizen automated refactoring (category: extract-constant)
+
+---
+
+## 2026-03-12: Distributed rate limiting with Upstash Redis
+**PR**: #XX | **Files**: `src/lib/rate-limit.ts`, 7 API routes, 3 test files
+- Replace in-memory Map rate limiter with @upstash/ratelimit sliding window
+- Distributed across all Vercel serverless instances via Redis
+- Graceful fallback to in-memory when UPSTASH_REDIS_REST_URL is not set
+- Security remediation: CVSS 4.3 — prevents rate limit bypass via instance rotation
 
 ---
 
@@ -130,6 +220,15 @@ When an entry is added here, also create a detailed file in /changelogs/
 
 ---
 
+## 2026-03-12: Distributed rate limiting with Upstash Redis
+**PR**: #XX | **Files**: `src/lib/rate-limit.ts`, 7 API routes, 3 test files
+- Replace in-memory Map rate limiter with @upstash/ratelimit sliding window
+- Distributed across all Vercel serverless instances via Redis
+- Graceful fallback to in-memory when UPSTASH_REDIS_REST_URL is not set
+- Security remediation: CVSS 4.3 — prevents rate limit bypass via instance rotation
+
+---
+
 ## 2026-03-13: Kaizen — add JSDoc to Trigger.dev task types
 **PR**: #XX | **Files**: `trigger/types.ts`, `trigger/utils/alert-tiers.ts`, `trigger/qa/types.ts`
 - Added JSDoc to 11 interfaces/types across Trigger.dev task definitions
@@ -154,6 +253,15 @@ When an entry is added here, also create a detailed file in /changelogs/
 
 ---
 
+## 2026-03-12: Distributed rate limiting with Upstash Redis
+**PR**: #XX | **Files**: `src/lib/rate-limit.ts`, 7 API routes, 3 test files
+- Replace in-memory Map rate limiter with @upstash/ratelimit sliding window
+- Distributed across all Vercel serverless instances via Redis
+- Graceful fallback to in-memory when UPSTASH_REDIS_REST_URL is not set
+- Security remediation: CVSS 4.3 — prevents rate limit bypass via instance rotation
+
+---
+
 ## 2026-03-13: Kaizen — add JSDoc to travel-time, auth, and film-similarity types
 **PR**: #XX | **Files**: `travel-time.ts`, `auth.ts`, `film-similarity.ts`
 - Added JSDoc to 4 interfaces: Screening, ReachableScreening, AdminAuthContext, SimilarFilm
@@ -161,10 +269,28 @@ When an entry is added here, also create a detailed file in /changelogs/
 
 ---
 
+## 2026-03-12: Distributed rate limiting with Upstash Redis
+**PR**: #XX | **Files**: `src/lib/rate-limit.ts`, 7 API routes, 3 test files
+- Replace in-memory Map rate limiter with @upstash/ratelimit sliding window
+- Distributed across all Vercel serverless instances via Redis
+- Graceful fallback to in-memory when UPSTASH_REDIS_REST_URL is not set
+- Security remediation: CVSS 4.3 — prevents rate limit bypass via instance rotation
+
+---
+
 ## 2026-03-13: Kaizen — add JSDoc to scraper core types and metadata parser
 **PR**: #XX | **Files**: `types.ts`, `metadata-parser.ts`
 - Added JSDoc to 6 exported interfaces: RawScreening, ScraperConfig, ScraperResult, CinemaScraper, BookingSystemConfig, FilmMetadata
 - Kaizen automated refactoring (category: jsdoc)
+
+---
+
+## 2026-03-12: Distributed rate limiting with Upstash Redis
+**PR**: #XX | **Files**: `src/lib/rate-limit.ts`, 7 API routes, 3 test files
+- Replace in-memory Map rate limiter with @upstash/ratelimit sliding window
+- Distributed across all Vercel serverless instances via Redis
+- Graceful fallback to in-memory when UPSTASH_REDIS_REST_URL is not set
+- Security remediation: CVSS 4.3 — prevents rate limit bypass via instance rotation
 
 ---
 

@@ -1,36 +1,17 @@
 /**
- * Simple in-memory rate limiter for API routes
+ * Distributed rate limiter for API routes
  *
- * Note: This uses in-memory storage, so each serverless instance has its own state.
- * For stronger rate limiting across all instances, use Redis (Upstash/Vercel KV).
- * However, this still provides protection against:
- * - Rapid-fire requests from the same IP to the same instance
- * - Basic DoS attempts within an instance's lifecycle
+ * Uses Upstash Redis (via @upstash/ratelimit) for distributed rate limiting
+ * across all Vercel serverless instances. Falls back to an in-memory Map
+ * when Redis env vars are not configured (local dev, CI).
  */
 
-interface RateLimitEntry {
-  count: number;
-  resetTime: number;
-}
+import { Ratelimit } from "@upstash/ratelimit";
+import { Redis } from "@upstash/redis";
 
-// Store rate limit data per IP
-const rateLimitStore = new Map<string, RateLimitEntry>();
-
-// Cleanup old entries every 5 minutes
-const CLEANUP_INTERVAL = 5 * 60 * 1000;
-let lastCleanup = Date.now();
-
-function cleanup() {
-  const now = Date.now();
-  if (now - lastCleanup < CLEANUP_INTERVAL) return;
-
-  lastCleanup = now;
-  for (const [key, entry] of rateLimitStore.entries()) {
-    if (entry.resetTime < now) {
-      rateLimitStore.delete(key);
-    }
-  }
-}
+// ---------------------------------------------------------------------------
+// Types (unchanged — all consumers rely on these)
+// ---------------------------------------------------------------------------
 
 /** Configuration for a rate limit rule applied to an API route. */
 export interface RateLimitConfig {
@@ -52,10 +33,70 @@ export interface RateLimitResult {
   resetIn: number;
 }
 
+// ---------------------------------------------------------------------------
+// Redis backend (distributed)
+// ---------------------------------------------------------------------------
+
+// Vercel Marketplace Redis creates KV_REST_API_URL / KV_REST_API_TOKEN.
+// Also support UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN for direct Upstash setups.
+const redisUrl =
+  process.env.KV_REST_API_URL ?? process.env.UPSTASH_REDIS_REST_URL;
+const redisToken =
+  process.env.KV_REST_API_TOKEN ?? process.env.UPSTASH_REDIS_REST_TOKEN;
+
+const hasRedis = !!(redisUrl && redisToken);
+
+const redis = hasRedis ? new Redis({ url: redisUrl!, token: redisToken! }) : null;
+
 /**
- * Check rate limit for a given identifier (usually IP address)
+ * Cache of Ratelimit instances keyed by "prefix:limit:windowSec".
+ * Each unique config combo gets its own limiter so different routes
+ * can have different windows without colliding.
  */
-export function checkRateLimit(
+const ratelimiters = new Map<string, Ratelimit>();
+
+function getOrCreateRatelimiter(config: RateLimitConfig): Ratelimit {
+  const key = `${config.prefix ?? ""}:${config.limit}:${config.windowSec}`;
+  let rl = ratelimiters.get(key);
+  if (!rl) {
+    rl = new Ratelimit({
+      redis: redis!,
+      limiter: Ratelimit.slidingWindow(config.limit, `${config.windowSec} s`),
+      prefix: `rl:${config.prefix ?? "default"}`,
+      analytics: false,
+    });
+    ratelimiters.set(key, rl);
+  }
+  return rl;
+}
+
+// ---------------------------------------------------------------------------
+// In-memory fallback (local dev / CI)
+// ---------------------------------------------------------------------------
+
+interface RateLimitEntry {
+  count: number;
+  resetTime: number;
+}
+
+const rateLimitStore = new Map<string, RateLimitEntry>();
+
+const CLEANUP_INTERVAL = 5 * 60 * 1000;
+let lastCleanup = Date.now();
+
+function cleanup() {
+  const now = Date.now();
+  if (now - lastCleanup < CLEANUP_INTERVAL) return;
+
+  lastCleanup = now;
+  for (const [key, entry] of rateLimitStore.entries()) {
+    if (entry.resetTime < now) {
+      rateLimitStore.delete(key);
+    }
+  }
+}
+
+function checkRateLimitInMemory(
   identifier: string,
   config: RateLimitConfig
 ): RateLimitResult {
@@ -68,20 +109,14 @@ export function checkRateLimit(
 
   const entry = rateLimitStore.get(key);
 
-  // No existing entry or window expired - create new entry
   if (!entry || entry.resetTime < now) {
     rateLimitStore.set(key, {
       count: 1,
       resetTime: now + windowMs,
     });
-    return {
-      success: true,
-      remaining: limit - 1,
-      resetIn: windowSec,
-    };
+    return { success: true, remaining: limit - 1, resetIn: windowSec };
   }
 
-  // Within window - increment counter
   entry.count++;
 
   if (entry.count > limit) {
@@ -99,9 +134,38 @@ export function checkRateLimit(
   };
 }
 
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
 /**
- * Get client IP from request headers
- * Works with Vercel, Cloudflare, and standard proxies
+ * Check rate limit for a given identifier (usually IP address).
+ *
+ * Uses Upstash Redis when KV_REST_API_URL (Vercel Marketplace) or
+ * UPSTASH_REDIS_REST_URL is configured, otherwise falls back to
+ * an in-memory counter.
+ */
+export async function checkRateLimit(
+  identifier: string,
+  config: RateLimitConfig
+): Promise<RateLimitResult> {
+  if (!redis) {
+    return checkRateLimitInMemory(identifier, config);
+  }
+
+  const rl = getOrCreateRatelimiter(config);
+  const { success, remaining, reset } = await rl.limit(identifier);
+
+  return {
+    success,
+    remaining,
+    resetIn: Math.max(0, Math.ceil((reset - Date.now()) / 1000)),
+  };
+}
+
+/**
+ * Get client IP from request headers.
+ * Works with Vercel, Cloudflare, and standard proxies.
  */
 export function getClientIP(request: Request): string {
   // Vercel
@@ -122,7 +186,6 @@ export function getClientIP(request: Request): string {
     return realIP;
   }
 
-  // Fallback
   return "unknown";
 }
 
