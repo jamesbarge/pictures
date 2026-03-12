@@ -5,6 +5,14 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-12: Kaizen — Remove unused variables and imports
+**PR**: #176 | **Files**: `castle-sidcup.ts`, `peckhamplex.ts`, `film-similarity.ts`, `image-processor.ts`, `user-sync-service.ts`
+- Removed unused `CASTLE_SIDCUP_VENUE` and `PECKHAMPLEX_VENUE` constants from scrapers
+- Removed unused imports: `isGeminiConfigured`, `createClient`, `PersistedFilters`
+- Kaizen automated refactoring (category: lint-fix)
+
+---
+
 ## 2026-03-12: Kaizen — Organize imports in cinema scrapers
 **PR**: #175 | **Files**: `phoenix.ts`, `david-lean.ts`, `olympic.ts`
 - Grouped external imports (date-fns, playwright) above relative imports with blank line separator

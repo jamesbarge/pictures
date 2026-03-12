@@ -7,7 +7,7 @@
 
 import { useFilmStatus, type FilmStatusEntry } from "@/stores/film-status";
 import { usePreferences } from "@/stores/preferences";
-import { useFilters, type PersistedFilters } from "@/stores/filters";
+import { useFilters } from "@/stores/filters";
 import type { StoredPreferences, StoredFilters } from "@/db/schema/user-preferences";
 import {
   trackSyncInitiated,

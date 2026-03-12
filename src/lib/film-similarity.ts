@@ -9,7 +9,7 @@
  * - "The Godfather" vs "Godfather, The"
  */
 
-import { generateText, stripCodeFences, isGeminiConfigured } from "./gemini";
+import { generateText, stripCodeFences } from "./gemini";
 import { db } from "@/db";
 import { sql } from "drizzle-orm";
 

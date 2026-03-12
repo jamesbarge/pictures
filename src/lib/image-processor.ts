@@ -9,8 +9,6 @@
  * - Cache processed images via Supabase Storage or local cache
  */
 
-import { createClient } from "@supabase/supabase-js";
-
 // Poster aspect ratio (width:height = 2:3, like movie posters)
 const POSTER_ASPECT_RATIO = 2 / 3;
 const POSTER_WIDTH = 500; // Standard poster width
