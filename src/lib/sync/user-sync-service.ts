@@ -124,7 +124,7 @@ export async function performFullSync(source: SyncSource = "manual"): Promise<bo
     if (!response.ok) {
       if (response.status === 401) {
         // User is not authenticated - don't throw, just return
-        console.log("[Sync] User not authenticated, skipping sync");
+        console.warn("[Sync] User not authenticated, skipping sync");
         return false;
       }
       trackSyncFailed(`HTTP ${response.status}`, "fetch");
@@ -183,7 +183,6 @@ export async function performFullSync(source: SyncSource = "manual"): Promise<bo
     // Sync user engagement properties to PostHog
     syncUserEngagementPropertiesToPostHog(data.filmStatuses || {});
 
-    console.log("[Sync] Full sync completed successfully in", durationMs, "ms");
     return true;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
@@ -245,7 +244,6 @@ export async function pushFilmStatuses(): Promise<boolean> {
       throw new Error(`Film status sync failed: ${response.status}`);
     }
 
-    console.log("[Sync] Film statuses pushed successfully");
     return true;
   } catch (error) {
     console.error("[Sync] Film status push failed:", error);
@@ -273,7 +271,6 @@ export async function pushPreferences(): Promise<boolean> {
       throw new Error(`Preferences sync failed: ${response.status}`);
     }
 
-    console.log("[Sync] Preferences pushed successfully");
     return true;
   } catch (error) {
     console.error("[Sync] Preferences push failed:", error);
