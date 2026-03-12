@@ -9,6 +9,7 @@
  */
 
 import type { RawScreening, ScraperConfig, CinemaScraper } from "../types";
+import { checkHealth } from "../utils/health-check";
 
 const CASTLE_SIDCUP_CONFIG: ScraperConfig = {
   cinemaId: "castle-sidcup",
@@ -140,12 +141,7 @@ export class CastleSidcupScraper implements CinemaScraper {
   }
 
   async healthCheck(): Promise<boolean> {
-    try {
-      const response = await fetch(this.config.baseUrl, { method: "HEAD" });
-      return response.ok;
-    } catch {
-      return false;
-    }
+    return checkHealth(this.config.baseUrl);
   }
 }
 
