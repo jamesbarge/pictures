@@ -5,18 +5,12 @@
  * placeholder with a film reel icon and title. Uses a deterministic
  * color based on the title for visual variety.
  *
- * Design: Uses the Pictures color palette (prussian blue, jasmine gold, teal, reds)
+ * Design: Uses the brand color palette (prussian blue, jasmine gold, teal, reds)
  */
 
-// Cinema-inspired color palette matching Pictures design system
-const PLACEHOLDER_COLORS = [
-  { bg: "#001427", accent: "#f4d58d" }, // Prussian blue + jasmine
-  { bg: "#0a2235", accent: "#94b3a8" }, // Darker blue + teal
-  { bg: "#001427", accent: "#bf0603" }, // Prussian blue + brick ember
-  { bg: "#143044", accent: "#f4d58d" }, // Lighter blue + jasmine
-  { bg: "#0a2235", accent: "#f7e0a8" }, // Blue + light gold
-  { bg: "#001427", accent: "#8d0801" }, // Prussian blue + blood red
-];
+import { brand } from "@/lib/brand";
+
+const PLACEHOLDER_COLORS = brand.placeholderPalette;
 
 /**
  * Generate a consistent color based on film title

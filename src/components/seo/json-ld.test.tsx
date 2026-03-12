@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { render } from "@testing-library/react";
 import { OrganizationSchema, MovieSchema } from "./json-ld";
+import { brand } from "@/lib/brand";
 import type { Film } from "@/types/film";
 
 function makeMaliciousFilm(title: string): Film {
@@ -78,6 +79,6 @@ describe("JsonLd XSS prevention", () => {
     // \\u003c is valid JSON escape — parsing should succeed
     const parsed = JSON.parse(content);
     expect(parsed["@type"]).toBe("Organization");
-    expect(parsed.name).toBe("Pictures");
+    expect(parsed.name).toBe(brand.name);
   });
 });

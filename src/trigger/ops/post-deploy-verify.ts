@@ -10,6 +10,7 @@ import { db } from "@/db";
 import { screenings } from "@/db/schema";
 import { gte, count } from "drizzle-orm";
 import { sendTelegramAlert } from "../utils/telegram";
+import { brand } from "@/lib/brand";
 
 interface DeployPayload {
   deploymentUrl?: string;
@@ -29,7 +30,7 @@ export const postDeployVerify = task({
   maxDuration: 120,
   retry: { maxAttempts: 1 },
   run: async (payload: DeployPayload) => {
-    const baseUrl = payload.deploymentUrl || "https://pictures.london";
+    const baseUrl = payload.deploymentUrl || brand.baseUrl;
     const checks: CheckResult[] = [];
     const startTime = Date.now();
 

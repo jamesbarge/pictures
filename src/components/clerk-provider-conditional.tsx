@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+import { brand } from "@/lib/brand";
 
 // Check if we have a valid Clerk key at build time
 const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
@@ -32,12 +33,12 @@ export async function ClerkProviderConditional({
       publishableKey={publishableKey}
       appearance={{
         variables: {
-          colorPrimary: "#1E3A5F",
-          colorText: "#1A1A1A",
-          colorTextSecondary: "#4A4A4A",
+          colorPrimary: brand.colors.primary,
+          colorText: brand.colors.text,
+          colorTextSecondary: brand.colors.textSecondary,
           colorBackground: "#FFFFFF",
-          colorInputBackground: "#EDE8DD",
-          colorInputText: "#1A1A1A",
+          colorInputBackground: brand.colors.inputBackground,
+          colorInputText: brand.colors.text,
           borderRadius: "0.5rem",
         },
       }}

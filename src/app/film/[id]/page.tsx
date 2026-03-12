@@ -18,6 +18,7 @@ import { StatusToggle } from "@/components/film/status-toggle";
 import { FilmViewTracker } from "@/components/film/film-view-tracker";
 import { MovieSchema, BreadcrumbSchema } from "@/components/seo/json-ld";
 import type { Film } from "@/types/film";
+import { brand } from "@/lib/brand";
 
 interface FilmPageProps {
   params: Promise<{ id: string }>;
@@ -145,7 +146,7 @@ export default async function FilmPage({ params }: FilmPageProps) {
 // Generate metadata with OG tags for rich sharing
 export async function generateMetadata({ params }: FilmPageProps) {
   const { id } = await params;
-  const BASE_URL = "https://pictures.london";
+  const BASE_URL = brand.baseUrl;
 
   const film = await db.select().from(films).where(eq(films.id, id)).limit(1);
 

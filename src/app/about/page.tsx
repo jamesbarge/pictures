@@ -13,21 +13,22 @@ import { cinemas, screenings } from "@/db/schema";
 import { eq, gte, count, countDistinct } from "drizzle-orm";
 import { safeQuery } from "@/db/safe-query";
 import { OrganizationSchema, FAQSchema, BreadcrumbSchema } from "@/components/seo/json-ld";
+import { brand } from "@/lib/brand";
 
 // Force dynamic rendering - page requires database
 export const dynamic = "force-dynamic";
 
-const BASE_URL = "https://pictures.london";
+const BASE_URL = brand.baseUrl;
 
 export const metadata: Metadata = {
-  title: "About Pictures - London Cinema Listings",
+  title: `About ${brand.name} - London Cinema Listings`,
   description:
     "Pictures aggregates film listings from 20+ independent London cinemas into one view. Find screenings at BFI, Prince Charles, Curzon, Picturehouse, and more.",
   alternates: {
     canonical: "/about",
   },
   openGraph: {
-    title: "About Pictures - London Cinema Listings",
+    title: `About ${brand.name} - London Cinema Listings`,
     description:
       "Cinema listings from across London in one place. Updated daily with showtimes from independent venues.",
     url: `${BASE_URL}/about`,

@@ -21,8 +21,9 @@ import {
 } from "@/components/seo/json-ld";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
+import { brand } from "@/lib/brand";
 
-const BASE_URL = "https://pictures.london";
+const BASE_URL = brand.baseUrl;
 
 // Cache tonight's screenings for 60 seconds.
 // _dateKey is not used inside the function body — it serves as part of

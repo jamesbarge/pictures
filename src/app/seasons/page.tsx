@@ -16,18 +16,19 @@ import { eq, count, asc } from "drizzle-orm";
 import { format } from "date-fns";
 import { ItemListSchema, BreadcrumbSchema } from "@/components/seo/json-ld";
 import { isFeatureEnabled } from "@/lib/features";
+import { brand } from "@/lib/brand";
 
-const BASE_URL = "https://pictures.london";
+const BASE_URL = brand.baseUrl;
 
 export const metadata: Metadata = {
-  title: "Film Seasons & Retrospectives | Pictures",
+  title: `Film Seasons & Retrospectives | ${brand.name}`,
   description:
     "Discover director retrospectives and curated film seasons at London cinemas. Kurosawa, Hitchcock, and more at BFI, Barbican, Prince Charles Cinema, and ICA.",
   alternates: {
     canonical: "/seasons",
   },
   openGraph: {
-    title: "Film Seasons & Retrospectives | Pictures",
+    title: `Film Seasons & Retrospectives | ${brand.name}`,
     description:
       "Director retrospectives and curated film seasons at London cinemas.",
     url: `${BASE_URL}/seasons`,

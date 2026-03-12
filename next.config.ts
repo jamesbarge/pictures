@@ -94,6 +94,16 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  // Redirect old static manifest path to Next.js dynamic manifest route
+  async redirects() {
+    return [
+      {
+        source: "/manifest.json",
+        destination: "/manifest.webmanifest",
+        permanent: true,
+      },
+    ];
+  },
   // Reverse proxy for PostHog to avoid ad blockers
   async rewrites() {
     return [

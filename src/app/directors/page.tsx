@@ -13,18 +13,19 @@ import { seasons } from "@/db/schema";
 import { isNotNull, count, sql, desc } from "drizzle-orm";
 import { getTMDBClient, TMDBClient } from "@/lib/tmdb";
 import { ItemListSchema, BreadcrumbSchema } from "@/components/seo/json-ld";
+import { brand } from "@/lib/brand";
 
-const BASE_URL = "https://pictures.london";
+const BASE_URL = brand.baseUrl;
 
 export const metadata: Metadata = {
-  title: "Directors | Pictures",
+  title: `Directors | ${brand.name}`,
   description:
     "Browse director retrospectives and seasons at London cinemas. Find films by Kurosawa, Hitchcock, Spielberg and more at BFI, Barbican, and independent venues.",
   alternates: {
     canonical: "/directors",
   },
   openGraph: {
-    title: "Directors | Pictures",
+    title: `Directors | ${brand.name}`,
     description:
       "Director retrospectives and seasons at London cinemas.",
     url: `${BASE_URL}/directors`,

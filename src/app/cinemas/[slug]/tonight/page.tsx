@@ -21,8 +21,9 @@ import {
 } from "@/components/seo/json-ld";
 import type { Cinema } from "@/types/cinema";
 import type { Metadata } from "next";
+import { brand } from "@/lib/brand";
 
-const BASE_URL = "https://pictures.london";
+const BASE_URL = brand.baseUrl;
 
 interface CinemaTonightPageProps {
   params: Promise<{ slug: string }>;

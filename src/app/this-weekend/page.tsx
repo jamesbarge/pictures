@@ -24,8 +24,9 @@ import Link from "next/link";
 import { ChevronLeft, Clock, ExternalLink, Calendar } from "lucide-react";
 import { BreadcrumbSchema, FAQSchema } from "@/components/seo/json-ld";
 import type { Metadata } from "next";
+import { brand } from "@/lib/brand";
 
-const BASE_URL = "https://pictures.london";
+const BASE_URL = brand.baseUrl;
 
 function getWeekendDates() {
   const now = new Date();

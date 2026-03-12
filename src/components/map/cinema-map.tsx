@@ -14,6 +14,7 @@ import {
 } from "@vis.gl/react-google-maps";
 import { MapPin, Pencil, Trash2, Check, X } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { brand } from "@/lib/brand";
 import type { CinemaCoordinates } from "@/types/cinema";
 import type { MapArea } from "@/lib/geo-utils";
 import { isCinemaInArea } from "@/lib/geo-utils";
@@ -263,9 +264,9 @@ function DrawingManager({
       // Create new polygon
       const polygon = new google.maps.Polygon({
         paths: mapArea.paths,
-        fillColor: "#6366f1",
+        fillColor: brand.colors.mapMarker,
         fillOpacity: 0.15,
-        strokeColor: "#6366f1",
+        strokeColor: brand.colors.mapMarker,
         strokeWeight: 2,
         editable: true,
         draggable: true,
@@ -308,9 +309,9 @@ function DrawingManager({
         drawingMode: google.maps.drawing.OverlayType.POLYGON,
         drawingControl: false,
         polygonOptions: {
-          fillColor: "#6366f1",
+          fillColor: brand.colors.mapMarker,
           fillOpacity: 0.15,
-          strokeColor: "#6366f1",
+          strokeColor: brand.colors.mapMarker,
           strokeWeight: 2,
           editable: true,
           draggable: true,
