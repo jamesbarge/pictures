@@ -104,7 +104,7 @@ export async function performFestivalSync(): Promise<boolean> {
 
     if (!response.ok) {
       if (response.status === 401) {
-        console.log("[FestivalSync] User not authenticated, skipping sync");
+        console.warn("[FestivalSync] User not authenticated, skipping sync");
         return false;
       }
       throw new Error(`Festival sync failed: ${response.status}`);
@@ -122,7 +122,6 @@ export async function performFestivalSync(): Promise<boolean> {
       useFestivalStore.getState().bulkSetSchedule(data.schedule);
     }
 
-    console.log("[FestivalSync] Full sync completed successfully");
     return true;
   } catch (error) {
     console.error("[FestivalSync] Full sync failed:", error);
@@ -148,7 +147,6 @@ export async function pushFestivalFollows(): Promise<boolean> {
       throw new Error(`Festival follows sync failed: ${response.status}`);
     }
 
-    console.log("[FestivalSync] Follows pushed successfully");
     return true;
   } catch (error) {
     console.error("[FestivalSync] Follows push failed:", error);
@@ -174,7 +172,6 @@ export async function pushFestivalSchedule(): Promise<boolean> {
       throw new Error(`Festival schedule sync failed: ${response.status}`);
     }
 
-    console.log("[FestivalSync] Schedule pushed successfully");
     return true;
   } catch (error) {
     console.error("[FestivalSync] Schedule push failed:", error);
