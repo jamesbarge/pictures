@@ -10,16 +10,14 @@
 
 import { runFullHealthCheck, saveHealthSnapshot } from "@/lib/scraper-health";
 import { sendHealthAlerts, generateHealthSummary } from "@/lib/scraper-health/alerts";
+import { verifyCronSecret } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const maxDuration = 120; // 2 minutes max
 
 export async function POST(request: Request) {
   // Verify cron secret
-  const authHeader = request.headers.get("authorization");
-  const cronSecret = process.env.CRON_SECRET;
-
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+  if (!verifyCronSecret(request)) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 

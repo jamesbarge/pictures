@@ -1,5 +1,12 @@
 # Recent Changes
 
+## 2026-03-13: Kaizen — deduplicate cron auth into shared verifyCronSecret
+**PR**: #242 | **Files**: `src/lib/auth.ts`, `src/app/api/cron/cleanup/route.ts`, `src/app/api/cron/posthog-sync/route.ts`, `src/app/api/cron/health-check/route.ts`
+- Extracted duplicated `verifyCronSecret()` from 3 cron routes into `src/lib/auth.ts`
+- Kaizen automated refactoring (category: duplicate-pattern)
+
+---
+
 <!--
 AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
