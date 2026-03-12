@@ -7,10 +7,18 @@
  */
 
 import { task } from "@trigger.dev/sdk/v3";
+import { eq, gte, lte, and, lt } from "drizzle-orm";
+
 import { db } from "@/db";
 import { screenings, films } from "@/db/schema";
-import { eq, gte, lte, and, lt } from "drizzle-orm";
-import { normalizeTitle, parseRelativeDatetime } from "./utils/title-utils";
+
+import type {
+  QaBrowseOutput,
+  QaAnalysisOutput,
+  ClassifiedIssue,
+  QaIssueType,
+} from "./types";
+import { applyFixes } from "./utils/db-fixer";
 import {
   analyzeTmdbMismatch,
   analyzeBookingPageContent,
@@ -18,13 +26,7 @@ import {
   generatePreventionReport,
 } from "./utils/gemini-analyzer";
 import { classifyScope } from "./utils/scope-classifier";
-import { applyFixes } from "./utils/db-fixer";
-import type {
-  QaBrowseOutput,
-  QaAnalysisOutput,
-  ClassifiedIssue,
-  QaIssueType,
-} from "./types";
+import { normalizeTitle, parseRelativeDatetime } from "./utils/title-utils";
 
 export const qaAnalyzeAndFix = task({
   id: "qa-analyze-and-fix",

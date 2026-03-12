@@ -5,16 +5,18 @@
  * for full traceability.
  */
 
+import { eq, inArray } from "drizzle-orm";
+
+import type { DataIssueType } from "@/agents/types";
 import { db } from "@/db";
 import { screenings, films, dataIssues } from "@/db/schema";
-import { eq, inArray } from "drizzle-orm";
+
 import type {
   ClassifiedIssue,
   FixResult,
   FixAction,
   VerificationOutcome,
 } from "../types";
-import type { DataIssueType } from "@/agents/types";
 import { verifyBeforeFix } from "./verify-before-fix";
 
 // ── Type Mapping ──────────────────────────────────────────────
