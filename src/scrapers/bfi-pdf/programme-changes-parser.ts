@@ -268,7 +268,7 @@ function parseScreeningsFromText(text: string): ParsedChangeScreening[] {
 
   let match;
   while ((match = regex1.exec(text)) !== null) {
-    const [fullMatch, day, date, month, hours, minutes, venue, pageRef, flags] = match;
+    const [fullMatch, , date, month, hours, minutes, venue, pageRef] = match;
 
     const monthNum = MONTHS[month.toLowerCase()];
     if (monthNum === undefined) continue;

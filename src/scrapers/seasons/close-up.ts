@@ -10,7 +10,6 @@
  * groups films by season instead of individual screenings.
  */
 
-import * as cheerio from "cheerio";
 import { BaseSeasonScraper } from "./base";
 import type { RawSeason, RawSeasonFilm, SeasonScraperConfig } from "./types";
 

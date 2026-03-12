@@ -5,6 +5,17 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-13: Kaizen — fix lint warnings in BFI PDF parsers, Everyman, and seasons
+**PR**: #XX | **Files**: `fetcher.ts`, `pdf-parser.ts`, `programme-changes-parser.ts`, `everyman.ts`, `close-up.ts`
+- Remove unused `PDF_BASE_URL` constant from BFI PDF fetcher
+- Remove unused `film` param from `isDescriptionLine()` in pdf-parser
+- Remove unused `day`/`flags` destructured vars from programme-changes-parser regex match
+- Remove unused `date` from Everyman schedule loop
+- Remove unused `cheerio` import from Close-Up season scraper
+- Kaizen automated refactoring (category: lint-fix)
+
+---
+
 ## 2026-03-13: Kaizen — remove dead code from BFI scraper and seasons base
 **PR**: #XX | **Files**: `bfi.ts`, `seasons/base.ts`
 - Remove 3 unused private methods from BFI scraper (generateDateRange, formatDate, buildSearchUrl)

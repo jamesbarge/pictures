@@ -451,7 +451,7 @@ export class EverymanScraper implements ChainScraper {
       const movie = this.movieCache.get(movieId);
       const filmTitle = movie?.title || `Unknown Film (${movieId})`;
 
-      for (const [date, showtimes] of Object.entries(dateSchedule)) {
+      for (const [, showtimes] of Object.entries(dateSchedule)) {
         for (const showtime of showtimes) {
           if (showtime.isExpired) continue;
 
