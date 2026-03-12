@@ -6,6 +6,13 @@ When an entry is added here, also create a detailed file in /changelogs/
 -->
 
 
+## 2026-03-12: Kaizen — use CHROME_USER_AGENT_FULL in BFI PDF scrapers
+**PR**: #XX | **Files**: `bfi-pdf/fetcher.ts`, `bfi-pdf/programme-changes-parser.ts`, `bfi-pdf/cleanup.ts`
+- Replaced 4 hardcoded Chrome UA strings with shared `CHROME_USER_AGENT_FULL` constant
+- Kaizen automated refactoring (category: duplicate-pattern)
+
+---
+
 ## 2026-03-12: Security — add response size limits and URL protocol validation
 **PR**: #190 | **Files**: `fetch-with-retry.ts`, `bfi-pdf/fetcher.ts`, `screening-validator.ts`, `admin/screenings/[id]/route.ts`
 - Added 10MB response size limit to fetchWithRetry()
