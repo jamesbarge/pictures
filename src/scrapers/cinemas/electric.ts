@@ -9,6 +9,7 @@
  */
 
 import type { RawScreening, ScraperConfig, CinemaScraper, VenueConfig } from "../types";
+import { checkHealth } from "../utils/health-check";
 
 // ============================================================================
 // Electric Cinema Configuration
@@ -271,12 +272,7 @@ export class ElectricScraper implements CinemaScraper {
   }
 
   async healthCheck(): Promise<boolean> {
-    try {
-      const response = await fetch(this.apiUrl, { method: "HEAD" });
-      return response.ok;
-    } catch {
-      return false;
-    }
+    return checkHealth(this.apiUrl);
   }
 }
 

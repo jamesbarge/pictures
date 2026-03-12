@@ -13,6 +13,7 @@
 import * as cheerio from "cheerio";
 import type { RawScreening, ScraperConfig, CinemaScraper } from "../types";
 import type { CheerioAPI } from "../utils/cheerio-types";
+import { checkHealth } from "../utils/health-check";
 
 // ============================================================================
 // Peckhamplex Configuration
@@ -269,12 +270,7 @@ export class PeckhamplexScraper implements CinemaScraper {
   }
 
   async healthCheck(): Promise<boolean> {
-    try {
-      const response = await fetch(this.config.baseUrl, { method: "HEAD" });
-      return response.ok;
-    } catch {
-      return false;
-    }
+    return checkHealth(this.config.baseUrl);
   }
 }
 

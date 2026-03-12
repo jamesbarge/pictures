@@ -5,6 +5,13 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-12: Kaizen — adopt checkHealth in 4 more scrapers
+**PR**: #183 | **Files**: `coldharbour-blue.ts`, `electric.ts`, `peckhamplex.ts`, `castle-sidcup.ts`
+- Replaced 4 identical healthCheck implementations with shared `checkHealth()` utility
+- Kaizen automated refactoring (category: duplicate-pattern)
+
+---
+
 ## 2026-03-12: Kaizen — add JSDoc to admin-emails and features exports
 **PR**: #182 | **Files**: `src/lib/admin-emails.ts`, `src/lib/features.ts`
 - Added JSDoc comments to 3 exported functions missing documentation

@@ -10,6 +10,7 @@
 
 import type { RawScreening, ScraperConfig, CinemaScraper } from "../types";
 import { parseUKLocalDateTime } from "../utils/date-parser";
+import { checkHealth } from "../utils/health-check";
 
 // ============================================================================
 // Coldharbour Blue Configuration
@@ -197,12 +198,7 @@ export class ColdharbourBlueScraper implements CinemaScraper {
   }
 
   async healthCheck(): Promise<boolean> {
-    try {
-      const response = await fetch(this.apiUrl, { method: "HEAD" });
-      return response.ok;
-    } catch {
-      return false;
-    }
+    return checkHealth(this.apiUrl);
   }
 }
 
