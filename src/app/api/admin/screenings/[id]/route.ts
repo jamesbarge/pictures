@@ -185,10 +185,6 @@ export const DELETE = withAdminAuth<RouteParams>(async (_request, _admin, { para
       message: "Screening deleted",
     });
   } catch (error) {
-    console.error("Error deleting screening:", error);
-    return Response.json(
-      { error: "Failed to delete screening" },
-      { status: 500 }
-    );
+    return handleApiError(error, "DELETE /api/admin/screenings/[id]");
   }
 });
