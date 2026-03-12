@@ -6,30 +6,53 @@ import { requireAuth } from "@/lib/auth";
 import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
 import { currentUser } from "@clerk/nextjs/server";
 import type { StoredPreferences, StoredFilters } from "@/db/schema/user-preferences";
-import { RateLimitError, handleApiError } from "@/lib/api-errors";
+import { BadRequestError, RateLimitError, handleApiError } from "@/lib/api-errors";
 import { captureServerEvent, setServerUserProperties } from "@/lib/posthog-server";
 import { syncUserToPostHog } from "@/lib/posthog-supabase-sync";
+import { z } from "zod";
 
-interface FilmStatusPayload {
-  filmId: string;
-  status: "want_to_see" | "seen" | "not_interested";
-  addedAt: string;
-  seenAt?: string | null;
-  rating?: number | null;
-  notes?: string | null;
-  filmTitle?: string | null;
-  filmYear?: number | null;
-  filmDirectors?: string[] | null;
-  filmPosterUrl?: string | null;
-  updatedAt: string;
-}
+const filmStatusPayloadSchema = z.object({
+  filmId: z.string().max(200),
+  status: z.enum(["want_to_see", "seen", "not_interested"]),
+  addedAt: z.string().datetime(),
+  seenAt: z.string().datetime().nullable().optional(),
+  rating: z.number().int().min(0).max(5).nullable().optional(),
+  notes: z.string().max(1000).nullable().optional(),
+  filmTitle: z.string().max(200).nullable().optional(),
+  filmYear: z.number().int().min(1888).max(2100).nullable().optional(),
+  filmDirectors: z.array(z.string().max(200)).max(20).nullable().optional(),
+  filmPosterUrl: z.string().url().max(500).nullable().optional(),
+  updatedAt: z.string().datetime(),
+});
 
-interface SyncRequest {
-  filmStatuses: FilmStatusPayload[];
-  preferences: StoredPreferences | null;
-  persistedFilters: StoredFilters | null;
-  preferencesUpdatedAt: string | null;
-}
+type FilmStatusPayload = z.infer<typeof filmStatusPayloadSchema>;
+
+const storedPreferencesSchema = z.object({
+  selectedCinemas: z.array(z.string().max(100)).max(100),
+  defaultView: z.enum(["list", "grid"]),
+  showRepertoryOnly: z.boolean(),
+  hidePastScreenings: z.boolean(),
+  defaultDateRange: z.enum(["today", "tomorrow", "week", "weekend", "all"]),
+  preferredFormats: z.array(z.string().max(50)).max(20),
+});
+
+const storedFiltersSchema = z.object({
+  cinemaIds: z.array(z.string().max(100)).max(100),
+  formats: z.array(z.string().max(50)).max(20),
+  programmingTypes: z.array(z.enum(["repertory", "new_release", "special_event", "preview"])).max(20),
+  decades: z.array(z.string().max(10)).max(20),
+  genres: z.array(z.string().max(50)).max(50),
+  timesOfDay: z.array(z.enum(["morning", "afternoon", "evening", "late_night"])).max(10),
+  hideSeen: z.boolean(),
+  hideNotInterested: z.boolean(),
+});
+
+const syncRequestSchema = z.object({
+  filmStatuses: z.array(filmStatusPayloadSchema).max(5000),
+  preferences: storedPreferencesSchema.nullable(),
+  persistedFilters: storedFiltersSchema.nullable(),
+  preferencesUpdatedAt: z.string().datetime().nullable(),
+});
 
 /**
  * POST /api/user/sync - Full bidirectional sync
@@ -54,7 +77,11 @@ export async function POST(request: NextRequest) {
 
     const userId = await requireAuth();
     const clerkUser = await currentUser();
-    const body = (await request.json()) as SyncRequest;
+    const parseResult = syncRequestSchema.safeParse(await request.json());
+    if (!parseResult.success) {
+      throw new BadRequestError("Invalid request body", parseResult.error.flatten());
+    }
+    const body = parseResult.data;
 
     // 1. Ensure user record exists
     let user = await db.query.users.findFirst({

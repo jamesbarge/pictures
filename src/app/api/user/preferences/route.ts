@@ -3,8 +3,34 @@ import { db } from "@/db";
 import { userPreferences } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { requireAuth } from "@/lib/auth";
-import { handleApiError } from "@/lib/api-errors";
-import type { StoredPreferences, StoredFilters } from "@/db/schema/user-preferences";
+import { BadRequestError, handleApiError } from "@/lib/api-errors";
+import { z } from "zod";
+
+const storedPreferencesSchema = z.object({
+  selectedCinemas: z.array(z.string().max(100)).max(100),
+  defaultView: z.enum(["list", "grid"]),
+  showRepertoryOnly: z.boolean(),
+  hidePastScreenings: z.boolean(),
+  defaultDateRange: z.enum(["today", "tomorrow", "week", "weekend", "all"]),
+  preferredFormats: z.array(z.string().max(50)).max(20),
+});
+
+const storedFiltersSchema = z.object({
+  cinemaIds: z.array(z.string().max(100)).max(100),
+  formats: z.array(z.string().max(50)).max(20),
+  programmingTypes: z.array(z.enum(["repertory", "new_release", "special_event", "preview"])).max(20),
+  decades: z.array(z.string().max(10)).max(20),
+  genres: z.array(z.string().max(50)).max(50),
+  timesOfDay: z.array(z.enum(["morning", "afternoon", "evening", "late_night"])).max(10),
+  hideSeen: z.boolean(),
+  hideNotInterested: z.boolean(),
+});
+
+const updatePreferencesSchema = z.object({
+  preferences: storedPreferencesSchema,
+  persistedFilters: storedFiltersSchema,
+  updatedAt: z.string().datetime(),
+});
 
 /**
  * GET /api/user/preferences - Fetch user preferences
@@ -35,21 +61,17 @@ export async function GET() {
   }
 }
 
-interface PreferencesPayload {
-  preferences: StoredPreferences;
-  persistedFilters: StoredFilters;
-  updatedAt: string;
-}
-
 /**
  * PUT /api/user/preferences - Update user preferences
  */
 export async function PUT(request: NextRequest) {
   try {
     const userId = await requireAuth();
-    const body = (await request.json()) as PreferencesPayload;
-
-    const { preferences, persistedFilters, updatedAt } = body;
+    const parseResult = updatePreferencesSchema.safeParse(await request.json());
+    if (!parseResult.success) {
+      throw new BadRequestError("Invalid request body", parseResult.error.flatten());
+    }
+    const { preferences, persistedFilters, updatedAt } = parseResult.data;
 
     // Check if entry exists
     const existing = await db.query.userPreferences.findFirst({

@@ -6,6 +6,15 @@ When an entry is added here, also create a detailed file in /changelogs/
 -->
 
 
+## 2026-03-12: Security — add Zod validation to user API routes
+**PR**: #191 | **Files**: `film-statuses/[filmId]/route.ts`, `festivals/follows/[festivalId]/route.ts`, `preferences/route.ts`, `sync/route.ts`
+- Added Zod schemas with type validation, string length limits, and array size limits
+- Prevents type confusion, unbounded payloads, and invalid enum values
+- Follows existing safeParse() pattern from admin routes
+
+---
+
+
 ## 2026-03-12: Security — add security headers
 **PR**: #188 | **Files**: `next.config.ts`
 - Added Content-Security-Policy, HSTS, X-Frame-Options, X-Content-Type-Options

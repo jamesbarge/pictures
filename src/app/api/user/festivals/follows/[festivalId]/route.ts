@@ -10,7 +10,14 @@ import { userFestivalInterests, users } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import { handleApiError } from "@/lib/api-errors";
 import { requireAuth, getCurrentUserId } from "@/lib/auth";
-import type { FestivalInterestLevel } from "@/db/schema/festivals";
+import { z } from "zod";
+
+const followFestivalSchema = z.object({
+  interestLevel: z.enum(["following", "highly_interested", "attending"]).default("following"),
+  notifyOnSale: z.boolean().default(true),
+  notifyProgramme: z.boolean().default(true),
+  notifyReminders: z.boolean().default(true),
+});
 
 interface RouteParams {
   params: Promise<{ festivalId: string }>;
@@ -23,14 +30,15 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
     const userId = await requireAuth();
     const { festivalId } = await params;
-    const body = await request.json().catch(() => ({}));
-
-    const {
-      interestLevel = "following" as FestivalInterestLevel,
-      notifyOnSale = true,
-      notifyProgramme = true,
-      notifyReminders = true,
-    } = body;
+    const rawBody = await request.json().catch(() => ({}));
+    const parseResult = followFestivalSchema.safeParse(rawBody);
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { error: "Invalid request body", details: parseResult.error.flatten() },
+        { status: 400 }
+      );
+    }
+    const { interestLevel, notifyOnSale, notifyProgramme, notifyReminders } = parseResult.data;
 
     // Ensure user exists in users table (for foreign key)
     await db
