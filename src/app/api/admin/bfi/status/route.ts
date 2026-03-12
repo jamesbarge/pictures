@@ -1,4 +1,5 @@
 import { withAdminAuth } from "@/lib/auth";
+import { handleApiError } from "@/lib/api-errors";
 import { db } from "@/db";
 import { bfiImportRuns } from "@/db/schema";
 import { desc } from "drizzle-orm";
@@ -89,13 +90,6 @@ export const GET = withAdminAuth(async () => {
       },
     });
   } catch (error) {
-    console.error("[admin/bfi/status] Error:", error);
-    return Response.json(
-      {
-        error: "Failed to load BFI status",
-        message: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
+    return handleApiError(error, "admin/bfi/status");
   }
 });

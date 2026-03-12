@@ -5,6 +5,13 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-12: Kaizen — Standardize error handling in admin API routes
+**PR**: #171 | **Files**: `admin/health/route.ts`, `admin/bfi/status/route.ts`, `admin/anomalies/verify/route.ts`
+- Replaced 3 manual try/catch error patterns with `handleApiError` from `@/lib/api-errors`
+- Kaizen automated refactoring (category: error-handling)
+
+---
+
 ## 2026-03-12: Kaizen — Replace inline User-Agent strings with CHROME_USER_AGENT
 **PR**: #170 | **Files**: `watchdog.ts`, `picturehouse.ts`, `curzon.ts`, `everyman.ts`
 - Replaced 5 inline UA strings with shared `CHROME_USER_AGENT` constant
