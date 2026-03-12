@@ -9,6 +9,8 @@
  * - Cache processed images via Supabase Storage or local cache
  */
 
+import { CHROME_USER_AGENT } from "@/scrapers/constants";
+
 // Poster aspect ratio (width:height = 2:3, like movie posters)
 const POSTER_ASPECT_RATIO = 2 / 3;
 const POSTER_WIDTH = 500; // Standard poster width
@@ -42,8 +44,7 @@ export async function isImageAccessible(url: string): Promise<boolean> {
     const response = await fetch(url, {
       method: "HEAD",
       headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+        "User-Agent": CHROME_USER_AGENT,
       },
     });
     const contentType = response.headers.get("content-type") || "";
@@ -63,8 +64,7 @@ export async function getImageDimensions(
   try {
     const response = await fetch(url, {
       headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+        "User-Agent": CHROME_USER_AGENT,
       },
     });
 
