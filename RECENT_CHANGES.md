@@ -5,6 +5,14 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-12: Kaizen — Organize imports in API route files
+**PR**: #154 | **Files**: `films/search/route.ts`, `search/route.ts`, `user/import-letterboxd/route.ts`
+- Grouped imports: external packages first, then `@/` aliases, separated by blank lines
+- Alphabetized external packages within their group
+- Kaizen automated refactoring (category: import-organization)
+
+---
+
 ## 2026-03-12: Kaizen — Rename remaining catch (e) to catch (error) across codebase
 **PR**: #153 | **Files**: `seasons/close-up.ts`, `classify-events.ts`, `posthog-server.ts`, `film-similarity.ts`
 - Renamed `catch (e)` to `catch (error)` in 3 files, removed unused catch binding in 1 file

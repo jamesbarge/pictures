@@ -1,9 +1,10 @@
+import { inArray, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
+import { tasks } from "@trigger.dev/sdk/v3";
+
 import { db } from "@/db";
 import { films, userFilmStatuses } from "@/db/schema";
-import { inArray, sql } from "drizzle-orm";
 import { requireAuth, unauthorizedResponse } from "@/lib/auth";
-import { tasks } from "@trigger.dev/sdk/v3";
 
 const MAX_FILM_IDS = 500;
 
