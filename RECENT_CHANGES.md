@@ -1,5 +1,12 @@
 # Recent Changes
 
+## 2026-03-13: Kaizen — extract shared slugify to scraper utils
+**PR**: #TBD | **Files**: `src/scrapers/utils/url.ts`, `src/scrapers/cinemas/garden.ts`, `src/scrapers/cinemas/romford-lumiere.ts`
+- Extracted identical `slugify` methods from garden.ts and romford-lumiere.ts into shared `src/scrapers/utils/url.ts`
+- Kaizen automated refactoring (category: duplicate-pattern)
+
+---
+
 ## 2026-03-13: Gate brand tagline behind festivals feature flag
 **PR**: #247 | **Files**: `src/lib/brand.ts`
 - Page `<title>` still advertised "Festivals" even though the feature was hidden via PR #230
