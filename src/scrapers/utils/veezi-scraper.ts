@@ -142,9 +142,9 @@ export class VeeziScraper {
         } else if (this.isVeeziEvent(data)) {
           events.push(data);
         }
-      } catch (e) {
+      } catch (error) {
         // Skip invalid JSON
-        console.warn(`[veezi:${this.venue.id}] Failed to parse JSON-LD:`, e);
+        console.warn(`[veezi:${this.venue.id}] Failed to parse JSON-LD:`, error);
       }
     });
 
@@ -198,8 +198,8 @@ export class VeeziScraper {
         sourceId,
         format: format || undefined,
       };
-    } catch (e) {
-      console.warn(`[veezi:${this.venue.id}] Failed to parse event:`, e);
+    } catch (error) {
+      console.warn(`[veezi:${this.venue.id}] Failed to parse event:`, error);
       return null;
     }
   }
@@ -338,8 +338,8 @@ export async function scrapeAllVeeziCinemas(): Promise<Map<string, RawScreening[
 
       // Delay between venues
       await new Promise((r) => setTimeout(r, 2000));
-    } catch (e) {
-      console.error(`[veezi:${venue.id}] Scrape failed:`, e);
+    } catch (error) {
+      console.error(`[veezi:${venue.id}] Scrape failed:`, error);
       results.set(venue.id, []);
     }
   }

@@ -83,8 +83,8 @@ export async function classifyScreening(
       hasAudioDescription = classification.hasAudioDescription;
       isRelaxedScreening = classification.isRelaxedScreening;
       season = classification.season;
-    } catch (e) {
-      console.warn(`[Pipeline] Event classification failed:`, e);
+    } catch (error) {
+      console.warn(`[Pipeline] Event classification failed:`, error);
       // Continue with scraper-provided data
     }
   }
