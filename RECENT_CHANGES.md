@@ -8,6 +8,12 @@
 
 ---
 
+## 2026-03-13: Kaizen — remove unused test imports
+**PR**: #TBD | **Files**: `festival-detector.test.ts`, `dismiss-button.test.ts`, `fixtures.ts`
+- Removed unused FESTIVAL_CONFIGS, vi, TimeOfDay, ProgrammingType imports
+- Kaizen automated refactoring (category: lint-fix)
+
+---
 ## 2026-03-13: Kaizen — extract ambiguity scoring constants
 **PR**: #TBD | **Files**: `src/lib/tmdb/ambiguity.ts`
 - Extracted 15 magic numbers into named constants for title ambiguity scoring
