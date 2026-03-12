@@ -5,6 +5,14 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-12: Kaizen — Extract shared levenshteinDistance utility
+**PR**: #165 | **Files**: `levenshtein.ts`, `season-linker.ts`, `pipeline.ts`, `confidence.ts`, `match.ts`
+- Extracted 4 identical copies of `levenshteinDistance` into `src/lib/levenshtein.ts`
+- Also extracted `levenshteinSimilarity` wrapper from season-linker
+- Kaizen automated refactoring (category: duplicate-pattern)
+
+---
+
 ## 2026-03-12: Kaizen — Clean up sync service console.log noise
 **PR**: #164 | **Files**: `user-sync-service.ts`, `festival-sync-service.ts`
 - Promoted 2 "not authenticated" messages to `console.warn`
