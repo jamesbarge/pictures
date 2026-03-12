@@ -5,7 +5,7 @@
  *   npm run scrape:genesis-v2
  */
 
-import { runScraper, createMain, type SingleVenueConfig } from "./runner-factory";
+import { createMain, type SingleVenueConfig } from "./runner-factory";
 import { createGenesisScraper, GENESIS_VENUE } from "./cinemas/genesis";
 
 // Configure the single venue scraper
