@@ -7,6 +7,7 @@
 
 // ── Browse Task Output ──────────────────────────────────────────
 
+/** Output of the QA browse task: films, screenings, and booking checks extracted from the front end */
 export interface QaBrowseOutput {
   extractedAt: string;
   dates: [string, string]; // [today, tomorrow] ISO date strings
@@ -18,6 +19,7 @@ export interface QaBrowseOutput {
   stats: BrowseStats;
 }
 
+/** A film card as seen on the pictures.london front end */
 export interface FrontEndFilm {
   slug: string;
   title: string;
@@ -26,6 +28,7 @@ export interface FrontEndFilm {
   screeningCount: number;
 }
 
+/** A screening listing as seen on the pictures.london front end */
 export interface FrontEndScreening {
   filmSlug: string;
   filmTitle: string;
@@ -37,6 +40,7 @@ export interface FrontEndScreening {
   format: string | null;
 }
 
+/** Result of verifying a booking URL is accessible and shows the correct film */
 export interface BookingCheck {
   screeningId: string; // matched during analysis, may be empty during browse
   url: string;
@@ -96,6 +100,7 @@ export type QaIssueType =
   | "missing_letterboxd"
   | "front_end_db_mismatch";
 
+/** A data quality issue classified by type, scope, and severity */
 export interface ClassifiedIssue {
   type: QaIssueType;
   scope: IssueScope;
@@ -118,6 +123,7 @@ export type FixAction =
   | "flagged_broken_link"
   | "flagged_for_review";
 
+/** Outcome of attempting to fix a classified issue (may be dry run) */
 export interface FixResult {
   issue: ClassifiedIssue;
   action: FixAction;
@@ -140,6 +146,7 @@ export interface QaOrchestratorInput {
   triggeredBy?: string;
 }
 
+/** Final output of the QA orchestrator: aggregated stats and fix counts */
 export interface QaOrchestratorOutput {
   skipped?: boolean;
   reason?: string;
