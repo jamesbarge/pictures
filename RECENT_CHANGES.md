@@ -5,6 +5,13 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-12: Kaizen — Extract shared normalizeUrl utility for scrapers
+**PR**: #173 | **Files**: `utils/url.ts`, `close-up.ts`, `garden.ts`
+- Extracted identical `normalizeUrl` method from 2 scrapers into shared `src/scrapers/utils/url.ts`
+- Kaizen automated refactoring (category: duplicate-pattern)
+
+---
+
 ## 2026-03-12: Kaizen — Remove debug console.log from map components
 **PR**: #172 | **Files**: `cinema-map.tsx`, `map-provider.tsx`
 - Removed 4 ungated `console.log` calls leaking into production browser console
