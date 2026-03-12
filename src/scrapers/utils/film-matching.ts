@@ -96,14 +96,6 @@ export function addToFilmCache(film: FilmRecord) {
   }
 }
 
-/** Reset cache state (for testing or between pipeline runs). */
-export function resetFilmCache(): void {
-  filmCache = null;
-  tmdbIdIndex = null;
-  normalizeFn = null;
-  cacheStats = { hits: 0, misses: 0, dbQueries: 0 };
-}
-
 // ============================================================================
 // Similarity Search
 // ============================================================================
