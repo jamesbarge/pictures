@@ -1,6 +1,6 @@
 import { db } from "@/db";
-import { festivals, festivalScreenings, screenings, films, cinemas } from "@/db/schema";
-import { eq, and, asc } from "drizzle-orm";
+import { festivalScreenings, screenings, films, cinemas } from "@/db/schema";
+import { eq, asc } from "drizzle-orm";
 import { format } from "date-fns";
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";

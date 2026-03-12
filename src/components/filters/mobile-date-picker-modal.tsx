@@ -7,7 +7,7 @@
 
 import { useState } from "react";
 import { X, Calendar, Clock, ChevronLeft, ChevronRight } from "lucide-react";
-import { format, addDays, startOfToday, isSameDay, isSaturday, isSunday, differenceInDays } from "date-fns";
+import { addDays, startOfToday, isSameDay, isSaturday, isSunday, differenceInDays } from "date-fns";
 import { DayPicker } from "react-day-picker";
 import { cn } from "@/lib/cn";
 import { useFilters, TIME_PRESETS, formatHour } from "@/stores/filters";
