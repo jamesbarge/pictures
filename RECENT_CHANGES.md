@@ -1,10 +1,8 @@
 # Recent Changes
 
-## 2026-03-13: Kaizen — fix lint warnings in eventive-scraper, posthog-api, scraper-health
-**PR**: #XX | **Files**: `eventive-scraper.ts`, `posthog-api.ts`, `scraper-health/index.ts`
-- Remove unused `_slugBase` param from eventive createScreening() and call sites
-- Convert unused `projectId` assignments to `void getProjectId()` (preserves env validation)
-- Remove unused `config` assignment from scraper-health runHealthCheckAllCinemas()
+## 2026-03-13: Kaizen — lint-fix agents, posthog-api, eventive, scripts
+**PR**: #246 | **Files**: `eventive-scraper.ts`, `posthog-api.ts`, `data-quality/index.ts`, `scraper-health/index.ts`, `reprocess-suspicious-matches.ts`
+- Removed unused vars/params/functions across 5 files (7 warnings fixed, 71→64)
 - Kaizen automated refactoring (category: lint-fix)
 
 ---

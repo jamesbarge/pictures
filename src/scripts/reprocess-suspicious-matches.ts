@@ -15,7 +15,7 @@
  */
 
 import { drizzle } from "drizzle-orm/postgres-js";
-import { sql, eq, and, gte, isNull, or } from "drizzle-orm";
+import { sql, eq, and, gte, isNull } from "drizzle-orm";
 import postgres from "postgres";
 import * as dotenv from "dotenv";
 import path from "path";

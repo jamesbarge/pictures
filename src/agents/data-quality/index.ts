@@ -408,23 +408,6 @@ async function checkBookingLinks(options: VerifyOptions): Promise<DataQualityIss
 }
 
 /**
- * Visual verification using Claude in Chrome
- * This is the browser-based verification component
- */
-async function runVisualVerification(_options: VerifyOptions = {}): Promise<DataQualityIssue[]> {
-  console.log(`[${AGENT_NAME}] Visual verification requires Claude in Chrome connection...`);
-  void _options;
-
-  // Note: This function is designed to be called when Claude in Chrome is available
-  // In a standalone script context, we skip visual verification
-  // The visual verification happens through the MCP browser tools when available
-
-  // For now, return empty - visual verification is done interactively
-  // TODO: Implement headless Playwright-based verification as fallback
-  return [];
-}
-
-/**
  * Helper to count films checked
  */
 async function countFilmsChecked(options: VerifyOptions): Promise<number> {
