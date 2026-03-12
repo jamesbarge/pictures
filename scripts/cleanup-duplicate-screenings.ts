@@ -1,27 +1,25 @@
 /**
  * Cleanup duplicate screenings in the database
  *
- * Duplicates can occur when:
- * 1. Same film+cinema+datetime exists multiple times (rare, should be blocked by unique index)
- * 2. Same screening was scraped with different film IDs (duplicate films)
+ * Finds duplicates via two strategies:
+ * 1. Exact duplicates: same film title + cinema + datetime (different film IDs)
+ * 2. Near-duplicates: same (filmId, cinemaId) with datetimes within 2 minutes
+ *    (caused by sub-minute timestamp drift across scrapers)
  *
- * This script:
- * 1. Finds all duplicate screenings (same film title + cinema + datetime)
- * 2. Keeps the oldest screening (first scraped)
- * 3. Deletes the newer duplicates
+ * For each group: keeps the row with most recent scrapedAt, deletes the rest.
+ *
+ * Usage:
+ *   npx tsx scripts/cleanup-duplicate-screenings.ts              # dry run (default)
+ *   npx tsx scripts/cleanup-duplicate-screenings.ts --execute     # actually delete
  */
 
 import { db } from "../src/db";
 import { screenings } from "../src/db/schema";
 import { sql, inArray } from "drizzle-orm";
 
-interface DuplicateGroup {
-  filmTitle: string;
-  cinemaId: string;
-  datetime: Date;
-  screeningIds: string[];
-  filmIds: string[];
-}
+const isDryRun = !process.argv.includes("--execute");
+
+// -- Types -------------------------------------------------------------------
 
 interface DuplicateRow {
   screening_id: string;
@@ -32,10 +30,31 @@ interface DuplicateRow {
   scraped_at: string | Date | null;
 }
 
-async function findDuplicates(): Promise<DuplicateGroup[]> {
-  console.log("Finding duplicate screenings using SQL...\n");
+interface DuplicateGroup {
+  filmTitle: string;
+  cinemaId: string;
+  datetime: Date;
+  screeningIds: string[];
+  filmIds: string[];
+}
 
-  // Use SQL to find duplicates efficiently
+interface NearDuplicatePair {
+  id1: string;
+  id2: string;
+  filmTitle: string;
+  cinemaName: string;
+  dt1: Date;
+  dt2: Date;
+  scrapedAt1: Date;
+  scrapedAt2: Date;
+  diffSeconds: number;
+}
+
+// -- Strategy 1: Exact duplicates (same title + cinema + datetime) -----------
+
+async function findExactDuplicates(): Promise<DuplicateGroup[]> {
+  console.log("=== Strategy 1: Exact-datetime duplicates ===\n");
+
   const duplicateGroups = await db.execute(sql`
     WITH duplicate_keys AS (
       SELECT
@@ -65,13 +84,11 @@ async function findDuplicates(): Promise<DuplicateGroup[]> {
     ORDER BY f.title, s.cinema_id, s.datetime, s.scraped_at
   `);
 
-  // Group the results - handle both array and rows format
   const rows = Array.isArray(duplicateGroups)
     ? duplicateGroups
     : ("rows" in (duplicateGroups as { rows?: DuplicateRow[] })
         ? (duplicateGroups as { rows?: DuplicateRow[] }).rows
         : []) || [];
-  console.log(`Found ${rows.length} rows in duplicate query`);
 
   const groups = new Map<string, DuplicateRow[]>();
   for (const row of rows as DuplicateRow[]) {
@@ -83,7 +100,6 @@ async function findDuplicates(): Promise<DuplicateGroup[]> {
     groups.get(key)!.push(row);
   }
 
-  // Convert to DuplicateGroup format
   const duplicates: DuplicateGroup[] = [];
   for (const [key, group] of groups) {
     const [filmTitle, cinemaId, datetime] = key.split("|");
@@ -96,76 +112,119 @@ async function findDuplicates(): Promise<DuplicateGroup[]> {
     });
   }
 
+  console.log(`Found ${duplicates.length} exact-duplicate groups`);
   return duplicates;
 }
 
-async function cleanupDuplicates(dryRun = true): Promise<void> {
-  const duplicates = await findDuplicates();
+// -- Strategy 2: Near-duplicates (same filmId+cinemaId, ±2min) ---------------
 
-  console.log(`Found ${duplicates.length} groups of duplicate screenings\n`);
+async function findNearDuplicates(): Promise<NearDuplicatePair[]> {
+  console.log("\n=== Strategy 2: Near-duplicate screenings (±2 min) ===\n");
 
-  if (duplicates.length === 0) {
-    console.log("No duplicates to clean up!");
-    return;
-  }
+  const result = await db.execute(sql`
+    SELECT
+      s1.id AS id1,
+      s2.id AS id2,
+      f.title AS film_title,
+      c.name AS cinema_name,
+      s1.datetime AS dt1,
+      s2.datetime AS dt2,
+      s1.scraped_at AS scraped_at1,
+      s2.scraped_at AS scraped_at2,
+      ABS(EXTRACT(EPOCH FROM (s2.datetime - s1.datetime))) AS diff_seconds
+    FROM screenings s1
+    JOIN screenings s2
+      ON s1.film_id = s2.film_id
+      AND s1.cinema_id = s2.cinema_id
+      AND s1.id < s2.id
+      AND ABS(EXTRACT(EPOCH FROM (s2.datetime - s1.datetime))) < 120
+      AND s1.datetime != s2.datetime
+    JOIN films f ON f.id = s1.film_id
+    JOIN cinemas c ON c.id = s1.cinema_id
+    WHERE s1.datetime >= NOW()
+    ORDER BY c.name, f.title, s1.datetime
+  `);
 
-  // Show sample duplicates
-  console.log("Sample duplicates:");
-  for (const dup of duplicates.slice(0, 5)) {
-    console.log(`  ${dup.filmTitle} @ ${dup.cinemaId} @ ${dup.datetime.toISOString()}`);
-    console.log(`    Screening IDs: ${dup.screeningIds.length}`);
-    console.log(`    Film IDs: ${dup.filmIds.length} unique`);
-  }
+  const rows = result as unknown as Record<string, unknown>[];
 
-  if (duplicates.length > 5) {
-    console.log(`  ... and ${duplicates.length - 5} more\n`);
-  }
+  const pairs: NearDuplicatePair[] = rows.map((r) => ({
+    id1: r.id1 as string,
+    id2: r.id2 as string,
+    filmTitle: r.film_title as string,
+    cinemaName: r.cinema_name as string,
+    dt1: new Date(r.dt1 as string),
+    dt2: new Date(r.dt2 as string),
+    scrapedAt1: new Date(r.scraped_at1 as string),
+    scrapedAt2: new Date(r.scraped_at2 as string),
+    diffSeconds: Number(r.diff_seconds),
+  }));
 
-  // Calculate IDs to delete (keep first, delete rest)
-  const idsToDelete: string[] = [];
-  for (const dup of duplicates) {
-    // Keep the first (oldest by scrapedAt due to orderBy)
-    const toDelete = dup.screeningIds.slice(1);
-    idsToDelete.push(...toDelete);
-  }
-
-  console.log(`\nTotal screenings to delete: ${idsToDelete.length}`);
-
-  if (dryRun) {
-    console.log("\n[DRY RUN] No changes made. Run with --execute to delete duplicates.");
-    return;
-  }
-
-  // Delete in batches
-  const batchSize = 100;
-  let deleted = 0;
-
-  for (let i = 0; i < idsToDelete.length; i += batchSize) {
-    const batch = idsToDelete.slice(i, i + batchSize);
-    await db.delete(screenings).where(inArray(screenings.id, batch));
-    deleted += batch.length;
-    console.log(`Deleted ${deleted}/${idsToDelete.length} duplicate screenings...`);
-  }
-
-  console.log(`\n✅ Cleanup complete! Deleted ${deleted} duplicate screenings.`);
+  console.log(`Found ${pairs.length} near-duplicate pairs`);
+  return pairs;
 }
+
+// -- Main --------------------------------------------------------------------
 
 async function main() {
-  const args = process.argv.slice(2);
-  const dryRun = !args.includes("--execute");
+  console.log(`Mode: ${isDryRun ? "DRY RUN" : "EXECUTE"}\n`);
 
-  if (dryRun) {
-    console.log("Running in DRY RUN mode (use --execute to actually delete)\n");
-  } else {
-    console.log("⚠️  Running in EXECUTE mode - duplicates will be deleted!\n");
+  const idsToDelete = new Set<string>();
+
+  // Strategy 1: Exact duplicates
+  const exactDupes = await findExactDuplicates();
+  for (const dup of exactDupes) {
+    console.log(`  "${dup.filmTitle}" @ ${dup.cinemaId} @ ${dup.datetime.toISOString()} (${dup.screeningIds.length} copies, ${dup.filmIds.length} film IDs)`);
+    // Keep first (oldest by scrapedAt), delete rest
+    for (const id of dup.screeningIds.slice(1)) {
+      idsToDelete.add(id);
+    }
   }
 
-  await cleanupDuplicates(dryRun);
+  // Strategy 2: Near-duplicates
+  const nearDupes = await findNearDuplicates();
+  for (const pair of nearDupes) {
+    // Keep the one with more recent scrapedAt
+    const keepId = pair.scrapedAt1 >= pair.scrapedAt2 ? pair.id1 : pair.id2;
+    const deleteId = keepId === pair.id1 ? pair.id2 : pair.id1;
+    const keepDt = keepId === pair.id1 ? pair.dt1 : pair.dt2;
+    const deleteDt = keepId === pair.id1 ? pair.dt2 : pair.dt1;
+
+    console.log(`  "${pair.filmTitle}" at ${pair.cinemaName} (diff: ${pair.diffSeconds}s)`);
+    console.log(`    KEEP:   ${keepId} @ ${keepDt.toISOString()}`);
+    console.log(`    DELETE: ${deleteId} @ ${deleteDt.toISOString()}`);
+
+    idsToDelete.add(deleteId);
+  }
+
+  const deleteList = Array.from(idsToDelete);
+  console.log(`\nTotal screenings to delete: ${deleteList.length}`);
+
+  if (deleteList.length === 0) {
+    console.log("No duplicates to clean up!");
+    process.exit(0);
+  }
+
+  if (isDryRun) {
+    console.log("\n[DRY RUN] No changes made. Use --execute to delete.");
+  } else {
+    // Delete in batches
+    const batchSize = 100;
+    let deleted = 0;
+
+    for (let i = 0; i < deleteList.length; i += batchSize) {
+      const batch = deleteList.slice(i, i + batchSize);
+      await db.delete(screenings).where(inArray(screenings.id, batch));
+      deleted += batch.length;
+      console.log(`Deleted ${deleted}/${deleteList.length} duplicate screenings...`);
+    }
+
+    console.log(`\nCleanup complete! Deleted ${deleted} duplicate screenings.`);
+  }
+
+  process.exit(0);
 }
 
-main()
-  .then(() => process.exit(0))
-  .catch((err) => {
-    console.error("Error:", err);
-    process.exit(1);
-  });
+main().catch((err) => {
+  console.error("Cleanup failed:", err);
+  process.exit(1);
+});
