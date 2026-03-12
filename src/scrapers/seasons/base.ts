@@ -11,7 +11,6 @@ import type { CheerioAPI } from "../utils/cheerio-types";
 import { BOT_USER_AGENT, CHROME_USER_AGENT_FULL } from "../constants";
 import type {
   RawSeason,
-  RawSeasonFilm,
   SeasonScraperConfig,
   SeasonScraper,
 } from "./types";

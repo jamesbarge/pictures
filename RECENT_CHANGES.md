@@ -5,6 +5,14 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-13: Kaizen — remove dead code from BFI scraper and seasons base
+**PR**: #XX | **Files**: `bfi.ts`, `seasons/base.ts`
+- Remove 3 unused private methods from BFI scraper (generateDateRange, formatDate, buildSearchUrl)
+- Remove unused `RawSeasonFilm` type import from seasons base class
+- Kaizen automated refactoring (category: dead-code)
+
+---
+
 ## 2026-03-13: Kaizen — remove unused imports/params in scrapers and API routes
 **PR**: #XX | **Files**: `bfi-import/route.ts`, `reverse-tagger.ts`, `runner-factory.ts`, `season-linker.ts`
 - Remove unused `_request`/`_admin` params from bfi-import GET handler
