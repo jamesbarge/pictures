@@ -10,6 +10,7 @@ import {
   // vector,
 } from "drizzle-orm/pg-core";
 import type { CastMember, ReleaseStatus, ContentType } from "@/types/film";
+import type { EnrichmentStatus } from "@/types/enrichment";
 
 // OpenAI text-embedding-3-small produces 1536-dimensional vectors
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -73,6 +74,9 @@ export const films = pgTable("films", {
   matchStrategy: text("match_strategy"),
   // When the TMDB match was performed
   matchedAt: timestamp("matched_at", { withTimezone: true }),
+
+  // Enrichment tracking — per-type attempt history for intelligent retry with backoff
+  enrichmentStatus: jsonb("enrichment_status").$type<EnrichmentStatus>(),
 
   // AI-powered duplicate detection (commented out until pgvector extension is enabled)
   // Embedding of title + year + director for semantic similarity search
