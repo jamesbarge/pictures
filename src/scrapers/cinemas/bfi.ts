@@ -218,37 +218,6 @@ export class BFIScraper {
     return screenings;
   }
 
-  private generateDateRange(days: number): Date[] {
-    const dates: Date[] = [];
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    for (let i = 0; i < days; i++) {
-      const date = new Date(today);
-      date.setDate(today.getDate() + i);
-      dates.push(date);
-    }
-    return dates;
-  }
-
-  private formatDate(date: Date): string {
-    // BFI uses YYYY-M-D format (no leading zeros)
-    const year = date.getFullYear();
-    const month = date.getMonth() + 1;
-    const day = date.getDate();
-    return `${year}-${month}-${day}`;
-  }
-
-  private buildSearchUrl(date: string): string {
-    // Use the URL pattern discovered from MCP Playwright exploration
-    const params = new URLSearchParams({
-      "doWork::WScontent::search": "1",
-      "BOset::WScontent::SearchCriteria::search_from": date,
-      "BOset::WScontent::SearchCriteria::search_to": date,
-    });
-    return `${this.venue.baseUrl}/default.asp?${params.toString()}`;
-  }
-
   private parseSearchResults(html: string): RawScreening[] {
     const $ = cheerio.load(html);
     const screenings: RawScreening[] = [];
