@@ -23,6 +23,7 @@ import { getBrowser, closeBrowser, createPage } from "../utils/browser";
 import type { Page } from "playwright";
 import { addDays, format } from "date-fns";
 import { combineDateAndTime } from "../utils/date-parser";
+import { slugify } from "../utils/url";
 
 interface CineSyncMovieData {
   movie_id: string;
@@ -314,7 +315,7 @@ export class RomfordLumiereScraper {
                 bookingUrl = `${this.config.baseUrl}/en/movies/${film.url_key}?showtime=${sessionId}`;
               }
 
-              const sourceId = `romford-lumiere-${sessionId || this.slugify(film.movie_name)}-${datetime.toISOString()}`;
+              const sourceId = `romford-lumiere-${sessionId || slugify(film.movie_name)}-${datetime.toISOString()}`;
 
               screenings.push({
                 filmTitle: this.cleanTitle(film.movie_name),
@@ -377,7 +378,7 @@ export class RomfordLumiereScraper {
         const datetime = this.parseShowtimeDateTime(dateText, timeText);
 
         if (datetime && datetime > now && datetime <= endDate) {
-          const sourceId = `romford-lumiere-${this.slugify(film.movie_name)}-${datetime.toISOString()}`;
+          const sourceId = `romford-lumiere-${slugify(film.movie_name)}-${datetime.toISOString()}`;
 
           screenings.push({
             filmTitle: this.cleanTitle(film.movie_name),
@@ -439,7 +440,7 @@ export class RomfordLumiereScraper {
               if (/^\d{1,2}[:.]\d{2}\s*(?:am|pm)?$/i.test(timeText)) {
                 const datetime = this.parseShowtimeDateTime(dateText, timeText);
                 if (datetime && datetime > now && datetime <= endOfApril) {
-                  const sourceId = `romford-lumiere-${this.slugify(title)}-${datetime.toISOString()}`;
+                  const sourceId = `romford-lumiere-${slugify(title)}-${datetime.toISOString()}`;
                   screenings.push({
                     filmTitle: this.cleanTitle(title),
                     datetime,
@@ -475,7 +476,7 @@ export class RomfordLumiereScraper {
             const datetime = this.parseShowtimeDateTime(dateText, timeText);
 
             if (datetime && datetime > now && datetime <= endOfApril) {
-              const sourceId = `romford-lumiere-${this.slugify(title)}-${datetime.toISOString()}`;
+              const sourceId = `romford-lumiere-${slugify(title)}-${datetime.toISOString()}`;
 
               screenings.push({
                 filmTitle: this.cleanTitle(title),
@@ -626,13 +627,6 @@ export class RomfordLumiereScraper {
       .trim();
   }
 
-  private slugify(title: string): string {
-    return title
-      .toLowerCase()
-      .replace(/[^\w\s-]/g, "")
-      .replace(/\s+/g, "-")
-      .substring(0, 50);
-  }
 
   private extractYear(dateStr: string): number | undefined {
     const match = dateStr.match(/\b(19|20)\d{2}\b/);

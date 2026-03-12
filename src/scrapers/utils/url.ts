@@ -19,3 +19,15 @@ export function normalizeUrl(url: string, baseUrl: string): string {
   }
   return `${baseUrl}/${url}`;
 }
+
+/**
+ * Create a URL-safe slug from a title, truncated to 50 characters.
+ * Used for generating stable sourceId strings in scrapers.
+ */
+export function slugify(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .substring(0, 50);
+}
