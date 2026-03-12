@@ -1,6 +1,6 @@
 import { db } from '../src/db';
 import { screenings, films, cinemas } from '../src/db/schema';
-import { count, gte, sql } from 'drizzle-orm';
+import { count, gte } from 'drizzle-orm';
 
 async function checkDb() {
   const cinemaCount = await db.select({ count: count() }).from(cinemas);

@@ -12,7 +12,7 @@
 import { db } from "../src/db";
 import { films } from "../src/db/schema/films";
 import { screenings } from "../src/db/schema/screenings";
-import { eq, and, gte, isNull, inArray } from "drizzle-orm";
+import { eq, and, gte, isNull } from "drizzle-orm";
 import { matchFilmToTMDB } from "../src/lib/tmdb/match";
 import { getTMDBClient, TMDBClient } from "../src/lib/tmdb/client";
 import type { ContentType } from "../src/types/film";

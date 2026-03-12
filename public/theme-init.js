@@ -20,7 +20,7 @@
     }
     // Default to dark mode
     document.documentElement.classList.add('dark');
-  } catch (e) {
+  } catch {
     // Default to dark on error
     document.documentElement.classList.add('dark');
   }

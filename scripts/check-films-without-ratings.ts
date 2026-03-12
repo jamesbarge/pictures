@@ -1,6 +1,6 @@
 import { db } from '../src/db';
 import { films, screenings } from '../src/db/schema';
-import { eq, isNull, gte, and, sql } from 'drizzle-orm';
+import { eq, isNull, gte, and } from 'drizzle-orm';
 
 async function checkFilmsWithoutRatings() {
   const now = new Date();

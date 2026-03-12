@@ -1,5 +1,12 @@
 # Recent Changes
 
+## 2026-03-13: Kaizen — extract confidence constants in pattern-extractor
+**PR**: #TBD | **Files**: `src/lib/title-extraction/pattern-extractor.ts`
+- Extracted 7 magic confidence numbers into named constants (FULL_CONFIDENCE, PRESENTS_CONFIDENCE, etc.)
+- Kaizen automated refactoring (category: extract-constant)
+
+---
+
 ## 2026-03-13: Kaizen — remove unused variables and imports in scripts
 **PR**: #TBD | **Files**: 4 audit/cleanup scripts
 - Removed unused type imports, constants, and variable mappings (4 files)
