@@ -53,12 +53,14 @@ export interface BookingCheck {
   confidence: number;
 }
 
+/** An error encountered during QA browse phase (non-fatal) */
 export interface BrowseError {
   cinemaId?: string;
   url?: string;
   message: string;
 }
 
+/** Aggregate stats from the QA browse task */
 export interface BrowseStats {
   filmsExtracted: number;
   screeningsExtracted: number;
@@ -68,11 +70,13 @@ export interface BrowseStats {
 
 // ── Analysis Types ──────────────────────────────────────────────
 
+/** Input payload for the QA analysis task: browse output plus dry-run flag */
 export interface QaAnalysisInput {
   browseOutput: QaBrowseOutput;
   dryRun: boolean;
 }
 
+/** Output of the QA analysis task: classified issues, applied fixes, and prevention report */
 export interface QaAnalysisOutput {
   issuesFound: ClassifiedIssue[];
   fixesApplied: FixResult[];
@@ -80,6 +84,7 @@ export interface QaAnalysisOutput {
   stats: AnalysisStats;
 }
 
+/** Aggregate stats from the QA analysis phase */
 export interface AnalysisStats {
   totalIssues: number;
   fixesApplied: number;
@@ -89,8 +94,10 @@ export interface AnalysisStats {
 
 // ── Issue Classification ────────────────────────────────────────
 
+/** Whether an issue affects a single entity ("spot") or indicates a pattern ("systemic") */
 export type IssueScope = "spot" | "systemic";
 
+/** Classification of data quality issues detected by the QA pipeline */
 export type QaIssueType =
   | "stale_screening"
   | "time_mismatch"
@@ -115,6 +122,7 @@ export interface ClassifiedIssue {
 
 // ── Fix Results ─────────────────────────────────────────────────
 
+/** Action taken to fix a classified issue */
 export type FixAction =
   | "deleted_stale_screening"
   | "updated_screening_time"
@@ -133,6 +141,7 @@ export interface FixResult {
 
 // ── Verification Gate ───────────────────────────────────────────
 
+/** Result of the verification gate that confirms a fix before applying it */
 export interface VerificationOutcome {
   confirmed: boolean;
   method: string;
@@ -141,6 +150,7 @@ export interface VerificationOutcome {
 
 // ── Orchestrator ────────────────────────────────────────────────
 
+/** Input payload for the QA orchestrator: optional dry-run and trigger source */
 export interface QaOrchestratorInput {
   dryRun?: boolean;
   triggeredBy?: string;

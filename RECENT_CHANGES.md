@@ -5,6 +5,14 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-13: Kaizen — complete JSDoc for QA pipeline types
+**PR**: #XX | **Files**: `trigger/qa/types.ts`
+- Added JSDoc to all 10 remaining undocumented types in QA pipeline
+- Covers BrowseError, BrowseStats, QaAnalysisInput/Output, AnalysisStats, IssueScope, QaIssueType, FixAction, VerificationOutcome, QaOrchestratorInput
+- Kaizen automated refactoring (category: jsdoc)
+
+---
+
 ## 2026-03-13: Kaizen — add JSDoc to UI component types
 **PR**: #XX | **Files**: `button.tsx`, `badge.tsx`, `input.tsx`
 - Added JSDoc to 8 exported types/interfaces across 3 core UI components
