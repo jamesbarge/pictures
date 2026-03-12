@@ -5,6 +5,13 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-12: Kaizen — Adopt handleApiError in remaining admin catches
+**PR**: #179 | **Files**: `cinemas/[id]/config/route.ts`, `screenings/[id]/route.ts`
+- Replaced manual catch blocks with `handleApiError` (already imported in both files)
+- Kaizen automated refactoring (category: error-handling)
+
+---
+
 ## 2026-03-12: Kaizen — Use BOT_USER_AGENT constant in scrapers
 **PR**: #178 | **Files**: `david-lean.ts`, `romford-lumiere.ts`, `regent-street.ts`, `rich-mix.ts`
 - Replaced inline `"Mozilla/5.0 (compatible; PicturesBot/1.0)"` with existing `BOT_USER_AGENT` constant

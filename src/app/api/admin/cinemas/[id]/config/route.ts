@@ -79,11 +79,7 @@ export const GET = withAdminAuth<RouteParams>(async (_request, _admin, { params 
     // Return defaults if no baseline exists
     return Response.json(DEFAULT_CONFIG);
   } catch (error) {
-    console.error("Error fetching cinema config:", error);
-    return Response.json(
-      { error: "Failed to fetch config" },
-      { status: 500 }
-    );
+    return handleApiError(error, "GET /api/admin/cinemas/[id]/config");
   }
 });
 
