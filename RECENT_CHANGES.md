@@ -5,6 +5,14 @@ AI CONTEXT FILE - Keep last ~20 entries. Add new entries at top.
 When an entry is added here, also create a detailed file in /changelogs/
 -->
 
+## 2026-03-12: Security — fix cron auth bypass in non-production
+**PR**: #186 | **Files**: `src/app/api/cron/cleanup/route.ts`, `src/app/api/cron/posthog-sync/route.ts`
+- Removed NODE_ENV === "production" gate from cron secret verification
+- Preview/staging deployments now require CRON_SECRET authentication
+- Matches existing health-check route pattern
+
+---
+
 ## 2026-03-12: Security — fix admin auth bypass
 **PR**: #187 | **Files**: `middleware.ts`, `src/app/api/admin/bfi-import/route.ts`
 - Removed root middleware.ts that was shadowing the real admin-protected src/middleware.ts
