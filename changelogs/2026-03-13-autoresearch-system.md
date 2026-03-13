@@ -27,7 +27,7 @@ Implements an autonomous experimentation framework inspired by Karpathy's autore
 - `src/db/schema/admin.ts` — Added `autoresearchExperiments` table + `experimentSystemEnum`
 - `src/scrapers/base.ts` — Added `ConfigOverlay` interface, `loadConfigOverlay()`, `getSelector()`, `getUrl()` methods
 - `src/scrapers/runner-factory.ts` — Added `runScraperForYield()` dry-run function
-- `scripts/audit-and-fix-upcoming.ts` — Added `--thresholds` CLI flag + threshold override support for dodgy detection
+- `scripts/audit-and-fix-upcoming.ts` — Dodgy detection now reads thresholds from shared loader
 - `.gitignore` — Added `.autoresearch/` (local snapshots/overlays)
 
 ## Architecture

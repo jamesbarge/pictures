@@ -34,8 +34,8 @@ const MAX_EXPERIMENTS = 20;
 /**
  * Compute the Data Quality Score from an audit summary.
  *
- * DQS = 100 - (missingTmdb% × 30 + missingPoster% × 25 + missingSynopsis% × 20
- *              + duplicates% × 15 + dodgyEntries% × 10)
+ * DQS = 100 - (missingTmdb% × 0.30 + missingPoster% × 0.25 + missingSynopsis% × 0.20
+ *              + duplicates% × 0.15 + dodgyEntries% × 0.10)
  *
  * Note: duplicates% and dodgyEntries% require separate queries;
  * we approximate from audit summary fields when those aren't available.
@@ -86,11 +86,17 @@ interface Thresholds {
 }
 
 async function loadThresholds(): Promise<Thresholds> {
-  const raw = await readFile(THRESHOLDS_PATH, "utf-8");
-  const parsed = JSON.parse(raw);
-  // Remove $comment key
-  delete parsed.$comment;
-  return parsed as Thresholds;
+  try {
+    const raw = await readFile(THRESHOLDS_PATH, "utf-8");
+    const parsed = JSON.parse(raw);
+    // Remove $comment key
+    delete parsed.$comment;
+    return parsed as Thresholds;
+  } catch (err) {
+    throw new Error(
+      `[autoquality] Failed to load thresholds from ${THRESHOLDS_PATH}: ${err instanceof Error ? err.message : err}`
+    );
+  }
 }
 
 async function saveThresholds(thresholds: Thresholds): Promise<void> {
@@ -112,9 +118,12 @@ function getThresholdValue(thresholds: Thresholds, key: string): number | undefi
 function setThresholdValue(thresholds: Thresholds, key: string, value: number): void {
   const [section, field] = key.split(".");
   const sectionData = thresholds[section as keyof Thresholds];
-  if (sectionData) {
-    sectionData[field] = value;
+  if (!sectionData) {
+    throw new Error(
+      `[autoquality] Invalid threshold key "${key}" — section "${section}" not found. Valid sections: ${Object.keys(thresholds).join(", ")}`
+    );
   }
+  sectionData[field] = value;
 }
 
 // ---------------------------------------------------------------------------
@@ -257,7 +266,14 @@ async function runOneExperiment(
     // Restore threshold if we modified it before the failure
     if (appliedThresholdKey !== undefined && appliedPreviousValue !== undefined) {
       setThresholdValue(thresholds, appliedThresholdKey, appliedPreviousValue);
-      await saveThresholds(thresholds).catch(() => {});
+      try {
+        await saveThresholds(thresholds);
+      } catch (saveErr) {
+        console.error(
+          `[autoquality] CRITICAL: Failed to save reverted thresholds to disk. On-disk thresholds may contain experimental value for ${appliedThresholdKey}:`,
+          saveErr instanceof Error ? saveErr.message : saveErr
+        );
+      }
     }
 
     const errorMsg = err instanceof Error ? err.message : String(err);
@@ -345,14 +361,19 @@ export async function runAutoQualityWeekly(
   resultsByTarget.set("data-quality", { name: "Data Quality Score", results });
 
   const summary = buildOvernightSummary("autoquality", runStartedAt, new Date(), resultsByTarget);
-  await sendOvernightReport(summary);
+  const reportSent = await sendOvernightReport(summary);
+  if (!reportSent) console.warn("[autoquality] Failed to send Telegram overnight report");
 
   // Write Obsidian report and update cursor
   try {
     await writeOvernightReport(summary, results);
-    await updateCursor(summary);
   } catch (err) {
     console.error("[autoquality] Failed to write Obsidian report:", err);
+  }
+  try {
+    await updateCursor(summary);
+  } catch (err) {
+    console.error("[autoquality] Failed to update Obsidian cursor:", err);
   }
 
   return summary;

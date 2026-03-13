@@ -61,8 +61,12 @@ export async function updateCursor(summary: OvernightSummary): Promise<void> {
     const parsed = parseCursor(existing);
     totalRuns = parsed.totalRuns;
     sessionLog = parsed.sessionLog;
-  } catch {
-    // First run — no cursor yet
+  } catch (err) {
+    if (err instanceof Error && (err as NodeJS.ErrnoException).code === "ENOENT") {
+      // First run — no cursor yet
+    } else {
+      console.warn("[autoresearch] Failed to read existing cursor (starting fresh):", err);
+    }
   }
 
   totalRuns += 1;
@@ -109,9 +113,10 @@ function buildReportMarkdown(
   const recovered = summary.targetSummaries.filter((t) => t.recovered);
   const needsAttention = summary.targetSummaries.filter((t) => t.needsManualAttention);
 
-  // Compute net improvement from first and last experiments
+  // Compute net improvement from first experiment and last *kept* experiment
   const netBefore = experiments.length > 0 ? experiments[0].metricBefore : 0;
-  const netAfter = experiments.length > 0 ? experiments[experiments.length - 1].metricAfter : 0;
+  const lastKept = experiments.filter((e) => e.kept).pop();
+  const netAfter = lastKept?.metricAfter ?? netBefore;
 
   const lines: string[] = [];
 
