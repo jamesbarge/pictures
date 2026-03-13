@@ -105,7 +105,7 @@ async function main() {
     if (!DRY_RUN) {
       // First delete screenings that would collide after the time shift
       // (these are duplicates where the correct time already exists)
-      const deleted = await db.execute(sql`
+      await db.execute(sql`
         DELETE FROM screenings
         WHERE id IN (
           SELECT s.id
