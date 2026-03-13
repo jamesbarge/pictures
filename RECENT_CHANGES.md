@@ -1,5 +1,12 @@
 # Recent Changes
 
+## 2026-03-13: Kaizen — extract shared admin agent guard and error helpers
+**PR**: #TBD | **Files**: `shared.ts`, `health/route.ts`, `links/route.ts`, `enrich/route.ts`
+- Extracted identical GEMINI_API_KEY guard and catch-block error response into shared.ts
+- Kaizen automated refactoring (category: duplicate-pattern)
+
+---
+
 ## 2026-03-13: Kaizen — add JSDoc to 6 dropdown component exports
 **PR**: #TBD | **Files**: `src/components/ui/dropdown.tsx`
 - Added JSDoc to DropdownMenu, DropdownItem, DropdownSeparator, DropdownLabel, Select, MultiSelect

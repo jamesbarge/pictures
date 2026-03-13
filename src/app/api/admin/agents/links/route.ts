@@ -6,17 +6,13 @@
  */
 
 import { withAdminAuth } from "@/lib/auth";
+import { geminiKeyMissingResponse, agentErrorResponse } from "../shared";
 
 export const maxDuration = 30;
 
 export const POST = withAdminAuth(async () => {
-  // Check for API key before importing agent
   if (!process.env.GEMINI_API_KEY) {
-    return Response.json({
-      success: false,
-      summary: "Agent not configured",
-      error: "GEMINI_API_KEY environment variable is not set. Add it in Vercel project settings.",
-    });
+    return geminiKeyMissingResponse();
   }
 
   try {
@@ -59,14 +55,6 @@ export const POST = withAdminAuth(async () => {
       executionTimeMs: result.executionTimeMs,
     });
   } catch (error) {
-    console.error("Link validator error:", error);
-    return Response.json(
-      {
-        success: false,
-        summary: "Link verification failed",
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
+    return agentErrorResponse("Link validator", "Link verification", error);
   }
 });
