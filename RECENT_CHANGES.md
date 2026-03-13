@@ -1,5 +1,12 @@
 # Recent Changes
 
+## 2026-03-14: Kaizen — add JSDoc to 5 component provider functions
+**PR**: #TBD | **Files**: `cookie-consent-banner.tsx`, `posthog-provider.tsx`, `providers.tsx`, `theme-provider.tsx`, `user-sync-provider.tsx`
+- Added JSDoc to CookieConsentBanner, PostHogProvider, Providers, ThemeProvider, UserSyncProvider
+- Kaizen automated refactoring (category: jsdoc)
+
+---
+
 ## 2026-03-13: Kaizen — add JSDoc to 5 scraper factories (batch 7)
 **PR**: #TBD | **Files**: `lexi-v2.ts`, `olympic.ts`, `peckhamplex.ts`, `regent-street.ts`, `rich-mix-v2.ts`
 - Added JSDoc to createLexiScraperV2, createOlympicScraper, createPeckhamplexScraper, createRegentStreetScraper, createRichMixScraperV2
