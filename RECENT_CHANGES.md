@@ -1,3 +1,10 @@
+## 2026-03-13: Kaizen — Add JSDoc to 5 custom React hooks
+**PR**: #TBD | **Files**: `useBodyScrollLock.ts`, `useUserSync.ts`, `useHydrated.ts`, `useUserFestivals.ts`, `useSafeDateLabels.ts`
+- Added one-line JSDoc to 5 exported hook functions
+- Kaizen automated refactoring (category: jsdoc)
+
+---
+
 ## 2026-03-13: Kaizen — Add JSDoc to 3 layout + search + reachable components
 **PR**: #TBD | **Files**: `header.tsx`, `theme-toggle.tsx`, `header-nav-buttons.tsx`, `search-dialog.tsx`, `reachable-results.tsx`
 - Added one-line JSDoc to 5 exported component functions

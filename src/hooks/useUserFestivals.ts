@@ -20,6 +20,7 @@ import {
 // Debounce delay for sync (500ms)
 const SYNC_DEBOUNCE_MS = 500;
 
+/** Manages debounced sync of festival follows and schedule between localStorage and server. */
 export function useUserFestivals() {
   const { isSignedIn, isLoaded } = useUser();
   const followsDebounceRef = useRef<NodeJS.Timeout | null>(null);

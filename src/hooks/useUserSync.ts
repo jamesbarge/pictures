@@ -43,6 +43,7 @@ const SYNC_DEBOUNCE_MS = 500;
 // Store anonymous ID before sign-in (survives re-renders)
 let storedAnonymousId: string | null = null;
 
+/** Unified sync lifecycle manager — debounces film status, preference, and filter changes to the server. */
 export function useUserSync() {
   const { isSignedIn, isLoaded } = useUser();
 

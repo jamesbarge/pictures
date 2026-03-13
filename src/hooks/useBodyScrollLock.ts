@@ -5,6 +5,7 @@
 
 import { useEffect } from "react";
 
+/** Locks body scroll when a modal or drawer is open, restoring position on close. */
 export function useBodyScrollLock(isLocked: boolean) {
   useEffect(() => {
     if (!isLocked) return;
