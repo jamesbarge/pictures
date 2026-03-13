@@ -172,6 +172,7 @@ export class LexiScraperV2 extends BaseScraper {
   }
 }
 
+/** Creates a Lexi Cinema scraper (Cheerio-based, extends BaseScraper). */
 export function createLexiScraperV2(): LexiScraperV2 {
   return new LexiScraperV2();
 }
