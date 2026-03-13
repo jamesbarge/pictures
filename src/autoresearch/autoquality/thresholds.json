@@ -1,0 +1,32 @@
+{
+  "$comment": "Tunable thresholds for the data quality pipeline. AutoQuality experiments modify one threshold at a time.",
+
+  "tmdb": {
+    "minTitleSimilarity": 0.6,
+    "titleSimilarityWeight": 0.7,
+    "competitorThresholdRatio": 0.95,
+    "minMatchConfidence": 0.6,
+    "yearMatchPenaltyRecovery": 0.5
+  },
+
+  "duplicateDetection": {
+    "trigramSimilarityThreshold": 0.5
+  },
+
+  "dodgyDetection": {
+    "maxTitleLength": 80,
+    "minYear": 1895,
+    "maxYear": 2027,
+    "maxRuntime": 600
+  },
+
+  "nonFilmDetection": {
+    "maxPatternsPerCategory": 30
+  },
+
+  "safetyFloors": {
+    "minAutoMergeSimilarity": 0.85,
+    "minTmdbConfidence": 0.6,
+    "maxNewNonFilmPatterns": 3
+  }
+}

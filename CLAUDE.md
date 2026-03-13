@@ -105,9 +105,15 @@ Never run commands with inline secrets or API keys. Always reference env vars fr
 ## PR Review Gate
 Before creating any PR that touches 3+ files, run the code-reviewer agent on the diff. Report findings before proceeding.
 
+## Autonomous Systems (AutoResearch)
+AI-driven experiment loops that self-improve data quality overnight. Details in `.claude/rules/data-quality.md`.
+- `/autoscrape` — Detect broken scrapers, run repair experiments, write Obsidian report
+- `/autoquality` — Compute baseline DQS, tune thresholds, write Obsidian report
+- Reports: `Obsidian Vault/Pictures/AutoResearch/`
+
 ## Domain Rules
 Domain-specific rules are in `.claude/rules/`:
 - `scrapers.md` - Scraper architecture, critical rules, testing
 - `database.md` - Data integrity, storage, cleanup
-- `data-quality.md` - Enrichment strategy, key scripts
+- `data-quality.md` - Enrichment strategy, key scripts, AutoResearch
 - `frontend.md` - UI, auth, state management, env vars

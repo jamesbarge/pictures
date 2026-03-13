@@ -8,7 +8,7 @@
  * - Consistent health checks and pipeline processing
  */
 
-import type { CinemaScraper, ChainScraper } from "./types";
+import type { CinemaScraper, ChainScraper, RawScreening } from "./types";
 import { processScreenings, saveScreenings, ensureCinemaExists } from "./pipeline";
 import { db, isDatabaseAvailable } from "../db";
 import { scraperRuns, cinemaBaselines } from "../db/schema/admin";
@@ -666,6 +666,58 @@ export async function runScraper(
   await flushPendingRecords();
 
   return result;
+}
+
+// ============================================================================
+// Yield Evaluation (for AutoScrape experiments)
+// ============================================================================
+
+/** Result of a yield-mode scrape — raw screenings without DB persistence */
+export interface YieldResult {
+  success: boolean;
+  screenings: RawScreening[];
+  durationMs: number;
+  error?: string;
+}
+
+/**
+ * Run a single-venue scraper and return raw screenings WITHOUT persisting.
+ * Used by AutoScrape to evaluate candidate configs in dry-run mode.
+ * No DB writes, no recording, no pipeline processing.
+ */
+export async function runScraperForYield(
+  config: SingleVenueConfig
+): Promise<YieldResult> {
+  const startTime = Date.now();
+
+  try {
+    const scraper = config.createScraper();
+
+    const isHealthy = await scraper.healthCheck();
+    if (!isHealthy) {
+      return {
+        success: false,
+        screenings: [],
+        durationMs: Date.now() - startTime,
+        error: "Health check failed - site not accessible",
+      };
+    }
+
+    const screenings = await scraper.scrape();
+
+    return {
+      success: true,
+      screenings,
+      durationMs: Date.now() - startTime,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      screenings: [],
+      durationMs: Date.now() - startTime,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
 }
 
 /**

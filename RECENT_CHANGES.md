@@ -1,5 +1,12 @@
 # Recent Changes
 
+## 2026-03-13: Kaizen — delete 6 dead analytics functions
+**PR**: #TBD | **Files**: `src/lib/analytics.ts`
+- Removed 6 unused exported functions: `trackCinemaSelection`, `getFeatureFlagValue`, `getFeatureFlagPayload`, `setUserProperties`, `setUserPropertiesOnce`, `incrementUserProperty`
+- Kaizen automated refactoring (category: dead-code)
+
+---
+
 ## 2026-03-13: Kaizen — remove unused year parameter from titleToSlug
 **PR**: #TBD | **Files**: `src/db/enrich-letterboxd.ts`
 - Removed unused `year` parameter from `titleToSlug()` function and its call site
