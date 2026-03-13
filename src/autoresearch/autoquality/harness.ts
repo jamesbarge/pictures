@@ -86,11 +86,17 @@ interface Thresholds {
 }
 
 async function loadThresholds(): Promise<Thresholds> {
-  const raw = await readFile(THRESHOLDS_PATH, "utf-8");
-  const parsed = JSON.parse(raw);
-  // Remove $comment key
-  delete parsed.$comment;
-  return parsed as Thresholds;
+  try {
+    const raw = await readFile(THRESHOLDS_PATH, "utf-8");
+    const parsed = JSON.parse(raw);
+    // Remove $comment key
+    delete parsed.$comment;
+    return parsed as Thresholds;
+  } catch (err) {
+    throw new Error(
+      `[autoquality] Failed to load thresholds from ${THRESHOLDS_PATH}: ${err instanceof Error ? err.message : err}`
+    );
+  }
 }
 
 async function saveThresholds(thresholds: Thresholds): Promise<void> {
@@ -112,9 +118,12 @@ function getThresholdValue(thresholds: Thresholds, key: string): number | undefi
 function setThresholdValue(thresholds: Thresholds, key: string, value: number): void {
   const [section, field] = key.split(".");
   const sectionData = thresholds[section as keyof Thresholds];
-  if (sectionData) {
-    sectionData[field] = value;
+  if (!sectionData) {
+    throw new Error(
+      `[autoquality] Invalid threshold key "${key}" — section "${section}" not found. Valid sections: ${Object.keys(thresholds).join(", ")}`
+    );
   }
+  sectionData[field] = value;
 }
 
 // ---------------------------------------------------------------------------
@@ -358,9 +367,13 @@ export async function runAutoQualityWeekly(
   // Write Obsidian report and update cursor
   try {
     await writeOvernightReport(summary, results);
-    await updateCursor(summary);
   } catch (err) {
     console.error("[autoquality] Failed to write Obsidian report:", err);
+  }
+  try {
+    await updateCursor(summary);
+  } catch (err) {
+    console.error("[autoquality] Failed to update Obsidian cursor:", err);
   }
 
   return summary;

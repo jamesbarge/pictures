@@ -342,9 +342,13 @@ export async function runAutoScrapeOvernight(
   const allExperiments = [...resultsByTarget.values()].flatMap((t) => t.results);
   try {
     await writeOvernightReport(summary, allExperiments);
-    await updateCursor(summary);
   } catch (err) {
     console.error("[autoscrape] Failed to write Obsidian report:", err);
+  }
+  try {
+    await updateCursor(summary);
+  } catch (err) {
+    console.error("[autoscrape] Failed to update Obsidian cursor:", err);
   }
 
   return summary;

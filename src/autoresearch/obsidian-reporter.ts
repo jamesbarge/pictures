@@ -61,8 +61,12 @@ export async function updateCursor(summary: OvernightSummary): Promise<void> {
     const parsed = parseCursor(existing);
     totalRuns = parsed.totalRuns;
     sessionLog = parsed.sessionLog;
-  } catch {
-    // First run — no cursor yet
+  } catch (err) {
+    if (err instanceof Error && (err as NodeJS.ErrnoException).code === "ENOENT") {
+      // First run — no cursor yet
+    } else {
+      console.warn("[autoresearch] Failed to read existing cursor (starting fresh):", err);
+    }
   }
 
   totalRuns += 1;
