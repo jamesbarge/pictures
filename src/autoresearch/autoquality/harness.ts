@@ -18,6 +18,7 @@ import type {
 } from "../types";
 import { DEFAULT_SAFETY_FLOORS } from "../types";
 import { logExperiment, buildOvernightSummary, sendOvernightReport } from "../experiment-log";
+import { writeOvernightReport, updateCursor } from "../obsidian-reporter";
 import type { AuditSummary } from "@/scripts/audit-film-data";
 
 const THRESHOLDS_PATH = join(__dirname, "thresholds.json");
@@ -337,6 +338,14 @@ export async function runAutoQualityWeekly(
 
   const summary = buildOvernightSummary("autoquality", runStartedAt, new Date(), resultsByTarget);
   await sendOvernightReport(summary);
+
+  // Write Obsidian report and update cursor
+  try {
+    await writeOvernightReport(summary, results);
+    await updateCursor(summary);
+  } catch (err) {
+    console.error("[autoquality] Failed to write Obsidian report:", err);
+  }
 
   return summary;
 }

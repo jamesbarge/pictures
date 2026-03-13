@@ -29,6 +29,7 @@ import type {
   OvernightSummary,
 } from "../types";
 import { logExperiment, buildOvernightSummary, sendOvernightReport } from "../experiment-log";
+import { writeOvernightReport, updateCursor } from "../obsidian-reporter";
 import { computeYieldScore, buildYieldInput } from "./yield-scorer";
 import {
   captureSnapshot,
@@ -315,6 +316,15 @@ export async function runAutoScrapeOvernight(
     resultsByTarget
   );
   await sendOvernightReport(summary);
+
+  // Step 4: Write Obsidian report and update cursor
+  const allExperiments = [...resultsByTarget.values()].flatMap((t) => t.results);
+  try {
+    await writeOvernightReport(summary, allExperiments);
+    await updateCursor(summary);
+  } catch (err) {
+    console.error("[autoscrape] Failed to write Obsidian report:", err);
+  }
 
   return summary;
 }
