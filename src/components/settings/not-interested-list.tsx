@@ -17,6 +17,7 @@ import { deleteFilmStatus } from "@/lib/sync/user-sync-service";
 const POSTER_BLUR =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAPCAYAAADd/14OAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAKklEQVQoz2Nk+M/AQAxgZGBg+M9AB2BkYGBgZGRgYGCgF2D4T7wexAAGABPmAhHXnXDuAAAAAElFTkSuQmCC";
 
+/** Grid of films marked not-interested with one-tap restore and server-side sync for signed-in users. */
 export function NotInterestedList() {
   const { getNotInterestedFilms, removeFilm } = useFilmStatus();
   const [mounted, setMounted] = useState(false);

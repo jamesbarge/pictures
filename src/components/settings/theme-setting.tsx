@@ -18,6 +18,7 @@ const themes: { value: Theme; label: string; icon: React.ElementType }[] = [
   { value: "system", label: "System", icon: Monitor },
 ];
 
+/** Segmented control for toggling between light, dark, and system colour themes. */
 export function ThemeSetting() {
   const { theme, setTheme } = useTheme();
   const mounted = useHydrated();

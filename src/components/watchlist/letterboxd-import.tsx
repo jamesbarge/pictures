@@ -101,6 +101,7 @@ function httpStatusToError(status: number): ImportError {
 // Component
 // ---------------------------------------------------------------------------
 
+/** Multi-step Letterboxd watchlist import: username lookup, film matching, and bulk status save. */
 export function LetterboxdImport({ onClose }: LetterboxdImportProps) {
   const [state, setState] = useState<ImportState>({ step: "idle" });
   const [inputValue, setInputValue] = useState("");
