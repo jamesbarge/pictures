@@ -1,5 +1,13 @@
 # Recent Changes
 
+## 2026-03-13: Fix AutoResearch state restoration + reporting accuracy
+**PR**: #295 | **Files**: `src/autoresearch/autoscrape/harness.ts`, `src/autoresearch/autoquality/harness.ts`, `src/autoresearch/experiment-log.ts`
+- AutoScrape/AutoQuality: catch blocks now restore config overlays/thresholds on experiment failure
+- Overnight summary uses last *kept* experiment's metric, not last experiment overall
+- Kept experiments recompute full DQS breakdown instead of only patching compositeScore
+
+---
+
 ## 2026-03-13: AutoResearch — autonomous experimentation system
 **Branch**: `chore/kaizen-2026-03-13-0741` | **Files**: `src/autoresearch/**`, `src/scrapers/base.ts`, `src/scrapers/runner-factory.ts`, `src/db/schema/admin.ts`, `scripts/audit-and-fix-upcoming.ts`, `.gitignore`
 - Added AutoScrape system: overnight scraper repair via AI-driven config overlay experiments
