@@ -1,5 +1,13 @@
 # Recent Changes
 
+## 2026-03-13: Kaizen — remove dead agent exports
+**PR**: #277 | **Files**: `src/agents/types.ts`, `src/agents/config.ts`
+- Deleted `ConfidenceLevel`, `DuplicateDetectionResult`, `getAgentConfig` (zero consumers)
+- Unexported `DEFAULT_AGENT_CONFIG` and `CostTracker` (internal-only)
+- Kaizen automated refactoring (category: dead-code)
+
+---
+
 ## 2026-03-13: Kaizen — remove dead festival hooks and unexport internal helper
 **PR**: #276 | **Files**: `src/stores/festival.ts`, `src/stores/utils/migrate-storage.ts`
 - Deleted `useFestivalsWithNotification` and `useScheduleConflicts` (0 external consumers)
