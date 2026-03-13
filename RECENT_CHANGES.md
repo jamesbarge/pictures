@@ -1,5 +1,12 @@
 # Recent Changes
 
+## 2026-03-13: Kaizen — unexport 5 internal-only scraper util interfaces
+**PR**: #TBD | **Files**: `fetch-with-retry.ts`, `screening-classification.ts`, `film-title-cleaner.ts`, `scrape-diff.ts`
+- Removed `export` from FetchWithRetryOptions, ScreeningMetadata, DuplicateCheckResult, CleanTitleResult, ScrapeDiffReport — all internal-only
+- Kaizen automated refactoring (category: dead-code)
+
+---
+
 ## 2026-03-13: Kaizen — delete dead BookingSystem types
 **PR**: #287 | **Files**: `src/scrapers/types.ts`
 - Deleted BookingSystem type + BookingSystemConfig interface (zero consumers, 24 lines)
