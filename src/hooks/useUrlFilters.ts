@@ -38,6 +38,7 @@ interface UseUrlFiltersOptions {
   debounceMs?: number;
 }
 
+/** Bidirectional sync between URL search params and the Zustand filter store with debounced URL updates. */
 export function useUrlFilters(options: UseUrlFiltersOptions = {}) {
   const { syncToUrl = true, debounceMs = 300 } = options;
 

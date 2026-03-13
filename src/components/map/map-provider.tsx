@@ -11,6 +11,7 @@ interface MapProviderProps {
   children: React.ReactNode;
 }
 
+/** Google Maps API wrapper that gracefully degrades to a placeholder when no API key is configured. */
 export function MapProvider({ children }: MapProviderProps) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 

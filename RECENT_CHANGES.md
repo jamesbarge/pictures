@@ -1,3 +1,9 @@
+## 2026-03-13: Kaizen — JSDoc for hook/map/watchlist exports
+**PR**: #325 | **Files**: `src/hooks/useUrlFilters.ts`, `src/components/map/cinema-map.tsx`, `src/components/map/map-provider.tsx`, `src/components/watchlist/letterboxd-import-trigger.tsx`, `src/components/watchlist/watchlist-view.tsx`
+- Added JSDoc to 5 exported functions across hooks, map, and watchlist directories
+- Kaizen automated refactoring (category: jsdoc)
+
+---
 ## 2026-03-13: Kaizen — Add JSDoc to 5 custom React hooks
 **PR**: #TBD | **Files**: `useBodyScrollLock.ts`, `useUserSync.ts`, `useHydrated.ts`, `useUserFestivals.ts`, `useSafeDateLabels.ts`
 - Added one-line JSDoc to 5 exported hook functions

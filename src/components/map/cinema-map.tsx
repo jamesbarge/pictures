@@ -84,6 +84,7 @@ function MapTilesFixer() {
   return null;
 }
 
+/** Interactive Google Map with cinema markers, optional rectangle-draw area selection, and responsive sizing. */
 export function CinemaMap({ cinemas, mapArea, onAreaChange }: CinemaMapProps) {
   const [isDrawing, setIsDrawing] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);

@@ -15,6 +15,7 @@ interface LetterboxdImportTriggerProps {
   isOpen: boolean;
 }
 
+/** Toggle button that opens or closes the Letterboxd watchlist import panel. */
 export function LetterboxdImportTrigger({
   onToggle,
   isOpen,

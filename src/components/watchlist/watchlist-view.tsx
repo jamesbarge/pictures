@@ -67,6 +67,7 @@ type SortOption = "next_screening" | "date_added" | "alphabetical";
 const POSTER_BLUR =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAPCAYAAADd/14OAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAKklEQVQoz2Nk+M/AQAxgZGBg+M9AB2BkYGBgZGRgYGCgF2D4T7wexAAGABPmAhHXnXDuAAAAAElFTkSuQmCC";
 
+/** Sortable watchlist grid with screening data, Letterboxd import, and cloud-sync prompt for anonymous users. */
 export function WatchlistView({ films, screeningsByFilm }: WatchlistViewProps) {
   const { films: filmStatuses, getWatchlist, setStatus } = useFilmStatus();
   const [mounted, setMounted] = useState(false);
