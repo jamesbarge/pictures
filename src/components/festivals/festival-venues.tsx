@@ -19,6 +19,7 @@ interface FestivalVenuesProps {
   venues: Venue[];
 }
 
+/** Linked venue grid showing cinemas hosting a festival's screenings. */
 export function FestivalVenues({ venues }: FestivalVenuesProps) {
   if (venues.length === 0) return null;
 

@@ -15,6 +15,7 @@ interface FestivalHeaderProps {
   status: "upcoming" | "ongoing" | "past";
 }
 
+/** Festival detail hero with title, formatted date range, status badge, and countdown. */
 export function FestivalHeader({ festival, status }: FestivalHeaderProps) {
   const startDate = new Date(festival.startDate);
   const endDate = new Date(festival.endDate);

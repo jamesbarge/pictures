@@ -25,6 +25,7 @@ export interface FollowButtonProps {
   className?: string;
 }
 
+/** Optimistic follow/unfollow button for festivals with database sync for signed-in users. */
 export function FollowButton({
   festivalId,
   festivalName,
@@ -171,6 +172,7 @@ export function FollowButton({
 }
 
 // Compact version for list items
+/** Compact variant of FollowButton sized for inline use in list items. */
 export function FollowButtonCompact({
   festivalId,
   festivalName,
