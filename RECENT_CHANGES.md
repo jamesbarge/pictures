@@ -1,5 +1,12 @@
 # Recent Changes
 
+## 2026-03-13: Kaizen — add JSDoc to 6 dropdown component exports
+**PR**: #TBD | **Files**: `src/components/ui/dropdown.tsx`
+- Added JSDoc to DropdownMenu, DropdownItem, DropdownSeparator, DropdownLabel, Select, MultiSelect
+- Kaizen automated refactoring (category: jsdoc)
+
+---
+
 ## 2026-03-13: Kaizen — deduplicate CalendarViewSetting radio options
 **PR**: #TBD | **Files**: `src/components/settings/calendar-view-setting.tsx`
 - Extracted 3 near-identical radio option blocks into a VIEW_OPTIONS data array + map

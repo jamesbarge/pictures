@@ -27,6 +27,7 @@ export interface DropdownMenuProps {
   align?: "start" | "center" | "end";
 }
 
+/** Accessible dropdown menu for action lists, built on Base UI Menu primitives. */
 export function DropdownMenu({ trigger, children, align = "start" }: DropdownMenuProps) {
   return (
     <Menu.Root>
@@ -59,6 +60,7 @@ export interface DropdownItemProps {
   onSelect?: () => void;
 }
 
+/** Individual action item within a DropdownMenu, with optional icon and destructive styling. */
 export function DropdownItem({
   children,
   icon,
@@ -88,10 +90,12 @@ export function DropdownItem({
   );
 }
 
+/** Visual divider between groups of DropdownItem elements. */
 export function DropdownSeparator() {
   return <Menu.Separator className="h-px bg-border-subtle my-1 -mx-1" />;
 }
 
+/** Section heading label within a DropdownMenu for grouping related items. */
 export function DropdownLabel({ children }: { children: ReactNode }) {
   return (
     <div className="px-[var(--dropdown-item-padding-x)] py-1 text-xs font-medium text-text-tertiary uppercase tracking-wider">
@@ -124,6 +128,7 @@ export interface SelectProps {
   error?: string;
 }
 
+/** Single-value select dropdown with keyboard navigation and optional label/error display. */
 export function Select({
   options,
   value,
@@ -349,6 +354,7 @@ export interface MultiSelectProps {
   maxDisplayItems?: number;
 }
 
+/** Multi-value select dropdown with checkboxes, optional search filtering, and clear-all action. */
 export function MultiSelect({
   options,
   values,
