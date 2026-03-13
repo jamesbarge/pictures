@@ -333,6 +333,7 @@ export class GenesisScraper extends BaseScraper {
 }
 
 // Factory function
+/** Creates a v2 API-based scraper for Genesis Cinema (Mile End). */
 export function createGenesisScraper(): GenesisScraper {
   return new GenesisScraper();
 }

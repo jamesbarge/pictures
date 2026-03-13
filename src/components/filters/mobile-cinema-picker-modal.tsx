@@ -25,6 +25,7 @@ interface MobileCinemaPickerModalProps {
   cinemas: Cinema[];
 }
 
+/** Full-screen mobile modal for searching and selecting cinemas to filter by. */
 export function MobileCinemaPickerModal({ isOpen, onClose, cinemas }: MobileCinemaPickerModalProps) {
   const { cinemaIds, toggleCinema, setCinemas } = useFilters();
   const [searchTerm, setSearchTerm] = useState("");

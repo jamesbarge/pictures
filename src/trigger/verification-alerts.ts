@@ -3,6 +3,7 @@ import type { VerificationResult } from "./verification";
 
 const CALIBRATION_END = new Date("2026-03-18T00:00:00Z"); // 2 weeks from launch
 
+/** Route a failed verification result to the appropriate alert tier, suppressing alerts during the calibration window. */
 export async function sendVerificationAlert(result: VerificationResult): Promise<void> {
   if (result.verdict === "pass") return;
   if (result.issues.length === 0) return;

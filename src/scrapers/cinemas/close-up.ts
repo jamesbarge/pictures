@@ -392,6 +392,7 @@ export class CloseUpCinemaScraper extends BaseScraper {
 
 }
 
+/** Creates a scraper for Close-Up Film Centre (Shoreditch). */
 export function createCloseUpCinemaScraper(): CloseUpCinemaScraper {
   return new CloseUpCinemaScraper();
 }

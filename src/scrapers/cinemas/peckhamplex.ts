@@ -274,7 +274,7 @@ export class PeckhamplexScraper implements CinemaScraper {
   }
 }
 
-// Factory function
+/** Creates a Peckhamplex Cinema scraper (Cheerio-based, implements CinemaScraper). */
 export function createPeckhamplexScraper(): PeckhamplexScraper {
   return new PeckhamplexScraper();
 }

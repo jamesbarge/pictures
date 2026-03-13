@@ -159,6 +159,7 @@ export class RichMixScraper implements CinemaScraper {
   }
 }
 
+/** Create and return a new Rich Mix scraper instance. */
 export function createRichMixScraper(): RichMixScraper {
   return new RichMixScraper();
 }

@@ -37,7 +37,7 @@ interface ValidationResult {
   warnings: string[];  // Non-fatal - log but allow
 }
 
-export interface ValidationSummary {
+interface ValidationSummary {
   total: number;
   valid: number;
   rejected: number;

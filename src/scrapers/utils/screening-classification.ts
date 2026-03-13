@@ -21,7 +21,7 @@ import type { RawScreening } from "../types";
 // ============================================================================
 
 /** Resolved screening metadata after classification. */
-export interface ScreeningMetadata {
+interface ScreeningMetadata {
   eventType: EventType | undefined;
   eventDescription: string | undefined;
   format: ScreeningFormat | undefined;
@@ -108,7 +108,7 @@ export async function classifyScreening(
 // ============================================================================
 
 /** Result of a duplicate check. */
-export interface DuplicateCheckResult {
+interface DuplicateCheckResult {
   /** The existing screening record, or null if no exact duplicate. */
   duplicate: typeof screeningsTable.$inferSelect | null;
   /** Whether this screening should be skipped (same time, different filmId but same normalized title). */

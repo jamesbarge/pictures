@@ -122,7 +122,7 @@ export const EVENT_PREFIXES = [
 ];
 
 /** Result of cleaning a film title with metadata about what was stripped */
-export interface CleanTitleResult {
+interface CleanTitleResult {
   cleanedTitle: string;
   strippedPrefix: string | null;
   strippedSuffix: string | null;

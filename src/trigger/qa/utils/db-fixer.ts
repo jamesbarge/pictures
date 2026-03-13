@@ -172,6 +172,7 @@ async function insertAuditRecord(
 
 // ── Public API ────────────────────────────────────────────────
 
+/** Apply a single database fix for a classified QA issue, with optional dry-run mode. */
 export async function applyFix(
   issue: ClassifiedIssue,
   dryRun: boolean
@@ -253,6 +254,7 @@ export async function applyFix(
   }
 }
 
+/** Apply fixes for a batch of classified QA issues, running each through verification before execution. */
 export async function applyFixes(
   issues: ClassifiedIssue[],
   dryRun: boolean

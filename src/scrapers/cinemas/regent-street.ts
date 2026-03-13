@@ -156,6 +156,7 @@ export class RegentStreetScraper implements CinemaScraper {
   }
 }
 
+/** Creates a Regent Street Cinema scraper (Playwright-based, implements CinemaScraper). */
 export function createRegentStreetScraper(): RegentStreetScraper {
   return new RegentStreetScraper();
 }

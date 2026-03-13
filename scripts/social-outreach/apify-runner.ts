@@ -158,15 +158,6 @@ export class ApifyRunner {
         // For TikTok, we're already filtering by London-specific hashtags
         // so we don't require location in bio (most TikTok users don't add it)
         // Just check the post content for London mentions as a bonus signal
-        const combinedText = [post.text, post.authorMeta?.signature].filter(Boolean).join(' ');
-        const hasLondonSignal = this.isLondonBased(combinedText);
-        
-        // Skip if no London signal AND not from our London-specific hashtags
-        // (londoncinema hashtag is already London-focused, so include those)
-        const isFromLondonHashtag = SEARCH_CONFIG.tiktokHashtags.some(
-          (h) => h.toLowerCase().includes('london')
-        );
-
         if (post.authorMeta?.name) {
           contacts.push({
             username: post.authorMeta.name,

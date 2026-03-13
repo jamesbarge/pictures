@@ -105,6 +105,7 @@ export class RiversideScraperV2 extends BaseScraper {
 
 }
 
+/** Creates a Riverside Studios scraper (Cheerio-based, extends BaseScraper). */
 export function createRiversideScraperV2(): RiversideScraperV2 {
   return new RiversideScraperV2();
 }
