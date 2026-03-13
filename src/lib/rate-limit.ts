@@ -14,7 +14,7 @@ import { Redis } from "@upstash/redis";
 // ---------------------------------------------------------------------------
 
 /** Configuration for a rate limit rule applied to an API route. */
-export interface RateLimitConfig {
+interface RateLimitConfig {
   /** Maximum number of requests per window */
   limit: number;
   /** Time window in seconds */
@@ -24,7 +24,7 @@ export interface RateLimitConfig {
 }
 
 /** Result of a rate limit check for a given identifier. */
-export interface RateLimitResult {
+interface RateLimitResult {
   /** Whether the request is within the rate limit. */
   success: boolean;
   /** Number of requests remaining in the current window. */
