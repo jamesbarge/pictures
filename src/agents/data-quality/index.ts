@@ -29,7 +29,7 @@ export interface DataQualityIssue {
   suggestion?: string;
 }
 
-export interface DataQualityReport {
+interface DataQualityReport {
   checkedAt: Date;
   filmsChecked: number;
   screeningsChecked: number;
