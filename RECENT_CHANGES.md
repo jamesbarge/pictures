@@ -1,5 +1,13 @@
 # Recent Changes
 
+## 2026-03-13: Kaizen — remove 5 unused vars/imports in db scripts
+**PR**: #TBD | **Files**: `repositories/cinema.ts`, `enrich-directors.ts`, `enrich-letterboxd.ts`, `backfill-posters.ts`
+- Removed unused imports (inArray, TMDBClient, sql) and unused variable (result)
+- Bare catch block for unused error variable
+- Kaizen automated refactoring (category: lint-fix)
+
+---
+
 ## 2026-03-13: Kaizen — add JSDoc to 4 exported trigger functions
 **PR**: #TBD | **Files**: `verification-alerts.ts`, `db-fixer.ts`, `booking-checker.ts`
 - Added JSDoc to sendVerificationAlert, applyFix, applyFixes, checkBookingLinks

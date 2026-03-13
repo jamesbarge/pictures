@@ -17,7 +17,7 @@
 
 import { db } from "./index";
 import { films, screenings } from "./schema";
-import { eq, isNull, or, and, sql } from "drizzle-orm";
+import { eq, isNull, or, and } from "drizzle-orm";
 import { matchFilmToTMDB, getTMDBClient } from "@/lib/tmdb";
 import { getPosterService } from "@/lib/posters";
 
@@ -378,7 +378,7 @@ export async function mergeDuplicateFilm(
   }
 
   // Move all screenings from duplicate to canonical
-  const result = await db
+  await db
     .update(screenings)
     .set({ filmId: canonicalId })
     .where(eq(screenings.filmId, duplicateId));

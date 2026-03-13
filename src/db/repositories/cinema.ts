@@ -5,7 +5,7 @@
 
 import { db } from "@/db";
 import { cinemas, screenings, films } from "@/db/schema";
-import { eq, gte, and, inArray } from "drizzle-orm";
+import { eq, gte, and } from "drizzle-orm";
 import type { ScreeningFormat } from "@/types/screening";
 import type { ContentType } from "@/types/film";
 
