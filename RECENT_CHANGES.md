@@ -1,5 +1,12 @@
 # Recent Changes
 
+## 2026-03-13: Kaizen — remove unused year parameter from titleToSlug
+**PR**: #TBD | **Files**: `src/db/enrich-letterboxd.ts`
+- Removed unused `year` parameter from `titleToSlug()` function and its call site
+- Kaizen automated refactoring (category: lint-fix)
+
+---
+
 ## 2026-03-13: Kaizen — add JSDoc to 5 scraper factory functions (batch 6)
 **PR**: #TBD | **Files**: `electric.ts`, `garden.ts`, `genesis-v2.ts`, `genesis.ts`, `ica.ts`
 - Added JSDoc to createElectricScraper, createGardenCinemaScraper, createGenesisScraper (x2), createICAScraper

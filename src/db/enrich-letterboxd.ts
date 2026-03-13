@@ -10,7 +10,7 @@ import * as cheerio from "cheerio";
 import { CHROME_USER_AGENT } from "@/scrapers/constants";
 
 // Convert title to Letterboxd URL slug
-export function titleToSlug(title: string, year?: number | null): string {
+export function titleToSlug(title: string): string {
   // Letterboxd uses lowercase, hyphenated slugs
   // Remove special characters, replace spaces with hyphens
   const slug = title
@@ -75,7 +75,7 @@ async function fetchLetterboxdRating(
   title: string,
   year?: number | null
 ): Promise<{ rating: number; url: string; failureReason?: never } | { rating?: never; url?: never; failureReason: FailureReason } | null> {
-  const slug = titleToSlug(title, year);
+  const slug = titleToSlug(title);
   const headers = {
     "User-Agent": CHROME_USER_AGENT,
     Accept: "text/html",
