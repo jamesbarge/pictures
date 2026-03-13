@@ -22,6 +22,7 @@ interface SearchResult {
   screeningCount: number;
 }
 
+/** Client-side header navigation with inline search dialog and Cmd+K shortcut. */
 export function HeaderNav() {
   const [searchOpen, setSearchOpen] = useState(false);
   const filters = useFilters();

@@ -10,6 +10,7 @@ import Link from "next/link";
 import { useHydrated } from "@/hooks/useHydrated";
 import { HeaderNavButtons } from "@/components/layout/header-nav-buttons";
 
+/** Lightweight header for non-homepage routes — logo and nav buttons without the filter bar. */
 export function SubpageNav() {
   const mounted = useHydrated();
 
