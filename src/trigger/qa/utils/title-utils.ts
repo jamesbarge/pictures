@@ -34,6 +34,7 @@ const MONTHS: Record<string, number> = {
   jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
 };
 
+/** Parse a relative date-time string (e.g. "Today 14:30", "Tomorrow 19:00", "Sat 15 Mar 20:00") into an ISO datetime string. */
 export function parseRelativeDatetime(raw: string, referenceDate?: Date): string | null {
   if (!raw) return null;
 

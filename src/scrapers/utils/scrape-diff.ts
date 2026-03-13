@@ -14,7 +14,7 @@ import { eq, and, gte, lte } from "drizzle-orm";
 import type { RawScreening } from "../types";
 import { format, addDays } from "date-fns";
 
-export interface ScrapeDiffReport {
+interface ScrapeDiffReport {
   cinemaId: string;
   cinemaName: string;
   timestamp: Date;

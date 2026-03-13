@@ -7,7 +7,7 @@
 
 const DEFAULT_MAX_RESPONSE_SIZE = 10 * 1024 * 1024; // 10MB
 
-export interface FetchWithRetryOptions extends RequestInit {
+interface FetchWithRetryOptions extends RequestInit {
   maxResponseSize?: number;
 }
 

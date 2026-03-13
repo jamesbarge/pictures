@@ -11,6 +11,7 @@ function delay(ms: number): Promise<void> {
 // 1. TMDB Mismatch Analysis
 // ---------------------------------------------------------------------------
 
+/** Use Gemini to determine whether two film titles refer to the same film, accounting for format suffixes and event prefixes. */
 export async function analyzeTmdbMismatch(params: {
   frontEndTitle: string;
   dbTitle: string;
@@ -81,6 +82,7 @@ Return a JSON object with:
 // 2. Booking Page Content Analysis
 // ---------------------------------------------------------------------------
 
+/** Use Gemini to verify that a cinema booking page matches the expected film title and showtime. */
 export async function analyzeBookingPageContent(params: {
   expectedTitle: string;
   expectedTime: string;
@@ -142,6 +144,7 @@ Return a JSON object with:
 // 3. Batch Anomaly Review
 // ---------------------------------------------------------------------------
 
+/** Use Gemini to classify a batch of QA discrepancies by severity and provide actionable recommendations. */
 export async function batchAnomalyReview(
   discrepancies: Array<{
     type: string;
@@ -210,6 +213,7 @@ Return a JSON array where each element has:
 // 4. Prevention Report Generation
 // ---------------------------------------------------------------------------
 
+/** Use Gemini to generate a prevention report with root cause analysis and recommended fixes for QA issues. */
 export async function generatePreventionReport(params: {
   issues: Array<{
     type: string;

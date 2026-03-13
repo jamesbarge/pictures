@@ -7,24 +7,107 @@
 
 ---
 
-## 2026-03-13: Fix AutoResearch state restoration + reporting accuracy
-**PR**: #295 | **Files**: `src/autoresearch/autoscrape/harness.ts`, `src/autoresearch/autoquality/harness.ts`, `src/autoresearch/experiment-log.ts`
-- AutoScrape/AutoQuality: catch blocks now restore config overlays/thresholds on experiment failure
-- Overnight summary uses last *kept* experiment's metric, not last experiment overall
-- Kept experiments recompute full DQS breakdown instead of only patching compositeScore
+## 2026-03-13: Kaizen — remove unused year parameter from titleToSlug
+**PR**: #TBD | **Files**: `src/db/enrich-letterboxd.ts`
+- Removed unused `year` parameter from `titleToSlug()` function and its call site
+- Kaizen automated refactoring (category: lint-fix)
 
 ---
 
-## 2026-03-13: AutoResearch — autonomous experimentation system
-**Branch**: `chore/kaizen-2026-03-13-0741` | **Files**: `src/autoresearch/**`, `src/scrapers/base.ts`, `src/scrapers/runner-factory.ts`, `src/db/schema/admin.ts`, `scripts/audit-and-fix-upcoming.ts`, `.gitignore`
-- Added AutoScrape system: overnight scraper repair via AI-driven config overlay experiments
-- Added AutoQuality system: weekly threshold tuning to optimize Data Quality Score (DQS)
-- New DB table `autoresearch_experiments` for experiment logging
-- Shared infrastructure: types, experiment log with Telegram reporting, overnight summaries
-- Config overlay support in `BaseScraper` for runtime selector/URL overrides
-- Dry-run yield mode in `runner-factory.ts` for experiment evaluation without DB writes
-- Threshold override support in audit pipeline for AutoQuality experiments
-- Safety floors enforce non-negotiable limits (TMDB confidence >= 0.6, auto-merge similarity >= 0.85)
+## 2026-03-13: Kaizen — add JSDoc to 5 scraper factory functions (batch 6)
+**PR**: #TBD | **Files**: `electric.ts`, `garden.ts`, `genesis-v2.ts`, `genesis.ts`, `ica.ts`
+- Added JSDoc to createElectricScraper, createGardenCinemaScraper, createGenesisScraper (x2), createICAScraper
+- Kaizen automated refactoring (category: jsdoc)
+
+---
+
+## 2026-03-13: Kaizen — add JSDoc to 5 scraper factory functions (batch 5)
+**PR**: #TBD | **Files**: `cine-lumiere.ts`, `close-up.ts`, `coldharbour-blue.ts`, `david-lean.ts`, `electric-v2.ts`
+- Added JSDoc to createCineLumiereScraper, createCloseUpCinemaScraper, createColdharbourBlueScraper, createDavidLeanScraper, createElectricScraperV2
+- Kaizen automated refactoring (category: jsdoc)
+
+---
+
+## 2026-03-13: Kaizen — add JSDoc to 5 scraper factory functions (batch 4)
+**PR**: #TBD | **Files**: `arthouse-crouch-end.ts`, `barbican.ts`, `bfi.ts`, `castle-sidcup.ts`, `castle.ts`
+- Added JSDoc to createArtHouseCrouchEndScraper, createBarbicanScraper, createBFIScraper, createCastleSidcupScraper, createCastleScraper
+- Kaizen automated refactoring (category: jsdoc)
+
+---
+
+## 2026-03-13: Kaizen — add JSDoc to 5 scraper factory functions (batch 3)
+**PR**: #TBD | **Files**: `src/scrapers/cinemas/phoenix.ts`, `castle-v2.ts`, `lexi.ts`, `prince-charles.ts`, `castle.ts`
+- Added JSDoc to createPhoenixScraper, createCastleScraperV2, createLexiScraper, createPrinceCharlesScraper, createCastleScraper
+- Kaizen automated refactoring (category: jsdoc)
+
+---
+
+## 2026-03-13: Kaizen — add JSDoc to 5 scraper factory functions
+**PR**: #TBD | **Files**: `src/scrapers/cinemas/rio.ts`, `genesis.ts`, `nickel-v2.ts`, `rich-mix.ts`, `the-nickel.ts`
+- Added JSDoc to createRioScraper, createGenesisScraper, createNickelScraperV2, createRichMixScraper, createNickelScraper
+- Kaizen automated refactoring (category: jsdoc)
+
+---
+
+## 2026-03-13: Kaizen — remove dead TikTok filtering variables in apify-runner
+**PR**: #TBD | **Files**: `scripts/social-outreach/apify-runner.ts`
+- Removed unused hasLondonSignal, isFromLondonHashtag, and combinedText variables
+- Kaizen automated refactoring (category: dead-code)
+
+## 2026-03-13: Kaizen — add JSDoc to 3 API client factory functions
+**PR**: #TBD | **Files**: `fanart.ts`, `omdb.ts`, `tmdb/client.ts`
+- Added JSDoc to getFanartClient, getOMDBClient, getTMDBClient singleton factories
+- Kaizen automated refactoring (category: jsdoc)
+
+---
+
+## 2026-03-13: Kaizen — add JSDoc to 4 remaining trigger exports
+**PR**: #TBD | **Files**: `front-end-extractor.ts`, `title-utils.ts`, `verify-before-fix.ts`
+- Added JSDoc to extractFrontEndData, checkCompleteness, parseRelativeDatetime, verifyBeforeFix
+- Kaizen automated refactoring (category: jsdoc)
+
+---
+
+## 2026-03-13: Kaizen — remove 5 unused vars/imports in db scripts
+**PR**: #TBD | **Files**: `repositories/cinema.ts`, `enrich-directors.ts`, `enrich-letterboxd.ts`, `backfill-posters.ts`
+- Removed unused imports (inArray, TMDBClient, sql) and unused variable (result)
+- Bare catch block for unused error variable
+- Kaizen automated refactoring (category: lint-fix)
+
+---
+
+## 2026-03-13: Kaizen — add JSDoc to 4 exported trigger functions
+**PR**: #TBD | **Files**: `verification-alerts.ts`, `db-fixer.ts`, `booking-checker.ts`
+- Added JSDoc to sendVerificationAlert, applyFix, applyFixes, checkBookingLinks
+- Kaizen automated refactoring (category: jsdoc)
+
+---
+
+## 2026-03-13: Kaizen — add JSDoc to gemini-analyzer exported functions
+**PR**: #TBD | **Files**: `src/trigger/qa/utils/gemini-analyzer.ts`
+- Added JSDoc to 4 exported functions: analyzeTmdbMismatch, analyzeBookingPageContent, batchAnomalyReview, generatePreventionReport
+- Kaizen automated refactoring (category: jsdoc)
+
+---
+
+## 2026-03-13: Kaizen — unexport 5 internal-only scraper pipeline exports
+**PR**: #TBD | **Files**: `screening-validator.ts`, `pipeline.ts`, `runner-factory.ts`
+- Removed `export` from ValidationSummary, PipelineResult, VenueResult, flushPendingRecords, parseVenueArgs — all internal-only
+- Kaizen automated refactoring (category: dead-code)
+
+---
+
+## 2026-03-13: Kaizen — unexport 5 internal-only scraper util interfaces
+**PR**: #TBD | **Files**: `fetch-with-retry.ts`, `screening-classification.ts`, `film-title-cleaner.ts`, `scrape-diff.ts`
+- Removed `export` from FetchWithRetryOptions, ScreeningMetadata, DuplicateCheckResult, CleanTitleResult, ScrapeDiffReport — all internal-only
+- Kaizen automated refactoring (category: dead-code)
+
+---
+
+## 2026-03-13: Kaizen — delete dead BookingSystem types
+**PR**: #287 | **Files**: `src/scrapers/types.ts`
+- Deleted BookingSystem type + BookingSystemConfig interface (zero consumers, 24 lines)
+- Kaizen automated refactoring (category: dead-code)
 
 ---
 

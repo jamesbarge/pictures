@@ -193,7 +193,9 @@ export class CastleScraper implements CinemaScraper {
   }
 }
 
+/** Create and return a new Castle Cinema scraper instance. */
 // Factory function
+/** Creates a scraper for The Castle Cinema (Hackney). */
 export function createCastleScraper(): CastleScraper {
   return new CastleScraper();
 }
