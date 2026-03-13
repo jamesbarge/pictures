@@ -29,6 +29,7 @@ interface ReachableResultsProps {
   finishedByTime: Date;
 }
 
+/** Screening list grouped by travel urgency with leave-by times and transport mode badges. */
 export function ReachableResults({
   screenings,
   totalScreenings,

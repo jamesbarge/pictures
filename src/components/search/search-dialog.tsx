@@ -22,6 +22,7 @@ interface SearchResult {
   screeningCount: number;
 }
 
+/** Cmd+K search palette for finding films by title with keyboard navigation. */
 export function SearchDialog() {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");

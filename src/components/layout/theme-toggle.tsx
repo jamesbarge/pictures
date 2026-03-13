@@ -14,6 +14,7 @@ interface ThemeToggleProps {
   className?: string;
 }
 
+/** Animated sun/moon dark-mode toggle with CSS transitions for the header. */
 export function ThemeToggle({ className }: ThemeToggleProps) {
   const { resolvedTheme, toggleTheme } = useTheme();
   const mounted = useHydrated();
