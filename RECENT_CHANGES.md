@@ -1,5 +1,6 @@
 # Recent Changes
 
+<<<<<<< HEAD
 ## 2026-03-14: Kaizen — add JSDoc to 5 filter component functions
 **PR**: #312 | **Files**: `date-range-picker.tsx`, `date-filter.tsx`, `mobile-date-picker-modal.tsx`, `mobile-cinema-picker-modal.tsx`, `filter-bar.tsx`
 - Added JSDoc to DateRangePicker, DateFilter, MobileDatePickerModal, MobileCinemaPickerModal, FilterBar
@@ -256,6 +257,14 @@
 **PR**: #268 | **Files**: `src/lib/content-classifier.ts`, `src/lib/title-patterns.ts`, `src/scrapers/utils/film-matching.ts`
 - Removed `export` from 4 internal-only functions/constants: batchClassifyContent, getCacheStats, FRANCHISE_PREFIXES, addToFilmCache
 - Kaizen automated refactoring (category: dead-code)
+
+---
+
+## 2026-03-13: Pin Playwright to ~1.57.0 for Trigger.dev compatibility
+**PR**: #267 | **Files**: `package.json`, `package-lock.json`
+- Pin `@playwright/test` and `playwright` from `^1.57.0` to `~1.57.0`
+- Playwright 1.58+ changed `--dry-run` output format, breaking `@trigger.dev/build` Playwright extension (issue #3089)
+- Temporary pin until Trigger.dev ships a fix; upgrade back when resolved
 
 ---
 

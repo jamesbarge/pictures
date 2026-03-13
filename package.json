@@ -137,7 +137,7 @@
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
     "@esbuild-plugins/tsconfig-paths": "^0.1.2",
-    "@playwright/test": "^1.57.0",
+    "@playwright/test": "~1.57.0",
     "@supabase/supabase-js": "^2.89.0",
     "@tailwindcss/postcss": "^4",
     "@testing-library/dom": "^10.4.1",
@@ -161,7 +161,7 @@
     "jsdom": "^27.4.0",
     "lint-staged": "^16.2.7",
     "openai": "^6.15.0",
-    "playwright": "^1.57.0",
+    "playwright": "~1.57.0",
     "playwright-extra": "^4.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
     "tailwindcss": "^4",
