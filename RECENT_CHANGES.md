@@ -1,3 +1,10 @@
+## 2026-03-13: Kaizen — Add JSDoc to EmptyState and 4 film detail components
+**PR**: #TBD | **Files**: `empty-state.tsx`, `film-poster.tsx`, `film-header.tsx`, `film-screenings.tsx`, `add-to-calendar-button.tsx`
+- Added one-line JSDoc to 5 exported component functions (EmptyState, FilmPoster, FilmHeader, FilmScreenings, AddToCalendarButton)
+- Kaizen automated refactoring (category: jsdoc)
+
+---
+
 # Recent Changes
 
 ## 2026-03-13: Kaizen — add JSDoc to badge and card component exports

@@ -19,6 +19,7 @@ interface AddToCalendarButtonProps {
   className?: string;
 }
 
+/** Downloads an .ics calendar file for a screening, tracked via PostHog analytics. */
 export function AddToCalendarButton({
   screeningId,
   filmTitle,

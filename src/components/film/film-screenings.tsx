@@ -97,6 +97,7 @@ function getInitialSelectedDates(
   return null;
 }
 
+/** Upcoming screenings list for a film, grouped by cinema with optional date, time, and search filters. */
 export function FilmScreenings({ screenings, film }: FilmScreeningsProps) {
   const posthog = usePostHog();
   const { isClientToday, isClientTomorrow } = useSafeDateLabels();

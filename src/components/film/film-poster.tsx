@@ -21,6 +21,7 @@ function isOptimizedHost(src: string): boolean {
 
 type FilmPosterProps = Omit<ImageProps, "unoptimized">;
 
+/** Image wrapper that auto-detects optimizable hosts (TMDB, Savoy) and disables Next.js optimization for all others. */
 export function FilmPoster({ src, alt, ...props }: FilmPosterProps) {
   const srcString = typeof src === "string" ? src : "";
   const unoptimized = srcString ? !isOptimizedHost(srcString) : false;
