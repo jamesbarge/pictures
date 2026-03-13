@@ -367,11 +367,6 @@ export class RomfordLumiereScraper {
   }
 
 
-  private extractYear(dateStr: string): number | undefined {
-    const match = dateStr.match(/\b(19|20)\d{2}\b/);
-    return match ? parseInt(match[0]) : undefined;
-  }
-
   private validate(screenings: RawScreening[]): RawScreening[] {
     const now = new Date();
     const seen = new Set<string>();

@@ -5,7 +5,7 @@
  * with cinema-specific tools and capabilities.
  */
 
-import { AGENT_CONFIGS, type AgentConfig } from "./types";
+import type { AgentConfig } from "./types";
 
 /**
  * System prompt for all cinema data quality agents
