@@ -1,5 +1,13 @@
 # Recent Changes
 
+## 2026-03-13: Kaizen — delete dead image dimension functions
+**PR**: #286 | **Files**: `src/lib/image-processor.ts`
+- Deleted `getImageDimensions` + `extractDimensions` (zero consumers, ~116 lines)
+- Updated module JSDoc to reflect reduced scope
+- Kaizen automated refactoring (category: dead-code)
+
+---
+
 ## 2026-03-13: Kaizen — unexport internal-only rate-limit types
 **PR**: #283 | **Files**: `src/lib/rate-limit.ts`
 - Removed export from RateLimitConfig and RateLimitResult (only used internally)
