@@ -1,5 +1,12 @@
 # Recent Changes
 
+## 2026-03-13: Kaizen — delete dead BookingSystem types
+**PR**: #287 | **Files**: `src/scrapers/types.ts`
+- Deleted BookingSystem type + BookingSystemConfig interface (zero consumers, 24 lines)
+- Kaizen automated refactoring (category: dead-code)
+
+---
+
 ## 2026-03-13: Kaizen — delete dead image dimension functions
 **PR**: #286 | **Files**: `src/lib/image-processor.ts`
 - Deleted `getImageDimensions` + `extractDimensions` (zero consumers, ~116 lines)
