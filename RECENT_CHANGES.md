@@ -1,5 +1,13 @@
 # Recent Changes
 
+## 2026-03-13: Kaizen — unexport internal agent interfaces
+**PR**: #279 | **Files**: `fallback-enrichment/*.ts`, `data-quality/index.ts`
+- Unexported 6 internal-only interfaces (BookingPageData, FallbackEnrichmentOptions, etc.)
+- Deleted dead barrel re-export of ConfidenceInput/ConfidenceResult
+- Kaizen automated refactoring (category: dead-code)
+
+---
+
 ## 2026-03-13: Kaizen — remove dead agent exports
 **PR**: #277 | **Files**: `src/agents/types.ts`, `src/agents/config.ts`
 - Deleted `ConfidenceLevel`, `DuplicateDetectionResult`, `getAgentConfig` (zero consumers)
