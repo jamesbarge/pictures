@@ -333,64 +333,9 @@ export async function classifyContentCached(
 }
 
 /**
- * Batch classify multiple titles
- */
-async function batchClassifyContent(
-  rawTitles: string[]
-): Promise<Map<string, ClassificationResult>> {
-  const results = new Map<string, ClassificationResult>();
-  const uniqueTitles = [...new Set(rawTitles)];
-
-  // First pass: use quick heuristics and cache
-  const needsAI: string[] = [];
-
-  for (const title of uniqueTitles) {
-    // Check cache first
-    const cached = classificationCache.get(title);
-    if (cached) {
-      results.set(title, cached);
-      continue;
-    }
-
-    // Try quick classification
-    const quick = quickClassify(title);
-    if (quick) {
-      results.set(title, quick);
-      classificationCache.set(title, quick);
-    } else {
-      needsAI.push(title);
-    }
-  }
-
-  // Second pass: AI classification with rate limiting
-  for (let i = 0; i < needsAI.length; i++) {
-    const title = needsAI[i];
-    const result = await classifyContent(title);
-    results.set(title, result);
-    classificationCache.set(title, result);
-
-    // Rate limit (~2 requests/second)
-    if (i < needsAI.length - 1) {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-    }
-  }
-
-  return results;
-}
-
-/**
  * Clear the classification cache
  */
 export function clearClassificationCache(): void {
   classificationCache.clear();
 }
 
-/**
- * Get cache stats for debugging
- */
-function getCacheStats(): { size: number; hits: number } {
-  return {
-    size: classificationCache.size,
-    hits: 0, // Would need to track this separately
-  };
-}
