@@ -293,6 +293,7 @@ export class CineLumiereScraper extends BaseScraper {
   }
 }
 
+/** Creates a scraper for Cine Lumiere at Institut Francais (South Kensington). */
 export function createCineLumiereScraper(): CineLumiereScraper {
   return new CineLumiereScraper();
 }
