@@ -166,7 +166,7 @@ export function MovieSchema({ film }: { film: Film }) {
  * ScreeningEvent schema for individual screenings
  * Used on film pages to mark up each showtime
  */
-export function ScreeningEventSchema({
+function ScreeningEventSchema({
   screening,
   film,
   cinema,
