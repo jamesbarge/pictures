@@ -123,7 +123,7 @@ async function fetchLetterboxdRating(
     }
 
     return { failureReason: "rating_parse_error" };
-  } catch (error) {
+  } catch {
     return { failureReason: "fetch_error" };
   }
 }
