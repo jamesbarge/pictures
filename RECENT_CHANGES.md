@@ -1,15 +1,24 @@
 # Recent Changes
 
-<<<<<<< HEAD
+## 2026-03-13: Kaizen — remove dead code in event-classifier
+**PR**: #271 | **Files**: `src/lib/event-classifier.ts`
+- Deleted `classifyEventsBatch()` and `clearClassificationCache()` — zero callers
+- 30 lines removed
+- Kaizen automated refactoring (category: dead-code)
+
+---
+
+## 2026-03-13: Kaizen — remove dead parameter from getFollowingText
+**PR**: #270 | **Files**: `src/scrapers/bfi-pdf/programme-changes-parser.ts`
+- Removed unused $: CheerioAPI parameter from getFollowingText() and dead CheerioAPI import
+- Kaizen automated refactoring (category: dead-code)
+
+---
+
 ## 2026-03-13: Kaizen — remove dead functions in content-classifier
 **PR**: #269 | **Files**: `src/lib/content-classifier.ts`
 - Deleted `batchClassifyContent()` and `getCacheStats()` — dead code after export removal in #268
 - 55 lines removed, lint warnings 43→41
-=======
-## 2026-03-13: Kaizen — remove dead parameter from getFollowingText
-**PR**: #TBD | **Files**: `src/scrapers/bfi-pdf/programme-changes-parser.ts`
-- Removed unused \$: CheerioAPI parameter from getFollowingText() and dead CheerioAPI import
->>>>>>> 5410b88 (chore: kaizen — remove dead parameter from getFollowingText)
 - Kaizen automated refactoring (category: dead-code)
 
 ---
