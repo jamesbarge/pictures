@@ -6,9 +6,9 @@
 export { FestivalCard, FestivalCardSkeleton } from "./festival-card";
 export type { FestivalCardProps } from "./festival-card";
 
-export { FestivalList, FestivalTimeline, FestivalListSkeleton } from "./festival-list";
+export { FestivalList } from "./festival-list";
 
-export { FollowButton, FollowButtonCompact } from "./follow-button";
+export { FollowButton } from "./follow-button";
 export type { FollowButtonProps } from "./follow-button";
 
 export { FestivalHeader } from "./festival-header";
