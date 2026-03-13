@@ -85,6 +85,8 @@ async function runOneExperiment(
 ): Promise<ExperimentResult> {
   const startTime = Date.now();
   let tokensUsed = 0;
+  let previousOverlay: string | null = null;
+  let wroteCandidate = false;
 
   console.log(
     `[autoscrape] ${cinema.cinemaName} — experiment ${experimentNumber} (current yield: ${cinema.currentYield.compositeScore.toFixed(0)})`
@@ -121,7 +123,7 @@ async function runOneExperiment(
         : []
     );
 
-    const previousOverlay = await loadCurrentOverlay(cinema.cinemaId);
+    previousOverlay = await loadCurrentOverlay(cinema.cinemaId);
 
     const prompt = await buildPrompt({
       cinemaId: cinema.cinemaId,
@@ -168,6 +170,7 @@ async function runOneExperiment(
       dateFormatOverrides: candidate.dateFormatOverrides,
     };
     await writeOverlay(cinema.cinemaId, overlay);
+    wroteCandidate = true;
 
     const scraperConfig = await scraper.createConfig();
     const yieldResult = await runScraperForYield(scraperConfig);
@@ -229,6 +232,17 @@ async function runOneExperiment(
 
     return result;
   } catch (err) {
+    // Restore previous overlay if we wrote a candidate during this experiment
+    if (wroteCandidate) {
+      try {
+        if (previousOverlay) {
+          await writeOverlay(cinema.cinemaId, JSON.parse(previousOverlay));
+        } else {
+          await removeOverlay(cinema.cinemaId);
+        }
+      } catch { /* best-effort restore */ }
+    }
+
     const errorMsg = err instanceof Error ? err.message : String(err);
     console.error(`[autoscrape] ${cinema.cinemaName} — experiment failed:`, errorMsg);
 

@@ -151,6 +151,8 @@ async function runOneExperiment(
   safetyFloors: QualitySafetyFloors
 ): Promise<ExperimentResult> {
   const startTime = Date.now();
+  let appliedThresholdKey: string | undefined;
+  let appliedPreviousValue: number | undefined;
 
   try {
     // Build prompt
@@ -210,8 +212,10 @@ async function runOneExperiment(
       );
     }
 
-    // Apply the threshold change
+    // Apply the threshold change (track for rollback in catch)
     setThresholdValue(thresholds, thresholdKey, newValue);
+    appliedThresholdKey = thresholdKey;
+    appliedPreviousValue = actualPrevious ?? previousValue;
     await saveThresholds(thresholds);
 
     // Run audit with modified thresholds
@@ -250,6 +254,12 @@ async function runOneExperiment(
 
     return result;
   } catch (err) {
+    // Restore threshold if we modified it before the failure
+    if (appliedThresholdKey !== undefined && appliedPreviousValue !== undefined) {
+      setThresholdValue(thresholds, appliedThresholdKey, appliedPreviousValue);
+      await saveThresholds(thresholds).catch(() => {});
+    }
+
     const errorMsg = err instanceof Error ? err.message : String(err);
     console.error(`[autoquality] Experiment failed:`, errorMsg);
 
@@ -317,12 +327,10 @@ export async function runAutoQualityWeekly(
       `Experiment ${i}: ${result.kept ? "KEPT" : "DISCARDED"} — ${result.notes}`
     );
 
-    // Update current DQS if kept
+    // Update current DQS if kept — recompute full breakdown from fresh audit
     if (result.kept) {
-      currentDqs = {
-        ...currentDqs,
-        compositeScore: result.metricAfter,
-      };
+      const freshAudit = await runAudit();
+      currentDqs = computeDqs(freshAudit.summary, freshAudit.duplicateCount, freshAudit.dodgyCount);
     }
 
     // Stop early if DQS is very high (diminishing returns)

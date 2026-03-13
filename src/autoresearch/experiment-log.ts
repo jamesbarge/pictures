@@ -123,7 +123,8 @@ export function buildOvernightSummary(
     experimentsDiscarded += discarded.length;
 
     const firstMetric = results[0]?.metricBefore ?? 0;
-    const lastMetric = results[results.length - 1]?.metricAfter ?? firstMetric;
+    const lastKept = results.filter((r) => r.kept).pop();
+    const lastMetric = lastKept?.metricAfter ?? firstMetric;
     const recovered = lastMetric >= RECOVERY_THRESHOLD && firstMetric < BROKEN_THRESHOLD;
 
     targetSummaries.push({
