@@ -401,6 +401,7 @@ export class RomfordLumiereScraper {
   }
 }
 
+/** Creates a Romford Lumiere scraper (Playwright-based, implements CinemaScraper). */
 export function createRomfordLumiereScraper(): RomfordLumiereScraper {
   return new RomfordLumiereScraper();
 }

@@ -1,5 +1,13 @@
 # Recent Changes
 
+## 2026-03-14: Kaizen — add JSDoc to 3 scraper factories (final batch)
+**PR**: #TBD | **Files**: `riverside-studios.ts`, `riverside-v2.ts`, `romford-lumiere.ts`
+- Added JSDoc to createRiversideStudiosScraper, createRiversideScraperV2, createRomfordLumiereScraper
+- Completes the scraper factory JSDoc sweep (the-nickel already had JSDoc)
+- Kaizen automated refactoring (category: jsdoc)
+
+---
+
 ## 2026-03-14: Kaizen — add JSDoc to 5 component provider functions
 **PR**: #TBD | **Files**: `cookie-consent-banner.tsx`, `posthog-provider.tsx`, `providers.tsx`, `theme-provider.tsx`, `user-sync-provider.tsx`
 - Added JSDoc to CookieConsentBanner, PostHogProvider, Providers, ThemeProvider, UserSyncProvider
