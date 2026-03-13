@@ -1,6 +1,12 @@
 # Recent Changes
 
-<<<<<<< HEAD
+## 2026-03-13: Kaizen — deduplicate CalendarViewSetting radio options
+**PR**: #TBD | **Files**: `src/components/settings/calendar-view-setting.tsx`
+- Extracted 3 near-identical radio option blocks into a VIEW_OPTIONS data array + map
+- Kaizen automated refactoring (category: duplicate-pattern)
+
+---
+
 ## 2026-03-14: Kaizen — add JSDoc to 5 filter component functions
 **PR**: #312 | **Files**: `date-range-picker.tsx`, `date-filter.tsx`, `mobile-date-picker-modal.tsx`, `mobile-cinema-picker-modal.tsx`, `filter-bar.tsx`
 - Added JSDoc to DateRangePicker, DateFilter, MobileDatePickerModal, MobileCinemaPickerModal, FilterBar
