@@ -28,6 +28,7 @@ import type { HeaderProps } from "./header/types";
 
 export type { HeaderProps };
 
+/** Unified homepage header with filter bar, cinema selector, and navigation buttons. */
 export function Header({ cinemas, seasons, availableFormats }: HeaderProps) {
   const mounted = useHydrated();
   const [filtersOpen, setFiltersOpen] = useState(false);

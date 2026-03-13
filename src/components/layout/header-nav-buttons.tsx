@@ -205,6 +205,7 @@ function MobileMenuDrawer({
   );
 }
 
+/** Desktop icon+label nav links and mobile hamburger drawer for site-wide navigation. */
 export function HeaderNavButtons({ mounted }: HeaderNavButtonsProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { mapArea, useMapFiltering } = usePreferences();
