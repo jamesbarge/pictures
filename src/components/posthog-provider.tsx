@@ -273,15 +273,3 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
  */
 export { isAdminEmail, ADMIN_EMAILS };
 
-/**
- * Hook to check if current user is an admin (excluded from analytics).
- * Returns undefined while loading, true/false once determined.
- */
-export function useIsAdminUser(): boolean | undefined {
-  const { user, isLoaded } = useUser();
-
-  if (!isLoaded) return undefined;
-  if (!user) return false;
-
-  return isAdminEmail(user.primaryEmailAddress?.emailAddress);
-}
