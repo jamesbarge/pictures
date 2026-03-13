@@ -2,9 +2,6 @@
  * Type definitions for the Claude Agent SDK integration
  */
 
-// Confidence levels for agent decisions
-export type ConfidenceLevel = "high" | "medium" | "low";
-
 // Link verification status
 export type LinkStatus =
   | "verified" // Link works and matches expected content
@@ -113,17 +110,6 @@ export interface TmdbMatchResult {
 }
 
 /**
- * Duplicate detection result
- */
-export interface DuplicateDetectionResult {
-  primaryFilmId: string;
-  duplicateFilmIds: string[];
-  similarity: number;
-  mergeRecommendation: "auto_merge" | "review" | "keep_separate";
-  evidence: string;
-}
-
-/**
  * Agent execution result
  */
 export interface AgentResult<T> {
@@ -150,7 +136,7 @@ export interface AgentConfig {
 /**
  * Default agent configurations
  */
-export const DEFAULT_AGENT_CONFIG: AgentConfig = {
+const DEFAULT_AGENT_CONFIG: AgentConfig = {
   model: "claude-sonnet-4-20250514",
   maxTurns: 20,
   maxTokens: 4096,

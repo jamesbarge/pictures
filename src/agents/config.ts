@@ -51,15 +51,6 @@ Your job is to ensure listing accuracy, link validity, and data integrity.
 When in doubt, err on the side of fixing issues. The user prefers fast iteration over perfect accuracy.`;
 
 /**
- * Get agent options with cinema-specific configuration
- */
-export function getAgentConfig(
-  agentType: keyof typeof AGENT_CONFIGS
-): AgentConfig {
-  return AGENT_CONFIGS[agentType];
-}
-
-/**
  * Environment check for API key
  */
 export function validateEnvironment(): void {
@@ -73,7 +64,7 @@ export function validateEnvironment(): void {
 /**
  * Cost tracking for agent runs
  */
-export interface CostTracker {
+interface CostTracker {
   inputTokens: number;
   outputTokens: number;
   estimatedCostUsd: number;
