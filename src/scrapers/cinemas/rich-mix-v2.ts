@@ -136,6 +136,7 @@ export class RichMixScraperV2 extends BaseScraper {
 
 }
 
+/** Creates a Rich Mix Cinema scraper (Cheerio-based, extends BaseScraper). */
 export function createRichMixScraperV2(): RichMixScraperV2 {
   return new RichMixScraperV2();
 }

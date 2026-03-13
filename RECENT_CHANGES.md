@@ -1,5 +1,12 @@
 # Recent Changes
 
+## 2026-03-13: Kaizen — add JSDoc to 5 scraper factories (batch 7)
+**PR**: #TBD | **Files**: `lexi-v2.ts`, `olympic.ts`, `peckhamplex.ts`, `regent-street.ts`, `rich-mix-v2.ts`
+- Added JSDoc to createLexiScraperV2, createOlympicScraper, createPeckhamplexScraper, createRegentStreetScraper, createRichMixScraperV2
+- Kaizen automated refactoring (category: jsdoc)
+
+---
+
 ## 2026-03-13: Kaizen — add JSDoc to 5 chain venue helper functions
 **PR**: #TBD | **Files**: `curzon.ts`, `everyman.ts`, `picturehouse.ts`
 - Added JSDoc to getActiveCurzonVenues, getLondonCurzonVenues, getActiveEverymanVenues, getActivePicturehouseVenues, getLondonPicturehouseVenues
