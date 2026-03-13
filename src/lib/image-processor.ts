@@ -11,10 +11,8 @@
 
 import { CHROME_USER_AGENT } from "@/scrapers/constants";
 
-// Poster aspect ratio (width:height = 2:3, like movie posters)
-const POSTER_ASPECT_RATIO = 2 / 3;
-const POSTER_WIDTH = 500; // Standard poster width
-const POSTER_HEIGHT = Math.round(POSTER_WIDTH / POSTER_ASPECT_RATIO); // 750
+const POSTER_WIDTH = 500;
+const POSTER_HEIGHT = 750;
 
 /** Result of image processing, including the output URL and dimensions */
 export interface ProcessedImage {
@@ -22,18 +20,6 @@ export interface ProcessedImage {
   width: number;
   height: number;
   source: "processed" | "original" | "placeholder";
-}
-
-/** Options for image processing (resize, quality, caching) */
-export interface ImageProcessorOptions {
-  /** Target width for the processed image */
-  width?: number;
-  /** Target height for the processed image */
-  height?: number;
-  /** Quality (1-100) */
-  quality?: number;
-  /** Cache key prefix */
-  cacheKey?: string;
 }
 
 /**
@@ -163,62 +149,6 @@ function extractDimensions(
 }
 
 /**
- * Calculate crop parameters for poster aspect ratio
- * Uses center-weighted cropping (best for event images/hero images)
- */
-export function calculatePosterCrop(
-  width: number,
-  height: number
-): { x: number; y: number; cropWidth: number; cropHeight: number } {
-  const currentRatio = width / height;
-
-  if (currentRatio > POSTER_ASPECT_RATIO) {
-    // Image is too wide - crop from sides (center horizontally)
-    const newWidth = height * POSTER_ASPECT_RATIO;
-    const x = (width - newWidth) / 2;
-    return {
-      x: Math.round(x),
-      y: 0,
-      cropWidth: Math.round(newWidth),
-      cropHeight: height,
-    };
-  } else {
-    // Image is too tall - crop from top/bottom (favor top for faces)
-    const newHeight = width / POSTER_ASPECT_RATIO;
-    // Favor top 40% of the image (usually where faces/main content is)
-    const y = (height - newHeight) * 0.3;
-    return {
-      x: 0,
-      y: Math.round(Math.max(0, y)),
-      cropWidth: width,
-      cropHeight: Math.round(newHeight),
-    };
-  }
-}
-
-/**
- * Generate a URL for on-demand image processing via Next.js Image Optimization
- * This leverages Vercel's image optimization or next/image built-in processing
- */
-export function generateProcessedImageUrl(
-  sourceUrl: string,
-  options: ImageProcessorOptions = {}
-): string {
-  const width = options.width ?? POSTER_WIDTH;
-  const quality = options.quality ?? 80;
-
-  // Use Next.js Image Optimization API
-  // This will resize, crop, and optimize the image on-demand
-  const params = new URLSearchParams({
-    url: sourceUrl,
-    w: width.toString(),
-    q: quality.toString(),
-  });
-
-  return `/_next/image?${params.toString()}`;
-}
-
-/**
  * Generate a placeholder poster URL for films without images
  * Uses the API route that generates SVG placeholders
  */
@@ -309,4 +239,4 @@ export async function batchPrepareImages(
 }
 
 // Export constants for use elsewhere
-export { POSTER_ASPECT_RATIO, POSTER_WIDTH, POSTER_HEIGHT };
+export { POSTER_WIDTH, POSTER_HEIGHT };
