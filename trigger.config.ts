@@ -20,7 +20,7 @@ export default defineConfig({
       "merge-deep",
     ],
     extensions: [
-      playwright({ browsers: ["chromium"] }),
+      playwright({ browsers: ["chromium"], version: "1.57.0" }),
       esbuildPlugin(
         // eslint-disable-next-line @typescript-eslint/no-require-imports
         require("@esbuild-plugins/tsconfig-paths").TsconfigPathsPlugin({
