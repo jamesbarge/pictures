@@ -1,76 +1,12 @@
-## 2026-03-13: Kaizen — JSDoc for 5 festivals/ component exports
-**PR**: #327 | **Files**: `src/components/festivals/follow-button.tsx`, `src/components/festivals/festival-venues.tsx`, `src/components/festivals/festival-header.tsx`, `src/components/festivals/festival-card.tsx`
-- Added JSDoc to FollowButton, FollowButtonCompact, FestivalVenues, FestivalHeader, FestivalCard
-- Kaizen automated refactoring (category: jsdoc)
-
----
-## 2026-03-13: Kaizen — JSDoc for watchlist/settings/feedback exports
-**PR**: #326 | **Files**: `src/components/watchlist/letterboxd-import.tsx`, `src/components/settings/not-interested-list.tsx`, `src/components/settings/calendar-view-setting.tsx`, `src/components/settings/theme-setting.tsx`, `src/components/feedback/nps-survey.tsx`
-- Added JSDoc to 5 exported functions across watchlist, settings, and feedback directories
-- Kaizen automated refactoring (category: jsdoc)
-
----
-## 2026-03-13: Kaizen — JSDoc for hook/map/watchlist exports
-**PR**: #325 | **Files**: `src/hooks/useUrlFilters.ts`, `src/components/map/cinema-map.tsx`, `src/components/map/map-provider.tsx`, `src/components/watchlist/letterboxd-import-trigger.tsx`, `src/components/watchlist/watchlist-view.tsx`
-- Added JSDoc to 5 exported functions across hooks, map, and watchlist directories
-- Kaizen automated refactoring (category: jsdoc)
-
----
-## 2026-03-13: Kaizen — Add JSDoc to 5 custom React hooks
-**PR**: #TBD | **Files**: `useBodyScrollLock.ts`, `useUserSync.ts`, `useHydrated.ts`, `useUserFestivals.ts`, `useSafeDateLabels.ts`
-- Added one-line JSDoc to 5 exported hook functions
-- Kaizen automated refactoring (category: jsdoc)
-
----
-
-## 2026-03-13: Kaizen — Add JSDoc to 3 layout + search + reachable components
-**PR**: #TBD | **Files**: `header.tsx`, `theme-toggle.tsx`, `header-nav-buttons.tsx`, `search-dialog.tsx`, `reachable-results.tsx`
-- Added one-line JSDoc to 5 exported component functions
-- Kaizen automated refactoring (category: jsdoc)
-
----
-
-## 2026-03-13: Kaizen — Add JSDoc to 2 calendar + 3 layout components
-**PR**: #TBD | **Files**: `film-status-buttons.tsx`, `screening-card-skeleton.tsx`, `header-nav.tsx`, `footer.tsx`, `subpage-nav.tsx`
-- Added one-line JSDoc to 5 exported component functions
-- Kaizen automated refactoring (category: jsdoc)
-
----
-
-## 2026-03-13: Kaizen — Add JSDoc to 5 calendar view components
-**PR**: #TBD | **Files**: `day-section.tsx`, `table-view.tsx`, `calendar-view.tsx`, `calendar-view-loader.tsx`, `film-status-overlay.tsx`
-- Added one-line JSDoc to 5 exported calendar components
-- Kaizen automated refactoring (category: jsdoc)
-
----
-
-## 2026-03-13: Kaizen — Add JSDoc to 3 film + 2 calendar components
-**PR**: #TBD | **Files**: `letterboxd-rating-reveal.tsx`, `status-toggle.tsx`, `screening-date-filter.tsx`, `screening-card.tsx`, `film-card.tsx`
-- Added one-line JSDoc to 5 exported component functions
-- Kaizen automated refactoring (category: jsdoc)
-
----
-
-## 2026-03-13: Kaizen — Add JSDoc to 5 film detail filter and tracking components
-**PR**: #TBD | **Files**: `share-screening-button.tsx`, `screening-filters.tsx`, `cinema-search-filter.tsx`, `time-range-filter.tsx`, `film-view-tracker.tsx`
-- Added one-line JSDoc to 5 exported component functions
-- Kaizen automated refactoring (category: jsdoc)
-
----
-
-## 2026-03-13: Kaizen — Add JSDoc to EmptyState and 4 film detail components
-**PR**: #TBD | **Files**: `empty-state.tsx`, `film-poster.tsx`, `film-header.tsx`, `film-screenings.tsx`, `add-to-calendar-button.tsx`
-- Added one-line JSDoc to 5 exported component functions (EmptyState, FilmPoster, FilmHeader, FilmScreenings, AddToCalendarButton)
-- Kaizen automated refactoring (category: jsdoc)
-
----
-
 # Recent Changes
 
-## 2026-03-13: Kaizen — add JSDoc to badge and card component exports
-**PR**: #TBD | **Files**: `src/components/ui/badge.tsx`, `src/components/ui/card.tsx`
-- Converted 8 inline comments to JSDoc on FormatBadge, EventBadge, RepertoryBadge, CardHeader, CardContent, CardFooter, CardImage, CardSkeleton
-- Kaizen automated refactoring (category: jsdoc)
+## 2026-03-14: AutoResearch Trigger.dev tasks + audit wrapper
+**PR**: #TBD | **Files**: `src/trigger/autoresearch/autoscrape.ts`, `src/trigger/autoresearch/autoquality.ts`, `src/autoresearch/autoquality/audit-wrapper.ts`, `.github/workflows/deploy-trigger.yml`
+- Wire AutoResearch end-to-end with Trigger.dev scheduled tasks
+- AutoScrape: nightly 1am UTC cron with Monday overlap guard
+- AutoQuality: weekly Sunday 2am UTC cron
+- Audit wrapper bridges auditFilmData() to DQS-ready shape (duplicateCount + dodgyCount)
+- Deploy workflow now triggers on src/autoresearch/** changes
 
 ---
 

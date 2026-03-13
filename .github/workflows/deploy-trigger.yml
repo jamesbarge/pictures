@@ -6,6 +6,7 @@ on:
     paths:
       - "src/trigger/**"
       - "src/scrapers/**"
+      - "src/autoresearch/**"
       - "trigger.config.ts"
   workflow_dispatch:
 
