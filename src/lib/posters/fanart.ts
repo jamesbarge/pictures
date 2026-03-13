@@ -116,6 +116,7 @@ export class FanartClient {
 // Singleton instance
 let fanartClient: FanartClient | null = null;
 
+/** Get or create the singleton Fanart.tv API client for poster lookups. */
 export function getFanartClient(): FanartClient {
   if (!fanartClient) {
     fanartClient = new FanartClient();

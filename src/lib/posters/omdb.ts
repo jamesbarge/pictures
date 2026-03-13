@@ -127,6 +127,7 @@ export class OMDBClient {
 // Singleton instance
 let omdbClient: OMDBClient | null = null;
 
+/** Get or create the singleton OMDB API client for poster lookups. */
 export function getOMDBClient(): OMDBClient {
   if (!omdbClient) {
     omdbClient = new OMDBClient();
