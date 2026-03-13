@@ -204,6 +204,7 @@ export class ColdharbourBlueScraper implements CinemaScraper {
 }
 
 // Factory function
+/** Creates a scraper for Coldharbour Blue (Brixton). */
 export function createColdharbourBlueScraper(): ColdharbourBlueScraper {
   return new ColdharbourBlueScraper();
 }

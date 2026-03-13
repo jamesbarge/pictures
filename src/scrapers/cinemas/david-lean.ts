@@ -208,6 +208,7 @@ export class DavidLeanScraper implements CinemaScraper {
   }
 }
 
+/** Creates a scraper for David Lean Cinema (Croydon). */
 export function createDavidLeanScraper(): DavidLeanScraper {
   return new DavidLeanScraper();
 }

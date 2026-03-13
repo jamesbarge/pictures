@@ -1,5 +1,12 @@
 # Recent Changes
 
+## 2026-03-13: Kaizen — add JSDoc to 5 scraper factory functions (batch 5)
+**PR**: #TBD | **Files**: `cine-lumiere.ts`, `close-up.ts`, `coldharbour-blue.ts`, `david-lean.ts`, `electric-v2.ts`
+- Added JSDoc to createCineLumiereScraper, createCloseUpCinemaScraper, createColdharbourBlueScraper, createDavidLeanScraper, createElectricScraperV2
+- Kaizen automated refactoring (category: jsdoc)
+
+---
+
 ## 2026-03-13: Kaizen — add JSDoc to 5 scraper factory functions (batch 4)
 **PR**: #TBD | **Files**: `arthouse-crouch-end.ts`, `barbican.ts`, `bfi.ts`, `castle-sidcup.ts`, `castle.ts`
 - Added JSDoc to createArtHouseCrouchEndScraper, createBarbicanScraper, createBFIScraper, createCastleSidcupScraper, createCastleScraper
