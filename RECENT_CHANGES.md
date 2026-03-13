@@ -1,5 +1,13 @@
 # Recent Changes
 
+## 2026-03-13: Kaizen — remove dead festival hooks and unexport internal helper
+**PR**: #276 | **Files**: `src/stores/festival.ts`, `src/stores/utils/migrate-storage.ts`
+- Deleted `useFestivalsWithNotification` and `useScheduleConflicts` (0 external consumers)
+- Removed export from `migrateStorageKey` (only used internally)
+- Kaizen automated refactoring (category: dead-code)
+
+---
+
 ## 2026-03-13: Kaizen — remove dead code in stores (2 files)
 **PR**: #275 | **Files**: `src/stores/reachable.ts`, `src/stores/cookie-consent.ts`
 - Deleted `getTravelModeInfo()` (0 callers), removed `export` from `ConsentStatus` (internal-only)
