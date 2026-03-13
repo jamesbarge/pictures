@@ -249,6 +249,7 @@ export class PhoenixScraper implements CinemaScraper {
   }
 }
 
+/** Create and return a new Phoenix Cinema scraper instance. */
 export function createPhoenixScraper(): PhoenixScraper {
   return new PhoenixScraper();
 }

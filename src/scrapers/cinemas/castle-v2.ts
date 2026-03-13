@@ -111,6 +111,7 @@ export class CastleScraperV2 extends BaseScraper {
 
 }
 
+/** Create and return a new Castle Cinema (v2) scraper instance. */
 export function createCastleScraperV2(): CastleScraperV2 {
   return new CastleScraperV2();
 }
