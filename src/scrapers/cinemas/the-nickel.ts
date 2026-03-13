@@ -164,6 +164,7 @@ export class NickelScraper implements CinemaScraper {
   }
 }
 
+/** Create and return a new Nickel scraper instance. */
 // Factory function
 export function createNickelScraper(): NickelScraper {
   return new NickelScraper();

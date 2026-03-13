@@ -27,6 +27,7 @@ function getNextWeekend(): Date {
   return addDays(today, daysUntilSaturday);
 }
 
+/** Full-screen mobile modal for selecting date range and time-of-day filters. */
 export function MobileDatePickerModal({ isOpen, onClose }: MobileDatePickerModalProps) {
   const { dateFrom, dateTo, setDateRange, timeFrom, timeTo, setTimeRange } = useFilters();
   const [showTimeCustom, setShowTimeCustom] = useState(false);

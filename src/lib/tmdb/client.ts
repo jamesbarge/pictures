@@ -267,6 +267,7 @@ export class TMDBClient {
 // Singleton instance
 let tmdbClient: TMDBClient | null = null;
 
+/** Get or create the singleton TMDB API client for film metadata and poster lookups. */
 export function getTMDBClient(): TMDBClient {
   if (!tmdbClient) {
     tmdbClient = new TMDBClient();

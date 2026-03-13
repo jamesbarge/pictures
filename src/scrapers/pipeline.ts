@@ -35,7 +35,7 @@ export { cleanFilmTitle } from "./utils/film-title-cleaner";
 // Agent imports - conditionally used when ENABLE_AGENTS=true
 const AGENTS_ENABLED = process.env.ENABLE_AGENTS === "true";
 
-export interface PipelineResult {
+interface PipelineResult {
   cinemaId: string;
   added: number;
   updated: number;

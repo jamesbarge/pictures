@@ -199,7 +199,7 @@ export const autoresearchExperiments = pgTable("autoresearch_experiments", {
   tokensUsed: integer("tokens_used"),
 
   /** Experiment duration in milliseconds */
-  durationMs: integer("duration_ms").notNull(),
+  durationMs: integer("duration_ms"),
 
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()

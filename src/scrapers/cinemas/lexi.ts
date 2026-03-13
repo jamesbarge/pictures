@@ -289,6 +289,7 @@ export class LexiScraper implements CinemaScraper {
   }
 }
 
+/** Create and return a new Lexi Cinema scraper instance. */
 export function createLexiScraper(): LexiScraper {
   return new LexiScraper();
 }

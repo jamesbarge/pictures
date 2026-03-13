@@ -29,6 +29,7 @@ interface FilterBarProps {
   festivals?: { id: string; name: string; slug: string }[];
 }
 
+/** Desktop horizontal filter bar with dropdowns for cinema, format, genre, decade, and programming type. */
 export function FilterBar({ festivals = [] }: FilterBarProps) {
   return (
     <Suspense fallback={<FilterBarContent festivals={festivals} />}>

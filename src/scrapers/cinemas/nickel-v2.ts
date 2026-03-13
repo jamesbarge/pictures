@@ -110,6 +110,7 @@ export class NickelScraperV2 extends BaseScraper {
   }
 }
 
+/** Create and return a new Nickel (v2) scraper instance. */
 export function createNickelScraperV2(): NickelScraperV2 {
   return new NickelScraperV2();
 }

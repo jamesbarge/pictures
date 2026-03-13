@@ -72,7 +72,7 @@ export interface RunnerOptions {
   verbose?: boolean;
 }
 
-export interface VenueResult {
+interface VenueResult {
   venueId: string;
   venueName: string;
   success: boolean;
@@ -143,7 +143,7 @@ const pendingRecords: Promise<void>[] = [];
  * Await all pending recordScraperRun writes (with a 5s timeout).
  * Call before process.exit to prevent data loss.
  */
-export async function flushPendingRecords(): Promise<void> {
+async function flushPendingRecords(): Promise<void> {
   if (pendingRecords.length === 0) return;
   const pending = pendingRecords.splice(0);
   await Promise.race([
@@ -724,7 +724,7 @@ export async function runScraperForYield(
  * Parse CLI arguments for venue selection
  * Supports: npm run scrape:curzon -- soho mayfair
  */
-export function parseVenueArgs(prefix?: string): string[] {
+function parseVenueArgs(prefix?: string): string[] {
   const args = process.argv.slice(2);
 
   if (args.length === 0) {

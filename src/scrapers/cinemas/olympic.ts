@@ -111,6 +111,7 @@ export class OlympicScraper extends BaseScraper {
   }
 }
 
+/** Creates an Olympic Cinema scraper (Cheerio-based, extends BaseScraper). */
 export function createOlympicScraper(): OlympicScraper {
   return new OlympicScraper();
 }

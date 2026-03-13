@@ -182,6 +182,7 @@ async function checkSingleUrl(
 
 // ── Main export ────────────────────────────────────────────────
 
+/** Verify a batch of cinema booking URLs are reachable and return the expected HTTP status, with retry and rate-limiting. */
 export async function checkBookingLinks(params: {
   urls: BookingUrlToCheck[];
   maxChecks?: number;

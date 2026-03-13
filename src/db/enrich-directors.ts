@@ -10,7 +10,7 @@
 import { db } from "./index";
 import { seasons } from "./schema";
 import { eq, isNull, isNotNull, and } from "drizzle-orm";
-import { getTMDBClient, TMDBClient } from "@/lib/tmdb";
+import { getTMDBClient } from "@/lib/tmdb";
 
 interface EnrichmentResult {
   total: number;

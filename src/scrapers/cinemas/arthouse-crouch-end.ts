@@ -154,6 +154,7 @@ export class ArtHouseCrouchEndScraper extends BaseScraper {
   }
 }
 
+/** Creates a scraper for ArtHouse Cinema (Crouch End). */
 export function createArtHouseCrouchEndScraper(): ArtHouseCrouchEndScraper {
   return new ArtHouseCrouchEndScraper();
 }

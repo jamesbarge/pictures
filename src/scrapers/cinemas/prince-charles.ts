@@ -157,6 +157,7 @@ export class PrinceCharlesScraper extends BaseScraper {
   }
 }
 
+/** Create and return a new Prince Charles Cinema scraper instance. */
 export function createPrinceCharlesScraper(): PrinceCharlesScraper {
   return new PrinceCharlesScraper();
 }

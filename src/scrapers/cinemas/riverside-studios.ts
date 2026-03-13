@@ -112,6 +112,7 @@ export class RiversideStudiosScraper implements CinemaScraper {
   }
 }
 
+/** Creates a Riverside Studios scraper (Cheerio-based, implements CinemaScraper). */
 export function createRiversideStudiosScraper(): RiversideStudiosScraper {
   return new RiversideStudiosScraper();
 }

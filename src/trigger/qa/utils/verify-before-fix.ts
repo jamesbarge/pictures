@@ -13,6 +13,7 @@ import { films } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import type { ClassifiedIssue, VerificationOutcome } from "../types";
 
+/** Double-check a classified QA issue before applying a fix, using deterministic checks or TMDB cross-referencing as appropriate. */
 export async function verifyBeforeFix(
   issue: ClassifiedIssue
 ): Promise<VerificationOutcome> {

@@ -187,20 +187,6 @@ export function trackFilterChange(
 // CINEMA EVENTS
 // ============================================
 
-/** Track when a user selects/deselects cinemas */
-export function trackCinemaSelection(
-  cinemaId: string,
-  cinemaName: string,
-  action: "selected" | "deselected"
-) {
-  if (typeof window === "undefined") return;
-  posthog.capture("cinema_selection_changed", {
-    cinema_id: cinemaId,
-    cinema_name: cinemaName,
-    action,
-  });
-}
-
 // ============================================
 // CONVERSION FUNNEL EVENTS
 // ============================================
@@ -229,44 +215,6 @@ export function trackFunnelStep(
 export function isFeatureEnabled(flagKey: string): boolean {
   if (typeof window === "undefined") return false;
   return posthog.isFeatureEnabled(flagKey) ?? false;
-}
-
-/** Get feature flag value (for multivariate flags) */
-export function getFeatureFlagValue(flagKey: string): string | boolean | undefined {
-  if (typeof window === "undefined") return undefined;
-  return posthog.getFeatureFlag(flagKey);
-}
-
-/** Get feature flag payload (additional data attached to flag) */
-export function getFeatureFlagPayload(flagKey: string): unknown {
-  if (typeof window === "undefined") return undefined;
-  return posthog.getFeatureFlagPayload(flagKey);
-}
-
-// ============================================
-// USER PROPERTIES
-// ============================================
-
-/** Set user properties (persisted across sessions) */
-export function setUserProperties(properties: Record<string, unknown>) {
-  if (typeof window === "undefined") return;
-  posthog.people.set(properties);
-}
-
-/** Set user properties once (only if not already set) */
-export function setUserPropertiesOnce(properties: Record<string, unknown>) {
-  if (typeof window === "undefined") return;
-  posthog.people.set_once(properties);
-}
-
-/** Increment a numeric user property */
-export function incrementUserProperty(property: string, value: number = 1) {
-  if (typeof window === "undefined") return;
-  // PostHog doesn't have a direct increment - use capture with $set
-  // The user property will be updated with the new value
-  posthog.capture("$set", {
-    $set: { [property]: value },
-  });
 }
 
 // ============================================

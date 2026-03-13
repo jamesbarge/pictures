@@ -176,6 +176,7 @@ export class ElectricScraperV2 extends BaseScraper {
 
 }
 
+/** Creates a v2 API-based scraper for Electric Cinema (Portobello / White City). */
 export function createElectricScraperV2(venueId?: string): ElectricScraperV2 {
   return new ElectricScraperV2(venueId);
 }

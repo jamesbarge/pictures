@@ -278,6 +278,7 @@ export class ElectricScraper implements CinemaScraper {
 }
 
 // Factory function
+/** Creates a scraper for Electric Cinema (Portobello). */
 export function createElectricScraper(): ElectricScraper {
   return new ElectricScraper();
 }
