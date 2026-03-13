@@ -4,6 +4,10 @@
 **PR**: #280 | **Files**: `src/lib/image-processor.ts`
 - Deleted calculatePosterCrop(), generateProcessedImageUrl(), ImageProcessorOptions, POSTER_ASPECT_RATIO (zero callers)
 - Inlined POSTER_HEIGHT = 750
+## 2026-03-13: Kaizen — remove dead import and dead method
+**PR**: #280 | **Files**: `src/agents/config.ts`, `src/scrapers/cinemas/romford-lumiere.ts`
+- Removed dead `AGENT_CONFIGS` import (cascading from PR #278)
+- Deleted dead `extractYear()` method (zero callers)
 - Kaizen automated refactoring (category: dead-code)
 
 ---
