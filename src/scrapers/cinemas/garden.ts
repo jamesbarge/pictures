@@ -215,6 +215,7 @@ export class GardenCinemaScraper extends BaseScraper {
 
 }
 
+/** Creates a scraper for Garden Cinema (Covent Garden). */
 export function createGardenCinemaScraper(): GardenCinemaScraper {
   return new GardenCinemaScraper();
 }
