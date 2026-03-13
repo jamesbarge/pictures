@@ -1,5 +1,13 @@
 # Recent Changes
 
+## 2026-03-13: Kaizen — remove dead functions in content-classifier
+**PR**: #269 | **Files**: `src/lib/content-classifier.ts`
+- Deleted `batchClassifyContent()` and `getCacheStats()` — dead code after export removal in #268
+- 55 lines removed, lint warnings 43→41
+- Kaizen automated refactoring (category: dead-code)
+
+---
+
 ## 2026-03-13: Kaizen — remove dead exports (4 files)
 **PR**: #268 | **Files**: `src/lib/content-classifier.ts`, `src/lib/title-patterns.ts`, `src/scrapers/utils/film-matching.ts`
 - Removed `export` from 4 internal-only functions/constants: batchClassifyContent, getCacheStats, FRANCHISE_PREFIXES, addToFilmCache
