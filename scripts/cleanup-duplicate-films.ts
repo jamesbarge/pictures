@@ -17,6 +17,7 @@
 import { db } from "../src/db";
 import { films, screenings } from "../src/db/schema";
 import { sql, inArray } from "drizzle-orm";
+import { loadThresholds } from "../src/autoresearch/autoquality/load-thresholds";
 
 // -- Types -------------------------------------------------------------------
 
@@ -107,7 +108,7 @@ async function findTmdbDuplicates(): Promise<DuplicateCluster[]> {
  */
 async function findTrigramDuplicates(
   excludeIds: Set<string>,
-  threshold = 0.5
+  threshold = loadThresholds().duplicateDetection.trigramSimilarityThreshold
 ): Promise<DuplicateCluster[]> {
   // Get all films with upcoming screenings (or all films if needed)
   const allFilms = await db.execute(sql`
