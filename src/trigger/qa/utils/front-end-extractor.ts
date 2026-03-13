@@ -280,6 +280,7 @@ async function extractScreeningsFromDetail(
 
 // ── Public API ─────────────────────────────────────────────────────
 
+/** Browse the pictures.london front end and extract all visible film cards and screening data for the given date range. */
 export async function extractFrontEndData(
   browser: Browser,
   dates: [string, string],
@@ -351,6 +352,7 @@ export async function extractFrontEndData(
   return { films, screenings: allScreenings, errors };
 }
 
+/** Check whether the extracted screening count meets the 70% completeness threshold against the expected database count. */
 export function checkCompleteness(
   extractedCount: number,
   expectedCount: number,

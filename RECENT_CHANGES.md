@@ -1,5 +1,12 @@
 # Recent Changes
 
+## 2026-03-13: Kaizen — add JSDoc to 4 remaining trigger exports
+**PR**: #TBD | **Files**: `front-end-extractor.ts`, `title-utils.ts`, `verify-before-fix.ts`
+- Added JSDoc to extractFrontEndData, checkCompleteness, parseRelativeDatetime, verifyBeforeFix
+- Kaizen automated refactoring (category: jsdoc)
+
+---
+
 ## 2026-03-13: Kaizen — remove 5 unused vars/imports in db scripts
 **PR**: #TBD | **Files**: `repositories/cinema.ts`, `enrich-directors.ts`, `enrich-letterboxd.ts`, `backfill-posters.ts`
 - Removed unused imports (inArray, TMDBClient, sql) and unused variable (result)
