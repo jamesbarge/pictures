@@ -13,6 +13,7 @@ import { films } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import type { ClassifiedIssue, VerificationOutcome } from "../types";
 
+/** Runs a double-check verification gate before applying a DB fix, using fix-type-specific strategies. */
 export async function verifyBeforeFix(
   issue: ClassifiedIssue
 ): Promise<VerificationOutcome> {

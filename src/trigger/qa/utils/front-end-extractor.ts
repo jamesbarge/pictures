@@ -280,6 +280,7 @@ async function extractScreeningsFromDetail(
 
 // ── Public API ─────────────────────────────────────────────────────
 
+/** Extracts all films and screenings from pictures.london using a Playwright browser pool. */
 export async function extractFrontEndData(
   browser: Browser,
   dates: [string, string],
@@ -351,6 +352,7 @@ export async function extractFrontEndData(
   return { films, screenings: allScreenings, errors };
 }
 
+/** Checks whether the extracted count meets a 70% completeness threshold against the expected count. */
 export function checkCompleteness(
   extractedCount: number,
   expectedCount: number,

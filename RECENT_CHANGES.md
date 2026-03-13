@@ -1,5 +1,12 @@
 # Recent Changes
 
+## 2026-03-13: Kaizen — add JSDoc to 3 exported QA utility functions
+**PR**: #TBD | **Files**: `verify-before-fix.ts`, `front-end-extractor.ts`
+- Added JSDoc to verifyBeforeFix, extractFrontEndData, checkCompleteness
+- Kaizen automated refactoring (category: jsdoc)
+
+---
+
 ## 2026-03-13: Kaizen — remove 5 unused vars/imports in db scripts
 **PR**: #TBD | **Files**: `repositories/cinema.ts`, `enrich-directors.ts`, `enrich-letterboxd.ts`, `backfill-posters.ts`
 - Removed unused imports (inArray, TMDBClient, sql) and unused variable (result)
