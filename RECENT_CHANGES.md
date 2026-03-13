@@ -1,5 +1,12 @@
 # Recent Changes
 
+## 2026-03-13: Kaizen — remove dead exports (4 files)
+**PR**: #268 | **Files**: `src/lib/content-classifier.ts`, `src/lib/title-patterns.ts`, `src/scrapers/utils/film-matching.ts`
+- Removed `export` from 4 internal-only functions/constants: batchClassifyContent, getCacheStats, FRANCHISE_PREFIXES, addToFilmCache
+- Kaizen automated refactoring (category: dead-code)
+
+---
+
 ## 2026-03-13: Kaizen — remove unused exports from metadata-parser
 **PR**: #TBD | **Files**: `src/scrapers/utils/metadata-parser.ts`
 - Removed `export` from 6 internal-only functions (extractYear, extractRuntime, extractDirector, extractCountry, parseStatsLine, parseParenthetical)
