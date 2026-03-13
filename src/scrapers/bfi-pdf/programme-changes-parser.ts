@@ -18,7 +18,7 @@
 
 import * as cheerio from "cheerio";
 import type { RawScreening } from "../types";
-import type { CheerioAPI, CheerioSelection } from "../utils/cheerio-types";
+import type { CheerioSelection } from "../utils/cheerio-types";
 import { fetchWithRetry } from "../utils/fetch-with-retry";
 import { CHROME_USER_AGENT_FULL } from "../constants";
 import { buildBFISearchUrl } from "./url-builder";
@@ -176,7 +176,7 @@ export function parseChangesPage(html: string): ProgrammeChangesResult {
 
     // Get the following text for screening info and notes
     const parentText = $el.parent().text();
-    const nextText = getFollowingText($, $el);
+    const nextText = getFollowingText($el);
 
     // Determine change type
     let changeType: ProgrammeChange["changeType"] = "other";
@@ -230,7 +230,7 @@ export function parseChangesPage(html: string): ProgrammeChangesResult {
 /**
  * Get text following a bold element
  */
-function getFollowingText($: CheerioAPI, $el: CheerioSelection): string {
+function getFollowingText($el: CheerioSelection): string {
   const parts: string[] = [];
 
   // Get text from same parent
