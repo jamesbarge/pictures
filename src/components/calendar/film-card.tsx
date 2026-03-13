@@ -43,6 +43,7 @@ interface FilmCardProps {
   specialFormats: string[];
 }
 
+/** Memoized card showing a film with aggregated screening count, used in film-view calendar mode. */
 export const FilmCard = memo(function FilmCard({
   film,
   screeningCount,

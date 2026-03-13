@@ -75,6 +75,7 @@ function AvailabilityBadge({ status }: { status: AvailabilityStatus }): React.Re
 }
 
 
+/** Memoized card displaying a single screening with poster, title, cinema, time, and format badges. */
 export const ScreeningCard = memo(function ScreeningCard({ screening }: ScreeningCardProps) {
   const { film, cinema, datetime } = screening;
   const time = format(new Date(datetime), "HH:mm");

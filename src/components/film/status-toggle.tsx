@@ -35,6 +35,7 @@ const statusConfig: Record<
   },
 };
 
+/** Dropdown toggle for marking a film as want-to-see or not-interested, synced to Zustand store. */
 export function StatusToggle({ filmId, variant = "full" }: StatusToggleProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
