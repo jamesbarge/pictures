@@ -1,5 +1,12 @@
 # Recent Changes
 
+## 2026-03-13: Kaizen — add JSDoc to 3 API client factory functions
+**PR**: #TBD | **Files**: `fanart.ts`, `omdb.ts`, `tmdb/client.ts`
+- Added JSDoc to getFanartClient, getOMDBClient, getTMDBClient singleton factories
+- Kaizen automated refactoring (category: jsdoc)
+
+---
+
 ## 2026-03-13: Kaizen — add JSDoc to 4 remaining trigger exports
 **PR**: #TBD | **Files**: `front-end-extractor.ts`, `title-utils.ts`, `verify-before-fix.ts`
 - Added JSDoc to extractFrontEndData, checkCompleteness, parseRelativeDatetime, verifyBeforeFix
