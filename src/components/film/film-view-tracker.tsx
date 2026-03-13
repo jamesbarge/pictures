@@ -17,6 +17,7 @@ interface FilmViewTrackerProps {
   directors?: string[] | null;
 }
 
+/** Invisible tracker that fires a PostHog film-view event once per mount. */
 export function FilmViewTracker({
   filmId,
   filmTitle,

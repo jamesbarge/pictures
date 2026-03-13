@@ -25,6 +25,7 @@ const TIME_PRESETS = [
   { label: "Late Night", description: "After 9pm", from: 21, to: 23 },
 ] as const;
 
+/** Dropdown with time-of-day presets (morning, afternoon, evening, late night) for screening filters. */
 export function TimeRangeFilter({
   timeFrom,
   timeTo,
