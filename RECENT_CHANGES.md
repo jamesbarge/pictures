@@ -1,5 +1,12 @@
 # Recent Changes
 
+## 2026-03-13: Kaizen — remove dead barrel re-exports from festivals
+**PR**: #TBD | **Files**: `src/components/festivals/index.ts`
+- Removed 3 unused barrel re-exports: FollowButtonCompact, FestivalTimeline, FestivalListSkeleton
+- Kaizen automated refactoring (category: dead-code)
+
+---
+
 ## 2026-03-13: Kaizen — remove dead code in event-classifier
 **PR**: #271 | **Files**: `src/lib/event-classifier.ts`
 - Deleted `classifyEventsBatch()` and `clearClassificationCache()` — zero callers
