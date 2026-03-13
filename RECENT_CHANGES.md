@@ -1,5 +1,13 @@
 # Recent Changes
 
+## 2026-03-13: Kaizen — delete dead code in image-processor
+**PR**: #280 | **Files**: `src/lib/image-processor.ts`
+- Deleted calculatePosterCrop(), generateProcessedImageUrl(), ImageProcessorOptions, POSTER_ASPECT_RATIO (zero callers)
+- Inlined POSTER_HEIGHT = 750
+- Kaizen automated refactoring (category: dead-code)
+
+---
+
 ## 2026-03-13: Kaizen — unexport internal agent interfaces
 **PR**: #279 | **Files**: `fallback-enrichment/*.ts`, `data-quality/index.ts`
 - Unexported 6 internal-only interfaces (BookingPageData, FallbackEnrichmentOptions, etc.)
