@@ -209,14 +209,3 @@ export function formatTravelTime(minutes: number): string {
   return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
 }
 
-/**
- * Helper: Get travel mode label and icon
- */
-export function getTravelModeInfo(mode: TravelMode): { label: string; icon: string } {
-  const info: Record<TravelMode, { label: string; icon: string }> = {
-    transit: { label: "Public Transport", icon: "🚇" },
-    walking: { label: "Walking", icon: "🚶" },
-    bicycling: { label: "Cycling", icon: "🚴" },
-  };
-  return info[mode];
-}
