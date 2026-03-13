@@ -62,6 +62,7 @@ function buildShareText({
   return parts.join("\n");
 }
 
+/** One-tap screening share via Web Share API (mobile) or clipboard copy (desktop). */
 export function ShareScreeningButton({
   filmTitle,
   filmId,

@@ -25,6 +25,7 @@ interface ScreeningFiltersProps {
   filteredCount: number;
 }
 
+/** Compact filter bar for narrowing film detail page screenings by cinema, time, and date. */
 export function ScreeningFilters({
   filters,
   onFiltersChange,

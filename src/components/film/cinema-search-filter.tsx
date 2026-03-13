@@ -14,6 +14,7 @@ interface CinemaSearchFilterProps {
   placeholder?: string;
 }
 
+/** Text input for filtering screenings by cinema name with clearable search. */
 export function CinemaSearchFilter({
   value,
   onChange,
