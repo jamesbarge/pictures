@@ -1,5 +1,12 @@
 # Recent Changes
 
+## 2026-03-13: Kaizen — add JSDoc to gemini-analyzer exported functions
+**PR**: #TBD | **Files**: `src/trigger/qa/utils/gemini-analyzer.ts`
+- Added JSDoc to 4 exported functions: analyzeTmdbMismatch, analyzeBookingPageContent, batchAnomalyReview, generatePreventionReport
+- Kaizen automated refactoring (category: jsdoc)
+
+---
+
 ## 2026-03-13: Kaizen — unexport 5 internal-only scraper pipeline exports
 **PR**: #TBD | **Files**: `screening-validator.ts`, `pipeline.ts`, `runner-factory.ts`
 - Removed `export` from ValidationSummary, PipelineResult, VenueResult, flushPendingRecords, parseVenueArgs — all internal-only
