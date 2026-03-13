@@ -495,7 +495,7 @@ export function createEverymanScraper(): EverymanScraper {
   return new EverymanScraper();
 }
 
-// Get active venues
+/** Returns all Everyman venues that are currently active (not disabled). */
 export function getActiveEverymanVenues(): VenueConfig[] {
   return EVERYMAN_VENUES.filter(v => v.active !== false);
 }

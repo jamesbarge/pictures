@@ -586,12 +586,12 @@ export function createCurzonScraper(): CurzonScraper {
   return new CurzonScraper();
 }
 
-// Get active venues for easy reference
+/** Returns all Curzon venues that are currently active (not disabled). */
 export function getActiveCurzonVenues(): VenueConfig[] {
   return CURZON_VENUES.filter(v => v.active !== false);
 }
 
-// Get all London Curzon venues (for adding to database)
+/** Returns Curzon venues located in London, filtered by postcode prefix. */
 export function getLondonCurzonVenues(): VenueConfig[] {
   const londonPostcodes = ["W1", "WC", "EC", "E1", "N1", "SW", "SE", "NW", "KT", "TW"];
   return CURZON_VENUES.filter(v =>

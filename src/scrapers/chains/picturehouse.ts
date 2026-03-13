@@ -435,12 +435,12 @@ export function createPicturehouseScraper(): PicturehouseScraper {
   return new PicturehouseScraper();
 }
 
-// Get active venues
+/** Returns all Picturehouse venues that are currently active (not disabled). */
 export function getActivePicturehouseVenues(): VenueConfig[] {
   return PICTUREHOUSE_VENUES.filter(v => v.active !== false);
 }
 
-// Get all London venues
+/** Returns all Picturehouse venues in London (all venues are London-based). */
 export function getLondonPicturehouseVenues(): VenueConfig[] {
   return PICTUREHOUSE_VENUES; // All are in London
 }

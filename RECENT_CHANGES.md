@@ -1,5 +1,12 @@
 # Recent Changes
 
+## 2026-03-13: Kaizen — add JSDoc to 5 chain venue helper functions
+**PR**: #TBD | **Files**: `curzon.ts`, `everyman.ts`, `picturehouse.ts`
+- Added JSDoc to getActiveCurzonVenues, getLondonCurzonVenues, getActiveEverymanVenues, getActivePicturehouseVenues, getLondonPicturehouseVenues
+- Kaizen automated refactoring (category: jsdoc)
+
+---
+
 ## 2026-03-13: Kaizen — delete 6 dead analytics functions
 **PR**: #TBD | **Files**: `src/lib/analytics.ts`
 - Removed 6 unused exported functions: `trackCinemaSelection`, `getFeatureFlagValue`, `getFeatureFlagPayload`, `setUserProperties`, `setUserPropertiesOnce`, `incrementUserProperty`
