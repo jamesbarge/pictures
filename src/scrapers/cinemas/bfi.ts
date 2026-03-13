@@ -455,6 +455,7 @@ export class BFIScraper {
 
 }
 
+/** Creates a scraper for a BFI venue (Southbank or IMAX). */
 export function createBFIScraper(venueId: "bfi-southbank" | "bfi-imax"): BFIScraper {
   return new BFIScraper(venueId);
 }

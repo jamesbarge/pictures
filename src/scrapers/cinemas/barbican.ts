@@ -179,6 +179,7 @@ export class BarbicanScraper extends BaseScraper {
   }
 }
 
+/** Creates a scraper for Barbican Cinema. */
 export function createBarbicanScraper(): BarbicanScraper {
   return new BarbicanScraper();
 }

@@ -146,6 +146,7 @@ export class CastleSidcupScraper implements CinemaScraper {
   }
 }
 
+/** Creates a scraper for The Castle Cinema (Sidcup). */
 export function createCastleSidcupScraper(): CastleSidcupScraper {
   return new CastleSidcupScraper();
 }
