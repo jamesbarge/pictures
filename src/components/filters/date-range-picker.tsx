@@ -17,6 +17,7 @@ interface DateRangePickerProps {
   className?: string;
 }
 
+/** Calendar-based date range picker with popover for filtering screenings by date. */
 export function DateRangePicker({ className }: DateRangePickerProps) {
   const { dateFrom, dateTo, setDateRange } = useFilters();
   const [isOpen, setIsOpen] = useState(false);

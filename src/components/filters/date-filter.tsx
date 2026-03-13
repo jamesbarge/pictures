@@ -25,6 +25,7 @@ interface DateFilterProps {
   currentPeriod: DatePeriod;
 }
 
+/** Horizontal scrollable pill selector for quick date period filtering (today, week, weekend, etc.). */
 export function DateFilter({ currentPeriod }: DateFilterProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
