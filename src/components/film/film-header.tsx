@@ -48,6 +48,7 @@ interface FilmHeaderProps {
   };
 }
 
+/** Film detail hero section with Ken Burns backdrop animation, poster, metadata badges, and external links. */
 export function FilmHeader({ film }: FilmHeaderProps) {
   const [backdropLoaded, setBackdropLoaded] = useState(false);
   const [posterLoaded, setPosterLoaded] = useState(false);

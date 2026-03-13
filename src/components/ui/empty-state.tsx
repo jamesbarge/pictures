@@ -41,6 +41,7 @@ const defaultContent: Record<EmptyStateVariant, { icon: ReactNode; title: string
   },
 };
 
+/** Friendly empty-state placeholder with variant-based icon, title, and description defaults. */
 export function EmptyState({
   variant = "no-results",
   title,
