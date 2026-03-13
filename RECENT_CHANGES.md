@@ -1,3 +1,9 @@
+## 2026-03-13: Kaizen — JSDoc for 5 festivals/ component exports
+**PR**: #327 | **Files**: `src/components/festivals/follow-button.tsx`, `src/components/festivals/festival-venues.tsx`, `src/components/festivals/festival-header.tsx`, `src/components/festivals/festival-card.tsx`
+- Added JSDoc to FollowButton, FollowButtonCompact, FestivalVenues, FestivalHeader, FestivalCard
+- Kaizen automated refactoring (category: jsdoc)
+
+---
 ## 2026-03-13: Kaizen — JSDoc for watchlist/settings/feedback exports
 **PR**: #326 | **Files**: `src/components/watchlist/letterboxd-import.tsx`, `src/components/settings/not-interested-list.tsx`, `src/components/settings/calendar-view-setting.tsx`, `src/components/settings/theme-setting.tsx`, `src/components/feedback/nps-survey.tsx`
 - Added JSDoc to 5 exported functions across watchlist, settings, and feedback directories
