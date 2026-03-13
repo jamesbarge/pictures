@@ -1,5 +1,10 @@
 # Recent Changes
 
+## 2026-03-13: Kaizen — remove dead TikTok filtering variables in apify-runner
+**PR**: #TBD | **Files**: `scripts/social-outreach/apify-runner.ts`
+- Removed unused hasLondonSignal, isFromLondonHashtag, and combinedText variables
+- Kaizen automated refactoring (category: dead-code)
+
 ## 2026-03-13: Kaizen — add JSDoc to 3 API client factory functions
 **PR**: #TBD | **Files**: `fanart.ts`, `omdb.ts`, `tmdb/client.ts`
 - Added JSDoc to getFanartClient, getOMDBClient, getTMDBClient singleton factories
