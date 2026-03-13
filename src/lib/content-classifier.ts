@@ -335,7 +335,7 @@ export async function classifyContentCached(
 /**
  * Batch classify multiple titles
  */
-export async function batchClassifyContent(
+async function batchClassifyContent(
   rawTitles: string[]
 ): Promise<Map<string, ClassificationResult>> {
   const results = new Map<string, ClassificationResult>();
@@ -388,7 +388,7 @@ export function clearClassificationCache(): void {
 /**
  * Get cache stats for debugging
  */
-export function getCacheStats(): { size: number; hits: number } {
+function getCacheStats(): { size: number; hits: number } {
   return {
     size: classificationCache.size,
     hits: 0, // Would need to track this separately
