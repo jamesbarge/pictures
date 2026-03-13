@@ -55,6 +55,7 @@ interface TableViewProps {
   screenings: Screening[];
 }
 
+/** Memoized dense text-only film listing with sortable columns and expandable screening details. */
 export const TableView = memo(function TableView({ screenings }: TableViewProps) {
   const [sortColumn, setSortColumn] = useState<SortColumn>("rating");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");

@@ -98,6 +98,7 @@ async function fetchMoreScreenings({
   return data.screenings;
 }
 
+/** Wrapper that progressively loads additional screening weeks via React Query on scroll. */
 export function CalendarViewWithLoader({ initialScreenings, filmTotals }: CalendarViewWithLoaderProps) {
   // Track load state (0 = initial 3 days, 1 = week 1 complete, 2-4 = additional weeks)
   const [manualLoadState, setManualLoadState] = useState(0);

@@ -84,6 +84,7 @@ interface FilmGroup {
   specialFormats: string[];
 }
 
+/** Main calendar container that groups screenings by date and applies client-side filters. */
 export function CalendarView({ screenings, serverFilmTotals }: CalendarViewProps) {
   const filters = useFilters();
   const { mapArea, calendarViewMode } = usePreferences();
