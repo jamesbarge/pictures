@@ -194,7 +194,7 @@ export const NON_FILM_PATTERNS = [
 /**
  * Known franchises where colon is part of the title
  */
-export const FRANCHISE_PREFIXES = [
+const FRANCHISE_PREFIXES = [
   "star wars",
   "indiana jones",
   "harry potter",

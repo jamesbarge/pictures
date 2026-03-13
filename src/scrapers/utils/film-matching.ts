@@ -86,7 +86,7 @@ export function logCacheStats(): void {
 }
 
 /** Add a new film to the cache. */
-export function addToFilmCache(film: FilmRecord) {
+function addToFilmCache(film: FilmRecord) {
   if (filmCache && normalizeFn) {
     const normalized = normalizeFn(film.title);
     filmCache.set(normalized, film);
