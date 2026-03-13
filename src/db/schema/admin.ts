@@ -12,6 +12,7 @@ import {
   jsonb,
   uuid,
   pgEnum,
+  real,
 } from "drizzle-orm/pg-core";
 import { cinemas } from "./cinemas";
 
@@ -39,6 +40,15 @@ export const anomalyTypeEnum = pgEnum("anomaly_type", [
  * Cinema tier enum - determines verification sensitivity
  */
 export const cinemaTierEnum = pgEnum("cinema_tier", ["top", "standard"]);
+
+/**
+ * Experiment system enum for autoresearch
+ */
+export const experimentSystemEnum = pgEnum("experiment_system", [
+  "autoscrape",
+  "autoquality",
+  "autoconvert",
+]);
 
 /**
  * Scraper runs table - tracks every scraper execution
@@ -158,6 +168,44 @@ export const cinemaBaselines = pgTable("cinema_baselines", {
     .defaultNow(),
 });
 
+/**
+ * AutoResearch experiments table — tracks every iterate-evaluate-keep/discard cycle.
+ * Shared across all autoresearch systems (AutoScrape, AutoQuality, AutoConvert).
+ */
+export const autoresearchExperiments = pgTable("autoresearch_experiments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+
+  system: experimentSystemEnum("system").notNull(),
+
+  /** Target identifier (cinema ID for AutoScrape, threshold key for AutoQuality) */
+  targetId: text("target_id").notNull(),
+
+  /** JSON snapshot of the config that was tested */
+  configSnapshot: jsonb("config_snapshot").notNull(),
+
+  /** Metric value before the experiment */
+  metricBefore: real("metric_before").notNull(),
+
+  /** Metric value after the experiment */
+  metricAfter: real("metric_after").notNull(),
+
+  /** Whether the experiment's changes were kept */
+  kept: boolean("kept").notNull(),
+
+  /** Human-readable explanation */
+  notes: text("notes"),
+
+  /** Tokens consumed by AI reasoning */
+  tokensUsed: integer("tokens_used"),
+
+  /** Experiment duration in milliseconds */
+  durationMs: integer("duration_ms"),
+
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 // Type exports
 export type ScraperRunInsert = typeof scraperRuns.$inferInsert;
 export type ScraperRunSelect = typeof scraperRuns.$inferSelect;
@@ -165,3 +213,7 @@ export type AdminActionInsert = typeof adminActions.$inferInsert;
 export type AdminActionSelect = typeof adminActions.$inferSelect;
 export type CinemaBaselineInsert = typeof cinemaBaselines.$inferInsert;
 export type CinemaBaselineSelect = typeof cinemaBaselines.$inferSelect;
+export type AutoresearchExperimentInsert =
+  typeof autoresearchExperiments.$inferInsert;
+export type AutoresearchExperimentSelect =
+  typeof autoresearchExperiments.$inferSelect;

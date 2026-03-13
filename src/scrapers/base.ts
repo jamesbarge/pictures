@@ -4,11 +4,31 @@
  */
 
 import * as cheerio from "cheerio";
+import { readFile } from "fs/promises";
+import { join } from "path";
 import type { RawScreening, ScraperConfig, CinemaScraper } from "./types";
 import { CHROME_USER_AGENT_FULL } from "./constants";
 
+/**
+ * Runtime config overlay for AutoScrape experiments.
+ * Stored as JSON files in .autoresearch/overlays/{cinemaId}.json
+ */
+export interface ConfigOverlay {
+  /** CSS selector overrides keyed by purpose */
+  selectorOverrides?: Record<string, string>;
+  /** URL pattern overrides */
+  urlOverrides?: Record<string, string>;
+  /** Date format overrides */
+  dateFormatOverrides?: Record<string, string>;
+}
+
+const OVERLAY_DIR = join(process.cwd(), ".autoresearch", "overlays");
+
 export abstract class BaseScraper implements CinemaScraper {
   abstract config: ScraperConfig;
+
+  /** Runtime config overlay loaded from disk (null if none exists) */
+  protected configOverlay: ConfigOverlay | null = null;
 
   /**
    * Main scrape method - template method pattern
@@ -17,6 +37,7 @@ export abstract class BaseScraper implements CinemaScraper {
     console.log(`[${this.config.cinemaId}] Starting scrape...`);
 
     try {
+      await this.loadConfigOverlay();
       await this.initialize();
       const pages = await this.fetchPages();
       const screenings = await this.parsePages(pages);
@@ -122,6 +143,43 @@ export abstract class BaseScraper implements CinemaScraper {
    */
   protected delay(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Load a config overlay from disk if one exists for this cinema.
+   * Called automatically at the start of scrape().
+   * Overlays are JSON files created by AutoScrape experiments.
+   */
+  protected async loadConfigOverlay(): Promise<void> {
+    const overlayPath = join(OVERLAY_DIR, `${this.config.cinemaId}.json`);
+    try {
+      const raw = await readFile(overlayPath, "utf-8");
+      this.configOverlay = JSON.parse(raw) as ConfigOverlay;
+      console.log(`[${this.config.cinemaId}] Loaded config overlay`);
+    } catch (err) {
+      if (err instanceof Error && (err as NodeJS.ErrnoException).code === "ENOENT") {
+        this.configOverlay = null; // Expected: no overlay for this cinema
+        return;
+      }
+      // Surface real errors (bad JSON, permissions, disk issues)
+      console.error(`[${this.config.cinemaId}] Failed to load config overlay:`, err);
+      this.configOverlay = null;
+    }
+  }
+
+  /**
+   * Get a selector, preferring the overlay value if one exists.
+   * Subclasses call this instead of hardcoding selectors to enable AutoScrape.
+   */
+  protected getSelector(purpose: string, defaultSelector: string): string {
+    return this.configOverlay?.selectorOverrides?.[purpose] ?? defaultSelector;
+  }
+
+  /**
+   * Get a URL, preferring the overlay value if one exists.
+   */
+  protected getUrl(purpose: string, defaultUrl: string): string {
+    return this.configOverlay?.urlOverrides?.[purpose] ?? defaultUrl;
   }
 
   /**

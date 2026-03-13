@@ -1,5 +1,18 @@
 # Recent Changes
 
+## 2026-03-13: AutoResearch — autonomous experimentation system
+**Branch**: `chore/kaizen-2026-03-13-0741` | **Files**: `src/autoresearch/**`, `src/scrapers/base.ts`, `src/scrapers/runner-factory.ts`, `src/db/schema/admin.ts`, `scripts/audit-and-fix-upcoming.ts`, `.gitignore`
+- Added AutoScrape system: overnight scraper repair via AI-driven config overlay experiments
+- Added AutoQuality system: weekly threshold tuning to optimize Data Quality Score (DQS)
+- New DB table `autoresearch_experiments` for experiment logging
+- Shared infrastructure: types, experiment log with Telegram reporting, overnight summaries
+- Config overlay support in `BaseScraper` for runtime selector/URL overrides
+- Dry-run yield mode in `runner-factory.ts` for experiment evaluation without DB writes
+- Threshold override support in audit pipeline for AutoQuality experiments
+- Safety floors enforce non-negotiable limits (TMDB confidence >= 0.6, auto-merge similarity >= 0.85)
+
+---
+
 ## 2026-03-13: Kaizen — delete dead image dimension functions
 **PR**: #286 | **Files**: `src/lib/image-processor.ts`
 - Deleted `getImageDimensions` + `extractDimensions` (zero consumers, ~116 lines)
