@@ -92,7 +92,7 @@ export const Badge = forwardRef<HTMLSpanElement, BadgeProps>(function Badge(
   );
 });
 
-// Pre-configured format badges for film screenings
+/** Pre-configured format badge for film screenings (35mm, 70mm, IMAX, 4K, etc.). */
 export function FormatBadge({ format }: { format: string }) {
   const formatVariants: Record<string, BadgeVariant> = {
     "35mm": "gold",
@@ -114,7 +114,7 @@ export function FormatBadge({ format }: { format: string }) {
   );
 }
 
-// Pre-configured event badges
+/** Pre-configured event badge for screening extras (Q&A, intro, discussion, double bill). */
 export function EventBadge({ type, label }: { type: string; label?: string }) {
   const eventVariants: Record<string, { variant: BadgeVariant; text: string }> = {
     q_and_a: { variant: "gold", text: "Q&A" },
@@ -133,7 +133,7 @@ export function EventBadge({ type, label }: { type: string; label?: string }) {
   );
 }
 
-// Repertory badge for classic films
+/** Gold "REP" badge indicating a repertory/classic film screening. */
 export function RepertoryBadge({ size = "sm" }: { size?: BadgeSize }) {
   return (
     <Badge variant="gold" size={size}>

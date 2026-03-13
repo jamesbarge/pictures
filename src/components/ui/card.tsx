@@ -61,7 +61,7 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(function Card(
   );
 });
 
-// Card Header subcomponent
+/** Card header with optional heading, subtitle, and action slot. */
 export interface CardHeaderProps extends Omit<HTMLAttributes<HTMLDivElement>, "title"> {
   heading?: ReactNode;
   subtitle?: ReactNode;
@@ -97,7 +97,7 @@ export function CardHeader({
   );
 }
 
-// Card Content subcomponent
+/** Card body content area with top margin spacing. */
 export function CardContent({
   className,
   children,
@@ -110,7 +110,7 @@ export function CardContent({
   );
 }
 
-// Card Footer subcomponent
+/** Card footer with top border and flex layout for actions. */
 export function CardFooter({
   className,
   children,
@@ -129,7 +129,7 @@ export function CardFooter({
   );
 }
 
-// Card Image subcomponent - for image headers
+/** Card image header with aspect ratio presets and optional overlay. */
 export interface CardImageProps extends HTMLAttributes<HTMLDivElement> {
   src: string;
   alt: string;
@@ -175,7 +175,7 @@ export function CardImage({
   );
 }
 
-// Skeleton Card for loading states
+/** Animated skeleton placeholder card for loading states. */
 export function CardSkeleton({
   className,
   ...props
