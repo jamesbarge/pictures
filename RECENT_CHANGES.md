@@ -1,5 +1,12 @@
 # Recent Changes
 
+## 2026-03-13: Kaizen — add JSDoc to 4 exported trigger functions
+**PR**: #TBD | **Files**: `verification-alerts.ts`, `db-fixer.ts`, `booking-checker.ts`
+- Added JSDoc to sendVerificationAlert, applyFix, applyFixes, checkBookingLinks
+- Kaizen automated refactoring (category: jsdoc)
+
+---
+
 ## 2026-03-13: Kaizen — add JSDoc to gemini-analyzer exported functions
 **PR**: #TBD | **Files**: `src/trigger/qa/utils/gemini-analyzer.ts`
 - Added JSDoc to 4 exported functions: analyzeTmdbMismatch, analyzeBookingPageContent, batchAnomalyReview, generatePreventionReport
