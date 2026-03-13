@@ -1,5 +1,13 @@
 # Recent Changes
 
+## 2026-03-13: Kaizen — remove unused exports from metadata-parser
+**PR**: #TBD | **Files**: `src/scrapers/utils/metadata-parser.ts`
+- Removed `export` from 6 internal-only functions (extractYear, extractRuntime, extractDirector, extractCountry, parseStatsLine, parseParenthetical)
+- Only parseFilmMetadata remains exported (used by 3 scrapers)
+- Kaizen automated refactoring (category: dead-code)
+
+---
+
 ## 2026-03-13: Kaizen — lint-fix unused vars/imports in scripts (5 files)
 **PR**: #TBD | **Files**: 5 scripts files
 - Removed unused CURZON_SLUGS constant, unused sql/writeFileSync imports, unused variable assignments

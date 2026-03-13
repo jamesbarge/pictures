@@ -101,7 +101,7 @@ function isYear(str: string): boolean {
 /**
  * Extract year from text (4-digit number starting with 19 or 20)
  */
-export function extractYear(text: string): number | undefined {
+function extractYear(text: string): number | undefined {
   const match = text.match(/\b(19\d{2}|20\d{2})\b/);
   return match ? parseInt(match[1], 10) : undefined;
 }
@@ -109,7 +109,7 @@ export function extractYear(text: string): number | undefined {
 /**
  * Extract runtime from text (number followed by "mins", "min", "m", or just minutes)
  */
-export function extractRuntime(text: string): number | undefined {
+function extractRuntime(text: string): number | undefined {
   // Match patterns like "135m", "120 mins", "90 min", "100 minutes"
   const match = text.match(/(\d{2,3})\s*(?:mins?\.?|minutes?|m\.?)\b/i);
   return match ? parseInt(match[1], 10) : undefined;
@@ -118,7 +118,7 @@ export function extractRuntime(text: string): number | undefined {
 /**
  * Extract director from text using common patterns
  */
-export function extractDirector(text: string): string | undefined {
+function extractDirector(text: string): string | undefined {
   // Pattern 1: "dir Director Name" or "dir. Director Name"
   const dirMatch = text.match(/\bdir\.?\s+([^,\n]+?)(?:,|$|\n|\d{4})/i);
   if (dirMatch) {
@@ -145,7 +145,7 @@ export function extractDirector(text: string): string | undefined {
 /**
  * Extract country from text
  */
-export function extractCountry(text: string): string | undefined {
+function extractCountry(text: string): string | undefined {
   for (const country of COUNTRIES) {
     const regex = new RegExp(`\\b${country}\\b`, "i");
     if (regex.test(text)) {
@@ -180,7 +180,7 @@ function cleanDirectorName(name: string): string {
  * parseStatsLine("dir. Frank Capra, USA, 1946, 117 mins.")
  * // => { director: "Frank Capra", country: "USA", year: 1946, runtime: 117 }
  */
-export function parseStatsLine(text: string): FilmMetadata {
+function parseStatsLine(text: string): FilmMetadata {
   if (!text || !text.trim()) {
     return {};
   }
@@ -219,7 +219,7 @@ export function parseStatsLine(text: string): FilmMetadata {
  * Parse metadata from parenthetical format: "(Year, Country, Director)"
  * Used by The Nickel and similar cinemas
  */
-export function parseParenthetical(text: string): FilmMetadata {
+function parseParenthetical(text: string): FilmMetadata {
   const match = text.match(/\((\d{4}),\s*([^,]+),\s*([^)]+)\)/);
   if (match) {
     return {
