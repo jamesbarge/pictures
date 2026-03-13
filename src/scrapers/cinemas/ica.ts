@@ -208,6 +208,7 @@ export class ICAScraper extends BaseScraper {
   }
 }
 
+/** Creates a scraper for ICA Cinema (The Mall). */
 export function createICAScraper(): ICAScraper {
   return new ICAScraper();
 }
