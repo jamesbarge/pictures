@@ -22,7 +22,7 @@ import { calculateConfidence } from "./confidence";
 import { fetchLetterboxdRating } from "./letterboxd";
 import type { AgentResult } from "../types";
 
-export interface FallbackEnrichmentOptions {
+interface FallbackEnrichmentOptions {
   /** Max films to process */
   limit?: number;
   /** Whether to auto-apply high-confidence results to DB */
@@ -31,7 +31,7 @@ export interface FallbackEnrichmentOptions {
   confidenceThreshold?: number;
 }
 
-export interface FallbackEnrichmentResult {
+interface FallbackEnrichmentResult {
   processed: number;
   autoApplied: number;
   needsReview: number;
@@ -362,4 +362,3 @@ function describeChanges(
 
 // Re-export for external use
 export { calculateConfidence, titleSimilarity } from "./confidence";
-export type { ConfidenceInput, ConfidenceResult } from "./confidence";

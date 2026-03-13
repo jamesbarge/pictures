@@ -58,7 +58,7 @@ function isUrlSafeToFetch(url: string): boolean {
   }
 }
 
-export interface BookingPageData {
+interface BookingPageData {
   ogImage: string | null;
   ogDescription: string | null;
   ogTitle: string | null;

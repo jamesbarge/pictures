@@ -8,14 +8,14 @@
 import { generateTextWithUsage } from "@/lib/gemini";
 import type { CastMember } from "@/types/film";
 
-export interface FilmSearchInput {
+interface FilmSearchInput {
   title: string;
   year: number | null;
   cinemaName?: string;
   bookingUrl?: string;
 }
 
-export interface ExtractedFilmData {
+interface ExtractedFilmData {
   title: string;
   originalTitle?: string;
   year: number | null;
