@@ -49,6 +49,7 @@ function setNpsState(state: NpsState): void {
   }
 }
 
+/** In-app NPS survey shown after 5+ sessions, capturing score and comment via PostHog. */
 export function NpsSurvey() {
   const [visible, setVisible] = useState(false);
   const [score, setScore] = useState<number | null>(null);

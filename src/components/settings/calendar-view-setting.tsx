@@ -33,6 +33,7 @@ const VIEW_OPTIONS: {
   },
 ];
 
+/** Radio group for switching between film, screening, and table calendar view modes. */
 export function CalendarViewSetting() {
   const { calendarViewMode, setCalendarViewMode } = usePreferences();
   const mounted = useHydrated();

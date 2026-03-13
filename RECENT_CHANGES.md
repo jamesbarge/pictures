@@ -1,3 +1,9 @@
+## 2026-03-13: Kaizen — JSDoc for watchlist/settings/feedback exports
+**PR**: #326 | **Files**: `src/components/watchlist/letterboxd-import.tsx`, `src/components/settings/not-interested-list.tsx`, `src/components/settings/calendar-view-setting.tsx`, `src/components/settings/theme-setting.tsx`, `src/components/feedback/nps-survey.tsx`
+- Added JSDoc to 5 exported functions across watchlist, settings, and feedback directories
+- Kaizen automated refactoring (category: jsdoc)
+
+---
 ## 2026-03-13: Kaizen — JSDoc for hook/map/watchlist exports
 **PR**: #325 | **Files**: `src/hooks/useUrlFilters.ts`, `src/components/map/cinema-map.tsx`, `src/components/map/map-provider.tsx`, `src/components/watchlist/letterboxd-import-trigger.tsx`, `src/components/watchlist/watchlist-view.tsx`
 - Added JSDoc to 5 exported functions across hooks, map, and watchlist directories
