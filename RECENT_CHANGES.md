@@ -1,5 +1,12 @@
 # Recent Changes
 
+## 2026-03-13: Kaizen — remove dead code in components (2 files)
+**PR**: #273 | **Files**: `src/components/posthog-provider.tsx`, `src/components/seo/json-ld.tsx`
+- Deleted `useIsAdminUser()` hook (0 callers), removed `export` from `ScreeningEventSchema` (internal-only)
+- Kaizen automated refactoring (category: dead-code)
+
+---
+
 ## 2026-03-13: Kaizen — remove dead barrel re-exports from festivals
 **PR**: #TBD | **Files**: `src/components/festivals/index.ts`
 - Removed 3 unused barrel re-exports: FollowButtonCompact, FestivalTimeline, FestivalListSkeleton
