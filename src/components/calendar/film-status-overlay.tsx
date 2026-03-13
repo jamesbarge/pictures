@@ -35,6 +35,7 @@ interface FilmStatusOverlayProps {
   className?: string;
 }
 
+/** Reusable watchlist and not-interested buttons for film/screening cards, synced to Zustand and PostHog. */
 export function FilmStatusOverlay({ film, cinema, className }: FilmStatusOverlayProps) {
   const posthog = usePostHog();
   const mounted = useHydrated();

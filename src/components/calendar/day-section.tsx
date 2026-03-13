@@ -96,7 +96,7 @@ function formatDateHeader(
   };
 }
 
-// Memoize DaySection to prevent re-renders when parent updates but props haven't changed
+/** Memoized day group with sticky date header, rendering screening or film cards by view mode. */
 export const DaySection = memo(function DaySection({ date, screenings, filmGroups, viewMode }: DaySectionProps) {
   const { isClientToday, isClientTomorrow, isClientThisWeek } = useSafeDateLabels();
 
