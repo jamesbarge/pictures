@@ -20,6 +20,7 @@ function formatDatePill(date: Date): string {
   return format(date, "EEE d");
 }
 
+/** Horizontal date-pill selector for narrowing film screenings to specific days. */
 export function ScreeningDateFilter({
   availableDates,
   selectedDates,

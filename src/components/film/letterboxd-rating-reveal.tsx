@@ -25,6 +25,7 @@ const LETTERBOXD_ORANGE = "#FF8000";
 // Use session storage to remember which ratings have been revealed
 const getRevealedKey = (filmId: string) => `letterboxd-revealed-${filmId}`;
 
+/** Click-to-reveal Letterboxd rating that respects spoiler-averse users via session storage. */
 export function LetterboxdRatingReveal({
   rating,
   filmId,

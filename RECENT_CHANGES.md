@@ -1,3 +1,10 @@
+## 2026-03-13: Kaizen — Add JSDoc to 3 film + 2 calendar components
+**PR**: #TBD | **Files**: `letterboxd-rating-reveal.tsx`, `status-toggle.tsx`, `screening-date-filter.tsx`, `screening-card.tsx`, `film-card.tsx`
+- Added one-line JSDoc to 5 exported component functions
+- Kaizen automated refactoring (category: jsdoc)
+
+---
+
 ## 2026-03-13: Kaizen — Add JSDoc to 5 film detail filter and tracking components
 **PR**: #TBD | **Files**: `share-screening-button.tsx`, `screening-filters.tsx`, `cinema-search-filter.tsx`, `time-range-filter.tsx`, `film-view-tracker.tsx`
 - Added one-line JSDoc to 5 exported component functions
