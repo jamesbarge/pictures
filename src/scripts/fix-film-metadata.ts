@@ -62,13 +62,6 @@ async function fetchAndUpdateFilm(
       ?.filter((c) => c.job === "Director")
       ?.map((c) => c.name) || [];
 
-  // Extract top cast
-  const cast =
-    data.credits?.cast?.slice(0, 10)?.map((c) => ({
-      name: c.name,
-      character: c.character,
-      order: c.order,
-    })) || [];
 
   const year = data.release_date
     ? parseInt(data.release_date.split("-")[0])
@@ -82,8 +75,6 @@ async function fetchAndUpdateFilm(
     ? `https://image.tmdb.org/t/p/w1280${data.backdrop_path}`
     : null;
 
-  const genres = data.genres?.map((g) => g.name) || [];
-  const countries = data.production_countries?.map((c) => c.iso_3166_1) || [];
 
   // Update scalar fields (array fields already set during initial fix)
   await sql`
