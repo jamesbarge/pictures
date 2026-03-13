@@ -11,7 +11,7 @@
  * @param newKey - The new localStorage key (e.g., "pictures-filters")
  * @returns true if migration occurred, false otherwise
  */
-export function migrateStorageKey(oldKey: string, newKey: string): boolean {
+function migrateStorageKey(oldKey: string, newKey: string): boolean {
   if (typeof window === "undefined") return false;
 
   try {
