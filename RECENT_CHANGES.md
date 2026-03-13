@@ -1,5 +1,12 @@
 # Recent Changes
 
+## 2026-03-13: Kaizen — delete 6 dead analytics functions
+**PR**: #TBD | **Files**: `src/lib/analytics.ts`
+- Removed 6 unused exported functions: `trackCinemaSelection`, `getFeatureFlagValue`, `getFeatureFlagPayload`, `setUserProperties`, `setUserPropertiesOnce`, `incrementUserProperty`
+- Kaizen automated refactoring (category: dead-code)
+
+---
+
 ## 2026-03-13: Fix AutoResearch state restoration + reporting accuracy
 **PR**: #295 | **Files**: `src/autoresearch/autoscrape/harness.ts`, `src/autoresearch/autoquality/harness.ts`, `src/autoresearch/experiment-log.ts`
 - AutoScrape/AutoQuality: catch blocks now restore config overlays/thresholds on experiment failure
