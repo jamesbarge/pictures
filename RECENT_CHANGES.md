@@ -1,5 +1,12 @@
 # Recent Changes
 
+## 2026-03-13: Kaizen — remove dead barrel re-exports from ui/index.ts
+**PR**: #274 | **Files**: `src/components/ui/index.ts`
+- Removed 11 dead component re-exports and 8 dead type re-exports
+- Kaizen automated refactoring (category: dead-code)
+
+---
+
 ## 2026-03-13: Kaizen — remove dead code in components (2 files)
 **PR**: #273 | **Files**: `src/components/posthog-provider.tsx`, `src/components/seo/json-ld.tsx`
 - Deleted `useIsAdminUser()` hook (0 callers), removed `export` from `ScreeningEventSchema` (internal-only)
