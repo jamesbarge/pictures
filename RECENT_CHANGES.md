@@ -1,5 +1,12 @@
 # Recent Changes
 
+## 2026-03-13: Kaizen — unexport 5 internal-only scraper pipeline exports
+**PR**: #TBD | **Files**: `screening-validator.ts`, `pipeline.ts`, `runner-factory.ts`
+- Removed `export` from ValidationSummary, PipelineResult, VenueResult, flushPendingRecords, parseVenueArgs — all internal-only
+- Kaizen automated refactoring (category: dead-code)
+
+---
+
 ## 2026-03-13: Kaizen — unexport 5 internal-only scraper util interfaces
 **PR**: #TBD | **Files**: `fetch-with-retry.ts`, `screening-classification.ts`, `film-title-cleaner.ts`, `scrape-diff.ts`
 - Removed `export` from FetchWithRetryOptions, ScreeningMetadata, DuplicateCheckResult, CleanTitleResult, ScrapeDiffReport — all internal-only
