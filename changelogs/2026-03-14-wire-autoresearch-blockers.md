@@ -1,6 +1,6 @@
 # Wire AutoResearch Foundational Blockers
 
-**PR**: #TBD
+**PR**: #295
 **Date**: 2026-03-14
 
 ## Changes

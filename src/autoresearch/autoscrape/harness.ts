@@ -15,7 +15,7 @@
  *   4:30-5:00  Keep if yield improves; discard otherwise
  */
 
-import { readFile, writeFile, mkdir } from "fs/promises";
+import { readFile, writeFile, mkdir, unlink } from "fs/promises";
 import { join } from "path";
 import { generateText, isGeminiConfigured, stripCodeFences } from "@/lib/gemini";
 import { db } from "@/db";
@@ -240,7 +240,12 @@ async function runOneExperiment(
         } else {
           await removeOverlay(cinema.cinemaId);
         }
-      } catch { /* best-effort restore */ }
+      } catch (restoreErr) {
+        console.error(
+          `[autoscrape] CRITICAL: Failed to restore overlay for ${cinema.cinemaId} — broken candidate may still be on disk:`,
+          restoreErr instanceof Error ? restoreErr.message : restoreErr
+        );
+      }
     }
 
     const errorMsg = err instanceof Error ? err.message : String(err);
@@ -283,7 +288,8 @@ export async function runAutoScrapeOvernight(
   if (brokenScrapers.length === 0) {
     console.log("[autoscrape] All scrapers healthy — nothing to do");
     const summary = buildOvernightSummary("autoscrape", runStartedAt, new Date(), new Map());
-    await sendOvernightReport(summary);
+    const sent = await sendOvernightReport(summary);
+    if (!sent) console.warn("[autoscrape] Failed to send Telegram overnight report");
     return summary;
   }
 
@@ -329,7 +335,8 @@ export async function runAutoScrapeOvernight(
     new Date(),
     resultsByTarget
   );
-  await sendOvernightReport(summary);
+  const reportSent = await sendOvernightReport(summary);
+  if (!reportSent) console.warn("[autoscrape] Failed to send Telegram overnight report");
 
   // Step 4: Write Obsidian report and update cursor
   const allExperiments = [...resultsByTarget.values()].flatMap((t) => t.results);
@@ -470,8 +477,11 @@ async function loadCurrentOverlay(cinemaId: string): Promise<string | null> {
   try {
     const overlayPath = join(OVERLAY_DIR, `${cinemaId}.json`);
     return await readFile(overlayPath, "utf-8");
-  } catch {
-    return null;
+  } catch (err) {
+    if (err instanceof Error && (err as NodeJS.ErrnoException).code === "ENOENT") {
+      return null;
+    }
+    throw err;
   }
 }
 
@@ -489,10 +499,12 @@ async function writeOverlay(cinemaId: string, overlay: ConfigOverlay): Promise<v
  */
 async function removeOverlay(cinemaId: string): Promise<void> {
   try {
-    const { unlink } = await import("fs/promises");
     const overlayPath = join(OVERLAY_DIR, `${cinemaId}.json`);
     await unlink(overlayPath);
-  } catch {
-    // Already removed or never existed
+  } catch (err) {
+    if (err instanceof Error && (err as NodeJS.ErrnoException).code === "ENOENT") {
+      return; // Already removed or never existed
+    }
+    throw err;
   }
 }

@@ -109,9 +109,10 @@ function buildReportMarkdown(
   const recovered = summary.targetSummaries.filter((t) => t.recovered);
   const needsAttention = summary.targetSummaries.filter((t) => t.needsManualAttention);
 
-  // Compute net improvement from first and last experiments
+  // Compute net improvement from first experiment and last *kept* experiment
   const netBefore = experiments.length > 0 ? experiments[0].metricBefore : 0;
-  const netAfter = experiments.length > 0 ? experiments[experiments.length - 1].metricAfter : 0;
+  const lastKept = experiments.filter((e) => e.kept).pop();
+  const netAfter = lastKept?.metricAfter ?? netBefore;
 
   const lines: string[] = [];
 

@@ -34,8 +34,8 @@ const MAX_EXPERIMENTS = 20;
 /**
  * Compute the Data Quality Score from an audit summary.
  *
- * DQS = 100 - (missingTmdb% × 30 + missingPoster% × 25 + missingSynopsis% × 20
- *              + duplicates% × 15 + dodgyEntries% × 10)
+ * DQS = 100 - (missingTmdb% × 0.30 + missingPoster% × 0.25 + missingSynopsis% × 0.20
+ *              + duplicates% × 0.15 + dodgyEntries% × 0.10)
  *
  * Note: duplicates% and dodgyEntries% require separate queries;
  * we approximate from audit summary fields when those aren't available.
@@ -257,7 +257,14 @@ async function runOneExperiment(
     // Restore threshold if we modified it before the failure
     if (appliedThresholdKey !== undefined && appliedPreviousValue !== undefined) {
       setThresholdValue(thresholds, appliedThresholdKey, appliedPreviousValue);
-      await saveThresholds(thresholds).catch(() => {});
+      try {
+        await saveThresholds(thresholds);
+      } catch (saveErr) {
+        console.error(
+          `[autoquality] CRITICAL: Failed to save reverted thresholds to disk. On-disk thresholds may contain experimental value for ${appliedThresholdKey}:`,
+          saveErr instanceof Error ? saveErr.message : saveErr
+        );
+      }
     }
 
     const errorMsg = err instanceof Error ? err.message : String(err);
@@ -345,7 +352,8 @@ export async function runAutoQualityWeekly(
   resultsByTarget.set("data-quality", { name: "Data Quality Score", results });
 
   const summary = buildOvernightSummary("autoquality", runStartedAt, new Date(), resultsByTarget);
-  await sendOvernightReport(summary);
+  const reportSent = await sendOvernightReport(summary);
+  if (!reportSent) console.warn("[autoquality] Failed to send Telegram overnight report");
 
   // Write Obsidian report and update cursor
   try {

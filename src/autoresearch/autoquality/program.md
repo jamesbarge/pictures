@@ -29,8 +29,8 @@ Propose ONE threshold change that will improve the Data Quality Score (DQS). You
 ## DQS Formula
 
 ```
-DQS = 100 - (missingTmdb% × 30 + missingPoster% × 25 + missingSynopsis% × 20
-             + duplicates% × 15 + dodgyEntries% × 10)
+DQS = 100 - (missingTmdb% × 0.30 + missingPoster% × 0.25 + missingSynopsis% × 0.20
+             + duplicates% × 0.15 + dodgyEntries% × 0.10)
 ```
 
 ## Safety Floors (MUST NOT VIOLATE)
