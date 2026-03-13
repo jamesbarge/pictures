@@ -22,11 +22,10 @@
  *   npx dotenv -e .env.local -- npx tsx scripts/audit-and-fix-upcoming.ts --skip 5,6
  */
 
-import { readFileSync } from "fs";
-import { join } from "path";
 import { db } from "../src/db";
 import { films, screenings } from "../src/db/schema";
 import { eq, isNull, gte, and, count } from "drizzle-orm";
+import { loadThresholds } from "../src/autoresearch/autoquality/load-thresholds";
 import { execFileSync } from "child_process";
 import type { AuditSummary } from "../src/scripts/audit-film-data";
 
@@ -42,45 +41,6 @@ const skipIndex = args.indexOf("--skip");
 const SKIP_PASSES = skipIndex !== -1
   ? new Set(args[skipIndex + 1].split(",").map(Number))
   : new Set<number>();
-
-// Threshold overrides (used by AutoQuality experiments)
-const thresholdsIndex = args.indexOf("--thresholds");
-const THRESHOLD_OVERRIDES = loadThresholdOverrides(
-  thresholdsIndex !== -1 ? args[thresholdsIndex + 1] : null
-);
-
-interface DodgyThresholds {
-  maxTitleLength: number;
-  minYear: number;
-  maxYear: number;
-  maxRuntime: number;
-}
-
-function loadThresholdOverrides(path: string | null): DodgyThresholds {
-  const defaults: DodgyThresholds = {
-    maxTitleLength: 80,
-    minYear: 1895,
-    maxYear: 2027,
-    maxRuntime: 600,
-  };
-
-  if (!path) return defaults;
-
-  try {
-    const raw = readFileSync(join(process.cwd(), path), "utf-8");
-    const parsed = JSON.parse(raw);
-    const dodgy = parsed.dodgyDetection ?? {};
-    return {
-      maxTitleLength: dodgy.maxTitleLength ?? defaults.maxTitleLength,
-      minYear: dodgy.minYear ?? defaults.minYear,
-      maxYear: dodgy.maxYear ?? defaults.maxYear,
-      maxRuntime: dodgy.maxRuntime ?? defaults.maxRuntime,
-    };
-  } catch {
-    console.warn(`  [Warning] Could not load thresholds from ${path}, using defaults`);
-    return defaults;
-  }
-}
 
 // ---------------------------------------------------------------------------
 // Non-film detection patterns (Pass 2)
@@ -404,13 +364,15 @@ async function pass7DodgyDetection(): Promise<DodgyEntry[]> {
   const countMap = new Map(upcomingCounts.map((r) => [r.filmId, r.count]));
 
   const dodgy: DodgyEntry[] = [];
+  const thresholds = loadThresholds();
+  const { maxTitleLength, minYear, maxYear, maxRuntime } = thresholds.dodgyDetection;
 
   for (const film of uniqueFilms) {
     const reasons: string[] = [];
 
     // Extremely long titles - likely descriptions or event names
-    if (film.title.length > THRESHOLD_OVERRIDES.maxTitleLength) {
-      reasons.push(`title too long (${film.title.length} chars, max ${THRESHOLD_OVERRIDES.maxTitleLength})`);
+    if (film.title.length > maxTitleLength) {
+      reasons.push(`title too long (${film.title.length} chars)`);
     }
 
     // ALL CAPS titles with no TMDB match - likely events
@@ -419,12 +381,12 @@ async function pass7DodgyDetection(): Promise<DodgyEntry[]> {
     }
 
     // Year outliers
-    if (film.year !== null && (film.year > THRESHOLD_OVERRIDES.maxYear || film.year < THRESHOLD_OVERRIDES.minYear)) {
+    if (film.year !== null && (film.year > maxYear || film.year < minYear)) {
       reasons.push(`suspicious year: ${film.year}`);
     }
 
     // Runtime outliers
-    if (film.runtime !== null && (film.runtime === 0 || film.runtime > THRESHOLD_OVERRIDES.maxRuntime)) {
+    if (film.runtime !== null && (film.runtime === 0 || film.runtime > maxRuntime)) {
       reasons.push(`suspicious runtime: ${film.runtime}min`);
     }
 

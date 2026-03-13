@@ -1,5 +1,14 @@
 # Recent Changes
 
+## 2026-03-14: Wire AutoResearch foundational blockers
+**PR**: #TBD | **Files**: `admin.ts`, `load-thresholds.ts`, `scraper-registry.ts`, `0007_add_autoresearch_experiments.sql`, `audit-and-fix-upcoming.ts`, `cleanup-duplicate-films.ts`
+- Add autoresearch_experiments DB table + migration with RLS
+- Create shared threshold loader so AutoQuality tuning affects the audit pipeline
+- Build ScraperFactory registry from cinema registry for AutoScrape harness
+- Make durationMs NOT NULL in schema to match experiment-log.ts writes
+
+---
+
 ## 2026-03-13: Fix AutoResearch state restoration + reporting accuracy
 **PR**: #295 | **Files**: `src/autoresearch/autoscrape/harness.ts`, `src/autoresearch/autoquality/harness.ts`, `src/autoresearch/experiment-log.ts`
 - AutoScrape/AutoQuality: catch blocks now restore config overlays/thresholds on experiment failure
