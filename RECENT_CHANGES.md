@@ -1,3 +1,10 @@
+## 2026-03-13: Kaizen — Add JSDoc to 2 calendar + 3 layout components
+**PR**: #TBD | **Files**: `film-status-buttons.tsx`, `screening-card-skeleton.tsx`, `header-nav.tsx`, `footer.tsx`, `subpage-nav.tsx`
+- Added one-line JSDoc to 5 exported component functions
+- Kaizen automated refactoring (category: jsdoc)
+
+---
+
 ## 2026-03-13: Kaizen — Add JSDoc to 5 calendar view components
 **PR**: #TBD | **Files**: `day-section.tsx`, `table-view.tsx`, `calendar-view.tsx`, `calendar-view-loader.tsx`, `film-status-overlay.tsx`
 - Added one-line JSDoc to 5 exported calendar components

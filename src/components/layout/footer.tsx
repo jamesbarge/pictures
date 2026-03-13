@@ -7,6 +7,7 @@ import Link from "next/link";
 
 const CONTACT_EMAIL = "jdwbarge@gmail.com";
 
+/** Site footer with copyright, legal links, contact info, and attribution. */
 export function Footer() {
   const currentYear = new Date().getFullYear();
 

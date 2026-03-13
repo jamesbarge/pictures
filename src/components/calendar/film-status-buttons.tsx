@@ -19,6 +19,7 @@ interface FilmStatusButtonsProps {
   analyticsContext?: Record<string, unknown>;
 }
 
+/** Shared watchlist and not-interested toggle buttons used by ScreeningCard and FilmCard. */
 export function FilmStatusButtons({
   filmId,
   filmData,

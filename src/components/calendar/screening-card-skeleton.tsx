@@ -13,6 +13,7 @@ interface ScreeningCardSkeletonProps {
   className?: string;
 }
 
+/** Shimmer loading placeholder matching ScreeningCard layout to prevent CLS. */
 export function ScreeningCardSkeleton({ className }: ScreeningCardSkeletonProps) {
   return (
     <article
