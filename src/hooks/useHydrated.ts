@@ -12,6 +12,7 @@
 
 import { useState, useEffect } from "react";
 
+/** Returns true after client-side hydration, safe for gating browser-only APIs like localStorage. */
 export function useHydrated(): boolean {
   const [hydrated, setHydrated] = useState(false);
 

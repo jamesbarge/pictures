@@ -40,6 +40,7 @@ interface SafeDateLabels {
   hydrated: boolean;
 }
 
+/** SSR-safe date comparison functions that only return true after hydration to prevent mismatch. */
 export function useSafeDateLabels(): SafeDateLabels {
   const hydrated = useHydrated();
 
