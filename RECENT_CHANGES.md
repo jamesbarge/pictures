@@ -3,6 +3,10 @@
 ## 2026-03-13: Kaizen — unexport internal-only rate-limit types
 **PR**: #283 | **Files**: `src/lib/rate-limit.ts`
 - Removed export from RateLimitConfig and RateLimitResult (only used internally)
+## 2026-03-13: Kaizen — delete dead image processing cascade
+**PR**: #283 | **Files**: `src/lib/image-processor.ts`, `src/lib/rate-limit.ts`
+- Deleted batchPrepareImages, prepareImageForPoster, generatePlaceholderUrl + dead types/constants
+- Unexported RateLimitConfig/RateLimitResult (internal-only)
 - Kaizen automated refactoring (category: dead-code)
 
 ---
