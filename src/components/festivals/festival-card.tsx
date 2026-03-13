@@ -36,6 +36,7 @@ export interface FestivalCardProps {
   };
 }
 
+/** Festival summary card with date range, status, venue count, and follow button. */
 export function FestivalCard({ festival }: FestivalCardProps) {
   const startDate = new Date(festival.startDate);
   const endDate = new Date(festival.endDate);
