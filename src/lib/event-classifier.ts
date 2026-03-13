@@ -183,30 +183,6 @@ Return ONLY valid JSON, no explanation.`;
 }
 
 /**
- * Batch classify multiple screenings (more efficient)
- */
-export async function classifyEventsBatch(
-  items: Array<{ title: string; description?: string }>
-): Promise<EventClassification[]> {
-  // For now, process sequentially with small delays to avoid rate limits
-  // Could be optimized with parallel requests in batches
-  const results: EventClassification[] = [];
-
-  for (let i = 0; i < items.length; i++) {
-    const item = items[i];
-    const result = await classifyEvent(item.title, item.description);
-    results.push(result);
-
-    // Small delay between requests
-    if (i < items.length - 1) {
-      await new Promise((r) => setTimeout(r, 50));
-    }
-  }
-
-  return results;
-}
-
-/**
  * Quick heuristic check - does this title likely need classification?
  * Use this to filter before calling the more expensive Claude API
  */
@@ -261,9 +237,3 @@ export async function classifyEventCached(
   return result;
 }
 
-/**
- * Clear the classification cache
- */
-export function clearClassificationCache(): void {
-  classificationCache.clear();
-}
