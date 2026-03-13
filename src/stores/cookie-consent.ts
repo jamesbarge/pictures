@@ -9,7 +9,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
-export type ConsentStatus = "pending" | "accepted" | "rejected";
+type ConsentStatus = "pending" | "accepted" | "rejected";
 
 export interface CookieConsentState {
   // Consent status for analytics/tracking cookies
