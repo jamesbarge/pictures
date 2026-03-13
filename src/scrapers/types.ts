@@ -124,27 +124,3 @@ export interface ChainScraper {
   healthCheck(): Promise<boolean>;
 }
 
-// ============================================================================
-// Common Booking System Support
-// ============================================================================
-
-/**
- * Many UK cinemas use common booking systems like Vista, Veezi, or Spectrix
- * This allows us to potentially share scraping logic
- */
-export type BookingSystem =
-  | "vista"          // Vista (used by many chains)
-  | "veezi"          // Veezi
-  | "spectrix"       // Spectrix (arts venues)
-  | "ticketsolve"    // Ticketsolve
-  | "custom"         // Custom/proprietary
-  | "unknown";
-
-/** Detected booking system configuration for a cinema website */
-export interface BookingSystemConfig {
-  system: BookingSystem;
-  /** API endpoint if discoverable */
-  apiEndpoint?: string;
-  /** Whether site uses Cloudflare protection */
-  hasCloudflare?: boolean;
-}
