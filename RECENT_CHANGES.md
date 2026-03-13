@@ -1,5 +1,11 @@
 # Recent Changes
 
+## 2026-03-14: Kaizen — add JSDoc to 5 filter component functions
+**PR**: #312 | **Files**: `date-range-picker.tsx`, `date-filter.tsx`, `mobile-date-picker-modal.tsx`, `mobile-cinema-picker-modal.tsx`, `filter-bar.tsx`
+- Added JSDoc to DateRangePicker, DateFilter, MobileDatePickerModal, MobileCinemaPickerModal, FilterBar
+
+---
+
 ## 2026-03-14: Kaizen — add JSDoc to 3 scraper factories (final batch)
 **PR**: #TBD | **Files**: `riverside-studios.ts`, `riverside-v2.ts`, `romford-lumiere.ts`
 - Added JSDoc to createRiversideStudiosScraper, createRiversideScraperV2, createRomfordLumiereScraper
