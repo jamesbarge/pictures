@@ -322,6 +322,7 @@ export class GenesisScraper implements CinemaScraper {
   }
 }
 
+/** Create and return a new Genesis Cinema scraper instance. */
 // Factory function
 export function createGenesisScraper(): GenesisScraper {
   return new GenesisScraper();

@@ -161,6 +161,7 @@ export class RioScraper extends BaseScraper {
   }
 }
 
+/** Create and return a new Rio Cinema scraper instance. */
 export function createRioScraper(): RioScraper {
   return new RioScraper();
 }

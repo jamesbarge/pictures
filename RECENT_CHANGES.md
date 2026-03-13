@@ -1,5 +1,12 @@
 # Recent Changes
 
+## 2026-03-13: Kaizen — add JSDoc to 5 scraper factory functions
+**PR**: #TBD | **Files**: `src/scrapers/cinemas/rio.ts`, `genesis.ts`, `nickel-v2.ts`, `rich-mix.ts`, `the-nickel.ts`
+- Added JSDoc to createRioScraper, createGenesisScraper, createNickelScraperV2, createRichMixScraper, createNickelScraper
+- Kaizen automated refactoring (category: jsdoc)
+
+---
+
 ## 2026-03-13: Kaizen — remove dead TikTok filtering variables in apify-runner
 **PR**: #TBD | **Files**: `scripts/social-outreach/apify-runner.ts`
 - Removed unused hasLondonSignal, isFromLondonHashtag, and combinedText variables
