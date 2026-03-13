@@ -18,23 +18,12 @@
 import * as cheerio from "cheerio";
 import { BOT_USER_AGENT } from "../constants";
 import type { RawScreening, ScraperConfig } from "../types";
-import type { CheerioAPI } from "../utils/cheerio-types";
 import { getBrowser, closeBrowser, createPage } from "../utils/browser";
 import type { Page } from "playwright";
 import { addDays, format } from "date-fns";
 import { combineDateAndTime } from "../utils/date-parser";
 import { slugify } from "../utils/url";
 
-interface CineSyncMovieData {
-  movie_id: string;
-  movie_name: string;
-  url_key: string;
-  portrait_image?: string;
-  landscape_image?: string;
-  runtime?: number;
-  release_date?: string;
-  director?: string;
-}
 
 export class RomfordLumiereScraper {
   private page: Page | null = null;
@@ -141,54 +130,6 @@ export class RomfordLumiereScraper {
     }
 
     return allScreenings;
-  }
-
-
-  private async parseScreeningsFromPageText(
-    $: CheerioAPI,
-    film: CineSyncMovieData,
-    endDate: Date
-  ): Promise<RawScreening[]> {
-    const screenings: RawScreening[] = [];
-    const now = new Date();
-
-    // Look for date headings and time buttons
-    // Common patterns in cinema sites: date headers followed by time buttons
-    const dateBlocks = $('[class*="date"], [class*="day"], h3, h4').filter((_, el) => {
-      const text = $(el).text();
-      // Check if this looks like a date
-      return /\d{1,2}|\w+day|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec/i.test(text);
-    });
-
-    dateBlocks.each((_, dateEl) => {
-      const dateText = $(dateEl).text().trim();
-
-      // Find times near this date
-      const $container = $(dateEl).parent();
-      const timeElements = $container.find('button, a').filter((_, el) => {
-        const text = $(el).text().trim();
-        // Check if this looks like a time (e.g., "14:30", "2:30pm", "2:30 PM")
-        return /^\d{1,2}[:.]\d{2}\s*(?:am|pm)?$/i.test(text);
-      });
-
-      timeElements.each((_, timeEl) => {
-        const timeText = $(timeEl).text().trim();
-        const datetime = this.parseShowtimeDateTime(dateText, timeText);
-
-        if (datetime && datetime > now && datetime <= endDate) {
-          const sourceId = `romford-lumiere-${slugify(film.movie_name)}-${datetime.toISOString()}`;
-
-          screenings.push({
-            filmTitle: this.cleanTitle(film.movie_name),
-            datetime,
-            bookingUrl: `${this.config.baseUrl}/en/movies/${film.url_key}`,
-            sourceId,
-          });
-        }
-      });
-    });
-
-    return screenings;
   }
 
   private async extractScreeningsDirectly(): Promise<RawScreening[]> {
