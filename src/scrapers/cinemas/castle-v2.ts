@@ -111,6 +111,7 @@ export class CastleScraperV2 extends BaseScraper {
 
 }
 
+/** Creates a v2 API-based scraper for The Castle Cinema (Hackney). */
 export function createCastleScraperV2(): CastleScraperV2 {
   return new CastleScraperV2();
 }

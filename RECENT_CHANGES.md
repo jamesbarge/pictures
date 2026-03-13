@@ -1,5 +1,12 @@
 # Recent Changes
 
+## 2026-03-13: Kaizen — add JSDoc to 5 scraper factory functions
+**PR**: #TBD | **Files**: `phoenix.ts`, `castle-v2.ts`, `lexi.ts`, `prince-charles.ts`, `castle.ts`
+- Added JSDoc to createPhoenixScraper, createCastleScraperV2, createLexiScraper, createPrinceCharlesScraper, createCastleScraper
+- Kaizen automated refactoring (category: jsdoc)
+
+---
+
 ## 2026-03-13: Kaizen — remove dead TikTok filtering variables in apify-runner
 **PR**: #TBD | **Files**: `scripts/social-outreach/apify-runner.ts`
 - Removed unused hasLondonSignal, isFromLondonHashtag, and combinedText variables

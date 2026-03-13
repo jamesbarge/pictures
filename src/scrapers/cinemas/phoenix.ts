@@ -249,6 +249,7 @@ export class PhoenixScraper implements CinemaScraper {
   }
 }
 
+/** Creates a scraper for Phoenix Cinema (East Finchley). */
 export function createPhoenixScraper(): PhoenixScraper {
   return new PhoenixScraper();
 }

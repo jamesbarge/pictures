@@ -157,6 +157,7 @@ export class PrinceCharlesScraper extends BaseScraper {
   }
 }
 
+/** Creates a scraper for Prince Charles Cinema (West End). */
 export function createPrinceCharlesScraper(): PrinceCharlesScraper {
   return new PrinceCharlesScraper();
 }

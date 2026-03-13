@@ -289,6 +289,7 @@ export class LexiScraper implements CinemaScraper {
   }
 }
 
+/** Creates a scraper for The Lexi Cinema (Kensal Rise). */
 export function createLexiScraper(): LexiScraper {
   return new LexiScraper();
 }
