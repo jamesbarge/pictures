@@ -31,7 +31,7 @@ export function sanitizeScreening(screening: RawScreening): RawScreening {
   };
 }
 
-export interface ValidationResult {
+interface ValidationResult {
   valid: boolean;
   errors: string[];    // Fatal - screening should be rejected
   warnings: string[];  // Non-fatal - log but allow
@@ -68,7 +68,7 @@ const WARNING_DATES = [
 /**
  * Validate a single screening
  */
-export function validateScreening(screening: RawScreening): ValidationResult {
+function validateScreening(screening: RawScreening): ValidationResult {
   const errors: string[] = [];
   const warnings: string[] = [];
 
