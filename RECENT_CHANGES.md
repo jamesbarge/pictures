@@ -1,3 +1,9 @@
+## 2026-03-14: Kaizen — Unexport dead SPECIAL_FORMATS constant
+**PR**: #TBD | **Files**: `src/lib/constants.ts`
+- Removed export keyword from SPECIAL_FORMATS (used internally by getSpecialFormat, never imported)
+- Kaizen automated refactoring (category: dead-code)
+
+---
 # Recent Changes
 
 ## 2026-03-14: AutoResearch Trigger.dev tasks + audit wrapper
