@@ -1,3 +1,9 @@
+## 2026-03-14: Kaizen — JSDoc for final 2 Zustand store exports
+**PR**: #330 | **Files**: `src/stores/cookie-consent.ts`, `src/stores/filters.ts`
+- Added JSDoc to useCookieConsent and useFilters — completes JSDoc coverage for all stores
+- Kaizen automated refactoring (category: jsdoc)
+
+---
 ## 2026-03-14: Kaizen — JSDoc for 5 Zustand store exports
 **PR**: #329 | **Files**: `src/stores/discovery.ts`, `src/stores/preferences.ts`, `src/stores/reachable.ts`, `src/stores/festival.ts`, `src/stores/film-status.ts`
 - Added JSDoc to 5 Zustand store hook constants for IDE hover documentation
