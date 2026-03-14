@@ -1,3 +1,10 @@
+## 2026-03-14: Kaizen — Remove dead icon/singleSelect props from FilterDropdown
+**PR**: #331 | **Files**: `src/components/filters/filter-bar.tsx`
+- Removed unused icon and singleSelect props from FilterDropdown (accepted but never rendered)
+- Removed orphaned Ticket import; reduced lint warnings from 33 to 31
+- Kaizen automated refactoring (category: dead-code)
+
+---
 ## 2026-03-14: Kaizen — JSDoc for final 2 Zustand store exports
 **PR**: #330 | **Files**: `src/stores/cookie-consent.ts`, `src/stores/filters.ts`
 - Added JSDoc to useCookieConsent and useFilters — completes JSDoc coverage for all stores
