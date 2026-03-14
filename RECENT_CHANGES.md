@@ -1,3 +1,9 @@
+## 2026-03-14: Kaizen — JSDoc for 5 Zustand store exports
+**PR**: #329 | **Files**: `src/stores/discovery.ts`, `src/stores/preferences.ts`, `src/stores/reachable.ts`, `src/stores/festival.ts`, `src/stores/film-status.ts`
+- Added JSDoc to 5 Zustand store hook constants for IDE hover documentation
+- Kaizen automated refactoring (category: jsdoc)
+
+---
 ## 2026-03-14: Kaizen — JSDoc for 5 remaining festivals/ exports
 **PR**: #328 | **Files**: `src/components/festivals/festival-card.tsx`, `src/components/festivals/festival-key-dates.tsx`, `src/components/festivals/festival-list.tsx`
 - Added JSDoc to FestivalCardSkeleton, FestivalKeyDates, FestivalList, FestivalTimeline, FestivalListSkeleton
