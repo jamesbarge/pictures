@@ -98,6 +98,7 @@ function DateItem({ icon, label, date, endDate, isPassed, showTime = false }: Da
   );
 }
 
+/** Timeline of key festival dates: programme announcement, member sale, public sale, and run dates. */
 export function FestivalKeyDates({
   startDate,
   endDate,

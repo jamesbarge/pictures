@@ -162,6 +162,7 @@ export function FestivalCard({ festival }: FestivalCardProps) {
 }
 
 // Skeleton for loading state
+/** Pulsing skeleton placeholder rendered while festival card data is loading. */
 export function FestivalCardSkeleton() {
   return (
     <Card className="animate-pulse">
