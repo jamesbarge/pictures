@@ -13,7 +13,7 @@ export const POSTER_BLUR_PLACEHOLDER =
 /**
  * Formats considered "special" and worth highlighting
  */
-export const SPECIAL_FORMATS = ["35mm", "70mm", "imax", "4k"] as const;
+const SPECIAL_FORMATS = ["35mm", "70mm", "imax", "4k"] as const;
 
 /**
  * Get normalized display format for special formats
