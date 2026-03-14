@@ -21,6 +21,9 @@ import { logExperiment, buildOvernightSummary, sendOvernightReport } from "../ex
 import { writeOvernightReport, updateCursor } from "../obsidian-reporter";
 import type { AuditSummary } from "@/scripts/audit-film-data";
 
+// Static import: esbuild bundles JSON for Trigger.dev cloud where __dirname reads fail
+import defaultThresholds from "./thresholds.json";
+
 const THRESHOLDS_PATH = join(__dirname, "thresholds.json");
 const PROGRAM_PATH = join(__dirname, "program.md");
 
@@ -89,19 +92,89 @@ async function loadThresholds(): Promise<Thresholds> {
   try {
     const raw = await readFile(THRESHOLDS_PATH, "utf-8");
     const parsed = JSON.parse(raw);
-    // Remove $comment key
     delete parsed.$comment;
     return parsed as Thresholds;
-  } catch (err) {
-    throw new Error(
-      `[autoquality] Failed to load thresholds from ${THRESHOLDS_PATH}: ${err instanceof Error ? err.message : err}`
-    );
+  } catch {
+    // Trigger.dev cloud: __dirname doesn't have the file — use bundled import
+    const { $comment: _, ...rest } = defaultThresholds;
+    return rest as unknown as Thresholds;
   }
 }
 
 async function saveThresholds(thresholds: Thresholds): Promise<void> {
   await writeFile(THRESHOLDS_PATH, JSON.stringify(thresholds, null, 2) + "\n", "utf-8");
 }
+
+async function loadProgramTemplate(): Promise<string> {
+  try {
+    return await readFile(PROGRAM_PATH, "utf-8");
+  } catch {
+    // Trigger.dev cloud: .md file not available — use inline template
+    return FALLBACK_PROGRAM_TEMPLATE;
+  }
+}
+
+const FALLBACK_PROGRAM_TEMPLATE = `# AutoQuality Agent Instructions
+
+You are a data quality optimization agent for pictures.london, a London cinema calendar.
+
+## Your Task
+
+Propose ONE threshold change that will improve the Data Quality Score (DQS). You must change exactly one threshold — the isolation principle ensures we can attribute improvements to specific changes.
+
+## Current State
+
+- **Data Quality Score**: {{currentDqs}}/100
+- **Missing TMDB %**: {{missingTmdbPercent}}%
+- **Missing Poster %**: {{missingPosterPercent}}%
+- **Missing Synopsis %**: {{missingSynopsisPercent}}%
+- **Duplicates %**: {{duplicatesPercent}}%
+- **Dodgy Entries %**: {{dodgyEntriesPercent}}%
+- **Total Films (upcoming)**: {{totalFilms}}
+
+## Current Thresholds
+
+\`\`\`json
+{{currentThresholds}}
+\`\`\`
+
+## Previous Experiments
+
+{{previousExperiments}}
+
+## DQS Formula
+
+\`\`\`
+DQS = 100 - (missingTmdb% * 0.30 + missingPoster% * 0.25 + missingSynopsis% * 0.20
+             + duplicates% * 0.15 + dodgyEntries% * 0.10)
+\`\`\`
+
+## Safety Floors (MUST NOT VIOLATE)
+
+- \`tmdb.minMatchConfidence\` must stay >= {{minTmdbConfidence}}
+- \`duplicateDetection.trigramSimilarityThreshold\` must stay >= {{minAutoMergeSimilarity}} for auto-merge
+- Maximum {{maxNewNonFilmPatterns}} new non-film patterns per experiment
+
+## Rules
+
+1. Output ONLY a JSON object with your proposed change - no explanations
+2. Change exactly ONE threshold key
+3. Explain WHY this change should improve DQS in the \`reason\` field
+4. The new value must respect the safety floors above
+5. Consider which DQS component has the most room for improvement
+6. Small changes (5-15%) are preferred over large jumps
+
+## Expected Output Format
+
+\`\`\`json
+{
+  "thresholdKey": "tmdb.minMatchConfidence",
+  "previousValue": 0.6,
+  "newValue": 0.55,
+  "reason": "Lowering TMDB confidence threshold should match more films, reducing missingTmdb% (currently the largest DQS penalty at 30% weight)"
+}
+\`\`\`
+`;
 
 /**
  * Get a nested threshold value by dot-path key (e.g. "tmdb.minMatchConfidence").
@@ -164,8 +237,8 @@ async function runOneExperiment(
   let appliedPreviousValue: number | undefined;
 
   try {
-    // Build prompt
-    const template = await readFile(PROGRAM_PATH, "utf-8");
+    // Build prompt — try filesystem first, fall back to bundled template for cloud
+    const template = await loadProgramTemplate();
     const prompt = template
       .replace(/\{\{currentDqs\}\}/g, currentDqs.compositeScore.toFixed(0))
       .replace(/\{\{missingTmdbPercent\}\}/g, currentDqs.missingTmdbPercent.toFixed(1))
