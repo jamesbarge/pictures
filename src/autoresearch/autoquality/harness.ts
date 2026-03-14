@@ -21,6 +21,7 @@ import { logExperiment, buildOvernightSummary, sendOvernightReport } from "../ex
 import { writeOvernightReport, updateCursor } from "../obsidian-reporter";
 import type { AuditSummary } from "@/scripts/audit-film-data";
 import { loadThresholdsFromDb, saveThresholdsToDb } from "./db-thresholds";
+import type { Thresholds } from "./load-thresholds";
 import { db, isDatabaseAvailable } from "@/db";
 import { autoresearchExperiments } from "@/db/schema/admin";
 import { eq, desc } from "drizzle-orm";
@@ -80,13 +81,8 @@ export function computeDqs(
 // Threshold Management
 // ---------------------------------------------------------------------------
 
-interface Thresholds {
-  tmdb: Record<string, number>;
-  duplicateDetection: Record<string, number>;
-  dodgyDetection: Record<string, number>;
-  nonFilmDetection: Record<string, number>;
-  safetyFloors: Record<string, number>;
-}
+// Uses Thresholds from ./load-thresholds (canonical type).
+// Dynamic access via getThresholdValue/setThresholdValue uses Record casts.
 
 async function loadProgramTemplate(): Promise<string> {
   try {
@@ -180,7 +176,7 @@ DQS = 100 - (missingTmdb% * 0.30 + missingPoster% * 0.25 + missingSynopsis% * 0.
  */
 function getThresholdValue(thresholds: Thresholds, key: string): number | undefined {
   const [section, field] = key.split(".");
-  const sectionData = thresholds[section as keyof Thresholds];
+  const sectionData = thresholds[section as keyof Thresholds] as Record<string, number> | undefined;
   return sectionData?.[field];
 }
 
@@ -189,7 +185,7 @@ function getThresholdValue(thresholds: Thresholds, key: string): number | undefi
  */
 function setThresholdValue(thresholds: Thresholds, key: string, value: number): void {
   const [section, field] = key.split(".");
-  const sectionData = thresholds[section as keyof Thresholds];
+  const sectionData = thresholds[section as keyof Thresholds] as Record<string, number> | undefined;
   if (!sectionData) {
     throw new Error(
       `[autoquality] Invalid threshold key "${key}" — section "${section}" not found. Valid sections: ${Object.keys(thresholds).join(", ")}`
