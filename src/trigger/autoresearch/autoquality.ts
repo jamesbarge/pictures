@@ -8,9 +8,9 @@
  * The cron wrapper delegates to autoQualityRun so that both scheduled
  * and on-demand triggers use the same task type.
  *
- * Note: Trigger.dev cloud has ephemeral filesystem. Threshold changes
- * written during a run don't persist across runs. Each run explores
- * independently and reports via Telegram + DB.
+ * Thresholds persist across runs via the `autoresearch_config` DB table,
+ * so each run starts where the previous one left off. Cross-run experiment
+ * history is injected into the agent prompt to avoid repeating failures.
  */
 
 import { schedules, task, tasks } from "@trigger.dev/sdk/v3";

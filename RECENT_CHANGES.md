@@ -1,3 +1,14 @@
+## 2026-03-14: AutoResearch DB persistence + focused optimization
+**PR**: #335 | **Files**: `src/autoresearch/autoquality/harness.ts`, `src/autoresearch/autoquality/db-thresholds.ts`, `src/autoresearch/autoquality/load-thresholds.ts`, `src/autoresearch/autoquality/audit-wrapper.ts`, `src/autoresearch/autoquality/program.md`, `src/autoresearch/autoscrape/harness.ts`, `src/scrapers/base.ts`, `src/db/schema/admin.ts`, `src/db/migrations/0008_add_autoresearch_config.sql`, `scripts/autoresearch-status.ts`
+- Fix AutoResearch learning loss: thresholds now persist via DB instead of ephemeral filesystem
+- Cross-run experiment history injected into agent prompt (avoids repeating failed changes)
+- AutoQuality constrained to TMDB thresholds only (highest-impact lever, 30% DQS weight)
+- MAX_EXPERIMENTS reduced from 20 to 5 per run
+- AutoScrape overlays also DB-backed with filesystem fallback
+- BaseScraper overlay lookup optimized: 1 DB query per process instead of per-scraper
+
+---
+
 ## 2026-03-14: Kaizen — Unexport dead SPECIAL_FORMATS constant
 **PR**: #TBD | **Files**: `src/lib/constants.ts`
 - Removed export keyword from SPECIAL_FORMATS (used internally by getSpecialFormat, never imported)
