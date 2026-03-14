@@ -17,6 +17,7 @@ interface FestivalListProps {
   festivals: Festival[];
 }
 
+/** Status-grouped festival grid showing ongoing, upcoming, and past festivals with section headers. */
 export function FestivalList({ festivals }: FestivalListProps) {
 
   // Group festivals by status
@@ -103,6 +104,7 @@ export function FestivalList({ festivals }: FestivalListProps) {
 }
 
 // Timeline variant - shows festivals in a linear timeline
+/** Chronological festival timeline with colour-coded dot indicators by status. */
 export function FestivalTimeline({ festivals }: { festivals: Festival[] }) {
   // Sort by start date
   const sortedFestivals = useMemo(() => {
@@ -148,6 +150,7 @@ export function FestivalTimeline({ festivals }: { festivals: Festival[] }) {
 }
 
 // Loading skeleton
+/** Pulsing skeleton placeholder rendered while the festival list is loading. */
 export function FestivalListSkeleton() {
   return (
     <div className="space-y-8">

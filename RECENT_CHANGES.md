@@ -1,3 +1,10 @@
+## 2026-03-14: Kaizen — JSDoc for 5 remaining festivals/ exports
+**PR**: #328 | **Files**: `src/components/festivals/festival-card.tsx`, `src/components/festivals/festival-key-dates.tsx`, `src/components/festivals/festival-list.tsx`
+- Added JSDoc to FestivalCardSkeleton, FestivalKeyDates, FestivalList, FestivalTimeline, FestivalListSkeleton
+- Completes JSDoc coverage for all component directories
+- Kaizen automated refactoring (category: jsdoc)
+
+---
 ## 2026-03-13: Kaizen — JSDoc for 5 festivals/ component exports
 **PR**: #327 | **Files**: `src/components/festivals/follow-button.tsx`, `src/components/festivals/festival-venues.tsx`, `src/components/festivals/festival-header.tsx`, `src/components/festivals/festival-card.tsx`
 - Added JSDoc to FollowButton, FollowButtonCompact, FestivalVenues, FestivalHeader, FestivalCard
