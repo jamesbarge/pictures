@@ -6,6 +6,7 @@
 - AutoScrape: nightly 1am UTC cron with Monday overlap guard
 - AutoQuality: weekly Sunday 2am UTC cron
 - Audit wrapper bridges auditFilmData() to DQS-ready shape (duplicateCount + dodgyCount)
+- Removed bfi-pdf, festival-watchdog, festival-reverse-tag schedules to free Trigger.dev slots
 - Deploy workflow now triggers on src/autoresearch/** changes
 
 ---

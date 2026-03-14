@@ -8,6 +8,11 @@
 - Created `src/trigger/autoresearch/autoquality.ts` — Trigger.dev task + cron schedule for AutoQuality (weekly Sunday 2am UTC)
 - Created `src/autoresearch/autoquality/audit-wrapper.ts` — bridges `auditFilmData()` to DQS-ready shape with `countDuplicateFilms()` and `countDodgyFilms()` queries
 - Updated `.github/workflows/deploy-trigger.yml` to include `src/autoresearch/**` in deploy trigger paths
+- Removed 3 scheduled tasks to free Trigger.dev slots (10/10 limit):
+  - `enrichment-bfi-pdf` (Sunday 6am UTC)
+  - `enrichment-festival-watchdog` (Thursday 6am UTC)
+  - `enrichment-festival-reverse-tag` (Monday 9am UTC)
+- Cleaned up references in `scrape-all.ts` and `qa/analyze-and-fix.ts`
 
 ## Architecture
 - Follows QA orchestrator pattern: cron wrapper delegates to regular task (both API-triggerable and cron-schedulable)
