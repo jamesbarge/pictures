@@ -151,6 +151,7 @@ const initialState: FilterState = {
   updatedAt: new Date().toISOString(),
 };
 
+/** Zustand store managing screening filters (cinemas, date range, formats, time) with URL sync and PostHog tracking. */
 export const useFilters = create<FilterState & FilterActions>()(
   persist(
     (set, get) => ({
