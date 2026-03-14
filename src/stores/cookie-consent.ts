@@ -28,6 +28,7 @@ export interface CookieConsentState {
   canTrack: () => boolean;
 }
 
+/** Zustand store managing PECR/UK-GDPR analytics cookie consent with audit timestamps. */
 export const useCookieConsent = create<CookieConsentState>()(
   persist(
     (set, get) => ({

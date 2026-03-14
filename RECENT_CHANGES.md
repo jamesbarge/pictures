@@ -1,7 +1,7 @@
 # Recent Changes
 
 ## 2026-03-14: AutoResearch Trigger.dev tasks + audit wrapper
-**PR**: #TBD | **Files**: `src/trigger/autoresearch/autoscrape.ts`, `src/trigger/autoresearch/autoquality.ts`, `src/autoresearch/autoquality/audit-wrapper.ts`, `.github/workflows/deploy-trigger.yml`
+**PR**: #316 | **Files**: `src/trigger/autoresearch/autoscrape.ts`, `src/trigger/autoresearch/autoquality.ts`, `src/autoresearch/autoquality/audit-wrapper.ts`, `.github/workflows/deploy-trigger.yml`
 - Wire AutoResearch end-to-end with Trigger.dev scheduled tasks
 - AutoScrape: nightly 1am UTC cron with Monday overlap guard
 - AutoQuality: weekly Sunday 2am UTC cron

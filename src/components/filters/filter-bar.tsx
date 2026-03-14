@@ -8,7 +8,7 @@
 import { useState, useRef, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useHydrated } from "@/hooks/useHydrated";
-import { X, ChevronDown, RotateCcw, Ticket, CalendarClock } from "lucide-react";
+import { X, ChevronDown, RotateCcw, CalendarClock } from "lucide-react";
 import { cn } from "@/lib/cn";
 import {
   useFilters,
@@ -91,8 +91,6 @@ function FilterBarContent({ festivals }: { festivals: { id: string; name: string
                   filters.setFestivalFilter(slug);
                 }
               }}
-              icon={<Ticket className="w-4 h-4" aria-hidden="true" />}
-              singleSelect
             />
           )}
 
@@ -194,11 +192,9 @@ interface FilterDropdownProps {
   options: { value: string; label: string }[];
   selected: string[];
   onToggle: (value: string) => void;
-  icon?: React.ReactNode;
-  singleSelect?: boolean;
 }
 
-function FilterDropdown({ label, options, selected, onToggle, icon, singleSelect }: FilterDropdownProps) {
+function FilterDropdown({ label, options, selected, onToggle }: FilterDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 

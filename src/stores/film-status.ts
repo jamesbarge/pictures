@@ -70,6 +70,7 @@ interface FilmStatusState {
   getNotInterestedFilms: () => NotInterestedFilm[];
 }
 
+/** Zustand store tracking per-film user status: want-to-see, seen, and not-interested. */
 export const useFilmStatus = create<FilmStatusState>()(
   persist(
     (set, get) => ({

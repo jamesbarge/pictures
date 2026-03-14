@@ -69,6 +69,7 @@ const DEFAULT_STATE = {
   updatedAt: new Date().toISOString(),
 };
 
+/** Zustand store persisting cinema selections, view mode, theme, and map-based filter preferences. */
 export const usePreferences = create<PreferencesState>()(
   persist(
     (set, get) => ({
