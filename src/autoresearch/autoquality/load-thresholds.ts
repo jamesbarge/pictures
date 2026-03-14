@@ -9,6 +9,10 @@
 import { readFileSync } from "fs";
 import { join } from "path";
 
+// Static import ensures esbuild bundles the JSON for Trigger.dev cloud,
+// where __dirname + readFileSync won't find the file on the ephemeral filesystem.
+import defaultThresholds from "./thresholds.json";
+
 const THRESHOLDS_PATH = join(__dirname, "thresholds.json");
 
 export interface Thresholds {
@@ -54,9 +58,15 @@ export function loadThresholds(): Thresholds {
  * Force re-read thresholds from disk. Used by AutoQuality after modifying the file.
  */
 export function reloadThresholds(): Thresholds {
-  const raw = readFileSync(THRESHOLDS_PATH, "utf-8");
-  const parsed = JSON.parse(raw);
-  delete parsed.$comment;
-  cachedThresholds = parsed as Thresholds;
+  try {
+    const raw = readFileSync(THRESHOLDS_PATH, "utf-8");
+    const parsed = JSON.parse(raw);
+    delete parsed.$comment;
+    cachedThresholds = parsed as Thresholds;
+  } catch {
+    // Trigger.dev cloud: __dirname doesn't have the JSON file — use bundled import
+    const { $comment: _, ...rest } = defaultThresholds;
+    cachedThresholds = rest as unknown as Thresholds;
+  }
   return cachedThresholds;
 }
