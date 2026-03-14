@@ -42,7 +42,6 @@ const CHEERIO_TASKS: TaskRef[] = [
 
 const ENRICHMENT_TASKS: TaskRef[] = [
   { id: "enrichment-letterboxd" },
-  { id: "enrichment-festival-reverse-tag" },
 ];
 
 function chunk<T>(items: T[], size: number): T[][] {
