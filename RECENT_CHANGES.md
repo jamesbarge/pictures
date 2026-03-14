@@ -1,3 +1,9 @@
+## 2026-03-14: Kaizen — Unexport dead YieldResult type
+**PR**: #TBD | **Files**: `src/scrapers/runner-factory.ts`
+- Removed export keyword from YieldResult interface (used internally, never imported)
+- Kaizen automated refactoring (category: dead-code)
+
+---
 ## 2026-03-14: Kaizen — Remove dead icon/singleSelect props from FilterDropdown
 **PR**: #331 | **Files**: `src/components/filters/filter-bar.tsx`
 - Removed unused icon and singleSelect props from FilterDropdown (accepted but never rendered)
