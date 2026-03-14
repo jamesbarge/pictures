@@ -1,9 +1,14 @@
 /**
  * Shared threshold loader for the data quality pipeline.
  *
- * Loads tunable thresholds from thresholds.json so that both the audit
- * scripts and the AutoQuality harness use the same values. When AutoQuality
- * modifies thresholds.json, the next audit run picks up the changes.
+ * Provides both sync (cached/bundled) and async (DB-first) loading.
+ * The audit scripts and AutoQuality harness both use this to get thresholds.
+ *
+ * Load priority:
+ *   1. In-process cache (if already loaded)
+ *   2. Database `autoresearch_config` row (async only)
+ *   3. Filesystem `thresholds.json` (local dev)
+ *   4. Bundled JSON import (Trigger.dev cloud fallback)
  */
 
 import { readFileSync } from "fs";
@@ -45,9 +50,9 @@ export interface Thresholds {
 let cachedThresholds: Thresholds | null = null;
 
 /**
- * Load thresholds from thresholds.json.
- * Caches on first load for the process lifetime.
- * Call `reloadThresholds()` to force a re-read (e.g. after AutoQuality modifies the file).
+ * Load thresholds synchronously (cached/bundled).
+ * Used by code paths that can't be async (e.g. countDodgyFilms in audit-wrapper).
+ * Prefers cached value if `loadThresholdsAsync` was called earlier.
  */
 export function loadThresholds(): Thresholds {
   if (cachedThresholds) return cachedThresholds;
@@ -55,7 +60,25 @@ export function loadThresholds(): Thresholds {
 }
 
 /**
- * Force re-read thresholds from disk. Used by AutoQuality after modifying the file.
+ * Load thresholds with DB awareness.
+ * Checks the database first (picks up AutoQuality's learned improvements),
+ * then falls back to sync loading if DB is unavailable.
+ */
+export async function loadThresholdsAsync(): Promise<Thresholds> {
+  try {
+    // Dynamic import to avoid circular deps and keep sync paths fast
+    const { loadThresholdsFromDb } = await import("./db-thresholds");
+    const thresholds = await loadThresholdsFromDb();
+    cachedThresholds = thresholds;
+    return thresholds;
+  } catch {
+    // DB not available — fall back to sync loading
+    return loadThresholds();
+  }
+}
+
+/**
+ * Force re-read thresholds from disk. Used after manual edits in local dev.
  */
 export function reloadThresholds(): Thresholds {
   try {
@@ -65,8 +88,16 @@ export function reloadThresholds(): Thresholds {
     cachedThresholds = parsed as Thresholds;
   } catch {
     // Trigger.dev cloud: __dirname doesn't have the JSON file — use bundled import
-    const { $comment: _, ...rest } = defaultThresholds;
-    cachedThresholds = rest as unknown as Thresholds;
+    const copy = { ...defaultThresholds } as Record<string, unknown>;
+    delete copy.$comment;
+    cachedThresholds = copy as unknown as Thresholds;
   }
   return cachedThresholds;
+}
+
+/**
+ * Update the in-process cache (e.g. after DB write).
+ */
+export function setCachedThresholds(thresholds: Thresholds): void {
+  cachedThresholds = thresholds;
 }

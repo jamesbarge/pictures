@@ -146,22 +146,47 @@ export abstract class BaseScraper implements CinemaScraper {
   }
 
   /**
-   * Load a config overlay from disk if one exists for this cinema.
+   * Load a config overlay if one exists for this cinema.
    * Called automatically at the start of scrape().
-   * Overlays are JSON files created by AutoScrape experiments.
+   * Checks DB first (AutoScrape persists learned overlays there),
+   * then falls back to filesystem (local dev).
    */
   protected async loadConfigOverlay(): Promise<void> {
+    // Try DB first (survives Trigger.dev container restarts)
+    try {
+      const { db, isDatabaseAvailable } = await import("@/db");
+      const { autoresearchConfig } = await import("@/db/schema/admin");
+      const { eq } = await import("drizzle-orm");
+
+      if (isDatabaseAvailable) {
+        const dbKey = `autoscrape/overlay/${this.config.cinemaId}`;
+        const [row] = await db
+          .select()
+          .from(autoresearchConfig)
+          .where(eq(autoresearchConfig.key, dbKey))
+          .limit(1);
+
+        if (row) {
+          this.configOverlay = row.value as unknown as ConfigOverlay;
+          console.log(`[${this.config.cinemaId}] Loaded config overlay from DB`);
+          return;
+        }
+      }
+    } catch {
+      // DB not available — fall through to filesystem
+    }
+
+    // Fall back to filesystem (local dev)
     const overlayPath = join(OVERLAY_DIR, `${this.config.cinemaId}.json`);
     try {
       const raw = await readFile(overlayPath, "utf-8");
       this.configOverlay = JSON.parse(raw) as ConfigOverlay;
-      console.log(`[${this.config.cinemaId}] Loaded config overlay`);
+      console.log(`[${this.config.cinemaId}] Loaded config overlay from disk`);
     } catch (err) {
       if (err instanceof Error && (err as NodeJS.ErrnoException).code === "ENOENT") {
         this.configOverlay = null; // Expected: no overlay for this cinema
         return;
       }
-      // Surface real errors (bad JSON, permissions, disk issues)
       console.error(`[${this.config.cinemaId}] Failed to load config overlay:`, err);
       this.configOverlay = null;
     }

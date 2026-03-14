@@ -206,6 +206,24 @@ export const autoresearchExperiments = pgTable("autoresearch_experiments", {
     .defaultNow(),
 });
 
+/**
+ * AutoResearch config persistence — key-value JSONB store.
+ * Stores thresholds and scraper overlays so Trigger.dev cloud runs
+ * accumulate learning across deploys instead of resetting every time.
+ *
+ * Key patterns:
+ *   "autoquality/thresholds"         → full thresholds JSON
+ *   "autoscrape/overlay/{cinemaId}"  → per-cinema config overlay
+ */
+export const autoresearchConfig = pgTable("autoresearch_config", {
+  key: text("key").primaryKey(),
+  value: jsonb("value").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedBy: text("updated_by"),
+});
+
 // Type exports
 export type ScraperRunInsert = typeof scraperRuns.$inferInsert;
 export type ScraperRunSelect = typeof scraperRuns.$inferSelect;
@@ -217,3 +235,5 @@ export type AutoresearchExperimentInsert =
   typeof autoresearchExperiments.$inferInsert;
 export type AutoresearchExperimentSelect =
   typeof autoresearchExperiments.$inferSelect;
+export type AutoresearchConfigInsert = typeof autoresearchConfig.$inferInsert;
+export type AutoresearchConfigSelect = typeof autoresearchConfig.$inferSelect;

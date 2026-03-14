@@ -13,7 +13,7 @@ import { films } from "@/db/schema/films";
 import { screenings } from "@/db/schema/screenings";
 import { sql, gte, and, eq } from "drizzle-orm";
 import { auditFilmData, type AuditSummary } from "@/scripts/audit-film-data";
-import { loadThresholds } from "./load-thresholds";
+import { loadThresholds, loadThresholdsAsync } from "./load-thresholds";
 
 export interface AuditForDqs {
   summary: AuditSummary;
@@ -25,8 +25,12 @@ export interface AuditForDqs {
  * Run the audit pipeline and return results shaped for DQS computation.
  * Calls `auditFilmData(true)` for upcoming-only metrics, then supplements
  * with duplicate and dodgy count queries.
+ * Pre-loads thresholds from DB to pick up AutoQuality's learned improvements.
  */
 export async function runAuditForDqs(): Promise<AuditForDqs> {
+  // Warm the threshold cache from DB before the dodgy count query uses it
+  await loadThresholdsAsync();
+
   const auditResult = await auditFilmData(true); // upcoming-only
   const [duplicateCount, dodgyCount] = await Promise.all([
     countDuplicateFilms(),
