@@ -673,7 +673,7 @@ export async function runScraper(
 // ============================================================================
 
 /** Result of a yield-mode scrape — raw screenings without DB persistence */
-export interface YieldResult {
+interface YieldResult {
   success: boolean;
   screenings: RawScreening[];
   durationMs: number;
