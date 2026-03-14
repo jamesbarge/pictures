@@ -6,7 +6,7 @@
  * in dry-run → compute new DQS → check safety floors → keep/discard.
  */
 
-import { readFile, writeFile } from "fs/promises";
+import { readFile } from "fs/promises";
 import { join } from "path";
 import { generateText, isGeminiConfigured, stripCodeFences } from "@/lib/gemini";
 import type {
@@ -20,15 +20,16 @@ import { DEFAULT_SAFETY_FLOORS } from "../types";
 import { logExperiment, buildOvernightSummary, sendOvernightReport } from "../experiment-log";
 import { writeOvernightReport, updateCursor } from "../obsidian-reporter";
 import type { AuditSummary } from "@/scripts/audit-film-data";
+import { loadThresholdsFromDb, saveThresholdsToDb } from "./db-thresholds";
+import type { Thresholds } from "./load-thresholds";
+import { db, isDatabaseAvailable } from "@/db";
+import { autoresearchExperiments } from "@/db/schema/admin";
+import { eq, desc } from "drizzle-orm";
 
-// Static import: esbuild bundles JSON for Trigger.dev cloud where __dirname reads fail
-import defaultThresholds from "./thresholds.json";
-
-const THRESHOLDS_PATH = join(__dirname, "thresholds.json");
 const PROGRAM_PATH = join(__dirname, "program.md");
 
-/** Maximum experiments per weekly run */
-const MAX_EXPERIMENTS = 20;
+/** Maximum experiments per weekly run (kept low for one-at-a-time + cross-run memory) */
+const MAX_EXPERIMENTS = 5;
 
 // ---------------------------------------------------------------------------
 // DQS Computation
@@ -80,30 +81,8 @@ export function computeDqs(
 // Threshold Management
 // ---------------------------------------------------------------------------
 
-interface Thresholds {
-  tmdb: Record<string, number>;
-  duplicateDetection: Record<string, number>;
-  dodgyDetection: Record<string, number>;
-  nonFilmDetection: Record<string, number>;
-  safetyFloors: Record<string, number>;
-}
-
-async function loadThresholds(): Promise<Thresholds> {
-  try {
-    const raw = await readFile(THRESHOLDS_PATH, "utf-8");
-    const parsed = JSON.parse(raw);
-    delete parsed.$comment;
-    return parsed as Thresholds;
-  } catch {
-    // Trigger.dev cloud: __dirname doesn't have the file — use bundled import
-    const { $comment: _, ...rest } = defaultThresholds;
-    return rest as unknown as Thresholds;
-  }
-}
-
-async function saveThresholds(thresholds: Thresholds): Promise<void> {
-  await writeFile(THRESHOLDS_PATH, JSON.stringify(thresholds, null, 2) + "\n", "utf-8");
-}
+// Uses Thresholds from ./load-thresholds (canonical type).
+// Dynamic access via getThresholdValue/setThresholdValue uses Record casts.
 
 async function loadProgramTemplate(): Promise<string> {
   try {
@@ -121,6 +100,16 @@ You are a data quality optimization agent for pictures.london, a London cinema c
 ## Your Task
 
 Propose ONE threshold change that will improve the Data Quality Score (DQS). You must change exactly one threshold — the isolation principle ensures we can attribute improvements to specific changes.
+
+**IMPORTANT: You may ONLY change TMDB-related thresholds.** The TMDB matching pipeline is the highest-impact lever for DQS improvement (30% weight). Focus exclusively on:
+
+- \`tmdb.minMatchConfidence\` — Minimum confidence to auto-apply a TMDB match
+- \`tmdb.minTitleSimilarity\` — Minimum Levenshtein similarity for title comparison
+- \`tmdb.titleSimilarityWeight\` — Weight given to title similarity in overall match score
+- \`tmdb.competitorThresholdRatio\` — How much better the top match must be vs runner-up
+- \`tmdb.yearMatchPenaltyRecovery\` — How much to recover when year matches after penalizing
+
+Do NOT propose changes to \`duplicateDetection\`, \`dodgyDetection\`, \`nonFilmDetection\`, or \`safetyFloors\` thresholds.
 
 ## Current State
 
@@ -155,14 +144,20 @@ DQS = 100 - (missingTmdb% * 0.30 + missingPoster% * 0.25 + missingSynopsis% * 0.
 - \`duplicateDetection.trigramSimilarityThreshold\` must stay >= {{minAutoMergeSimilarity}} for auto-merge
 - Maximum {{maxNewNonFilmPatterns}} new non-film patterns per experiment
 
+## Strategy Tips
+
+- Missing TMDB has the highest weight (0.30). Even a 1% reduction in missingTmdb% = +0.3 DQS points.
+- If previous experiments show a threshold was already tried and discarded, try a different threshold or direction.
+
 ## Rules
 
-1. Output ONLY a JSON object with your proposed change - no explanations
-2. Change exactly ONE threshold key
+1. Output ONLY a JSON object with your proposed change — no explanations
+2. Change exactly ONE threshold key (must be from the \`tmdb.*\` section)
 3. Explain WHY this change should improve DQS in the \`reason\` field
 4. The new value must respect the safety floors above
 5. Consider which DQS component has the most room for improvement
 6. Small changes (5-15%) are preferred over large jumps
+7. Review previous experiments to avoid repeating failed changes
 
 ## Expected Output Format
 
@@ -181,7 +176,7 @@ DQS = 100 - (missingTmdb% * 0.30 + missingPoster% * 0.25 + missingSynopsis% * 0.
  */
 function getThresholdValue(thresholds: Thresholds, key: string): number | undefined {
   const [section, field] = key.split(".");
-  const sectionData = thresholds[section as keyof Thresholds];
+  const sectionData = thresholds[section as keyof Thresholds] as Record<string, number> | undefined;
   return sectionData?.[field];
 }
 
@@ -190,7 +185,7 @@ function getThresholdValue(thresholds: Thresholds, key: string): number | undefi
  */
 function setThresholdValue(thresholds: Thresholds, key: string, value: number): void {
   const [section, field] = key.split(".");
-  const sectionData = thresholds[section as keyof Thresholds];
+  const sectionData = thresholds[section as keyof Thresholds] as Record<string, number> | undefined;
   if (!sectionData) {
     throw new Error(
       `[autoquality] Invalid threshold key "${key}" — section "${section}" not found. Valid sections: ${Object.keys(thresholds).join(", ")}`
@@ -272,6 +267,20 @@ async function runOneExperiment(
       reason: string;
     };
 
+    // Enforce TMDB-only constraint (Phase 2: overfit on highest-impact lever)
+    if (!thresholdKey.startsWith("tmdb.")) {
+      console.warn(`[autoquality] Agent proposed non-TMDB key "${thresholdKey}" — rejecting`);
+      return {
+        system: "autoquality",
+        configSnapshot: { thresholdKey, previousValue, newValue },
+        metricBefore: currentDqs.compositeScore,
+        metricAfter: currentDqs.compositeScore,
+        kept: false,
+        notes: `Rejected: "${thresholdKey}" is not a TMDB threshold (currently restricted to tmdb.* only)`,
+        durationMs: Date.now() - startTime,
+      };
+    }
+
     // Validate safety floors
     const safetyViolation = checkSafetyFloors(thresholdKey, newValue, safetyFloors);
     if (safetyViolation) {
@@ -298,7 +307,7 @@ async function runOneExperiment(
     setThresholdValue(thresholds, thresholdKey, newValue);
     appliedThresholdKey = thresholdKey;
     appliedPreviousValue = actualPrevious ?? previousValue;
-    await saveThresholds(thresholds);
+    await saveThresholdsToDb(thresholds);
 
     // Run audit with modified thresholds
     const auditResult = await runAudit();
@@ -309,7 +318,7 @@ async function runOneExperiment(
     if (!improved) {
       // Revert
       setThresholdValue(thresholds, thresholdKey, actualPrevious ?? previousValue);
-      await saveThresholds(thresholds);
+      await saveThresholdsToDb(thresholds);
     }
 
     const config: AutoQualityConfig = {
@@ -340,10 +349,10 @@ async function runOneExperiment(
     if (appliedThresholdKey !== undefined && appliedPreviousValue !== undefined) {
       setThresholdValue(thresholds, appliedThresholdKey, appliedPreviousValue);
       try {
-        await saveThresholds(thresholds);
+        await saveThresholdsToDb(thresholds);
       } catch (saveErr) {
         console.error(
-          `[autoquality] CRITICAL: Failed to save reverted thresholds to disk. On-disk thresholds may contain experimental value for ${appliedThresholdKey}:`,
+          `[autoquality] CRITICAL: Failed to save reverted thresholds to DB. DB thresholds may contain experimental value for ${appliedThresholdKey}:`,
           saveErr instanceof Error ? saveErr.message : saveErr
         );
       }
@@ -361,6 +370,52 @@ async function runOneExperiment(
       notes: `Experiment failed: ${errorMsg}`,
       durationMs: Date.now() - startTime,
     };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Cross-Run Learning
+// ---------------------------------------------------------------------------
+
+/**
+ * Load experiment history from previous runs (across container lifetimes).
+ * This is the key Karpathy insight: the agent needs to see what was tried
+ * before to avoid repeating failed experiments.
+ */
+async function loadCrossRunHistory(): Promise<string[]> {
+  if (!isDatabaseAvailable) return [];
+
+  try {
+    const history = await db
+      .select({
+        createdAt: autoresearchExperiments.createdAt,
+        configSnapshot: autoresearchExperiments.configSnapshot,
+        metricBefore: autoresearchExperiments.metricBefore,
+        metricAfter: autoresearchExperiments.metricAfter,
+        kept: autoresearchExperiments.kept,
+      })
+      .from(autoresearchExperiments)
+      .where(eq(autoresearchExperiments.system, "autoquality"))
+      .orderBy(desc(autoresearchExperiments.createdAt))
+      .limit(20);
+
+    if (history.length === 0) return [];
+
+    // Format as structured context for the agent (newest first → reverse to chronological)
+    const lines = history.reverse().map((exp) => {
+      const date = exp.createdAt.toISOString().slice(0, 10);
+      const config = exp.configSnapshot as { thresholdKey?: string; previousValue?: number; newValue?: number };
+      const key = config.thresholdKey ?? "unknown";
+      const prev = config.previousValue ?? "?";
+      const next = config.newValue ?? "?";
+      const status = exp.kept ? "KEPT" : "DISCARDED";
+      return `- ${date}: Changed ${key} ${prev}→${next}, DQS ${exp.metricBefore.toFixed(1)}→${exp.metricAfter.toFixed(1)} (${status})`;
+    });
+
+    return [`Previous experiments (across all runs):`, ...lines];
+  } catch (err) {
+    console.warn("[autoquality] Failed to load cross-run history:", err);
+    return [];
   }
 }
 
@@ -385,8 +440,8 @@ export async function runAutoQualityWeekly(
     return buildOvernightSummary("autoquality", runStartedAt, new Date(), new Map());
   }
 
-  // Load current thresholds
-  const thresholds = await loadThresholds();
+  // Load current thresholds from DB (falls back to bundled defaults)
+  const thresholds = await loadThresholdsFromDb();
 
   // Compute baseline DQS
   const baselineAudit = await runAudit();
@@ -395,7 +450,9 @@ export async function runAutoQualityWeekly(
   console.log(`[autoquality] Baseline DQS: ${currentDqs.compositeScore.toFixed(1)}`);
 
   const results: ExperimentResult[] = [];
-  const previousExperiments: string[] = [];
+
+  // Load cross-run experiment history so the agent learns from previous runs
+  const previousExperiments = await loadCrossRunHistory();
 
   for (let i = 1; i <= MAX_EXPERIMENTS; i++) {
     console.log(`\n[autoquality] Experiment ${i}/${MAX_EXPERIMENTS}`);

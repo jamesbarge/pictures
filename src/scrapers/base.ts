@@ -11,7 +11,8 @@ import { CHROME_USER_AGENT_FULL } from "./constants";
 
 /**
  * Runtime config overlay for AutoScrape experiments.
- * Stored as JSON files in .autoresearch/overlays/{cinemaId}.json
+ * Primary storage: `autoresearch_config` DB table (key: `autoscrape/overlay/{cinemaId}`).
+ * Fallback: JSON files in .autoresearch/overlays/{cinemaId}.json (local dev).
  */
 export interface ConfigOverlay {
   /** CSS selector overrides keyed by purpose */
@@ -24,10 +25,16 @@ export interface ConfigOverlay {
 
 const OVERLAY_DIR = join(process.cwd(), ".autoresearch", "overlays");
 
+/**
+ * Module-level cache of DB overlay keys, populated on first lookup.
+ * Avoids hitting the DB for every scraper run (~59 cinemas) when no overlays exist.
+ */
+let dbOverlayCache: Map<string, ConfigOverlay> | null = null;
+
 export abstract class BaseScraper implements CinemaScraper {
   abstract config: ScraperConfig;
 
-  /** Runtime config overlay loaded from disk (null if none exists) */
+  /** Runtime config overlay loaded from DB/disk (null if none exists) */
   protected configOverlay: ConfigOverlay | null = null;
 
   /**
@@ -146,22 +153,54 @@ export abstract class BaseScraper implements CinemaScraper {
   }
 
   /**
-   * Load a config overlay from disk if one exists for this cinema.
+   * Load a config overlay if one exists for this cinema.
    * Called automatically at the start of scrape().
-   * Overlays are JSON files created by AutoScrape experiments.
+   * Checks DB first (AutoScrape persists learned overlays there),
+   * then falls back to filesystem (local dev).
    */
   protected async loadConfigOverlay(): Promise<void> {
+    // Try DB first (survives Trigger.dev container restarts).
+    // Uses a module-level cache so only 1 DB query per process, not per scraper.
+    try {
+      if (dbOverlayCache === null) {
+        const { db, isDatabaseAvailable } = await import("@/db");
+        if (isDatabaseAvailable) {
+          const { autoresearchConfig } = await import("@/db/schema/admin");
+          const { like } = await import("drizzle-orm");
+          const rows = await db
+            .select()
+            .from(autoresearchConfig)
+            .where(like(autoresearchConfig.key, "autoscrape/overlay/%"));
+          dbOverlayCache = new Map(
+            rows.map((r) => [r.key, r.value as unknown as ConfigOverlay])
+          );
+        } else {
+          dbOverlayCache = new Map();
+        }
+      }
+
+      const dbKey = `autoscrape/overlay/${this.config.cinemaId}`;
+      const cached = dbOverlayCache.get(dbKey);
+      if (cached) {
+        this.configOverlay = cached;
+        console.log(`[${this.config.cinemaId}] Loaded config overlay from DB`);
+        return;
+      }
+    } catch {
+      dbOverlayCache = new Map(); // Mark as checked, no overlays available
+    }
+
+    // Fall back to filesystem (local dev)
     const overlayPath = join(OVERLAY_DIR, `${this.config.cinemaId}.json`);
     try {
       const raw = await readFile(overlayPath, "utf-8");
       this.configOverlay = JSON.parse(raw) as ConfigOverlay;
-      console.log(`[${this.config.cinemaId}] Loaded config overlay`);
+      console.log(`[${this.config.cinemaId}] Loaded config overlay from disk`);
     } catch (err) {
       if (err instanceof Error && (err as NodeJS.ErrnoException).code === "ENOENT") {
         this.configOverlay = null; // Expected: no overlay for this cinema
         return;
       }
-      // Surface real errors (bad JSON, permissions, disk issues)
       console.error(`[${this.config.cinemaId}] Failed to load config overlay:`, err);
       this.configOverlay = null;
     }

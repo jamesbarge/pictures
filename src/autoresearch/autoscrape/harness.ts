@@ -15,12 +15,12 @@
  *   4:30-5:00  Keep if yield improves; discard otherwise
  */
 
-import { readFile, writeFile, mkdir, unlink } from "fs/promises";
+import { readFile } from "fs/promises";
 import { join } from "path";
 import { generateText, isGeminiConfigured, stripCodeFences } from "@/lib/gemini";
-import { db } from "@/db";
+import { db, isDatabaseAvailable } from "@/db";
 import { cinemas } from "@/db/schema";
-import { cinemaBaselines, scraperRuns } from "@/db/schema/admin";
+import { cinemaBaselines, scraperRuns, autoresearchConfig } from "@/db/schema/admin";
 import { eq, desc } from "drizzle-orm";
 import type {
   AutoScrapeConfig,
@@ -562,11 +562,33 @@ async function buildPrompt(vars: {
 
 /**
  * Load the current config overlay for a cinema as a JSON string.
+ * Checks DB first (persists across Trigger.dev deploys), falls back to filesystem.
  */
 async function loadCurrentOverlay(cinemaId: string): Promise<string | null> {
+  const dbKey = `autoscrape/overlay/${cinemaId}`;
+
+  // Try DB first
+  if (isDatabaseAvailable) {
+    try {
+      const [row] = await db
+        .select()
+        .from(autoresearchConfig)
+        .where(eq(autoresearchConfig.key, dbKey))
+        .limit(1);
+
+      if (row) {
+        return JSON.stringify(row.value);
+      }
+    } catch (err) {
+      console.warn(`[autoscrape] Failed to load overlay from DB for ${cinemaId}:`, err);
+    }
+  }
+
+  // Fall back to filesystem (local dev)
   try {
     const overlayPath = join(OVERLAY_DIR, `${cinemaId}.json`);
-    return await readFile(overlayPath, "utf-8");
+    const { readFile: readFs } = await import("fs/promises");
+    return await readFs(overlayPath, "utf-8");
   } catch (err) {
     if (err instanceof Error && (err as NodeJS.ErrnoException).code === "ENOENT") {
       return null;
@@ -576,25 +598,68 @@ async function loadCurrentOverlay(cinemaId: string): Promise<string | null> {
 }
 
 /**
- * Write a config overlay to disk.
+ * Write a config overlay to the database (and filesystem for local dev).
  */
 async function writeOverlay(cinemaId: string, overlay: ConfigOverlay): Promise<void> {
-  await mkdir(OVERLAY_DIR, { recursive: true });
-  const overlayPath = join(OVERLAY_DIR, `${cinemaId}.json`);
-  await writeFile(overlayPath, JSON.stringify(overlay, null, 2), "utf-8");
+  const dbKey = `autoscrape/overlay/${cinemaId}`;
+
+  // Write to DB
+  if (isDatabaseAvailable) {
+    await db
+      .insert(autoresearchConfig)
+      .values({
+        key: dbKey,
+        value: overlay as unknown as Record<string, unknown>,
+        updatedAt: new Date(),
+        updatedBy: "autoscrape-run",
+      })
+      .onConflictDoUpdate({
+        target: autoresearchConfig.key,
+        set: {
+          value: overlay as unknown as Record<string, unknown>,
+          updatedAt: new Date(),
+          updatedBy: "autoscrape-run",
+        },
+      });
+  }
+
+  // Also write to filesystem for local dev compatibility
+  try {
+    const { writeFile: writeFs, mkdir: mkdirFs } = await import("fs/promises");
+    await mkdirFs(OVERLAY_DIR, { recursive: true });
+    const overlayPath = join(OVERLAY_DIR, `${cinemaId}.json`);
+    await writeFs(overlayPath, JSON.stringify(overlay, null, 2), "utf-8");
+  } catch {
+    // Filesystem write is best-effort (may fail in cloud)
+  }
 }
 
 /**
- * Remove a config overlay from disk.
+ * Remove a config overlay from DB and filesystem.
  */
 async function removeOverlay(cinemaId: string): Promise<void> {
+  const dbKey = `autoscrape/overlay/${cinemaId}`;
+
+  // Remove from DB
+  if (isDatabaseAvailable) {
+    try {
+      await db
+        .delete(autoresearchConfig)
+        .where(eq(autoresearchConfig.key, dbKey));
+    } catch (err) {
+      console.warn(`[autoscrape] Failed to remove overlay from DB for ${cinemaId}:`, err);
+    }
+  }
+
+  // Remove from filesystem
   try {
+    const { unlink: unlinkFs } = await import("fs/promises");
     const overlayPath = join(OVERLAY_DIR, `${cinemaId}.json`);
-    await unlink(overlayPath);
+    await unlinkFs(overlayPath);
   } catch (err) {
     if (err instanceof Error && (err as NodeJS.ErrnoException).code === "ENOENT") {
-      return; // Already removed or never existed
+      return;
     }
-    throw err;
+    // Ignore other filesystem errors in cloud
   }
 }
