@@ -1,3 +1,11 @@
+## 2026-03-14: Skip Obsidian writes in cloud environments
+**PR**: #336 | **Files**: `src/autoresearch/obsidian-reporter.ts`
+- Obsidian report writer now detects cloud environments (Trigger.dev, Vercel, Railway)
+- Skips filesystem writes gracefully instead of failing with EACCES on `/Users/` path
+- Fixes two red errors at end of every Trigger.dev autoquality run
+
+---
+
 ## 2026-03-14: AutoResearch DB persistence + focused optimization
 **PR**: #335 | **Files**: `src/autoresearch/autoquality/harness.ts`, `src/autoresearch/autoquality/db-thresholds.ts`, `src/autoresearch/autoquality/load-thresholds.ts`, `src/autoresearch/autoquality/audit-wrapper.ts`, `src/autoresearch/autoquality/program.md`, `src/autoresearch/autoscrape/harness.ts`, `src/scrapers/base.ts`, `src/db/schema/admin.ts`, `src/db/migrations/0008_add_autoresearch_config.sql`, `scripts/autoresearch-status.ts`
 - Fix AutoResearch learning loss: thresholds now persist via DB instead of ephemeral filesystem

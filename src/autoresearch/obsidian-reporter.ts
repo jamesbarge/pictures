@@ -15,6 +15,18 @@ const OBSIDIAN_VAULT = "/Users/jamesbarge/Documents/Obsidian Vault/Pictures";
 const AUTORESEARCH_DIR = join(OBSIDIAN_VAULT, "AutoResearch");
 const CURSOR_PATH = join(AUTORESEARCH_DIR, "autoresearch-cursor.md");
 
+/**
+ * Detect if running in a cloud environment (Trigger.dev, Vercel, etc.)
+ * where the local Obsidian vault path doesn't exist.
+ */
+function isCloudEnvironment(): boolean {
+  return !!(
+    process.env.TRIGGER_PROJECT_ID ||
+    process.env.VERCEL ||
+    process.env.RAILWAY_ENVIRONMENT
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
@@ -27,6 +39,11 @@ export async function writeOvernightReport(
   summary: OvernightSummary,
   experiments: ExperimentResult[]
 ): Promise<string> {
+  if (isCloudEnvironment()) {
+    console.log("[autoresearch] Skipping Obsidian report (cloud environment)");
+    return "";
+  }
+
   await mkdir(AUTORESEARCH_DIR, { recursive: true });
 
   const ts = format(summary.runStartedAt, "yyyy-MM-dd-HHmm");
@@ -45,6 +62,11 @@ export async function writeOvernightReport(
  * Tracks last 20 session log entries.
  */
 export async function updateCursor(summary: OvernightSummary): Promise<void> {
+  if (isCloudEnvironment()) {
+    console.log("[autoresearch] Skipping Obsidian cursor update (cloud environment)");
+    return;
+  }
+
   await mkdir(AUTORESEARCH_DIR, { recursive: true });
 
   const durationMin = Math.round(
