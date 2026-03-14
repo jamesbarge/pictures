@@ -192,6 +192,7 @@ const DEFAULT_STATE: FestivalState = {
 // STORE
 // ============================================
 
+/** Zustand store managing festival follows, schedule preferences, and notification settings. */
 export const useFestivalStore = create<FestivalState & FestivalActions>()(
   persist(
     (set, get) => ({

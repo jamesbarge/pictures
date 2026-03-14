@@ -67,6 +67,7 @@ const initialState: ReachableState = {
   error: null,
 };
 
+/** Zustand store managing postcode, travel mode, and computed travel times for the reachable-cinemas feature. */
 export const useReachable = create<ReachableState & ReachableActions>()(
   persist(
     (set, get) => ({

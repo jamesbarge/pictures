@@ -31,6 +31,7 @@ const DEFAULT_STATE = {
   bannerDismissedAt: null as string | null,
 };
 
+/** Zustand store tracking feature discovery state and banner dismissal for onboarding UX. */
 export const useDiscovery = create<DiscoveryState>()(
   persist(
     (set, get) => ({
