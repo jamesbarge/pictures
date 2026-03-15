@@ -1,4 +1,11 @@
 \n## 2026-03-15: Kaizen — extract triggerChunkedBatch in scrape-all
+## 2026-03-16: Kaizen — extract saveEnrichmentResult helper in post-scrape
+**PR**: #369 | **Files**: `src/trigger/enrichment/post-scrape.ts`
+- Extracted duplicate TMDB enrichment status persistence (success + failure paths) into shared `saveEnrichmentResult()` helper
+- Kaizen automated refactoring (category: readability)
+
+---
+
 ## 2026-03-16: Kaizen — extract B1/B2 deterministic check helpers
 **PR**: #368 | **Files**: `src/trigger/qa/analyze-and-fix.ts`
 - Extracted stale-screening detection and missing-Letterboxd detection from 330-line run() into two pure helper functions
