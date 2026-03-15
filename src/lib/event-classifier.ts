@@ -24,6 +24,7 @@ const VALID_EVENT_TYPES: EventType[] = [
   "members_only",
   "relaxed",
 ];
+const VALID_EVENT_TYPE_SET = new Set<string>(VALID_EVENT_TYPES);
 
 // Valid formats from the schema
 const VALID_FORMATS: ScreeningFormat[] = [
@@ -129,7 +130,7 @@ Return ONLY valid JSON, no explanation.`;
         cleanTitle: json.cleanTitle || title,
         isSpecialEvent: json.isSpecialEvent === true || (json.eventTypes?.length || 0) > 0,
         eventTypes: (json.eventTypes || []).filter((t: string) =>
-          VALID_EVENT_TYPES.includes(t as EventType)
+          VALID_EVENT_TYPE_SET.has(t)
         ),
         eventDescription: json.eventDescription || null,
         format: VALID_FORMATS.includes(json.format) ? json.format : null,
