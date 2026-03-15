@@ -1,3 +1,9 @@
+## 2026-03-15: Kaizen — Extract festival status helpers
+**PR**: #363 | **Files**: `src/app/api/festivals/[slug]/route.ts`
+- Extracted `computeFestivalStatus()` and `computeTicketStatus()` pure functions from inline conditionals
+- Kaizen automated refactoring (category: readability)
+
+---
 ## 2026-03-15: Kaizen — Extract enrichment status update helper
 **PR**: #360 | **Files**: `src/trigger/enrichment/daily-sweep.ts`
 - Extracted `updateEnrichmentStatus()` from 6 duplicated inline blocks across 4 enrichment phases
