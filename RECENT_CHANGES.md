@@ -1,3 +1,10 @@
+## 2026-03-15: Kaizen — Standardize auth mock type casts
+**PR**: #339 | **Files**: 5 admin test files
+- Replaced 46 verbose auth mock type casts with concise `as never`
+- Three different cast patterns standardized to one consistent convention
+- Kaizen automated refactoring (category: test-quality)
+
+---
 ## 2026-03-14: Skip Obsidian writes in cloud environments
 
 ## 2026-03-15: Kaizen — extract parseDistanceMatrixElements helper

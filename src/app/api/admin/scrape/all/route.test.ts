@@ -39,7 +39,7 @@ describe("POST /api/admin/scrape/all", () => {
   });
 
   it("returns 401 when not authenticated", async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: null } as unknown as Awaited<ReturnType<typeof auth>>);
+    vi.mocked(auth).mockResolvedValue({ userId: null } as never);
 
     const request = new Request("http://localhost/api/admin/scrape/all", {
       method: "POST",
@@ -50,7 +50,7 @@ describe("POST /api/admin/scrape/all", () => {
   });
 
   it("returns 403 for non-admin users", async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as unknown as Awaited<ReturnType<typeof auth>>);
+    vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as never);
     vi.mocked(currentUser).mockResolvedValue({
       emailAddresses: [{ emailAddress: "someone@example.com" }],
     } as never);
@@ -64,7 +64,7 @@ describe("POST /api/admin/scrape/all", () => {
   });
 
   it("queues all scrapers when authenticated", async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as unknown as Awaited<ReturnType<typeof auth>>);
+    vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as never);
     mockSend.mockResolvedValue({ ids: ["event-1", "event-2"] });
 
     const request = new Request("http://localhost/api/admin/scrape/all", {
@@ -82,7 +82,7 @@ describe("POST /api/admin/scrape/all", () => {
   });
 
   it("includes both independent and chain cinemas", async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as unknown as Awaited<ReturnType<typeof auth>>);
+    vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as never);
     mockSend.mockResolvedValue({ ids: [] });
 
     const request = new Request("http://localhost/api/admin/scrape/all", {
@@ -100,7 +100,7 @@ describe("POST /api/admin/scrape/all", () => {
   });
 
   it("sends scraper/run events to Inngest", async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as unknown as Awaited<ReturnType<typeof auth>>);
+    vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as never);
     mockSend.mockResolvedValue({ ids: [] });
 
     const request = new Request("http://localhost/api/admin/scrape/all", {
@@ -127,7 +127,7 @@ describe("POST /api/admin/scrape/all", () => {
   });
 
   it("queues BFI PDF import once and deduplicates chain triggers", async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as unknown as Awaited<ReturnType<typeof auth>>);
+    vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as never);
     mockSend.mockResolvedValue({ ids: [] });
 
     const request = new Request("http://localhost/api/admin/scrape/all", {
@@ -154,7 +154,7 @@ describe("POST /api/admin/scrape/all", () => {
   });
 
   it("returns 500 when Inngest fails", async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as unknown as Awaited<ReturnType<typeof auth>>);
+    vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as never);
     mockSend.mockRejectedValue(new Error("Inngest service unavailable"));
 
     const request = new Request("http://localhost/api/admin/scrape/all", {
@@ -190,7 +190,7 @@ describe("POST /api/admin/scrape/all (Trigger.dev path)", () => {
     vi.mocked(currentUser).mockResolvedValue({
       emailAddresses: [{ emailAddress: "jdwbarge@gmail.com" }],
     } as never);
-    vi.mocked(auth).mockResolvedValue({ userId: "user_456" } as unknown as Awaited<ReturnType<typeof auth>>);
+    vi.mocked(auth).mockResolvedValue({ userId: "user_456" } as never);
 
     // Re-import to pick up new env
     vi.resetModules();

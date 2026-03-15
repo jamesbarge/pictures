@@ -61,7 +61,7 @@ describe("Admin Screenings API", () => {
   describe("PUT /api/admin/screenings/[id]", () => {
     describe("authentication", () => {
       it("should return 401 without auth", async () => {
-        vi.mocked(auth).mockResolvedValueOnce({ userId: null } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+        vi.mocked(auth).mockResolvedValueOnce({ userId: null } as never);
 
         const response = await PUT(createRequest({}), createParams());
 
@@ -71,7 +71,7 @@ describe("Admin Screenings API", () => {
       });
 
       it("should proceed with valid auth", async () => {
-        vi.mocked(auth).mockResolvedValueOnce({ userId: "test-user" } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+        vi.mocked(auth).mockResolvedValueOnce({ userId: "test-user" } as never);
 
         const response = await PUT(createRequest({ format: "35mm" }), createParams());
 
@@ -81,7 +81,7 @@ describe("Admin Screenings API", () => {
 
     describe("validation", () => {
       beforeEach(() => {
-        vi.mocked(auth).mockResolvedValue({ userId: "test-user" } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+        vi.mocked(auth).mockResolvedValue({ userId: "test-user" } as never);
       });
 
       it("should accept valid body with all optional fields", async () => {
@@ -191,7 +191,7 @@ describe("Admin Screenings API", () => {
   describe("PATCH /api/admin/screenings/[id]", () => {
     describe("authentication", () => {
       it("should return 401 without auth", async () => {
-        vi.mocked(auth).mockResolvedValueOnce({ userId: null } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+        vi.mocked(auth).mockResolvedValueOnce({ userId: null } as never);
 
         const response = await PATCH(createRequest({}, "PATCH"), createParams());
 
@@ -203,7 +203,7 @@ describe("Admin Screenings API", () => {
 
     describe("validation", () => {
       beforeEach(() => {
-        vi.mocked(auth).mockResolvedValue({ userId: "test-user" } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+        vi.mocked(auth).mockResolvedValue({ userId: "test-user" } as never);
       });
 
       it("should accept valid body", async () => {
@@ -257,7 +257,7 @@ describe("Admin Screenings API", () => {
 
   describe("DELETE /api/admin/screenings/[id]", () => {
     it("should return 401 without auth", async () => {
-      vi.mocked(auth).mockResolvedValueOnce({ userId: null } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+      vi.mocked(auth).mockResolvedValueOnce({ userId: null } as never);
 
       const response = await DELETE(new Request("http://localhost", { method: "DELETE" }), createParams());
 
@@ -265,7 +265,7 @@ describe("Admin Screenings API", () => {
     });
 
     it("should succeed with valid auth", async () => {
-      vi.mocked(auth).mockResolvedValueOnce({ userId: "test-user" } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+      vi.mocked(auth).mockResolvedValueOnce({ userId: "test-user" } as never);
 
       const response = await DELETE(new Request("http://localhost", { method: "DELETE" }), createParams());
 
@@ -275,7 +275,7 @@ describe("Admin Screenings API", () => {
     });
 
     it("should return 404 for non-existent screening", async () => {
-      vi.mocked(auth).mockResolvedValueOnce({ userId: "test-user" } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+      vi.mocked(auth).mockResolvedValueOnce({ userId: "test-user" } as never);
       mockLimit.mockResolvedValueOnce([]); // No screening found
 
       const response = await DELETE(new Request("http://localhost", { method: "DELETE" }), createParams());
