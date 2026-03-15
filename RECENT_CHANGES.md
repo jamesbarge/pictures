@@ -1,3 +1,10 @@
+## 2026-03-15: Kaizen — Extract filter predicates from calendar view
+**PR**: #353 | **Files**: `src/components/calendar/calendar-view.tsx`
+- Extracted `matchesDateRange()` and `matchesProgrammingType()` from 120-line filter callback
+- Reduces inline nesting and makes the filter pipeline scannable by name
+- Kaizen automated refactoring (category: readability)
+
+---
 ## 2026-03-15: Kaizen — Extract triggerQaStep() from QA orchestrator
 **PR**: #352 | **Files**: `src/trigger/qa/orchestrator.ts`
 - Extracted `triggerQaStep()` helper from 2 identical 28-line try/catch/alert blocks

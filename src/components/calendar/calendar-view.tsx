@@ -21,6 +21,45 @@ import { Film, Search, MapPin } from "lucide-react";
 // Stable reference for empty set (prevents unnecessary re-renders)
 const EMPTY_SET = new Set<string>();
 
+/** Check whether a datetime falls within the active date range filter. */
+function matchesDateRange(
+  datetime: Date,
+  dateFrom: Date | null,
+  dateTo: Date | null,
+): boolean {
+  if (!dateFrom && !dateTo) return true;
+  if (dateFrom && dateTo) {
+    return isWithinInterval(datetime, { start: startOfDay(dateFrom), end: endOfDay(dateTo) });
+  }
+  if (dateFrom && datetime < startOfDay(dateFrom)) return false;
+  if (dateTo && datetime > endOfDay(dateTo)) return false;
+  return true;
+}
+
+/** Check whether a screening matches any of the active programming type filters. */
+function matchesProgrammingType(
+  screening: { film: Screening["film"]; isSpecialEvent?: boolean; eventType?: string | null },
+  programmingTypes: string[],
+): boolean {
+  if (programmingTypes.length === 0) return true;
+  return programmingTypes.some((type) => {
+    switch (type) {
+      case "repertory":
+        return screening.film.isRepertory;
+      case "new_release":
+        if (screening.film.contentType && screening.film.contentType !== "film") return false;
+        if (screening.film.isRepertory || screening.isSpecialEvent) return false;
+        return !screening.film.year || screening.film.year >= 2025;
+      case "special_event":
+        return screening.isSpecialEvent || !!screening.eventType;
+      case "preview":
+        return screening.eventType === "preview" || screening.eventType === "premiere";
+      default:
+        return false;
+    }
+  });
+}
+
 interface Screening {
   id: string;
   datetime: Date;
@@ -191,19 +230,8 @@ export function CalendarView({ screenings, serverFilmTotals }: CalendarViewProps
       }
 
       // Date range filter - uses pre-parsed datetime
-      if (filters.dateFrom || filters.dateTo) {
-        if (filters.dateFrom && filters.dateTo) {
-          if (!isWithinInterval(s._parsedDatetime, {
-            start: startOfDay(filters.dateFrom),
-            end: endOfDay(filters.dateTo),
-          })) {
-            return false;
-          }
-        } else if (filters.dateFrom && s._parsedDatetime < startOfDay(filters.dateFrom)) {
-          return false;
-        } else if (filters.dateTo && s._parsedDatetime > endOfDay(filters.dateTo)) {
-          return false;
-        }
+      if (!matchesDateRange(s._parsedDatetime, filters.dateFrom, filters.dateTo)) {
+        return false;
       }
 
       // Time range filter - uses pre-parsed hour
@@ -224,29 +252,8 @@ export function CalendarView({ screenings, serverFilmTotals }: CalendarViewProps
       }
 
       // Programming type filter
-      if (filters.programmingTypes.length > 0) {
-        const isMatch = filters.programmingTypes.some((type) => {
-          switch (type) {
-            case "repertory":
-              return s.film.isRepertory;
-            case "new_release":
-              // A new release must be a film (not event/concert/broadcast),
-              // not repertory, not a special event, and either have a
-              // recent year (2025+) or no year data (unknown films without
-              // year data are included as they're likely new releases
-              // that haven't been enriched yet)
-              if (s.film.contentType && s.film.contentType !== "film") return false;
-              if (s.film.isRepertory || s.isSpecialEvent) return false;
-              return !s.film.year || s.film.year >= 2025;
-            case "special_event":
-              return s.isSpecialEvent || !!s.eventType;
-            case "preview":
-              return s.eventType === "preview" || s.eventType === "premiere";
-            default:
-              return false;
-          }
-        });
-        if (!isMatch) return false;
+      if (!matchesProgrammingType(s, filters.programmingTypes)) {
+        return false;
       }
 
       // Decade filter
