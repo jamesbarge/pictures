@@ -1,3 +1,10 @@
+## 2026-03-15: Kaizen — Replace type assertion casts with proper annotations
+**PR**: #340 | **Files**: `src/lib/content-classifier.ts`, `src/lib/rate-limit.ts`
+- Removed 13 `as ContentType` casts via array type annotation
+- Replaced 4 `as RateLimitConfig` + `as const` with `satisfies`
+- Kaizen automated refactoring (category: type-narrowing)
+
+---
 ## 2026-03-15: Kaizen — Standardize auth mock type casts
 **PR**: #339 | **Files**: 5 admin test files
 - Replaced 46 verbose auth mock type casts with concise `as never`
