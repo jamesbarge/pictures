@@ -1,3 +1,10 @@
+## 2026-03-15: Kaizen — Extract triggerQaStep() from QA orchestrator
+**PR**: #352 | **Files**: `src/trigger/qa/orchestrator.ts`
+- Extracted `triggerQaStep()` helper from 2 identical 28-line try/catch/alert blocks
+- Pipeline steps now read as 3-line function calls instead of 28-line error-handling blocks
+- Kaizen automated refactoring (category: readability)
+
+---
 ## 2026-03-15: Kaizen — Extract director and accessibility helpers from Curzon scraper
 **PR**: #351 | **Files**: `src/scrapers/chains/curzon.ts`
 - Extracted `extractDirector()` and `classifyAccessibilityFeatures()` from deeply nested loop

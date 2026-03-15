@@ -15,6 +15,36 @@ import { sendTelegramAlert } from "../utils/telegram";
 import { createGitHubIssue } from "../utils/github-issues";
 import type { QaBrowseOutput, QaAnalysisOutput, QaOrchestratorOutput, ClassifiedIssue } from "./types";
 
+/** Trigger a child QA task, wait for completion, and send Telegram alerts on failure. */
+async function triggerQaStep<TOutput>(
+  taskId: string,
+  payload: Record<string, unknown>,
+  label: string,
+  alertTitle: string,
+  failContext?: string,
+): Promise<TOutput> {
+  try {
+    const handle = await tasks.triggerAndWait(taskId, payload);
+    if (!handle.ok) {
+      const errMsg = handle.error instanceof Error
+        ? handle.error.message
+        : String(handle.error ?? "unknown");
+      console.error(`[qa] ${label} task failed: ${errMsg}`);
+      const message = failContext
+        ? `${label} task failed ${failContext}.\nError: ${errMsg}`
+        : `${label} task failed: ${errMsg}`;
+      await sendTelegramAlert({ title: alertTitle, message, level: "error" });
+      throw new Error(`${label} failed: ${errMsg}`);
+    }
+    return handle.output as TOutput;
+  } catch (err) {
+    if (err instanceof Error && err.message.startsWith(`${label} failed:`)) throw err;
+    const errMsg = err instanceof Error ? err.message : String(err);
+    await sendTelegramAlert({ title: alertTitle, message: `${label} task error: ${errMsg}`, level: "error" });
+    throw err;
+  }
+}
+
 // ── Regular task: the actual pipeline (API-triggerable) ──────────────
 export const qaPipeline = task({
   id: "qa-pipeline",
@@ -26,35 +56,9 @@ export const qaPipeline = task({
     console.log(`[qa] Starting QA pipeline, dryRun=${dryRun}`);
 
     // ── Step 1: Browse ─────────────────────────────────────────────
-    let browseOutput: QaBrowseOutput;
-    try {
-      const browseHandle = await tasks.triggerAndWait<typeof import("./browse").qaBrowse>(
-        "qa-browse",
-        { dryRun }
-      );
-      if (!browseHandle.ok) {
-        const errMsg = browseHandle.error instanceof Error
-          ? browseHandle.error.message
-          : String(browseHandle.error ?? "unknown");
-        console.error(`[qa] Browse task failed: ${errMsg}`);
-        await sendTelegramAlert({
-          title: "QA Pipeline Failed",
-          message: `Browse task failed: ${errMsg}`,
-          level: "error",
-        });
-        throw new Error(`Browse failed: ${errMsg}`);
-      }
-      browseOutput = browseHandle.output;
-    } catch (err) {
-      if (err instanceof Error && err.message.startsWith("Browse failed:")) throw err;
-      const errMsg = err instanceof Error ? err.message : String(err);
-      await sendTelegramAlert({
-        title: "QA Pipeline Failed",
-        message: `Browse task error: ${errMsg}`,
-        level: "error",
-      });
-      throw err;
-    }
+    const browseOutput = await triggerQaStep<QaBrowseOutput>(
+      "qa-browse", { dryRun }, "Browse", "QA Pipeline Failed",
+    );
 
     // Check if browse returned empty (completeness guard fired)
     if (browseOutput.films.length === 0 && browseOutput.errors.length > 0) {
@@ -72,35 +76,13 @@ export const qaPipeline = task({
     }
 
     // ── Step 2: Analyze & Fix ──────────────────────────────────────
-    let analysisOutput: QaAnalysisOutput;
-    try {
-      const analyzeHandle = await tasks.triggerAndWait<typeof import("./analyze-and-fix").qaAnalyzeAndFix>(
-        "qa-analyze-and-fix",
-        { browseOutput, dryRun }
-      );
-      if (!analyzeHandle.ok) {
-        const errMsg = analyzeHandle.error instanceof Error
-          ? analyzeHandle.error.message
-          : String(analyzeHandle.error ?? "unknown");
-        console.error(`[qa] Analyze task failed: ${errMsg}`);
-        await sendTelegramAlert({
-          title: "QA Analysis Failed",
-          message: `Analyze task failed after successful browse.\nBrowse found ${browseOutput.films.length} films.\nError: ${errMsg}`,
-          level: "error",
-        });
-        throw new Error(`Analyze failed: ${errMsg}`);
-      }
-      analysisOutput = analyzeHandle.output;
-    } catch (err) {
-      if (err instanceof Error && err.message.startsWith("Analyze failed:")) throw err;
-      const errMsg = err instanceof Error ? err.message : String(err);
-      await sendTelegramAlert({
-        title: "QA Analysis Failed",
-        message: `Analyze task error: ${errMsg}`,
-        level: "error",
-      });
-      throw err;
-    }
+    const analysisOutput = await triggerQaStep<QaAnalysisOutput>(
+      "qa-analyze-and-fix",
+      { browseOutput, dryRun },
+      "Analyze",
+      "QA Analysis Failed",
+      `after successful browse.\nBrowse found ${browseOutput.films.length} films`,
+    );
 
     // ── Step 3: Telegram Report ────────────────────────────────────
     await sendQaReport(browseOutput, analysisOutput, dryRun);
