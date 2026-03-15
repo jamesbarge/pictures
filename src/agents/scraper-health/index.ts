@@ -23,6 +23,40 @@ import { CINEMA_AGENT_SYSTEM_PROMPT, calculateCost } from "../config";
 const AGENT_NAME = "scraper-health";
 
 /**
+ * Apply deterministic heuristic checks to a scraper health report.
+ * Mutates the report in place, adding anomaly flags and warnings
+ * based on screening count drops and zero-count detection.
+ */
+function applyHeuristicChecks(
+  report: ScraperHealthReport,
+  percentChange: number,
+  averageCount: number,
+  screeningCount: number,
+): void {
+  if (percentChange < -50 && averageCount > 10) {
+    report.anomalyDetected = true;
+    if (!report.warnings.some((w) => w.includes("drop"))) {
+      report.warnings.push(
+        `Large drop: ${percentChange.toFixed(1)}% decrease from average`
+      );
+    }
+    if (percentChange < -80) {
+      report.shouldBlockScrape = true;
+      report.anomalyScore = Math.max(report.anomalyScore, 0.9);
+    }
+  }
+
+  if (screeningCount === 0) {
+    report.anomalyDetected = true;
+    report.shouldBlockScrape = true;
+    report.anomalyScore = 1.0;
+    if (!report.warnings.some((w) => w.includes("Zero"))) {
+      report.warnings.push("Zero screenings scraped - scraper likely broken");
+    }
+  }
+}
+
+/**
  * Analyze scraper health for a cinema after scraping
  */
 export async function analyzeScraperHealth(
@@ -157,23 +191,7 @@ Respond with JSON:
     }
 
     // Quick heuristic checks that don't need AI
-    if (percentChange < -50 && averageCount > 10) {
-      report.anomalyDetected = true;
-      report.warnings.push(
-        `Large drop: ${percentChange.toFixed(1)}% decrease from average`
-      );
-      if (percentChange < -80) {
-        report.shouldBlockScrape = true;
-        report.anomalyScore = Math.max(report.anomalyScore, 0.9);
-      }
-    }
-
-    if (newScreeningCount === 0) {
-      report.anomalyDetected = true;
-      report.shouldBlockScrape = true;
-      report.anomalyScore = 1.0;
-      report.warnings.push("Zero screenings scraped - scraper likely broken");
-    }
+    applyHeuristicChecks(report, percentChange, averageCount, newScreeningCount);
 
     const cost = calculateCost(
       config.model,
@@ -350,27 +368,7 @@ Only include cinemas with anomalies or notable issues. If a cinema looks healthy
       };
 
       // Apply heuristic checks
-      if (cinema.percentChange < -50 && cinema.averageCount > 10) {
-        report.anomalyDetected = true;
-        if (!report.warnings.some((w) => w.includes("drop"))) {
-          report.warnings.push(
-            `Large drop: ${cinema.percentChange.toFixed(1)}% decrease from average`
-          );
-        }
-        if (cinema.percentChange < -80) {
-          report.shouldBlockScrape = true;
-          report.anomalyScore = Math.max(report.anomalyScore, 0.9);
-        }
-      }
-
-      if (cinema.screeningCount === 0) {
-        report.anomalyDetected = true;
-        report.shouldBlockScrape = true;
-        report.anomalyScore = 1.0;
-        if (!report.warnings.some((w) => w.includes("Zero"))) {
-          report.warnings.push("Zero screenings - scraper likely broken");
-        }
-      }
+      applyHeuristicChecks(report, cinema.percentChange, cinema.averageCount, cinema.screeningCount);
 
       return report;
     });
