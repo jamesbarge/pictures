@@ -1,3 +1,10 @@
+\n## 2026-03-15: Kaizen — extract triggerChunkedBatch in scrape-all
+**PR**: #367 | **Files**: `src/trigger/scrape-all.ts`
+- Extracted duplicate Playwright/Cheerio chunked batch logic into triggerChunkedBatch() helper
+- Kaizen automated refactoring (category: readability)
+
+---
+
 
 ## 2026-03-15: Kaizen — extract status helpers in festivals list route
 **PR**: #365 | **Files**: `src/app/api/festivals/route.ts`
