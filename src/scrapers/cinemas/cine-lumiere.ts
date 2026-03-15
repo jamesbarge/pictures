@@ -126,30 +126,9 @@ export class CineLumiereScraper extends BaseScraper {
       }
 
       // Check if this is a time link (format: "16:00", "18:15", etc.)
-      if ($el.is("a") && /^\d{1,2}:\d{2}$/.test(text)) {
-        if (!currentDate) return;
-
-        const time = parseScreeningTime(text);
-        if (!time) return;
-
-        const datetime = combineDateAndTime(currentDate, time);
-
-        // Skip past screenings
-        if (datetime < now) return;
-
-        // Get booking URL
+      if ($el.is("a") && /^\d{1,2}:\d{2}$/.test(text) && currentDate) {
         const href = $el.attr("href") || "";
-        const bookingUrl = href.startsWith("http")
-          ? href
-          : `${this.config.baseUrl}${href.startsWith("/") ? "" : "/"}${href}`;
-
-        screenings.push({
-          filmTitle,
-          datetime,
-          bookingUrl: bookingUrl || `${this.config.baseUrl}/CineLumiere.dll/`,
-          sourceId: `cine-lumiere-${filmTitle.toLowerCase().replace(/\s+/g, "-")}-${datetime.toISOString()}`,
-          ...FestivalDetector.detect("cine-lumiere", filmTitle, datetime, bookingUrl),
-        });
+        this.addScreeningIfValid(filmTitle, text, currentDate, href, screenings, now);
       }
     });
   }
@@ -184,24 +163,8 @@ export class CineLumiereScraper extends BaseScraper {
         const timeText = $el.text().trim();
 
         if (/^\d{1,2}:\d{2}$/.test(timeText) && currentDate) {
-          const time = parseScreeningTime(timeText);
-          if (!time) return;
-
-          const datetime = combineDateAndTime(currentDate, time);
-          if (datetime < now) return;
-
           const href = $el.attr("href") || "";
-          const bookingUrl = href.startsWith("http")
-            ? href
-            : `${this.config.baseUrl}${href.startsWith("/") ? "" : "/"}${href}`;
-
-          screenings.push({
-            filmTitle,
-            datetime,
-            bookingUrl: bookingUrl || `${this.config.baseUrl}/CineLumiere.dll/`,
-            sourceId: `cine-lumiere-${filmTitle.toLowerCase().replace(/\s+/g, "-")}-${datetime.toISOString()}`,
-            ...FestivalDetector.detect("cine-lumiere", filmTitle, datetime, bookingUrl),
-          });
+          this.addScreeningIfValid(filmTitle, timeText, currentDate, href, screenings, now);
         }
       });
 
@@ -248,31 +211,10 @@ export class CineLumiereScraper extends BaseScraper {
       // Check for time link (format: "16:00")
       if ($el.is("a") && /^\d{1,2}:\d{2}$/.test(text)) {
         if (!currentFilm || !currentDate) return;
-
-        const time = parseScreeningTime(text);
-        if (!time) return;
-
-        const datetime = combineDateAndTime(currentDate, time);
-        if (datetime < now) return;
-
-        const href = $el.attr("href") || "";
-        const bookingUrl = href.startsWith("http")
-          ? href
-          : `${this.config.baseUrl}${href.startsWith("/") ? "" : "/"}${href}`;
-
-        // Check for "(Closed for Booking)" status
         const parentText = $el.parent().text();
-        if (parentText.toLowerCase().includes("closed for booking")) {
-          return;
-        }
-
-        screenings.push({
-          filmTitle: currentFilm,
-          datetime,
-          bookingUrl: bookingUrl || `${this.config.baseUrl}/CineLumiere.dll/`,
-          sourceId: `cine-lumiere-${currentFilm.toLowerCase().replace(/\s+/g, "-")}-${datetime.toISOString()}`,
-          ...FestivalDetector.detect("cine-lumiere", currentFilm, datetime, bookingUrl),
-        });
+        if (parentText.toLowerCase().includes("closed for booking")) return;
+        const href = $el.attr("href") || "";
+        this.addScreeningIfValid(currentFilm, text, currentDate, href, screenings, now);
       }
     });
 
@@ -281,6 +223,32 @@ export class CineLumiereScraper extends BaseScraper {
         `[${this.config.cinemaId}] Alternative parsing found ${screenings.length} screenings`
       );
     }
+  }
+
+  /** Parse a time link, combine with date, build booking URL, and push the screening. */
+  private addScreeningIfValid(
+    filmTitle: string,
+    timeText: string,
+    currentDate: Date,
+    href: string,
+    screenings: RawScreening[],
+    now: Date
+  ): void {
+    const time = parseScreeningTime(timeText);
+    if (!time) return;
+    const datetime = combineDateAndTime(currentDate, time);
+    if (datetime < now) return;
+    const bookingUrl = href.startsWith("http")
+      ? href
+      : `${this.config.baseUrl}${href.startsWith("/") ? "" : "/"}${href}`;
+    const finalUrl = bookingUrl || `${this.config.baseUrl}/CineLumiere.dll/`;
+    screenings.push({
+      filmTitle,
+      datetime,
+      bookingUrl: finalUrl,
+      sourceId: `cine-lumiere-${filmTitle.toLowerCase().replace(/\s+/g, "-")}-${datetime.toISOString()}`,
+      ...FestivalDetector.detect("cine-lumiere", filmTitle, datetime, finalUrl),
+    });
   }
 
   private cleanTitle(title: string): string {
