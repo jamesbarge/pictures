@@ -192,11 +192,11 @@ export function getClientIP(request: Request): string {
 /** Preset rate limit configurations for common API route categories. */
 export const RATE_LIMITS = {
   // Public API endpoints - generous limits
-  public: { limit: 100, windowSec: 60 } as RateLimitConfig,
+  public: { limit: 100, windowSec: 60 },
   // Search endpoints - moderate limits
-  search: { limit: 30, windowSec: 60 } as RateLimitConfig,
+  search: { limit: 30, windowSec: 60 },
   // User endpoints - stricter limits
-  user: { limit: 20, windowSec: 60 } as RateLimitConfig,
+  user: { limit: 20, windowSec: 60 },
   // Auth/sync endpoints - strict limits
-  sync: { limit: 10, windowSec: 60 } as RateLimitConfig,
-} as const;
+  sync: { limit: 10, windowSec: 60 },
+} satisfies Record<string, RateLimitConfig>;

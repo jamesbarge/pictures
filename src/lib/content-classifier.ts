@@ -39,21 +39,21 @@ function quickClassify(rawTitle: string): ClassificationResult | null {
   const normalized = rawTitle.toLowerCase().trim();
 
   // Quick detection of non-film content that doesn't need AI
-  const nonFilmPatterns = [
-    { pattern: /^(quiz|trivia)\b/i, type: "event" as ContentType },
-    { pattern: /\bquiz\s*night\b/i, type: "event" as ContentType },
-    { pattern: /^café\s+philo/i, type: "event" as ContentType },
-    { pattern: /^cafés?\s+philo/i, type: "event" as ContentType },
-    { pattern: /^come\s+and\s+sing/i, type: "event" as ContentType },
-    { pattern: /^private\s+hire/i, type: "event" as ContentType },
-    { pattern: /^reading\s+group/i, type: "event" as ContentType },
-    { pattern: /^baby\s+comptines/i, type: "event" as ContentType },
-    { pattern: /^mystery\s+movie/i, type: "film" as ContentType }, // This is still a film screening
+  const nonFilmPatterns: Array<{ pattern: RegExp; type: ContentType }> = [
+    { pattern: /^(quiz|trivia)\b/i, type: "event" },
+    { pattern: /\bquiz\s*night\b/i, type: "event" },
+    { pattern: /^café\s+philo/i, type: "event" },
+    { pattern: /^cafés?\s+philo/i, type: "event" },
+    { pattern: /^come\s+and\s+sing/i, type: "event" },
+    { pattern: /^private\s+hire/i, type: "event" },
+    { pattern: /^reading\s+group/i, type: "event" },
+    { pattern: /^baby\s+comptines/i, type: "event" },
+    { pattern: /^mystery\s+movie/i, type: "film" }, // This is still a film screening
     // Additional event patterns from patrol logs
-    { pattern: /\bmusical\s+bingo\b/i, type: "event" as ContentType },
-    { pattern: /\bcomedy\s+(club|night)\b/i, type: "event" as ContentType },
-    { pattern: /\bmember\s+(poll|quiz)\b/i, type: "event" as ContentType },
-    { pattern: /\bin\s+conversation\s+with\b/i, type: "event" as ContentType },
+    { pattern: /\bmusical\s+bingo\b/i, type: "event" },
+    { pattern: /\bcomedy\s+(club|night)\b/i, type: "event" },
+    { pattern: /\bmember\s+(poll|quiz)\b/i, type: "event" },
+    { pattern: /\bin\s+conversation\s+with\b/i, type: "event" },
   ];
 
   for (const { pattern, type } of nonFilmPatterns) {
