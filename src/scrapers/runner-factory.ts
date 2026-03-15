@@ -182,6 +182,33 @@ async function getBaseline(cinemaId: string): Promise<{ count: number; tolerance
  * Record a scraper run to the database for tracking and anomaly detection.
  * Fire-and-forget: errors are logged but never thrown.
  */
+/** Detect if a screening count deviates from the baseline beyond the tolerance threshold. */
+function detectAnomaly(
+  baseline: { count: number; tolerance: number },
+  screeningCount: number
+): { type: "low_count" | "zero_results" | "high_count"; details: { expectedRange: { min: number; max: number }; percentChange: number } } | null {
+  const deviation = baseline.count > 0
+    ? (Math.abs(screeningCount - baseline.count) / baseline.count) * 100
+    : 0;
+
+  if (deviation <= baseline.tolerance) return null;
+
+  return {
+    type: screeningCount === 0
+      ? "zero_results"
+      : screeningCount < baseline.count
+        ? "low_count"
+        : "high_count",
+    details: {
+      expectedRange: {
+        min: Math.round(baseline.count * (1 - baseline.tolerance / 100)),
+        max: Math.round(baseline.count * (1 + baseline.tolerance / 100)),
+      },
+      percentChange: Math.round(deviation),
+    },
+  };
+}
+
 async function recordScraperRun(params: {
   cinemaId: string;
   startedAt: Date;
@@ -200,25 +227,11 @@ async function recordScraperRun(params: {
 
     // Detect anomalies against baseline
     if (baseline && params.status === "success") {
-      const { count: baselineCount, tolerance } = baseline;
-      const deviation = baselineCount > 0
-        ? Math.abs(params.screeningCount - baselineCount) / baselineCount * 100
-        : 0;
-
-      if (deviation > tolerance) {
+      const anomaly = detectAnomaly(baseline, params.screeningCount);
+      if (anomaly) {
         status = "anomaly";
-        anomalyType = params.screeningCount === 0
-          ? "zero_results"
-          : params.screeningCount < baselineCount
-            ? "low_count"
-            : "high_count";
-        anomalyDetails = {
-          expectedRange: {
-            min: Math.round(baselineCount * (1 - tolerance / 100)),
-            max: Math.round(baselineCount * (1 + tolerance / 100)),
-          },
-          percentChange: Math.round(deviation),
-        };
+        anomalyType = anomaly.type;
+        anomalyDetails = anomaly.details;
       }
     }
 
