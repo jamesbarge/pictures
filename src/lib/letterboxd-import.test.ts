@@ -100,6 +100,16 @@ function makeEmptyPage(bodyExtra?: string): string {
 }
 
 // ---------------------------------------------------------------------------
+// Assertion Helpers
+// ---------------------------------------------------------------------------
+
+/** Assert that an error is a LetterboxdImportError with the expected code. */
+function expectLetterboxdError(err: unknown, code: string) {
+  expect(err).toBeInstanceOf(LetterboxdImportError);
+  expect((err as LetterboxdImportError).code).toBe(code);
+}
+
+// ---------------------------------------------------------------------------
 // Test: normalizeTitle
 // ---------------------------------------------------------------------------
 
@@ -270,8 +280,7 @@ describe("scrapeLetterboxdWatchlist", () => {
       await scrapeLetterboxdWatchlist("nonexistent");
       expect.fail("Should have thrown");
     } catch (err) {
-      expect(err).toBeInstanceOf(LetterboxdImportError);
-      expect((err as LetterboxdImportError).code).toBe("user_not_found");
+      expectLetterboxdError(err, "user_not_found");
     }
   });
 
@@ -286,8 +295,7 @@ describe("scrapeLetterboxdWatchlist", () => {
       await scrapeLetterboxdWatchlist("testuser");
       expect.fail("Should have thrown");
     } catch (err) {
-      expect(err).toBeInstanceOf(LetterboxdImportError);
-      expect((err as LetterboxdImportError).code).toBe("rate_limited");
+      expectLetterboxdError(err, "rate_limited");
     }
   });
 
@@ -302,8 +310,7 @@ describe("scrapeLetterboxdWatchlist", () => {
       await scrapeLetterboxdWatchlist("testuser");
       expect.fail("Should have thrown");
     } catch (err) {
-      expect(err).toBeInstanceOf(LetterboxdImportError);
-      expect((err as LetterboxdImportError).code).toBe("rate_limited");
+      expectLetterboxdError(err, "rate_limited");
     }
   });
 
@@ -322,8 +329,7 @@ describe("scrapeLetterboxdWatchlist", () => {
       await scrapeLetterboxdWatchlist("privateuser");
       expect.fail("Should have thrown");
     } catch (err) {
-      expect(err).toBeInstanceOf(LetterboxdImportError);
-      expect((err as LetterboxdImportError).code).toBe("private_watchlist");
+      expectLetterboxdError(err, "private_watchlist");
     }
   });
 
@@ -342,8 +348,7 @@ describe("scrapeLetterboxdWatchlist", () => {
       await scrapeLetterboxdWatchlist("privateuser2");
       expect.fail("Should have thrown");
     } catch (err) {
-      expect(err).toBeInstanceOf(LetterboxdImportError);
-      expect((err as LetterboxdImportError).code).toBe("private_watchlist");
+      expectLetterboxdError(err, "private_watchlist");
     }
   });
 
@@ -360,8 +365,7 @@ describe("scrapeLetterboxdWatchlist", () => {
       await scrapeLetterboxdWatchlist("emptyuser");
       expect.fail("Should have thrown");
     } catch (err) {
-      expect(err).toBeInstanceOf(LetterboxdImportError);
-      expect((err as LetterboxdImportError).code).toBe("empty_watchlist");
+      expectLetterboxdError(err, "empty_watchlist");
     }
   });
 
@@ -370,8 +374,7 @@ describe("scrapeLetterboxdWatchlist", () => {
       await scrapeLetterboxdWatchlist("user@invalid!");
       expect.fail("Should have thrown");
     } catch (err) {
-      expect(err).toBeInstanceOf(LetterboxdImportError);
-      expect((err as LetterboxdImportError).code).toBe("user_not_found");
+      expectLetterboxdError(err, "user_not_found");
     }
   });
 
@@ -381,8 +384,7 @@ describe("scrapeLetterboxdWatchlist", () => {
       await scrapeLetterboxdWatchlist(longUsername);
       expect.fail("Should have thrown");
     } catch (err) {
-      expect(err).toBeInstanceOf(LetterboxdImportError);
-      expect((err as LetterboxdImportError).code).toBe("user_not_found");
+      expectLetterboxdError(err, "user_not_found");
     }
   });
 
@@ -419,8 +421,7 @@ describe("scrapeLetterboxdWatchlist", () => {
       await scrapeLetterboxdWatchlist("testuser");
       expect.fail("Should have thrown");
     } catch (err) {
-      expect(err).toBeInstanceOf(LetterboxdImportError);
-      expect((err as LetterboxdImportError).code).toBe("network_error");
+      expectLetterboxdError(err, "network_error");
     }
   });
 
@@ -435,8 +436,7 @@ describe("scrapeLetterboxdWatchlist", () => {
       await scrapeLetterboxdWatchlist("testuser");
       expect.fail("Should have thrown");
     } catch (err) {
-      expect(err).toBeInstanceOf(LetterboxdImportError);
-      expect((err as LetterboxdImportError).code).toBe("network_error");
+      expectLetterboxdError(err, "network_error");
     }
   });
 });
