@@ -1,3 +1,11 @@
+
+## 2026-03-15: Kaizen — extract toRawScreening in phoenix scraper
+**PR**: #364 | **Files**: `src/scrapers/cinemas/phoenix.ts`
+- Extracted per-film showtime-to-screening conversion into `toRawScreening()` private method
+- Kaizen automated refactoring (category: readability)
+
+---
+
 ## 2026-03-15: Kaizen — Extract festival status helpers
 **PR**: #363 | **Files**: `src/app/api/festivals/[slug]/route.ts`
 - Extracted `computeFestivalStatus()` and `computeTicketStatus()` pure functions from inline conditionals
