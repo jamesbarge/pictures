@@ -1,3 +1,10 @@
+## 2026-03-15: Kaizen — Dedup polygon edit listeners in cinema map
+**PR**: #354 | **Files**: `src/components/map/cinema-map.tsx`
+- Extracted `attachPolygonEditListeners()` from two identical 9-line blocks registering Google Maps edit events
+- Reduces duplication in DrawingManager's two useEffect hooks
+- Kaizen automated refactoring (category: readability)
+
+---
 ## 2026-03-15: Kaizen — Extract filter predicates from calendar view
 **PR**: #353 | **Files**: `src/components/calendar/calendar-view.tsx`
 - Extracted `matchesDateRange()` and `matchesProgrammingType()` from 120-line filter callback

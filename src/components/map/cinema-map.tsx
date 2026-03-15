@@ -277,15 +277,7 @@ function DrawingManager({
       polygonRef.current = polygon;
 
       // Listen for edits
-      google.maps.event.addListener(polygon.getPath(), "set_at", () => {
-        updateAreaFromPolygon(polygon, onAreaComplete);
-      });
-      google.maps.event.addListener(polygon.getPath(), "insert_at", () => {
-        updateAreaFromPolygon(polygon, onAreaComplete);
-      });
-      google.maps.event.addListener(polygon, "dragend", () => {
-        updateAreaFromPolygon(polygon, onAreaComplete);
-      });
+      attachPolygonEditListeners(polygon, onAreaComplete);
     }
 
     return () => {
@@ -340,19 +332,7 @@ function DrawingManager({
             updateAreaFromPolygon(polygon, onAreaComplete);
 
             // Listen for future edits
-            google.maps.event.addListener(polygon.getPath(), "set_at", () => {
-              updateAreaFromPolygon(polygon, onAreaComplete);
-            });
-            google.maps.event.addListener(
-              polygon.getPath(),
-              "insert_at",
-              () => {
-                updateAreaFromPolygon(polygon, onAreaComplete);
-              }
-            );
-            google.maps.event.addListener(polygon, "dragend", () => {
-              updateAreaFromPolygon(polygon, onAreaComplete);
-            });
+            attachPolygonEditListeners(polygon, onAreaComplete);
           }
         }
       );
@@ -373,6 +353,22 @@ function DrawingManager({
   }, [map, drawing, isDrawing, onAreaComplete, onAreaClear]);
 
   return null;
+}
+
+/** Attach edit listeners to a polygon so the area updates when the user drags or edits vertices. */
+function attachPolygonEditListeners(
+  polygon: google.maps.Polygon,
+  onAreaComplete: (area: MapArea) => void,
+): void {
+  google.maps.event.addListener(polygon.getPath(), "set_at", () => {
+    updateAreaFromPolygon(polygon, onAreaComplete);
+  });
+  google.maps.event.addListener(polygon.getPath(), "insert_at", () => {
+    updateAreaFromPolygon(polygon, onAreaComplete);
+  });
+  google.maps.event.addListener(polygon, "dragend", () => {
+    updateAreaFromPolygon(polygon, onAreaComplete);
+  });
 }
 
 /**
