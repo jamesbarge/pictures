@@ -1,4 +1,12 @@
 
+## 2026-03-15: Kaizen — extract status helpers in festivals list route
+**PR**: #365 | **Files**: `src/app/api/festivals/route.ts`
+- Extracted computeFestivalStatus() and computeTicketStatus() from inline .map() callback
+- Same pattern as PR #363 for the [slug] detail endpoint
+- Kaizen automated refactoring (category: readability)
+
+---
+
 ## 2026-03-15: Kaizen — extract toRawScreening in phoenix scraper
 **PR**: #364 | **Files**: `src/scrapers/cinemas/phoenix.ts`
 - Extracted per-film showtime-to-screening conversion into `toRawScreening()` private method

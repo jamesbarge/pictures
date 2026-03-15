@@ -22,6 +22,32 @@ const querySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).optional(),
 });
 
+/** Derive the festival lifecycle status from its date range. */
+function computeFestivalStatus(
+  startDate: Date | string,
+  endDate: Date | string,
+  now: Date,
+): "upcoming" | "ongoing" | "past" {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  if (now < start) return "upcoming";
+  if (now > end) return "past";
+  return "ongoing";
+}
+
+/** Derive the ticket sale status from the festival's sale dates. */
+function computeTicketStatus(
+  festival: { publicSaleDate: string | Date | null; memberSaleDate: string | Date | null },
+  now: Date,
+): "not_announced" | "member_sale" | "on_sale" | null {
+  if (!festival.publicSaleDate) return null;
+  const publicSale = new Date(festival.publicSaleDate);
+  const memberSale = festival.memberSaleDate ? new Date(festival.memberSaleDate) : null;
+  if (now >= publicSale) return "on_sale";
+  if (memberSale && now >= memberSale) return "member_sale";
+  return "not_announced";
+}
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -141,41 +167,12 @@ export async function GET(request: NextRequest) {
     }
 
     // Compute status for each festival
-    const festivalsWithStatus = results.map((festival) => {
-      const now = new Date();
-      const startDate = new Date(festival.startDate);
-      const endDate = new Date(festival.endDate);
-
-      let status: "upcoming" | "ongoing" | "past";
-      if (now < startDate) {
-        status = "upcoming";
-      } else if (now > endDate) {
-        status = "past";
-      } else {
-        status = "ongoing";
-      }
-
-      // Compute ticket sale status
-      let ticketStatus: "not_announced" | "member_sale" | "public_sale" | "on_sale" | null = null;
-      if (festival.publicSaleDate) {
-        const publicSale = new Date(festival.publicSaleDate);
-        const memberSale = festival.memberSaleDate ? new Date(festival.memberSaleDate) : null;
-
-        if (now >= publicSale) {
-          ticketStatus = "on_sale";
-        } else if (memberSale && now >= memberSale) {
-          ticketStatus = "member_sale";
-        } else {
-          ticketStatus = "not_announced";
-        }
-      }
-
-      return {
-        ...festival,
-        status,
-        ticketStatus,
-      };
-    });
+    const now = new Date();
+    const festivalsWithStatus = results.map((festival) => ({
+      ...festival,
+      status: computeFestivalStatus(festival.startDate, festival.endDate, now),
+      ticketStatus: computeTicketStatus(festival, now),
+    }));
 
     return NextResponse.json(
       {
