@@ -1,4 +1,11 @@
 \n## 2026-03-15: Kaizen — extract triggerChunkedBatch in scrape-all
+## 2026-03-16: Kaizen — extract B1/B2 deterministic check helpers
+**PR**: #368 | **Files**: `src/trigger/qa/analyze-and-fix.ts`
+- Extracted stale-screening detection and missing-Letterboxd detection from 330-line run() into two pure helper functions
+- Kaizen automated refactoring (category: readability)
+
+---
+
 **PR**: #367 | **Files**: `src/trigger/scrape-all.ts`
 - Extracted duplicate Playwright/Cheerio chunked batch logic into triggerChunkedBatch() helper
 - Kaizen automated refactoring (category: readability)
