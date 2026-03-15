@@ -15,7 +15,7 @@
  * - Anonymous-to-authenticated tracking
  */
 
-import { useEffect, useRef, useCallback } from "react";
+import React, { useEffect, useRef, useCallback } from "react";
 import { useUser } from "@/hooks/useClerkSafe";
 import { useFilmStatus } from "@/stores/film-status";
 import { usePreferences } from "@/stores/preferences";
@@ -43,6 +43,25 @@ const SYNC_DEBOUNCE_MS = 500;
 // Store anonymous ID before sign-in (survives re-renders)
 let storedAnonymousId: string | null = null;
 
+/**
+ * Debounces a sync push — clears any pending timer on the ref,
+ * then schedules syncFn after SYNC_DEBOUNCE_MS (skipped while a full sync is in progress).
+ */
+function debouncedSync(
+  debounceRef: React.MutableRefObject<NodeJS.Timeout | null>,
+  syncFn: () => void,
+  isSyncingRef: React.MutableRefObject<boolean>
+): void {
+  if (debounceRef.current) {
+    clearTimeout(debounceRef.current);
+  }
+  debounceRef.current = setTimeout(() => {
+    if (!isSyncingRef.current) {
+      syncFn();
+    }
+  }, SYNC_DEBOUNCE_MS);
+}
+
 /** Unified sync lifecycle manager — debounces film status, preference, and filter changes to the server. */
 export function useUserSync() {
   const { isSignedIn, isLoaded } = useUser();
@@ -56,52 +75,18 @@ export function useUserSync() {
   const isSyncingRef = useRef(false);
   const initialSyncPerformedRef = useRef(false);
 
-  // ============================================================================
-  // Debounced push functions
-  // ============================================================================
-
+  // Debounced push functions (factory eliminates 4x identical debounce logic)
   const debouncedPushFilmStatuses = useCallback(() => {
-    if (filmStatusDebounceRef.current) {
-      clearTimeout(filmStatusDebounceRef.current);
-    }
-    filmStatusDebounceRef.current = setTimeout(() => {
-      if (!isSyncingRef.current) {
-        pushFilmStatuses();
-      }
-    }, SYNC_DEBOUNCE_MS);
+    debouncedSync(filmStatusDebounceRef, pushFilmStatuses, isSyncingRef);
   }, []);
-
   const debouncedPushPreferences = useCallback(() => {
-    if (preferencesDebounceRef.current) {
-      clearTimeout(preferencesDebounceRef.current);
-    }
-    preferencesDebounceRef.current = setTimeout(() => {
-      if (!isSyncingRef.current) {
-        pushPreferences();
-      }
-    }, SYNC_DEBOUNCE_MS);
+    debouncedSync(preferencesDebounceRef, pushPreferences, isSyncingRef);
   }, []);
-
   const debouncedPushFollows = useCallback(() => {
-    if (followsDebounceRef.current) {
-      clearTimeout(followsDebounceRef.current);
-    }
-    followsDebounceRef.current = setTimeout(() => {
-      if (!isSyncingRef.current) {
-        pushFestivalFollows();
-      }
-    }, SYNC_DEBOUNCE_MS);
+    debouncedSync(followsDebounceRef, pushFestivalFollows, isSyncingRef);
   }, []);
-
   const debouncedPushSchedule = useCallback(() => {
-    if (scheduleDebounceRef.current) {
-      clearTimeout(scheduleDebounceRef.current);
-    }
-    scheduleDebounceRef.current = setTimeout(() => {
-      if (!isSyncingRef.current) {
-        pushFestivalSchedule();
-      }
-    }, SYNC_DEBOUNCE_MS);
+    debouncedSync(scheduleDebounceRef, pushFestivalSchedule, isSyncingRef);
   }, []);
 
   // ============================================================================
@@ -291,23 +276,11 @@ export function useUserSync() {
     return () => window.removeEventListener("online", handleOnline);
   }, [isSignedIn]);
 
-  // ============================================================================
-  // Cleanup on unmount
-  // ============================================================================
-
+  // Cleanup all debounce timers on unmount
   useEffect(() => {
     return () => {
-      if (filmStatusDebounceRef.current) {
-        clearTimeout(filmStatusDebounceRef.current);
-      }
-      if (preferencesDebounceRef.current) {
-        clearTimeout(preferencesDebounceRef.current);
-      }
-      if (followsDebounceRef.current) {
-        clearTimeout(followsDebounceRef.current);
-      }
-      if (scheduleDebounceRef.current) {
-        clearTimeout(scheduleDebounceRef.current);
+      for (const ref of [filmStatusDebounceRef, preferencesDebounceRef, followsDebounceRef, scheduleDebounceRef]) {
+        if (ref.current) clearTimeout(ref.current);
       }
     };
   }, []);
