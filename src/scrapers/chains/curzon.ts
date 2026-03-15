@@ -214,6 +214,41 @@ interface VistaScreeningDatesResponse {
 }
 
 // ============================================================================
+// Helpers — extracted from convertToRawScreenings for readability
+// ============================================================================
+
+/** Resolve the director name from cross-referenced Vista cast data. */
+function extractDirector(
+  film: VistaFilm,
+  castMap: Map<string, VistaCastMember>,
+): string | undefined {
+  const directorRef = film.castAndCrew?.find(c => c.roles?.includes("Director"));
+  if (!directorRef) return undefined;
+  const member = castMap.get(directorRef.castAndCrewMemberId);
+  if (!member) return undefined;
+  const parts = [member.firstName, member.lastName].filter(Boolean);
+  return parts.length > 0 ? parts.join(" ") : undefined;
+}
+
+/** Classify Vista attribute IDs into human-readable accessibility labels. */
+function classifyAccessibilityFeatures(
+  attributeIds: string[],
+  attrMap: Map<string, string>,
+): string[] {
+  const descriptions: string[] = [];
+  for (const attrId of attributeIds) {
+    const attrName = attrMap.get(attrId);
+    if (!attrName) continue;
+    const lower = attrName.toLowerCase();
+    if (lower.includes("caption") || lower.includes("subtitled")) descriptions.push("Subtitled");
+    if (lower.includes("audio") && lower.includes("descri")) descriptions.push("Audio Described");
+    if (lower.includes("baby")) descriptions.push("Baby Friendly");
+    if (lower.includes("q&a") || lower.includes("q & a")) descriptions.push("Q&A");
+  }
+  return descriptions;
+}
+
+// ============================================================================
 // Curzon Scraper Implementation (Hybrid: Playwright for auth, API for data)
 // ============================================================================
 
@@ -428,18 +463,7 @@ export class CurzonScraper implements ChainScraper {
       const filmTitle = film.title?.text || "";
       if (!filmTitle) continue;
 
-      // Find director from cast/crew
-      let director: string | undefined;
-      const directorRef = film.castAndCrew?.find(c => c.roles?.includes("Director"));
-      if (directorRef) {
-        const directorMember = castMap.get(directorRef.castAndCrewMemberId);
-        if (directorMember) {
-          const parts = [directorMember.firstName, directorMember.lastName].filter(Boolean);
-          if (parts.length > 0) {
-            director = parts.join(" ");
-          }
-        }
-      }
+      const director = extractDirector(film, castMap);
 
       // Extract year from release date
       let year: number | undefined;
@@ -453,26 +477,7 @@ export class CurzonScraper implements ChainScraper {
       // Build booking URL (query-param format — Curzon moved from path-based to ?sessionId=)
       const bookingUrl = `${this.chainConfig.baseUrl}/ticketing/seats/?sessionId=${encodeURIComponent(showtime.id)}`;
 
-      // Check for accessibility features
-      const eventDescriptions: string[] = [];
-      for (const attrId of showtime.attributeIds || []) {
-        const attrName = attrMap.get(attrId);
-        if (attrName) {
-          // Common Vista attribute patterns
-          if (attrName.toLowerCase().includes("caption") || attrName.toLowerCase().includes("subtitled")) {
-            eventDescriptions.push("Subtitled");
-          }
-          if (attrName.toLowerCase().includes("audio") && attrName.toLowerCase().includes("descri")) {
-            eventDescriptions.push("Audio Described");
-          }
-          if (attrName.toLowerCase().includes("baby")) {
-            eventDescriptions.push("Baby Friendly");
-          }
-          if (attrName.toLowerCase().includes("q&a") || attrName.toLowerCase().includes("q & a")) {
-            eventDescriptions.push("Q&A");
-          }
-        }
-      }
+      const eventDescriptions = classifyAccessibilityFeatures(showtime.attributeIds || [], attrMap);
 
       const sourceId = `curzon-${showtime.id}`;
 

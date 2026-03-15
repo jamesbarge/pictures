@@ -1,3 +1,31 @@
+## 2026-03-15: Kaizen — Extract director and accessibility helpers from Curzon scraper
+**PR**: #351 | **Files**: `src/scrapers/chains/curzon.ts`
+- Extracted `extractDirector()` and `classifyAccessibilityFeatures()` from deeply nested loop
+- Reduces `convertToRawScreenings` nesting from 4 levels to 1 function call each
+- Kaizen automated refactoring (category: readability)
+
+---
+## 2026-03-15: Kaizen — Extract classifyBookingChecks() from QA analyze task
+**PR**: #350 | **Files**: `src/trigger/qa/analyze-and-fix.ts`
+- Extracted booking check classification into standalone function, reducing main task by 40 lines
+- Renamed `bothFailed` → `firstFailed` for clarity
+- Kaizen automated refactoring (category: readability)
+
+---
+## 2026-03-15: Kaizen — Consolidate LetterboxdImportError assertions into test helper
+**PR**: #349 | **Files**: `src/lib/letterboxd-import.test.ts`
+- Extracted `expectLetterboxdError()` helper, replacing 10 identical two-line assertion patterns
+- Consolidates 10 `as LetterboxdImportError` casts to 1
+- Kaizen automated refactoring (category: type-narrowing)
+
+---
+## 2026-03-15: Kaizen — Extract shouldSkipEnrichment() and use makeAttempt() consistently
+**PR**: #348 | **Files**: `src/trigger/enrichment/post-scrape.ts`
+- Extracted backoff check into `shouldSkipEnrichment()` helper to reduce loop nesting
+- Replaced inline failure object with existing `makeAttempt()` helper
+- Kaizen automated refactoring (category: readability)
+
+---
 ## 2026-03-15: Kaizen — Delete dead veezi-scraper.ts
 **PR**: #341 | **Files**: `src/scrapers/utils/veezi-scraper.ts`
 - Deleted 345-line file with zero importers (verified via grep)
