@@ -1,4 +1,11 @@
 \n## 2026-03-15: Kaizen — extract triggerChunkedBatch in scrape-all
+## 2026-03-16: Kaizen — extract ambiguity check and match strategy helpers
+**PR**: #370 | **Files**: `src/agents/enrichment/index.ts`
+- Extracted `shouldSkipAmbiguousMatch()` and `resolveMatchStrategy()` from deeply nested auto-apply block in enrichment agent
+- Kaizen automated refactoring (category: readability)
+
+---
+
 ## 2026-03-16: Kaizen — extract saveEnrichmentResult helper in post-scrape
 **PR**: #369 | **Files**: `src/trigger/enrichment/post-scrape.ts`
 - Extracted duplicate TMDB enrichment status persistence (success + failure paths) into shared `saveEnrichmentResult()` helper
