@@ -29,6 +29,15 @@ function makeAttempt(success: boolean, prevAttempts: number, reason?: string): E
   };
 }
 
+/** Check whether enrichment should be skipped based on backoff rules. */
+function shouldSkipEnrichment(status: EnrichmentStatus | null, now: Date): boolean {
+  if (!status?.tmdbMatch) return false;
+  const lastAttempt = new Date(status.tmdbMatch.lastAttempt);
+  const daysSince = (now.getTime() - lastAttempt.getTime()) / (1000 * 60 * 60 * 24);
+  if (status.tmdbMatch.attempts >= 3 && daysSince < 7) return true;
+  return daysSince < 1;
+}
+
 export const postScrapeEnrichment = task({
   id: "enrichment-post-scrape",
   retry: { maxAttempts: 2 },
@@ -70,20 +79,10 @@ export const postScrapeEnrichment = task({
     let failed = 0;
 
     for (const film of unenrichedFilms) {
-      // Check backoff: skip if 3+ failed attempts in last 7 days
       const status = film.enrichmentStatus as EnrichmentStatus | null;
-      if (status?.tmdbMatch) {
-        const lastAttempt = new Date(status.tmdbMatch.lastAttempt);
-        const daysSince = (now.getTime() - lastAttempt.getTime()) / (1000 * 60 * 60 * 24);
-        if (status.tmdbMatch.attempts >= 3 && daysSince < 7) {
-          skipped++;
-          continue;
-        }
-        // Skip if attempted less than 24h ago
-        if (daysSince < 1) {
-          skipped++;
-          continue;
-        }
+      if (shouldSkipEnrichment(status, now)) {
+        skipped++;
+        continue;
       }
 
       // Generate title variations and try each
@@ -128,12 +127,7 @@ export const postScrapeEnrichment = task({
         const prevAttempts = status?.tmdbMatch?.attempts ?? 0;
         const updatedStatus: EnrichmentStatus = {
           ...(status ?? {}),
-          tmdbMatch: {
-            lastAttempt: new Date().toISOString(),
-            attempts: prevAttempts + 1,
-            success: false,
-            failureReason: `No match found across ${variations.length} variations`,
-          },
+          tmdbMatch: makeAttempt(false, prevAttempts, `No match found across ${variations.length} variations`),
         };
 
         await db.update(films).set({
