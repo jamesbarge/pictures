@@ -56,8 +56,12 @@ export async function logExperiment(result: ExperimentResult): Promise<string | 
 
 /**
  * Send an overnight summary report via Telegram.
+ * @param dqsTrendLines Optional DQS trend lines (from formatDqsTrend) for AutoQuality reports.
  */
-export async function sendOvernightReport(summary: OvernightSummary): Promise<boolean> {
+export async function sendOvernightReport(
+  summary: OvernightSummary,
+  dqsTrendLines: string[] = []
+): Promise<boolean> {
   const durationMin = Math.round(
     (summary.runCompletedAt.getTime() - summary.runStartedAt.getTime()) / 60_000
   );
@@ -71,6 +75,11 @@ export async function sendOvernightReport(summary: OvernightSummary): Promise<bo
     `Kept: ${summary.experimentsKept} | Discarded: ${summary.experimentsDiscarded}`,
     "",
   ];
+
+  // DQS trend (4-week history when available)
+  if (dqsTrendLines.length > 0) {
+    lines.push(...dqsTrendLines, "");
+  }
 
   if (recovered.length > 0) {
     lines.push("RECOVERED:");
@@ -88,7 +97,7 @@ export async function sendOvernightReport(summary: OvernightSummary): Promise<bo
     lines.push("");
   }
 
-  if (recovered.length === 0 && needsAttention.length === 0) {
+  if (recovered.length === 0 && needsAttention.length === 0 && dqsTrendLines.length === 0) {
     lines.push("All targets healthy — no action needed.");
   }
 

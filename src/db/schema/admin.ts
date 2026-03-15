@@ -224,6 +224,29 @@ export const autoresearchConfig = pgTable("autoresearch_config", {
   updatedBy: text("updated_by"),
 });
 
+/**
+ * DQS Snapshot History — records Data Quality Score at start/end of every
+ * AutoQuality run to create a time-series for trend analysis.
+ *
+ * Each run produces two rows: snapshot_type = 'start' and 'end'.
+ * The run_id links them together.
+ */
+export const dqsSnapshots = pgTable("dqs_snapshots", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  runId: text("run_id").notNull(),
+  snapshotType: text("snapshot_type").notNull().$type<"start" | "end">(),
+  compositeScore: real("composite_score").notNull(),
+  missingTmdbPercent: real("missing_tmdb_percent").notNull(),
+  missingPosterPercent: real("missing_poster_percent").notNull(),
+  missingSynopsisPercent: real("missing_synopsis_percent").notNull(),
+  duplicatesPercent: real("duplicates_percent").notNull(),
+  dodgyEntriesPercent: real("dodgy_entries_percent").notNull(),
+  totalFilms: integer("total_films"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 // Type exports
 export type ScraperRunInsert = typeof scraperRuns.$inferInsert;
 export type ScraperRunSelect = typeof scraperRuns.$inferSelect;
@@ -237,3 +260,5 @@ export type AutoresearchExperimentSelect =
   typeof autoresearchExperiments.$inferSelect;
 export type AutoresearchConfigInsert = typeof autoresearchConfig.$inferInsert;
 export type AutoresearchConfigSelect = typeof autoresearchConfig.$inferSelect;
+export type DqsSnapshotInsert = typeof dqsSnapshots.$inferInsert;
+export type DqsSnapshotSelect = typeof dqsSnapshots.$inferSelect;

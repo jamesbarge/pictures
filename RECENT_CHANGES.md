@@ -107,6 +107,14 @@
 
 ---
 
+## 2026-03-15: DQS Snapshot History & Validation Pipeline
+**Files**: `src/db/migrations/0009_add_dqs_snapshots.sql`, `src/db/schema/admin.ts`, `src/autoresearch/autoquality/dqs-snapshots.ts`, `src/autoresearch/autoquality/spot-checks.ts`, `src/autoresearch/autoquality/harness.ts`, `src/autoresearch/experiment-log.ts`
+- DQS time-series: records start/end scores for every AutoQuality run
+- Telegram report now includes 4-week DQS trend and independent spot-check validation
+- Spot-checks: films with no poster, low-confidence TMDB matches, homepage metadata completeness
+
+---
+
 ## 2026-03-15: Kaizen — extract toRawScreening in phoenix scraper
 **PR**: #364 | **Files**: `src/scrapers/cinemas/phoenix.ts`
 - Extracted per-film showtime-to-screening conversion into `toRawScreening()` private method
