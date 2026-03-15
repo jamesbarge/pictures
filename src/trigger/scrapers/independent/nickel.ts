@@ -13,7 +13,8 @@ const config: SingleVenueConfig = {
 
 export const nickelScraper = task({
   id: "scraper-nickel",
-  retry: { maxAttempts: 3 },
+  maxDuration: 600, // 10 min — API fetch + pipeline
+  retry: { maxAttempts: 0 },
   run: async (): Promise<ScraperTaskOutput> => {
     return runScraperAndVerify(config, { useValidation: true });
   },

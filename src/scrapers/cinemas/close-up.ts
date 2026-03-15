@@ -21,6 +21,19 @@ import type { RawScreening, ScraperConfig } from "../types";
 import { normalizeUrl } from "../utils/url";
 import { FestivalDetector } from "../festivals/festival-detector";
 
+/** Month name → zero-indexed month number (shared across date-parsing methods). */
+const MONTH_NAMES: Record<string, number> = {
+  january: 0, february: 1, march: 2, april: 3, may: 4, june: 5,
+  july: 6, august: 7, september: 8, october: 9, november: 10, december: 11,
+};
+
+/** Convert 12-hour time components to 24-hour format. */
+function to24Hour(hour: number, ampm: string): number {
+  if (ampm.toLowerCase() === "pm" && hour !== 12) return hour + 12;
+  if (ampm.toLowerCase() === "am" && hour === 12) return 0;
+  return hour;
+}
+
 interface CloseUpShow {
   id: string;
   fp_id: string;
@@ -237,11 +250,7 @@ export class CloseUpCinemaScraper extends BaseScraper {
     const dateHeadingMatch = html.match(/(\w+),?\s+(\d{1,2})\s+(\w+)\s+(\d{4})?/);
     if (dateHeadingMatch) {
       const [, , day, month, year] = dateHeadingMatch;
-      const months: Record<string, number> = {
-        january: 0, february: 1, march: 2, april: 3, may: 4, june: 5,
-        july: 6, august: 7, september: 8, october: 9, november: 10, december: 11,
-      };
-      const monthNum = months[month.toLowerCase()];
+      const monthNum = MONTH_NAMES[month.toLowerCase()];
       if (monthNum !== undefined) {
         const yearNum = year ? parseInt(year) : new Date().getFullYear();
         return new Date(yearNum, monthNum, parseInt(day));
@@ -255,16 +264,8 @@ export class CloseUpCinemaScraper extends BaseScraper {
    * Combine a date with time components
    */
   private combineDateAndTime(date: Date, hour: string, minute: string, ampm: string): Date {
-    let hourNum = parseInt(hour, 10);
+    const hourNum = to24Hour(parseInt(hour, 10), ampm);
     const minuteNum = parseInt(minute, 10);
-
-    // Convert to 24-hour
-    if (ampm.toLowerCase() === "pm" && hourNum !== 12) {
-      hourNum += 12;
-    } else if (ampm.toLowerCase() === "am" && hourNum === 12) {
-      hourNum = 0;
-    }
-
     return new Date(date.getFullYear(), date.getMonth(), date.getDate(), hourNum, minuteNum, 0);
   }
 
@@ -272,23 +273,11 @@ export class CloseUpCinemaScraper extends BaseScraper {
    * Parse datetime from HTML format: "1", "January", "8", "15", "pm"
    */
   private parseHtmlDateTime(day: string, month: string, hour: string, minute: string, ampm: string): Date | null {
-    const months: Record<string, number> = {
-      january: 0, february: 1, march: 2, april: 3, may: 4, june: 5,
-      july: 6, august: 7, september: 8, october: 9, november: 10, december: 11,
-    };
-
-    const monthNum = months[month.toLowerCase()];
+    const monthNum = MONTH_NAMES[month.toLowerCase()];
     if (monthNum === undefined) return null;
 
-    let hourNum = parseInt(hour, 10);
+    const hourNum = to24Hour(parseInt(hour, 10), ampm);
     const minuteNum = parseInt(minute, 10);
-
-    // Convert to 24-hour
-    if (ampm.toLowerCase() === "pm" && hourNum !== 12) {
-      hourNum += 12;
-    } else if (ampm.toLowerCase() === "am" && hourNum === 12) {
-      hourNum = 0;
-    }
 
     // Determine year - if month is in the past, assume next year
     const now = new Date();
