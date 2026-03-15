@@ -1,3 +1,10 @@
+## 2026-03-15: Kaizen — Extract anomaly detection in scraper runner
+**PR**: #359 | **Files**: `src/scrapers/runner-factory.ts`
+- Extracted `detectAnomaly()` from `recordScraperRun()` to isolate baseline deviation logic with nested ternaries and inline math
+- Kaizen automated refactoring (category: readability)
+
+---
+
 ## 2026-03-15: Kaizen — Extract follow-merge helpers in festival sync route
 **PR**: #358 | **Files**: `src/app/api/user/festivals/sync/route.ts`
 - Extracted `fetchFestivalMeta()` and `toMergedFollow()` to deduplicate 2x identical DB lookups and 2x near-identical object construction in the bidirectional sync handler
