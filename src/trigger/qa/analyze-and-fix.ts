@@ -16,6 +16,7 @@ import type {
   QaBrowseOutput,
   QaAnalysisOutput,
   ClassifiedIssue,
+  BookingCheck,
 } from "./types";
 import { applyFixes } from "./utils/db-fixer";
 import {
@@ -26,6 +27,52 @@ import {
 } from "./utils/gemini-analyzer";
 import { classifyScope } from "./utils/scope-classifier";
 import { normalizeTitle, parseRelativeDatetime } from "./utils/title-utils";
+
+/** Classify booking-check results into broken-link issues. */
+function classifyBookingChecks(bookingChecks: BookingCheck[]): ClassifiedIssue[] {
+  const result: ClassifiedIssue[] = [];
+
+  for (const check of bookingChecks) {
+    const firstFailed =
+      (typeof check.firstAttemptStatus === "number" && check.firstAttemptStatus >= 400) ||
+      check.firstAttemptStatus === "timeout" ||
+      check.firstAttemptStatus === "error";
+
+    const secondFailed =
+      check.secondAttemptStatus === "not_attempted" ||
+      (typeof check.secondAttemptStatus === "number" && check.secondAttemptStatus >= 400) ||
+      check.secondAttemptStatus === "timeout" ||
+      check.secondAttemptStatus === "error";
+
+    if (firstFailed && secondFailed && check.secondAttemptStatus !== "not_attempted") {
+      result.push({
+        type: "broken_booking_link",
+        scope: "spot",
+        severity: "warning",
+        entityType: "screening",
+        entityId: check.screeningId || "unknown",
+        description: `Broken booking link: ${check.url} (status: ${check.firstAttemptStatus}/${check.secondAttemptStatus})`,
+        suggestedFix: null,
+        confidence: 0.95,
+        metadata: { cinemaId: check.cinemaId, url: check.url, doubleChecked: true },
+      });
+    } else if (firstFailed && check.secondAttemptStatus === "not_attempted") {
+      result.push({
+        type: "broken_booking_link",
+        scope: "spot",
+        severity: "info",
+        entityType: "screening",
+        entityId: check.screeningId || "unknown",
+        description: `Possibly broken booking link (not double-checked): ${check.url}`,
+        suggestedFix: null,
+        confidence: 0.5,
+        metadata: { cinemaId: check.cinemaId, url: check.url, doubleChecked: false },
+      });
+    }
+  }
+
+  return result;
+}
 
 export const qaAnalyzeAndFix = task({
   id: "qa-analyze-and-fix",
@@ -176,46 +223,7 @@ export const qaAnalyzeAndFix = task({
     }
 
     // ── Step C: Parse Booking Check Results ────────────────────────
-    for (const check of browseOutput.bookingChecks) {
-      const bothFailed =
-        (typeof check.firstAttemptStatus === "number" && check.firstAttemptStatus >= 400) ||
-        check.firstAttemptStatus === "timeout" ||
-        check.firstAttemptStatus === "error";
-
-      const secondFailed =
-        check.secondAttemptStatus === "not_attempted" ||
-        (typeof check.secondAttemptStatus === "number" && check.secondAttemptStatus >= 400) ||
-        check.secondAttemptStatus === "timeout" ||
-        check.secondAttemptStatus === "error";
-
-      if (bothFailed && secondFailed && check.secondAttemptStatus !== "not_attempted") {
-        // Both attempts confirmed broken
-        issues.push({
-          type: "broken_booking_link",
-          scope: "spot",
-          severity: "warning",
-          entityType: "screening",
-          entityId: check.screeningId || "unknown",
-          description: `Broken booking link: ${check.url} (status: ${check.firstAttemptStatus}/${check.secondAttemptStatus})`,
-          suggestedFix: null,
-          confidence: 0.95,
-          metadata: { cinemaId: check.cinemaId, url: check.url, doubleChecked: true },
-        });
-      } else if (bothFailed && check.secondAttemptStatus === "not_attempted") {
-        // Budget exhausted — flag for human review
-        issues.push({
-          type: "broken_booking_link",
-          scope: "spot",
-          severity: "info",
-          entityType: "screening",
-          entityId: check.screeningId || "unknown",
-          description: `Possibly broken booking link (not double-checked): ${check.url}`,
-          suggestedFix: null,
-          confidence: 0.5,
-          metadata: { cinemaId: check.cinemaId, url: check.url, doubleChecked: false },
-        });
-      }
-    }
+    issues.push(...classifyBookingChecks(browseOutput.bookingChecks));
 
     // ── Step D: AI-Powered Checks ──────────────────────────────────
 
