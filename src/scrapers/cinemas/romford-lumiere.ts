@@ -25,6 +25,39 @@ import { combineDateAndTime } from "../utils/date-parser";
 import { slugify } from "../utils/url";
 
 
+/** Parse a date string in ISO, UK (dd/mm/yyyy), or text ("20 January") format. */
+function parseDateText(dateText: string): Date {
+  const now = new Date();
+  const isoMatch = dateText.match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (isoMatch) {
+    return new Date(Date.UTC(parseInt(isoMatch[1]), parseInt(isoMatch[2]) - 1, parseInt(isoMatch[3])));
+  }
+  const ukMatch = dateText.match(/(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{2,4})/);
+  if (ukMatch) {
+    let year = parseInt(ukMatch[3]);
+    if (year < 100) year += 2000;
+    return new Date(Date.UTC(year, parseInt(ukMatch[2]) - 1, parseInt(ukMatch[1])));
+  }
+  const monthNames: Record<string, number> = {
+    jan: 0, january: 0, feb: 1, february: 1, mar: 2, march: 2, apr: 3, april: 3,
+    may: 4, jun: 5, june: 5, jul: 6, july: 6, aug: 7, august: 7, sep: 8,
+    september: 8, oct: 9, october: 9, nov: 10, november: 10, dec: 11, december: 11,
+  };
+  let foundMonth: number | null = null;
+  for (const [name, month] of Object.entries(monthNames)) {
+    if (dateText.includes(name)) { foundMonth = month; break; }
+  }
+  const dayMatch = dateText.match(/\b(\d{1,2})\b/);
+  const foundDay = dayMatch ? parseInt(dayMatch[1]) : null;
+  if (foundMonth !== null && foundDay !== null) {
+    const year = now.getFullYear();
+    const targetDate = new Date(Date.UTC(year, foundMonth, foundDay));
+    return targetDate < now ? new Date(Date.UTC(year + 1, foundMonth, foundDay)) : targetDate;
+  }
+
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
 export class RomfordLumiereScraper {
   private page: Page | null = null;
 
@@ -237,8 +270,6 @@ export class RomfordLumiereScraper {
   }
 
   private parseShowtimeDateTime(dateText: string, timeText: string): Date | null {
-    const now = new Date();
-
     try {
       // Clean up the inputs
       dateText = dateText.toLowerCase().trim();
@@ -286,69 +317,7 @@ export class RomfordLumiereScraper {
         console.warn(`[${this.config.cinemaId}] Unusual early time: ${hours}:${minutes.toString().padStart(2, "0")}`);
       }
 
-      // Parse the date
-      let targetDate: Date;
-
-      // Try ISO format (2026-01-20)
-      const isoMatch = dateText.match(/(\d{4})-(\d{2})-(\d{2})/);
-      if (isoMatch) {
-        targetDate = new Date(Date.UTC(parseInt(isoMatch[1]), parseInt(isoMatch[2]) - 1, parseInt(isoMatch[3])));
-      } else {
-        // Try UK format (20/01/2026 or 20-01-2026)
-        const ukMatch = dateText.match(/(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/);
-        if (ukMatch) {
-          const day = parseInt(ukMatch[1]);
-          const month = parseInt(ukMatch[2]) - 1;
-          let year = parseInt(ukMatch[3]);
-          if (year < 100) year += 2000;
-          targetDate = new Date(Date.UTC(year, month, day));
-        } else {
-          // Try text format (Monday 20 January, 20 Jan, Jan 20, etc.)
-          const monthNames: Record<string, number> = {
-            jan: 0, january: 0,
-            feb: 1, february: 1,
-            mar: 2, march: 2,
-            apr: 3, april: 3,
-            may: 4,
-            jun: 5, june: 5,
-            jul: 6, july: 6,
-            aug: 7, august: 7,
-            sep: 8, september: 8,
-            oct: 9, october: 9,
-            nov: 10, november: 10,
-            dec: 11, december: 11,
-          };
-
-          let foundMonth: number | null = null;
-          let foundDay: number | null = null;
-
-          for (const [name, month] of Object.entries(monthNames)) {
-            if (dateText.includes(name)) {
-              foundMonth = month;
-              break;
-            }
-          }
-
-          const dayMatch = dateText.match(/\b(\d{1,2})\b/);
-          if (dayMatch) {
-            foundDay = parseInt(dayMatch[1]);
-          }
-
-          if (foundMonth !== null && foundDay !== null) {
-            // Assume current or next year
-            const year = now.getFullYear();
-            targetDate = new Date(Date.UTC(year, foundMonth, foundDay));
-
-            // If the date is in the past, try next year
-            if (targetDate < now) {
-              targetDate = new Date(Date.UTC(year + 1, foundMonth, foundDay));
-            }
-          } else {
-            // Can't parse the date, use today
-            targetDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-          }
-        }
-      }
+      const targetDate = parseDateText(dateText);
 
       // Set the time using BST-aware function
       return combineDateAndTime(targetDate, { hours, minutes });
