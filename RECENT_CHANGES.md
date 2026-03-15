@@ -1,3 +1,10 @@
+## 2026-03-16: Kaizen — extract detectAnomalies in scraper health service
+**PR**: #372 | **Files**: `src/lib/scraper-health/index.ts`
+- Extracted anomaly detection and alert type determination into pure `detectAnomalies()` helper
+- Kaizen automated refactoring (category: readability)
+
+---
+
 ## 2026-03-16: Kaizen — extract applyHeuristicChecks in scraper health agent
 **PR**: #371 | **Files**: `src/agents/scraper-health/index.ts`
 - Extracted duplicated heuristic check logic into shared `applyHeuristicChecks()` helper
