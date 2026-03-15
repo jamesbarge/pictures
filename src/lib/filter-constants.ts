@@ -10,6 +10,22 @@
 export type TimeOfDay = "morning" | "afternoon" | "evening" | "late_night";
 export type ProgrammingType = "repertory" | "new_release" | "special_event" | "preview";
 
+/** Valid ProgrammingType values as a string set for type-safe parsing */
+const PROGRAMMING_TYPE_VALUES: ReadonlySet<string> = new Set(["repertory", "new_release", "special_event", "preview"]);
+
+/** Type guard — validates that a string is a valid ProgrammingType */
+export function isProgrammingType(value: string): value is ProgrammingType {
+  return PROGRAMMING_TYPE_VALUES.has(value);
+}
+
+/** Valid TimeOfDay values as a string set for type-safe parsing */
+const TIME_OF_DAY_VALUES: ReadonlySet<string> = new Set(["morning", "afternoon", "evening", "late_night"]);
+
+/** Type guard — validates that a string is a valid TimeOfDay */
+export function isTimeOfDay(value: string): value is TimeOfDay {
+  return TIME_OF_DAY_VALUES.has(value);
+}
+
 // ============================================================================
 // Constants
 // ============================================================================

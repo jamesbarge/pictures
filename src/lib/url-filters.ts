@@ -4,7 +4,7 @@
  */
 
 import { format, parseISO } from "date-fns";
-import type { ProgrammingType, TimeOfDay } from "@/lib/filter-constants";
+import { isProgrammingType, isTimeOfDay, type ProgrammingType, type TimeOfDay } from "@/lib/filter-constants";
 
 // Filters that make sense to share via URL
 // Excludes: filmSearch (session-only), hideSeen/hideNotInterested (personal data dependent)
@@ -119,7 +119,7 @@ export function searchParamsToFilters(params: URLSearchParams): Partial<Shareabl
 
   const types = params.get(PARAM_KEYS.programmingTypes);
   if (types) {
-    filters.programmingTypes = types.split(",").filter(Boolean) as ProgrammingType[];
+    filters.programmingTypes = types.split(",").filter(isProgrammingType);
   }
 
   const decades = params.get(PARAM_KEYS.decades);
@@ -134,7 +134,7 @@ export function searchParamsToFilters(params: URLSearchParams): Partial<Shareabl
 
   const timesOfDay = params.get(PARAM_KEYS.timesOfDay);
   if (timesOfDay) {
-    filters.timesOfDay = timesOfDay.split(",").filter(Boolean) as TimeOfDay[];
+    filters.timesOfDay = timesOfDay.split(",").filter(isTimeOfDay);
   }
 
   // Dates
