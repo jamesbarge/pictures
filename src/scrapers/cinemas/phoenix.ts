@@ -161,19 +161,8 @@ export class PhoenixScraper implements CinemaScraper {
 
           // Convert to RawScreenings
           for (const showtime of showtimes) {
-            const datetime = this.parseShowtime(showtime.date, showtime.time, currentYear, now);
-            if (datetime && datetime > now) {
-              const bookingUrl = showtime.bookingUrl
-                ? (showtime.bookingUrl.startsWith('http') ? showtime.bookingUrl : `${this.config.baseUrl}/${showtime.bookingUrl.replace(/^\//, '')}`)
-                : film.pageUrl;
-
-              allScreenings.push({
-                filmTitle: film.title,
-                datetime,
-                bookingUrl,
-                sourceId: `phoenix-${film.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${datetime.toISOString()}`,
-              });
-            }
+            const screening = this.toRawScreening(showtime, film.title, film.pageUrl, currentYear, now);
+            if (screening) allScreenings.push(screening);
           }
 
           // Delay between film pages
@@ -197,6 +186,30 @@ export class PhoenixScraper implements CinemaScraper {
     } finally {
       await browser.close();
     }
+  }
+
+
+  /** Convert a parsed showtime into a RawScreening, or null if the screening is in the past. */
+  private toRawScreening(
+    showtime: { date: string; time: string; bookingUrl?: string },
+    filmTitle: string,
+    filmPageUrl: string,
+    currentYear: number,
+    now: Date,
+  ): RawScreening | null {
+    const datetime = this.parseShowtime(showtime.date, showtime.time, currentYear, now);
+    if (!datetime || datetime <= now) return null;
+
+    const bookingUrl = showtime.bookingUrl
+      ? (showtime.bookingUrl.startsWith('http') ? showtime.bookingUrl : `${this.config.baseUrl}/${showtime.bookingUrl.replace(/^\//, '')}`)
+      : filmPageUrl;
+
+    return {
+      filmTitle,
+      datetime,
+      bookingUrl,
+      sourceId: `phoenix-${filmTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${datetime.toISOString()}`,
+    };
   }
 
   private parseShowtime(dateStr: string, timeStr: string, currentYear: number, now: Date): Date | null {
