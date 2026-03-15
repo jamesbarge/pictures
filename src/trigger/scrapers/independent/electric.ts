@@ -15,7 +15,7 @@ export const electricScraper = task({
   id: "scraper-electric",
   machine: { preset: "medium-1x" },
   maxDuration: 600, // 10 min — Playwright scraper
-  retry: { maxAttempts: 3 },
+  retry: { maxAttempts: 0 },
   run: async (): Promise<ScraperTaskOutput> => {
     return runScraperAndVerify(config, { useValidation: true });
   },
