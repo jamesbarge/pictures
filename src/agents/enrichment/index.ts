@@ -125,6 +125,47 @@ async function searchTmdb(
   }
 }
 
+/** Determine the match tracking strategy based on available metadata. */
+function resolveMatchStrategy(hasYear: boolean, hasDirector: boolean): string {
+  if (hasYear && hasDirector) return "auto-with-both";
+  if (hasYear) return "auto-with-year";
+  if (hasDirector) return "auto-with-director";
+  return "auto-no-hints";
+}
+
+/** Check if a match should be skipped due to title ambiguity. If so, mark as needs-review in DB. */
+async function shouldSkipAmbiguousMatch(
+  filmId: string,
+  title: string,
+  year: number | null,
+  directors: string[] | null,
+  confidence: number,
+): Promise<boolean> {
+  const ambiguity = analyzeTitleAmbiguity(title);
+  const hasYear = !!year;
+  const hasDirector = !!(directors && directors.length > 0);
+  const hasMetadata = hasSufficientMetadata(title, hasYear, hasDirector);
+  const requiredConfidence = ambiguity.requiresReview && !hasMetadata ? 0.9 : 0.8;
+
+  if (confidence >= requiredConfidence) return false;
+
+  console.log(
+    `[${AGENT_NAME}] Skipping ambiguous title "${title}" ` +
+      `(${(confidence * 100).toFixed(0)}% < ${(requiredConfidence * 100).toFixed(0)}% required, ` +
+      `reasons: ${ambiguity.reasons.join(", ")})`
+  );
+  await db
+    .update(schema.films)
+    .set({
+      matchStrategy: "needs-review",
+      matchConfidence: confidence,
+      matchedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(schema.films.id, filmId));
+  return true;
+}
+
 /**
  * Find and enrich films without TMDB matches
  */
@@ -339,43 +380,14 @@ Respond with JSON:
                 matchResult.shouldAutoApply &&
                 config.enableAutoFix
               ) {
-                // Check ambiguity - for ambiguous titles, require higher confidence or metadata
-                const ambiguity = analyzeTitleAmbiguity(film.title);
+                const shouldSkip = await shouldSkipAmbiguousMatch(
+                  film.id, film.title, film.year, film.directors ?? null, parsed.confidence,
+                );
+                if (shouldSkip) continue;
+
                 const hasYear = !!film.year;
                 const hasDirector = film.directors && film.directors.length > 0;
-                const hasMetadata = hasSufficientMetadata(film.title, hasYear, hasDirector);
-
-                // For ambiguous titles without sufficient metadata, require 90% confidence
-                const requiredConfidence = ambiguity.requiresReview && !hasMetadata ? 0.9 : 0.8;
-
-                if (parsed.confidence < requiredConfidence) {
-                  console.log(
-                    `[${AGENT_NAME}] Skipping ambiguous title "${film.title}" ` +
-                      `(${(parsed.confidence * 100).toFixed(0)}% < ${(requiredConfidence * 100).toFixed(0)}% required, ` +
-                      `reasons: ${ambiguity.reasons.join(", ")})`
-                  );
-                  // Record that we skipped this for review
-                  await db
-                    .update(schema.films)
-                    .set({
-                      matchStrategy: "needs-review",
-                      matchConfidence: parsed.confidence,
-                      matchedAt: new Date(),
-                      updatedAt: new Date(),
-                    })
-                    .where(eq(schema.films.id, film.id));
-                  continue;
-                }
-
-                // Determine the match strategy for tracking
-                let dbMatchStrategy = "auto-no-hints";
-                if (hasYear && hasDirector) {
-                  dbMatchStrategy = "auto-with-both";
-                } else if (hasYear) {
-                  dbMatchStrategy = "auto-with-year";
-                } else if (hasDirector) {
-                  dbMatchStrategy = "auto-with-director";
-                }
+                const dbMatchStrategy = resolveMatchStrategy(hasYear, !!hasDirector);
 
                 // Check if another film already has this TMDB ID
                 const existingFilm = await findFilmByTmdbId(bestMatch.id);
