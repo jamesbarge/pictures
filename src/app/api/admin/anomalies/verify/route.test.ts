@@ -67,7 +67,7 @@ describe("POST /api/admin/anomalies/verify", () => {
   });
 
   it("returns 401 when not authenticated", async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: null } as unknown as Awaited<ReturnType<typeof auth>>);
+    vi.mocked(auth).mockResolvedValue({ userId: null } as never);
 
     const request = new Request("http://localhost/api/admin/anomalies/verify", {
       method: "POST",
@@ -85,7 +85,7 @@ describe("POST /api/admin/anomalies/verify", () => {
   });
 
   it("returns 400 when missing required fields", async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as unknown as Awaited<ReturnType<typeof auth>>);
+    vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as never);
 
     const request = new Request("http://localhost/api/admin/anomalies/verify", {
       method: "POST",
@@ -104,7 +104,7 @@ describe("POST /api/admin/anomalies/verify", () => {
   });
 
   it("returns analysis with confidence when AI succeeds", async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as unknown as Awaited<ReturnType<typeof auth>>);
+    vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as never);
 
     // Mock successful AI response with high confidence
     mockGenerateText.mockResolvedValue(
@@ -137,7 +137,7 @@ describe("POST /api/admin/anomalies/verify", () => {
   });
 
   it("returns single Gemini result (no model escalation)", async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as unknown as Awaited<ReturnType<typeof auth>>);
+    vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as never);
 
     mockGenerateText.mockResolvedValue(
       JSON.stringify({
@@ -167,7 +167,7 @@ describe("POST /api/admin/anomalies/verify", () => {
   });
 
   it("handles AI response with markdown code block", async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as unknown as Awaited<ReturnType<typeof auth>>);
+    vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as never);
 
     // Mock AI response wrapped in code block
     mockGenerateText.mockResolvedValue(
