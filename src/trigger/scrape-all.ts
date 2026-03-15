@@ -78,6 +78,19 @@ async function triggerBatch(taskRefs: TaskRef[], label: string) {
   return { label, succeeded, failed, total: taskRefs.length };
 }
 
+
+/** Trigger tasks in size-limited chunks and aggregate results. */
+async function triggerChunkedBatch(tasks: TaskRef[], chunkSize: number, label: string) {
+  const chunks = chunk(tasks, chunkSize);
+  let succeeded = 0, failed = 0;
+  for (const [i, chunkTasks] of chunks.entries()) {
+    const result = await triggerBatch(chunkTasks, `${label}-${i + 1}`);
+    succeeded += result.succeeded;
+    failed += result.failed;
+  }
+  return { label, succeeded, failed, total: tasks.length };
+}
+
 export const scrapeAll = schedules.task({
   id: "scrape-all-orchestrator",
   cron: "0 3 * * 1", // Weekly Monday 3am UTC
@@ -91,34 +104,10 @@ export const scrapeAll = schedules.task({
     waveSummaries.push(await triggerBatch(CHAIN_TASKS, "Chains"));
 
     // Wave 2: Playwright independents (chunked into batches of 4)
-    const playwrightChunks = chunk(PLAYWRIGHT_TASKS, 4);
-    let pwSucceeded = 0, pwFailed = 0;
-    for (const [i, chunkTasks] of playwrightChunks.entries()) {
-      const result = await triggerBatch(chunkTasks, `Playwright-${i + 1}`);
-      pwSucceeded += result.succeeded;
-      pwFailed += result.failed;
-    }
-    waveSummaries.push({
-      label: "Playwright",
-      succeeded: pwSucceeded,
-      failed: pwFailed,
-      total: PLAYWRIGHT_TASKS.length,
-    });
+    waveSummaries.push(await triggerChunkedBatch(PLAYWRIGHT_TASKS, 4, "Playwright"));
 
     // Wave 3: Cheerio independents (chunked into batches of 6)
-    const cheerioChunks = chunk(CHEERIO_TASKS, 6);
-    let cheerioSucceeded = 0, cheerioFailed = 0;
-    for (const [i, chunkTasks] of cheerioChunks.entries()) {
-      const result = await triggerBatch(chunkTasks, `Cheerio-${i + 1}`);
-      cheerioSucceeded += result.succeeded;
-      cheerioFailed += result.failed;
-    }
-    waveSummaries.push({
-      label: "Cheerio",
-      succeeded: cheerioSucceeded,
-      failed: cheerioFailed,
-      total: CHEERIO_TASKS.length,
-    });
+    waveSummaries.push(await triggerChunkedBatch(CHEERIO_TASKS, 6, "Cheerio"));
 
     // Wave 4: Post-scrape enrichment
     waveSummaries.push(await triggerBatch(ENRICHMENT_TASKS, "Enrichment"));
