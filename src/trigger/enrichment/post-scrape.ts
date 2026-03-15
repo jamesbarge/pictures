@@ -30,6 +30,25 @@ function makeAttempt(success: boolean, prevAttempts: number, reason?: string): E
   };
 }
 
+/** Persist a TMDB enrichment attempt (success or failure) to the film record. */
+async function saveEnrichmentResult(
+  filmId: string,
+  currentStatus: EnrichmentStatus | null,
+  success: boolean,
+  options?: { tmdbId?: number | null; reason?: string },
+): Promise<void> {
+  const prevAttempts = currentStatus?.tmdbMatch?.attempts ?? 0;
+  const updatedStatus: EnrichmentStatus = {
+    ...(currentStatus ?? {}),
+    tmdbMatch: makeAttempt(success, prevAttempts, options?.reason),
+  };
+  await db.update(films).set({
+    ...(options?.tmdbId != null ? { tmdbId: options.tmdbId } : {}),
+    enrichmentStatus: updatedStatus,
+    updatedAt: new Date(),
+  }).where(eq(films.id, filmId));
+}
+
 /** Check whether enrichment should be skipped based on backoff rules. */
 function shouldSkipEnrichment(status: EnrichmentStatus | null, now: Date): boolean {
   if (!status?.tmdbMatch) return false;
@@ -101,18 +120,7 @@ export const postScrapeEnrichment = task({
               skipAmbiguityCheck: true,
             });
           if (match && (match.confidence ?? 0) >= 0.7) {
-            // Update film with TMDB data
-            const prevAttempts = status?.tmdbMatch?.attempts ?? 0;
-            const updatedStatus: EnrichmentStatus = {
-              ...(status ?? {}),
-              tmdbMatch: makeAttempt(true, prevAttempts),
-            };
-
-            await db.update(films).set({
-              tmdbId: match.tmdbId,
-              enrichmentStatus: updatedStatus,
-              updatedAt: new Date(),
-            }).where(eq(films.id, film.filmId));
+            await saveEnrichmentResult(film.filmId, status, true, { tmdbId: match.tmdbId });
 
             matched++;
             matchFound = true;
@@ -127,17 +135,9 @@ export const postScrapeEnrichment = task({
       }
 
       if (!matchFound) {
-        // Record failed attempt with backoff tracking
-        const prevAttempts = status?.tmdbMatch?.attempts ?? 0;
-        const updatedStatus: EnrichmentStatus = {
-          ...(status ?? {}),
-          tmdbMatch: makeAttempt(false, prevAttempts, `No match found across ${variations.length} variations`),
-        };
-
-        await db.update(films).set({
-          enrichmentStatus: updatedStatus,
-          updatedAt: new Date(),
-        }).where(eq(films.id, film.filmId));
+        await saveEnrichmentResult(film.filmId, status, false, {
+          reason: `No match found across ${variations.length} variations`,
+        });
 
         failed++;
       }
