@@ -54,6 +54,22 @@ const syncRequestSchema = z.object({
   preferencesUpdatedAt: z.string().datetime().nullable(),
 });
 
+/** Maps a client film status payload to database column values. */
+function toDbValues(status: FilmStatusPayload) {
+  return {
+    status: status.status,
+    addedAt: new Date(status.addedAt),
+    seenAt: status.seenAt ? new Date(status.seenAt) : null,
+    rating: status.rating ?? null,
+    notes: status.notes ?? null,
+    filmTitle: status.filmTitle ?? null,
+    filmYear: status.filmYear ?? null,
+    filmDirectors: status.filmDirectors ?? null,
+    filmPosterUrl: status.filmPosterUrl ?? null,
+    updatedAt: new Date(status.updatedAt),
+  };
+}
+
 /**
  * POST /api/user/sync - Full bidirectional sync
  *
@@ -175,33 +191,13 @@ export async function POST(request: NextRequest) {
       if (existing) {
         await db
           .update(userFilmStatuses)
-          .set({
-            status: status.status,
-            addedAt: new Date(status.addedAt),
-            seenAt: status.seenAt ? new Date(status.seenAt) : null,
-            rating: status.rating,
-            notes: status.notes,
-            filmTitle: status.filmTitle,
-            filmYear: status.filmYear,
-            filmDirectors: status.filmDirectors,
-            filmPosterUrl: status.filmPosterUrl,
-            updatedAt: new Date(status.updatedAt),
-          })
+          .set(toDbValues(status))
           .where(eq(userFilmStatuses.id, existing.id));
       } else {
         await db.insert(userFilmStatuses).values({
           userId,
           filmId: status.filmId,
-          status: status.status,
-          addedAt: new Date(status.addedAt),
-          seenAt: status.seenAt ? new Date(status.seenAt) : null,
-          rating: status.rating,
-          notes: status.notes,
-          filmTitle: status.filmTitle,
-          filmYear: status.filmYear,
-          filmDirectors: status.filmDirectors,
-          filmPosterUrl: status.filmPosterUrl,
-          updatedAt: new Date(status.updatedAt),
+          ...toDbValues(status),
         });
       }
     }
