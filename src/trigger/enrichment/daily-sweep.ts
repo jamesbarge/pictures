@@ -18,6 +18,7 @@ import { films, screenings } from "@/db/schema";
 import { eq, isNull, and, gte, isNotNull, sql } from "drizzle-orm";
 import { generateTitleVariations, extractYearFromTitle } from "@/lib/enrichment/title-variations";
 import { matchFilmToTMDB } from "@/lib/tmdb/match";
+import { loadThresholdsAsync } from "@/autoresearch/autoquality/load-thresholds";
 import { sendTelegramAlert } from "../utils/telegram";
 import type { EnrichmentStatus, EnrichmentAttempt } from "@/types/enrichment";
 
@@ -74,6 +75,9 @@ export const dailyEnrichmentSweep = schedules.task({
     }
 
     console.log("[daily-sweep] Starting daily enrichment sweep");
+
+    // Warm threshold cache from DB so TMDB matching uses AutoQuality-tuned values
+    await loadThresholdsAsync();
 
     const stats = {
       tmdbMatched: 0,
