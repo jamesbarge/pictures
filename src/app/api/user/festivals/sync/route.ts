@@ -10,7 +10,11 @@ import { eq, and, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { BadRequestError, handleApiError } from "@/lib/api-errors";
 import { requireAuth } from "@/lib/auth";
-import type { FestivalInterestLevel, FestivalScheduleStatus } from "@/db/schema/festivals";
+import type {
+  FestivalInterestLevel,
+  FestivalScheduleStatus,
+  UserFestivalInterestSelect,
+} from "@/db/schema/festivals";
 
 // Schema for incoming sync data
 const syncSchema = z.object({
@@ -52,6 +56,35 @@ const syncSchema = z.object({
     .default([]),
   updatedAt: z.string().optional(),
 });
+
+/** Fetch festival name and slug by ID. */
+async function fetchFestivalMeta(festivalId: string) {
+  const [festival] = await db
+    .select({ name: festivals.name, slug: festivals.slug })
+    .from(festivals)
+    .where(eq(festivals.id, festivalId))
+    .limit(1);
+  return festival;
+}
+
+/** Convert a server-side follow record into the merged response shape. */
+function toMergedFollow(
+  serverFollow: UserFestivalInterestSelect,
+  festival: { name: string; slug: string } | undefined,
+  fallbacks: { festivalName: string; festivalSlug: string; followedAt: string; updatedAt: string }
+) {
+  return {
+    festivalId: serverFollow.festivalId,
+    festivalName: festival?.name || fallbacks.festivalName,
+    festivalSlug: festival?.slug || fallbacks.festivalSlug,
+    interestLevel: serverFollow.interestLevel as FestivalInterestLevel,
+    notifyOnSale: serverFollow.notifyOnSale,
+    notifyProgramme: serverFollow.notifyProgramme,
+    notifyReminders: serverFollow.notifyReminders,
+    followedAt: serverFollow.createdAt?.toISOString() || fallbacks.followedAt,
+    updatedAt: serverFollow.updatedAt?.toISOString() || fallbacks.updatedAt,
+  };
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -122,23 +155,13 @@ export async function POST(request: NextRequest) {
           mergedFollows[clientFollow.festivalId] = clientFollow;
         } else {
           // Server wins - need to get festival metadata
-          const [festival] = await db
-            .select({ name: festivals.name, slug: festivals.slug })
-            .from(festivals)
-            .where(eq(festivals.id, serverFollow.festivalId))
-            .limit(1);
-
-          mergedFollows[clientFollow.festivalId] = {
-            festivalId: serverFollow.festivalId,
-            festivalName: festival?.name || clientFollow.festivalName,
-            festivalSlug: festival?.slug || clientFollow.festivalSlug,
-            interestLevel: serverFollow.interestLevel as FestivalInterestLevel,
-            notifyOnSale: serverFollow.notifyOnSale,
-            notifyProgramme: serverFollow.notifyProgramme,
-            notifyReminders: serverFollow.notifyReminders,
-            followedAt: serverFollow.createdAt?.toISOString() || clientFollow.followedAt,
-            updatedAt: serverFollow.updatedAt?.toISOString() || clientFollow.updatedAt,
-          };
+          const festival = await fetchFestivalMeta(serverFollow.festivalId);
+          mergedFollows[clientFollow.festivalId] = toMergedFollow(serverFollow, festival, {
+            festivalName: clientFollow.festivalName,
+            festivalSlug: clientFollow.festivalSlug,
+            followedAt: clientFollow.followedAt,
+            updatedAt: clientFollow.updatedAt,
+          });
         }
       }
     }
@@ -146,25 +169,15 @@ export async function POST(request: NextRequest) {
     // Add server-only follows (not on client)
     for (const serverFollow of serverFollows) {
       if (!clientFollows.find((cf) => cf.festivalId === serverFollow.festivalId)) {
-        // Get festival metadata
-        const [festival] = await db
-          .select({ name: festivals.name, slug: festivals.slug })
-          .from(festivals)
-          .where(eq(festivals.id, serverFollow.festivalId))
-          .limit(1);
-
+        const festival = await fetchFestivalMeta(serverFollow.festivalId);
         if (festival) {
-          mergedFollows[serverFollow.festivalId] = {
-            festivalId: serverFollow.festivalId,
+          const now = new Date().toISOString();
+          mergedFollows[serverFollow.festivalId] = toMergedFollow(serverFollow, festival, {
             festivalName: festival.name,
             festivalSlug: festival.slug,
-            interestLevel: serverFollow.interestLevel as FestivalInterestLevel,
-            notifyOnSale: serverFollow.notifyOnSale,
-            notifyProgramme: serverFollow.notifyProgramme,
-            notifyReminders: serverFollow.notifyReminders,
-            followedAt: serverFollow.createdAt?.toISOString() || new Date().toISOString(),
-            updatedAt: serverFollow.updatedAt?.toISOString() || new Date().toISOString(),
-          };
+            followedAt: now,
+            updatedAt: now,
+          });
         }
       }
     }
