@@ -1,3 +1,10 @@
+## 2026-03-15: Kaizen — Dedup screening creation in Cine Lumiere scraper
+**PR**: #357 | **Files**: `src/scrapers/cinemas/cine-lumiere.ts`
+- Extracted `addScreeningIfValid()` helper to replace 3x duplicated screening-creation blocks
+- `parseFilmPerformances`, `parseFilmPerformancesFromSiblings`, and `parseAlternativeStructure` now call the shared helper
+- Kaizen automated refactoring (category: readability)
+
+---
 ## 2026-03-15: Kaizen — Extract shared month lookup and AM/PM conversion in Close-Up scraper
 **PR**: #356 | **Files**: `src/scrapers/cinemas/close-up.ts`
 - Extracted duplicated month-name lookup into module-level `MONTH_NAMES` constant
