@@ -1,3 +1,10 @@
+## 2026-03-15: Fix scraper timeout durations
+**Files**: `src/trigger/scrapers/chains/picturehouse.ts`, `src/trigger/scrapers/independent/*.ts` (17 files)
+- Increased Picturehouse `maxDuration` from 30min to 60min (11 venues, 2600+ screenings hit ceiling)
+- Added `maxDuration: 600` to Nickel + 15 other Cheerio-based scrapers that relied on platform default (~300s)
+- Changed `retry.maxAttempts` from 3 to 0 for all 17 independent scrapers (retrying timed-out tasks wastes orchestrator budget)
+
+---
 ## 2026-03-15: Kaizen — Extract date parser from Romford Lumiere scraper
 **PR**: #355 | **Files**: `src/scrapers/cinemas/romford-lumiere.ts`
 - Extracted `parseDateText()` from 63-line nested if-else chain in `parseShowtimeDateTime`
