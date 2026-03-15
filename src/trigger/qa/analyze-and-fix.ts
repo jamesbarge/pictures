@@ -74,6 +74,49 @@ function classifyBookingChecks(bookingChecks: BookingCheck[]): ClassifiedIssue[]
   return result;
 }
 
+/** Detect DB screenings older than a 2-hour grace period. */
+function detectStaleScreenings(
+  dbScreenings: Array<{ screeningId: string; filmTitle: string; datetime: Date }>,
+  now: Date,
+): ClassifiedIssue[] {
+  const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60_000);
+  return dbScreenings
+    .filter((s) => s.datetime < twoHoursAgo)
+    .map((s) => ({
+      type: "stale_screening",
+      scope: "spot",
+      severity: "info",
+      entityType: "screening",
+      entityId: s.screeningId,
+      description: `Stale screening: "${s.filmTitle}" at ${s.datetime.toISOString()} (>2h past)`,
+      suggestedFix: "Delete stale screening",
+      confidence: 1.0,
+      metadata: { filmTitle: s.filmTitle, datetime: s.datetime.toISOString() },
+    }));
+}
+
+/** Detect films with a TMDB match but no Letterboxd rating (deduplicated by film). */
+function detectMissingLetterboxd(
+  dbScreenings: Array<{ filmId: string; filmTitle: string; tmdbId: number | null; letterboxdRating: number | null }>,
+): ClassifiedIssue[] {
+  const seen = new Map<string, { filmId: string; title: string }>();
+  for (const s of dbScreenings) {
+    if (s.tmdbId && !s.letterboxdRating && !seen.has(s.filmId)) {
+      seen.set(s.filmId, { filmId: s.filmId, title: s.filmTitle });
+    }
+  }
+  return [...seen.values()].map((film) => ({
+    type: "missing_letterboxd",
+    scope: "spot",
+    severity: "info",
+    entityType: "film",
+    entityId: film.filmId,
+    description: `Film "${film.title}" has TMDB match but no Letterboxd rating`,
+    suggestedFix: "Run Letterboxd enrichment",
+    confidence: 1.0,
+  }));
+}
+
 export const qaAnalyzeAndFix = task({
   id: "qa-analyze-and-fix",
   maxDuration: 1800, // 30 min
@@ -130,48 +173,17 @@ export const qaAnalyzeAndFix = task({
 
     // B1: Stale screenings (datetime < now - 2h grace period)
     const now = new Date();
-    const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60_000);
-    const staleScreenings = dbScreenings.filter(
-      (s) => s.datetime < twoHoursAgo
-    );
-    for (const s of staleScreenings) {
-      issues.push({
-        type: "stale_screening",
-        scope: "spot",
-        severity: "info",
-        entityType: "screening",
-        entityId: s.screeningId,
-        description: `Stale screening: "${s.filmTitle}" at ${s.datetime.toISOString()} (>2h past)`,
-        suggestedFix: "Delete stale screening",
-        confidence: 1.0,
-        metadata: { filmTitle: s.filmTitle, datetime: s.datetime.toISOString() },
-      });
-    }
-    if (staleScreenings.length > 0) {
-      console.log(`[qa-analyze] Found ${staleScreenings.length} stale screenings`);
+    const staleIssues = detectStaleScreenings(dbScreenings, now);
+    issues.push(...staleIssues);
+    if (staleIssues.length > 0) {
+      console.log(`[qa-analyze] Found ${staleIssues.length} stale screenings`);
     }
 
     // B2: Missing Letterboxd ratings
-    const filmsWithTmdbNoLetterboxd = new Map<string, { filmId: string; title: string }>();
-    for (const s of dbScreenings) {
-      if (s.tmdbId && !s.letterboxdRating && !filmsWithTmdbNoLetterboxd.has(s.filmId)) {
-        filmsWithTmdbNoLetterboxd.set(s.filmId, { filmId: s.filmId, title: s.filmTitle });
-      }
-    }
-    for (const [, film] of filmsWithTmdbNoLetterboxd) {
-      issues.push({
-        type: "missing_letterboxd",
-        scope: "spot",
-        severity: "info",
-        entityType: "film",
-        entityId: film.filmId,
-        description: `Film "${film.title}" has TMDB match but no Letterboxd rating`,
-        suggestedFix: "Run Letterboxd enrichment",
-        confidence: 1.0,
-      });
-    }
-    if (filmsWithTmdbNoLetterboxd.size > 0) {
-      console.log(`[qa-analyze] Found ${filmsWithTmdbNoLetterboxd.size} films missing Letterboxd`);
+    const letterboxdIssues = detectMissingLetterboxd(dbScreenings);
+    issues.push(...letterboxdIssues);
+    if (letterboxdIssues.length > 0) {
+      console.log(`[qa-analyze] Found ${letterboxdIssues.length} films missing Letterboxd`);
     }
 
     // B3: Time mismatch detection — compare front-end screening times vs DB
