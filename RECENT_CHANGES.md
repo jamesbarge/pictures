@@ -1,3 +1,10 @@
+## 2026-03-15: Kaizen — Delete dead veezi-scraper.ts
+**PR**: #341 | **Files**: `src/scrapers/utils/veezi-scraper.ts`
+- Deleted 345-line file with zero importers (verified via grep)
+- Uses Dead File Deletion exception rule
+- Kaizen automated refactoring (category: dead-code)
+
+---
 ## 2026-03-15: Kaizen — Replace type assertion casts with proper annotations
 **PR**: #340 | **Files**: `src/lib/content-classifier.ts`, `src/lib/rate-limit.ts`
 - Removed 13 `as ContentType` casts via array type annotation
