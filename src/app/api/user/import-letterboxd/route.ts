@@ -126,7 +126,7 @@ export async function POST(req: Request) {
     // If there are unmatched entries, trigger background TMDB lookup
     let backgroundTaskTriggered = false;
     if (hasUnmatchedEntries(username, unmatchedEntries)) {
-      const validEntries = (unmatchedEntries as UnmatchedEntry[]).slice(0, MAX_FILM_IDS);
+      const validEntries = unmatchedEntries.slice(0, MAX_FILM_IDS);
       try {
         await tasks.trigger("letterboxd-import-lookup", {
           userId,
@@ -148,7 +148,7 @@ export async function POST(req: Request) {
     }
 
     const pendingCount = hasUnmatchedEntries(username, unmatchedEntries)
-      ? (unmatchedEntries as UnmatchedEntry[]).length
+      ? unmatchedEntries.length
       : 0;
 
     return NextResponse.json({
@@ -183,9 +183,9 @@ function hasUnmatchedEntries(
         typeof e === "object" &&
         e !== null &&
         "title" in e &&
-        typeof (e as UnmatchedEntry).title === "string" &&
+        typeof e.title === "string" &&
         "slug" in e &&
-        typeof (e as UnmatchedEntry).slug === "string",
+        typeof e.slug === "string",
     )
   );
 }

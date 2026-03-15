@@ -149,9 +149,9 @@ export function FilmSearchFilter({ mounted }: { mounted: boolean }) {
           e.preventDefault();
           const selected = displayList[selectedIndex];
           if (selected.type === 'cinema') {
-            handleSelectCinema(selected.item as CinemaSuggestion);
+            handleSelectCinema(selected.item);
           } else {
-            handleSelectFilm(selected.item as FilmSuggestion);
+            handleSelectFilm(selected.item);
           }
         }
       }
