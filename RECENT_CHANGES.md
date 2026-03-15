@@ -1,3 +1,10 @@
+## 2026-03-15: Kaizen — Extract shared month lookup and AM/PM conversion in Close-Up scraper
+**PR**: #356 | **Files**: `src/scrapers/cinemas/close-up.ts`
+- Extracted duplicated month-name lookup into module-level `MONTH_NAMES` constant
+- Extracted duplicated AM/PM-to-24h conversion into `to24Hour()` helper function
+- Kaizen automated refactoring (category: readability)
+
+---
 ## 2026-03-15: Fix scraper timeout durations
 **Files**: `src/trigger/scrapers/chains/picturehouse.ts`, `src/trigger/scrapers/independent/*.ts` (17 files)
 - Increased Picturehouse `maxDuration` from 30min to 60min (11 venues, 2600+ screenings hit ceiling)
