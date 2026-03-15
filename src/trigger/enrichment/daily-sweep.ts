@@ -155,12 +155,7 @@ export const dailyEnrichmentSweep = schedules.task({
         const prevAttempts = status?.tmdbMatch?.attempts ?? 0;
         const updatedStatus: EnrichmentStatus = {
           ...(status ?? {}),
-          tmdbMatch: {
-            lastAttempt: new Date().toISOString(),
-            attempts: prevAttempts + 1,
-            success: false,
-            failureReason: `No match across ${variations.length} variations`,
-          },
+          tmdbMatch: makeAttempt(false, prevAttempts, `No match across ${variations.length} variations`),
         };
 
         await db.update(films).set({
@@ -254,12 +249,7 @@ export const dailyEnrichmentSweep = schedules.task({
           const prevAttempts = status?.tmdbBackfill?.attempts ?? 0;
           const updatedStatus: EnrichmentStatus = {
             ...(status ?? {}),
-            tmdbBackfill: {
-              lastAttempt: new Date().toISOString(),
-              attempts: prevAttempts + 1,
-              success: false,
-              failureReason: String(err),
-            },
+            tmdbBackfill: makeAttempt(false, prevAttempts, String(err)),
           };
           await db.update(films).set({
             enrichmentStatus: updatedStatus,
@@ -343,12 +333,7 @@ export const dailyEnrichmentSweep = schedules.task({
             await db.update(films).set({
               enrichmentStatus: {
                 ...(status ?? {}),
-                poster: {
-                  lastAttempt: new Date().toISOString(),
-                  attempts: prevAttempts + 1,
-                  success: false,
-                  failureReason: "Only placeholder available",
-                },
+                poster: makeAttempt(false, prevAttempts, "Only placeholder available"),
               },
               updatedAt: new Date(),
             }).where(eq(films.id, film.filmId));
