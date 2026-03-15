@@ -97,6 +97,37 @@ export class BFIScraper {
     console.log(`[${this.config.cinemaId}] Browser closed`);
   }
 
+  /**
+   * Advance the calendar to a month with enough active programming dates.
+   * Skips past months that have fewer than the threshold of clickable dates.
+   */
+  private async navigateToActiveMonth(): Promise<void> {
+    if (!this.page) return;
+
+    const minActiveDatesThreshold = 5;
+    const maxMonthsToAdvance = 3;
+    for (let monthOffset = 0; monthOffset < maxMonthsToAdvance; monthOffset++) {
+      const activeCells = await this.page.$$('[role="gridcell"]:not([aria-disabled="true"])');
+
+      if (activeCells.length >= minActiveDatesThreshold) {
+        console.log(`[${this.config.cinemaId}] Found ${activeCells.length} active dates in current month view`);
+        return;
+      }
+
+      console.log(`[${this.config.cinemaId}] Only ${activeCells.length} active dates (need ${minActiveDatesThreshold}+), advancing...`);
+
+      const nextMonthBtn = this.page.getByRole('button', { name: 'Next month' });
+      if (await nextMonthBtn.count() > 0) {
+        console.log(`[${this.config.cinemaId}] Clicking Next month...`);
+        await nextMonthBtn.click();
+        await this.page.waitForTimeout(1500);
+      } else {
+        console.log(`[${this.config.cinemaId}] Next month button not found`);
+        return;
+      }
+    }
+  }
+
   private async fetchAllDates(): Promise<RawScreening[]> {
     if (!this.page) throw new Error("Browser not initialized");
 
@@ -118,32 +149,8 @@ export class BFIScraper {
 
       await this.page.waitForTimeout(3000);
 
-      // Navigate to months with future screenings
-      // Need enough active dates to indicate a real month of programming (not just stale past dates)
-      const minActiveDatesThreshold = 5;
-      const maxMonthsToAdvance = 3;
-      for (let monthOffset = 0; monthOffset < maxMonthsToAdvance; monthOffset++) {
-        // Check if current month has enough active dates
-        const activeCells = await this.page.$$('[role="gridcell"]:not([aria-disabled="true"])');
-
-        if (activeCells.length >= minActiveDatesThreshold) {
-          console.log(`[${this.config.cinemaId}] Found ${activeCells.length} active dates in current month view`);
-          break;
-        }
-
-        console.log(`[${this.config.cinemaId}] Only ${activeCells.length} active dates (need ${minActiveDatesThreshold}+), advancing...`);
-
-        // Not enough active dates, try next month
-        const nextMonthBtn = this.page.getByRole('button', { name: 'Next month' });
-        if (await nextMonthBtn.count() > 0) {
-          console.log(`[${this.config.cinemaId}] Clicking Next month...`);
-          await nextMonthBtn.click();
-          await this.page.waitForTimeout(1500);
-        } else {
-          console.log(`[${this.config.cinemaId}] Next month button not found`);
-          break;
-        }
-      }
+      // Navigate to a month with active programming
+      await this.navigateToActiveMonth();
 
       // Now scrape up to 2 months of calendar data
       for (let monthNum = 0; monthNum < 2; monthNum++) {
