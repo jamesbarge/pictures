@@ -7,7 +7,7 @@ import type { ScraperTaskOutput } from "../../types";
 export const picturehouseScraper = task({
   id: "scraper-chain-picturehouse",
   machine: { preset: "medium-1x" },
-  maxDuration: 1800, // 30 min — ~11 venues via Playwright
+  maxDuration: 3600, // 60 min — 11 venues, 2600+ screenings, pipeline is sequential
   retry: { maxAttempts: 0 },
   run: async (): Promise<ScraperTaskOutput> => {
     const config = buildChainConfig("picturehouse", "Picturehouse", () => createPicturehouseScraper());

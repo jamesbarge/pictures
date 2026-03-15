@@ -13,7 +13,8 @@ const config: SingleVenueConfig = {
 
 export const castleSidcupScraper = task({
   id: "scraper-castle-sidcup",
-  retry: { maxAttempts: 3 },
+  maxDuration: 600, // 10 min
+  retry: { maxAttempts: 0 },
   run: async (): Promise<ScraperTaskOutput> => {
     return runScraperAndVerify(config, { useValidation: true });
   },
