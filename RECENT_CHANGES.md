@@ -1,4 +1,10 @@
-\n## 2026-03-15: Kaizen — extract triggerChunkedBatch in scrape-all
+## 2026-03-16: Kaizen — extract applyHeuristicChecks in scraper health agent
+**PR**: #371 | **Files**: `src/agents/scraper-health/index.ts`
+- Extracted duplicated heuristic check logic into shared `applyHeuristicChecks()` helper
+- Kaizen automated refactoring (category: readability)
+
+---
+
 ## 2026-03-16: Kaizen — extract ambiguity check and match strategy helpers
 **PR**: #370 | **Files**: `src/agents/enrichment/index.ts`
 - Extracted `shouldSkipAmbiguousMatch()` and `resolveMatchStrategy()` from deeply nested auto-apply block in enrichment agent
