@@ -80,6 +80,28 @@ function getCacheKey(
   return `${lat},${lng}:${mode}`;
 }
 
+/**
+ * Parse Distance Matrix API elements into a travel times record.
+ * Converts duration from seconds to minutes (rounded up).
+ */
+function parseDistanceMatrixElements(
+  elements: DistanceMatrixResponse["rows"][0]["elements"],
+  destinations: { id: string }[],
+  mode: string
+): Record<string, { minutes: number; mode: string }> {
+  const result: Record<string, { minutes: number; mode: string }> = {};
+  for (let i = 0; i < destinations.length; i++) {
+    const element = elements[i];
+    if (element?.status === "OK" && element.duration) {
+      result[destinations[i].id] = {
+        minutes: Math.ceil(element.duration.value / 60),
+        mode,
+      };
+    }
+  }
+  return result;
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -158,25 +180,13 @@ export async function POST(request: Request) {
     }
 
     // Parse results
-    const travelTimes: Record<string, { minutes: number; mode: string }> = {};
     const elements = data.rows[0]?.elements || [];
-    const failedIndices: number[] = [];
+    const travelTimes = parseDistanceMatrixElements(elements, destinations, googleMode);
 
-    for (let i = 0; i < destinations.length; i++) {
-      const element = elements[i];
-      const destination = destinations[i];
-
-      if (element?.status === "OK" && element.duration) {
-        // Convert seconds to minutes, round up
-        travelTimes[destination.id] = {
-          minutes: Math.ceil(element.duration.value / 60),
-          mode: googleMode,
-        };
-      } else {
-        // Track failed destinations for potential fallback
-        failedIndices.push(i);
-      }
-    }
+    // Track destinations that failed for potential fallback
+    const failedIndices = destinations
+      .map((d, i) => (travelTimes[d.id] === undefined ? i : -1))
+      .filter((i) => i !== -1);
 
     // Fallback: If mode is transit and we have failures, try walking for those specific destinations
     if (mode === "transit" && failedIndices.length > 0) {
@@ -194,17 +204,7 @@ export async function POST(request: Request) {
 
       if (fallbackData) {
         const fallbackElements = fallbackData.rows[0]?.elements || [];
-        for (let i = 0; i < fallbackDestinations.length; i++) {
-          const element = fallbackElements[i];
-          const destination = fallbackDestinations[i];
-
-          if (element?.status === "OK" && element.duration) {
-            travelTimes[destination.id] = {
-              minutes: Math.ceil(element.duration.value / 60),
-              mode: "walking",
-            };
-          }
-        }
+        Object.assign(travelTimes, parseDistanceMatrixElements(fallbackElements, fallbackDestinations, "walking"));
       }
     }
 

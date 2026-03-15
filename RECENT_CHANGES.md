@@ -1,4 +1,12 @@
 ## 2026-03-14: Skip Obsidian writes in cloud environments
+
+## 2026-03-15: Kaizen — extract parseDistanceMatrixElements helper
+**PR**: #TBD | **Files**: `src/app/api/travel-times/route.ts`
+- Extracted duplicate Distance Matrix element-parsing loop into shared `parseDistanceMatrixElements()` helper
+- Kaizen automated refactoring (category: readability)
+
+---
+
 **PR**: #336 | **Files**: `src/autoresearch/obsidian-reporter.ts`
 - Obsidian report writer now detects cloud environments (Trigger.dev, Vercel, Railway)
 - Skips filesystem writes gracefully instead of failing with EACCES on `/Users/` path
