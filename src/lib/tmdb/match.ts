@@ -10,26 +10,38 @@
  */
 
 import { levenshteinDistance } from "@/lib/levenshtein";
+import { loadThresholds } from "@/autoresearch/autoquality/load-thresholds";
 
 import { getTMDBClient } from "./client";
 import type { TMDBSearchResult } from "./types";
 import { analyzeTitleAmbiguity, hasSufficientMetadata } from "./ambiguity";
 
-/** Scoring constants for the TMDB film matching algorithm */
+/** Fixed scoring constants (not tunable by AutoQuality) */
 const MAX_SEARCH_CANDIDATES = 10;
-const MIN_TITLE_SIMILARITY = 0.6;
-const TITLE_SIMILARITY_WEIGHT = 0.7;
 const YEAR_EXACT_BONUS = 0.2;
 const YEAR_CLOSE_BONUS = 0.1;
 const MAX_POPULARITY_BONUS = 0.03;
 const POPULARITY_DIVISOR = 1000;
-const COMPETITOR_THRESHOLD_RATIO = 0.95;
 const HIGH_COMPETITION_PENALTY = 0.15;
 const MODERATE_COMPETITION_PENALTY = 0.08;
-const MIN_MATCH_CONFIDENCE = 0.6;
-const YEAR_MATCH_PENALTY_RECOVERY = 0.5;
 const REPERTORY_AGE_YEARS = 2;
 const RATE_LIMIT_DELAY_MS = 250;
+
+/**
+ * Get TMDB matching thresholds from the AutoQuality-tuned config.
+ * Reads from in-process cache (populated from DB by loadThresholdsAsync
+ * at the start of enrichment runs). Falls back to bundled defaults.
+ */
+function getTmdbThresholds() {
+  const t = loadThresholds().tmdb;
+  return {
+    minTitleSimilarity: t.minTitleSimilarity,
+    titleSimilarityWeight: t.titleSimilarityWeight,
+    competitorThresholdRatio: t.competitorThresholdRatio,
+    minMatchConfidence: t.minMatchConfidence,
+    yearMatchPenaltyRecovery: t.yearMatchPenaltyRecovery,
+  };
+}
 
 interface MatchHints {
   year?: number;
@@ -176,6 +188,9 @@ function findBestMatch(
   results: TMDBSearchResult[],
   hints?: MatchHints
 ): MatchResult | null {
+  // Load AutoQuality-tuned thresholds (cached, near-zero cost)
+  const tmdb = getTmdbThresholds();
+
   // Calculate scores for all candidates
   const scoredResults: Array<{
     result: TMDBSearchResult;
@@ -191,7 +206,7 @@ function findBestMatch(
     );
 
     // Skip if title similarity too low
-    if (titleSimilarity < MIN_TITLE_SIMILARITY) continue;
+    if (titleSimilarity < tmdb.minTitleSimilarity) continue;
 
     // Year bonus - exact match or close
     let yearBonus = 0;
@@ -209,7 +224,7 @@ function findBestMatch(
     const popularityBonus = Math.min(result.popularity / POPULARITY_DIVISOR, MAX_POPULARITY_BONUS);
 
     // Calculate total score
-    const score = titleSimilarity * TITLE_SIMILARITY_WEIGHT + yearBonus + popularityBonus;
+    const score = titleSimilarity * tmdb.titleSimilarityWeight + yearBonus + popularityBonus;
 
     scoredResults.push({ result, titleSimilarity, score });
   }
@@ -224,7 +239,7 @@ function findBestMatch(
   // Calculate match count penalty
   // If many films have similar scores, reduce confidence
   // This catches cases like "Ten" where 5 films all score 0.85
-  const competitorThreshold = best.score * COMPETITOR_THRESHOLD_RATIO; // Within 5% of best score
+  const competitorThreshold = best.score * tmdb.competitorThresholdRatio;
   const closeCompetitors = scoredResults.filter(
     (r) => r.score >= competitorThreshold
   ).length;
@@ -247,14 +262,14 @@ function findBestMatch(
     if (bestYear === hints.year) {
       // Recover half the penalty if year matches exactly
       finalConfidence = Math.min(
-        adjustedConfidence + matchCountPenalty * YEAR_MATCH_PENALTY_RECOVERY,
+        adjustedConfidence + matchCountPenalty * tmdb.yearMatchPenaltyRecovery,
         1
       );
     }
   }
 
   // Only return if confidence is above threshold
-  if (finalConfidence >= MIN_MATCH_CONFIDENCE) {
+  if (finalConfidence >= tmdb.minMatchConfidence) {
     return {
       tmdbId: best.result.id,
       confidence: finalConfidence,

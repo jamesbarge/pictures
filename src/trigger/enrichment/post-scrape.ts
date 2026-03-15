@@ -12,6 +12,7 @@ import { films, screenings } from "@/db/schema";
 import { eq, isNull, and, gte } from "drizzle-orm";
 import { generateTitleVariations, extractYearFromTitle } from "@/lib/enrichment/title-variations";
 import { matchFilmToTMDB } from "@/lib/tmdb/match";
+import { loadThresholdsAsync } from "@/autoresearch/autoquality/load-thresholds";
 import type { EnrichmentStatus, EnrichmentAttempt } from "@/types/enrichment";
 
 const TMDB_SPACING_MS = 250;
@@ -44,6 +45,9 @@ export const postScrapeEnrichment = task({
   run: async (payload: { cinemaId: string; cinemaName: string }) => {
     const { cinemaId, cinemaName } = payload;
     console.log(`[post-scrape-enrich] Starting for ${cinemaName} (${cinemaId})`);
+
+    // Warm threshold cache from DB so TMDB matching uses AutoQuality-tuned values
+    await loadThresholdsAsync();
 
     const now = new Date();
 
