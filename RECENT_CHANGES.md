@@ -1,3 +1,10 @@
+## 2026-03-15: Kaizen — Extract date parser from Romford Lumiere scraper
+**PR**: #355 | **Files**: `src/scrapers/cinemas/romford-lumiere.ts`
+- Extracted `parseDateText()` from 63-line nested if-else chain in `parseShowtimeDateTime`
+- Uses early returns for ISO, UK, and text date formats — eliminates 4 nesting levels
+- Kaizen automated refactoring (category: readability)
+
+---
 ## 2026-03-15: Kaizen — Dedup polygon edit listeners in cinema map
 **PR**: #354 | **Files**: `src/components/map/cinema-map.tsx`
 - Extracted `attachPolygonEditListeners()` from two identical 9-line blocks registering Google Maps edit events
