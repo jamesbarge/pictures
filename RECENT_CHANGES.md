@@ -1,3 +1,9 @@
+## 2026-03-15: Kaizen — Extract enrichment status update helper
+**PR**: #360 | **Files**: `src/trigger/enrichment/daily-sweep.ts`
+- Extracted `updateEnrichmentStatus()` from 6 duplicated inline blocks across 4 enrichment phases
+- Kaizen automated refactoring (category: readability)
+
+---
 ## 2026-03-15: Reduce Supabase egress — AutoQuality back to weekly
 **PR**: #361 | **Files**: `src/trigger/autoresearch/autoquality.ts`, `src/autoresearch/autoquality/harness.ts`, `src/trigger/qa/analyze-and-fix.ts`, `.claude/rules/data-quality.md`
 - Reverted AutoQuality from daily to weekly Sunday 2am UTC to reduce Supabase egress (23 GB / 5 GB free plan limit hit)

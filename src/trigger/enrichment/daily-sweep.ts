@@ -60,6 +60,26 @@ function isTimeBudgetExceeded(startTime: number): boolean {
   return Date.now() - startTime >= TIME_BUDGET_MS;
 }
 
+/** Persist an enrichment attempt (success or failure) for a single field on a film row. */
+async function updateEnrichmentStatus(
+  filmId: string,
+  currentStatus: EnrichmentStatus | null,
+  field: keyof EnrichmentStatus,
+  success: boolean,
+  reason?: string,
+  extraFields?: Record<string, unknown>,
+): Promise<void> {
+  const prevAttempts = currentStatus?.[field]?.attempts ?? 0;
+  await db.update(films).set({
+    ...extraFields,
+    enrichmentStatus: {
+      ...(currentStatus ?? {}),
+      [field]: makeAttempt(success, prevAttempts, reason),
+    },
+    updatedAt: new Date(),
+  }).where(eq(films.id, filmId));
+}
+
 export const dailyEnrichmentSweep = schedules.task({
   id: "enrichment-daily-sweep",
   cron: "30 4 * * *", // 4:30am UTC daily
@@ -131,17 +151,9 @@ export const dailyEnrichmentSweep = schedules.task({
           });
 
           if (match && match.confidence >= 0.7) {
-            const prevAttempts = status?.tmdbMatch?.attempts ?? 0;
-            const updatedStatus: EnrichmentStatus = {
-              ...(status ?? {}),
-              tmdbMatch: makeAttempt(true, prevAttempts),
-            };
-
-            await db.update(films).set({
+            await updateEnrichmentStatus(film.filmId, status, "tmdbMatch", true, undefined, {
               tmdbId: match.tmdbId,
-              enrichmentStatus: updatedStatus,
-              updatedAt: new Date(),
-            }).where(eq(films.id, film.filmId));
+            });
 
             stats.tmdbMatched++;
             matchFound = true;
@@ -156,17 +168,10 @@ export const dailyEnrichmentSweep = schedules.task({
       }
 
       if (!matchFound) {
-        const prevAttempts = status?.tmdbMatch?.attempts ?? 0;
-        const updatedStatus: EnrichmentStatus = {
-          ...(status ?? {}),
-          tmdbMatch: makeAttempt(false, prevAttempts, `No match across ${variations.length} variations`),
-        };
-
-        await db.update(films).set({
-          enrichmentStatus: updatedStatus,
-          updatedAt: new Date(),
-        }).where(eq(films.id, film.filmId));
-
+        await updateEnrichmentStatus(
+          film.filmId, status, "tmdbMatch", false,
+          `No match across ${variations.length} variations`,
+        );
         stats.tmdbFailed++;
       }
     }
@@ -237,28 +242,13 @@ export const dailyEnrichmentSweep = schedules.task({
             updates.backdropUrl = `https://image.tmdb.org/t/p/w1280${details.details.backdrop_path}`;
           }
 
-          const prevAttempts = status?.tmdbBackfill?.attempts ?? 0;
-          const updatedStatus: EnrichmentStatus = {
-            ...(status ?? {}),
-            tmdbBackfill: makeAttempt(true, prevAttempts),
-          };
-          updates.enrichmentStatus = updatedStatus;
-
-          await db.update(films).set(updates).where(eq(films.id, film.filmId));
+          await updateEnrichmentStatus(film.filmId, status, "tmdbBackfill", true, undefined, updates);
           stats.tmdbBackfilled++;
           console.log(`[daily-sweep] Backfilled "${film.filmTitle}" from TMDB ${film.tmdbId}`);
         } catch (err) {
           console.warn(`[daily-sweep] Backfill error for "${film.filmTitle}":`, err);
 
-          const prevAttempts = status?.tmdbBackfill?.attempts ?? 0;
-          const updatedStatus: EnrichmentStatus = {
-            ...(status ?? {}),
-            tmdbBackfill: makeAttempt(false, prevAttempts, String(err)),
-          };
-          await db.update(films).set({
-            enrichmentStatus: updatedStatus,
-            updatedAt: new Date(),
-          }).where(eq(films.id, film.filmId));
+          await updateEnrichmentStatus(film.filmId, status, "tmdbBackfill", false, String(err));
         }
 
         await sleep(TMDB_SPACING_MS);
@@ -320,27 +310,13 @@ export const dailyEnrichmentSweep = schedules.task({
           });
 
           if (result.source !== "placeholder") {
-            const prevAttempts = status?.poster?.attempts ?? 0;
-            await db.update(films).set({
+            await updateEnrichmentStatus(film.filmId, status, "poster", true, undefined, {
               posterUrl: result.url,
-              enrichmentStatus: {
-                ...(status ?? {}),
-                poster: makeAttempt(true, prevAttempts),
-              },
-              updatedAt: new Date(),
-            }).where(eq(films.id, film.filmId));
-
+            });
             stats.posters++;
             console.log(`[daily-sweep] Poster found for "${film.filmTitle}" from ${result.source}`);
           } else {
-            const prevAttempts = status?.poster?.attempts ?? 0;
-            await db.update(films).set({
-              enrichmentStatus: {
-                ...(status ?? {}),
-                poster: makeAttempt(false, prevAttempts, "Only placeholder available"),
-              },
-              updatedAt: new Date(),
-            }).where(eq(films.id, film.filmId));
+            await updateEnrichmentStatus(film.filmId, status, "poster", false, "Only placeholder available");
           }
         } catch (err) {
           console.warn(`[daily-sweep] Poster search error for "${film.filmTitle}":`, err);
