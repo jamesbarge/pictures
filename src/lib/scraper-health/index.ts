@@ -85,6 +85,45 @@ export interface HealthAlert {
 // ============================================================================
 
 /**
+ * Detect anomalies from health metrics and determine the alert priority.
+ * Pure function — no side effects or database access.
+ */
+function detectAnomalies(
+  hoursSinceLastScrape: number | null,
+  totalFutureScreenings: number,
+  percentOfChainMedian: number | null,
+): { anomalyReasons: AnomalyReason[]; isAnomaly: boolean; alertType: AlertType | null } {
+  const anomalyReasons: AnomalyReason[] = [];
+
+  if (hoursSinceLastScrape !== null && hoursSinceLastScrape >= HEALTH_THRESHOLDS.CRITICAL_STALE_HOURS) {
+    anomalyReasons.push(ANOMALY_REASONS.CRITICAL_STALE);
+  } else if (hoursSinceLastScrape !== null && hoursSinceLastScrape >= HEALTH_THRESHOLDS.WARNING_STALE_HOURS) {
+    anomalyReasons.push(ANOMALY_REASONS.WARNING_STALE);
+  }
+
+  if (totalFutureScreenings === 0) {
+    anomalyReasons.push(ANOMALY_REASONS.ZERO_SCREENINGS);
+  } else if (percentOfChainMedian !== null && percentOfChainMedian < HEALTH_THRESHOLDS.WARNING_VOLUME_PERCENT) {
+    anomalyReasons.push(ANOMALY_REASONS.LOW_VOLUME);
+  }
+
+  const isAnomaly = anomalyReasons.length > 0;
+
+  let alertType: AlertType | null = null;
+  if (anomalyReasons.includes(ANOMALY_REASONS.CRITICAL_STALE)) {
+    alertType = "critical_stale";
+  } else if (anomalyReasons.includes(ANOMALY_REASONS.ZERO_SCREENINGS)) {
+    alertType = "critical_volume";
+  } else if (anomalyReasons.includes(ANOMALY_REASONS.WARNING_STALE)) {
+    alertType = "warning_stale";
+  } else if (anomalyReasons.includes(ANOMALY_REASONS.LOW_VOLUME)) {
+    alertType = "warning_volume";
+  }
+
+  return { anomalyReasons, isAnomaly, alertType };
+}
+
+/**
  * Get health metrics for a single cinema
  */
 export async function getCinemaHealthMetrics(cinemaId: string): Promise<CinemaHealthMetrics | null> {
@@ -175,34 +214,10 @@ export async function getCinemaHealthMetrics(cinemaId: string): Promise<CinemaHe
   // Calculate overall health score (weighted average)
   const overallHealthScore = Math.round(freshnessScore * 0.6 + volumeScore * 0.4);
 
-  // Detect anomalies
-  const anomalyReasons: AnomalyReason[] = [];
-
-  if (hoursSinceLastScrape !== null && hoursSinceLastScrape >= HEALTH_THRESHOLDS.CRITICAL_STALE_HOURS) {
-    anomalyReasons.push(ANOMALY_REASONS.CRITICAL_STALE);
-  } else if (hoursSinceLastScrape !== null && hoursSinceLastScrape >= HEALTH_THRESHOLDS.WARNING_STALE_HOURS) {
-    anomalyReasons.push(ANOMALY_REASONS.WARNING_STALE);
-  }
-
-  if (totalFutureScreenings === 0) {
-    anomalyReasons.push(ANOMALY_REASONS.ZERO_SCREENINGS);
-  } else if (percentOfChainMedian !== null && percentOfChainMedian < HEALTH_THRESHOLDS.WARNING_VOLUME_PERCENT) {
-    anomalyReasons.push(ANOMALY_REASONS.LOW_VOLUME);
-  }
-
-  const isAnomaly = anomalyReasons.length > 0;
-
-  // Determine alert type
-  let alertType: AlertType | null = null;
-  if (anomalyReasons.includes(ANOMALY_REASONS.CRITICAL_STALE)) {
-    alertType = "critical_stale";
-  } else if (anomalyReasons.includes(ANOMALY_REASONS.ZERO_SCREENINGS)) {
-    alertType = "critical_volume";
-  } else if (anomalyReasons.includes(ANOMALY_REASONS.WARNING_STALE)) {
-    alertType = "warning_stale";
-  } else if (anomalyReasons.includes(ANOMALY_REASONS.LOW_VOLUME)) {
-    alertType = "warning_volume";
-  }
+  // Detect anomalies and determine alert priority
+  const { anomalyReasons, isAnomaly, alertType } = detectAnomalies(
+    hoursSinceLastScrape, totalFutureScreenings, percentOfChainMedian,
+  );
 
   return {
     cinemaId: canonicalId,
