@@ -1,3 +1,11 @@
+## 2026-03-15: Reduce Supabase egress — AutoQuality back to weekly
+**PR**: #361 | **Files**: `src/trigger/autoresearch/autoquality.ts`, `src/autoresearch/autoquality/harness.ts`, `src/trigger/qa/analyze-and-fix.ts`, `.claude/rules/data-quality.md`
+- Reverted AutoQuality from daily to weekly Sunday 2am UTC to reduce Supabase egress (23 GB / 5 GB free plan limit hit)
+- Reduced MAX_EXPERIMENTS from 5 to 3 per run (each experiment runs a full audit pass)
+- Net reduction: ~180 audit passes/month → ~16 (11x reduction in AutoQuality DB reads)
+
+---
+
 ## 2026-03-15: Kaizen — Extract anomaly detection in scraper runner
 **PR**: #359 | **Files**: `src/scrapers/runner-factory.ts`
 - Extracted `detectAnomaly()` from `recordScraperRun()` to isolate baseline deviation logic with nested ternaries and inline math

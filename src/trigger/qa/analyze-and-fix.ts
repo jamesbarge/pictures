@@ -385,7 +385,7 @@ export const qaAnalyzeAndFix = task({
             "enrichment-letterboxd: Weekly Monday 8am UTC",
             "qa-orchestrator: Daily 6am UTC",
             "autoscrape-nightly: Daily 1am UTC (skip Mon)",
-            "autoquality-daily: Daily 2am UTC",
+            "autoquality-weekly: Sunday 2am UTC",
           ].join("\n"),
         });
       } catch (err) {

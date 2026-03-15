@@ -28,8 +28,9 @@ import { eq, desc } from "drizzle-orm";
 
 const PROGRAM_PATH = join(__dirname, "program.md");
 
-/** Maximum experiments per weekly run (kept low for one-at-a-time + cross-run memory) */
-const MAX_EXPERIMENTS = 5;
+/** Maximum experiments per weekly run (kept low for one-at-a-time + cross-run memory).
+ * Reduced from 5 to 3 to limit Supabase egress — each experiment runs a full audit pass. */
+const MAX_EXPERIMENTS = 3;
 
 // ---------------------------------------------------------------------------
 // DQS Computation

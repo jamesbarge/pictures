@@ -3,7 +3,7 @@
  *
  * Two exports following the QA orchestrator pattern:
  *   1. autoQualityRun — Regular task (API-triggerable, 60 min budget)
- *   2. autoQualitySchedule — Cron wrapper (daily 2am UTC)
+ *   2. autoQualitySchedule — Cron wrapper (weekly Sunday 2am UTC)
  *
  * The cron wrapper delegates to autoQualityRun so that both scheduled
  * and on-demand triggers use the same task type.
@@ -35,10 +35,12 @@ export const autoQualityRun = task({
   },
 });
 
-// ── Cron wrapper: daily 2am UTC ──────────────────────────────────────
+// ── Cron wrapper: weekly Sunday 2am UTC ─────────────────────────────
+// Reduced from daily to weekly to stay within Supabase Free Plan egress (5 GB/month).
+// Each run does 1 baseline + N experiment audit passes — heavy reads.
 export const autoQualitySchedule = schedules.task({
-  id: "autoquality-daily",
-  cron: "0 2 * * *", // Daily 2am UTC
+  id: "autoquality-weekly",
+  cron: "0 2 * * 0", // Weekly Sunday 2am UTC
   maxDuration: 3600,
   retry: { maxAttempts: 0 },
   run: async () => {

@@ -38,7 +38,7 @@ The autoresearch system in `src/autoresearch/` runs AI-driven experiments to imp
 | System | What it does | Metric | Schedule |
 |--------|-------------|--------|----------|
 | AutoScrape | Repairs broken scrapers via config overlays | Screening Yield Score (0-100) | Nightly 1am UTC |
-| AutoQuality | Tunes audit thresholds one-at-a-time | Data Quality Score (0-100) | Daily 2am UTC |
+| AutoQuality | Tunes audit thresholds one-at-a-time | Data Quality Score (0-100) | Weekly Sunday 2am UTC |
 
 ### Key files
 - `src/autoresearch/types.ts` — Shared types (ExperimentResult, OvernightSummary)
