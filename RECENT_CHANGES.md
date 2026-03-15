@@ -1,3 +1,10 @@
+## 2026-03-15: Kaizen — Extract follow-merge helpers in festival sync route
+**PR**: #358 | **Files**: `src/app/api/user/festivals/sync/route.ts`
+- Extracted `fetchFestivalMeta()` and `toMergedFollow()` to deduplicate 2x identical DB lookups and 2x near-identical object construction in the bidirectional sync handler
+- Kaizen automated refactoring (category: readability)
+
+---
+
 ## 2026-03-15: Kaizen — Dedup screening creation in Cine Lumiere scraper
 **PR**: #357 | **Files**: `src/scrapers/cinemas/cine-lumiere.ts`
 - Extracted `addScreeningIfValid()` helper to replace 3x duplicated screening-creation blocks
