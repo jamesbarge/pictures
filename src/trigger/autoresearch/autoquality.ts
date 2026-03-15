@@ -3,7 +3,7 @@
  *
  * Two exports following the QA orchestrator pattern:
  *   1. autoQualityRun — Regular task (API-triggerable, 60 min budget)
- *   2. autoQualitySchedule — Cron wrapper (Sunday 2am UTC weekly)
+ *   2. autoQualitySchedule — Cron wrapper (daily 2am UTC)
  *
  * The cron wrapper delegates to autoQualityRun so that both scheduled
  * and on-demand triggers use the same task type.
@@ -35,10 +35,10 @@ export const autoQualityRun = task({
   },
 });
 
-// ── Cron wrapper: Sunday 2am UTC weekly ──────────────────────────────
+// ── Cron wrapper: daily 2am UTC ──────────────────────────────────────
 export const autoQualitySchedule = schedules.task({
-  id: "autoquality-weekly",
-  cron: "0 2 * * 0", // Sunday 2am UTC
+  id: "autoquality-daily",
+  cron: "0 2 * * *", // Daily 2am UTC
   maxDuration: 3600,
   retry: { maxAttempts: 0 },
   run: async () => {
