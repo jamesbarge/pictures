@@ -165,6 +165,56 @@ export class RomfordLumiereScraper {
     return allScreenings;
   }
 
+  /**
+   * Extract screenings from CineSync date-wrapper sections.
+   * Each date wrapper contains movie cards with time buttons.
+   */
+  private extractFromDateWrappers(
+    $: ReturnType<typeof cheerio.load>,
+    now: Date,
+    endOfApril: Date,
+  ): RawScreening[] {
+    const screenings: RawScreening[] = [];
+    const dateWrappers = $(".moviedateswrap");
+    console.log(`[${this.config.cinemaId}] Found ${dateWrappers.length} date wrappers`);
+
+    dateWrappers.each((_, dateWrapper) => {
+      const $dateWrapper = $(dateWrapper);
+      const dateText = $dateWrapper.find('h3, h4, [class*="date-header"], .date').first().text().trim()
+        || $dateWrapper.text().match(/\d{1,2}\s+\w+|\w+day\s+\d{1,2}/i)?.[0]
+        || '';
+
+      if (!dateText) return;
+
+      const movieCards = $dateWrapper.find('.pc-moviewrap').length > 0
+        ? $dateWrapper.find('.pc-moviewrap')
+        : $dateWrapper.nextUntil('.moviedateswrap').find('.pc-moviewrap');
+
+      movieCards.each((_, card) => {
+        const $card = $(card);
+        const title = $card.find('.pc-movie-detail-wrap h3, .pc-movie-detail-wrap h4, h3, h4').first().text().trim();
+        if (!title || title.length < 2) return;
+
+        $card.find('.pc-movie-time-wrap button, .pc-movie-time-wrap a, [class*="time"] button').each((_, timeEl) => {
+          const timeText = $(timeEl).text().trim();
+          if (/^\d{1,2}[:.:]\d{2}\s*(?:am|pm)?$/i.test(timeText)) {
+            const datetime = this.parseShowtimeDateTime(dateText, timeText);
+            if (datetime && datetime > now && datetime <= endOfApril) {
+              const sourceId = `romford-lumiere-${slugify(title)}-${datetime.toISOString()}`;
+              screenings.push({
+                filmTitle: this.cleanTitle(title),
+                datetime,
+                bookingUrl: `${this.config.baseUrl}/en/buy-tickets`,
+                sourceId,
+              });
+            }
+          }
+        });
+      });
+    });
+    return screenings;
+  }
+
   private async extractScreeningsDirectly(): Promise<RawScreening[]> {
     if (!this.page) return [];
 
@@ -178,53 +228,9 @@ export class RomfordLumiereScraper {
 
       console.log(`[${this.config.cinemaId}] Direct extraction using CineSync selectors...`);
 
-      // CineSync structure: .pc-moviewrap contains film cards
-      // Each card has .pc-movie-detail-wrap for title and .pc-movie-time-wrap for times
-      // Dates are in .moviedateswrap
-
-      // First, try to find date sections and iterate through them
-      const dateWrappers = $('.moviedateswrap');
-      console.log(`[${this.config.cinemaId}] Found ${dateWrappers.length} date wrappers`);
-
-      if (dateWrappers.length > 0) {
-        dateWrappers.each((_, dateWrapper) => {
-          const $dateWrapper = $(dateWrapper);
-          // Find date text - usually in a heading or specific date element
-          const dateText = $dateWrapper.find('h3, h4, [class*="date-header"], .date').first().text().trim()
-            || $dateWrapper.text().match(/\d{1,2}\s+\w+|\w+day\s+\d{1,2}/i)?.[0]
-            || '';
-
-          if (!dateText) return;
-
-          // Find all movie cards within or after this date section
-          const movieCards = $dateWrapper.find('.pc-moviewrap').length > 0
-            ? $dateWrapper.find('.pc-moviewrap')
-            : $dateWrapper.nextUntil('.moviedateswrap').find('.pc-moviewrap');
-
-          movieCards.each((_, card) => {
-            const $card = $(card);
-            const title = $card.find('.pc-movie-detail-wrap h3, .pc-movie-detail-wrap h4, h3, h4').first().text().trim();
-            if (!title || title.length < 2) return;
-
-            // Find times in .pc-movie-time-wrap
-            $card.find('.pc-movie-time-wrap button, .pc-movie-time-wrap a, [class*="time"] button').each((_, timeEl) => {
-              const timeText = $(timeEl).text().trim();
-              if (/^\d{1,2}[:.]\d{2}\s*(?:am|pm)?$/i.test(timeText)) {
-                const datetime = this.parseShowtimeDateTime(dateText, timeText);
-                if (datetime && datetime > now && datetime <= endOfApril) {
-                  const sourceId = `romford-lumiere-${slugify(title)}-${datetime.toISOString()}`;
-                  screenings.push({
-                    filmTitle: this.cleanTitle(title),
-                    datetime,
-                    bookingUrl: `${this.config.baseUrl}/en/buy-tickets`,
-                    sourceId,
-                  });
-                }
-              }
-            });
-          });
-        });
-      }
+      // Primary: Extract from CineSync date-wrapper sections
+      const dateScreenings = this.extractFromDateWrappers($, now, endOfApril);
+      if (dateScreenings.length > 0) return dateScreenings;
 
       // Fallback: Look for any visible film/time combinations with CineSync classes
       if (screenings.length === 0) {
