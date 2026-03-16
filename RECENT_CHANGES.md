@@ -1,4 +1,11 @@
 ## 2026-03-16: Kaizen — extract saveByVenue in BFI PDF importer
+## 2026-03-16: Kaizen — Extract Date Wrapper Parsing in Romford Scraper
+**PR**: #375 | **Files**: `src/scrapers/cinemas/romford-lumiere.ts`
+- Extracted `extractFromDateWrappers()` from `extractScreeningsDirectly()`
+- Kaizen automated refactoring (category: readability)
+
+---
+
 ## 2026-03-16: Kaizen — Extract Deletion Helpers in BFI Cleanup
 **PR**: #374 | **Files**: `src/scrapers/bfi-pdf/cleanup.ts`
 - Extracted `deleteGhostScreenings()` and `deleteOrphanFilms()` from `runBFICleanup()`
