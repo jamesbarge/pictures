@@ -1,3 +1,10 @@
+## 2026-03-16: Kaizen — extract saveByVenue in BFI PDF importer
+**PR**: #373 | **Files**: `src/scrapers/bfi-pdf/importer.ts`
+- Extracted duplicated venue-grouping + save logic into shared `saveByVenue()` helper (net -28 lines)
+- Kaizen automated refactoring (category: readability)
+
+---
+
 ## 2026-03-16: Kaizen — extract detectAnomalies in scraper health service
 **PR**: #372 | **Files**: `src/lib/scraper-health/index.ts`
 - Extracted anomaly detection and alert type determination into pure `detectAnomalies()` helper
