@@ -1,4 +1,12 @@
 ## 2026-03-16: Kaizen — extract saveByVenue in BFI PDF importer
+## 2026-03-16: Kaizen — Extract extractFromJson in Close-Up scraper
+**PR**: #377 | **Files**: `src/scrapers/cinemas/close-up.ts`
+- Extracted 36-line inline JSON extraction into `extractFromJson()` method
+- Now mirrors `extractFromHtml()` — same signature, symmetric data sources
+- Kaizen automated refactoring (category: readability)
+
+---
+
 ## 2026-03-16: Kaizen — Extract scrapeDateCell from BFI fetchAllDates
 **PR**: #376 | **Files**: `src/scrapers/cinemas/bfi.ts`
 - Extracted 48-line inner loop body into `scrapeDateCell()` method

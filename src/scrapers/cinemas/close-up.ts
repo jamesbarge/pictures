@@ -103,43 +103,12 @@ export class CloseUpCinemaScraper extends BaseScraper {
       const html = htmlPages[i];
       const isHomepage = i === 0;
 
+
       // 1. Extract from JSON data (only on homepage)
       if (isHomepage) {
-        const showsData = this.extractShowsJson(html);
-
-        if (showsData && showsData.length > 0) {
-          console.log(`[${this.config.cinemaId}] Found ${showsData.length} shows in JSON`);
-
-          for (const show of showsData) {
-            if (!show.title || !show.show_time) continue;
-            if (show.status !== "1") continue;
-
-            const datetime = this.parseDateTime(show.show_time);
-            if (!datetime || isNaN(datetime.getTime())) continue;
-            if (datetime < now) continue;
-
-            let bookingUrl = show.blink;
-            if (!bookingUrl && show.film_url) {
-              bookingUrl = normalizeUrl(show.film_url, this.config.baseUrl);
-            }
-            if (!bookingUrl) continue;
-
-            const sourceId = `close-up-${show.id}-${datetime.toISOString()}`;
-            const dedupeKey = `${show.title.trim().toLowerCase()}-${datetime.toISOString()}`;
-
-            if (!seenKeys.has(dedupeKey)) {
-              seenKeys.add(dedupeKey);
-              jsonCount++;
-              screenings.push({
-                filmTitle: show.title.trim(),
-                datetime,
-                bookingUrl,
-                sourceId,
-                ...FestivalDetector.detect("close-up-cinema", show.title.trim(), datetime, bookingUrl),
-              });
-            }
-          }
-        }
+        const jsonScreenings = this.extractFromJson(html, now, seenKeys);
+        jsonCount += jsonScreenings.length;
+        screenings.push(...jsonScreenings);
       }
 
       // 2. Extract from HTML listings (all pages)
@@ -151,6 +120,50 @@ export class CloseUpCinemaScraper extends BaseScraper {
     console.log(`[${this.config.cinemaId}] Found ${screenings.length} future screenings (JSON: ${jsonCount}, HTML: ${htmlCount})`);
     return screenings;
   }
+
+  /**
+   * Extract screenings from the embedded JSON shows data on the homepage.
+   * Mirrors extractFromHtml — same signature, different data source.
+   */
+  private extractFromJson(html: string, now: Date, seenKeys: Set<string>): RawScreening[] {
+    const showsData = this.extractShowsJson(html);
+    if (!showsData || showsData.length === 0) return [];
+
+    console.log(`[${this.config.cinemaId}] Found ${showsData.length} shows in JSON`);
+    const screenings: RawScreening[] = [];
+
+    for (const show of showsData) {
+      if (!show.title || !show.show_time) continue;
+      if (show.status !== "1") continue;
+
+      const datetime = this.parseDateTime(show.show_time);
+      if (!datetime || isNaN(datetime.getTime())) continue;
+      if (datetime < now) continue;
+
+      let bookingUrl = show.blink;
+      if (!bookingUrl && show.film_url) {
+        bookingUrl = normalizeUrl(show.film_url, this.config.baseUrl);
+      }
+      if (!bookingUrl) continue;
+
+      const sourceId = `close-up-${show.id}-${datetime.toISOString()}`;
+      const dedupeKey = `${show.title.trim().toLowerCase()}-${datetime.toISOString()}`;
+
+      if (!seenKeys.has(dedupeKey)) {
+        seenKeys.add(dedupeKey);
+        screenings.push({
+          filmTitle: show.title.trim(),
+          datetime,
+          bookingUrl,
+          sourceId,
+          ...FestivalDetector.detect("close-up-cinema", show.title.trim(), datetime, bookingUrl),
+        });
+      }
+    }
+
+    return screenings;
+  }
+
 
   /**
    * Extract screenings from HTML listing blocks
