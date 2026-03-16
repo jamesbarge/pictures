@@ -1,4 +1,12 @@
 ## 2026-03-16: Kaizen — extract saveByVenue in BFI PDF importer
+## 2026-03-16: Kaizen — Extract retryFailedChecks from booking checker
+**PR**: #378 | **Files**: `src/trigger/qa/utils/booking-checker.ts`
+- Extracted 42-line retry pass into standalone `retryFailedChecks()` function
+- `checkBookingLinks` now reads as: first pass → retry failures → return
+- Kaizen automated refactoring (category: readability)
+
+---
+
 ## 2026-03-16: Kaizen — Extract extractFromJson in Close-Up scraper
 **PR**: #377 | **Files**: `src/scrapers/cinemas/close-up.ts`
 - Extracted 36-line inline JSON extraction into `extractFromJson()` method
