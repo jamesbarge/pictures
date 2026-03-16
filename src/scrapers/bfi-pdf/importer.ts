@@ -306,42 +306,9 @@ export async function runBFIImport(context?: ImportContext): Promise<ImportResul
     pushError(errors, "NO_SCREENINGS_PARSED", "No screenings found from PDF or programme changes");
   }
 
-  // Step 5: Group by venue and save
-  const southbankScreenings = allScreenings.filter((s) => getVenueKey(s) === "bfi-southbank");
-
-  const imaxScreenings = allScreenings.filter((s) => getVenueKey(s) === "bfi-imax");
-
-  let totalAdded = 0;
-  let totalUpdated = 0;
-  let totalFailed = 0;
-
-  // Save BFI Southbank screenings
-  if (southbankScreenings.length > 0) {
-    console.log(`[BFI-Import] Saving ${southbankScreenings.length} BFI Southbank screenings...`);
-    try {
-      const result = await saveScreenings("bfi-southbank", southbankScreenings);
-      totalAdded += result.added;
-      totalUpdated += result.updated;
-      totalFailed += result.failed;
-      console.log(`[BFI-Import] BFI Southbank: added=${result.added}, updated=${result.updated}, failed=${result.failed}`);
-    } catch (error) {
-      pushError(errors, "SAVE_SOUTHBANK_FAILED", `Failed to save Southbank screenings: ${error}`);
-    }
-  }
-
-  // Save BFI IMAX screenings
-  if (imaxScreenings.length > 0) {
-    console.log(`[BFI-Import] Saving ${imaxScreenings.length} BFI IMAX screenings...`);
-    try {
-      const result = await saveScreenings("bfi-imax", imaxScreenings);
-      totalAdded += result.added;
-      totalUpdated += result.updated;
-      totalFailed += result.failed;
-      console.log(`[BFI-Import] BFI IMAX: added=${result.added}, updated=${result.updated}, failed=${result.failed}`);
-    } catch (error) {
-      pushError(errors, "SAVE_IMAX_FAILED", `Failed to save IMAX screenings: ${error}`);
-    }
-  }
+  // Step 5: Save screenings grouped by venue
+  const { added: totalAdded, updated: totalUpdated, failed: totalFailed } =
+    await saveByVenue(allScreenings, errors);
 
   const durationMs = Date.now() - startTime;
 
@@ -421,39 +388,8 @@ export async function runProgrammeChangesImport(context?: ImportContext): Promis
   }
 
   // Group and save
-  const southbankScreenings = changesResult.screenings.filter(
-    (s) => getVenueKey(s) === "bfi-southbank"
-  );
-
-  const imaxScreenings = changesResult.screenings.filter(
-    (s) => getVenueKey(s) === "bfi-imax"
-  );
-
-  let totalAdded = 0;
-  let totalUpdated = 0;
-  let totalFailed = 0;
-
-  if (southbankScreenings.length > 0) {
-    try {
-      const result = await saveScreenings("bfi-southbank", southbankScreenings);
-      totalAdded += result.added;
-      totalUpdated += result.updated;
-      totalFailed += result.failed;
-    } catch (error) {
-      pushError(errors, "SAVE_SOUTHBANK_FAILED", `Failed to save Southbank: ${error}`);
-    }
-  }
-
-  if (imaxScreenings.length > 0) {
-    try {
-      const result = await saveScreenings("bfi-imax", imaxScreenings);
-      totalAdded += result.added;
-      totalUpdated += result.updated;
-      totalFailed += result.failed;
-    } catch (error) {
-      pushError(errors, "SAVE_IMAX_FAILED", `Failed to save IMAX: ${error}`);
-    }
-  }
+  const { added: totalAdded, updated: totalUpdated, failed: totalFailed } =
+    await saveByVenue(changesResult.screenings, errors);
 
   const result = toImportResult({
     pdfScreenings: 0,
@@ -473,6 +409,42 @@ export async function runProgrammeChangesImport(context?: ImportContext): Promis
     allowEmpty: true,
   });
   return finalizeImportResult(result, "changes", startedAt, context?.triggeredBy);
+}
+
+/**
+ * Group screenings by BFI venue and save each batch.
+ * Shared between full import and programme-changes-only import.
+ */
+async function saveByVenue(
+  allScreenings: RawScreening[],
+  errors: ImportError[],
+): Promise<{ added: number; updated: number; failed: number }> {
+  const venues = [
+    { id: "bfi-southbank", name: "BFI Southbank", errorCode: "SAVE_SOUTHBANK_FAILED" },
+    { id: "bfi-imax", name: "BFI IMAX", errorCode: "SAVE_IMAX_FAILED" },
+  ] as const;
+
+  let totalAdded = 0;
+  let totalUpdated = 0;
+  let totalFailed = 0;
+
+  for (const venue of venues) {
+    const venueScreenings = allScreenings.filter((s) => getVenueKey(s) === venue.id);
+    if (venueScreenings.length === 0) continue;
+
+    console.log(`[BFI-Import] Saving ${venueScreenings.length} ${venue.name} screenings...`);
+    try {
+      const result = await saveScreenings(venue.id, venueScreenings);
+      totalAdded += result.added;
+      totalUpdated += result.updated;
+      totalFailed += result.failed;
+      console.log(`[BFI-Import] ${venue.name}: added=${result.added}, updated=${result.updated}, failed=${result.failed}`);
+    } catch (error) {
+      pushError(errors, venue.errorCode, `Failed to save ${venue.name} screenings: ${error}`);
+    }
+  }
+
+  return { added: totalAdded, updated: totalUpdated, failed: totalFailed };
 }
 
 /**
