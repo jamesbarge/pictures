@@ -1,4 +1,12 @@
 ## 2026-03-16: Kaizen — extract saveByVenue in BFI PDF importer
+## 2026-03-16: Kaizen — Extract scrapeDateCell from BFI fetchAllDates
+**PR**: #376 | **Files**: `src/scrapers/cinemas/bfi.ts`
+- Extracted 48-line inner loop body into `scrapeDateCell()` method
+- Reduces nesting depth from 7 to 4 in `fetchAllDates`
+- Kaizen automated refactoring (category: readability)
+
+---
+
 ## 2026-03-16: Kaizen — Extract Date Wrapper Parsing in Romford Scraper
 **PR**: #375 | **Files**: `src/scrapers/cinemas/romford-lumiere.ts`
 - Extracted `extractFromDateWrappers()` from `extractScreeningsDirectly()`

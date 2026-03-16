@@ -128,6 +128,50 @@ export class BFIScraper {
     }
   }
 
+  /**
+   * Scrape screenings for a single date cell, then navigate back to the calendar.
+   * Returns null when the date index exceeds available cells (signals loop to stop).
+   */
+  private async scrapeDateCell(dateIndex: number, monthNum: number): Promise<RawScreening[] | null> {
+    if (!this.page) return null;
+    const currentCells = await this.page.$$('[role="gridcell"]:not([aria-disabled="true"])');
+    if (dateIndex >= currentCells.length) return null;
+
+    const cell = currentCells[dateIndex];
+    const dateLabel = await cell.getAttribute("aria-label") || await cell.textContent() || "";
+    console.log(`[${this.config.cinemaId}] Clicking: ${dateLabel.trim()}...`);
+
+    await cell.click();
+    await this.page.waitForTimeout(2000);
+    await waitForCloudflare(this.page, 10);
+
+    const html = await this.page.content();
+    const dayScreenings = this.parseSearchResults(html);
+    if (dayScreenings.length > 0) {
+      console.log(`[${this.config.cinemaId}] ${dateLabel.trim()}: ${dayScreenings.length} screenings`);
+    }
+
+    // Return to calendar
+    await this.page.goto(`${this.venue.baseUrl}/default.asp`, {
+      waitUntil: "domcontentloaded",
+      timeout: 30000,
+    });
+    await waitForCloudflare(this.page, 10);
+    await this.page.waitForTimeout(1500);
+
+    // Navigate back to the same month we were scraping
+    for (let m = 0; m <= monthNum; m++) {
+      const nextBtn = this.page.getByRole('button', { name: 'Next month' });
+      if (await nextBtn.count() > 0) {
+        await nextBtn.click();
+        await this.page.waitForTimeout(1000);
+      }
+    }
+
+    return dayScreenings;
+  }
+
+
   private async fetchAllDates(): Promise<RawScreening[]> {
     if (!this.page) throw new Error("Browser not initialized");
 
@@ -163,51 +207,17 @@ export class BFIScraper {
         // Click each date to get screenings
         for (let i = 0; i < dateCells.length; i++) {
           try {
-            // Re-query cells after navigation
-            const currentCells = await this.page.$$('[role="gridcell"]:not([aria-disabled="true"])');
-            if (i >= currentCells.length) break;
-
-            const cell = currentCells[i];
-            const dateLabel = await cell.getAttribute("aria-label") || await cell.textContent() || "";
-
-            console.log(`[${this.config.cinemaId}] Clicking: ${dateLabel.trim()}...`);
-
-            await cell.click();
-            await this.page.waitForTimeout(2000);
-            await waitForCloudflare(this.page, 10);
-
-            const html = await this.page.content();
-            const dayScreenings = this.parseSearchResults(html);
-
-            if (dayScreenings.length > 0) {
-              console.log(`[${this.config.cinemaId}] ${dateLabel.trim()}: ${dayScreenings.length} screenings`);
-              screenings.push(...dayScreenings);
-            }
-
-            // Return to calendar
-            await this.page.goto(`${this.venue.baseUrl}/default.asp`, {
-              waitUntil: "domcontentloaded",
-              timeout: 30000,
-            });
-            await waitForCloudflare(this.page, 10);
-            await this.page.waitForTimeout(1500);
-
-            // Navigate back to the same month we were scraping
-            for (let m = 0; m <= monthNum; m++) {
-              const nextBtn = this.page.getByRole('button', { name: 'Next month' });
-              if (await nextBtn.count() > 0) {
-                await nextBtn.click();
-                await this.page.waitForTimeout(1000);
-              }
-            }
+            const dayScreenings = await this.scrapeDateCell(i, monthNum);
+            if (!dayScreenings) break;
+            screenings.push(...dayScreenings);
           } catch (error) {
             console.error(`[${this.config.cinemaId}] Error on date ${i}:`, error);
             // Try to recover
-            await this.page.goto(`${this.venue.baseUrl}/default.asp`, {
+            await this.page!.goto(`${this.venue.baseUrl}/default.asp`, {
               waitUntil: "domcontentloaded",
               timeout: 30000,
             }).catch(() => {});
-            await this.page.waitForTimeout(2000);
+            await this.page!.waitForTimeout(2000);
           }
         }
 
