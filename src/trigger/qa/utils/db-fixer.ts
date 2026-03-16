@@ -266,37 +266,8 @@ export async function applyFixes(
   const otherIssues = issues.filter((i) => i.type !== "stale_screening");
 
   if (staleIssues.length > 0) {
-    const staleIds = staleIssues.map((i) => i.entityId);
-
-    if (dryRun) {
-      console.log(
-        `[qa-fixer] DRY RUN: would bulk-delete ${staleIds.length} stale screenings`
-      );
-      for (const issue of staleIssues) {
-        results.push({ issue, applied: false, action: "deleted_stale_screening", note: "dry run" });
-      }
-    } else {
-      try {
-        // Bulk delete in batches of 100
-        for (let i = 0; i < staleIds.length; i += 100) {
-          const batch = staleIds.slice(i, i + 100);
-          await db.delete(screenings).where(inArray(screenings.id, batch));
-        }
-        console.log(`[qa-fixer] Bulk-deleted ${staleIds.length} stale screenings`);
-        for (const issue of staleIssues) {
-          results.push({ issue, applied: true, action: "deleted_stale_screening", note: "bulk deleted" });
-        }
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.error(`[qa-fixer] Bulk stale delete failed: ${msg}`);
-        for (const issue of staleIssues) {
-          results.push({ issue, applied: false, action: "flagged_for_review", note: `Bulk delete failed: ${msg}` });
-        }
-      }
-    }
-
-    // Batch insert audit records for stale screenings
-    await batchInsertAuditRecords(staleIssues, !dryRun);
+    const staleResults = await bulkDeleteStaleScreenings(staleIssues, dryRun);
+    results.push(...staleResults);
   }
 
   // ── Process remaining issues individually ──
@@ -308,6 +279,47 @@ export async function applyFixes(
   console.log(
     `[qa-fixer] Batch complete: ${results.filter((r) => r.applied).length}/${results.length} fixes applied`
   );
+  return results;
+}
+
+/**
+ * Bulk-delete stale screenings in batches of 100.
+ * Handles dry-run mode, error recovery, and audit record insertion.
+ */
+async function bulkDeleteStaleScreenings(
+  staleIssues: ClassifiedIssue[],
+  dryRun: boolean,
+): Promise<FixResult[]> {
+  const results: FixResult[] = [];
+  const staleIds = staleIssues.map((i) => i.entityId);
+
+  if (dryRun) {
+    console.log(
+      `[qa-fixer] DRY RUN: would bulk-delete ${staleIds.length} stale screenings`
+    );
+    for (const issue of staleIssues) {
+      results.push({ issue, applied: false, action: "deleted_stale_screening", note: "dry run" });
+    }
+  } else {
+    try {
+      for (let i = 0; i < staleIds.length; i += 100) {
+        const batch = staleIds.slice(i, i + 100);
+        await db.delete(screenings).where(inArray(screenings.id, batch));
+      }
+      console.log(`[qa-fixer] Bulk-deleted ${staleIds.length} stale screenings`);
+      for (const issue of staleIssues) {
+        results.push({ issue, applied: true, action: "deleted_stale_screening", note: "bulk deleted" });
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[qa-fixer] Bulk stale delete failed: ${msg}`);
+      for (const issue of staleIssues) {
+        results.push({ issue, applied: false, action: "flagged_for_review", note: `Bulk delete failed: ${msg}` });
+      }
+    }
+  }
+
+  await batchInsertAuditRecords(staleIssues, !dryRun);
   return results;
 }
 

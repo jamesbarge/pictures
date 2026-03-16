@@ -1,4 +1,11 @@
 ## 2026-03-16: Kaizen — extract saveByVenue in BFI PDF importer
+## 2026-03-16: Kaizen — extract bulkDeleteStaleScreenings in QA fixer
+**PR**: #380 | **Files**: `src/trigger/qa/utils/db-fixer.ts`
+- Extracted 33-line stale screening bulk-delete block into `bulkDeleteStaleScreenings()` function
+- Kaizen automated refactoring (category: readability)
+
+---
+
 ## 2026-03-16: Kaizen — extract convertShowings in Regent Street scraper
 **PR**: #379 | **Files**: `src/scrapers/cinemas/regent-street.ts`
 - Extracted 30-line showing conversion loop into `convertShowings()` method
