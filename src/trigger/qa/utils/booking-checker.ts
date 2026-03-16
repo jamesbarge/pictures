@@ -180,6 +180,61 @@ async function checkSingleUrl(
   }
 }
 
+
+/**
+ * Retry failed booking URL checks with stealth escalation and budget constraints.
+ * Mutates the results array in place, updating entries at the retry queue indices.
+ */
+async function retryFailedChecks(
+  retryQueue: { index: number; entry: BookingUrlToCheck }[],
+  results: BookingCheck[],
+  maxRetries: number,
+  retryBudgetMs: number,
+): Promise<void> {
+  const retryCount = Math.min(retryQueue.length, maxRetries);
+  console.log(`[qa-booking] Retrying ${retryCount} failed URLs (budget ${retryBudgetMs}ms)`);
+
+  // Wait before retries
+  await new Promise((r) => setTimeout(r, 5_000));
+
+  const retryStart = Date.now();
+
+  for (let i = 0; i < retryCount; i++) {
+    if (Date.now() - retryStart > retryBudgetMs) {
+      console.log(`[qa-booking] Retry budget exhausted after ${i} retries`);
+      break;
+    }
+
+    const { index, entry } = retryQueue[i];
+    const firstUsedStealth = results[index].usedStealth;
+    // If first attempt was non-stealth, escalate to stealth on retry
+    const forceStealth = !firstUsedStealth;
+
+    console.log(
+      `[qa-booking] Retry [${i + 1}/${retryCount}] ${entry.url} (stealth=${forceStealth || needsStealth(entry.url)})`,
+    );
+
+    const retryResult = await checkSingleUrl(entry, forceStealth);
+
+    results[index].secondAttemptStatus = retryResult.status;
+    results[index].usedStealth = results[index].usedStealth || retryResult.usedStealth;
+
+    // Update detected info if retry succeeded
+    if (
+      typeof retryResult.status === "number" &&
+      retryResult.status < 400 &&
+      retryResult.detectedTitle
+    ) {
+      results[index].detectedFilmTitle = retryResult.detectedTitle;
+      results[index].detectedTime = retryResult.detectedTime;
+      results[index].confidence = titleConfidence(
+        retryResult.detectedTitle,
+        entry.expectedTitle,
+      );
+    }
+  }
+}
+
 // ── Main export ────────────────────────────────────────────────
 
 /** Verify a batch of cinema booking URLs are reachable and return the expected HTTP status, with retry and rate-limiting. */
@@ -233,50 +288,10 @@ export async function checkBookingLinks(params: {
     }
   }
 
+
   // ── Retry pass ───────────────────────────────────────────────
   if (retryQueue.length > 0) {
-    const retryCount = Math.min(retryQueue.length, maxRetries);
-    console.log(`[qa-booking] Retrying ${retryCount} failed URLs (budget ${retryBudgetMs}ms)`);
-
-    // Wait before retries
-    await new Promise((r) => setTimeout(r, 5_000));
-
-    const retryStart = Date.now();
-
-    for (let i = 0; i < retryCount; i++) {
-      if (Date.now() - retryStart > retryBudgetMs) {
-        console.log(`[qa-booking] Retry budget exhausted after ${i} retries`);
-        break;
-      }
-
-      const { index, entry } = retryQueue[i];
-      const firstUsedStealth = results[index].usedStealth;
-      // If first attempt was non-stealth, escalate to stealth on retry
-      const forceStealth = !firstUsedStealth;
-
-      console.log(
-        `[qa-booking] Retry [${i + 1}/${retryCount}] ${entry.url} (stealth=${forceStealth || needsStealth(entry.url)})`,
-      );
-
-      const retryResult = await checkSingleUrl(entry, forceStealth);
-
-      results[index].secondAttemptStatus = retryResult.status;
-      results[index].usedStealth = results[index].usedStealth || retryResult.usedStealth;
-
-      // Update detected info if retry succeeded
-      if (
-        typeof retryResult.status === "number" &&
-        retryResult.status < 400 &&
-        retryResult.detectedTitle
-      ) {
-        results[index].detectedFilmTitle = retryResult.detectedTitle;
-        results[index].detectedTime = retryResult.detectedTime;
-        results[index].confidence = titleConfidence(
-          retryResult.detectedTitle,
-          entry.expectedTitle,
-        );
-      }
-    }
+    await retryFailedChecks(retryQueue, results, maxRetries, retryBudgetMs);
   }
 
   console.log(`[qa-booking] Completed ${results.length} booking checks`);
