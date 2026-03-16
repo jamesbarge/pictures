@@ -21,10 +21,13 @@ import { logExperiment, buildOvernightSummary, sendOvernightReport } from "../ex
 import { writeOvernightReport, updateCursor } from "../obsidian-reporter";
 import type { AuditSummary } from "@/scripts/audit-film-data";
 import { loadThresholdsFromDb, saveThresholdsToDb } from "./db-thresholds";
+import { saveDqsSnapshot, loadDqsTrend, formatDqsTrend } from "./dqs-snapshots";
+import { runSpotChecks, formatSpotChecks } from "./spot-checks";
 import type { Thresholds } from "./load-thresholds";
 import { db, isDatabaseAvailable } from "@/db";
 import { autoresearchExperiments } from "@/db/schema/admin";
 import { eq, desc } from "drizzle-orm";
+import { randomUUID } from "crypto";
 
 const PROGRAM_PATH = join(__dirname, "program.md");
 
@@ -435,6 +438,7 @@ export async function runAutoQualityWeekly(
   safetyFloors: QualitySafetyFloors = DEFAULT_SAFETY_FLOORS
 ): Promise<OvernightSummary> {
   const runStartedAt = new Date();
+  const runId = randomUUID();
 
   if (!isGeminiConfigured()) {
     console.error("[autoquality] GEMINI_API_KEY not configured — aborting");
@@ -449,6 +453,9 @@ export async function runAutoQualityWeekly(
   let currentDqs = computeDqs(baselineAudit.summary, baselineAudit.duplicateCount, baselineAudit.dodgyCount);
 
   console.log(`[autoquality] Baseline DQS: ${currentDqs.compositeScore.toFixed(1)}`);
+
+  // Save start snapshot for DQS time-series
+  await saveDqsSnapshot(runId, "start", currentDqs, baselineAudit.summary.filmsWithUpcoming);
 
   const results: ExperimentResult[] = [];
 
@@ -487,12 +494,23 @@ export async function runAutoQualityWeekly(
     }
   }
 
-  // Build and send summary
+  // Save end snapshot for DQS time-series
+  await saveDqsSnapshot(runId, "end", currentDqs, baselineAudit.summary.filmsWithUpcoming);
+
+  // Build and send summary (with DQS trend)
   const resultsByTarget = new Map<string, { name: string; results: ExperimentResult[] }>();
   resultsByTarget.set("data-quality", { name: "Data Quality Score", results });
 
   const summary = buildOvernightSummary("autoquality", runStartedAt, new Date(), resultsByTarget);
-  const reportSent = await sendOvernightReport(summary);
+
+  // Load DQS trend and run spot-checks for the Telegram report
+  const trend = await loadDqsTrend(4);
+  const trendLines = formatDqsTrend(trend);
+
+  const spotCheckResults = await runSpotChecks();
+  const spotCheckLines = spotCheckResults ? formatSpotChecks(spotCheckResults) : [];
+
+  const reportSent = await sendOvernightReport(summary, [...trendLines, ...spotCheckLines]);
   if (!reportSent) console.warn("[autoquality] Failed to send Telegram overnight report");
 
   // Write Obsidian report and update cursor
