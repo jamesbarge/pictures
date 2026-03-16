@@ -246,6 +246,63 @@ async function getUpcomingBFIFilms(): Promise<DBFilm[]> {
 
 // ─── Main Cleanup ────────────────────────────────────────────────────
 
+
+/**
+ * Delete future BFI screenings for the given ghost film IDs.
+ * In dry-run mode, returns the sum of known screening counts instead.
+ */
+async function deleteGhostScreenings(
+  ghostFilmIds: string[],
+  ghosts: DBFilm[],
+  dryRun: boolean,
+): Promise<number> {
+  if (dryRun) {
+    return ghosts.reduce((sum, f) => sum + f.screeningCount, 0);
+  }
+
+  const now = new Date();
+  let deleted = 0;
+  for (const filmId of ghostFilmIds) {
+    const result = await db
+      .delete(screenings)
+      .where(
+        and(
+          eq(screenings.filmId, filmId),
+          inArray(screenings.cinemaId, BFI_CINEMA_IDS),
+          gte(screenings.datetime, now)
+        )
+      )
+      .returning({ id: screenings.id });
+    deleted += result.length;
+  }
+  return deleted;
+}
+
+/**
+ * Delete films that have zero remaining screenings at any cinema.
+ * Returns the count of deleted films. No-op in dry-run mode.
+ */
+async function deleteOrphanFilms(
+  ghostFilmIds: string[],
+  dryRun: boolean,
+): Promise<number> {
+  if (dryRun) return 0;
+
+  let deleted = 0;
+  for (const filmId of ghostFilmIds) {
+    const remaining = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(screenings)
+      .where(eq(screenings.filmId, filmId));
+
+    if (remaining[0].count === 0) {
+      await db.delete(films).where(eq(films.id, filmId));
+      deleted++;
+    }
+  }
+  return deleted;
+}
+
 export async function runBFICleanup(options?: CleanupOptions): Promise<BFICleanupResult> {
   const start = Date.now();
   const errors: string[] = [];
@@ -324,51 +381,12 @@ export async function runBFICleanup(options?: CleanupOptions): Promise<BFICleanu
     }
 
     // 5. Delete future BFI screenings for ghost films
-    const now = new Date();
     const ghostFilmIds = ghosts.map((f) => f.filmId);
-    let ghostScreeningsDeleted = 0;
-
-    if (!dryRun) {
-      for (const filmId of ghostFilmIds) {
-        const result = await db
-          .delete(screenings)
-          .where(
-            and(
-              eq(screenings.filmId, filmId),
-              inArray(screenings.cinemaId, BFI_CINEMA_IDS),
-              gte(screenings.datetime, now)
-            )
-          )
-          .returning({ id: screenings.id });
-
-        ghostScreeningsDeleted += result.length;
-      }
-    } else {
-      // In dry run, count what would be deleted
-      for (const film of ghosts) {
-        ghostScreeningsDeleted += film.screeningCount;
-      }
-    }
-
+    const ghostScreeningsDeleted = await deleteGhostScreenings(ghostFilmIds, ghosts, dryRun);
     console.log(`[BFI-Cleanup] Deleted ${ghostScreeningsDeleted} ghost screenings`);
 
     // 6. Delete orphaned films (0 remaining screenings at ANY cinema)
-    let orphanFilmsDeleted = 0;
-
-    if (!dryRun) {
-      for (const filmId of ghostFilmIds) {
-        const remaining = await db
-          .select({ count: sql<number>`count(*)::int` })
-          .from(screenings)
-          .where(eq(screenings.filmId, filmId));
-
-        if (remaining[0].count === 0) {
-          await db.delete(films).where(eq(films.id, filmId));
-          orphanFilmsDeleted++;
-        }
-      }
-    }
-
+    const orphanFilmsDeleted = await deleteOrphanFilms(ghostFilmIds, dryRun);
     console.log(`[BFI-Cleanup] Deleted ${orphanFilmsDeleted} orphaned films`);
 
     for (const ghost of ghosts) {

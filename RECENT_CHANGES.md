@@ -1,4 +1,11 @@
 ## 2026-03-16: Kaizen — extract saveByVenue in BFI PDF importer
+## 2026-03-16: Kaizen — Extract Deletion Helpers in BFI Cleanup
+**PR**: #374 | **Files**: `src/scrapers/bfi-pdf/cleanup.ts`
+- Extracted `deleteGhostScreenings()` and `deleteOrphanFilms()` from `runBFICleanup()`
+- Kaizen automated refactoring (category: readability)
+
+---
+
 **PR**: #373 | **Files**: `src/scrapers/bfi-pdf/importer.ts`
 - Extracted duplicated venue-grouping + save logic into shared `saveByVenue()` helper (net -28 lines)
 - Kaizen automated refactoring (category: readability)
