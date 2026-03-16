@@ -40,7 +40,7 @@ function SignedInWrapper({ children }: { children: ReactNode }) {
     if (hasValidClerkKey) {
       import("@clerk/nextjs").then((mod) => {
         setClerkSignedIn(() => mod.SignedIn);
-      });
+      }).catch((err) => console.error("Failed to load Clerk SignedIn:", err));
     }
   }, []);
 
@@ -58,7 +58,7 @@ function SignedOutWrapper({ children }: { children: ReactNode }) {
     if (hasValidClerkKey) {
       import("@clerk/nextjs").then((mod) => {
         setClerkSignedOut(() => mod.SignedOut);
-      });
+      }).catch((err) => console.error("Failed to load Clerk SignedOut:", err));
     }
   }, []);
 
