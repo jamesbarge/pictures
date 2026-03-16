@@ -1,3 +1,12 @@
+## 2026-03-16: Fix missing login button (CSP blocking Clerk)
+**Files**: `next.config.ts`, `src/components/clerk-components-safe.tsx`
+- Added `https://clerk.pictures.london` to `script-src`, `connect-src`, and `frame-src` CSP directives
+- Login button has been broken since March 12 when security headers were added
+- CSP allowed `*.clerk.accounts.dev` (dev) but missed production proxy domain
+- Added `.catch()` to dynamic Clerk imports for visible error logging
+
+---
+
 ## 2026-03-16: Kaizen — extract saveByVenue in BFI PDF importer
 ## 2026-03-16: Kaizen — extract bulkDeleteStaleScreenings in QA fixer
 **PR**: #380 | **Files**: `src/trigger/qa/utils/db-fixer.ts`
