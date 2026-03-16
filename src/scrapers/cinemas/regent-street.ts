@@ -111,42 +111,46 @@ export class RegentStreetScraper implements CinemaScraper {
       await showingsPromise;
       console.log(`[${this.config.cinemaId}] Showings captured: ${allShowings.length}`);
 
-      // Convert showings to RawScreenings
-      const screenings: RawScreening[] = [];
-      const now = new Date();
-      const seenIds = new Set<string>();
-
-      for (const showing of allShowings) {
-        // Skip duplicates
-        if (seenIds.has(showing.id)) continue;
-        seenIds.add(showing.id);
-
-        // Skip unpublished or past screenings
-        if (!showing.published) continue;
-        if (showing.past) continue;
-
-        // Parse datetime - format is ISO UTC "2025-12-30T18:30:00Z"
-        const datetime = new Date(showing.time);
-        if (isNaN(datetime.getTime())) continue;
-        if (datetime < now) continue;
-
-        // Build booking URL
-        const movieSlug = showing.movie.urlSlug || showing.movie.name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-        const bookingUrl = `${this.config.baseUrl}/movie/${movieSlug}`;
-
-        screenings.push({
-          filmTitle: showing.movie.name,
-          datetime,
-          bookingUrl,
-          sourceId: `regent-street-${showing.id}`,
-        });
-      }
-
+      const screenings = this.convertShowings(allShowings);
       console.log(`[${this.config.cinemaId}] Found ${screenings.length} screenings total`);
       return screenings;
     } finally {
       await browser.close();
     }
+  }
+
+  /**
+   * Convert captured GraphQL showings into RawScreening format.
+   * Deduplicates by ID and filters out unpublished/past showings.
+   */
+  private convertShowings(allShowings: RegentStreetShowing[]): RawScreening[] {
+    const screenings: RawScreening[] = [];
+    const now = new Date();
+    const seenIds = new Set<string>();
+
+    for (const showing of allShowings) {
+      if (seenIds.has(showing.id)) continue;
+      seenIds.add(showing.id);
+
+      if (!showing.published) continue;
+      if (showing.past) continue;
+
+      const datetime = new Date(showing.time);
+      if (isNaN(datetime.getTime())) continue;
+      if (datetime < now) continue;
+
+      const movieSlug = showing.movie.urlSlug || showing.movie.name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+      const bookingUrl = `${this.config.baseUrl}/movie/${movieSlug}`;
+
+      screenings.push({
+        filmTitle: showing.movie.name,
+        datetime,
+        bookingUrl,
+        sourceId: `regent-street-${showing.id}`,
+      });
+    }
+
+    return screenings;
   }
 
   async healthCheck(): Promise<boolean> {

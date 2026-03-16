@@ -1,4 +1,11 @@
 ## 2026-03-16: Kaizen — extract saveByVenue in BFI PDF importer
+## 2026-03-16: Kaizen — extract convertShowings in Regent Street scraper
+**PR**: #379 | **Files**: `src/scrapers/cinemas/regent-street.ts`
+- Extracted 30-line showing conversion loop into `convertShowings()` method
+- Kaizen automated refactoring (category: readability)
+
+---
+
 ## 2026-03-16: Kaizen — Extract retryFailedChecks from booking checker
 **PR**: #378 | **Files**: `src/trigger/qa/utils/booking-checker.ts`
 - Extracted 42-line retry pass into standalone `retryFailedChecks()` function
