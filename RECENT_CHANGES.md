@@ -1,3 +1,11 @@
+## 2026-03-17: Kaizen — extract buildExperimentPrompt in AutoQuality harness
+**PR**: #381 | **Files**: `src/autoresearch/autoquality/harness.ts`
+- Extracted 18-line template replacement block into `buildExperimentPrompt()` function
+- Reduces `runOneExperiment` from 161 to 143 lines, separating template mechanics from experiment logic
+- Kaizen automated refactoring (category: readability)
+
+---
+
 ## 2026-03-16: Fix missing login button (CSP blocking Clerk)
 **Files**: `next.config.ts`, `src/components/clerk-components-safe.tsx`
 - Added `https://clerk.pictures.london` to `script-src`, `connect-src`, and `frame-src` CSP directives
