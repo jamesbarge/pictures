@@ -1,3 +1,11 @@
+## 2026-03-17: Kaizen — extract toMergedScheduleEntry in festival sync
+**PR**: #391 | **Files**: `src/app/api/user/festivals/sync/route.ts`
+- Extracted `toMergedScheduleEntry()` helper to DRY two identical server-to-merged conversion blocks
+- Follows existing `toMergedFollow()` pattern in the same file
+- Kaizen automated refactoring (category: readability)
+
+---
+
 ## 2026-03-17: Kaizen — unexport 8 dead type exports across 5 files
 **PR**: #390 | **Files**: `posthog-supabase-sync.ts`, `scraper-health/index.ts`, `alert-tiers.ts`, `confidence.ts`, `snapshot.ts`
 - Unexported 8 types/interfaces with zero external importers: UserProductData, AlertType, AlertContext, ConfidenceResult, ScreeningSnapshot, ScraperSnapshot, SnapshotComparison, SnapshotDifference

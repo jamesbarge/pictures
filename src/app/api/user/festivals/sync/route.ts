@@ -86,6 +86,33 @@ function toMergedFollow(
   };
 }
 
+/** Convert a server-side schedule record into the merged response shape. */
+function toMergedScheduleEntry(
+  entry: {
+    id: string;
+    screeningId: string;
+    festivalId: string;
+    status: string;
+    bookingConfirmation: string | null;
+    notes: string | null;
+    createdAt: Date | null;
+    updatedAt: Date | null;
+  },
+  fallbackAddedAt: string,
+  fallbackUpdatedAt: string
+) {
+  return {
+    id: entry.id,
+    screeningId: entry.screeningId,
+    festivalId: entry.festivalId,
+    status: entry.status as FestivalScheduleStatus,
+    bookingConfirmation: entry.bookingConfirmation || undefined,
+    notes: entry.notes || undefined,
+    addedAt: entry.createdAt?.toISOString() || fallbackAddedAt,
+    updatedAt: entry.updatedAt?.toISOString() || fallbackUpdatedAt,
+  };
+}
+
 export async function POST(request: NextRequest) {
   try {
     const userId = await requireAuth();
@@ -226,16 +253,9 @@ export async function POST(request: NextRequest) {
           };
         } else {
           // Server wins
-          mergedSchedule[clientEntry.screeningId] = {
-            id: serverEntry.id,
-            screeningId: serverEntry.screeningId,
-            festivalId: serverEntry.festivalId,
-            status: serverEntry.status as FestivalScheduleStatus,
-            bookingConfirmation: serverEntry.bookingConfirmation || undefined,
-            notes: serverEntry.notes || undefined,
-            addedAt: serverEntry.createdAt?.toISOString() || clientEntry.addedAt,
-            updatedAt: serverEntry.updatedAt?.toISOString() || clientEntry.updatedAt,
-          };
+          mergedSchedule[clientEntry.screeningId] = toMergedScheduleEntry(
+            serverEntry, clientEntry.addedAt, clientEntry.updatedAt
+          );
         }
       }
     }
@@ -243,16 +263,10 @@ export async function POST(request: NextRequest) {
     // Add server-only schedule entries (not on client)
     for (const serverEntry of serverSchedule) {
       if (!clientSchedule.find((cs) => cs.screeningId === serverEntry.screeningId)) {
-        mergedSchedule[serverEntry.screeningId] = {
-          id: serverEntry.id,
-          screeningId: serverEntry.screeningId,
-          festivalId: serverEntry.festivalId,
-          status: serverEntry.status as FestivalScheduleStatus,
-          bookingConfirmation: serverEntry.bookingConfirmation || undefined,
-          notes: serverEntry.notes || undefined,
-          addedAt: serverEntry.createdAt?.toISOString() || new Date().toISOString(),
-          updatedAt: serverEntry.updatedAt?.toISOString() || new Date().toISOString(),
-        };
+        const now = new Date().toISOString();
+        mergedSchedule[serverEntry.screeningId] = toMergedScheduleEntry(
+          serverEntry, now, now
+        );
       }
     }
 
