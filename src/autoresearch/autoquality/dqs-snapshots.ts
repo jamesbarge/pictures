@@ -48,6 +48,18 @@ export async function saveDqsSnapshot(
   }
 }
 
+/** Shared Drizzle select fields for DQS trend queries. */
+const DQS_TREND_FIELDS = {
+  runId: dqsSnapshots.runId,
+  compositeScore: dqsSnapshots.compositeScore,
+  missingTmdbPercent: dqsSnapshots.missingTmdbPercent,
+  missingPosterPercent: dqsSnapshots.missingPosterPercent,
+  missingSynopsisPercent: dqsSnapshots.missingSynopsisPercent,
+  duplicatesPercent: dqsSnapshots.duplicatesPercent,
+  dodgyEntriesPercent: dqsSnapshots.dodgyEntriesPercent,
+  createdAt: dqsSnapshots.createdAt,
+};
+
 export interface DqsTrendEntry {
   runId: string;
   compositeScore: number;
@@ -68,16 +80,7 @@ export async function loadDqsTrend(count = 4): Promise<DqsTrendEntry[]> {
 
   try {
     const rows = await db
-      .select({
-        runId: dqsSnapshots.runId,
-        compositeScore: dqsSnapshots.compositeScore,
-        missingTmdbPercent: dqsSnapshots.missingTmdbPercent,
-        missingPosterPercent: dqsSnapshots.missingPosterPercent,
-        missingSynopsisPercent: dqsSnapshots.missingSynopsisPercent,
-        duplicatesPercent: dqsSnapshots.duplicatesPercent,
-        dodgyEntriesPercent: dqsSnapshots.dodgyEntriesPercent,
-        createdAt: dqsSnapshots.createdAt,
-      })
+      .select(DQS_TREND_FIELDS)
       .from(dqsSnapshots)
       .where(eq(dqsSnapshots.snapshotType, "end"))
       .orderBy(desc(dqsSnapshots.createdAt))
@@ -133,17 +136,7 @@ export async function getRunSnapshots(
 
   try {
     const rows = await db
-      .select({
-        snapshotType: dqsSnapshots.snapshotType,
-        runId: dqsSnapshots.runId,
-        compositeScore: dqsSnapshots.compositeScore,
-        missingTmdbPercent: dqsSnapshots.missingTmdbPercent,
-        missingPosterPercent: dqsSnapshots.missingPosterPercent,
-        missingSynopsisPercent: dqsSnapshots.missingSynopsisPercent,
-        duplicatesPercent: dqsSnapshots.duplicatesPercent,
-        dodgyEntriesPercent: dqsSnapshots.dodgyEntriesPercent,
-        createdAt: dqsSnapshots.createdAt,
-      })
+      .select({ snapshotType: dqsSnapshots.snapshotType, ...DQS_TREND_FIELDS })
       .from(dqsSnapshots)
       .where(eq(dqsSnapshots.runId, runId));
 
