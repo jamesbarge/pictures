@@ -1,3 +1,11 @@
+## 2026-03-17: Kaizen — unexport 6 lib types, delete PostcodeValidationResponse
+**PR**: #388 | **Files**: `postcode.ts`, `geo-utils.ts`, `analytics.ts`, `event-classifier.ts`, `auth.ts`
+- Unexported 6 types with zero external importers across src/lib/
+- Deleted `PostcodeValidationResponse` entirely — never used anywhere
+- Kaizen automated refactoring (category: dead-code)
+
+---
+
 ## 2026-03-17: Kaizen — unexport 10 module-private types, delete PostHogInsight
 **PR**: #387 | **Files**: `posthog-api.ts`, `content-classifier.ts`, `watchdog.ts`
 - Unexported 10 types/interfaces with zero external importers across 3 files

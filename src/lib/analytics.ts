@@ -357,7 +357,7 @@ export function getDistinctId(): string | undefined {
 // USER ENGAGEMENT PROPERTIES
 // ============================================
 
-export interface UserEngagementData {
+interface UserEngagementData {
   watchlistCount: number;
   seenCount: number;
   notInterestedCount: number;

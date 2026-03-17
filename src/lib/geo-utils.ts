@@ -8,7 +8,7 @@ import { point, polygon } from "@turf/helpers";
 import type { CinemaCoordinates } from "@/types/cinema";
 
 /** A geographic area defined by a closed polygon of lat/lng points */
-export interface MapAreaPolygon {
+interface MapAreaPolygon {
   type: "polygon";
   paths: Array<{ lat: number; lng: number }>;
 }
