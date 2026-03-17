@@ -1,3 +1,12 @@
+## 2026-03-17: Kaizen — extract autoApplyMatch in enrichment agent
+**PR**: #393 | **Files**: `src/agents/enrichment/index.ts`
+- Extracted `autoApplyMatch()` helper from `enrichUnmatchedFilms()` main loop
+- Consolidates ambiguity check, duplicate detection/merge, and DB update into one function
+- Reduces nesting depth from 5+ to 3 in the match-application path
+- Kaizen automated refactoring (category: readability)
+
+---
+
 ## 2026-03-17: Kaizen — extract ensureUserRecord in user sync
 **PR**: #392 | **Files**: `src/app/api/user/sync/route.ts`
 - Extracted `ensureUserRecord()` from POST handler with early-return pattern
