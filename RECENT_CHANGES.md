@@ -1,3 +1,11 @@
+## 2026-03-17: Kaizen — extract trackSignInConversion in useUserSync
+**PR**: #395 | **Files**: `src/hooks/useUserSync.ts`
+- Extracted `trackSignInConversion()` helper from the initial sync Promise callback
+- Reduces nesting depth from 5 to 3 in the sign-in sync flow
+- Kaizen automated refactoring (category: readability)
+
+---
+
 ## 2026-03-17: Kaizen — extract detectTimeMismatches in QA analyzer
 **PR**: #394 | **Files**: `src/trigger/qa/analyze-and-fix.ts`
 - Extracted `detectTimeMismatches()` helper from the QA `run` function
