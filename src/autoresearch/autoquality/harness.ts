@@ -97,6 +97,37 @@ async function loadProgramTemplate(): Promise<string> {
   }
 }
 
+/**
+ * Fill the experiment prompt template with current DQS metrics, thresholds,
+ * experiment history, and safety floors.
+ */
+async function buildExperimentPrompt(
+  currentDqs: DqsBreakdown,
+  thresholds: Thresholds,
+  previousExperiments: string[],
+  safetyFloors: QualitySafetyFloors
+): Promise<string> {
+  const template = await loadProgramTemplate();
+  return template
+    .replace(/\{\{currentDqs\}\}/g, currentDqs.compositeScore.toFixed(0))
+    .replace(/\{\{missingTmdbPercent\}\}/g, currentDqs.missingTmdbPercent.toFixed(1))
+    .replace(/\{\{missingPosterPercent\}\}/g, currentDqs.missingPosterPercent.toFixed(1))
+    .replace(/\{\{missingSynopsisPercent\}\}/g, currentDqs.missingSynopsisPercent.toFixed(1))
+    .replace(/\{\{duplicatesPercent\}\}/g, currentDqs.duplicatesPercent.toFixed(1))
+    .replace(/\{\{dodgyEntriesPercent\}\}/g, currentDqs.dodgyEntriesPercent.toFixed(1))
+    .replace(/\{\{totalFilms\}\}/g, "N/A")
+    .replace(/\{\{currentThresholds\}\}/g, JSON.stringify(thresholds, null, 2))
+    .replace(
+      /\{\{previousExperiments\}\}/g,
+      previousExperiments.length > 0
+        ? previousExperiments.join("\n")
+        : "No previous experiments in this run."
+    )
+    .replace(/\{\{minTmdbConfidence\}\}/g, String(safetyFloors.minTmdbConfidence))
+    .replace(/\{\{minAutoMergeSimilarity\}\}/g, String(safetyFloors.minAutoMergeSimilarity))
+    .replace(/\{\{maxNewNonFilmPatterns\}\}/g, String(safetyFloors.maxNewNonFilmPatterns));
+}
+
 const FALLBACK_PROGRAM_TEMPLATE = `# AutoQuality Agent Instructions
 
 You are a data quality optimization agent for pictures.london, a London cinema calendar.
@@ -236,26 +267,8 @@ async function runOneExperiment(
   let appliedPreviousValue: number | undefined;
 
   try {
-    // Build prompt — try filesystem first, fall back to bundled template for cloud
-    const template = await loadProgramTemplate();
-    const prompt = template
-      .replace(/\{\{currentDqs\}\}/g, currentDqs.compositeScore.toFixed(0))
-      .replace(/\{\{missingTmdbPercent\}\}/g, currentDqs.missingTmdbPercent.toFixed(1))
-      .replace(/\{\{missingPosterPercent\}\}/g, currentDqs.missingPosterPercent.toFixed(1))
-      .replace(/\{\{missingSynopsisPercent\}\}/g, currentDqs.missingSynopsisPercent.toFixed(1))
-      .replace(/\{\{duplicatesPercent\}\}/g, currentDqs.duplicatesPercent.toFixed(1))
-      .replace(/\{\{dodgyEntriesPercent\}\}/g, currentDqs.dodgyEntriesPercent.toFixed(1))
-      .replace(/\{\{totalFilms\}\}/g, "N/A")
-      .replace(/\{\{currentThresholds\}\}/g, JSON.stringify(thresholds, null, 2))
-      .replace(
-        /\{\{previousExperiments\}\}/g,
-        previousExperiments.length > 0
-          ? previousExperiments.join("\n")
-          : "No previous experiments in this run."
-      )
-      .replace(/\{\{minTmdbConfidence\}\}/g, String(safetyFloors.minTmdbConfidence))
-      .replace(/\{\{minAutoMergeSimilarity\}\}/g, String(safetyFloors.minAutoMergeSimilarity))
-      .replace(/\{\{maxNewNonFilmPatterns\}\}/g, String(safetyFloors.maxNewNonFilmPatterns));
+    // Build prompt from template + current metrics
+    const prompt = await buildExperimentPrompt(currentDqs, thresholds, previousExperiments, safetyFloors);
 
     // Ask agent for a threshold change
     const response = await generateText(prompt, {
