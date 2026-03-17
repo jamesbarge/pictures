@@ -1,3 +1,11 @@
+## 2026-03-17: Kaizen — remove unused getRunSnapshots function
+**PR**: #385 | **Files**: `src/autoresearch/autoquality/dqs-snapshots.ts`
+- Removed `getRunSnapshots()` — zero consumers across the entire codebase
+- Function was added as part of DQS snapshot API surface but never wired up
+- Kaizen automated refactoring (category: dead-code)
+
+---
+
 ## 2026-03-17: Kaizen — remove redundant enrichmentStatus casts
 **PR**: #384 | **Files**: `src/trigger/enrichment/daily-sweep.ts`, `src/trigger/enrichment/post-scrape.ts`
 - Removed 4 redundant `as EnrichmentStatus | null` casts — Drizzle's `$type<>()` already provides the correct type

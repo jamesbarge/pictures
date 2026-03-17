@@ -125,29 +125,3 @@ export function formatDqsTrend(trend: DqsTrendEntry[]): string[] {
 
   return lines;
 }
-
-/**
- * Get the start and end snapshots for a specific run.
- */
-export async function getRunSnapshots(
-  runId: string
-): Promise<{ start?: DqsTrendEntry; end?: DqsTrendEntry }> {
-  if (!isDatabaseAvailable) return {};
-
-  try {
-    const rows = await db
-      .select({ snapshotType: dqsSnapshots.snapshotType, ...DQS_TREND_FIELDS })
-      .from(dqsSnapshots)
-      .where(eq(dqsSnapshots.runId, runId));
-
-    const result: { start?: DqsTrendEntry; end?: DqsTrendEntry } = {};
-    for (const row of rows) {
-      if (row.snapshotType === "start") result.start = row;
-      if (row.snapshotType === "end") result.end = row;
-    }
-    return result;
-  } catch (err) {
-    console.warn("[dqs-snapshots] Failed to load run snapshots:", err);
-    return {};
-  }
-}
