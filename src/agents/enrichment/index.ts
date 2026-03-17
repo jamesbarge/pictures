@@ -133,6 +133,66 @@ function resolveMatchStrategy(hasYear: boolean, hasDirector: boolean): string {
   return "auto-no-hints";
 }
 
+/**
+ * Auto-apply a high-confidence TMDB match to the database.
+ * Handles ambiguity checks, duplicate detection (merging), and direct DB update.
+ * Returns "skip" if the film was flagged as ambiguous (caller should continue to next film),
+ * "applied" if the match was written, or "not-applied" if auto-fix is disabled.
+ */
+async function autoApplyMatch(
+  film: { id: string; title: string; year: number | null; directors: string[] | null },
+  bestMatch: { id: number },
+  confidence: number,
+  matchResult: TmdbMatchResult,
+  enableAutoFix: boolean,
+): Promise<"skip" | "applied" | "not-applied"> {
+  if (!matchResult.shouldAutoApply || !enableAutoFix) return "not-applied";
+
+  const shouldSkip = await shouldSkipAmbiguousMatch(
+    film.id, film.title, film.year, film.directors, confidence,
+  );
+  if (shouldSkip) return "skip";
+
+  const hasYear = !!film.year;
+  const hasDirector = !!(film.directors && film.directors.length > 0);
+  const dbMatchStrategy = resolveMatchStrategy(hasYear, hasDirector);
+
+  // Check if another film already has this TMDB ID
+  const existingFilm = await findFilmByTmdbId(bestMatch.id);
+
+  if (existingFilm) {
+    // This is a duplicate - merge into the canonical film
+    console.log(
+      `[${AGENT_NAME}] Duplicate detected: "${film.title}" -> merging with "${existingFilm.title}" (TMDB ${bestMatch.id})`
+    );
+    await mergeDuplicateFilm(
+      film.id,
+      existingFilm.id,
+      film.title,
+      existingFilm.title
+    );
+    matchResult.matchStrategy = "extracted"; // Mark as deduplicated
+  } else {
+    // No existing film - safe to update
+    console.log(
+      `[${AGENT_NAME}] Auto-applying TMDB match: "${film.title}" -> ${bestMatch.id} (${(confidence * 100).toFixed(0)}%)`
+    );
+
+    await db
+      .update(schema.films)
+      .set({
+        tmdbId: bestMatch.id,
+        matchConfidence: confidence,
+        matchStrategy: dbMatchStrategy,
+        matchedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.films.id, film.id));
+  }
+
+  return "applied";
+}
+
 /** Check if a match should be skipped due to title ambiguity. If so, mark as needs-review in DB. */
 async function shouldSkipAmbiguousMatch(
   filmId: string,
@@ -376,52 +436,14 @@ Respond with JSON:
               results.push(matchResult);
 
               // Auto-apply if confidence is high enough
-              if (
-                matchResult.shouldAutoApply &&
-                config.enableAutoFix
-              ) {
-                const shouldSkip = await shouldSkipAmbiguousMatch(
-                  film.id, film.title, film.year, film.directors ?? null, parsed.confidence,
-                );
-                if (shouldSkip) continue;
-
-                const hasYear = !!film.year;
-                const hasDirector = film.directors && film.directors.length > 0;
-                const dbMatchStrategy = resolveMatchStrategy(hasYear, !!hasDirector);
-
-                // Check if another film already has this TMDB ID
-                const existingFilm = await findFilmByTmdbId(bestMatch.id);
-
-                if (existingFilm) {
-                  // This is a duplicate - merge into the canonical film
-                  console.log(
-                    `[${AGENT_NAME}] Duplicate detected: "${film.title}" -> merging with "${existingFilm.title}" (TMDB ${bestMatch.id})`
-                  );
-                  await mergeDuplicateFilm(
-                    film.id,
-                    existingFilm.id,
-                    film.title,
-                    existingFilm.title
-                  );
-                  matchResult.matchStrategy = "extracted"; // Mark as deduplicated
-                } else {
-                  // No existing film - safe to update
-                  console.log(
-                    `[${AGENT_NAME}] Auto-applying TMDB match: "${film.title}" -> ${bestMatch.id} (${(parsed.confidence * 100).toFixed(0)}%)`
-                  );
-
-                  await db
-                    .update(schema.films)
-                    .set({
-                      tmdbId: bestMatch.id,
-                      matchConfidence: parsed.confidence,
-                      matchStrategy: dbMatchStrategy,
-                      matchedAt: new Date(),
-                      updatedAt: new Date(),
-                    })
-                    .where(eq(schema.films.id, film.id));
-                }
-              }
+              const applyResult = await autoApplyMatch(
+                { id: film.id, title: film.title, year: film.year, directors: film.directors ?? null },
+                bestMatch,
+                parsed.confidence,
+                matchResult,
+                config.enableAutoFix,
+              );
+              if (applyResult === "skip") continue;
             }
           }
         } catch (parseError) {
