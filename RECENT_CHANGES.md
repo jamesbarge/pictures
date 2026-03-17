@@ -1,3 +1,10 @@
+## 2026-03-17: Kaizen — unexport 8 dead type exports across 5 files
+**PR**: #390 | **Files**: `posthog-supabase-sync.ts`, `scraper-health/index.ts`, `alert-tiers.ts`, `confidence.ts`, `snapshot.ts`
+- Unexported 8 types/interfaces with zero external importers: UserProductData, AlertType, AlertContext, ConfidenceResult, ScreeningSnapshot, ScraperSnapshot, SnapshotComparison, SnapshotDifference
+- Kaizen automated refactoring (category: dead-code)
+
+---
+
 ## 2026-03-17: Kaizen — unexport 10 TMDB module-private types
 **PR**: #389 | **Files**: `tmdb/types.ts`, `tmdb/ambiguity.ts`
 - Unexported 9 types in `tmdb/types.ts` and 1 in `tmdb/ambiguity.ts` — all used only as member types of exported interfaces, never imported directly

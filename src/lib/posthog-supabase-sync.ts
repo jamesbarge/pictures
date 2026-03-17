@@ -16,7 +16,7 @@ import { userFilmStatuses, userPreferences } from "@/db/schema";
 import { eq, count, desc, asc } from "drizzle-orm";
 import { getPostHogServer, setServerUserProperties, captureServerEvent } from "./posthog-server";
 
-export interface UserProductData {
+interface UserProductData {
   // Watchlist metrics
   watchlistCount: number;
   seenCount: number;

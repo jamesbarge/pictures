@@ -4,7 +4,7 @@ import { sendTelegramAlert } from "./telegram";
 export type AlertTier = "P1" | "P2" | "P3";
 
 /** Context passed to the alert system when a task fails */
-export interface AlertContext {
+interface AlertContext {
   taskId: string;
   runId: string;
   error: string;
