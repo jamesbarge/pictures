@@ -102,7 +102,7 @@ export const postScrapeEnrichment = task({
     let failed = 0;
 
     for (const film of unenrichedFilms) {
-      const status = film.enrichmentStatus as EnrichmentStatus | null;
+      const status = film.enrichmentStatus;
       if (shouldSkipEnrichment(status, now)) {
         skipped++;
         continue;

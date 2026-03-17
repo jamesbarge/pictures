@@ -1,3 +1,10 @@
+## 2026-03-17: Kaizen — remove redundant enrichmentStatus casts
+**PR**: #384 | **Files**: `src/trigger/enrichment/daily-sweep.ts`, `src/trigger/enrichment/post-scrape.ts`
+- Removed 4 redundant `as EnrichmentStatus | null` casts — Drizzle's `$type<>()` already provides the correct type
+- Kaizen automated refactoring (category: type-narrowing)
+
+---
+
 ## 2026-03-17: Kaizen — extract DQS_TREND_FIELDS constant in dqs-snapshots
 **PR**: #383 | **Files**: `src/autoresearch/autoquality/dqs-snapshots.ts`
 - Extracted 8 shared Drizzle select fields into `DQS_TREND_FIELDS` constant
