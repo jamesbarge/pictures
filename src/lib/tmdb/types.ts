@@ -44,17 +44,17 @@ export interface TMDBMovieDetails {
   adult: boolean;
 }
 
-export interface TMDBGenre {
+interface TMDBGenre {
   id: number;
   name: string;
 }
 
-export interface TMDBCountry {
+interface TMDBCountry {
   iso_3166_1: string;
   name: string;
 }
 
-export interface TMDBLanguage {
+interface TMDBLanguage {
   iso_639_1: string;
   name: string;
   english_name: string;
@@ -66,7 +66,7 @@ export interface TMDBCredits {
   crew: TMDBCrewMember[];
 }
 
-export interface TMDBCastMember {
+interface TMDBCastMember {
   id: number;
   name: string;
   character: string;
@@ -74,7 +74,7 @@ export interface TMDBCastMember {
   profile_path: string | null;
 }
 
-export interface TMDBCrewMember {
+interface TMDBCrewMember {
   id: number;
   name: string;
   job: string;
@@ -82,7 +82,7 @@ export interface TMDBCrewMember {
   profile_path: string | null;
 }
 
-export interface TMDBVideo {
+interface TMDBVideo {
   id: string;
   key: string;
   name: string;
@@ -121,7 +121,7 @@ export interface TMDBPersonSearchResult {
   known_for: TMDBPersonKnownFor[];
 }
 
-export interface TMDBPersonKnownFor {
+interface TMDBPersonKnownFor {
   id: number;
   title?: string; // For movies
   name?: string; // For TV shows
@@ -159,7 +159,7 @@ export interface TMDBPersonCredits {
   cast: TMDBPersonCastCredit[];
 }
 
-export interface TMDBPersonCrewCredit {
+interface TMDBPersonCrewCredit {
   id: number;
   title: string;
   original_title: string;
@@ -170,7 +170,7 @@ export interface TMDBPersonCrewCredit {
   vote_average: number;
 }
 
-export interface TMDBPersonCastCredit {
+interface TMDBPersonCastCredit {
   id: number;
   title: string;
   original_title: string;

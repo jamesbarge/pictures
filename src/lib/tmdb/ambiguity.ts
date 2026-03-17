@@ -12,7 +12,7 @@
  * - Common name titles: "Anna", "Carol", "Michael"
  */
 
-export interface AmbiguityScore {
+interface AmbiguityScore {
   score: number; // 0-1, higher = more ambiguous
   reasons: string[]; // Why it's considered ambiguous
   requiresReview: boolean; // Should bypass auto-match if no metadata available
