@@ -133,7 +133,7 @@ export const dailyEnrichmentSweep = schedules.task({
         break;
       }
 
-      const status = film.enrichmentStatus as EnrichmentStatus | null;
+      const status = film.enrichmentStatus;
       if (shouldSkip(status, "tmdbMatch", now)) {
         stats.tmdbSkipped++;
         continue;
@@ -205,7 +205,7 @@ export const dailyEnrichmentSweep = schedules.task({
           break;
         }
 
-        const status = film.enrichmentStatus as EnrichmentStatus | null;
+        const status = film.enrichmentStatus;
         if (shouldSkip(status, "tmdbBackfill", now)) continue;
 
         try {
@@ -296,7 +296,7 @@ export const dailyEnrichmentSweep = schedules.task({
           break;
         }
 
-        const status = film.enrichmentStatus as EnrichmentStatus | null;
+        const status = film.enrichmentStatus;
         if (shouldSkip(status, "poster", now)) continue;
 
         try {
