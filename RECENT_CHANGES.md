@@ -1,3 +1,11 @@
+## 2026-03-17: Fix screening validator test timezone sensitivity
+**PR**: #396 | **Files**: `src/scrapers/utils/screening-validator.test.ts`
+- Fixed `makeScreening()` helper to use 2 PM tomorrow instead of current time + 24h
+- Test was failing in CI (runs at ~2 AM UTC) because screenings at 2 AM are rejected by `MIN_SCREENING_HOUR` validation
+- All 858 tests now pass consistently regardless of time of day
+
+---
+
 ## 2026-03-17: Kaizen — extract trackSignInConversion in useUserSync
 **PR**: #395 | **Files**: `src/hooks/useUserSync.ts`
 - Extracted `trackSignInConversion()` helper from the initial sync Promise callback

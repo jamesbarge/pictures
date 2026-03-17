@@ -6,9 +6,12 @@ import {
 import type { RawScreening } from "../types";
 
 function makeScreening(overrides: Partial<RawScreening> = {}): RawScreening {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(14, 0, 0, 0); // 2 PM — always within valid screening hours
   return {
     filmTitle: "Test Film",
-    datetime: new Date(Date.now() + 86400000), // tomorrow
+    datetime: tomorrow,
     bookingUrl: "https://example.com/book",
     ...overrides,
   };
