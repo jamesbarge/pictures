@@ -1,3 +1,11 @@
+## 2026-03-17: Kaizen — unexport 5 module-private types
+**PR**: #386 | **Files**: `spot-checks.ts`, `audit-wrapper.ts`, `gemini.ts`, `api-errors.ts`
+- Removed `export` from 5 interfaces/types that have zero external importers
+- SpotCheckResults, AuditForDqs, GeminiModelId, GenerateResult, ApiErrorResponse
+- Kaizen automated refactoring (category: dead-code)
+
+---
+
 ## 2026-03-17: Kaizen — remove unused getRunSnapshots function
 **PR**: #385 | **Files**: `src/autoresearch/autoquality/dqs-snapshots.ts`
 - Removed `getRunSnapshots()` — zero consumers across the entire codebase
