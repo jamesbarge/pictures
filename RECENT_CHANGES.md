@@ -1,3 +1,11 @@
+## 2026-03-17: Kaizen — unexport 10 TMDB module-private types
+**PR**: #389 | **Files**: `tmdb/types.ts`, `tmdb/ambiguity.ts`
+- Unexported 9 types in `tmdb/types.ts` and 1 in `tmdb/ambiguity.ts` — all used only as member types of exported interfaces, never imported directly
+- Barrel `export type *` in `tmdb/index.ts` unaffected — consumers import functions/classes, not individual types
+- Kaizen automated refactoring (category: dead-code)
+
+---
+
 ## 2026-03-17: Kaizen — unexport 6 lib types, delete PostcodeValidationResponse
 **PR**: #388 | **Files**: `postcode.ts`, `geo-utils.ts`, `analytics.ts`, `event-classifier.ts`, `auth.ts`
 - Unexported 6 types with zero external importers across src/lib/
