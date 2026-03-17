@@ -40,7 +40,7 @@ const VALID_FORMATS: ScreeningFormat[] = [
   "screenx",
 ];
 
-export interface EventClassification {
+interface EventClassification {
   // The actual film title (cleaned of event info)
   cleanTitle: string;
 

@@ -23,7 +23,7 @@ export async function requireAuth(): Promise<string> {
 }
 
 /** Authenticated admin context returned by requireAdmin() on success */
-export interface AdminAuthContext {
+interface AdminAuthContext {
   userId: string;
   email: string | null;
 }

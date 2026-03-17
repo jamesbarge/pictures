@@ -19,16 +19,10 @@ export interface PostcodeResult {
 }
 
 /** Raw JSON response from postcodes.io single-postcode lookup */
-export interface PostcodeLookupResponse {
+interface PostcodeLookupResponse {
   status: number;
   result: PostcodeResult | null;
   error?: string;
-}
-
-/** Raw JSON response from postcodes.io validation endpoint */
-export interface PostcodeValidationResponse {
-  status: number;
-  result: boolean;
 }
 
 const POSTCODES_API_BASE = "https://api.postcodes.io";
