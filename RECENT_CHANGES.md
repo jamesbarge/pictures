@@ -1,3 +1,11 @@
+## 2026-03-17: Kaizen — unexport 10 module-private types, delete PostHogInsight
+**PR**: #387 | **Files**: `posthog-api.ts`, `content-classifier.ts`, `watchdog.ts`
+- Unexported 10 types/interfaces with zero external importers across 3 files
+- Deleted `PostHogInsight` entirely — not used anywhere, even within its own file
+- Kaizen automated refactoring (category: dead-code)
+
+---
+
 ## 2026-03-17: Kaizen — unexport 5 module-private types
 **PR**: #386 | **Files**: `spot-checks.ts`, `audit-wrapper.ts`, `gemini.ts`, `api-errors.ts`
 - Removed `export` from 5 interfaces/types that have zero external importers

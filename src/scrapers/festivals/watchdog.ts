@@ -23,7 +23,7 @@ import type { WatchdogProbe } from "./types";
 
 const LOG_PREFIX = "[FestivalWatchdog]";
 
-export interface WatchdogResult {
+interface WatchdogResult {
   festivalSlug: string;
   probeUrl: string;
   detected: boolean;
