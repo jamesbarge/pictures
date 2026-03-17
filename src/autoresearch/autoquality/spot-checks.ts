@@ -13,7 +13,7 @@ import { films } from "@/db/schema/films";
 import { screenings } from "@/db/schema/screenings";
 import { sql, gte, eq, and, isNull, isNotNull, lte } from "drizzle-orm";
 
-export interface SpotCheckResults {
+interface SpotCheckResults {
   /** Films with upcoming screenings but no poster (user-visible gap) */
   filmsWithNoPoster: number;
   /** Films with TMDB match but low confidence (potential wrong match) */

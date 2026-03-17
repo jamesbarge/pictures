@@ -78,7 +78,7 @@ export class RateLimitError extends ApiError {
 /**
  * Standard API error response format
  */
-export interface ApiErrorResponse {
+interface ApiErrorResponse {
   error: string;
   code?: string;
   details?: unknown;

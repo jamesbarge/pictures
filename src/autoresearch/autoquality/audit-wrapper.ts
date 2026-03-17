@@ -15,7 +15,7 @@ import { sql, gte, and, eq } from "drizzle-orm";
 import { auditFilmData, type AuditSummary } from "@/scripts/audit-film-data";
 import { loadThresholds, loadThresholdsAsync } from "./load-thresholds";
 
-export interface AuditForDqs {
+interface AuditForDqs {
   summary: AuditSummary;
   duplicateCount: number;
   dodgyCount: number;
