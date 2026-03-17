@@ -1,3 +1,11 @@
+## 2026-03-17: Kaizen — extract detectTimeMismatches in QA analyzer
+**PR**: #394 | **Files**: `src/trigger/qa/analyze-and-fix.ts`
+- Extracted `detectTimeMismatches()` helper from the QA `run` function
+- Follows existing `detectStaleScreenings()` / `detectMissingLetterboxd()` pattern
+- Kaizen automated refactoring (category: readability)
+
+---
+
 ## 2026-03-17: Kaizen — extract autoApplyMatch in enrichment agent
 **PR**: #393 | **Files**: `src/agents/enrichment/index.ts`
 - Extracted `autoApplyMatch()` helper from `enrichUnmatchedFilms()` main loop
