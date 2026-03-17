@@ -19,7 +19,7 @@ import type { RawScreening } from "../types";
 // Types
 // ============================================================================
 
-export interface ScreeningSnapshot {
+interface ScreeningSnapshot {
   filmTitle: string;
   datetime: string; // ISO string
   screen?: string;
@@ -28,7 +28,7 @@ export interface ScreeningSnapshot {
   eventType?: string;
 }
 
-export interface ScraperSnapshot {
+interface ScraperSnapshot {
   cinemaId: string;
   capturedAt: string;
   screeningCount: number;
@@ -42,7 +42,7 @@ export interface ScraperSnapshot {
   screens: string[];
 }
 
-export interface SnapshotComparison {
+interface SnapshotComparison {
   cinemaId: string;
   match: boolean;
   differences: SnapshotDifference[];
@@ -53,7 +53,7 @@ export interface SnapshotComparison {
   missingFilms: string[];
 }
 
-export interface SnapshotDifference {
+interface SnapshotDifference {
   type: "added" | "removed" | "changed";
   description: string;
   details?: Record<string, unknown>;

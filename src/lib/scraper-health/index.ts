@@ -28,7 +28,7 @@ import { getCinemaById, getActiveCinemasByChain, getActiveCinemas } from "@/conf
 // ============================================================================
 
 /** Alert severity/type matching the health_snapshots DB column */
-export type AlertType = "critical_stale" | "warning_stale" | "critical_volume" | "warning_volume" | "anomaly";
+type AlertType = "critical_stale" | "warning_stale" | "critical_volume" | "warning_volume" | "anomaly";
 
 export interface CinemaHealthMetrics {
   cinemaId: string;

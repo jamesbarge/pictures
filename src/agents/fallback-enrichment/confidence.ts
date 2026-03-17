@@ -34,7 +34,7 @@ export interface ConfidenceInput {
 /**
  * Confidence scoring result
  */
-export interface ConfidenceResult {
+interface ConfidenceResult {
   score: number; // 0-1
   breakdown: {
     titleMatch: number;
