@@ -17,6 +17,7 @@ import type {
   QaAnalysisOutput,
   ClassifiedIssue,
   BookingCheck,
+  FrontEndScreening,
 } from "./types";
 import { applyFixes } from "./utils/db-fixer";
 import {
@@ -117,6 +118,62 @@ function detectMissingLetterboxd(
   }));
 }
 
+/** Detect front-end screening times that differ from DB by more than 5 minutes. */
+function detectTimeMismatches(
+  feScreenings: FrontEndScreening[],
+  dbScreenings: Array<{ screeningId: string; filmTitle: string; cinemaId: string; datetime: Date }>,
+  referenceDate: Date,
+): ClassifiedIssue[] {
+  const result: ClassifiedIssue[] = [];
+
+  for (const feScreening of feScreenings) {
+    if (!feScreening.datetime || !feScreening.cinemaName) continue;
+
+    const parsedIso = parseRelativeDatetime(feScreening.datetime, referenceDate);
+    if (!parsedIso) continue;
+
+    const feDateMs = new Date(parsedIso).getTime();
+
+    // Find corresponding DB screening by cinema + title + approximate date (same day)
+    const feNorm = normalizeTitle(feScreening.filmTitle);
+    const dbMatch = dbScreenings.find((db) => {
+      const dbNorm = normalizeTitle(db.filmTitle);
+      if (feNorm !== dbNorm) return false;
+
+      const feCinema = feScreening.cinemaName.toLowerCase();
+      const dbCinema = db.cinemaId.toLowerCase().replace(/-/g, " ");
+      if (!feCinema.includes(dbCinema) && !dbCinema.includes(feCinema)) return false;
+
+      // Same day (within 24h) to match the right screening
+      const dbDateMs = db.datetime.getTime();
+      return Math.abs(feDateMs - dbDateMs) < 24 * 60 * 60_000;
+    });
+
+    if (!dbMatch) continue;
+
+    const diffMs = Math.abs(feDateMs - dbMatch.datetime.getTime());
+    if (diffMs > 5 * 60_000) {
+      result.push({
+        type: "time_mismatch",
+        scope: "spot",
+        severity: "warning",
+        entityType: "screening",
+        entityId: dbMatch.screeningId,
+        description: `Time mismatch: front-end shows "${feScreening.datetime}" (parsed: ${parsedIso}), DB has ${dbMatch.datetime.toISOString()} (diff: ${Math.round(diffMs / 60_000)}min)`,
+        suggestedFix: `Update screening datetime to ${parsedIso}`,
+        confidence: 0.85,
+        metadata: {
+          filmTitle: feScreening.filmTitle,
+          correctedDatetime: parsedIso,
+          fromStructuredData: false, // DOM-extracted times — conservative
+        },
+      });
+    }
+  }
+
+  return result;
+}
+
 export const qaAnalyzeAndFix = task({
   id: "qa-analyze-and-fix",
   maxDuration: 1800, // 30 min
@@ -187,51 +244,10 @@ export const qaAnalyzeAndFix = task({
     }
 
     // B3: Time mismatch detection — compare front-end screening times vs DB
-    for (const feScreening of browseOutput.screenings) {
-      if (!feScreening.datetime || !feScreening.cinemaName) continue;
-
-      // Parse relative datetime strings ("Today 11:00", "Thu 12 Mar 17:40")
-      const parsedIso = parseRelativeDatetime(feScreening.datetime, referenceDate);
-      if (!parsedIso) continue;
-
-      const feDateMs = new Date(parsedIso).getTime();
-
-      // Find corresponding DB screening by cinema + title + approximate date (same day)
-      const feNorm = normalizeTitle(feScreening.filmTitle);
-      const dbMatch = dbScreenings.find((db) => {
-        const dbNorm = normalizeTitle(db.filmTitle);
-        if (feNorm !== dbNorm) return false;
-
-        const feCinema = feScreening.cinemaName.toLowerCase();
-        const dbCinema = db.cinemaId.toLowerCase().replace(/-/g, " ");
-        if (!feCinema.includes(dbCinema) && !dbCinema.includes(feCinema)) return false;
-
-        // Same day (within 24h) to match the right screening
-        const dbDateMs = db.datetime.getTime();
-        return Math.abs(feDateMs - dbDateMs) < 24 * 60 * 60_000;
-      });
-
-      if (!dbMatch) continue;
-
-      const diffMs = Math.abs(feDateMs - dbMatch.datetime.getTime());
-      if (diffMs > 5 * 60_000) {
-        // >5 min difference → flag as time mismatch
-        issues.push({
-          type: "time_mismatch",
-          scope: "spot",
-          severity: "warning",
-          entityType: "screening",
-          entityId: dbMatch.screeningId,
-          description: `Time mismatch: front-end shows "${feScreening.datetime}" (parsed: ${parsedIso}), DB has ${dbMatch.datetime.toISOString()} (diff: ${Math.round(diffMs / 60_000)}min)`,
-          suggestedFix: `Update screening datetime to ${parsedIso}`,
-          confidence: 0.85,
-          metadata: {
-            filmTitle: feScreening.filmTitle,
-            correctedDatetime: parsedIso,
-            fromStructuredData: false, // DOM-extracted times — conservative
-          },
-        });
-      }
+    const timeMismatchIssues = detectTimeMismatches(browseOutput.screenings, dbScreenings, referenceDate);
+    issues.push(...timeMismatchIssues);
+    if (timeMismatchIssues.length > 0) {
+      console.log(`[qa-analyze] Found ${timeMismatchIssues.length} time mismatches`);
     }
 
     // ── Step C: Parse Booking Check Results ────────────────────────
