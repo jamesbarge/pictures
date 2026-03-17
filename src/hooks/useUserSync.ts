@@ -62,6 +62,34 @@ function debouncedSync(
   }, SYNC_DEBOUNCE_MS);
 }
 
+/**
+ * Track anonymous-to-authenticated conversion on sign-in.
+ * Clears the stored anonymous ID after linking.
+ */
+function trackSignInConversion(): void {
+  if (!storedAnonymousId) return;
+
+  const currentId = getDistinctId();
+  if (!currentId || storedAnonymousId === currentId) {
+    storedAnonymousId = null;
+    return;
+  }
+
+  const filmCount = Object.keys(useFilmStatus.getState().getAllFilms()).length;
+  const hadAnonymousActivity = filmCount > 0;
+
+  trackAnonymousToAuthenticated(storedAnonymousId, currentId, filmCount);
+  trackUserAuthenticated(currentId, false, hadAnonymousActivity);
+
+  console.log("[Sync] Linked anonymous activity:", {
+    anonymousId: storedAnonymousId.slice(0, 8) + "...",
+    userId: currentId.slice(0, 8) + "...",
+    filmsBeforeSignup: filmCount,
+  });
+
+  storedAnonymousId = null;
+}
+
 /** Unified sync lifecycle manager — debounces film status, preference, and filter changes to the server. */
 export function useUserSync() {
   const { isSignedIn, isLoaded } = useUser();
@@ -123,30 +151,7 @@ export function useUserSync() {
         performFestivalSync(),
       ]).then(([userSyncSuccess]) => {
         isSyncingRef.current = false;
-
-        // Track anonymous-to-authenticated conversion
-        if (userSyncSuccess && storedAnonymousId) {
-          const currentId = getDistinctId();
-
-          // Only alias if the IDs are different (user was anonymous before)
-          if (currentId && storedAnonymousId !== currentId) {
-            // Check if user had any pre-signup activity
-            const filmCount = Object.keys(useFilmStatus.getState().getAllFilms()).length;
-            const hadAnonymousActivity = filmCount > 0;
-
-            trackAnonymousToAuthenticated(storedAnonymousId, currentId, filmCount);
-            trackUserAuthenticated(currentId, false, hadAnonymousActivity);
-
-            console.log("[Sync] Linked anonymous activity:", {
-              anonymousId: storedAnonymousId.slice(0, 8) + "...",
-              userId: currentId.slice(0, 8) + "...",
-              filmsBeforeSignup: filmCount,
-            });
-          }
-
-          // Clear stored anonymous ID
-          storedAnonymousId = null;
-        }
+        if (userSyncSuccess) trackSignInConversion();
       }).catch((error) => {
         isSyncingRef.current = false;
         console.error("[Sync] Initial sync failed:", error);
