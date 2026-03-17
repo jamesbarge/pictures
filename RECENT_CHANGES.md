@@ -1,3 +1,11 @@
+## 2026-03-17: Kaizen — extract DQS_TREND_FIELDS constant in dqs-snapshots
+**PR**: #383 | **Files**: `src/autoresearch/autoquality/dqs-snapshots.ts`
+- Extracted 8 shared Drizzle select fields into `DQS_TREND_FIELDS` constant
+- Eliminates duplicated column mappings between `loadDqsTrend` and `getRunSnapshots`
+- Kaizen automated refactoring (category: duplicate-pattern)
+
+---
+
 ## 2026-03-17: Kaizen — extract buildExperimentPrompt in AutoQuality harness
 **PR**: #381 | **Files**: `src/autoresearch/autoquality/harness.ts`
 - Extracted 18-line template replacement block into `buildExperimentPrompt()` function
