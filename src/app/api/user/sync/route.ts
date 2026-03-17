@@ -71,6 +71,47 @@ function toDbValues(status: FilmStatusPayload) {
 }
 
 /**
+ * Ensures a user record exists in the database.
+ * Creates one from Clerk data if needed, tracking the event in PostHog.
+ * @returns true if a new user was created
+ */
+async function ensureUserRecord(
+  userId: string,
+  clerkUser: Awaited<ReturnType<typeof currentUser>>
+): Promise<boolean> {
+  const existing = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+  });
+
+  if (existing) return false;
+
+  await db
+    .insert(users)
+    .values({
+      id: userId,
+      email: clerkUser?.emailAddresses[0]?.emailAddress || null,
+      displayName: clerkUser?.firstName
+        ? `${clerkUser.firstName}${clerkUser.lastName ? ` ${clerkUser.lastName}` : ""}`
+        : null,
+    });
+
+  captureServerEvent(userId, "user_created", {
+    source: "sync",
+    email_domain: clerkUser?.emailAddresses[0]?.emailAddress?.split("@")[1],
+    has_name: !!clerkUser?.firstName,
+  });
+
+  setServerUserProperties(userId, {
+    created_at: new Date().toISOString(),
+    signup_source: "sync",
+    email: clerkUser?.emailAddresses[0]?.emailAddress,
+    name: clerkUser?.fullName,
+  });
+
+  return true;
+}
+
+/**
  * POST /api/user/sync - Full bidirectional sync
  *
  * This endpoint:
@@ -100,41 +141,7 @@ export async function POST(request: NextRequest) {
     const body = parseResult.data;
 
     // 1. Ensure user record exists
-    let user = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-    });
-
-    let isNewUser = false;
-
-    if (!user) {
-      isNewUser = true;
-      const [newUser] = await db
-        .insert(users)
-        .values({
-          id: userId,
-          email: clerkUser?.emailAddresses[0]?.emailAddress || null,
-          displayName: clerkUser?.firstName
-            ? `${clerkUser.firstName}${clerkUser.lastName ? ` ${clerkUser.lastName}` : ""}`
-            : null,
-        })
-        .returning();
-      user = newUser;
-
-      // Track user creation server-side
-      captureServerEvent(userId, "user_created", {
-        source: "sync",
-        email_domain: clerkUser?.emailAddresses[0]?.emailAddress?.split("@")[1],
-        has_name: !!clerkUser?.firstName,
-      });
-
-      // Set initial user properties
-      setServerUserProperties(userId, {
-        created_at: new Date().toISOString(),
-        signup_source: "sync",
-        email: clerkUser?.emailAddresses[0]?.emailAddress,
-        name: clerkUser?.fullName,
-      });
-    }
+    const isNewUser = await ensureUserRecord(userId, clerkUser);
 
     // 2. Merge film statuses
     const serverStatuses = await db.query.userFilmStatuses.findMany({

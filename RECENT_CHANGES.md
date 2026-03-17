@@ -1,3 +1,11 @@
+## 2026-03-17: Kaizen — extract ensureUserRecord in user sync
+**PR**: #392 | **Files**: `src/app/api/user/sync/route.ts`
+- Extracted `ensureUserRecord()` from POST handler with early-return pattern
+- Eliminates `let user`/`let isNewUser` mutation pattern, replaces with clean `const`
+- Kaizen automated refactoring (category: readability)
+
+---
+
 ## 2026-03-17: Kaizen — extract toMergedScheduleEntry in festival sync
 **PR**: #391 | **Files**: `src/app/api/user/festivals/sync/route.ts`
 - Extracted `toMergedScheduleEntry()` helper to DRY two identical server-to-merged conversion blocks
