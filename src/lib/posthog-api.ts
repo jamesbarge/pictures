@@ -69,7 +69,7 @@ async function posthogFetch<T>(
 // TYPES
 // ============================================
 
-export interface PostHogEvent {
+interface PostHogEvent {
   id: string;
   distinct_id: string;
   event: string;
@@ -78,14 +78,14 @@ export interface PostHogEvent {
   elements?: unknown[];
 }
 
-export interface PostHogPerson {
+interface PostHogPerson {
   id: string;
   distinct_ids: string[];
   properties: Record<string, unknown>;
   created_at: string;
 }
 
-export interface PostHogSessionRecording {
+interface PostHogSessionRecording {
   id: string;
   distinct_id: string;
   viewed: boolean;
@@ -108,23 +108,14 @@ export interface PostHogSessionRecording {
   };
 }
 
-export interface PostHogInsight {
-  id: number;
-  name: string;
-  description?: string;
-  filters: Record<string, unknown>;
-  result?: unknown[];
-  last_refresh?: string;
-}
-
-export interface PaginatedResponse<T> {
+interface PaginatedResponse<T> {
   count: number;
   next: string | null;
   previous: string | null;
   results: T[];
 }
 
-export interface EventsQueryParams {
+interface EventsQueryParams {
   event?: string;
   after?: string;
   before?: string;
@@ -134,7 +125,7 @@ export interface EventsQueryParams {
   properties?: Record<string, unknown>[];
 }
 
-export interface RecordingsQueryParams {
+interface RecordingsQueryParams {
   limit?: number;
   offset?: number;
   date_from?: string;
@@ -145,7 +136,7 @@ export interface RecordingsQueryParams {
   duration?: [number, number]; // [min, max] in seconds
 }
 
-export interface PersonsQueryParams {
+interface PersonsQueryParams {
   limit?: number;
   offset?: number;
   search?: string;
