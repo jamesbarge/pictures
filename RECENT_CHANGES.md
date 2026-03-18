@@ -1,3 +1,10 @@
+## 2026-03-18: Fix TypeScript build errors blocking CI
+**PR**: #399 | **Files**: `src/scrapers/chains/curzon.ts`, `scripts/cleanup-pcc-duplicate-screenings.ts`
+- Add intermediate `as unknown` step to 3 type casts between non-overlapping types (`Window` → `Record`, `RowList` → custom type)
+- Fixes `tsc --noEmit` failures that were blocking the Tests workflow on main
+
+---
+
 ## 2026-03-18: Fix Curzon, Electric White City, and time-shift orphan screenings
 **PR**: #398 | **Files**: `src/scrapers/chains/curzon.ts`, `src/scrapers/pipeline.ts`, `src/trigger/scrapers/independent/electric.ts`, `src/config/cinema-registry.ts`, `src/trigger/task-registry.ts`, `src/inngest/known-ids.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`
 - **Curzon chain (3 venues stale since Feb 22)**: Fixed auth token capture by extracting JWT from SSR `window.initialData.api.authToken` instead of unreliable network request interception. Changed `waitUntil` from `networkidle` (never fires on this SPA) to `domcontentloaded`.
