@@ -111,6 +111,9 @@ AI-driven experiment loops that self-improve data quality overnight. Details in 
 - `/autoquality` — Compute baseline DQS, tune thresholds, write Obsidian report
 - Reports: `Obsidian Vault/Pictures/AutoResearch/`
 
+## Obsidian Vault
+Maintain the Pictures Obsidian vault at `/Users/jamesbarge/Documents/Obsidian Vault/Pictures/`. When producing strategy reports, audits, research documents, or other project artefacts that have long-term reference value, copy them into the appropriate vault folder (Research, Audits, Data Quality, etc.).
+
 ## Domain Rules
 Domain-specific rules are in `.claude/rules/`:
 - `scrapers.md` - Scraper architecture, critical rules, testing
