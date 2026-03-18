@@ -15,6 +15,7 @@ import { loadThresholds } from "@/autoresearch/autoquality/load-thresholds";
 import { getTMDBClient } from "./client";
 import type { TMDBSearchResult } from "./types";
 import { analyzeTitleAmbiguity, hasSufficientMetadata } from "./ambiguity";
+import { getBlockedTmdbIds, checkTitleBlocklist, incrementBlocklistUsage } from "./blocklist";
 
 /** Fixed scoring constants (not tunable by AutoQuality) */
 const MAX_SEARCH_CANDIDATES = 10;
@@ -195,6 +196,23 @@ function findBestMatch(
   // Load AutoQuality-tuned thresholds (cached, near-zero cost)
   const tmdb = getTmdbThresholds();
 
+  // Filter out known wrong TMDB IDs from blocklist
+  const blockedIds = getBlockedTmdbIds();
+  const filtered = results.filter((r) => !blockedIds.has(r.id));
+
+  // If a title-specific blocklist entry exists, check if the correct ID should be injected
+  const titleEntry = checkTitleBlocklist(searchTitle);
+  if (titleEntry && filtered.length > 0) {
+    const hasCorrect = filtered.some((r) => r.id === titleEntry.correctId);
+    if (!hasCorrect) {
+      // The correct match wasn't in search results; blocklist still prevents the wrong one
+      incrementBlocklistUsage(searchTitle);
+    }
+  }
+  if (blockedIds.size > 0 && filtered.length < results.length) {
+    incrementBlocklistUsage(searchTitle);
+  }
+
   // Calculate scores for all candidates
   const scoredResults: Array<{
     result: TMDBSearchResult;
@@ -202,7 +220,7 @@ function findBestMatch(
     score: number;
   }> = [];
 
-  for (const result of results.slice(0, MAX_SEARCH_CANDIDATES)) {
+  for (const result of filtered.slice(0, MAX_SEARCH_CANDIDATES)) {
     // Calculate title similarity
     const titleSimilarity = Math.max(
       calculateSimilarity(searchTitle, result.title),

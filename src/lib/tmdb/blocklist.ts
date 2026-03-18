@@ -38,7 +38,7 @@ function normalizeForBlocklist(title: string): string {
 }
 
 function loadBlocklist(): void {
-  if (blocklistCache) return;
+  if (blocklistCache && wrongIdIndex) return;
 
   blocklistCache = new Map();
   wrongIdIndex = new Map();

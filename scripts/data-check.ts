@@ -24,6 +24,7 @@ import postgres from "postgres";
 import * as cheerio from "cheerio";
 import * as fs from "fs";
 import * as path from "path";
+import { levenshteinDistance } from "../src/lib/levenshtein";
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -678,8 +679,8 @@ async function crossReferenceDb(
       FROM films f
       JOIN screenings s ON f.id = s.film_id
       WHERE s.datetime >= ${now}::timestamptz
+        AND f.title > ${cursor.cursorFilmTitle}
       GROUP BY f.id
-      HAVING f.title > ${cursor.cursorFilmTitle}
       ORDER BY f.title
       LIMIT ${BATCH_SIZE}
     `;
@@ -1012,24 +1013,7 @@ function levenshteinSimilarity(a: string, b: string): number {
   if (la === lb) return 1;
   const maxLen = Math.max(la.length, lb.length);
   if (maxLen === 0) return 1;
-
-  const matrix: number[][] = [];
-  for (let i = 0; i <= la.length; i++) {
-    matrix[i] = [i];
-    for (let j = 1; j <= lb.length; j++) {
-      if (i === 0) {
-        matrix[i][j] = j;
-      } else {
-        const cost = la[i - 1] === lb[j - 1] ? 0 : 1;
-        matrix[i][j] = Math.min(
-          matrix[i - 1][j] + 1,
-          matrix[i][j - 1] + 1,
-          matrix[i - 1][j - 1] + cost,
-        );
-      }
-    }
-  }
-  return 1 - matrix[la.length][lb.length] / maxLen;
+  return 1 - levenshteinDistance(la, lb) / maxLen;
 }
 
 async function fetchHtml(url: string, timeoutMs = 10000): Promise<string | null> {
@@ -1532,8 +1516,8 @@ async function enrichLetterboxd(
                     $('meta[property="og:title"]').attr("content") || "";
       }
 
-      // Safety: verify title fuzzy-match
-      if (pageTitle && levenshteinSimilarity(pageTitle, film.title) < 0.5) {
+      // Safety: verify title fuzzy-match (reject if no title found or low similarity)
+      if (!pageTitle || levenshteinSimilarity(pageTitle, film.title) < 0.5) {
         results.push({
           filmId: film.id, filmTitle: film.title, tmdbId: film.tmdb_id!,
           imdbId, letterboxdUrl, letterboxdRating: null,
@@ -1985,9 +1969,11 @@ async function main() {
   // Re-sort issues after adding all issue types
   issues.sort((a, b) => b.impactScore - a.impactScore);
 
-  // Compute DQS
+  // Compute DQS — query actual screening count for the batch films
   const staleCount = staleScreeningsForDeletion.length;
-  const totalScreeningsInBatch = batchFilms.reduce((sum, f) => sum + (f.cast ? 1 : 0), 0); // approximate
+  const [{ cnt: totalScreeningsInBatch }] = batchFilmIds.length > 0
+    ? await sql`SELECT count(*)::int as cnt FROM screenings WHERE film_id = ANY(${batchFilmIds}) AND datetime >= ${new Date().toISOString()}::timestamptz`
+    : [{ cnt: 0 }];
   const batchDqs = computeBatchDqs(batchFilms, staleCount, totalScreeningsInBatch || 1, cinemaVerifications);
   console.error(`[data-check] DQS: ${batchDqs.compositeScore}`);
 
