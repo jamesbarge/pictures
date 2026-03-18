@@ -462,22 +462,6 @@ const getScraperRegistry = (): Record<string, () => Promise<ScraperEntry>> => ({
       async () => createLexiScraper()
     );
   },
-
-  "romford-lumiere": async () => {
-    const { createRomfordLumiereScraper } = await import("@/scrapers/cinemas/romford-lumiere");
-    return createIndependentEntry(
-      {
-        id: "romford-lumiere",
-        name: "Lumiere Cinema Romford",
-        shortName: "Lumiere",
-        website: "https://lumiere-cinema.co.uk",
-        address: { street: "The Sapphire Ice and Leisure", area: "Romford", postcode: "RM1 3RL" },
-        features: ["independent", "modern"],
-      },
-      true, // Requires Playwright
-      async () => createRomfordLumiereScraper()
-    );
-  },
 });
 
 // Validate scraper registry keys match SCRAPER_REGISTRY_IDS at module load

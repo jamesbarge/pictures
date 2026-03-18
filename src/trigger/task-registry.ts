@@ -31,7 +31,6 @@ const INDEPENDENT_TASK_MAP: Record<string, string> = {
   "olympic-studios": "scraper-olympic",
   "david-lean-cinema": "scraper-david-lean",
   "riverside-studios": "scraper-riverside",
-  "romford-lumiere": "scraper-romford-lumiere",
   "bfi-southbank": "scraper-bfi",
   "bfi-imax": "scraper-bfi",
   "barbican": "scraper-barbican",
