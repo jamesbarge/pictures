@@ -11,7 +11,7 @@ import { usePrefetch } from "@/hooks/usePrefetch";
 import { FilmPoster } from "@/components/film/film-poster";
 import { Search, X, Film, Calendar, Loader2 } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { trackSearch, trackSearchResultClick } from "@/lib/analytics";
+import { trackSearch, trackSearchResultClick, trackSearchNoResults } from "@/lib/analytics";
 
 interface SearchResult {
   id: string;
@@ -83,6 +83,10 @@ export function SearchDialog() {
           setSelectedIndex(0);
           // Track search performed
           trackSearch(query, data.films.length);
+          // Track empty results for friction analysis
+          if (data.films.length === 0) {
+            trackSearchNoResults(query);
+          }
         }
       } catch (error) {
         // Ignore abort errors - they're expected when user types quickly

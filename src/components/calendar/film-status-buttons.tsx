@@ -9,14 +9,11 @@
 import { cn } from "@/lib/cn";
 import { Heart, X } from "lucide-react";
 import { useFilmStatus, type FilmStatus, type FilmMetadata } from "@/stores/film-status";
-import { usePostHog } from "posthog-js/react";
 
 interface FilmStatusButtonsProps {
   filmId: string;
   filmData: FilmMetadata;
   status: FilmStatus;
-  /** Additional context for analytics (cinema, screening, etc.) */
-  analyticsContext?: Record<string, unknown>;
 }
 
 /** Shared watchlist and not-interested toggle buttons used by ScreeningCard and FilmCard. */
@@ -24,34 +21,18 @@ export function FilmStatusButtons({
   filmId,
   filmData,
   status,
-  analyticsContext,
 }: FilmStatusButtonsProps): React.ReactElement {
   const setStatus = useFilmStatus((state) => state.setStatus);
-  const posthog = usePostHog();
 
   function handleStatusClick(e: React.MouseEvent, newStatus: FilmStatus): void {
     e.preventDefault();
     e.stopPropagation();
 
-    // Toggle off if already set to this status
+    // Toggle off if already set to this status; analytics tracked by the store
     if (status === newStatus) {
-      posthog.capture("film_status_removed", {
-        film_id: filmId,
-        film_title: filmData.title,
-        previous_status: newStatus,
-        ...analyticsContext,
-      });
       setStatus(filmId, null);
       return;
     }
-
-    // Track status change
-    posthog.capture("film_status_set", {
-      film_id: filmId,
-      film_title: filmData.title,
-      status: newStatus,
-      ...analyticsContext,
-    });
 
     setStatus(filmId, newStatus, filmData);
   }

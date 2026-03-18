@@ -5,7 +5,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import posthog from "posthog-js";
+import { trackFilterChange } from "@/lib/analytics";
 import { isFeatureEnabled } from "@/lib/features";
 
 // Re-export types and constants for backwards compatibility
@@ -26,17 +26,6 @@ export {
 } from "@/lib/filter-constants";
 
 import type { TimeOfDay, ProgrammingType } from "@/lib/filter-constants";
-
-// Helper to track filter changes
-function trackFilterChange(filterType: string, value: unknown, action: "added" | "removed" | "set" | "cleared") {
-  if (typeof window !== "undefined") {
-    posthog.capture("filter_changed", {
-      filter_type: filterType,
-      value,
-      action,
-    });
-  }
-}
 
 export interface FilterState {
   // Search
