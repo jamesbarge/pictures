@@ -26,6 +26,10 @@ const HIGH_COMPETITION_PENALTY = 0.15;
 const MODERATE_COMPETITION_PENALTY = 0.08;
 const REPERTORY_AGE_YEARS = 2;
 const RATE_LIMIT_DELAY_MS = 250;
+const YEAR_MISMATCH_PENALTY = -0.1;
+const CLASSIC_YEAR_THRESHOLD = 2000;
+const CLASSIC_YEAR_MISMATCH_TOLERANCE = 5;
+const CLASSIC_CONFIDENCE_FLOOR = 0.85;
 
 /**
  * Get TMDB matching thresholds from the AutoQuality-tuned config.
@@ -213,9 +217,18 @@ function findBestMatch(
     if (hints?.year && result.release_date) {
       const resultYear = parseInt(result.release_date.split("-")[0], 10);
       if (resultYear === hints.year) {
-        yearBonus = YEAR_EXACT_BONUS;
+        yearBonus = (hints.year < CLASSIC_YEAR_THRESHOLD) ? 0.3 : YEAR_EXACT_BONUS;
       } else if (Math.abs(resultYear - hints.year) === 1) {
         yearBonus = YEAR_CLOSE_BONUS;
+      }
+    }
+
+    // Classic film year preference: penalize large year mismatches for pre-2000 films
+    if (hints?.year && hints.year < CLASSIC_YEAR_THRESHOLD && result.release_date) {
+      const resultYear = parseInt(result.release_date.split("-")[0], 10);
+      const yearDiff = Math.abs(resultYear - hints.year);
+      if (yearDiff > 10) {
+        yearBonus += YEAR_MISMATCH_PENALTY;
       }
     }
 
@@ -265,6 +278,14 @@ function findBestMatch(
         adjustedConfidence + matchCountPenalty * tmdb.yearMatchPenaltyRecovery,
         1
       );
+    }
+  }
+
+  // Classic film: require higher confidence when year differs significantly from hint
+  if (hints?.year && hints.year < CLASSIC_YEAR_THRESHOLD && best.result.release_date) {
+    const bestYear = parseInt(best.result.release_date.split("-")[0], 10);
+    if (Math.abs(bestYear - hints.year) > CLASSIC_YEAR_MISMATCH_TOLERANCE && finalConfidence < CLASSIC_CONFIDENCE_FLOOR) {
+      return null; // Year too far off for classic film — reject
     }
   }
 

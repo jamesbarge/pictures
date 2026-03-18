@@ -1,3 +1,15 @@
+## 2026-03-18: Data Check v2 — Compounding Intelligence
+**PR**: TBD | **Files**: `scripts/data-check.ts`, `src/lib/tmdb/match.ts`, `src/lib/tmdb/blocklist.ts`, `.claude/data-check-learnings.json`, `.claude/commands/data-check.md`
+- Structured learnings JSON replaces markdown — script auto-loads wrong TMDB matches, non-film patterns, cinema quirks
+- Cinema website verification: 10 cinemas checked against source (advisory only)
+- TMDB match re-validation for low-confidence entries (year + director comparison)
+- Letterboxd IMDB bridge: TMDB -> IMDB -> Letterboxd redirect chain for URL + rating enrichment
+- Classic film year preference: stronger year bonuses for pre-2000 films, penalty for decade mismatches
+- Per-run DQS (Data Quality Score) with trend tracking across runs
+- Time budget extended to 15 min with per-phase hard timeouts
+
+---
+
 ## 2026-03-18: Remove Romford Lumiere Cinema
 **PR**: #401 | **Files**: `src/config/cinema-registry.ts`, `src/inngest/functions.ts`, `src/inngest/known-ids.ts`, `src/trigger/scrape-all.ts`, `src/trigger/task-registry.ts`, `src/db/seed-cli.ts`, `package.json`
 - Removed Romford Lumiere cinema entirely — CineSync-powered site returns 403 on all API endpoints with no fix available
