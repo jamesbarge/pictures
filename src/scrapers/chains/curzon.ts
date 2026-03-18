@@ -543,12 +543,12 @@ export class CurzonScraper implements ChainScraper {
       try {
         // Wait briefly for the inline script to set window.initialData
         await this.page.waitForFunction(
-          () => !!(window as Record<string, unknown>).initialData,
+          () => !!(window as unknown as Record<string, unknown>).initialData,
           { timeout: 10000 }
         );
 
         const ssrToken = await this.page.evaluate(() => {
-          const data = (window as Record<string, unknown>).initialData as
+          const data = (window as unknown as Record<string, unknown>).initialData as
             { api?: { authToken?: string; apiUrl?: string } } | undefined;
           return {
             authToken: data?.api?.authToken || null,
