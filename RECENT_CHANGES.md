@@ -1,3 +1,11 @@
+## 2026-03-18: Fix Curzon, Electric White City, and time-shift orphan screenings
+**PR**: #398 | **Files**: `src/scrapers/chains/curzon.ts`, `src/scrapers/pipeline.ts`, `src/trigger/scrapers/independent/electric.ts`, `src/config/cinema-registry.ts`, `src/trigger/task-registry.ts`, `src/inngest/known-ids.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`
+- **Curzon chain (3 venues stale since Feb 22)**: Fixed auth token capture by extracting JWT from SSR `window.initialData.api.authToken` instead of unreliable network request interception. Changed `waitUntil` from `networkidle` (never fires on this SPA) to `domcontentloaded`.
+- **Electric White City (0 screenings since Mar 3)**: Wired up White City venue — was never configured for production scraping. Switched from v1 Playwright scraper to v2 API-based scraper with multi-venue support.
+- **Time-shift orphan cleanup**: Added `cleanupSupersededScreenings()` to the pipeline — when a cinema updates a showtime between runs, the old ghost screening is now automatically removed. Also rewrote one-time cleanup script with safe pairwise comparison (deleted 10 orphans).
+
+---
+
 ## 2026-03-17: Fix screening validator test timezone sensitivity
 **PR**: #396 | **Files**: `src/scrapers/utils/screening-validator.test.ts`
 - Fixed `makeScreening()` helper to use 2 PM tomorrow instead of current time + 24h

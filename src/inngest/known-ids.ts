@@ -40,6 +40,7 @@ export const SCRAPER_REGISTRY_IDS = new Set([
   "bfi-imax",
   "barbican",
   "electric-portobello",
+  "electric-white-city",
   "lexi",
   "romford-lumiere",
   "regent-street",

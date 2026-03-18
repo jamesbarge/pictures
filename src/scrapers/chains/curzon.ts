@@ -1,8 +1,13 @@
 /**
  * Curzon Cinemas Scraper
  *
- * Uses Playwright to capture JWT auth token, then makes direct API calls
- * to the Vista OCAPI for fast, reliable showtime data.
+ * Uses Playwright to load a venue page and extract the JWT auth token from
+ * window.initialData.api.authToken (server-side rendered by Curzon's backend),
+ * then makes direct API calls to the Vista OCAPI for fast, reliable showtime data.
+ *
+ * The token is embedded in the SSR HTML, so we only need to load the page and
+ * read the JS context — no need to wait for SPA API calls or intercept requests.
+ * Falls back to request interception if the SSR token is not found.
  *
  * Website: https://www.curzon.com
  * API: https://digital-api.curzon.com/ocapi/v1/
@@ -499,34 +504,77 @@ export class CurzonScraper implements ChainScraper {
   }
 
   /**
-   * Initialize Playwright and capture auth token
+   * Initialize Playwright and capture auth token.
+   *
+   * Primary strategy: Extract the JWT from window.initialData.api.authToken,
+   * which is server-side rendered into the page HTML by Curzon's backend.
+   * This is fast and reliable because we only need the DOM, not full SPA init.
+   *
+   * Fallback strategy: Intercept outgoing requests to digital-api.curzon.com
+   * and capture the Authorization header (original approach, slower).
    */
   private async initialize(): Promise<void> {
     console.log(`[curzon] Launching browser to capture auth token...`);
     await getBrowser();
     this.page = await createPage();
 
-    // Intercept requests to capture the JWT token
+    // Fallback: intercept requests in case SSR token extraction fails
     this.page.on("request", (request) => {
       const url = request.url();
       if (url.includes("digital-api.curzon.com") && !this.authToken) {
         const authHeader = request.headers()["authorization"];
         if (authHeader && authHeader.startsWith("Bearer ")) {
           this.authToken = authHeader;
-          console.log("[curzon] Auth token captured!");
+          console.log("[curzon] Auth token captured via request interception (fallback)");
         }
       }
     });
 
-    // Visit any venue page to trigger the Vista SDK which generates the token
+    // Visit a venue page — domcontentloaded is sufficient since the token
+    // is SSR'd into the HTML as window.initialData.api.authToken.
+    // networkidle never fires on this SPA (analytics/chunks keep loading).
     try {
       await this.page.goto(`${this.chainConfig.baseUrl}/venues/soho/`, {
-        waitUntil: "networkidle",
+        waitUntil: "domcontentloaded",
         timeout: 45000
       });
 
-      // Wait a bit for API calls to be made
-      await this.page.waitForTimeout(3000);
+      // Primary: extract token from the server-rendered window.initialData
+      try {
+        // Wait briefly for the inline script to set window.initialData
+        await this.page.waitForFunction(
+          () => !!(window as Record<string, unknown>).initialData,
+          { timeout: 10000 }
+        );
+
+        const ssrToken = await this.page.evaluate(() => {
+          const data = (window as Record<string, unknown>).initialData as
+            { api?: { authToken?: string; apiUrl?: string } } | undefined;
+          return {
+            authToken: data?.api?.authToken || null,
+            apiUrl: data?.api?.apiUrl || null,
+          };
+        });
+
+        if (ssrToken.authToken) {
+          this.authToken = `Bearer ${ssrToken.authToken}`;
+          console.log("[curzon] Auth token extracted from SSR initialData");
+          if (ssrToken.apiUrl && ssrToken.apiUrl !== "https://digital-api.curzon.com") {
+            // Curzon may change API domains again — detect it early
+            console.warn(`[curzon] API URL changed: ${ssrToken.apiUrl} (expected digital-api.curzon.com)`);
+          }
+          return;
+        }
+
+        console.warn("[curzon] SSR token not found in initialData, falling back to request interception...");
+      } catch {
+        console.warn("[curzon] Could not extract SSR token, falling back to request interception...");
+      }
+
+      // Fallback: wait for the SPA to make API calls so the request interceptor fires
+      if (!this.authToken) {
+        await this.page.waitForTimeout(10000);
+      }
 
       // Close any popups
       try {
@@ -578,8 +626,14 @@ export class CurzonScraper implements ChainScraper {
 
   async healthCheck(): Promise<boolean> {
     try {
-      const response = await fetch(this.chainConfig.baseUrl, { method: "HEAD" });
-      return response.ok;
+      // Cloudflare blocks HEAD requests, so check the API domain instead.
+      // A 401 means the API is up (just needs auth); only connection failures
+      // or 5xx indicate the service is actually down.
+      const response = await fetch(
+        "https://digital-api.curzon.com/ocapi/v1/film-screening-dates?siteIds=SOH1",
+        { method: "GET" }
+      );
+      return response.status === 401 || response.ok;
     } catch {
       return false;
     }
