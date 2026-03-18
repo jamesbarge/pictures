@@ -202,21 +202,6 @@ const LONDON_CINEMAS = [
     dataSourceType: "scrape" as const,
     description: "Independent cinema in Brixton. New releases, art-house, classics and documentaries.",
   },
-  {
-    id: "romford-lumiere",
-    name: "Lumiere Romford",
-    shortName: "Lumiere",
-    chain: null,
-    address: { street: "Mercury Gardens", area: "Romford", postcode: "RM1 3EE", borough: "Havering" },
-    coordinates: { lat: 51.5757, lng: 0.1838 },
-    screens: 4,
-    features: ["bar", "accessible", "community"],
-    programmingFocus: ["mainstream", "arthouse", "repertory", "events"],
-    website: "https://www.lumiereromford.com",
-    bookingUrl: "https://www.lumiereromford.com/en/buy-tickets",
-    dataSourceType: "scrape" as const,
-    description: "Community co-operative cinema in Romford championing independent films alongside mainstream releases.",
-  },
 ];
 
 // ============================================================================

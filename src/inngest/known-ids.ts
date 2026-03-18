@@ -42,7 +42,6 @@ export const SCRAPER_REGISTRY_IDS = new Set([
   "electric-portobello",
   "electric-white-city",
   "lexi",
-  "romford-lumiere",
   "regent-street",
 ]);
 

@@ -1,3 +1,12 @@
+## 2026-03-18: Remove Romford Lumiere Cinema
+**PR**: #401 | **Files**: `src/config/cinema-registry.ts`, `src/inngest/functions.ts`, `src/inngest/known-ids.ts`, `src/trigger/scrape-all.ts`, `src/trigger/task-registry.ts`, `src/db/seed-cli.ts`, `package.json`
+- Removed Romford Lumiere cinema entirely — CineSync-powered site returns 403 on all API endpoints with no fix available
+- Deleted scraper, trigger task, run script, and sole-purpose changelogs (7 files)
+- Removed from cinema registry, Inngest functions, task registry, seed data, and npm scripts
+- DB cleanup SQL: `DELETE FROM screenings WHERE cinema_id = (SELECT id FROM cinemas WHERE slug = 'romford-lumiere'); DELETE FROM cinemas WHERE slug = 'romford-lumiere';`
+
+---
+
 ## 2026-03-18: PostHog analytics cleanup — event taxonomy, source tracking, empty states
 **PR**: #400 | **Files**: `src/lib/analytics.ts`, `src/components/calendar/screening-card.tsx`, `src/components/calendar/film-card.tsx`, `src/components/calendar/film-status-buttons.tsx`, `src/components/calendar/film-status-overlay.tsx`, `src/components/film/film-screenings.tsx`, `src/components/film/film-view-tracker.tsx`, `src/components/search/search-dialog.tsx`, `src/app/tonight/tonight-view.tsx`, `src/components/calendar/calendar-view.tsx`, `src/stores/film-status.ts`, `src/test/setup.ts`
 - **Event consolidation**: Replaced 6 inline `posthog.capture()` calls with centralized typed functions. Collapsed 3-4 events per watchlist action into single `film_status_changed`. Unified 3 filter event names into `filter_changed` with context.
