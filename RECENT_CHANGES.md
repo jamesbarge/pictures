@@ -1,3 +1,12 @@
+## 2026-03-18: Remove Romford Lumiere Cinema
+**PR**: #401 | **Files**: `src/config/cinema-registry.ts`, `src/inngest/functions.ts`, `src/inngest/known-ids.ts`, `src/trigger/scrape-all.ts`, `src/trigger/task-registry.ts`, `src/db/seed-cli.ts`, `package.json`
+- Removed Romford Lumiere cinema entirely — CineSync-powered site returns 403 on all API endpoints with no fix available
+- Deleted scraper, trigger task, run script, and sole-purpose changelogs (7 files)
+- Removed from cinema registry, Inngest functions, task registry, seed data, and npm scripts
+- DB cleanup SQL: `DELETE FROM screenings WHERE cinema_id = (SELECT id FROM cinemas WHERE slug = 'romford-lumiere'); DELETE FROM cinemas WHERE slug = 'romford-lumiere';`
+
+---
+
 ## 2026-03-18: Fix TypeScript build errors blocking CI
 **PR**: #399 | **Files**: `src/scrapers/chains/curzon.ts`, `scripts/cleanup-pcc-duplicate-screenings.ts`
 - Add intermediate `as unknown` step to 3 type casts between non-overlapping types (`Window` → `Record`, `RowList` → custom type)
