@@ -71,7 +71,7 @@ async function main() {
     WHERE s.datetime >= NOW()
       ${cinemaWhere}
     ORDER BY s.id, s2.scraped_at DESC
-  `)) as OrphanRow[];
+  `)) as unknown as OrphanRow[];
 
   console.log(`\nFound ${orphans.length} orphaned screenings to delete:\n`);
 
