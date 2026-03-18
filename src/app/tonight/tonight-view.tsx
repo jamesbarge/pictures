@@ -12,8 +12,9 @@ import { Clock, ExternalLink, MapPin } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { ShareScreeningButton } from "@/components/film/share-screening-button";
 import { AddToCalendarButton } from "@/components/film/add-to-calendar-button";
-import { usePostHog } from "posthog-js/react";
+import { trackBookingClick as trackBookingClickAnalytics, trackTonightNoScreenings } from "@/lib/analytics";
 import Link from "next/link";
+import { useFilmStatus } from "@/stores/film-status";
 import Image from "next/image";
 import { POSTER_BLUR_PLACEHOLDER } from "@/lib/constants";
 
@@ -106,17 +107,21 @@ const eventTypeBadges: Record<string, { label: string; className: string }> = {
 
 function TonightScreeningCard({ screening }: { screening: TonightScreening }) {
   const { film, cinema, datetime } = screening;
-  const posthog = usePostHog();
+  const isWatchlisted = useFilmStatus((state) => state.films[film.id]?.status === "want_to_see");
   const time = format(new Date(datetime), "HH:mm");
 
-  const trackBookingClick = () => {
-    posthog.capture("booking_link_clicked", {
-      film_id: film.id,
-      film_title: film.title,
-      screening_id: screening.id,
-      cinema_name: cinema.name,
-      source: "tonight_page",
-    });
+  const handleBookingClick = () => {
+    trackBookingClickAnalytics({
+      filmId: film.id,
+      filmTitle: film.title,
+      screeningId: screening.id,
+      screeningTime: datetime,
+      cinemaId: cinema.id,
+      cinemaName: cinema.name,
+      format: screening.format,
+      eventType: screening.eventType,
+      bookingUrl: screening.bookingUrl,
+    }, "tonight", isWatchlisted);
   };
 
   return (
@@ -225,7 +230,7 @@ function TonightScreeningCard({ screening }: { screening: TonightScreening }) {
             href={screening.bookingUrl}
             target="_blank"
             rel="noopener noreferrer"
-            onClick={trackBookingClick}
+            onClick={handleBookingClick}
             className="px-4 py-1.5 text-sm font-medium text-text-inverse bg-accent-primary hover:bg-accent-primary-hover rounded-lg transition-colors flex items-center gap-1.5 shadow-sm"
           >
             Book
@@ -257,6 +262,13 @@ export function TonightView({ screenings }: TonightViewProps) {
     const interval = setInterval(() => setNow(new Date()), 60000);
     return () => clearInterval(interval);
   }, []);
+
+  // Track empty state for friction analysis
+  useEffect(() => {
+    if (screenings.length === 0) {
+      trackTonightNoScreenings();
+    }
+  }, [screenings.length]);
 
   const { startingSoon, laterTonight } = useMemo(() => {
     const soon: TonightScreening[] = [];

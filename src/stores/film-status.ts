@@ -5,12 +5,7 @@
 
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import {
-  trackWatchlistChange,
-  trackFilmMarkedSeen,
-  trackFilmMarkedNotInterested,
-  trackFilmStatusChange,
-} from "@/lib/analytics";
+import { trackFilmStatusChange } from "@/lib/analytics";
 
 export type FilmStatus = "want_to_see" | "seen" | "not_interested" | null;
 
@@ -87,27 +82,8 @@ export const useFilmStatus = create<FilmStatusState>()(
             isRepertory: undefined, // Not available in this context
           };
 
-          // Track analytics events
+          // Track single canonical status change event
           if (status !== previousStatus) {
-            // Track adding to watchlist
-            if (status === "want_to_see") {
-              trackWatchlistChange(filmContext, "added");
-            }
-
-            // Track removing from watchlist (was want_to_see, now something else or null)
-            if (previousStatus === "want_to_see") {
-              trackWatchlistChange(filmContext, "removed");
-            }
-
-            if (status === "seen") {
-              trackFilmMarkedSeen(filmContext);
-            }
-
-            if (status === "not_interested") {
-              trackFilmMarkedNotInterested(filmContext);
-            }
-
-            // Track general status change
             trackFilmStatusChange(filmContext, previousStatus, status);
           }
 

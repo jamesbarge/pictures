@@ -19,6 +19,12 @@ vi.mock("posthog-js", () => ({
     isFeatureEnabled: vi.fn().mockReturnValue(false),
     getFeatureFlag: vi.fn().mockReturnValue(undefined),
     onFeatureFlags: vi.fn(),
+    alias: vi.fn(),
+    get_distinct_id: vi.fn(),
+    people: {
+      set: vi.fn(),
+      set_once: vi.fn(),
+    },
   },
 }));
 
@@ -26,15 +32,25 @@ vi.mock("posthog-js", () => ({
 // Analytics Module Mock
 // =============================================================================
 vi.mock("@/lib/analytics", () => ({
-  trackWatchlistChange: vi.fn(),
-  trackFilmMarkedSeen: vi.fn(),
-  trackFilmMarkedNotInterested: vi.fn(),
+  trackFilmView: vi.fn(),
+  trackScreeningClick: vi.fn(),
+  trackBookingClick: vi.fn(),
   trackFilmStatusChange: vi.fn(),
-  trackFilterChanged: vi.fn(),
-  trackScreeningClicked: vi.fn(),
-  trackSearchPerformed: vi.fn(),
-  trackCinemaSelected: vi.fn(),
-  initPostHog: vi.fn(),
+  trackSearch: vi.fn(),
+  trackSearchResultClick: vi.fn(),
+  trackSearchNoResults: vi.fn(),
+  trackFilterChange: vi.fn(),
+  trackCinemaViewed: vi.fn(),
+  trackFilterNoResults: vi.fn(),
+  trackTonightNoScreenings: vi.fn(),
+  isFeatureEnabled: vi.fn().mockReturnValue(false),
+  trackSyncInitiated: vi.fn(),
+  trackSyncCompleted: vi.fn(),
+  trackSyncFailed: vi.fn(),
+  trackUserAuthenticated: vi.fn(),
+  trackAnonymousToAuthenticated: vi.fn(),
+  getDistinctId: vi.fn(),
+  syncUserEngagementProperties: vi.fn(),
 }));
 
 // =============================================================================

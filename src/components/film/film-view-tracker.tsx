@@ -6,7 +6,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { trackFilmView, trackFunnelStep } from "@/lib/analytics";
+import { trackFilmView } from "@/lib/analytics";
 
 interface FilmViewTrackerProps {
   filmId: string;
@@ -41,12 +41,6 @@ export function FilmViewTracker({
       isRepertory,
       genres,
       directors,
-    });
-
-    // Track funnel step
-    trackFunnelStep("view_film", {
-      film_id: filmId,
-      film_title: filmTitle,
     });
   }, [filmId, filmTitle, filmYear, isRepertory, genres, directors]);
 
