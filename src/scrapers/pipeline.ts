@@ -5,7 +5,7 @@
 
 import { db } from "@/db";
 import { screenings as screeningsTable, cinemas, festivals, festivalScreenings } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { extractFilmTitleCached, batchExtractTitles } from "@/lib/title-extraction";
 import type { RawScreening } from "./types";
 import { v4 as uuidv4 } from "uuid";
@@ -76,12 +76,50 @@ function normalizeTimestamp(datetime: Date): Date {
 }
 
 /**
+ * Remove "superseded" screenings after a scrape run.
+ *
+ * When a cinema updates a showtime between scraper runs (e.g., 18:15 → 19:15),
+ * the pipeline creates a new screening at the new time but never removes the old.
+ * This function finds screenings that were NOT refreshed in this run but have a
+ * "sibling" (same film, same date, within 3h) that WAS refreshed — these are
+ * time-shift orphans.
+ *
+ * Safety: only deletes future screenings, only when a current sibling exists,
+ * and the 3h window preserves legitimate matinee+evening pairs (4h+ apart).
+ */
+async function cleanupSupersededScreenings(
+  cinemaId: string,
+  scrapedAt: Date
+): Promise<number> {
+  const result = await db.execute(sql`
+    DELETE FROM screenings s
+    WHERE s.cinema_id = ${cinemaId}
+      AND s.scraped_at < ${scrapedAt.toISOString()}::timestamptz
+      AND s.datetime >= NOW()
+      AND EXISTS (
+        SELECT 1 FROM screenings s2
+        WHERE s2.cinema_id = s.cinema_id
+          AND s2.film_id = s.film_id
+          AND s2.scraped_at >= ${scrapedAt.toISOString()}::timestamptz
+          AND DATE(s2.datetime AT TIME ZONE 'Europe/London') = DATE(s.datetime AT TIME ZONE 'Europe/London')
+          AND ABS(EXTRACT(EPOCH FROM s2.datetime - s.datetime)) < 10800
+          AND s2.id != s.id
+      )
+  `);
+  // postgres.js returns array-like result with .count for DML statements
+  return (result as unknown as { count: number }).count ?? 0;
+}
+
+/**
  * Process raw screenings through the full pipeline
  *
  * IMPORTANT: This function ONLY ADDS or UPDATES screenings.
  * It NEVER DELETES existing screenings. If a scraper returns fewer
  * results than before, existing screenings are preserved.
  * See CLAUDE.md for the "Never Delete Valid Screenings" rule.
+ *
+ * After processing, superseded same-day screenings (time-shift orphans)
+ * are cleaned up via cleanupSupersededScreenings().
  */
 export async function processScreenings(
   cinemaId: string,
@@ -198,6 +236,15 @@ export async function processScreenings(
     } catch (error) {
       console.error(`[Pipeline] Error processing film "${normalizedTitle}":`, error);
       result.failed += filmScreenings.length;
+    }
+  }
+
+  // Clean up superseded same-day screenings (time-shift orphans)
+  // Only runs when the scrape wasn't blocked and produced results
+  if (!result.blocked && result.added + result.updated > 0) {
+    const cleaned = await cleanupSupersededScreenings(cinemaId, result.scrapedAt);
+    if (cleaned > 0) {
+      console.log(`[Pipeline] Cleaned ${cleaned} superseded same-day screenings`);
     }
   }
 

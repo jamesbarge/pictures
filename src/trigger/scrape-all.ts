@@ -37,7 +37,7 @@ const CHEERIO_TASKS: TaskRef[] = [
   { id: "scraper-olympic" },
   { id: "scraper-david-lean" },
   { id: "scraper-riverside" },
-  { id: "scraper-romford-lumiere" },
+  // { id: "scraper-romford-lumiere" }, // Disabled 2026-03-17: CineSync site returns 403 on all pages
 ];
 
 const ENRICHMENT_TASKS: TaskRef[] = [
