@@ -13,6 +13,7 @@ import { useFilters, getTimeOfDayFromHour } from "@/stores/filters";
 import { useFilmStatus } from "@/stores/film-status";
 import { usePreferences } from "@/stores/preferences";
 import { useHydrated } from "@/hooks/useHydrated";
+import { trackFilterNoResults } from "@/lib/analytics";
 import { EmptyState } from "@/components/ui";
 import { Button } from "@/components/ui";
 import { Film, Search, MapPin } from "lucide-react";
@@ -441,8 +442,21 @@ export function CalendarView({ screenings, serverFilmTotals }: CalendarViewProps
   // Map filter is active if user drew an area on the map (synced to cinemaIds)
   const hasMapFilter = mounted && mapArea !== null;
 
+  // Track friction point when filters produce empty results (must be before early returns)
+  useEffect(() => {
+    if (mounted && filteredScreenings.length === 0 && activeFilterCount > 0) {
+      trackFilterNoResults({
+        filter_count: activeFilterCount,
+        has_search: !!filters.filmSearch.trim(),
+        has_cinema_filter: filters.cinemaIds.length > 0,
+        has_format_filter: filters.formats.length > 0,
+        has_date_filter: !!(filters.dateFrom || filters.dateTo),
+      });
+    }
+  }, [mounted, filteredScreenings.length, activeFilterCount, filters.filmSearch, filters.cinemaIds.length, filters.formats.length, filters.dateFrom, filters.dateTo]);
+
   // Avoid flashing hidden films before film status storage hydrates
-  // Must be AFTER all useMemo hooks (React hooks rules)
+  // Must be AFTER all hooks (React hooks rules)
   if (!mounted || ((hideSeen || hideNotInterested) && !filmStatusesHydrated)) {
     return (
       <div className="py-8 text-center text-text-tertiary text-sm">

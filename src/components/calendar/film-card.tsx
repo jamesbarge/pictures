@@ -10,12 +10,12 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePostHog } from "posthog-js/react";
 import { memo } from "react";
 
 import { FilmPoster } from "@/components/film/film-poster";
 import { useHydrated } from "@/hooks/useHydrated";
 import { usePrefetch } from "@/hooks/usePrefetch";
+import { trackScreeningClick } from "@/lib/analytics";
 import { cn } from "@/lib/cn";
 import { POSTER_BLUR_PLACEHOLDER } from "@/lib/constants";
 import { useFilmStatus } from "@/stores/film-status";
@@ -51,8 +51,6 @@ export const FilmCard = memo(function FilmCard({
   singleCinema,
   specialFormats,
 }: FilmCardProps) {
-  const posthog = usePostHog();
-
   // Performance: Use selectors to only subscribe to this specific film's status
   const rawStatus = useFilmStatus((state) => state.films[film.id]?.status ?? null);
 
@@ -64,16 +62,14 @@ export const FilmCard = memo(function FilmCard({
   // Prefetch film page on hover for instant navigation
   const prefetch = usePrefetch(`/film/${film.id}`);
 
-  // Track film card clicks
+  // Track film card clicks (uses same event as screening cards for unified analysis)
   function trackCardClick(): void {
-    posthog.capture("film_card_clicked", {
-      film_id: film.id,
-      film_title: film.title,
-      film_year: film.year,
-      screening_count: screeningCount,
-      cinema_count: cinemaCount,
-      special_formats: specialFormats,
-    });
+    trackScreeningClick({
+      filmId: film.id,
+      filmTitle: film.title,
+      filmYear: film.year,
+      isRepertory: film.isRepertory,
+    }, "calendar");
   }
 
   // Apply mounted guard for hydration safety (localStorage not available during SSR)

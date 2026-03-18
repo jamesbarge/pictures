@@ -13,10 +13,11 @@ import { useState, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { format, isSameDay, getHours, startOfDay, endOfDay } from "date-fns";
 import { MapPin, ExternalLink, Search, Filter } from "lucide-react";
+import { trackBookingClick, trackFilterChange, trackCinemaViewed } from "@/lib/analytics";
 import { cn } from "@/lib/cn";
-import { usePostHog } from "posthog-js/react";
 import { ScreeningFilters, type FilmScreeningFilters } from "./screening-filters";
 import { EmptyState } from "@/components/ui";
+import { useFilmStatus } from "@/stores/film-status";
 import { useFilters } from "@/stores/filters";
 import { useSafeDateLabels } from "@/hooks/useSafeDateLabels";
 
@@ -99,8 +100,8 @@ function getInitialSelectedDates(
 
 /** Upcoming screenings list for a film, grouped by cinema with optional date, time, and search filters. */
 export function FilmScreenings({ screenings, film }: FilmScreeningsProps) {
-  const posthog = usePostHog();
   const { isClientToday, isClientTomorrow } = useSafeDateLabels();
+  const isWatchlisted = useFilmStatus((state) => state.films[film.id]?.status === "want_to_see");
 
   // SSR-safe date formatter - only shows "Today/Tomorrow" after hydration
   const safeFormatScreeningDate = useCallback(
@@ -131,39 +132,35 @@ export function FilmScreenings({ screenings, film }: FilmScreeningsProps) {
     return globalFilters.cinemaIds.length > 0 || globalFilters.formats.length > 0;
   }, [globalFilters.cinemaIds, globalFilters.formats]);
 
-  const trackBookingClick = (screening: Screening) => {
-    posthog.capture("booking_link_clicked", {
-      film_id: film.id,
-      film_title: film.title,
-      screening_id: screening.id,
-      screening_time: screening.datetime,
-      cinema_id: screening.cinema.id,
-      cinema_name: screening.cinema.name,
+  const handleBookingClick = (screening: Screening) => {
+    trackBookingClick({
+      filmId: film.id,
+      filmTitle: film.title,
+      screeningId: screening.id,
+      screeningTime: screening.datetime,
+      cinemaId: screening.cinema.id,
+      cinemaName: screening.cinema.name,
       format: screening.format,
-      event_type: screening.eventType,
-      booking_url: screening.bookingUrl,
-    });
+      eventType: screening.eventType,
+      bookingUrl: screening.bookingUrl,
+    }, "film_detail", isWatchlisted);
   };
 
-  // Track filter usage
-  const trackFilterChange = (filterType: string, value: unknown) => {
-    posthog.capture("film_screening_filter_changed", {
-      film_id: film.id,
-      filter_type: filterType,
-      value,
-    });
+  // Track filter usage with film_detail context
+  const handleFilterChange = (filterType: string, value: unknown) => {
+    trackFilterChange(filterType, value, "set", "film_detail");
   };
 
   const handleFiltersChange = (newFilters: FilmScreeningFilters) => {
     // Track which filter changed
     if (newFilters.cinemaSearch !== filters.cinemaSearch) {
-      trackFilterChange("cinema_search", newFilters.cinemaSearch);
+      handleFilterChange("cinema_search", newFilters.cinemaSearch);
     }
     if (newFilters.timeFrom !== filters.timeFrom || newFilters.timeTo !== filters.timeTo) {
-      trackFilterChange("time_range", { from: newFilters.timeFrom, to: newFilters.timeTo });
+      handleFilterChange("time_range", { from: newFilters.timeFrom, to: newFilters.timeTo });
     }
     if (newFilters.selectedDates !== filters.selectedDates) {
-      trackFilterChange("date_filter", newFilters.selectedDates?.length ?? 0);
+      handleFilterChange("date_filter", newFilters.selectedDates?.length ?? 0);
     }
     setFilters(newFilters);
   };
@@ -305,10 +302,12 @@ export function FilmScreenings({ screenings, film }: FilmScreeningsProps) {
           <button
             onClick={() => {
               setIgnoreGlobalFilters(!ignoreGlobalFilters);
-              posthog.capture("film_detail_filter_toggle", {
-                film_id: film.id,
-                action: ignoreGlobalFilters ? "apply_global_filters" : "show_all",
-              });
+              trackFilterChange(
+                "global_filter_toggle",
+                ignoreGlobalFilters ? "apply_global_filters" : "show_all",
+                ignoreGlobalFilters ? "set" : "cleared",
+                "film_detail"
+              );
             }}
             className="text-xs text-accent-primary hover:text-accent-primary-hover font-medium shrink-0"
           >
@@ -361,7 +360,11 @@ export function FilmScreenings({ screenings, film }: FilmScreeningsProps) {
               <div className="px-4 py-3 border-b border-border-subtle flex items-center justify-between">
                 <div>
                   <h3 className="font-display text-lg">
-                    <Link href={`/cinemas/${cinema.id}`} className="text-text-primary hover:text-accent-primary transition-colors">
+                    <Link
+                      href={`/cinemas/${cinema.id}`}
+                      className="text-text-primary hover:text-accent-primary transition-colors"
+                      onClick={() => trackCinemaViewed(cinema.id, cinema.name, "film_detail")}
+                    >
                       {cinema.name}
                     </Link>
                   </h3>
@@ -426,7 +429,7 @@ export function FilmScreenings({ screenings, film }: FilmScreeningsProps) {
                         href={screening.bookingUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        onClick={() => trackBookingClick(screening)}
+                        onClick={() => handleBookingClick(screening)}
                         className="shrink-0 px-4 py-2 text-sm font-medium text-text-inverse bg-accent-primary hover:bg-accent-primary-hover rounded-lg transition-colors flex items-center gap-1.5 shadow-sm"
                       >
                         Book

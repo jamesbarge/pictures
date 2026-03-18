@@ -10,12 +10,12 @@
 
 import { format } from "date-fns";
 import Link from "next/link";
-import { usePostHog } from "posthog-js/react";
 import { memo } from "react";
 
 import { FilmPoster } from "@/components/film/film-poster";
 import { useHydrated } from "@/hooks/useHydrated";
 import { usePrefetch } from "@/hooks/usePrefetch";
+import { trackScreeningClick } from "@/lib/analytics";
 import { cn } from "@/lib/cn";
 import { POSTER_BLUR_PLACEHOLDER, getSpecialFormat } from "@/lib/constants";
 import { useFilmStatus } from "@/stores/film-status";
@@ -81,8 +81,6 @@ export const ScreeningCard = memo(function ScreeningCard({ screening }: Screenin
   const time = format(new Date(datetime), "HH:mm");
   const specialFormat = getSpecialFormat(screening.format);
   const formattedDate = format(new Date(datetime), "EEEE d MMMM");
-  const posthog = usePostHog();
-
   // Performance: Use selectors to only subscribe to this specific film's status
   const rawStatus = useFilmStatus((state) => state.films[film.id]?.status ?? null);
 
@@ -96,16 +94,16 @@ export const ScreeningCard = memo(function ScreeningCard({ screening }: Screenin
 
   // Track screening card clicks
   function trackCardClick(): void {
-    posthog.capture("screening_card_clicked", {
-      film_id: film.id,
-      film_title: film.title,
-      film_year: film.year,
-      cinema_id: cinema.id,
-      cinema_name: cinema.name,
-      screening_id: screening.id,
-      screening_time: datetime,
-      is_repertory: film.isRepertory,
-    });
+    trackScreeningClick({
+      filmId: film.id,
+      filmTitle: film.title,
+      filmYear: film.year,
+      cinemaId: cinema.id,
+      cinemaName: cinema.name,
+      screeningId: screening.id,
+      screeningTime: datetime,
+      isRepertory: film.isRepertory,
+    }, "calendar");
   }
 
   // Apply mounted guard for hydration safety (localStorage not available during SSR)
@@ -172,10 +170,6 @@ export const ScreeningCard = memo(function ScreeningCard({ screening }: Screenin
               posterUrl: film.posterUrl,
             }}
             status={status}
-            analyticsContext={{
-              cinema_id: cinema.id,
-              cinema_name: cinema.name,
-            }}
           />
         )}
 

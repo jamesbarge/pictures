@@ -1,3 +1,14 @@
+## 2026-03-18: PostHog analytics cleanup — event taxonomy, source tracking, empty states
+**PR**: #400 | **Files**: `src/lib/analytics.ts`, `src/components/calendar/screening-card.tsx`, `src/components/calendar/film-card.tsx`, `src/components/calendar/film-status-buttons.tsx`, `src/components/calendar/film-status-overlay.tsx`, `src/components/film/film-screenings.tsx`, `src/components/film/film-view-tracker.tsx`, `src/components/search/search-dialog.tsx`, `src/app/tonight/tonight-view.tsx`, `src/components/calendar/calendar-view.tsx`, `src/stores/film-status.ts`, `src/test/setup.ts`
+- **Event consolidation**: Replaced 6 inline `posthog.capture()` calls with centralized typed functions. Collapsed 3-4 events per watchlist action into single `film_status_changed`. Unified 3 filter event names into `filter_changed` with context.
+- **Dead code removal**: Removed `trackFunnelStep`, `captureError`, `trackTiming`, `startTimer`, `trackWatchlistChange`, `trackFilmMarkedSeen`, `trackFilmMarkedNotInterested`.
+- **Source tracking**: Added `DiscoverySource` type and `source` param to film/booking events (`calendar`, `film_detail`, `tonight`, `search`).
+- **Watchlist conversion**: Added `is_watchlisted` to booking clicks for measuring watchlist-to-booking conversion.
+- **Cinema events**: Added `trackCinemaViewed` to fill the empty cinema events section. Cinema filter changes already tracked via `filter_changed`.
+- **Friction tracking**: Added `search_no_results`, `filter_no_results`, `tonight_no_screenings` events for identifying user dead ends.
+
+---
+
 ## 2026-03-18: Fix TypeScript build errors blocking CI
 **PR**: #399 | **Files**: `src/scrapers/chains/curzon.ts`, `scripts/cleanup-pcc-duplicate-screenings.ts`
 - Add intermediate `as unknown` step to 3 type casts between non-overlapping types (`Window` → `Record`, `RowList` → custom type)

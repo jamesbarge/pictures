@@ -6,6 +6,12 @@
 import posthog from "posthog-js";
 
 // ============================================
+// SHARED TYPES
+// ============================================
+
+export type DiscoverySource = "calendar" | "search" | "tonight" | "map" | "watchlist" | "shared_link" | "film_detail";
+
+// ============================================
 // FILM EVENTS
 // ============================================
 
@@ -19,16 +25,16 @@ interface FilmContext {
 }
 
 interface ScreeningContext extends FilmContext {
-  screeningId: string;
-  screeningTime: Date | string;
-  cinemaId: string;
-  cinemaName: string;
+  screeningId?: string;
+  screeningTime?: Date | string;
+  cinemaId?: string;
+  cinemaName?: string;
   format?: string | null;
   eventType?: string | null;
 }
 
 /** Track when a user views a film's detail page */
-export function trackFilmView(film: FilmContext) {
+export function trackFilmView(film: FilmContext, source?: DiscoverySource) {
   if (typeof window === "undefined") return;
   posthog.capture("film_viewed", {
     film_id: film.filmId,
@@ -37,11 +43,12 @@ export function trackFilmView(film: FilmContext) {
     is_repertory: film.isRepertory,
     genres: film.genres,
     directors: film.directors,
+    source,
   });
 }
 
 /** Track when a user clicks a screening card */
-export function trackScreeningClick(screening: ScreeningContext) {
+export function trackScreeningClick(screening: ScreeningContext, source?: DiscoverySource) {
   if (typeof window === "undefined") return;
   posthog.capture("screening_card_clicked", {
     film_id: screening.filmId,
@@ -54,11 +61,16 @@ export function trackScreeningClick(screening: ScreeningContext) {
     format: screening.format,
     event_type: screening.eventType,
     is_repertory: screening.isRepertory,
+    source,
   });
 }
 
 /** Track when a user clicks a booking link */
-export function trackBookingClick(screening: ScreeningContext & { bookingUrl: string }) {
+export function trackBookingClick(
+  screening: ScreeningContext & { bookingUrl: string },
+  source?: DiscoverySource,
+  isWatchlisted?: boolean
+) {
   if (typeof window === "undefined") return;
   posthog.capture("booking_link_clicked", {
     film_id: screening.filmId,
@@ -70,6 +82,8 @@ export function trackBookingClick(screening: ScreeningContext & { bookingUrl: st
     format: screening.format,
     event_type: screening.eventType,
     booking_url: screening.bookingUrl,
+    source,
+    is_watchlisted: isWatchlisted,
   });
 }
 
@@ -80,44 +94,7 @@ export function trackBookingClick(screening: ScreeningContext & { bookingUrl: st
 // Must match FilmStatus from film-status store
 type FilmStatus = "want_to_see" | "seen" | "not_interested" | null;
 
-/** Track when a user adds/removes a film from watchlist */
-export function trackWatchlistChange(
-  film: FilmContext,
-  action: "added" | "removed"
-) {
-  if (typeof window === "undefined") return;
-  posthog.capture("watchlist_changed", {
-    film_id: film.filmId,
-    film_title: film.filmTitle,
-    film_year: film.filmYear,
-    is_repertory: film.isRepertory,
-    action,
-  });
-}
-
-/** Track when a user marks a film as seen */
-export function trackFilmMarkedSeen(film: FilmContext) {
-  if (typeof window === "undefined") return;
-  posthog.capture("film_marked_seen", {
-    film_id: film.filmId,
-    film_title: film.filmTitle,
-    film_year: film.filmYear,
-    is_repertory: film.isRepertory,
-  });
-}
-
-/** Track when a user marks a film as not interested */
-export function trackFilmMarkedNotInterested(film: FilmContext) {
-  if (typeof window === "undefined") return;
-  posthog.capture("film_marked_not_interested", {
-    film_id: film.filmId,
-    film_title: film.filmTitle,
-    film_year: film.filmYear,
-    is_repertory: film.isRepertory,
-  });
-}
-
-/** Track any film status change */
+/** Track any film status change (single canonical event for all status transitions) */
 export function trackFilmStatusChange(
   film: FilmContext,
   previousStatus: FilmStatus,
@@ -169,17 +146,19 @@ export function trackSearchResultClick(
 
 type FilterAction = "added" | "removed" | "set" | "cleared";
 
-/** Track filter changes (already in filters store, but exported for consistency) */
+/** Track filter changes with optional context for where the filter was applied */
 export function trackFilterChange(
   filterType: string,
   value: unknown,
-  action: FilterAction
+  action: FilterAction,
+  context?: string
 ) {
   if (typeof window === "undefined") return;
   posthog.capture("filter_changed", {
     filter_type: filterType,
     value,
     action,
+    ...(context && { context }),
   });
 }
 
@@ -187,24 +166,50 @@ export function trackFilterChange(
 // CINEMA EVENTS
 // ============================================
 
+/** Track when a user views a cinema page or clicks a cinema link */
+export function trackCinemaViewed(cinemaId: string, cinemaName: string, source?: string) {
+  if (typeof window === "undefined") return;
+  posthog.capture("cinema_viewed", {
+    cinema_id: cinemaId,
+    cinema_name: cinemaName,
+    source,
+  });
+}
+
+/** Track when a user applies a cinema filter */
+export function trackCinemaFilterApplied(cinemaId: string, cinemaName: string) {
+  if (typeof window === "undefined") return;
+  posthog.capture("cinema_filter_applied", {
+    cinema_id: cinemaId,
+    cinema_name: cinemaName,
+  });
+}
+
 // ============================================
-// CONVERSION FUNNEL EVENTS
+// EMPTY STATE / FRICTION EVENTS
 // ============================================
 
-/**
- * Track funnel steps for conversion analysis
- * Funnel: Browse → View Film → Click Screening → Book
- */
-export function trackFunnelStep(
-  step: "browse" | "view_film" | "click_screening" | "click_booking",
-  context?: Record<string, unknown>
-) {
+/** Track when a search returns no results */
+export function trackSearchNoResults(query: string) {
   if (typeof window === "undefined") return;
-  posthog.capture(`funnel_${step}`, {
-    funnel_name: "browse_to_booking",
-    step,
-    ...context,
+  posthog.capture("search_no_results", {
+    query,
+    query_length: query.length,
   });
+}
+
+/** Track when active filters produce an empty calendar */
+export function trackFilterNoResults(activeFilters: Record<string, unknown>) {
+  if (typeof window === "undefined") return;
+  posthog.capture("filter_no_results", {
+    ...activeFilters,
+  });
+}
+
+/** Track when tonight page has no screenings */
+export function trackTonightNoScreenings() {
+  if (typeof window === "undefined") return;
+  posthog.capture("tonight_no_screenings");
 }
 
 // ============================================
@@ -215,54 +220,6 @@ export function trackFunnelStep(
 export function isFeatureEnabled(flagKey: string): boolean {
   if (typeof window === "undefined") return false;
   return posthog.isFeatureEnabled(flagKey) ?? false;
-}
-
-// ============================================
-// ERROR TRACKING
-// ============================================
-
-/** Manually capture an error/exception */
-export function captureError(
-  error: Error,
-  context?: Record<string, unknown>
-) {
-  if (typeof window === "undefined") return;
-  posthog.capture("$exception", {
-    $exception_message: error.message,
-    $exception_type: error.name,
-    $exception_stack_trace_raw: error.stack,
-    ...context,
-  });
-}
-
-// ============================================
-// TIMING & PERFORMANCE
-// ============================================
-
-/** Track a timing metric */
-export function trackTiming(
-  category: string,
-  variable: string,
-  durationMs: number
-) {
-  if (typeof window === "undefined") return;
-  posthog.capture("timing", {
-    timing_category: category,
-    timing_variable: variable,
-    timing_value: durationMs,
-  });
-}
-
-/** Create a timer that tracks duration when stopped */
-export function startTimer(category: string, variable: string) {
-  const startTime = performance.now();
-  return {
-    stop: () => {
-      const duration = performance.now() - startTime;
-      trackTiming(category, variable, Math.round(duration));
-      return duration;
-    },
-  };
 }
 
 // ============================================

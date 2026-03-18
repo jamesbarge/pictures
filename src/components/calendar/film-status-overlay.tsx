@@ -12,7 +12,6 @@ import { cn } from "@/lib/cn";
 import { Heart, X } from "lucide-react";
 import { useFilmStatus, type FilmStatus } from "@/stores/film-status";
 import { useHydrated } from "@/hooks/useHydrated";
-import { usePostHog } from "posthog-js/react";
 
 interface FilmData {
   id: string;
@@ -22,22 +21,14 @@ interface FilmData {
   posterUrl?: string | null;
 }
 
-interface CinemaContext {
-  id: string;
-  name: string;
-}
-
 interface FilmStatusOverlayProps {
   film: FilmData;
-  /** Optional cinema context for more detailed analytics (screening cards) */
-  cinema?: CinemaContext;
   /** Additional class names for positioning container */
   className?: string;
 }
 
 /** Reusable watchlist and not-interested buttons for film/screening cards, synced to Zustand and PostHog. */
-export function FilmStatusOverlay({ film, cinema, className }: FilmStatusOverlayProps) {
-  const posthog = usePostHog();
+export function FilmStatusOverlay({ film, className }: FilmStatusOverlayProps) {
   const mounted = useHydrated();
 
   // Performance: Use selectors to only subscribe to this specific film's status
@@ -52,28 +43,11 @@ export function FilmStatusOverlay({ film, cinema, className }: FilmStatusOverlay
     e.preventDefault();
     e.stopPropagation();
 
-    // Build analytics payload - include cinema context if available
-    const basePayload = {
-      film_id: film.id,
-      film_title: film.title,
-      ...(cinema && { cinema_id: cinema.id, cinema_name: cinema.name }),
-    };
-
-    // Toggle off if already set to this status
+    // Toggle off if already set to this status; analytics tracked by the store
     if (status === newStatus) {
-      posthog.capture("film_status_removed", {
-        ...basePayload,
-        previous_status: newStatus,
-      });
       setStatus(film.id, null);
       return;
     }
-
-    // Track status change
-    posthog.capture("film_status_set", {
-      ...basePayload,
-      status: newStatus,
-    });
 
     // Always pass film metadata so it can be displayed in settings/lists
     setStatus(film.id, newStatus, {
