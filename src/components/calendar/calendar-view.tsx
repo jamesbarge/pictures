@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { startOfDay, endOfDay, format, isWithinInterval, getHours } from "date-fns";
 import { DaySection } from "./day-section";
 import { TableView } from "./table-view";
@@ -442,16 +442,22 @@ export function CalendarView({ screenings, serverFilmTotals }: CalendarViewProps
   // Map filter is active if user drew an area on the map (synced to cinemaIds)
   const hasMapFilter = mounted && mapArea !== null;
 
-  // Track friction point when filters produce empty results (must be before early returns)
+  // Track friction point when filters produce empty results (dedup to fire once per empty state)
+  const hasTrackedEmptyRef = useRef(false);
   useEffect(() => {
     if (mounted && filteredScreenings.length === 0 && activeFilterCount > 0) {
-      trackFilterNoResults({
-        filter_count: activeFilterCount,
-        has_search: !!filters.filmSearch.trim(),
-        has_cinema_filter: filters.cinemaIds.length > 0,
-        has_format_filter: filters.formats.length > 0,
-        has_date_filter: !!(filters.dateFrom || filters.dateTo),
-      });
+      if (!hasTrackedEmptyRef.current) {
+        hasTrackedEmptyRef.current = true;
+        trackFilterNoResults({
+          filter_count: activeFilterCount,
+          has_search: !!filters.filmSearch.trim(),
+          has_cinema_filter: filters.cinemaIds.length > 0,
+          has_format_filter: filters.formats.length > 0,
+          has_date_filter: !!(filters.dateFrom || filters.dateTo),
+        });
+      }
+    } else {
+      hasTrackedEmptyRef.current = false;
     }
   }, [mounted, filteredScreenings.length, activeFilterCount, filters.filmSearch, filters.cinemaIds.length, filters.formats.length, filters.dateFrom, filters.dateTo]);
 

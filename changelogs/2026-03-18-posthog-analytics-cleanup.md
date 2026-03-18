@@ -1,6 +1,6 @@
 # PostHog Analytics Cleanup — Event Taxonomy, Source Tracking, Empty States
 
-**PR**: #399
+**PR**: #400
 **Date**: 2026-03-18
 
 ## Changes
@@ -17,7 +17,7 @@
 - Added `is_watchlisted` boolean to booking click events for conversion analysis
 
 ### Phase 3: Cinema Events
-- Added `trackCinemaViewed(cinemaId, cinemaName, source)` and `trackCinemaFilterApplied(cinemaId, cinemaName)`
+- Added `trackCinemaViewed(cinemaId, cinemaName, source)` — cinema filter changes already covered by `filter_changed`
 - Wired `trackCinemaViewed` into cinema name links on film detail page
 
 ### Phase 4: Empty State / Friction Tracking

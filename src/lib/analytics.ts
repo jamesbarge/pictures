@@ -176,15 +176,6 @@ export function trackCinemaViewed(cinemaId: string, cinemaName: string, source?:
   });
 }
 
-/** Track when a user applies a cinema filter */
-export function trackCinemaFilterApplied(cinemaId: string, cinemaName: string) {
-  if (typeof window === "undefined") return;
-  posthog.capture("cinema_filter_applied", {
-    cinema_id: cinemaId,
-    cinema_name: cinemaName,
-  });
-}
-
 // ============================================
 // EMPTY STATE / FRICTION EVENTS
 // ============================================

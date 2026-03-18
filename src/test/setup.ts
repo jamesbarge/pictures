@@ -41,7 +41,6 @@ vi.mock("@/lib/analytics", () => ({
   trackSearchNoResults: vi.fn(),
   trackFilterChange: vi.fn(),
   trackCinemaViewed: vi.fn(),
-  trackCinemaFilterApplied: vi.fn(),
   trackFilterNoResults: vi.fn(),
   trackTonightNoScreenings: vi.fn(),
   isFeatureEnabled: vi.fn().mockReturnValue(false),

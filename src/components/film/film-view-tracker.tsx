@@ -33,7 +33,7 @@ export function FilmViewTracker({
     if (hasTracked.current) return;
     hasTracked.current = true;
 
-    // Track film view (source detected from route context)
+    // Track film view
     trackFilmView({
       filmId,
       filmTitle,
