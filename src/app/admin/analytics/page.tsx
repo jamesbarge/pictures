@@ -47,6 +47,17 @@ interface FunnelData {
   }>;
 }
 
+interface FilmEngagementData {
+  filmViews: Array<{ filmId: string; filmTitle: string; count: number }>;
+  bookingClicks: Array<{ filmId: string; filmTitle: string; count: number }>;
+  watchlistAdds: Array<{ filmId: string; filmTitle: string; count: number }>;
+}
+
+interface CinemaEngagementData {
+  screeningClicks: Array<{ cinemaId: string; count: number }>;
+  bookingClicks: Array<{ cinemaId: string; count: number }>;
+}
+
 interface ApiError {
   error: string;
   details?: string;
@@ -58,6 +69,8 @@ type DateRange = "-1d" | "-7d" | "-30d";
 export default function AnalyticsDashboard() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [funnel, setFunnel] = useState<FunnelData | null>(null);
+  const [filmEngagement, setFilmEngagement] = useState<FilmEngagementData | null>(null);
+  const [cinemaEngagement, setCinemaEngagement] = useState<CinemaEngagementData | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState<DateRange>("-7d");
@@ -67,9 +80,11 @@ export default function AnalyticsDashboard() {
     setError(null);
 
     try {
-      const [summaryRes, funnelRes] = await Promise.all([
+      const [summaryRes, funnelRes, filmsRes, cinemasRes] = await Promise.all([
         fetch(`/api/admin/analytics?type=summary&dateFrom=${dateRange}`),
         fetch(`/api/admin/analytics?type=funnel&dateFrom=${dateRange}`),
+        fetch(`/api/admin/analytics?type=films&dateFrom=${dateRange}`),
+        fetch(`/api/admin/analytics?type=cinemas&dateFrom=${dateRange}`),
       ]);
 
       if (!summaryRes.ok) {
@@ -80,9 +95,13 @@ export default function AnalyticsDashboard() {
 
       const summaryData = await summaryRes.json();
       const funnelData = funnelRes.ok ? await funnelRes.json() : null;
+      const filmsData = filmsRes.ok ? await filmsRes.json() : null;
+      const cinemasData = cinemasRes.ok ? await cinemasRes.json() : null;
 
       setSummary(summaryData);
       setFunnel(funnelData);
+      setFilmEngagement(filmsData);
+      setCinemaEngagement(cinemasData);
     } catch (err) {
       setError({
         error: "Failed to fetch analytics",
@@ -186,6 +205,15 @@ export default function AnalyticsDashboard() {
               className={cn("w-4 h-4", loading && "animate-spin")}
             />
           </button>
+          <a
+            href="https://eu.posthog.com/project/dashboards"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 px-3 py-2 text-sm bg-background-tertiary hover:bg-background-hover text-text-secondary rounded-lg transition-colors"
+          >
+            Dashboards
+            <ExternalLink className="w-3.5 h-3.5" />
+          </a>
           <a
             href="https://eu.posthog.com"
             target="_blank"
@@ -380,6 +408,156 @@ export default function AnalyticsDashboard() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Film Engagement */}
+          {filmEngagement && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader heading="Top Films by Views" />
+                <CardContent>
+                  <div className="space-y-3">
+                    {filmEngagement.filmViews
+                      .sort((a, b) => b.count - a.count)
+                      .slice(0, 8)
+                      .map((film, i) => (
+                        <div
+                          key={film.filmId}
+                          className="flex items-center justify-between"
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="text-xs text-text-tertiary font-mono w-4">
+                              {i + 1}
+                            </span>
+                            <Eye className="w-4 h-4 text-blue-500" />
+                            <span className="text-sm text-text-primary truncate max-w-[200px]">
+                              {film.filmTitle}
+                            </span>
+                          </div>
+                          <span className="text-sm font-mono text-text-secondary">
+                            {film.count.toLocaleString()}
+                          </span>
+                        </div>
+                      ))}
+                    {filmEngagement.filmViews.length === 0 && (
+                      <p className="text-sm text-text-tertiary text-center py-4">
+                        No film views recorded yet
+                      </p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader heading="Top Films by Bookings" />
+                <CardContent>
+                  <div className="space-y-3">
+                    {filmEngagement.bookingClicks
+                      .sort((a, b) => b.count - a.count)
+                      .slice(0, 8)
+                      .map((film, i) => (
+                        <div
+                          key={film.filmId}
+                          className="flex items-center justify-between"
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="text-xs text-text-tertiary font-mono w-4">
+                              {i + 1}
+                            </span>
+                            <ShoppingCart className="w-4 h-4 text-purple-500" />
+                            <span className="text-sm text-text-primary truncate max-w-[200px]">
+                              {film.filmTitle}
+                            </span>
+                          </div>
+                          <span className="text-sm font-mono text-text-secondary">
+                            {film.count.toLocaleString()}
+                          </span>
+                        </div>
+                      ))}
+                    {filmEngagement.bookingClicks.length === 0 && (
+                      <p className="text-sm text-text-tertiary text-center py-4">
+                        No booking clicks recorded yet
+                      </p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Cinema Engagement */}
+          {cinemaEngagement && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader heading="Cinema Screening Clicks" />
+                <CardContent>
+                  <div className="space-y-3">
+                    {cinemaEngagement.screeningClicks
+                      .sort((a, b) => b.count - a.count)
+                      .slice(0, 8)
+                      .map((cinema, i) => (
+                        <div
+                          key={cinema.cinemaId}
+                          className="flex items-center justify-between"
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="text-xs text-text-tertiary font-mono w-4">
+                              {i + 1}
+                            </span>
+                            <MousePointer className="w-4 h-4 text-green-500" />
+                            <span className="text-sm text-text-primary truncate max-w-[200px]">
+                              {cinema.cinemaId}
+                            </span>
+                          </div>
+                          <span className="text-sm font-mono text-text-secondary">
+                            {cinema.count.toLocaleString()}
+                          </span>
+                        </div>
+                      ))}
+                    {cinemaEngagement.screeningClicks.length === 0 && (
+                      <p className="text-sm text-text-tertiary text-center py-4">
+                        No screening clicks recorded yet
+                      </p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader heading="Cinema Booking Clicks" />
+                <CardContent>
+                  <div className="space-y-3">
+                    {cinemaEngagement.bookingClicks
+                      .sort((a, b) => b.count - a.count)
+                      .slice(0, 8)
+                      .map((cinema, i) => (
+                        <div
+                          key={cinema.cinemaId}
+                          className="flex items-center justify-between"
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="text-xs text-text-tertiary font-mono w-4">
+                              {i + 1}
+                            </span>
+                            <ShoppingCart className="w-4 h-4 text-purple-500" />
+                            <span className="text-sm text-text-primary truncate max-w-[200px]">
+                              {cinema.cinemaId}
+                            </span>
+                          </div>
+                          <span className="text-sm font-mono text-text-secondary">
+                            {cinema.count.toLocaleString()}
+                          </span>
+                        </div>
+                      ))}
+                    {cinemaEngagement.bookingClicks.length === 0 && (
+                      <p className="text-sm text-text-tertiary text-center py-4">
+                        No cinema booking clicks recorded yet
+                      </p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </>
       )}
     </div>

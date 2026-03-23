@@ -423,7 +423,7 @@ export async function getFilmEngagement(dateFrom = "-7d"): Promise<{
   });
 
   const watchlistResult = await queryTrend({
-    events: [{ id: "watchlist_changed", math: "total" }],
+    events: [{ id: "film_status_changed", math: "total" }],
     dateFrom,
     breakdown: "film_id",
   });
@@ -510,6 +510,133 @@ export async function getConversionFunnel(dateFrom = "-7d"): Promise<{
       conversionRate: firstStep > 0 ? (step.count / firstStep) * 100 : 0,
     })),
   };
+}
+
+// ============================================
+// DASHBOARD & INSIGHT CRUD
+// ============================================
+
+interface PostHogDashboard {
+  id: number;
+  name: string;
+  description: string;
+  tags: string[];
+  created_at: string;
+}
+
+interface PostHogInsight {
+  id: number;
+  short_id: string;
+  name: string;
+  description: string;
+  query: Record<string, unknown>;
+  dashboards: number[];
+}
+
+interface PostHogAction {
+  id: number;
+  name: string;
+  description: string;
+  steps: Array<{
+    event: string;
+    properties?: Array<{ key: string; value: unknown; operator: string; type: string }>;
+  }>;
+  tags: string[];
+}
+
+interface PostHogCohort {
+  id: number;
+  name: string;
+  description: string;
+  filters: Record<string, unknown>;
+  is_static: boolean;
+}
+
+/** List all dashboards for the project */
+export async function listDashboards(): Promise<PaginatedResponse<PostHogDashboard>> {
+  const projectId = getProjectId();
+  return posthogFetch(`/api/projects/${projectId}/dashboards/?limit=100`);
+}
+
+/** Create a new dashboard */
+export async function createDashboard(
+  name: string,
+  description: string,
+  tags?: string[]
+): Promise<PostHogDashboard> {
+  const projectId = getProjectId();
+  return posthogFetch(`/api/projects/${projectId}/dashboards/`, {
+    method: "POST",
+    body: JSON.stringify({ name, description, tags: tags || [] }),
+  });
+}
+
+/** Create a saved insight and attach it to dashboard(s) */
+export async function createInsight(
+  name: string,
+  query: Record<string, unknown>,
+  dashboardIds: number[],
+  description?: string
+): Promise<PostHogInsight> {
+  const projectId = getProjectId();
+  return posthogFetch(`/api/projects/${projectId}/insights/`, {
+    method: "POST",
+    body: JSON.stringify({
+      name,
+      description: description || "",
+      query,
+      dashboards: dashboardIds,
+      saved: true,
+    }),
+  });
+}
+
+/** List all actions for the project */
+export async function listActions(): Promise<PaginatedResponse<PostHogAction>> {
+  const projectId = getProjectId();
+  return posthogFetch(`/api/projects/${projectId}/actions/?limit=100`);
+}
+
+/** Create an action (named event group) */
+export async function createAction(
+  name: string,
+  description: string,
+  steps: Array<{
+    event: string;
+    properties?: Array<{ key: string; value: unknown; operator: string; type: string }>;
+  }>,
+  tags?: string[]
+): Promise<PostHogAction> {
+  const projectId = getProjectId();
+  return posthogFetch(`/api/projects/${projectId}/actions/`, {
+    method: "POST",
+    body: JSON.stringify({ name, description, steps, tags: tags || [] }),
+  });
+}
+
+/** List all cohorts for the project */
+export async function listCohorts(): Promise<PaginatedResponse<PostHogCohort>> {
+  const projectId = getProjectId();
+  return posthogFetch(`/api/projects/${projectId}/cohorts/?limit=100`);
+}
+
+/** Create a cohort (user segment) */
+export async function createCohort(
+  name: string,
+  description: string,
+  filters: Record<string, unknown>,
+  isStatic = false
+): Promise<PostHogCohort> {
+  const projectId = getProjectId();
+  return posthogFetch(`/api/projects/${projectId}/cohorts/`, {
+    method: "POST",
+    body: JSON.stringify({
+      name,
+      description,
+      filters,
+      is_static: isStatic,
+    }),
+  });
 }
 
 // ============================================
