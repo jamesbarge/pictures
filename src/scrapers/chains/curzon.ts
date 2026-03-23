@@ -121,7 +121,7 @@ export const CURZON_VENUES: VenueConfig[] = [
     postcode: "TW9 1NE",
     address: "3 Water Lane",
     chainVenueId: "RIC1",
-    active: true,
+    active: false, // Venue closed — no listings since Feb 2026
   },
   {
     id: "curzon-wimbledon",
@@ -132,7 +132,7 @@ export const CURZON_VENUES: VenueConfig[] = [
     postcode: "SW19 8YA",
     address: "23 The Broadway",
     chainVenueId: "WIM01",
-    active: true,
+    active: false, // Venue closed — no listings since Feb 2026
   },
   {
     id: "curzon-camden",
@@ -143,7 +143,7 @@ export const CURZON_VENUES: VenueConfig[] = [
     postcode: "NW1 8QP",
     address: "Hawley Wharf",
     chainVenueId: "CAM1",
-    active: true,
+    active: false, // Venue closed — no listings since Feb 2026
   },
 ];
 

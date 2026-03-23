@@ -1,3 +1,21 @@
+## 2026-03-23: Deactivate Stale Cinema Venues
+**PR**: TBD | **Files**: `src/scrapers/chains/curzon.ts`
+- Deactivated 3 Curzon venues (Camden, Wimbledon, Richmond) — no listings since Feb 2026, venues likely closed
+- Synced Everyman Walthamstow DB status to match scraper config (already `active: false` in code)
+- Set `is_active = false` in DB for all 4 venues, deleted 3 stale future screenings from curzon-richmond
+- Confirmed The Nickel is healthy: last scraped today with 93 future screenings (no action needed)
+
+---
+
+## 2026-03-19: PostHog Dashboard Setup via API
+**PR**: TBD | **Files**: `src/lib/posthog-api.ts`, `scripts/setup-posthog-dashboards.ts`, `src/app/admin/analytics/page.tsx`
+- Added dashboard/insight/action/cohort CRUD operations to PostHog API client
+- Fixed stale `watchlist_changed` event reference → `film_status_changed` (aligns with PR #400 taxonomy)
+- Created idempotent setup script that provisions 4 dashboards (Conversion Funnel, Film & Cinema Engagement, User Retention & Segments, Friction & Search Quality), 21 insights, 3 actions, and 4 cohorts
+- Admin analytics page now surfaces film & cinema engagement data and links to PostHog dashboards
+
+---
+
 ## 2026-03-18: Data Check v2 — Compounding Intelligence
 **PR**: TBD | **Files**: `scripts/data-check.ts`, `src/lib/tmdb/match.ts`, `src/lib/tmdb/blocklist.ts`, `.claude/data-check-learnings.json`, `.claude/commands/data-check.md`
 - Structured learnings JSON replaces markdown — script auto-loads wrong TMDB matches, non-film patterns, cinema quirks
