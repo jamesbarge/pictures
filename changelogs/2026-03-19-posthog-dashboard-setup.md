@@ -1,6 +1,6 @@
 # PostHog Dashboard Setup via API
 
-**PR**: TBD
+**PR**: #403
 **Date**: 2026-03-19
 
 ## Changes
