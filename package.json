@@ -100,7 +100,6 @@
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.1.76",
     "@base-ui/react": "^1.0.0",
-    "@browserbasehq/stagehand": "^3.2.0",
     "@clerk/nextjs": "^6.36.5",
     "@posthog/ai": "^7.8.11",
     "@tanstack/react-query": "^5.90.12",
@@ -136,6 +135,7 @@
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
+    "@browserbasehq/stagehand": "^3.2.0",
     "@esbuild-plugins/tsconfig-paths": "^0.1.2",
     "@playwright/test": "~1.57.0",
     "@supabase/supabase-js": "^2.89.0",
