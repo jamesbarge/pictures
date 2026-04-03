@@ -135,7 +135,6 @@
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
-    "@browserbasehq/stagehand": "^3.2.0",
     "@esbuild-plugins/tsconfig-paths": "^0.1.2",
     "@playwright/test": "~1.57.0",
     "@supabase/supabase-js": "^2.89.0",

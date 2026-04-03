@@ -10,8 +10,13 @@
  * HTTP 200 for broken pages.
  */
 
-import { Stagehand } from "@browserbasehq/stagehand";
-import * as z3 from "zod/v3";
+// Stagehand is an optional dependency — install locally with:
+//   npm install @browserbasehq/stagehand
+// It's not in package.json because its type definitions cause OOM in CI's tsc.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { Stagehand } = (() => { try { return require("@browserbasehq/stagehand"); } catch { throw new Error("@browserbasehq/stagehand not installed. Run: npm install @browserbasehq/stagehand"); } })();
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const z3 = require("zod/v3");
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -138,7 +143,8 @@ export async function verifyBookingLinks(params: {
     `[booking-verifier] Verifying ${toCheck.length} URLs with Stagehand (${model})`
   );
 
-  let stagehand: Stagehand | null = null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let stagehand: any = null;
   const results: BookingVerification[] = [];
 
   try {
