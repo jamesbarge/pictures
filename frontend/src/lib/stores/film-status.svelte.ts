@@ -1,4 +1,5 @@
 import { browser } from '$app/environment';
+import { pushFilmStatus } from './sync.svelte';
 import type { FilmStatus } from '$lib/types';
 
 const STORAGE_KEY = 'pictures-film-status';
@@ -46,12 +47,14 @@ export const filmStatuses = {
 				updatedAt: now
 			}
 		};
+		pushFilmStatus(filmId, status);
 	},
 
 	toggleStatus(filmId: string, status: FilmStatus) {
 		if (statuses[filmId]?.status === status) {
 			const { [filmId]: _, ...rest } = statuses;
 			statuses = rest;
+			pushFilmStatus(filmId, null);
 		} else {
 			this.setStatus(filmId, status);
 		}
@@ -60,6 +63,7 @@ export const filmStatuses = {
 	removeStatus(filmId: string) {
 		const { [filmId]: _, ...rest } = statuses;
 		statuses = rest;
+		pushFilmStatus(filmId, null);
 	},
 
 	getFilmIdsByStatus(status: FilmStatus): string[] {

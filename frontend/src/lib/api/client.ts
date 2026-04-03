@@ -52,3 +52,46 @@ export async function apiPost<T>(
 	}
 	return res.json();
 }
+
+export async function apiPut<T>(
+	path: string,
+	body: unknown,
+	opts?: { fetch?: typeof fetch; token?: string }
+): Promise<T> {
+	const f = opts?.fetch ?? fetch;
+	const headers: Record<string, string> = {
+		'Content-Type': 'application/json'
+	};
+	if (opts?.token) {
+		headers['Authorization'] = `Bearer ${opts.token}`;
+	}
+
+	const res = await f(`${API_BASE}${path}`, {
+		method: 'PUT',
+		headers,
+		body: JSON.stringify(body)
+	});
+	if (!res.ok) {
+		throw new ApiError(res.status, await res.text());
+	}
+	return res.json();
+}
+
+export async function apiDelete(
+	path: string,
+	opts?: { fetch?: typeof fetch; token?: string }
+): Promise<void> {
+	const f = opts?.fetch ?? fetch;
+	const headers: Record<string, string> = {};
+	if (opts?.token) {
+		headers['Authorization'] = `Bearer ${opts.token}`;
+	}
+
+	const res = await f(`${API_BASE}${path}`, {
+		method: 'DELETE',
+		headers
+	});
+	if (!res.ok) {
+		throw new ApiError(res.status, await res.text());
+	}
+}

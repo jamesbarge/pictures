@@ -3,6 +3,7 @@
 	import Header from '$lib/components/layout/Header.svelte';
 	import Footer from '$lib/components/layout/Footer.svelte';
 	import PostHogProvider from '$lib/analytics/PostHogProvider.svelte';
+	import SyncProvider from '$lib/stores/SyncProvider.svelte';
 	import { ClerkProvider } from 'svelte-clerk/client';
 	import { PUBLIC_CLERK_PUBLISHABLE_KEY } from '$env/static/public';
 	import { page } from '$app/state';
@@ -28,6 +29,7 @@
 
 <ClerkProvider publishableKey={PUBLIC_CLERK_PUBLISHABLE_KEY}>
 	<PostHogProvider />
+	<SyncProvider />
 	<a href="#main-content" class="skip-link">Skip to content</a>
 
 	<div class="min-h-dvh flex flex-col">
