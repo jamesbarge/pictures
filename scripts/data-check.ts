@@ -64,6 +64,12 @@ interface BookingCheckResult {
   cinemaName: string;
   status: number | "timeout" | "error";
   ok: boolean;
+  /** AI verification verdict (when Stagehand is available) */
+  verdict?: "verified" | "wrong_film" | "error_page" | "not_booking_page" | "load_failed" | "extract_failed";
+  /** AI-extracted film title from the page */
+  extractedTitle?: string | null;
+  /** Title match confidence (0-1) */
+  confidence?: number;
 }
 
 interface CursorState {
@@ -266,7 +272,7 @@ const OBSIDIAN_DIR =
   "/Users/jamesbarge/Documents/Obsidian Vault/Pictures/Data Quality";
 const LEARNINGS_PATH = path.resolve(process.cwd(), ".claude/data-check-learnings.json");
 const BATCH_SIZE = 40;
-const BOOKING_SPOT_CHECKS = 20;
+const BOOKING_SPOT_CHECKS = 10; // AI verification takes ~5s/URL, keep batch small
 const DETAIL_PAGE_VISITS = 10;
 const LETTERBOXD_ENRICHMENT_CAP = 15;
 const LETTERBOXD_RATING_REFRESH_CAP = 10;
@@ -1584,6 +1590,7 @@ async function spotCheckBookings(
   if (batchFilmIds.length === 0) return [];
   const now = new Date().toISOString();
 
+  // No chain exclusions — Stagehand handles SPAs (Curzon, BFI, etc.)
   const screenings = await sql`
     SELECT s.id, s.booking_url, s.cinema_id, f.title
     FROM screenings s
@@ -1592,47 +1599,69 @@ async function spotCheckBookings(
       AND s.datetime >= ${now}::timestamptz
       AND s.booking_url IS NOT NULL
       AND s.booking_url != ''
-      AND s.cinema_id NOT LIKE 'curzon%'
-      AND s.cinema_id NOT LIKE 'everyman%'
-      AND s.cinema_id NOT LIKE 'picturehouse%'
-      AND s.cinema_id NOT LIKE 'bfi%'
-      AND s.cinema_id != 'peckhamplex'
     ORDER BY RANDOM()
     LIMIT ${BOOKING_SPOT_CHECKS}
   `;
 
-  const results: BookingCheckResult[] = [];
-  for (const s of screenings) {
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 8000);
-      const resp = await fetch(s.booking_url, {
-        method: "HEAD",
-        signal: controller.signal,
-        redirect: "follow",
-        headers: { "User-Agent": UA },
-      });
-      clearTimeout(timeout);
-      results.push({
-        url: s.booking_url,
-        filmTitle: s.title,
-        cinemaName: s.cinema_id,
-        status: resp.status,
-        ok: resp.status < 400,
-      });
-    } catch (err) {
-      const isTimeout = err instanceof Error && err.name === "AbortError";
-      results.push({
-        url: s.booking_url,
-        filmTitle: s.title,
-        cinemaName: s.cinema_id,
-        status: isTimeout ? "timeout" : "error",
-        ok: false,
-      });
-    }
-  }
+  if (screenings.length === 0) return [];
 
-  return results;
+  // Use AI-powered verification via Stagehand
+  try {
+    const { verifyBookingLinks } = await import("../src/scrapers/utils/booking-verifier");
+    const verifications = await verifyBookingLinks({
+      urls: screenings.map((s: any) => ({
+        url: s.booking_url,
+        expectedTitle: s.title,
+        cinemaId: s.cinema_id,
+      })),
+      maxChecks: BOOKING_SPOT_CHECKS,
+    });
+
+    return verifications.map((v) => ({
+      url: v.url,
+      filmTitle: v.expectedTitle,
+      cinemaName: v.cinemaId,
+      status: v.verdict === "load_failed" ? "timeout" as const : 200,
+      ok: v.verdict === "verified",
+      verdict: v.verdict,
+      extractedTitle: v.extractedTitle,
+      confidence: v.confidence,
+    }));
+  } catch (err) {
+    // Fallback to basic HTTP HEAD if Stagehand fails to initialize
+    console.error(`[data-check] Stagehand failed, falling back to HTTP HEAD: ${err instanceof Error ? err.message : err}`);
+    const results: BookingCheckResult[] = [];
+    for (const s of screenings) {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000);
+        const resp = await fetch(s.booking_url, {
+          method: "HEAD",
+          signal: controller.signal,
+          redirect: "follow",
+          headers: { "User-Agent": UA },
+        });
+        clearTimeout(timeout);
+        results.push({
+          url: s.booking_url,
+          filmTitle: s.title,
+          cinemaName: s.cinema_id,
+          status: resp.status,
+          ok: resp.status < 400,
+        });
+      } catch (fetchErr) {
+        const isTimeout = fetchErr instanceof Error && fetchErr.name === "AbortError";
+        results.push({
+          url: s.booking_url,
+          filmTitle: s.title,
+          cinemaName: s.cinema_id,
+          status: isTimeout ? "timeout" : "error",
+          ok: false,
+        });
+      }
+    }
+    return results;
+  }
 }
 
 // ── Phase E: Scraper Health ───────────────────────────────────────
@@ -1938,22 +1967,33 @@ async function main() {
   let bookingChecks: BookingCheckResult[] = [];
   if (!isOverBudget()) {
     bookingChecks = await spotCheckBookings(sql, batchFilmIds);
-    const brokenBookings = bookingChecks.filter((b) => !b.ok);
-    if (brokenBookings.length > 0) {
-      for (const b of brokenBookings) {
-        const score = scoreIssue("broken_booking_url");
+    const failedBookings = bookingChecks.filter((b) => !b.ok);
+    if (failedBookings.length > 0) {
+      for (const b of failedBookings) {
+        const issueType = b.verdict === "wrong_film"
+          ? "booking_page_wrong_film"
+          : b.verdict === "error_page"
+            ? "broken_booking_url"
+            : b.verdict === "not_booking_page"
+              ? "broken_booking_url"
+              : "broken_booking_url";
+        const score = scoreIssue(issueType === "booking_page_wrong_film" ? "broken_booking_url" : "broken_booking_url");
+        const desc = b.verdict
+          ? `Booking page ${b.verdict}: extracted="${b.extractedTitle ?? "none"}" expected="${b.filmTitle}" (${((b.confidence ?? 0) * 100).toFixed(0)}% match) at ${b.cinemaName}`
+          : `Booking URL returned ${b.status} at ${b.cinemaName}`;
         issues.push({
-          type: "broken_booking_url",
+          type: issueType,
           filmTitle: b.filmTitle,
-          description: `Booking URL returned ${b.status} at ${b.cinemaName}`,
-          metadata: { url: b.url, status: b.status },
+          description: desc,
+          metadata: { url: b.url, status: b.status, verdict: b.verdict, extractedTitle: b.extractedTitle, confidence: b.confidence },
           impactScore: score,
           severity: severityFromScore(score),
         });
       }
     }
+    const verified = bookingChecks.filter((b) => b.verdict === "verified").length;
     console.error(
-      `[data-check] Booking checks: ${bookingChecks.length} checked, ${brokenBookings.length} broken`,
+      `[data-check] Booking checks: ${bookingChecks.length} checked, ${verified} verified, ${failedBookings.length} failed`,
     );
   }
   timerD.end();
