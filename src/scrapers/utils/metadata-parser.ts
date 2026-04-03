@@ -156,11 +156,35 @@ function extractCountry(text: string): string | undefined {
 }
 
 /**
- * Clean director name (remove trailing punctuation, normalize whitespace)
+ * Check if a string looks like an actual person's name rather than scraper garbage
+ * (screen names, venue identifiers, event descriptions).
+ */
+function isLikelyDirectorName(name: string): boolean {
+  const trimmed = name.trim();
+  // Too short or too long
+  if (trimmed.length < 2 || trimmed.length > 60) return false;
+  // Must contain at least one letter
+  if (!/[a-zA-Z]/.test(trimmed)) return false;
+  // Reject known venue/screen garbage patterns
+  if (/screen\s+nft|imax\b|education|learning\s+space|blue\s+room|studio\s+\d/i.test(trimmed)) return false;
+  // Reject strings with screen/room numbers (e.g. "NFT1", "Screen 2") unless it's a year
+  if (/\b(?:nft|screen|room|studio)\s*\d/i.test(trimmed)) return false;
+  // Reject ALL CAPS strings with 4+ words (likely venue/event names, not "JEAN-LUC GODARD")
+  if (trimmed === trimmed.toUpperCase() && trimmed.split(/\s+/).length >= 4) return false;
+  // Reject if it contains date/time-like patterns (scraped schedule text)
+  if (/\b\d{1,2}:\d{2}\b/.test(trimmed)) return false;
+  if (/\b(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i.test(trimmed)) return false;
+  return true;
+}
+
+/**
+ * Clean director name (remove trailing punctuation, "Starring" cast suffix, normalize whitespace)
  */
 function cleanDirectorName(name: string): string {
   return name
     .trim()
+    .replace(/\s+Starring\s+.*/i, "") // Strip "Starring Actor Name" suffix
+    .replace(/\s+With\s+.*/i, "") // Strip "With Actor Name" suffix
     .replace(/[.,;:]+$/, "") // Remove trailing punctuation
     .replace(/\s+/g, " ") // Normalize whitespace
     .trim();
@@ -202,10 +226,11 @@ function parseStatsLine(text: string): FilmMetadata {
     const firstPart = parts[0];
 
     if (firstPart && !isYear(firstPart) && !isCountry(firstPart)) {
-      // Check it's not just runtime or other metadata
+      // Check it's not just runtime or other metadata, and looks like a real name
       if (
         !firstPart.match(/^\d+\s*(?:mins?|m)\.?$/i) &&
-        firstPart.length > 2
+        firstPart.length > 2 &&
+        isLikelyDirectorName(firstPart)
       ) {
         result.director = cleanDirectorName(firstPart);
       }

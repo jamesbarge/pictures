@@ -1,3 +1,15 @@
+## 2026-04-03: Fix Systemic Data Quality Issues in Scrapers & Enrichment
+**PR**: #TBD | **Files**: `src/scrapers/utils/film-title-cleaner.ts`, `src/scrapers/utils/metadata-parser.ts`, `src/scrapers/utils/film-matching.ts`, `src/scrapers/chains/curzon.ts`, `src/scrapers/pipeline.test.ts`
+- Add 20+ new event prefix patterns (RIO FOREVER, Beyond, TV PARTY, Naturist Screening, Doc'n Roll, seniors matinee, film festivals, etc.)
+- Add re-release/premiere suffix stripping: (2026 Re-release), (World Premiere), (Sing-Along), etc.
+- Add HTML entity decoding and mojibake fix for garbled titles (e.g. 8&Acirc;&frac12; → 8½)
+- Add director validation to reject scraper garbage (screen names, venue IDs, schedule text)
+- Auto-set is_repertory for non-TMDB films based on year
+- Fix Curzon booking URLs: changed from broken ?sessionId= deep links to working film detail pages
+- 76 tests passing (21 new)
+
+---
+
 ## 2026-03-23: Deactivate Stale Cinema Venues
 **PR**: #403 | **Files**: `src/scrapers/chains/curzon.ts`
 - Deactivated 3 Curzon venues (Camden, Wimbledon, Richmond) — no listings since Feb 2026, venues likely closed
