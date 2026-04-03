@@ -146,25 +146,42 @@
 					<h3 class="day-label">{formatScreeningDate(date)}</h3>
 					<div class="screening-rows">
 						{#each dayScreenings as screening (screening.id)}
-							<a
-								href={screening.bookingUrl}
-								target="_blank"
-								rel="noopener noreferrer"
-								class="screening-row"
-								aria-label="Book {formatTime(screening.datetime)} at {screening.cinema?.name ?? 'cinema'}"
-							>
-								<time class="screening-time" datetime={screening.datetime}>{formatTime(screening.datetime)}</time>
-								<span class="screening-cinema">{screening.cinema?.name ?? 'Unknown'}</span>
-								{#if screening.format && screening.format !== 'unknown' && screening.format !== 'dcp'}
-									<Badge variant="muted">{screening.format.toUpperCase()}</Badge>
-								{/if}
-								{#if screening.screen}
-									<span class="screening-screen">{screening.screen}</span>
-								{/if}
-								<svg aria-hidden="true" class="booking-arrow" width="12" height="12" viewBox="0 0 12 12" fill="none">
-									<path d="M2 10L10 2M10 2H4M10 2V8" stroke="currentColor" stroke-width="1.2" stroke-linecap="square"/>
-								</svg>
-							</a>
+							<div class="screening-row-wrapper">
+								<a
+									href={screening.bookingUrl}
+									target="_blank"
+									rel="noopener noreferrer"
+									class="screening-row"
+									aria-label="Book {formatTime(screening.datetime)} at {screening.cinema?.name ?? 'cinema'}"
+								>
+									<time class="screening-time" datetime={screening.datetime}>{formatTime(screening.datetime)}</time>
+									<span class="screening-cinema">{screening.cinema?.name ?? 'Unknown'}</span>
+									{#if screening.format && screening.format !== 'unknown' && screening.format !== 'dcp'}
+										<Badge variant="muted">{screening.format.toUpperCase()}</Badge>
+									{/if}
+									{#if screening.screen}
+										<span class="screening-screen">{screening.screen}</span>
+									{/if}
+									<svg aria-hidden="true" class="booking-arrow" width="12" height="12" viewBox="0 0 12 12" fill="none">
+										<path d="M2 10L10 2M10 2H4M10 2V8" stroke="currentColor" stroke-width="1.2" stroke-linecap="square"/>
+									</svg>
+								</a>
+								<a
+									href="/api/calendar?screening={screening.id}"
+									download
+									class="ical-btn"
+									title="Add to calendar"
+									aria-label="Add {formatTime(screening.datetime)} at {screening.cinema?.name ?? 'cinema'} to calendar"
+									onclick={(e) => e.stopPropagation()}
+								>
+									<svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+										<rect x="1" y="2.5" width="12" height="10" rx="0" stroke="currentColor" stroke-width="1.2"/>
+										<line x1="1" y1="5.5" x2="13" y2="5.5" stroke="currentColor" stroke-width="1.2"/>
+										<line x1="4" y1="1" x2="4" y2="4" stroke="currentColor" stroke-width="1.2"/>
+										<line x1="10" y1="1" x2="10" y2="4" stroke="currentColor" stroke-width="1.2"/>
+									</svg>
+								</a>
+							</div>
 						{/each}
 					</div>
 				</div>
@@ -392,6 +409,26 @@
 	}
 
 	.screening-row:hover .booking-arrow {
+		color: var(--color-text);
+	}
+
+	.screening-row-wrapper {
+		display: flex;
+		align-items: center;
+	}
+
+	.ical-btn {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 2rem;
+		height: 2rem;
+		flex-shrink: 0;
+		color: var(--color-text-tertiary);
+		transition: color var(--duration-fast) var(--ease-sharp);
+	}
+
+	.ical-btn:hover {
 		color: var(--color-text);
 	}
 </style>
