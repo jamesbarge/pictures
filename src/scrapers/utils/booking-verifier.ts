@@ -11,7 +11,6 @@
  */
 
 import { Stagehand } from "@browserbasehq/stagehand";
-import { z } from "zod";
 import * as z3 from "zod/v3";
 
 // ── Types ────────────────────────────────────────────────────────
@@ -150,7 +149,11 @@ export async function verifyBookingLinks(params: {
       localBrowserLaunchOptions: { headless: true },
     });
     await stagehand.init();
-    const page = stagehand.context.pages()[0];
+    const pages = stagehand.context.pages();
+    if (pages.length === 0) {
+      throw new Error("Stagehand initialized but no browser page available");
+    }
+    const page = pages[0];
 
     for (let i = 0; i < toCheck.length; i++) {
       const { url, expectedTitle, cinemaId } = toCheck[i];
@@ -171,11 +174,10 @@ export async function verifyBookingLinks(params: {
         await page.waitForTimeout(2000);
 
         // AI extraction — Stagehand v3: extract<T>(instruction, schema)
-         
-        const extracted = (await stagehand.extract(
+        const extracted = await stagehand.extract(
           "Extract the film/event details from this cinema booking or film detail page. If the page shows an error or 'unavailable' message, mark isErrorPage as true.",
-          BookingPageSchema as any,
-        )) as z3.infer<typeof BookingPageSchema>;
+          BookingPageSchema,
+        );
 
         const confidence = titleConfidence(
           extracted.filmTitle,
@@ -250,8 +252,10 @@ export async function verifyBookingLinks(params: {
     if (stagehand) {
       try {
         await stagehand.close();
-      } catch {
-        // best-effort cleanup
+      } catch (closeErr) {
+        console.error(
+          `[booking-verifier] Failed to close browser: ${closeErr instanceof Error ? closeErr.message : closeErr}`
+        );
       }
     }
   }

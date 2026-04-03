@@ -1628,8 +1628,16 @@ async function spotCheckBookings(
       confidence: v.confidence,
     }));
   } catch (err) {
-    // Fallback to basic HTTP HEAD if Stagehand fails to initialize
-    console.error(`[data-check] Stagehand failed, falling back to HTTP HEAD: ${err instanceof Error ? err.message : err}`);
+    // Categorize the failure for better observability
+    const msg = err instanceof Error ? err.message : String(err);
+    const isExpected = msg.includes("Cannot find module") || msg.includes("ERR_MODULE_NOT_FOUND")
+      || msg.includes("Executable doesn't exist") || msg.includes("browserType.launch");
+    if (isExpected) {
+      console.error(`[data-check] Stagehand unavailable (${msg.slice(0, 60)}), falling back to HTTP HEAD`);
+    } else {
+      console.error(`[data-check] UNEXPECTED Stagehand failure — falling back to HTTP HEAD but needs investigation:`);
+      console.error(err instanceof Error ? err.stack : err);
+    }
     const results: BookingCheckResult[] = [];
     for (const s of screenings) {
       try {
@@ -1977,7 +1985,7 @@ async function main() {
             : b.verdict === "not_booking_page"
               ? "broken_booking_url"
               : "broken_booking_url";
-        const score = scoreIssue(issueType === "booking_page_wrong_film" ? "broken_booking_url" : "broken_booking_url");
+        const score = scoreIssue("broken_booking_url");
         const desc = b.verdict
           ? `Booking page ${b.verdict}: extracted="${b.extractedTitle ?? "none"}" expected="${b.filmTitle}" (${((b.confidence ?? 0) * 100).toFixed(0)}% match) at ${b.cinemaName}`
           : `Booking URL returned ${b.status} at ${b.cinemaName}`;

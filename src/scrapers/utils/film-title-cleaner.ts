@@ -124,7 +124,7 @@ export const EVENT_PREFIXES = [
   // Event series with distinctive names (found via data-check patrols)
   /^tv\s+party,?\s+tonight!?\s*/i,
   /^woman\s+with\s+a\s+movie\s+camera\s+preview[:\s]+/i,
-  /^beyond[:\s]+/i,
+  /^beyond:\s*/i,
   /^japanese\s+film\s+club[:\s]+/i,
   /^skateboard\s+film\s+club[:\s]+/i,
   /^young\s+filmmakers?\s+club\b[^:]*[:\s]+/i,
@@ -150,7 +150,6 @@ export const EVENT_PREFIXES = [
 
   // Screening format prefixes (Rio, etc.)
   /^naturist\s+screening[:\s]+/i,
-  /^london\s+premiere\s+/i,
 
   // Doc'n Roll festival prefix
   /^doc['']?n\s+roll\b[^:]*[:\s]+/i,
