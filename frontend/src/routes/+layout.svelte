@@ -11,6 +11,7 @@
 	let { data, children } = $props();
 
 	const canonicalUrl = $derived(`https://pictures.london${page.url.pathname}`);
+	const clerkEnabled = !!PUBLIC_CLERK_PUBLISHABLE_KEY && !PUBLIC_CLERK_PUBLISHABLE_KEY.includes('your_');
 </script>
 
 <svelte:head>
@@ -27,9 +28,22 @@
 	<meta name="twitter:description" content="Every film showing in London, in one calendar." />
 </svelte:head>
 
-<ClerkProvider publishableKey={PUBLIC_CLERK_PUBLISHABLE_KEY}>
+{#if clerkEnabled}
+	<ClerkProvider publishableKey={PUBLIC_CLERK_PUBLISHABLE_KEY}>
+		<PostHogProvider />
+		<SyncProvider />
+		<a href="#main-content" class="skip-link">Skip to content</a>
+
+		<div class="min-h-dvh flex flex-col">
+			<Header cinemas={data?.cinemas ?? []} />
+			<main id="main-content" class="flex-1" tabindex="-1">
+				{@render children()}
+			</main>
+			<Footer />
+		</div>
+	</ClerkProvider>
+{:else}
 	<PostHogProvider />
-	<SyncProvider />
 	<a href="#main-content" class="skip-link">Skip to content</a>
 
 	<div class="min-h-dvh flex flex-col">
@@ -39,7 +53,7 @@
 		</main>
 		<Footer />
 	</div>
-</ClerkProvider>
+{/if}
 
 <style>
 	.skip-link {

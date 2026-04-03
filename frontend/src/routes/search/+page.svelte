@@ -26,7 +26,7 @@
 		{#if query && results.length === 0 && cinemas.length === 0}
 			<EmptyState
 				title="No results"
-				description="No films or cinemas match \"{query}\". Try a different search."
+				description={`No films or cinemas match "${query}". Try a different search.`}
 			/>
 		{:else if !query}
 			<EmptyState

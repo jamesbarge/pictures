@@ -506,4 +506,114 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 			expect(emptyState).toBe(0);
 		});
 	});
+
+	// ═══════════════════════════════════════════════
+	// SEARCH RESULTS PAGE
+	// ═══════════════════════════════════════════════
+
+	test.describe('Search Results Page', () => {
+		test('loads with query parameter and shows results', async ({ page }) => {
+			await page.goto(`${BASE}/search?q=godfather`);
+			await page.waitForTimeout(2000);
+			const title = await page.locator('h1').textContent();
+			expect(title?.toUpperCase()).toContain('GODFATHER');
+		});
+
+		test('shows empty state for no-match query', async ({ page }) => {
+			await page.goto(`${BASE}/search?q=zzzzzznonexistent`);
+			await page.waitForTimeout(2000);
+			await expect(page.getByText('No results')).toBeVisible();
+		});
+
+		test('shows empty state when no query', async ({ page }) => {
+			await page.goto(`${BASE}/search`);
+			await expect(page.getByText('Search for films')).toBeVisible();
+		});
+	});
+
+	// ═══════════════════════════════════════════════
+	// LETTERBOXD IMPORT PAGE
+	// ═══════════════════════════════════════════════
+
+	test.describe('Letterboxd Import Page', () => {
+		test('shows username input form', async ({ page }) => {
+			await page.goto(`${BASE}/letterboxd`);
+			await expect(page.getByPlaceholder('your-username')).toBeVisible();
+			await expect(page.getByRole('button', { name: 'IMPORT' })).toBeVisible();
+		});
+
+		test('import button is disabled when input is empty', async ({ page }) => {
+			await page.goto(`${BASE}/letterboxd`);
+			const btn = page.getByRole('button', { name: 'IMPORT' });
+			await expect(btn).toBeDisabled();
+		});
+
+		test('shows error for non-existent user', async ({ page }) => {
+			await page.goto(`${BASE}/letterboxd`);
+			await page.getByPlaceholder('your-username').fill('zzzz_not_a_real_user_12345');
+			await page.getByRole('button', { name: 'IMPORT' }).click();
+			await page.waitForTimeout(5000);
+			// Should show error state with TRY AGAIN button
+			await expect(page.getByRole('button', { name: 'TRY AGAIN' })).toBeVisible();
+		});
+	});
+
+	// ═══════════════════════════════════════════════
+	// CINEMA MAP PAGE
+	// ═══════════════════════════════════════════════
+
+	test.describe('Cinema Map Page', () => {
+		test('loads map page with heading', async ({ page }) => {
+			await page.goto(`${BASE}/map`);
+			await expect(page.getByText('CINEMA MAP')).toBeVisible();
+		});
+
+		test('shows venue count', async ({ page }) => {
+			await page.goto(`${BASE}/map`);
+			await expect(page.getByText(/\d+ VENUES/)).toBeVisible();
+		});
+	});
+
+	// ═══════════════════════════════════════════════
+	// FESTIVALS PAGE
+	// ═══════════════════════════════════════════════
+
+	test.describe('Festivals Page', () => {
+		test('loads and shows festival names', async ({ page }) => {
+			await page.goto(`${BASE}/festivals`);
+			await expect(page.getByText('FESTIVALS')).toBeVisible();
+			// Should have at least one festival link
+			const links = await page.locator('a[href^="/festivals/"]').count();
+			expect(links).toBeGreaterThan(0);
+		});
+
+		test('festival detail page loads', async ({ page }) => {
+			await page.goto(`${BASE}/festivals`);
+			await page.locator('a[href^="/festivals/"]').first().click();
+			await page.waitForTimeout(2000);
+			// Should show the festival name as a heading
+			const h1 = await page.locator('h1').textContent();
+			expect(h1).toBeTruthy();
+			expect(h1!.length).toBeGreaterThan(0);
+		});
+	});
+
+	// ═══════════════════════════════════════════════
+	// iCAL EXPORT
+	// ═══════════════════════════════════════════════
+
+	test.describe('iCal Export', () => {
+		test('film detail page has calendar download buttons', async ({ page }) => {
+			await page.goto(BASE);
+			await page.waitForSelector('.film-card', { timeout: 10000 });
+			await page.locator('.film-card a').first().click();
+			await page.waitForURL(/\/film\//);
+			// Should have at least one .ical-btn
+			const icalBtns = await page.locator('.ical-btn').count();
+			expect(icalBtns).toBeGreaterThan(0);
+			// Button should link to /api/calendar
+			const href = await page.locator('.ical-btn').first().getAttribute('href');
+			expect(href).toContain('/api/calendar?screening=');
+		});
+	});
 });

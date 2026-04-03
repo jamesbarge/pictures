@@ -2,7 +2,6 @@
 	import BreathingGrid from '$lib/components/pretext/BreathingGrid.svelte';
 	import FilterBar from '$lib/components/filters/FilterBar.svelte';
 	import DimmerDial from '$lib/components/ui/DimmerDial.svelte';
-	import { SignedIn, SignedOut, UserButton } from 'svelte-clerk';
 	import type { Cinema } from '$lib/types';
 	import { page } from '$app/state';
 
@@ -27,12 +26,7 @@
 
 				<div class="nav-divider"></div>
 
-				<SignedOut>
 					<a href="/sign-in" class="nav-link">SIGN IN</a>
-				</SignedOut>
-				<SignedIn>
-					<UserButton />
-				</SignedIn>
 
 				<DimmerDial />
 			</div>
