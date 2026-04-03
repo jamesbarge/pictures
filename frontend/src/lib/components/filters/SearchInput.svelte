@@ -65,9 +65,15 @@
 		} else if (e.key === 'ArrowUp') {
 			e.preventDefault();
 			selectedIndex = Math.max(selectedIndex - 1, -1);
-		} else if (e.key === 'Enter' && selectedIndex >= 0) {
+		} else if (e.key === 'Enter') {
 			e.preventDefault();
-			navigateToResult(selectedIndex);
+			if (selectedIndex >= 0) {
+				navigateToResult(selectedIndex);
+			} else if (query.trim().length >= 2) {
+				open = false;
+				goto(`/search?q=${encodeURIComponent(query.trim())}`);
+				query = '';
+			}
 		} else if (e.key === 'Escape') {
 			open = false;
 			inputEl?.blur();
