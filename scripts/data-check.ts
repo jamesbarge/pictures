@@ -1607,7 +1607,7 @@ async function spotCheckBookings(
 
   // Use AI-powered verification via Stagehand
   try {
-    const { verifyBookingLinks } = await import("../src/scrapers/utils/booking-verifier");
+    const { verifyBookingLinks } = await import("./lib/booking-verifier");
     const verifications = await verifyBookingLinks({
       urls: screenings.map((s: any) => ({
         url: s.booking_url,
