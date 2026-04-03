@@ -288,13 +288,19 @@ export async function createFilmWithoutTMDB(
 
   const filmId = uuidv4();
 
+  // Clean director: strip "Starring ..." suffix that cinema websites sometimes include
+  const cleanedDirector = scraperDirector
+    ?.replace(/\s+Starring\s+.*/i, "")
+    .replace(/\s+With\s+.*/i, "")
+    .trim() || undefined;
+
   await db.insert(films).values({
     id: filmId,
     title: matchingTitle,
     year: scraperYear,
-    directors: scraperDirector ? [scraperDirector] : [],
+    directors: cleanedDirector ? [cleanedDirector] : [],
     posterUrl,
-    isRepertory: false,
+    isRepertory: scraperYear ? scraperYear < new Date().getFullYear() - 2 : false,
     cast: [],
     genres: [],
     countries: [],
@@ -308,7 +314,7 @@ export async function createFilmWithoutTMDB(
     originalTitle: null,
     year: scraperYear ?? null,
     runtime: null,
-    directors: scraperDirector ? [scraperDirector] : [],
+    directors: cleanedDirector ? [cleanedDirector] : [],
     cast: [],
     genres: [],
     countries: [],
@@ -319,7 +325,7 @@ export async function createFilmWithoutTMDB(
     posterUrl,
     backdropUrl: null,
     trailerUrl: null,
-    isRepertory: false,
+    isRepertory: scraperYear ? scraperYear < new Date().getFullYear() - 2 : false,
     releaseStatus: null,
     decade: null,
     contentType: "film",

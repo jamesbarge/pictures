@@ -103,8 +103,12 @@ export class ICAScraper extends BaseScraper {
   }
 
   private extractFilmInfo($: CheerioAPI): FilmInfo {
-    // Get title from the page title or span.title
-    let title = $("span.title").first().text().trim();
+    // Get title from span.title, removing nested tag/badge elements first
+    // to prevent concatenation bugs (e.g. <span class="tag">LONDON PREMIERE</span>Bouchra
+    // would become "LONDON PREMIEREBouchra" without this)
+    const $titleEl = $("span.title").first().clone();
+    $titleEl.find(".tag, .badge, .label, .flag").remove();
+    let title = $titleEl.text().trim();
     if (!title) {
       // Fallback to page title
       const pageTitle = $("title").text();
