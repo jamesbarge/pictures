@@ -1,6 +1,7 @@
 <script lang="ts">
 	import FilmCard from '$lib/components/calendar/FilmCard.svelte';
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
+	import FollowButton from '$lib/components/festivals/FollowButton.svelte';
 	import type { ScreeningWithDetails } from '$lib/types';
 	import { groupBy } from '$lib/utils';
 
@@ -24,9 +25,14 @@
 
 <section class="py-6">
 	<div class="max-w-[1400px] mx-auto px-4 md:px-8">
-		<h1 class="font-display text-2xl font-bold tracking-tight-swiss uppercase mb-2">
-			{festival?.name ?? 'Festival'}
-		</h1>
+		<div class="flex items-baseline gap-4 mb-2">
+			<h1 class="font-display text-2xl font-bold tracking-tight-swiss uppercase">
+				{festival?.name ?? 'Festival'}
+			</h1>
+			{#if festival?.slug}
+				<FollowButton festivalSlug={festival.slug} />
+			{/if}
+		</div>
 		{#if festival?.description}
 			<p class="text-sm text-[var(--color-text-secondary)] mb-6 max-w-[40rem]">{festival.description}</p>
 		{/if}
