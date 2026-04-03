@@ -2,6 +2,9 @@
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import { filmStatuses } from '$lib/stores/film-status.svelte';
 	import { formatTime, formatScreeningDate, toLondonDateStr, groupBy } from '$lib/utils';
+	import { trackFilmView, trackBookingClick } from '$lib/analytics/posthog';
+	import { browser } from '$app/environment';
+	import { onMount } from 'svelte';
 	import type { FilmStatus } from '$lib/types';
 
 	let { data } = $props();
@@ -9,6 +12,16 @@
 	const film = $derived(data.film);
 	const screenings = $derived(data.screenings);
 	const currentStatus = $derived(filmStatuses.getStatus(film.id));
+
+	onMount(() => {
+		trackFilmView({
+			filmId: film.id,
+			filmTitle: film.title,
+			filmYear: film.year,
+			genres: film.genres,
+			directors: film.directors
+		}, 'film_detail');
+	});
 
 	function toggleStatus(status: FilmStatus) {
 		filmStatuses.toggleStatus(film.id, status);

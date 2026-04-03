@@ -3,6 +3,7 @@
 	import { onMount } from 'svelte';
 	import { debounce } from '$lib/utils';
 	import { apiGet } from '$lib/api/client';
+	import { trackSearch, trackSearchNoResults } from '$lib/analytics/posthog';
 
 	interface SearchResult {
 		id: string;
@@ -42,6 +43,9 @@
 			);
 			films = res.results;
 			cinemas = res.cinemas;
+			const total = films.length + cinemas.length;
+			trackSearch(q, total);
+			if (total === 0) trackSearchNoResults(q);
 		} catch (e) {
 			console.error('[search] Failed to search:', e instanceof Error ? e.message : e);
 			films = [];
