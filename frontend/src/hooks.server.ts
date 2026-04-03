@@ -4,6 +4,11 @@ import type { Handle } from '@sveltejs/kit';
 const clerkHandler = withClerkHandler();
 
 export const handle: Handle = async (input) => {
+	// Skip Clerk for API proxy routes — they don't need auth middleware
+	if (input.event.url.pathname.startsWith('/api/')) {
+		return input.resolve(input.event);
+	}
+
 	try {
 		const response = await clerkHandler(input);
 
