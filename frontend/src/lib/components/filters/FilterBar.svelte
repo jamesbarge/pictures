@@ -17,13 +17,13 @@
 		<div class="filter-zone">
 			<FilmTypeFilter />
 		</div>
-		<div class="filter-zone">
+		<div class="filter-zone filter-zone-noborder">
 			<DateTimePicker />
 		</div>
-		<div class="filter-zone">
+		<div class="filter-zone filter-zone-noborder">
 			<CinemaPicker {cinemas} />
 		</div>
-		<div class="filter-zone">
+		<div class="filter-zone filter-zone-noborder">
 			<FormatPicker />
 		</div>
 		<div class="filter-zone filter-zone-search">
@@ -62,11 +62,19 @@
 		align-items: center;
 		height: 100%;
 		padding-right: 0.5rem;
+		margin-right: 0.5rem;
+		border-right: 1px solid var(--color-border-subtle);
 		flex-shrink: 0;
 	}
 
 	.filter-zone:last-child {
+		border-right: none;
 		padding-right: 0;
+		margin-right: 0;
+	}
+
+	.filter-zone-noborder {
+		border-right: none;
 	}
 
 	.filter-zone-search {
