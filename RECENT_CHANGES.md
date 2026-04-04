@@ -1,11 +1,23 @@
+## 2026-04-04: SvelteKit Frontend Rewrite
+**PR**: #405 | **Files**: `frontend/` (120 new files)
+- Complete SvelteKit 5 + Tailwind 4 frontend with Swiss brutalist design
+- 15+ routes: home, film detail, cinemas, festivals, directors, tonight, this-weekend, watchlist, search, letterboxd import, reachable ("What can I catch?"), map, settings, about
+- PostHog analytics, Clerk auth, user data sync, Letterboxd ratings (click-to-reveal)
+- SEO structured data (JSON-LD: Organization, WebSite, FAQ, Movie, Breadcrumb)
+- Cinema map with 47 MapLibre markers + click popups
+- Mobile responsive with FILTERS toggle, 82 Playwright tests (desktop + mobile)
+- Deployed to Vercel with API rewrites to pictures.london
+
+---
+
 ## 2026-04-03: Fix Systemic Data Quality Issues in Scrapers & Enrichment
 **PR**: #404 | **Files**: `src/scrapers/utils/film-title-cleaner.ts`, `src/scrapers/utils/metadata-parser.ts`, `src/scrapers/utils/film-matching.ts`, `src/scrapers/chains/curzon.ts`, `src/scrapers/pipeline.test.ts`
 - Add 20+ new event prefix patterns (RIO FOREVER, Beyond, TV PARTY, Naturist Screening, Doc'n Roll, seniors matinee, film festivals, etc.)
 - Add re-release/premiere suffix stripping: (2026 Re-release), (World Premiere), (Sing-Along), etc.
-- Add HTML entity decoding and mojibake fix for garbled titles (e.g. 8&Acirc;&frac12; → 8½)
-- Add director validation to reject scraper garbage (screen names, venue IDs, schedule text)
+- Add HTML entity decoding and mojibake fix for garbled titles
+- Add director validation to reject scraper garbage
 - Auto-set is_repertory for non-TMDB films based on year
-- Fix Curzon booking URLs: changed from broken ?sessionId= deep links to working film detail pages
+- Fix Curzon booking URLs
 - 76 tests passing (21 new)
 
 ---

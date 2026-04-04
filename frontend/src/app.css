@@ -1,0 +1,182 @@
+@import "tailwindcss";
+
+/*
+ * Pictures London — Swiss Brutalist Design System
+ * International Typographic Style meets refined brutalism.
+ * Typography-forward. Sharp edges. High contrast. Restrained motion.
+ */
+
+@theme {
+	/* ── Spacing (4px base, Swiss precision) ── */
+	--spacing-0: 0;
+	--spacing-px: 1px;
+	--spacing-0\.5: 0.125rem;
+	--spacing-1: 0.25rem;
+	--spacing-2: 0.5rem;
+	--spacing-3: 0.75rem;
+	--spacing-4: 1rem;
+	--spacing-5: 1.25rem;
+	--spacing-6: 1.5rem;
+	--spacing-8: 2rem;
+	--spacing-10: 2.5rem;
+	--spacing-12: 3rem;
+	--spacing-16: 4rem;
+	--spacing-20: 5rem;
+	--spacing-24: 6rem;
+
+	/* ── Typography Scale (modular, Swiss poster proportions) ── */
+	--font-size-xs: 0.6875rem;
+	--font-size-sm: 0.8125rem;
+	--font-size-base: 1rem;
+	--font-size-lg: 1.125rem;
+	--font-size-xl: 1.375rem;
+	--font-size-2xl: 1.75rem;
+	--font-size-3xl: 2.25rem;
+	--font-size-4xl: 3rem;
+	--font-size-5xl: 4rem;
+	--font-size-6xl: 5.5rem;
+	--font-size-7xl: 7.5rem;
+
+	/* ── Border Radius (zero — brutalist) ── */
+	--radius-none: 0;
+	--radius-sm: 0;
+	--radius-md: 0;
+	--radius-lg: 0;
+	--radius-xl: 0;
+	--radius-2xl: 0;
+	--radius-full: 0;
+
+	/* ── Font Families ── */
+	--font-sans: "Inter Variable", "Inter", system-ui, -apple-system, sans-serif;
+	--font-mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+	--font-display: "Space Grotesk", "Inter Variable", system-ui, sans-serif;
+
+	/* ── Animation ── */
+	--duration-instant: 0ms;
+	--duration-fast: 80ms;
+	--duration-normal: 160ms;
+	--duration-slow: 280ms;
+	--duration-slower: 500ms;
+
+	--ease-sharp: cubic-bezier(0.4, 0, 0.2, 1);
+	--ease-snap: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* ── Color System (CSS custom properties for theming) ── */
+:root {
+	--color-bg: #f5f2eb;
+	--color-bg-subtle: #ece8df;
+	--color-surface: #ffffff;
+	--color-text: #0a0a0a;
+	--color-text-secondary: #3a3a3a;
+	--color-text-tertiary: #6a6a6a;
+	--color-border: #0a0a0a;
+	--color-border-subtle: #d0ccc4;
+	--color-accent: #e63946;
+	--color-accent-hover: #c62f3c;
+	--color-screening-bg: #0a0a0a;
+	--color-screening-text: #f5f2eb;
+}
+
+[data-theme="dark"] {
+	--color-bg: #0a0a0a;
+	--color-bg-subtle: #141414;
+	--color-surface: #1a1a1a;
+	--color-text: #f5f2eb;
+	--color-text-secondary: #c0bdb6;
+	--color-text-tertiary: #7a7a7a;
+	--color-border: #f5f2eb;
+	--color-border-subtle: #2a2a2a;
+	--color-accent: #ff4d5a;
+	--color-accent-hover: #ff6b75;
+	--color-screening-bg: #f5f2eb;
+	--color-screening-text: #0a0a0a;
+}
+
+/* ── Base Styles ── */
+html {
+	background-color: var(--color-bg);
+	color: var(--color-text);
+	font-family: var(--font-sans);
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+	overflow-x: hidden;
+}
+
+body {
+	min-height: 100dvh;
+}
+
+/* ── Typography Utilities ── */
+.font-display {
+	font-family: var(--font-display);
+}
+
+.tracking-swiss {
+	letter-spacing: -0.02em;
+}
+
+.tracking-tight-swiss {
+	letter-spacing: -0.04em;
+}
+
+.tracking-wide-swiss {
+	letter-spacing: 0.08em;
+}
+
+/* ── Screening Pill ── */
+.screening-pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.5rem;
+	padding: 0.25rem 0.5rem;
+	background: var(--color-screening-bg);
+	color: var(--color-screening-text);
+	font-size: var(--font-size-xs);
+	font-family: var(--font-mono);
+	font-variant-numeric: tabular-nums;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	transition: opacity var(--duration-fast) var(--ease-sharp);
+}
+
+.screening-pill:hover {
+	opacity: 0.8;
+}
+
+/* ── Focus Styles (brutalist) ── */
+:focus-visible {
+	outline: 2px solid var(--color-text);
+	outline-offset: 2px;
+}
+
+/* ── Screen Reader Only ── */
+.sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border-width: 0;
+}
+
+/* ── Selection ── */
+::selection {
+	background-color: var(--color-accent);
+	color: white;
+}
+
+/* ── Reduced Motion ── */
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		scroll-behavior: auto !important;
+	}
+}

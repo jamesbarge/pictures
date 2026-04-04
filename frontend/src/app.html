@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="theme-color" content="#0a0a0a" />
+		<link rel="preconnect" href="https://rsms.me/" />
+		<link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
+		<script>
+			// Prevent flash of wrong theme — apply dimmer value before first paint
+			(function() {
+				try {
+					var t = parseFloat(localStorage.getItem('pictures-dimmer') || '0');
+					if (t > 0.01) {
+						var r = document.documentElement.style;
+						function lerp(a, b) { return Math.round(a + (b - a) * t); }
+						function warmLerp(lr, lg, lb, dr, dg, db, w) {
+							var s = Math.sin(t * Math.PI) * w;
+							return 'rgb(' + Math.min(255, lerp(lr, dr) + s * 50) + ',' + Math.min(255, lerp(lg, dg) + s * 15) + ',' + Math.max(0, lerp(lb, db) - s * 55) + ')';
+						}
+						function c(lr, lg, lb, dr, dg, db) { return 'rgb(' + lerp(lr, dr) + ',' + lerp(lg, dg) + ',' + lerp(lb, db) + ')'; }
+						r.setProperty('--color-bg', warmLerp(245,242,235, 14,12,10, 1.2));
+						r.setProperty('--color-bg-subtle', warmLerp(236,232,223, 24,21,18, 1));
+						r.setProperty('--color-surface', warmLerp(255,255,255, 30,27,24, 0.8));
+						r.setProperty('--color-text', c(10,10,10, 240,235,220));
+						r.setProperty('--color-text-secondary', c(58,58,58, 185,175,160));
+						r.setProperty('--color-text-tertiary', c(106,106,106, 115,108,98));
+						r.setProperty('--color-border', c(10,10,10, 240,235,220));
+						r.setProperty('--color-border-subtle', c(208,204,196, 50,44,38));
+						r.setProperty('--color-accent', c(230,57,70, 255,85,70));
+						r.setProperty('--color-screening-bg', c(10,10,10, 240,235,220));
+						r.setProperty('--color-screening-text', c(245,242,235, 14,12,10));
+					}
+				} catch(e) {}
+			})();
+		</script>
+		%sveltekit.head%
+	</head>
+	<body data-sveltekit-preload-data="hover">
+		<div style="display: contents">%sveltekit.body%</div>
+	</body>
+</html>
