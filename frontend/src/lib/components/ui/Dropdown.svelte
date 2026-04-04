@@ -56,6 +56,7 @@
 		z-index: 50;
 		margin-top: 4px;
 		min-width: 200px;
+		max-width: calc(100vw - 1rem);
 		max-height: 520px;
 		overflow-y: auto;
 		background: var(--color-surface);
@@ -66,5 +67,16 @@
 	.dropdown-panel.align-right {
 		left: auto;
 		right: 0;
+	}
+
+	@media (max-width: 767px) {
+		.dropdown-panel {
+			position: fixed;
+			left: 0.5rem;
+			right: 0.5rem;
+			top: auto;
+			width: auto;
+			max-width: none;
+		}
 	}
 </style>

@@ -44,11 +44,17 @@
 	}
 
 	.filter-grid {
-		display: grid;
-		grid-template-columns: auto auto auto auto 1fr auto;
+		display: flex;
 		align-items: center;
 		gap: 0;
 		height: 40px;
+		overflow-x: auto;
+		-webkit-overflow-scrolling: touch;
+		scrollbar-width: none;
+	}
+
+	.filter-grid::-webkit-scrollbar {
+		display: none;
 	}
 
 	.filter-zone {

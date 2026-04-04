@@ -130,7 +130,8 @@
 	}
 
 	.cinema-dropdown {
-		width: 280px;
+		width: calc(100vw - 2rem);
+		max-width: 280px;
 	}
 
 	.cinema-search-wrap {
