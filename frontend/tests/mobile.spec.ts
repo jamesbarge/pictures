@@ -60,7 +60,10 @@ test.describe('Mobile Responsive — iPhone 12 Pro (390x844)', () => {
 
 		test('cinema dropdown does not overflow viewport', async ({ page }) => {
 			await page.goto(BASE);
-			await page.getByLabel('Cinema filter').click();
+			// Open FILTERS panel first on mobile
+			await page.getByRole('button', { name: 'Toggle filters' }).click();
+			await page.waitForTimeout(300);
+			await page.getByLabel('Cinema filter').last().click();
 			await page.waitForTimeout(300);
 
 			const dropdown = page.locator('.dropdown-panel');
@@ -76,7 +79,10 @@ test.describe('Mobile Responsive — iPhone 12 Pro (390x844)', () => {
 
 		test('WHEN dropdown does not overflow viewport', async ({ page }) => {
 			await page.goto(BASE);
-			await page.getByLabel('Date and time filter').click();
+			// Open FILTERS panel first on mobile
+			await page.getByRole('button', { name: 'Toggle filters' }).click();
+			await page.waitForTimeout(300);
+			await page.getByLabel('Date and time filter').last().click();
 			await page.waitForTimeout(300);
 
 			const dropdown = page.locator('.dropdown-panel');
