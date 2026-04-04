@@ -35,10 +35,19 @@
 		return div;
 	}
 
-	function createMarkerElement(): HTMLDivElement {
+	function createMarkerElement(cinemaName: string): HTMLDivElement {
 		const el = document.createElement('div');
 		el.className = 'cinema-pin';
 		el.style.cursor = 'pointer';
+		el.setAttribute('role', 'button');
+		el.setAttribute('tabindex', '0');
+		el.setAttribute('aria-label', cinemaName);
+		el.addEventListener('keydown', (e) => {
+			if (e.key === 'Enter' || e.key === ' ') {
+				e.preventDefault();
+				el.click();
+			}
+		});
 
 		const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
 		svg.setAttribute('width', '20');
@@ -86,7 +95,7 @@
 				const popup = new maplibregl.Popup({ offset: 25 })
 					.setDOMContent(createPopupContent(cinema));
 
-				new maplibregl.Marker({ element: createMarkerElement() })
+				new maplibregl.Marker({ element: createMarkerElement(cinema.name) })
 					.setLngLat([cinema.coordinates.lng, cinema.coordinates.lat])
 					.setPopup(popup)
 					.addTo(map);

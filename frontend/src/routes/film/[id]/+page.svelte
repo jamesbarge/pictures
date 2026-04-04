@@ -434,8 +434,8 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		width: 2rem;
-		height: 2rem;
+		width: 2.75rem;
+		height: 2.75rem;
 		flex-shrink: 0;
 		color: var(--color-text-tertiary);
 		transition: color var(--duration-fast) var(--ease-sharp);

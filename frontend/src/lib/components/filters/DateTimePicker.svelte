@@ -291,6 +291,12 @@
 		padding: 0.5rem 0;
 	}
 
+	@media (max-width: 767px) {
+		.datetime-dropdown {
+			width: 100%;
+		}
+	}
+
 	.section {
 		padding: 0.375rem 0.75rem;
 	}

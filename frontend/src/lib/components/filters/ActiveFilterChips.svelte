@@ -38,7 +38,7 @@
 {#if chips().length > 0}
 	<div class="chip-row">
 		{#each chips() as chip (chip.key)}
-			<button class="chip" onclick={chip.onRemove}>
+			<button class="chip" onclick={chip.onRemove} aria-label="Remove {chip.label} filter">
 				{chip.label}
 				<svg aria-hidden="true" width="8" height="8" viewBox="0 0 8 8" fill="none">
 					<path d="M1 1L7 7M7 1L1 7" stroke="currentColor" stroke-width="1.2" stroke-linecap="square"/>

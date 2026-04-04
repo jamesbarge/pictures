@@ -1,15 +1,19 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 
 	let {
 		open = false,
 		onClose,
 		align = 'left',
+		role = 'group',
+		triggerEl = undefined,
 		children
 	}: {
 		open: boolean;
 		onClose: () => void;
 		align?: 'left' | 'right';
+		role?: string;
+		triggerEl?: HTMLElement | undefined;
 		children: import('svelte').Snippet;
 	} = $props();
 
@@ -19,14 +23,27 @@
 		if (e.key === 'Escape' && open) {
 			e.preventDefault();
 			onClose();
+			triggerEl?.focus();
 		}
 	}
 
 	function handleClickOutside(e: MouseEvent) {
 		if (open && panelEl && !panelEl.contains(e.target as Node)) {
 			onClose();
+			triggerEl?.focus();
 		}
 	}
+
+	$effect(() => {
+		if (open && panelEl) {
+			tick().then(() => {
+				const focusable = panelEl?.querySelector<HTMLElement>(
+					'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+				);
+				focusable?.focus();
+			});
+		}
+	});
 
 	onMount(() => {
 		document.addEventListener('click', handleClickOutside, true);
@@ -41,7 +58,7 @@
 		bind:this={panelEl}
 		class="dropdown-panel"
 		class:align-right={align === 'right'}
-		role="listbox"
+		{role}
 		aria-label="Filter options"
 	>
 		{@render children()}
@@ -74,7 +91,7 @@
 			position: fixed;
 			left: 0.5rem;
 			right: 0.5rem;
-			top: auto;
+			top: 49px;
 			width: auto;
 			max-width: none;
 		}

@@ -155,6 +155,28 @@
 		font-family: var(--font-mono);
 	}
 
+	@media (max-width: 767px) {
+		.table-header {
+			grid-template-columns: 1fr 60px 60px;
+		}
+
+		.th-director,
+		.th-runtime,
+		.th-next {
+			display: none;
+		}
+
+		.table-row {
+			grid-template-columns: 1fr 60px 60px;
+		}
+
+		.td-director,
+		.td-runtime,
+		.td-next {
+			display: none;
+		}
+	}
+
 	.table-row {
 		display: grid;
 		grid-template-columns: 1fr 60px 160px 70px 80px 60px;

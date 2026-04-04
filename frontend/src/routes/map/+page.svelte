@@ -12,9 +12,9 @@
 	<meta name="description" content="Interactive map of all London cinemas — find your nearest venue" />
 </svelte:head>
 
-<section class="map-page">
+<section class="map-page" aria-labelledby="map-heading">
 	<div class="map-header">
-		<h1 class="font-display text-sm font-bold tracking-wide-swiss uppercase">
+		<h1 id="map-heading" class="font-display text-sm font-bold tracking-wide-swiss uppercase">
 			CINEMA MAP
 		</h1>
 		<span class="text-xs text-[var(--color-muted)] font-mono">{cinemas.filter((c: any) => c.coordinates).length} VENUES</span>

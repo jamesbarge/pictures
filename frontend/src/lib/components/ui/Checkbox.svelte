@@ -33,6 +33,7 @@
 		align-items: center;
 		gap: 0.5rem;
 		padding: 0.375rem 0.75rem;
+		min-height: 2.75rem;
 		cursor: pointer;
 		transition: background-color var(--duration-fast) var(--ease-sharp);
 	}

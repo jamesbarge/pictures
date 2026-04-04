@@ -154,7 +154,7 @@
 				</svg>
 			</button>
 		{:else}
-			<kbd class="kbd-hint">⌘K</kbd>
+			<kbd class="kbd-hint" aria-hidden="true">⌘K</kbd>
 		{/if}
 	</div>
 

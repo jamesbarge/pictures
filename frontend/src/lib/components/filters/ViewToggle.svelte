@@ -40,8 +40,8 @@
 	}
 
 	.toggle-btn {
-		width: 28px;
-		height: 28px;
+		min-width: 2.75rem;
+		min-height: 2.75rem;
 		display: flex;
 		align-items: center;
 		justify-content: center;
