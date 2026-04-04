@@ -90,15 +90,52 @@ export class DavidLeanScraper implements CinemaScraper {
 
       // Process listings to extract screenings
       const seenScreenings = new Set<string>();
+      const sliderTitles = Object.keys(sliderBookingMap);
 
       for (const listing of listings) {
         // Try to match booking URL: first from listing itself, then from slider by title
         let bookingUrl = listing.link;
         if (!bookingUrl) {
           // Extract title from listing text and match against slider
-          const firstLine = listing.text.split("\n").map(l => l.trim()).filter(Boolean)[0] || "";
+          const lines = listing.text.split("\n").map(l => l.trim()).filter(Boolean);
+          let firstLine = lines[0] || "";
+          // Skip metadata lines (year | runtime | country)
+          if (firstLine.match(/^\d{4}\s*\|/) && lines.length > 1) {
+            firstLine = lines[1];
+          }
           const titleUpper = firstLine.replace(/\s*\(Cert\s*\d+A?\)\s*/gi, "").trim().toUpperCase();
+
+          // 1. Try exact match first
           bookingUrl = sliderBookingMap[titleUpper] || null;
+
+          // 2. Try fuzzy match: find slider title that contains or is contained by listing title
+          if (!bookingUrl && titleUpper.length > 3) {
+            for (const sliderTitle of sliderTitles) {
+              if (sliderTitle.includes(titleUpper) || titleUpper.includes(sliderTitle)) {
+                bookingUrl = sliderBookingMap[sliderTitle];
+                break;
+              }
+            }
+          }
+
+          // 3. Try word overlap: at least 60% of words match
+          if (!bookingUrl && titleUpper.length > 3) {
+            const titleWords = titleUpper.split(/\s+/).filter(w => w.length > 2);
+            let bestMatch = "";
+            let bestScore = 0;
+            for (const sliderTitle of sliderTitles) {
+              const sliderWords = sliderTitle.split(/\s+/).filter(w => w.length > 2);
+              const overlap = titleWords.filter(w => sliderWords.includes(w)).length;
+              const score = overlap / Math.max(titleWords.length, 1);
+              if (score > bestScore && score >= 0.6) {
+                bestScore = score;
+                bestMatch = sliderTitle;
+              }
+            }
+            if (bestMatch) {
+              bookingUrl = sliderBookingMap[bestMatch];
+            }
+          }
         }
 
         const parsed = this.parseListingText(listing.text, bookingUrl, currentYear, now);
@@ -156,7 +193,7 @@ export class DavidLeanScraper implements CinemaScraper {
             screenings.push({
               filmTitle: this.cleanTitle(filmTitle),
               datetime: adjustedDatetime,
-              bookingUrl: bookingUrl || this.config.baseUrl,
+              bookingUrl: bookingUrl || this.config.baseUrl + "/#whatson",
               sourceId: `david-lean-${filmTitle.toLowerCase().replace(/\s+/g, "-").substring(0, 30)}-${adjustedDatetime.toISOString()}`,
             });
           }
