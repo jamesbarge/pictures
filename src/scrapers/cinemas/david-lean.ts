@@ -46,6 +46,24 @@ export class DavidLeanScraper implements CinemaScraper {
       const now = new Date();
       const currentYear = getYear(now);
 
+      // Extract booking URLs from the slider (title → URL map)
+      // Booking links are in et_pb_slide elements, NOT in the text listings
+      const sliderBookingMap = await page.evaluate(() => {
+        const map: Record<string, string> = {};
+        document.querySelectorAll('.et_pb_slide').forEach(slide => {
+          const title = slide.querySelector('.et_pb_slide_title')?.textContent?.trim()?.toUpperCase() || '';
+          const url = slide.querySelector('a.et_pb_more_button')?.getAttribute('href')
+            || slide.querySelector('a.et_pb_slide_title_link')?.getAttribute('href')
+            || null;
+          if (title && url && !url.includes('#')) {
+            map[title] = url;
+          }
+        });
+        return map;
+      });
+
+      console.log(`[${this.config.cinemaId}] Found ${Object.keys(sliderBookingMap).length} booking URLs from slider`);
+
       // Extract listings from the schedule section
       const listings = await page.evaluate(() => {
         const textElements = document.querySelectorAll('.et_pb_text_inner');
@@ -53,7 +71,10 @@ export class DavidLeanScraper implements CinemaScraper {
 
         textElements.forEach(el => {
           const text = el.textContent?.trim() || "";
-          const link = el.querySelector('a.et_pb_button')?.getAttribute('href') || null;
+          // Check for links anywhere in the element or its parent column
+          const link = el.querySelector('a[href*="tinyurl"], a[href*="ticketsolve"], a.et_pb_button')?.getAttribute('href')
+            || el.closest('.et_pb_column')?.querySelector('a[href*="tinyurl"], a[href*="ticketsolve"]')?.getAttribute('href')
+            || null;
 
           // Look for patterns with date/time info
           if (text.match(/\d{1,2}\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/i) &&
@@ -71,7 +92,16 @@ export class DavidLeanScraper implements CinemaScraper {
       const seenScreenings = new Set<string>();
 
       for (const listing of listings) {
-        const parsed = this.parseListingText(listing.text, listing.link, currentYear, now);
+        // Try to match booking URL: first from listing itself, then from slider by title
+        let bookingUrl = listing.link;
+        if (!bookingUrl) {
+          // Extract title from listing text and match against slider
+          const firstLine = listing.text.split("\n").map(l => l.trim()).filter(Boolean)[0] || "";
+          const titleUpper = firstLine.replace(/\s*\(Cert\s*\d+A?\)\s*/gi, "").trim().toUpperCase();
+          bookingUrl = sliderBookingMap[titleUpper] || null;
+        }
+
+        const parsed = this.parseListingText(listing.text, bookingUrl, currentYear, now);
         for (const screening of parsed) {
           const key = `${screening.filmTitle}-${screening.datetime.toISOString()}`;
           if (!seenScreenings.has(key)) {
@@ -126,7 +156,7 @@ export class DavidLeanScraper implements CinemaScraper {
             screenings.push({
               filmTitle: this.cleanTitle(filmTitle),
               datetime: adjustedDatetime,
-              bookingUrl: bookingUrl || `${this.config.baseUrl}/#whatson`,
+              bookingUrl: bookingUrl || this.config.baseUrl,
               sourceId: `david-lean-${filmTitle.toLowerCase().replace(/\s+/g, "-").substring(0, 30)}-${adjustedDatetime.toISOString()}`,
             });
           }
