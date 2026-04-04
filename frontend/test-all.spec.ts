@@ -45,9 +45,9 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 			await expect(page.getByText('ALL', { exact: true })).toBeVisible();
 			await expect(page.getByText('NEW', { exact: true })).toBeVisible();
 			await expect(page.getByText('REPERTORY', { exact: true })).toBeVisible();
-			await expect(page.getByText('WHEN')).toBeVisible();
-			await expect(page.getByText('ALL CINEMAS')).toBeVisible();
-			await expect(page.getByText('FORMAT')).toBeVisible();
+			await expect(page.getByLabel('Date and time filter')).toBeVisible();
+			await expect(page.getByLabel('Cinema filter')).toBeVisible();
+			await expect(page.getByLabel('Format filter')).toBeVisible();
 			await expect(page.getByPlaceholder('Search films, cinemas, directors...')).toBeVisible();
 		});
 
@@ -459,12 +459,14 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 
 		test('sign-in page loads', async ({ page }) => {
 			await page.goto(`${BASE}/sign-in`);
-			await expect(page.locator('h1')).toContainText('SIGN IN');
+			// Clerk SignIn component renders — page title confirms route
+			await expect(page).toHaveTitle(/Sign In/);
 		});
 
 		test('sign-up page loads', async ({ page }) => {
 			await page.goto(`${BASE}/sign-up`);
-			await expect(page.locator('h1')).toContainText('SIGN UP');
+			// Clerk SignUp component renders — page title confirms route
+			await expect(page).toHaveTitle(/Sign Up/);
 		});
 	});
 
