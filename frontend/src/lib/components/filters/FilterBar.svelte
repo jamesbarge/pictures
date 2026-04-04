@@ -10,30 +10,70 @@
 	import type { Cinema } from '$lib/types';
 
 	let { cinemas = [] }: { cinemas: Cinema[] } = $props();
+
+	let filtersOpen = $state(false);
 </script>
 
 <div class="filter-bar">
+	<!-- MOBILE: Search on top, tabs + FILTERS button below -->
+	<div class="mobile-search">
+		<SearchInput />
+	</div>
+
 	<div class="filter-grid">
 		<div class="filter-zone">
 			<FilmTypeFilter />
 		</div>
-		<div class="filter-zone filter-zone-noborder">
+
+		<!-- Desktop: show inline -->
+		<div class="filter-zone filter-zone-noborder desktop-only">
 			<DateTimePicker />
 		</div>
-		<div class="filter-zone filter-zone-noborder">
+		<div class="filter-zone filter-zone-noborder desktop-only">
 			<CinemaPicker {cinemas} />
 		</div>
-		<div class="filter-zone filter-zone-noborder">
+		<div class="filter-zone filter-zone-noborder desktop-only">
 			<FormatPicker />
 		</div>
-		<div class="filter-zone filter-zone-search">
+		<div class="filter-zone filter-zone-search desktop-only">
 			<SearchInput />
 		</div>
-		<div class="filter-zone filter-zone-actions">
+		<div class="filter-zone filter-zone-actions desktop-only">
 			<ViewToggle />
 			<ClearFiltersButton />
 		</div>
+
+		<!-- Mobile: FILTERS toggle button -->
+		<div class="filter-zone filter-zone-noborder mobile-only">
+			<button
+				class="filters-toggle"
+				class:active={filtersOpen}
+				onclick={() => (filtersOpen = !filtersOpen)}
+				aria-expanded={filtersOpen}
+				aria-label="Toggle filters"
+			>
+				FILTERS
+				<svg aria-hidden="true" width="10" height="6" viewBox="0 0 10 6" fill="none" class="chevron" class:flip={filtersOpen}>
+					<path d="M1 1L5 5L9 1" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"/>
+				</svg>
+			</button>
+		</div>
 	</div>
+
+	<!-- Mobile: expanded filter panel -->
+	{#if filtersOpen}
+		<div class="mobile-filter-panel mobile-only">
+			<div class="mobile-filter-row">
+				<DateTimePicker />
+			</div>
+			<div class="mobile-filter-row">
+				<CinemaPicker {cinemas} />
+			</div>
+			<div class="mobile-filter-row">
+				<FormatPicker />
+			</div>
+		</div>
+	{/if}
 
 	<ActiveFilterChips />
 </div>
@@ -46,9 +86,8 @@
 	.filter-grid {
 		display: flex;
 		align-items: center;
-		flex-wrap: wrap;
-		gap: 0.25rem 0;
-		min-height: 40px;
+		gap: 0;
+		height: 40px;
 	}
 
 	.filter-zone {
@@ -85,11 +124,75 @@
 		margin-right: 0;
 	}
 
-	/* On mobile: hide search + view toggle to fit core filters in one row */
+	/* Mobile search row — full width above the tabs */
+	.mobile-search {
+		display: none;
+	}
+
+	/* FILTERS toggle button (mobile only) */
+	.filters-toggle {
+		display: flex;
+		align-items: center;
+		gap: 0.375rem;
+		padding: 0.375rem 0.625rem;
+		font-size: var(--font-size-xs);
+		font-weight: 500;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		color: var(--color-text-secondary);
+		background: transparent;
+		border: 1px solid var(--color-border-subtle);
+		cursor: pointer;
+		transition: border-color var(--duration-fast) var(--ease-sharp);
+	}
+
+	.filters-toggle:hover {
+		border-color: var(--color-border);
+	}
+
+	.filters-toggle.active {
+		border-color: var(--color-text);
+		color: var(--color-text);
+	}
+
+	.chevron {
+		transition: transform var(--duration-fast) var(--ease-sharp);
+	}
+
+	.chevron.flip {
+		transform: rotate(180deg);
+	}
+
+	/* Mobile filter panel — slides open below the tabs */
+	.mobile-filter-panel {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		padding: 0.5rem 0;
+		border-top: 1px solid var(--color-border-subtle);
+	}
+
+	.mobile-filter-row {
+		position: relative;
+	}
+
+	/* Desktop-only / Mobile-only visibility */
+	.mobile-only {
+		display: none;
+	}
+
 	@media (max-width: 767px) {
-		.filter-zone-search,
-		.filter-zone-actions {
+		.desktop-only {
 			display: none;
+		}
+
+		.mobile-only {
+			display: flex;
+		}
+
+		.mobile-search {
+			display: block;
+			margin-bottom: 0.375rem;
 		}
 	}
 </style>
