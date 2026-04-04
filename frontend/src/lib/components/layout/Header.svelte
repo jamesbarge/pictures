@@ -54,7 +54,6 @@
 		max-width: 1400px;
 		margin: 0 auto;
 		padding: 0 1rem;
-		overflow: hidden;
 	}
 
 	@media (min-width: 768px) {
