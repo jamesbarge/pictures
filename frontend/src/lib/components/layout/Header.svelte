@@ -54,6 +54,7 @@
 		max-width: 1400px;
 		margin: 0 auto;
 		padding: 0 1rem;
+		overflow: hidden;
 	}
 
 	@media (min-width: 768px) {
@@ -72,6 +73,9 @@
 
 	.brand-link {
 		display: block;
+		flex-shrink: 1;
+		min-width: 0;
+		overflow: hidden;
 	}
 
 	.brand-right {

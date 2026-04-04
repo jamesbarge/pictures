@@ -155,11 +155,17 @@
 	}
 
 	.house-lights {
-		display: flex;
+		display: none;
 		align-items: center;
 		gap: 0.5rem;
 		user-select: none;
 		touch-action: none;
+	}
+
+	@media (min-width: 768px) {
+		.house-lights {
+			display: flex;
+		}
 	}
 
 	.hl-label {
