@@ -22,6 +22,7 @@
 				<nav class="nav-links" aria-label="Main">
 					<a href="/about" class="nav-link" aria-current={page.url.pathname === '/about' ? 'page' : undefined}>ABOUT</a>
 					<a href="/map" class="nav-link" aria-current={page.url.pathname === '/map' ? 'page' : undefined}>MAP</a>
+					<a href="/reachable" class="nav-link" aria-current={page.url.pathname.startsWith('/reachable') ? 'page' : undefined}>REACHABLE</a>
 				</nav>
 
 				<div class="nav-divider"></div>
