@@ -62,14 +62,11 @@
 		align-items: center;
 		height: 100%;
 		padding-right: 0.5rem;
-		margin-right: 0.5rem;
-		border-right: 1px solid var(--color-border-subtle);
+		flex-shrink: 0;
 	}
 
 	.filter-zone:last-child {
-		border-right: none;
 		padding-right: 0;
-		margin-right: 0;
 	}
 
 	.filter-zone-search {
