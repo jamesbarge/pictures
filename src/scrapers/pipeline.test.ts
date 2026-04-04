@@ -289,6 +289,97 @@ describe("cleanFilmTitle — event prefixes", () => {
     });
   });
 
+  describe("event series found via data-check patrols", () => {
+    it("strips 'TV PARTY, TONIGHT!'", () => {
+      expect(cleanFilmTitle("TV PARTY, TONIGHT! Death Wish")).toBe("Death Wish");
+    });
+
+    it("strips 'Woman with a Movie Camera Preview:'", () => {
+      expect(cleanFilmTitle("Woman with a Movie Camera Preview: Cotton Queen")).toBe("Cotton Queen");
+    });
+
+    it("strips 'Japanese Film Club:'", () => {
+      expect(cleanFilmTitle("Japanese Film Club: Linda Linda Linda")).toBe("Linda Linda Linda");
+    });
+
+    it("strips 'Skateboard Film Club:'", () => {
+      expect(cleanFilmTitle("Skateboard Film Club: First Broadcast")).toBe("First Broadcast");
+    });
+
+    it("strips 'Seniors' Free Matinee:'", () => {
+      expect(cleanFilmTitle("Seniors' Free Matinee: The Trouble with Harry")).toBe("The Trouble with Harry");
+    });
+
+    it("strips generic film collective presents pattern", () => {
+      expect(cleanFilmTitle("Mostovi Film Collective Presents: No Man's Land")).toBe("No Man's Land");
+    });
+
+    it("strips 'Beyond:' BFI strand prefix", () => {
+      expect(cleanFilmTitle("Beyond: Arco")).toBe("Arco");
+    });
+
+    it("strips 'RIO FOREVER:' prefix", () => {
+      expect(cleanFilmTitle("RIO FOREVER: PUNCH DRUNK LOVE")).toBe("PUNCH DRUNK LOVE");
+    });
+
+    it("strips 'RIO FOREVER x' prefix", () => {
+      expect(cleanFilmTitle("RIO FOREVER x ASIF KAPADIA: THE GODFATHER: PART II")).toBe("ASIF KAPADIA: THE GODFATHER: PART II");
+    });
+
+    it("strips 'Naturist Screening:' prefix", () => {
+      expect(cleanFilmTitle("Naturist Screening: DEPARTURES")).toBe("DEPARTURES");
+    });
+
+    it("strips 'LONDON PREMIERE' prefix", () => {
+      expect(cleanFilmTitle("LONDON PREMIERE Bouchra")).toBe("Bouchra");
+    });
+
+    it("strips Doc'n Roll festival prefix", () => {
+      expect(cleanFilmTitle("Doc'n Roll x Rio: PARADISE")).toBe("PARADISE");
+    });
+  });
+
+  describe("re-release and premiere suffixes", () => {
+    it("strips '(2026 Re-release)'", () => {
+      expect(cleanFilmTitle("Akira (2026 Re-release)")).toBe("Akira");
+    });
+
+    it("strips '(4K Restoration)' suffix (distinct from prefix)", () => {
+      expect(cleanFilmTitle("Stalker (2025 Restoration)")).toBe("Stalker");
+    });
+
+    it("strips '(World Premiere)'", () => {
+      expect(cleanFilmTitle("Worm (World Premiere)")).toBe("Worm");
+    });
+
+    it("strips '(UK Premiere)'", () => {
+      expect(cleanFilmTitle("Tuner (UK Premiere)")).toBe("Tuner");
+    });
+
+    it("strips '(Sing-Along)' suffix", () => {
+      expect(cleanFilmTitle("Grease (Sing-Along)")).toBe("Grease");
+    });
+
+    it("strips '- Weird Wednesdays' suffix", () => {
+      expect(cleanFilmTitle("Sorry to Bother You - Weird Wednesdays")).toBe("Sorry to Bother You");
+    });
+  });
+
+  describe("HTML entity decoding", () => {
+    it("decodes &amp; to &", () => {
+      expect(cleanFilmTitle("Tom &amp; Jerry")).toBe("Tom & Jerry");
+    });
+
+    it("fixes mojibake ½ character", () => {
+      // \u00c2\u00bd is the mojibake for ½
+      expect(cleanFilmTitle("8\u00c2\u00bd")).toBe("8\u00bd");
+    });
+
+    it("decodes &frac12; HTML entity", () => {
+      expect(cleanFilmTitle("8&frac12;")).toBe("8\u00bd");
+    });
+  });
+
   describe("franchise title preservation", () => {
     it("preserves Twin Peaks titles (PCC format with spaces around colon)", () => {
       expect(

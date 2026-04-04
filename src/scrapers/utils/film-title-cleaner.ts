@@ -26,6 +26,7 @@ export const EVENT_PREFIXES = [
   /^baby\s+club[:\s]+/i,
 
   // Special screenings
+  /^london\s+premiere\s*/i,
   /^uk\s+premiere\s*[:\|I]\s*/i,
   /^world\s+premiere\s*[:\|I]\s*/i,
   /^preview[:\s]+/i,
@@ -119,6 +120,39 @@ export const EVENT_PREFIXES = [
   /^queer\s+east\s+presents?[:\s]+/i,
   /^girls?\s+in\s+film\s+presents?[:\s]+/i,
   /^east\s+london\s+doc\s+club[:\s]+/i,
+
+  // Event series with distinctive names (found via data-check patrols)
+  /^tv\s+party,?\s+tonight!?\s*/i,
+  /^woman\s+with\s+a\s+movie\s+camera\s+preview[:\s]+/i,
+  /^beyond:\s*/i,
+  /^japanese\s+film\s+club[:\s]+/i,
+  /^skateboard\s+film\s+club[:\s]+/i,
+  /^young\s+filmmakers?\s+club\b[^:]*[:\s]+/i,
+
+  // Seniors screenings
+  /^seniors['']?\s*free\s+matinee[:\s]+/i,
+  /^seniors['']?\s*paid\s+matinee[:\s]+/i,
+  /^seniors['']?\s*matinee[:\s]+/i,
+
+  // Festival / collective presentations
+  /^offbeat\s+folk\s+film\s+festival[:\s]+/i,
+  /^mostovi\s+film\s+collective\s+presents?[:\s]+/i,
+  /^waving\s+kites\b[^:]*presents?[:\s]+/i,
+  /^re:?mind\s+film\s+festival\s+presents?[:\s]+/i,
+
+  // Generic "[Org] presents:" pattern — org name + "present(s)" + separator
+  // Matches "X Film Club presents:", "X Film Festival present:", etc.
+  /^[\w\s&''-]+\s+film\s+(?:club|festival|collective|society)\s+presents?[:\s]+/i,
+
+  // Rio Cinema festival/event strands (specific x/slash patterns before general colon)
+  /^rio\s+forever\s*[/x]\s+/i,
+  /^rio\s+forever[:\s]+/i,
+
+  // Screening format prefixes (Rio, etc.)
+  /^naturist\s+screening[:\s]+/i,
+
+  // Doc'n Roll festival prefix
+  /^doc['']?n\s+roll\b[^:]*[:\s]+/i,
 ];
 
 /** Result of cleaning a film title with metadata about what was stripped */
@@ -136,6 +170,17 @@ interface CleanTitleResult {
  */
 export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
   let cleaned = title
+    // Decode common HTML entities (scrapers may pass raw entity strings)
+    .replace(/&amp;/g, "&")
+    .replace(/&rsquo;/g, "\u2019")
+    .replace(/&lsquo;/g, "\u2018")
+    .replace(/&frac12;/g, "\u00BD")
+    .replace(/&frac14;/g, "\u00BC")
+    .replace(/&frac34;/g, "\u00BE")
+    .replace(/&ndash;/g, "\u2013")
+    .replace(/&mdash;/g, "\u2014")
+    // Fix common mojibake: UTF-8 high bytes decoded as Latin-1 produce Â prefix
+    .replace(/\u00c2([\u0080-\u00bf])/g, "$1")
     // Collapse whitespace (including newlines)
     .replace(/\s+/g, " ")
     .trim();
@@ -220,6 +265,14 @@ export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
     .replace(/\s*[•·]\s*\d+\w*\s+anniversary\b.*$/i, "")
     // Remove "(Extended Edition)" / "(Extended Cut)" parentheticals
     .replace(/\s*\(extended\s+(edition|cut)\)\s*$/i, "")
+    // Remove re-release / special edition suffixes: "(2026 Re-release)", "(4K Restoration)", "(2026 Encore)"
+    .replace(/\s*\(\d{4}\s+(?:re-?release|restoration|reissue|encore)\)\s*$/i, "")
+    // Remove premiere suffixes: "(World Premiere)", "(UK Premiere)", "(London Premiere)"
+    .replace(/\s*\((?:world|uk|london|european?)\s+premiere\)\s*$/i, "")
+    // Remove standalone "(Sing-Along)" suffix (prefix version already handled above)
+    .replace(/\s*\(sing[\s-]*a[\s-]*long\)\s*$/i, "")
+    // Remove "- Weird Wednesdays" and similar event series suffixes
+    .replace(/\s*-\s*weird\s+wednesdays?\s*$/i, "")
     .trim();
 
   const strippedSuffix = beforeSuffixStrip !== cleaned

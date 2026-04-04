@@ -479,8 +479,9 @@ export class CurzonScraper implements ChainScraper {
         }
       }
 
-      // Build booking URL (query-param format — Curzon moved from path-based to ?sessionId=)
-      const bookingUrl = `${this.chainConfig.baseUrl}/ticketing/seats/?sessionId=${encodeURIComponent(showtime.id)}`;
+      // Build booking URL — link to film detail page (the ?sessionId= deep links show "Showtime unavailable")
+      const filmSlug = filmTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+      const bookingUrl = `${this.chainConfig.baseUrl}/films/${filmSlug}/${showtime.filmId}/`;
 
       const eventDescriptions = classifyAccessibilityFeatures(showtime.attributeIds || [], attrMap);
 

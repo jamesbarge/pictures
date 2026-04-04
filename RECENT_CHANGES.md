@@ -10,6 +10,18 @@
 
 ---
 
+## 2026-04-03: Fix Systemic Data Quality Issues in Scrapers & Enrichment
+**PR**: #404 | **Files**: `src/scrapers/utils/film-title-cleaner.ts`, `src/scrapers/utils/metadata-parser.ts`, `src/scrapers/utils/film-matching.ts`, `src/scrapers/chains/curzon.ts`, `src/scrapers/pipeline.test.ts`
+- Add 20+ new event prefix patterns (RIO FOREVER, Beyond, TV PARTY, Naturist Screening, Doc'n Roll, seniors matinee, film festivals, etc.)
+- Add re-release/premiere suffix stripping: (2026 Re-release), (World Premiere), (Sing-Along), etc.
+- Add HTML entity decoding and mojibake fix for garbled titles
+- Add director validation to reject scraper garbage
+- Auto-set is_repertory for non-TMDB films based on year
+- Fix Curzon booking URLs
+- 76 tests passing (21 new)
+
+---
+
 ## 2026-03-23: Deactivate Stale Cinema Venues
 **PR**: #403 | **Files**: `src/scrapers/chains/curzon.ts`
 - Deactivated 3 Curzon venues (Camden, Wimbledon, Richmond) — no listings since Feb 2026, venues likely closed
@@ -462,7 +474,7 @@
 ## 2026-03-14: Skip Obsidian writes in cloud environments
 
 ## 2026-03-15: Kaizen — extract parseDistanceMatrixElements helper
-**PR**: #TBD | **Files**: `src/app/api/travel-times/route.ts`
+**PR**: #404 | **Files**: `src/app/api/travel-times/route.ts`
 - Extracted duplicate Distance Matrix element-parsing loop into shared `parseDistanceMatrixElements()` helper
 - Kaizen automated refactoring (category: readability)
 
@@ -487,7 +499,7 @@
 ---
 
 ## 2026-03-14: Kaizen — Unexport dead SPECIAL_FORMATS constant
-**PR**: #TBD | **Files**: `src/lib/constants.ts`
+**PR**: #404 | **Files**: `src/lib/constants.ts`
 - Removed export keyword from SPECIAL_FORMATS (used internally by getSpecialFormat, never imported)
 - Kaizen automated refactoring (category: dead-code)
 
@@ -506,21 +518,21 @@
 ---
 
 ## 2026-03-13: Kaizen — extract shared admin agent guard and error helpers
-**PR**: #TBD | **Files**: `shared.ts`, `health/route.ts`, `links/route.ts`, `enrich/route.ts`
+**PR**: #404 | **Files**: `shared.ts`, `health/route.ts`, `links/route.ts`, `enrich/route.ts`
 - Extracted identical GEMINI_API_KEY guard and catch-block error response into shared.ts
 - Kaizen automated refactoring (category: duplicate-pattern)
 
 ---
 
 ## 2026-03-13: Kaizen — add JSDoc to 6 dropdown component exports
-**PR**: #TBD | **Files**: `src/components/ui/dropdown.tsx`
+**PR**: #404 | **Files**: `src/components/ui/dropdown.tsx`
 - Added JSDoc to DropdownMenu, DropdownItem, DropdownSeparator, DropdownLabel, Select, MultiSelect
 - Kaizen automated refactoring (category: jsdoc)
 
 ---
 
 ## 2026-03-13: Kaizen — deduplicate CalendarViewSetting radio options
-**PR**: #TBD | **Files**: `src/components/settings/calendar-view-setting.tsx`
+**PR**: #404 | **Files**: `src/components/settings/calendar-view-setting.tsx`
 - Extracted 3 near-identical radio option blocks into a VIEW_OPTIONS data array + map
 - Kaizen automated refactoring (category: duplicate-pattern)
 
@@ -533,7 +545,7 @@
 ---
 
 ## 2026-03-14: Kaizen — add JSDoc to 3 scraper factories (final batch)
-**PR**: #TBD | **Files**: `riverside-studios.ts`, `riverside-v2.ts`, `romford-lumiere.ts`
+**PR**: #404 | **Files**: `riverside-studios.ts`, `riverside-v2.ts`, `romford-lumiere.ts`
 - Added JSDoc to createRiversideStudiosScraper, createRiversideScraperV2, createRomfordLumiereScraper
 - Completes the scraper factory JSDoc sweep (the-nickel already had JSDoc)
 - Kaizen automated refactoring (category: jsdoc)
@@ -541,96 +553,96 @@
 ---
 
 ## 2026-03-14: Kaizen — add JSDoc to 5 component provider functions
-**PR**: #TBD | **Files**: `cookie-consent-banner.tsx`, `posthog-provider.tsx`, `providers.tsx`, `theme-provider.tsx`, `user-sync-provider.tsx`
+**PR**: #404 | **Files**: `cookie-consent-banner.tsx`, `posthog-provider.tsx`, `providers.tsx`, `theme-provider.tsx`, `user-sync-provider.tsx`
 - Added JSDoc to CookieConsentBanner, PostHogProvider, Providers, ThemeProvider, UserSyncProvider
 - Kaizen automated refactoring (category: jsdoc)
 
 ---
 
 ## 2026-03-13: Kaizen — add JSDoc to 5 scraper factories (batch 7)
-**PR**: #TBD | **Files**: `lexi-v2.ts`, `olympic.ts`, `peckhamplex.ts`, `regent-street.ts`, `rich-mix-v2.ts`
+**PR**: #404 | **Files**: `lexi-v2.ts`, `olympic.ts`, `peckhamplex.ts`, `regent-street.ts`, `rich-mix-v2.ts`
 - Added JSDoc to createLexiScraperV2, createOlympicScraper, createPeckhamplexScraper, createRegentStreetScraper, createRichMixScraperV2
 - Kaizen automated refactoring (category: jsdoc)
 
 ---
 
 ## 2026-03-13: Kaizen — add JSDoc to 5 chain venue helper functions
-**PR**: #TBD | **Files**: `curzon.ts`, `everyman.ts`, `picturehouse.ts`
+**PR**: #404 | **Files**: `curzon.ts`, `everyman.ts`, `picturehouse.ts`
 - Added JSDoc to getActiveCurzonVenues, getLondonCurzonVenues, getActiveEverymanVenues, getActivePicturehouseVenues, getLondonPicturehouseVenues
 - Kaizen automated refactoring (category: jsdoc)
 
 ---
 
 ## 2026-03-13: Kaizen — delete 6 dead analytics functions
-**PR**: #TBD | **Files**: `src/lib/analytics.ts`
+**PR**: #404 | **Files**: `src/lib/analytics.ts`
 - Removed 6 unused exported functions: `trackCinemaSelection`, `getFeatureFlagValue`, `getFeatureFlagPayload`, `setUserProperties`, `setUserPropertiesOnce`, `incrementUserProperty`
 - Kaizen automated refactoring (category: dead-code)
 
 ---
 
 ## 2026-03-13: Kaizen — remove unused year parameter from titleToSlug
-**PR**: #TBD | **Files**: `src/db/enrich-letterboxd.ts`
+**PR**: #404 | **Files**: `src/db/enrich-letterboxd.ts`
 - Removed unused `year` parameter from `titleToSlug()` function and its call site
 - Kaizen automated refactoring (category: lint-fix)
 
 ---
 
 ## 2026-03-13: Kaizen — add JSDoc to 5 scraper factory functions (batch 6)
-**PR**: #TBD | **Files**: `electric.ts`, `garden.ts`, `genesis-v2.ts`, `genesis.ts`, `ica.ts`
+**PR**: #404 | **Files**: `electric.ts`, `garden.ts`, `genesis-v2.ts`, `genesis.ts`, `ica.ts`
 - Added JSDoc to createElectricScraper, createGardenCinemaScraper, createGenesisScraper (x2), createICAScraper
 - Kaizen automated refactoring (category: jsdoc)
 
 ---
 
 ## 2026-03-13: Kaizen — add JSDoc to 5 scraper factory functions (batch 5)
-**PR**: #TBD | **Files**: `cine-lumiere.ts`, `close-up.ts`, `coldharbour-blue.ts`, `david-lean.ts`, `electric-v2.ts`
+**PR**: #404 | **Files**: `cine-lumiere.ts`, `close-up.ts`, `coldharbour-blue.ts`, `david-lean.ts`, `electric-v2.ts`
 - Added JSDoc to createCineLumiereScraper, createCloseUpCinemaScraper, createColdharbourBlueScraper, createDavidLeanScraper, createElectricScraperV2
 - Kaizen automated refactoring (category: jsdoc)
 
 ---
 
 ## 2026-03-13: Kaizen — add JSDoc to 5 scraper factory functions (batch 4)
-**PR**: #TBD | **Files**: `arthouse-crouch-end.ts`, `barbican.ts`, `bfi.ts`, `castle-sidcup.ts`, `castle.ts`
+**PR**: #404 | **Files**: `arthouse-crouch-end.ts`, `barbican.ts`, `bfi.ts`, `castle-sidcup.ts`, `castle.ts`
 - Added JSDoc to createArtHouseCrouchEndScraper, createBarbicanScraper, createBFIScraper, createCastleSidcupScraper, createCastleScraper
 - Kaizen automated refactoring (category: jsdoc)
 
 ---
 
 ## 2026-03-13: Kaizen — add JSDoc to 5 scraper factory functions (batch 3)
-**PR**: #TBD | **Files**: `src/scrapers/cinemas/phoenix.ts`, `castle-v2.ts`, `lexi.ts`, `prince-charles.ts`, `castle.ts`
+**PR**: #404 | **Files**: `src/scrapers/cinemas/phoenix.ts`, `castle-v2.ts`, `lexi.ts`, `prince-charles.ts`, `castle.ts`
 - Added JSDoc to createPhoenixScraper, createCastleScraperV2, createLexiScraper, createPrinceCharlesScraper, createCastleScraper
 - Kaizen automated refactoring (category: jsdoc)
 
 ---
 
 ## 2026-03-13: Kaizen — add JSDoc to 5 scraper factory functions
-**PR**: #TBD | **Files**: `src/scrapers/cinemas/rio.ts`, `genesis.ts`, `nickel-v2.ts`, `rich-mix.ts`, `the-nickel.ts`
+**PR**: #404 | **Files**: `src/scrapers/cinemas/rio.ts`, `genesis.ts`, `nickel-v2.ts`, `rich-mix.ts`, `the-nickel.ts`
 - Added JSDoc to createRioScraper, createGenesisScraper, createNickelScraperV2, createRichMixScraper, createNickelScraper
 - Kaizen automated refactoring (category: jsdoc)
 
 ---
 
 ## 2026-03-13: Kaizen — remove dead TikTok filtering variables in apify-runner
-**PR**: #TBD | **Files**: `scripts/social-outreach/apify-runner.ts`
+**PR**: #404 | **Files**: `scripts/social-outreach/apify-runner.ts`
 - Removed unused hasLondonSignal, isFromLondonHashtag, and combinedText variables
 - Kaizen automated refactoring (category: dead-code)
 
 ## 2026-03-13: Kaizen — add JSDoc to 3 API client factory functions
-**PR**: #TBD | **Files**: `fanart.ts`, `omdb.ts`, `tmdb/client.ts`
+**PR**: #404 | **Files**: `fanart.ts`, `omdb.ts`, `tmdb/client.ts`
 - Added JSDoc to getFanartClient, getOMDBClient, getTMDBClient singleton factories
 - Kaizen automated refactoring (category: jsdoc)
 
 ---
 
 ## 2026-03-13: Kaizen — add JSDoc to 4 remaining trigger exports
-**PR**: #TBD | **Files**: `front-end-extractor.ts`, `title-utils.ts`, `verify-before-fix.ts`
+**PR**: #404 | **Files**: `front-end-extractor.ts`, `title-utils.ts`, `verify-before-fix.ts`
 - Added JSDoc to extractFrontEndData, checkCompleteness, parseRelativeDatetime, verifyBeforeFix
 - Kaizen automated refactoring (category: jsdoc)
 
 ---
 
 ## 2026-03-13: Kaizen — remove 5 unused vars/imports in db scripts
-**PR**: #TBD | **Files**: `repositories/cinema.ts`, `enrich-directors.ts`, `enrich-letterboxd.ts`, `backfill-posters.ts`
+**PR**: #404 | **Files**: `repositories/cinema.ts`, `enrich-directors.ts`, `enrich-letterboxd.ts`, `backfill-posters.ts`
 - Removed unused imports (inArray, TMDBClient, sql) and unused variable (result)
 - Bare catch block for unused error variable
 - Kaizen automated refactoring (category: lint-fix)
@@ -638,28 +650,28 @@
 ---
 
 ## 2026-03-13: Kaizen — add JSDoc to 4 exported trigger functions
-**PR**: #TBD | **Files**: `verification-alerts.ts`, `db-fixer.ts`, `booking-checker.ts`
+**PR**: #404 | **Files**: `verification-alerts.ts`, `db-fixer.ts`, `booking-checker.ts`
 - Added JSDoc to sendVerificationAlert, applyFix, applyFixes, checkBookingLinks
 - Kaizen automated refactoring (category: jsdoc)
 
 ---
 
 ## 2026-03-13: Kaizen — add JSDoc to gemini-analyzer exported functions
-**PR**: #TBD | **Files**: `src/trigger/qa/utils/gemini-analyzer.ts`
+**PR**: #404 | **Files**: `src/trigger/qa/utils/gemini-analyzer.ts`
 - Added JSDoc to 4 exported functions: analyzeTmdbMismatch, analyzeBookingPageContent, batchAnomalyReview, generatePreventionReport
 - Kaizen automated refactoring (category: jsdoc)
 
 ---
 
 ## 2026-03-13: Kaizen — unexport 5 internal-only scraper pipeline exports
-**PR**: #TBD | **Files**: `screening-validator.ts`, `pipeline.ts`, `runner-factory.ts`
+**PR**: #404 | **Files**: `screening-validator.ts`, `pipeline.ts`, `runner-factory.ts`
 - Removed `export` from ValidationSummary, PipelineResult, VenueResult, flushPendingRecords, parseVenueArgs — all internal-only
 - Kaizen automated refactoring (category: dead-code)
 
 ---
 
 ## 2026-03-13: Kaizen — unexport 5 internal-only scraper util interfaces
-**PR**: #TBD | **Files**: `fetch-with-retry.ts`, `screening-classification.ts`, `film-title-cleaner.ts`, `scrape-diff.ts`
+**PR**: #404 | **Files**: `fetch-with-retry.ts`, `screening-classification.ts`, `film-title-cleaner.ts`, `scrape-diff.ts`
 - Removed `export` from FetchWithRetryOptions, ScreeningMetadata, DuplicateCheckResult, CleanTitleResult, ScrapeDiffReport — all internal-only
 - Kaizen automated refactoring (category: dead-code)
 
@@ -749,7 +761,7 @@
 ---
 
 ## 2026-03-13: Kaizen — remove dead barrel re-exports from festivals
-**PR**: #TBD | **Files**: `src/components/festivals/index.ts`
+**PR**: #404 | **Files**: `src/components/festivals/index.ts`
 - Removed 3 unused barrel re-exports: FollowButtonCompact, FestivalTimeline, FestivalListSkeleton
 - Kaizen automated refactoring (category: dead-code)
 
@@ -794,7 +806,7 @@
 ---
 
 ## 2026-03-13: Kaizen — remove unused exports from metadata-parser
-**PR**: #TBD | **Files**: `src/scrapers/utils/metadata-parser.ts`
+**PR**: #404 | **Files**: `src/scrapers/utils/metadata-parser.ts`
 - Removed `export` from 6 internal-only functions (extractYear, extractRuntime, extractDirector, extractCountry, parseStatsLine, parseParenthetical)
 - Only parseFilmMetadata remains exported (used by 3 scrapers)
 - Kaizen automated refactoring (category: dead-code)
@@ -802,7 +814,7 @@
 ---
 
 ## 2026-03-13: Kaizen — lint-fix unused vars/imports in scripts (5 files)
-**PR**: #TBD | **Files**: 5 scripts files
+**PR**: #404 | **Files**: 5 scripts files
 - Removed unused CURZON_SLUGS constant, unused sql/writeFileSync imports, unused variable assignments
 - Warnings reduced from 49 to 44
 - Kaizen automated refactoring (category: lint-fix)
@@ -810,14 +822,14 @@
 ---
 
 ## 2026-03-13: Kaizen — fix lint warnings in scripts
-**PR**: #TBD | **Files**: 4 script files + generate-favicons.mjs
+**PR**: #404 | **Files**: 4 script files + generate-favicons.mjs
 - Removed unused imports (sql, writeFileSync), unused variables (result, deleted), and unused constant (CURZON_SLUGS)
 - Kaizen automated refactoring (category: lint-fix)
 
 ---
 
 ## 2026-03-12: Enrichment pipeline — post-scrape trigger & daily sweep
-**PR**: #TBD | **Files**: `post-scrape.ts`, `daily-sweep.ts`, `title-variations.ts`, `scraper-wrapper.ts`, `enrichment.ts`
+**PR**: #404 | **Files**: `post-scrape.ts`, `daily-sweep.ts`, `title-variations.ts`, `scraper-wrapper.ts`, `enrichment.ts`
 - Add post-scrape enrichment trigger: automatically enrich unenriched films after each scraper run
 - Add daily enrichment sweep (4:30am UTC, skip Monday): TMDB matching, backfill, Letterboxd, poster sourcing
 - Add title variation strategy for TMDB search (7 variation generators from raw title)
@@ -849,14 +861,14 @@
 ---
 
 ## 2026-03-13: Kaizen — extract confidence constants in pattern-extractor
-**PR**: #TBD | **Files**: `src/lib/title-extraction/pattern-extractor.ts`
+**PR**: #404 | **Files**: `src/lib/title-extraction/pattern-extractor.ts`
 - Extracted 7 magic confidence numbers into named constants (FULL_CONFIDENCE, PRESENTS_CONFIDENCE, etc.)
 - Kaizen automated refactoring (category: extract-constant)
 
 ---
 
 ## 2026-03-13: Kaizen — remove unused variables and imports in scripts
-**PR**: #TBD | **Files**: 4 audit/cleanup scripts
+**PR**: #404 | **Files**: 4 audit/cleanup scripts
 - Removed unused type imports, constants, and variable mappings (4 files)
 - Kaizen automated refactoring (category: dead-code)
 
@@ -864,13 +876,13 @@
 
 
 ## 2026-03-13: Kaizen — remove dead extractFilmsFromPage from romford-lumiere
-**PR**: #TBD | **Files**: `src/scrapers/cinemas/romford-lumiere.ts`
+**PR**: #404 | **Files**: `src/scrapers/cinemas/romford-lumiere.ts`
 - Removed unused 106-line private method extractFilmsFromPage()
 - Kaizen automated refactoring (category: dead-code)
 
 ---
 ## 2026-03-13: Kaizen — extract shared slugify to scraper utils
-**PR**: #TBD | **Files**: `src/scrapers/utils/url.ts`, `src/scrapers/cinemas/garden.ts`, `src/scrapers/cinemas/romford-lumiere.ts`
+**PR**: #404 | **Files**: `src/scrapers/utils/url.ts`, `src/scrapers/cinemas/garden.ts`, `src/scrapers/cinemas/romford-lumiere.ts`
 - Extracted identical `slugify` methods from garden.ts and romford-lumiere.ts into shared `src/scrapers/utils/url.ts`
 - Kaizen automated refactoring (category: duplicate-pattern)
 
@@ -885,20 +897,20 @@
 ---
 
 ## 2026-03-13: Kaizen — remove unused test imports
-**PR**: #TBD | **Files**: `festival-detector.test.ts`, `dismiss-button.test.ts`, `fixtures.ts`
+**PR**: #404 | **Files**: `festival-detector.test.ts`, `dismiss-button.test.ts`, `fixtures.ts`
 - Removed unused FESTIVAL_CONFIGS, vi, TimeOfDay, ProgrammingType imports
 - Kaizen automated refactoring (category: lint-fix)
 
 ---
 ## 2026-03-13: Kaizen — extract ambiguity scoring constants
-**PR**: #TBD | **Files**: `src/lib/tmdb/ambiguity.ts`
+**PR**: #404 | **Files**: `src/lib/tmdb/ambiguity.ts`
 - Extracted 15 magic numbers into named constants for title ambiguity scoring
 - Kaizen automated refactoring (category: extract-constant)
 
 ---
 
 ## 2026-03-13: Kaizen — remove dead code in scrapers (4 files)
-**PR**: #TBD | **Files**: `electric-v2.ts`, `genesis-v2.ts`, `prince-charles.ts`, `veezi-scraper.ts`
+**PR**: #404 | **Files**: `electric-v2.ts`, `genesis-v2.ts`, `prince-charles.ts`, `veezi-scraper.ts`
 - Removed unused `venueIdToApiId` property, unused `$` Cheerio params, unused `delayMs` property
 - Kaizen automated refactoring (category: dead-code)
 

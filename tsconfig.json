@@ -45,6 +45,7 @@
     "**/* 4.ts",
     "**/* 4.tsx",
     "**/* 4.d.ts",
-    "**/* 4.mts"
+    "**/* 4.mts",
+    "scripts/lib/booking-verifier.ts"
   ]
 }
