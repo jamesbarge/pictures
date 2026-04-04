@@ -17,12 +17,14 @@ export const handle: Handle = async (input) => {
 		if (response.status === 307 || response.status === 302) {
 			const location = response.headers.get('location') ?? '';
 			if (location.includes('clerk.accounts.dev') || location.includes('/v1/client/handshake')) {
+				console.warn('[clerk] Intercepted auth redirect to', location, '— serving page without auth');
 				return input.resolve(input.event);
 			}
 		}
 
 		return response;
-	} catch {
+	} catch (e) {
+		console.error('[clerk] Auth middleware failed:', e instanceof Error ? e.message : e);
 		return input.resolve(input.event);
 	}
 };

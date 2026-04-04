@@ -9,9 +9,26 @@ export async function load({ fetch }) {
 		now.toLocaleString('en-GB', { hour: 'numeric', hour12: false, timeZone: 'Europe/London' })
 	);
 
+	// Detect London's UTC offset (e.g. 0 for GMT, 1 for BST) to build correct UTC datetimes
+	const londonFormatter = new Intl.DateTimeFormat('en-GB', {
+		timeZone: 'Europe/London',
+		timeZoneName: 'shortOffset'
+	});
+	const offsetPart = londonFormatter.formatToParts(now).find((p) => p.type === 'timeZoneName');
+	const offsetHours = parseInt(offsetPart?.value?.replace('GMT', '') || '0') || 0;
+
+	// Build proper UTC datetimes from London local date/hour
+	const startUtc = new Date(`${londonDate}T${String(londonHour).padStart(2, '0')}:00:00Z`);
+	startUtc.setUTCHours(startUtc.getUTCHours() - offsetHours);
+	const endUtc = new Date(`${londonDate}T23:59:59Z`);
+	endUtc.setUTCHours(endUtc.getUTCHours() - offsetHours);
+
+	const startDate = startUtc.toISOString();
+	const endDate = endUtc.toISOString();
+
 	try {
 		const res = await apiGet<{ screenings: ScreeningWithDetails[] }>(
-			`/api/screenings?startDate=${londonDate}T${String(londonHour).padStart(2, '0')}:00:00Z&endDate=${londonDate}T23:59:59Z&limit=500`,
+			`/api/screenings?startDate=${startDate}&endDate=${endDate}&limit=500`,
 			{ fetch }
 		);
 		return { screenings: res.screenings, dateLabel: 'TONIGHT' };

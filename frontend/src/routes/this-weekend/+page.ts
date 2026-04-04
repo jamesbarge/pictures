@@ -5,10 +5,6 @@ export async function load({ fetch }) {
 	// Use London timezone for weekend calculation
 	const now = new Date();
 	const londonDateStr = now.toLocaleDateString('en-CA', { timeZone: 'Europe/London' }); // YYYY-MM-DD
-	const londonDow = parseInt(
-		now.toLocaleDateString('en-US', { weekday: 'narrow', timeZone: 'Europe/London' })
-			.replace(/[^0-6]/, ''), 10
-	);
 
 	// Get London day of week (0=Sun, 6=Sat) using a reliable method
 	const londonParts = new Intl.DateTimeFormat('en-GB', {

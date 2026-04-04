@@ -46,11 +46,13 @@
 				if (hour < filters.timeFrom || hour > filters.timeTo) continue;
 			}
 
-			// Apply programming type filter
+			// Apply programming type filter (OR logic: show if film matches ANY selected type)
 			if (filters.programmingTypes.length > 0) {
 				const isRepertory = s.film.isRepertory;
-				if (filters.programmingTypes.includes('repertory') && !isRepertory) continue;
-				if (filters.programmingTypes.includes('new_release') && isRepertory) continue;
+				const matchesAny = filters.programmingTypes.some((type) =>
+					type === 'repertory' ? isRepertory : !isRepertory
+				);
+				if (!matchesAny) continue;
 			}
 
 			const existing = map.get(s.film.id);

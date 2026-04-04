@@ -59,10 +59,11 @@ async function pullFromServer() {
 		const serverStatuses = await apiGet<ServerFilmStatus[]>('/api/user/film-statuses', { token });
 
 		// Merge: server wins (we trust server as source of truth on first pull)
+		// Use setStatusLocal to avoid pushing data back to server during pull
 		for (const s of serverStatuses) {
 			const local = filmStatuses.getStatus(s.filmId);
 			if (!local) {
-				filmStatuses.setStatus(s.filmId, s.status);
+				filmStatuses.setStatusLocal(s.filmId, s.status);
 			}
 		}
 

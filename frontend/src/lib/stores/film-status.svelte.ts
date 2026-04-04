@@ -50,6 +50,19 @@ export const filmStatuses = {
 		pushFilmStatus(filmId, status);
 	},
 
+	/** Update localStorage only — no server push. Used during pull-from-server to avoid feedback loops. */
+	setStatusLocal(filmId: string, status: FilmStatus) {
+		const now = new Date().toISOString();
+		statuses = {
+			...statuses,
+			[filmId]: {
+				status,
+				addedAt: statuses[filmId]?.addedAt ?? now,
+				updatedAt: now
+			}
+		};
+	},
+
 	toggleStatus(filmId: string, status: FilmStatus) {
 		if (statuses[filmId]?.status === status) {
 			const { [filmId]: _, ...rest } = statuses;
