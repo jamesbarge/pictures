@@ -1,3 +1,15 @@
+## 2026-04-04: SvelteKit Frontend Rewrite
+**PR**: #405 | **Files**: `frontend/` (120 new files)
+- Complete SvelteKit 5 + Tailwind 4 frontend with Swiss brutalist design
+- 15+ routes: home, film detail, cinemas, festivals, directors, tonight, this-weekend, watchlist, search, letterboxd import, reachable ("What can I catch?"), map, settings, about
+- PostHog analytics, Clerk auth, user data sync, Letterboxd ratings (click-to-reveal)
+- SEO structured data (JSON-LD: Organization, WebSite, FAQ, Movie, Breadcrumb)
+- Cinema map with 47 MapLibre markers + click popups
+- Mobile responsive with FILTERS toggle, 82 Playwright tests (desktop + mobile)
+- Deployed to Vercel with API rewrites to pictures.london
+
+---
+
 ## 2026-03-23: Deactivate Stale Cinema Venues
 **PR**: #403 | **Files**: `src/scrapers/chains/curzon.ts`
 - Deactivated 3 Curzon venues (Camden, Wimbledon, Richmond) — no listings since Feb 2026, venues likely closed
