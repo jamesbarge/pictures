@@ -41,37 +41,14 @@
 <style>
 	.filter-bar {
 		padding: 0.5rem 0;
-		position: relative;
-	}
-
-	/* Fade hint on right edge to show scrollability */
-	@media (max-width: 767px) {
-		.filter-bar::after {
-			content: '';
-			position: absolute;
-			top: 0;
-			right: 0;
-			bottom: 0;
-			width: 2rem;
-			background: linear-gradient(to right, transparent, var(--color-bg));
-			pointer-events: none;
-			z-index: 1;
-		}
 	}
 
 	.filter-grid {
 		display: flex;
 		align-items: center;
-		gap: 0;
-		height: 40px;
-		overflow-x: auto;
-		-webkit-overflow-scrolling: touch;
-		scrollbar-width: none;
-		padding-right: 2rem;
-	}
-
-	.filter-grid::-webkit-scrollbar {
-		display: none;
+		flex-wrap: wrap;
+		gap: 0.25rem 0;
+		min-height: 40px;
 	}
 
 	.filter-zone {
@@ -106,5 +83,13 @@
 		border-right: none;
 		padding-right: 0;
 		margin-right: 0;
+	}
+
+	/* On mobile: hide search + view toggle to fit core filters in one row */
+	@media (max-width: 767px) {
+		.filter-zone-search,
+		.filter-zone-actions {
+			display: none;
+		}
 	}
 </style>
