@@ -26,6 +26,7 @@
 	"dependencies": {
 		"@chenglou/pretext": "latest",
 		"@formkit/auto-animate": "latest",
+		"@sveltejs/adapter-vercel": "^6.3.3",
 		"bits-ui": "latest",
 		"clsx": "^2.1.0",
 		"maplibre-gl": "^5.21.1",

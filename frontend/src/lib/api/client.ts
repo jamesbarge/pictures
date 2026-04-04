@@ -1,3 +1,6 @@
+// In dev: Vite proxy handles /api → localhost:3000
+// In production: Vercel rewrites /api/* → pictures.london/api/*
+// So API_BASE is always empty — relative /api/ paths work everywhere
 const API_BASE = '';
 
 export class ApiError extends Error {
