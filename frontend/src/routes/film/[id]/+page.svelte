@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Badge from '$lib/components/ui/Badge.svelte';
+	import LetterboxdRatingReveal from '$lib/components/film/LetterboxdRatingReveal.svelte';
 	import { filmStatuses } from '$lib/stores/film-status.svelte';
 	import { formatTime, formatScreeningDate, toLondonDateStr, groupBy } from '$lib/utils';
 	import { trackFilmView, trackBookingClick } from '$lib/analytics/posthog';
@@ -130,6 +131,13 @@
 					NOT INTERESTED
 				</button>
 			</div>
+
+			<!-- Letterboxd rating (hidden by default) -->
+			{#if film.letterboxdRating && film.letterboxdRating > 0}
+				<div class="letterboxd-rating">
+					<LetterboxdRatingReveal rating={film.letterboxdRating} filmId={film.id} />
+				</div>
+			{/if}
 
 			<!-- External links -->
 			<div class="external-links">
@@ -322,6 +330,10 @@
 	.status-btn.active {
 		background: var(--color-screening-bg);
 		color: var(--color-screening-text);
+	}
+
+	.letterboxd-rating {
+		margin-top: 1.25rem;
 	}
 
 	.external-links {

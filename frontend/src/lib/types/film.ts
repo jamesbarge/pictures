@@ -41,6 +41,7 @@ export interface Film {
 	decade: string | null;
 	tmdbRating: number | null;
 	letterboxdUrl: string | null;
+	letterboxdRating: number | null;
 	contentType: ContentType;
 	sourceImageUrl: string | null;
 	createdAt: string;
