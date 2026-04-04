@@ -1,6 +1,8 @@
 <script lang="ts">
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import LetterboxdRatingReveal from '$lib/components/film/LetterboxdRatingReveal.svelte';
+	import JsonLd from '$lib/seo/JsonLd.svelte';
+	import { movieSchema, breadcrumbSchema } from '$lib/seo/json-ld';
 	import { filmStatuses } from '$lib/stores/film-status.svelte';
 	import { formatTime, formatScreeningDate, toLondonDateStr, groupBy } from '$lib/utils';
 	import { trackFilmView, trackBookingClick } from '$lib/analytics/posthog';
@@ -51,6 +53,12 @@
 	{/if}
 	<meta name="twitter:card" content="summary_large_image" />
 </svelte:head>
+
+<JsonLd data={movieSchema(film)} />
+<JsonLd data={breadcrumbSchema([
+	{ name: 'Home', url: '/' },
+	{ name: film.title, url: `/film/${film.id}` }
+])} />
 
 <div class="max-w-[1400px] mx-auto px-4 md:px-8 py-8">
 	<!-- Hero -->

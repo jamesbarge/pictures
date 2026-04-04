@@ -2,6 +2,8 @@
 	import FilmCard from '$lib/components/calendar/FilmCard.svelte';
 	import TableView from '$lib/components/calendar/TableView.svelte';
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
+	import JsonLd from '$lib/seo/JsonLd.svelte';
+	import { webSiteSchema, faqSchema } from '$lib/seo/json-ld';
 	import { filters } from '$lib/stores/filters.svelte';
 	import { preferences } from '$lib/stores/preferences.svelte';
 	import { formatScreeningDate, toLondonDateStr, groupBy } from '$lib/utils';
@@ -119,6 +121,14 @@
 		{filmMap.size} films showing
 	{/if}
 </div>
+
+<JsonLd data={webSiteSchema()} />
+<JsonLd data={faqSchema([
+	{ question: 'What is pictures.london?', answer: 'pictures.london is a comprehensive London cinema listings site showing every film screening across independent and chain cinemas, updated daily.' },
+	{ question: 'Which cinemas does pictures.london cover?', answer: 'We cover 57+ London cinemas including BFI Southbank, Prince Charles Cinema, Barbican, ICA, Curzon, Picturehouse, Everyman, and many independent venues.' },
+	{ question: 'Is pictures.london free to use?', answer: 'Yes, pictures.london is completely free. We aggregate screening times and link directly to cinema booking pages.' },
+	{ question: 'Can I import my Letterboxd watchlist?', answer: 'Yes! Visit the Letterboxd Import page, enter your username, and see which films on your watchlist are currently showing in London cinemas.' }
+])} />
 
 <section class="py-6">
 	<div class="max-w-[1400px] mx-auto px-4 md:px-8">

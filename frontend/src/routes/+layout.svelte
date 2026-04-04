@@ -4,6 +4,8 @@
 	import Footer from '$lib/components/layout/Footer.svelte';
 	import PostHogProvider from '$lib/analytics/PostHogProvider.svelte';
 	import SyncProvider from '$lib/stores/SyncProvider.svelte';
+	import JsonLd from '$lib/seo/JsonLd.svelte';
+	import { organizationSchema } from '$lib/seo/json-ld';
 	import { ClerkProvider } from 'svelte-clerk/client';
 	import { PUBLIC_CLERK_PUBLISHABLE_KEY } from '$env/static/public';
 	import { page } from '$app/state';
@@ -27,6 +29,8 @@
 	<meta name="twitter:title" content="pictures · london" />
 	<meta name="twitter:description" content="Every film showing in London, in one calendar." />
 </svelte:head>
+
+<JsonLd data={organizationSchema()} />
 
 {#if clerkEnabled}
 	<ClerkProvider publishableKey={PUBLIC_CLERK_PUBLISHABLE_KEY}>
