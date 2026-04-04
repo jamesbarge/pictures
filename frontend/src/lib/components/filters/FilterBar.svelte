@@ -15,13 +15,13 @@
 </script>
 
 <div class="filter-bar">
-	<!-- MOBILE: Search on top, tabs + FILTERS button below -->
-	<div class="mobile-search">
-		<SearchInput />
-	</div>
-
 	<div class="filter-grid">
-		<div class="filter-zone">
+		<!-- Search: full-width top row on mobile, inline on desktop -->
+		<div class="filter-zone filter-zone-search">
+			<SearchInput />
+		</div>
+
+		<div class="filter-zone filter-zone-tabs">
 			<FilmTypeFilter />
 		</div>
 
@@ -34,9 +34,6 @@
 		</div>
 		<div class="filter-zone filter-zone-noborder desktop-only">
 			<FormatPicker />
-		</div>
-		<div class="filter-zone filter-zone-search desktop-only">
-			<SearchInput />
 		</div>
 		<div class="filter-zone filter-zone-actions desktop-only">
 			<ViewToggle />
@@ -124,9 +121,14 @@
 		margin-right: 0;
 	}
 
-	/* Mobile search row — full width above the tabs */
-	.mobile-search {
-		display: none;
+	.filter-zone-search {
+		flex: 1;
+		min-width: 0;
+		border-right: none;
+	}
+
+	.filter-zone-tabs {
+		border-right: 1px solid var(--color-border-subtle);
 	}
 
 	/* FILTERS toggle button (mobile only) */
@@ -190,9 +192,21 @@
 			display: flex;
 		}
 
-		.mobile-search {
-			display: block;
-			margin-bottom: 0.375rem;
+		.filter-grid {
+			flex-wrap: wrap;
+		}
+
+		.filter-zone-search {
+			order: -1;
+			flex: none;
+			width: 100%;
+			margin-bottom: 0.25rem;
+			padding-right: 0;
+			margin-right: 0;
+		}
+
+		.filter-zone-tabs {
+			border-right: none;
 		}
 	}
 </style>
