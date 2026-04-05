@@ -90,15 +90,69 @@ export class DavidLeanScraper implements CinemaScraper {
 
       // Process listings to extract screenings
       const seenScreenings = new Set<string>();
+      const sliderTitles = Object.keys(sliderBookingMap);
+      const matchStats = { direct: 0, exact: 0, substring: 0, wordOverlap: 0, fallback: 0 };
 
       for (const listing of listings) {
         // Try to match booking URL: first from listing itself, then from slider by title
         let bookingUrl = listing.link;
-        if (!bookingUrl) {
+        if (bookingUrl) {
+          matchStats.direct++;
+        } else {
           // Extract title from listing text and match against slider
-          const firstLine = listing.text.split("\n").map(l => l.trim()).filter(Boolean)[0] || "";
+          const lines = listing.text.split("\n").map(l => l.trim()).filter(Boolean);
+          let firstLine = lines[0] || "";
+          // Skip metadata lines (year | runtime | country)
+          if (firstLine.match(/^\d{4}\s*\|/) && lines.length > 1) {
+            firstLine = lines[1];
+          }
           const titleUpper = firstLine.replace(/\s*\(Cert\s*\d+A?\)\s*/gi, "").trim().toUpperCase();
+
+          // 1. Try exact match first
           bookingUrl = sliderBookingMap[titleUpper] || null;
+          if (bookingUrl) {
+            matchStats.exact++;
+          }
+
+          // 2. Try substring match with length-ratio guard to prevent false positives
+          if (!bookingUrl && titleUpper.length > 5) {
+            for (const sliderTitle of sliderTitles) {
+              const shorter = Math.min(sliderTitle.length, titleUpper.length);
+              const longer = Math.max(sliderTitle.length, titleUpper.length);
+              if (shorter / longer >= 0.5 && (sliderTitle.includes(titleUpper) || titleUpper.includes(sliderTitle))) {
+                console.log(`[${this.config.cinemaId}] Booking match (substring): "${titleUpper}" → "${sliderTitle}"`);
+                bookingUrl = sliderBookingMap[sliderTitle];
+                matchStats.substring++;
+                break;
+              }
+            }
+          }
+
+          // 3. Try word overlap using Jaccard similarity (intersection/union) >= 0.5
+          if (!bookingUrl && titleUpper.length > 5) {
+            const titleWords = titleUpper.split(/\s+/).filter(w => w.length > 2);
+            let bestMatch = "";
+            let bestScore = 0;
+            for (const sliderTitle of sliderTitles) {
+              const sliderWords = sliderTitle.split(/\s+/).filter(w => w.length > 2);
+              const overlap = titleWords.filter(w => sliderWords.includes(w)).length;
+              const union = new Set([...titleWords, ...sliderWords]).size;
+              const score = overlap / Math.max(union, 1);
+              if (score > bestScore && score >= 0.5) {
+                bestScore = score;
+                bestMatch = sliderTitle;
+              }
+            }
+            if (bestMatch) {
+              console.log(`[${this.config.cinemaId}] Booking match (word-overlap ${(bestScore * 100).toFixed(0)}%): "${titleUpper}" → "${bestMatch}"`);
+              bookingUrl = sliderBookingMap[bestMatch];
+              matchStats.wordOverlap++;
+            }
+          }
+
+          if (!bookingUrl) {
+            matchStats.fallback++;
+          }
         }
 
         const parsed = this.parseListingText(listing.text, bookingUrl, currentYear, now);
@@ -111,6 +165,7 @@ export class DavidLeanScraper implements CinemaScraper {
         }
       }
 
+      console.log(`[${this.config.cinemaId}] Booking URL matches: ${JSON.stringify(matchStats)}`);
       console.log(`[${this.config.cinemaId}] Found ${screenings.length} screenings total`);
       return screenings;
     } finally {
@@ -156,7 +211,7 @@ export class DavidLeanScraper implements CinemaScraper {
             screenings.push({
               filmTitle: this.cleanTitle(filmTitle),
               datetime: adjustedDatetime,
-              bookingUrl: bookingUrl || this.config.baseUrl,
+              bookingUrl: bookingUrl || this.config.baseUrl + "/#whatson",
               sourceId: `david-lean-${filmTitle.toLowerCase().replace(/\s+/g, "-").substring(0, 30)}-${adjustedDatetime.toISOString()}`,
             });
           }
