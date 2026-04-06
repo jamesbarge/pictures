@@ -248,7 +248,7 @@ export async function matchAndCreateFromTMDB(
     contentType: "film",
     sourceImageUrl: null,
     tmdbRating: details.details.vote_average,
-    letterboxdUrl: null,
+    letterboxdUrl: `https://letterboxd.com/tmdb/${match.tmdbId}`,
     letterboxdRating: null,
     matchConfidence: match.confidence ?? null,
     matchStrategy: "auto-with-year",

@@ -153,6 +153,18 @@ export const EVENT_PREFIXES = [
 
   // Doc'n Roll festival prefix
   /^doc['']?n\s+roll\b[^:]*[:\s]+/i,
+
+  // Recurring event series prefixes (identified by data-check patrol cycles 7-12)
+  /^lob-?sters\s+tennis\s+anniversary\s+screening[:\s]+/i,
+  /^phoenix\s+classics?\s*\+\s*ysp\s+pizza\s+night[:\s]+/i,
+  /^spare\s+ribs\s+club[:\s]+/i,
+  /^parents?\s+and\s+bab(?:y|ies)\s+screening[:\s]+/i,
+  /^the\s+gate[''\u2019]?s?\s+\d+(?:th|st|nd|rd)?\s+birthday[:\s]+/i,
+  /^reece\s+shearsmith\s+presents[:\s]+/i,
+  /^bloody\s+mary\s+film\s+club[:\s]+/i,
+  /^lrb\s+screen\s*x\s*mubi[:\s]+/i,
+  /^ukaff\s+\d{4}\s+closing\s+night[:\s]+/i,
+  /^\d+\s+and\s+under[:\s]+/i,
 ];
 
 /** Result of cleaning a film title with metadata about what was stripped */
@@ -172,6 +184,8 @@ export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
   let cleaned = title
     // Decode common HTML entities (scrapers may pass raw entity strings)
     .replace(/&amp;/g, "&")
+    // Decode &Acirc; before fraction entities so mojibake fix can work on the result
+    .replace(/&Acirc;/g, "\u00C2")
     .replace(/&rsquo;/g, "\u2019")
     .replace(/&lsquo;/g, "\u2018")
     .replace(/&frac12;/g, "\u00BD")
@@ -267,6 +281,12 @@ export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
     .replace(/\s*\(extended\s+(edition|cut)\)\s*$/i, "")
     // Remove re-release / special edition suffixes: "(2026 Re-release)", "(4K Restoration)", "(2026 Encore)"
     .replace(/\s*\(\d{4}\s+(?:re-?release|restoration|reissue|encore)\)\s*$/i, "")
+    // Remove anniversary suffixes: "(25th Anniversary)", "(50th Anniversary, 4K Restoration)", "(25th Anniversary Re-release)"
+    .replace(/\s*\(\d+(?:th|st|nd|rd)\s+anniversary(?:[\s,]+(?:4k\s+)?re(?:storation|lease|-release))?\)\s*$/i, "")
+    // Remove dash-prefixed anniversary: "- 50th Anniversary"
+    .replace(/\s*-\s+\d+(?:th|st|nd|rd)\s+anniversary\b.*$/i, "")
+    // Remove standalone "(4K Restoration)" without year prefix
+    .replace(/\s*\(4k\s+restoration\)\s*$/i, "")
     // Remove premiere suffixes: "(World Premiere)", "(UK Premiere)", "(London Premiere)"
     .replace(/\s*\((?:world|uk|london|european?)\s+premiere\)\s*$/i, "")
     // Remove standalone "(Sing-Along)" suffix (prefix version already handled above)

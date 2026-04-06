@@ -100,6 +100,7 @@ export const dailyEnrichmentSweep = schedules.task({
     await loadThresholdsAsync();
 
     const stats = {
+      letterboxdUrlsSet: 0,
       tmdbMatched: 0,
       tmdbBackfilled: 0,
       letterboxd: 0,
@@ -107,6 +108,35 @@ export const dailyEnrichmentSweep = schedules.task({
       tmdbSkipped: 0,
       tmdbFailed: 0,
     };
+
+    // ───── Phase 0: Auto-set Letterboxd URLs ─────
+    // Films with TMDB ID but no Letterboxd URL get deterministic redirect URL
+    // This is zero-cost (no API calls) and ensures Phase 3 can enrich ratings
+    const needsLetterboxdUrl = await db
+      .selectDistinct({
+        filmId: films.id,
+        tmdbId: films.tmdbId,
+      })
+      .from(films)
+      .innerJoin(screenings, eq(screenings.filmId, films.id))
+      .where(
+        and(
+          gte(screenings.datetime, now),
+          isNotNull(films.tmdbId),
+          isNull(films.letterboxdUrl),
+        )
+      );
+
+    if (needsLetterboxdUrl.length > 0) {
+      for (const film of needsLetterboxdUrl) {
+        await db.update(films).set({
+          letterboxdUrl: `https://letterboxd.com/tmdb/${film.tmdbId}`,
+          updatedAt: new Date(),
+        }).where(eq(films.id, film.filmId));
+      }
+      stats.letterboxdUrlsSet = needsLetterboxdUrl.length;
+      console.log(`[daily-sweep] Phase 0: Set Letterboxd URLs for ${needsLetterboxdUrl.length} films`);
+    }
 
     // ───── Phase 1: TMDB Matching ─────
     // Films with upcoming screenings that lack a TMDB match

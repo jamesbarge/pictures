@@ -187,7 +187,7 @@ export async function processScreenings(
     // Use canonical title for grouping (base title without version suffixes)
     // Fall back to filmTitle if canonicalTitle is not available
     let matchingTitle = extraction?.canonicalTitle ?? extraction?.filmTitle ?? screening.filmTitle;
-    if (extraction?.confidence === "low" && !extraction.canonicalTitle) {
+    if ((extraction?.confidence === "low" || extraction?.confidence === "medium") && !extraction.canonicalTitle) {
       matchingTitle = cleanFilmTitle(screening.filmTitle);
     }
     const key = normalizeTitle(matchingTitle);
@@ -352,9 +352,9 @@ async function getOrCreateFilm(
   // e.g., "Saturday Morning Picture Club: The Muppets Christmas Carol" → "The Muppets Christmas Carol"
   const extraction = await extractFilmTitleCached(title);
 
-  // If AI extraction failed or has low confidence, apply regex-based cleaning as fallback
+  // If AI extraction failed or has low/medium confidence without a canonical title, apply regex fallback
   let cleanedTitle = extraction.filmTitle;
-  if (extraction.confidence === "low" && !extraction.canonicalTitle) {
+  if ((extraction.confidence === "low" || extraction.confidence === "medium") && !extraction.canonicalTitle) {
     cleanedTitle = cleanFilmTitle(title);
   }
 

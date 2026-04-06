@@ -1,3 +1,13 @@
+## 2026-04-06: Prevent Recurring Data Quality Issues at Source
+**PR**: #408 | **Files**: `src/scrapers/utils/film-title-cleaner.ts`, `src/scrapers/pipeline.ts`, `src/scrapers/utils/film-matching.ts`, `src/trigger/enrichment/daily-sweep.ts`
+- Add 10 new event prefixes from data-check patrol (Lob-sters, Gate's Birthday, Spare Ribs, etc.)
+- Add anniversary suffix stripping: (25th Anniversary), (4K Restoration), - 50th Anniversary
+- Fix 8½ HTML entity mojibake (Close-Up Cinema &Acirc;&frac12; recurring duplicate)
+- Widen pipeline confidence threshold (low → low|medium) for regex fallback
+- Auto-set Letterboxd URLs on TMDB match + daily sweep Phase 0 backfill
+
+---
+
 ## 2026-04-04: SvelteKit Frontend Rewrite
 **PR**: #405 | **Files**: `frontend/` (120 new files)
 - Complete SvelteKit 5 + Tailwind 4 frontend with Swiss brutalist design
