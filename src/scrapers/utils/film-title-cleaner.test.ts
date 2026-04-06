@@ -235,7 +235,7 @@ describe("recurring event prefixes (data-check patrol cycles 7-12)", () => {
   });
 
   it("strips N and Under prefix", () => {
-    expect(cleanFilmTitle("25 and Under: An Introduction to Guillermo del Toro")).toBe("Guillermo del Toro");
+    expect(cleanFilmTitle("25 and Under: An Introduction to Guillermo del Toro")).toBe("An Introduction to Guillermo del Toro");
   });
 });
 

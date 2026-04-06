@@ -164,7 +164,7 @@ export const EVENT_PREFIXES = [
   /^bloody\s+mary\s+film\s+club[:\s]+/i,
   /^lrb\s+screen\s*x\s*mubi[:\s]+/i,
   /^ukaff\s+\d{4}\s+closing\s+night[:\s]+/i,
-  /^\d+\s+and\s+under[:\s]+(?:an\s+introduction\s+to\s+)?/i,
+  /^\d+\s+and\s+under[:\s]+/i,
 ];
 
 /** Result of cleaning a film title with metadata about what was stripped */
