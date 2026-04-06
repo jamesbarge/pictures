@@ -80,16 +80,30 @@ Format:
 - Create PRs and squash-merge unless explicitly told otherwise.
 
 ## Tech Stack
-- Next.js 16 App Router, React 19
+
+### Frontend (`frontend/`) — pictures.london
+- SvelteKit 2 + Svelte 5 (runes: `$state`, `$derived`, `$effect`)
+- Tailwind CSS 4 with Swiss brutalist design system
+- svelte-clerk for auth, posthog-js for analytics
+- bits-ui, @chenglou/pretext for UI
+- MapLibre GL for cinema map
+- Playwright for E2E tests (82 desktop + 19 mobile)
+- Deployed to Vercel from `frontend/` with API rewrites to `api.pictures.london`
+- Dev: `cd frontend && npm run dev`
+- Tests: `cd frontend && npx playwright test`
+
+### Backend (root `/`) — api.pictures.london
+- Next.js 16 App Router, React 19 (API routes + admin only)
 - Drizzle ORM with PostgreSQL on Supabase (not Neon)
 - Scrapers: Playwright (JS-heavy), Cheerio (static), API-based
 - date-fns for date manipulation
-- Clerk for auth, PostHog for analytics, Zustand for client state
+- Clerk for auth, PostHog for analytics
 
 ## Non-Negotiable Workflow
 - Use feature branches (never commit directly to `main`)
 - Keep changes minimal and scoped to the request
-- Before finishing: run `npm run test:run`, `npm run lint`, and `npx tsc --noEmit`
+- Before finishing backend changes: run `npm run test:run`, `npm run lint`, and `npx tsc --noEmit`
+- Before finishing frontend changes: run `cd frontend && npx playwright test`
 - Update both changelog locations on every PR
 
 ## Scraper Documentation
