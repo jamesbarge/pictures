@@ -194,3 +194,81 @@ describe("EVENT_PREFIXES", () => {
     expect(prefixStrings.some(s => s.includes("east\\s+london\\s+doc"))).toBe(true);
   });
 });
+
+describe("recurring event prefixes (data-check patrol cycles 7-12)", () => {
+  it("strips Lob-sters Tennis Anniversary Screening prefix", () => {
+    expect(cleanFilmTitle("Lob-sters Tennis Anniversary Screening:Challengers")).toBe("Challengers");
+    expect(cleanFilmTitle("Lobsters Tennis Anniversary Screening: Wimbledon")).toBe("Wimbledon");
+  });
+
+  it("strips Phoenix Classics + YSP Pizza Night prefix", () => {
+    expect(cleanFilmTitle("Phoenix Classics + YSP Pizza Night: Wayne's World")).toBe("Wayne's World");
+  });
+
+  it("strips Spare Ribs Club prefix", () => {
+    expect(cleanFilmTitle("Spare Ribs Club: The Drama")).toBe("The Drama");
+  });
+
+  it("strips Parents and Baby screening prefix", () => {
+    expect(cleanFilmTitle("Parents and Baby screening: The Drama")).toBe("The Drama");
+  });
+
+  it("strips The Gate's Nth Birthday prefix", () => {
+    expect(cleanFilmTitle("The Gate's 115th Birthday: Paddington")).toBe("Paddington");
+    expect(cleanFilmTitle("The Gate's 115th Birthday: The Italian Job")).toBe("The Italian Job");
+  });
+
+  it("strips Reece Shearsmith Presents prefix", () => {
+    expect(cleanFilmTitle("Reece Shearsmith Presents: The Bounty")).toBe("The Bounty");
+  });
+
+  it("strips Bloody Mary Film Club prefix", () => {
+    expect(cleanFilmTitle("Bloody Mary Film Club: Thelma and Louise")).toBe("Thelma and Louise");
+  });
+
+  it("strips LRB Screen x MUBI prefix", () => {
+    expect(cleanFilmTitle("LRB Screen x MUBI: Law and Order")).toBe("Law and Order");
+  });
+
+  it("strips UKAFF closing night prefix", () => {
+    expect(cleanFilmTitle("UKAFF 2026 Closing Night: Shadowbox")).toBe("Shadowbox");
+  });
+
+  it("strips N and Under prefix", () => {
+    expect(cleanFilmTitle("25 and Under: An Introduction to Guillermo del Toro")).toBe("Guillermo del Toro");
+  });
+});
+
+describe("anniversary suffix stripping", () => {
+  it("strips (Nth Anniversary) without year prefix", () => {
+    expect(cleanFilmTitle("Alien (40th Anniversary)")).toBe("Alien");
+    expect(cleanFilmTitle("Blue Velvet (40th Anniversary)")).toBe("Blue Velvet");
+    expect(cleanFilmTitle("Stand by Me (40th Anniversary)")).toBe("Stand by Me");
+  });
+
+  it("strips (Nth Anniversary, 4K Restoration)", () => {
+    expect(cleanFilmTitle("Barry Lyndon (50th Anniversary, 4K Restoration)")).toBe("Barry Lyndon");
+  });
+
+  it("strips (Nth Anniversary Re-release)", () => {
+    expect(cleanFilmTitle("Blade Runner (25th Anniversary Re-release)")).toBe("Blade Runner");
+  });
+
+  it("strips - Nth Anniversary dash prefix", () => {
+    expect(cleanFilmTitle("2001: A Space Odyssey - 50th Anniversary")).toBe("2001: A Space Odyssey");
+  });
+
+  it("strips standalone (4K Restoration)", () => {
+    expect(cleanFilmTitle("Mulholland Drive (4K Restoration)")).toBe("Mulholland Drive");
+  });
+});
+
+describe("HTML entity mojibake fix", () => {
+  it("decodes 8&Acirc;&frac12; to 8½", () => {
+    expect(cleanFilmTitle("8&Acirc;&frac12;")).toBe("8\u00BD");
+  });
+
+  it("still decodes plain &frac12;", () => {
+    expect(cleanFilmTitle("8&frac12;")).toBe("8\u00BD");
+  });
+});
