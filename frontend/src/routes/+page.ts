@@ -34,7 +34,7 @@ interface ScreeningsResponse {
 
 export async function load({ fetch }) {
 	try {
-		const res = await apiGet<ScreeningsResponse>('/api/screenings?limit=500', { fetch });
+		const res = await apiGet<ScreeningsResponse>('/api/screenings', { fetch });
 		return { screenings: res.screenings, meta: res.meta };
 	} catch (e) {
 		console.error('[home] Failed to load screenings:', e instanceof Error ? e.message : e);
