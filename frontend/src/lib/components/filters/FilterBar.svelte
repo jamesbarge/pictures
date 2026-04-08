@@ -7,9 +7,14 @@
 	import ViewToggle from './ViewToggle.svelte';
 	import ActiveFilterChips from './ActiveFilterChips.svelte';
 	import ClearFiltersButton from './ClearFiltersButton.svelte';
-	import type { Cinema } from '$lib/types';
+	interface FilterCinema {
+		id: string;
+		name: string;
+		shortName: string | null;
+		address: { area: string } | null;
+	}
 
-	let { cinemas = [] }: { cinemas: Cinema[] } = $props();
+	let { cinemas = [] }: { cinemas: FilterCinema[] } = $props();
 
 	let filtersOpen = $state(false);
 </script>
