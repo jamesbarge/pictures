@@ -1,4 +1,4 @@
-import { getScreeningsWithCursor } from '$lib/server/repositories';
+import { getScreeningsWithCursor, getActiveCinemas } from '$lib/server/repositories';
 import type { Config } from '@sveltejs/adapter-vercel';
 import type { PageServerLoad } from './$types';
 
@@ -12,13 +12,13 @@ export const load: PageServerLoad = async ({ setHeaders }) => {
 	const endDate = new Date(now);
 	endDate.setDate(endDate.getDate() + 3);
 
-	const { screenings } = await getScreeningsWithCursor(
-		{ startDate: now, endDate },
-		undefined,
-		500
-	);
+	const [{ screenings }, cinemas] = await Promise.all([
+		getScreeningsWithCursor({ startDate: now, endDate }, undefined, 500),
+		getActiveCinemas()
+	]);
 
 	return {
+		cinemas,
 		screenings: screenings.map((s) => ({
 			id: s.id,
 			filmId: s.film.id,
