@@ -33,6 +33,7 @@
   "exclude": [
     "node_modules",
     "packages",
+    "frontend",
     "drizzle.config.ts",
     "**/* 2.ts",
     "**/* 2.tsx",
@@ -46,6 +47,7 @@
     "**/* 4.tsx",
     "**/* 4.d.ts",
     "**/* 4.mts",
-    "scripts/lib/booking-verifier.ts"
+    "scripts/lib/booking-verifier.ts",
+    "scripts/check-screen-green.ts"
   ]
 }

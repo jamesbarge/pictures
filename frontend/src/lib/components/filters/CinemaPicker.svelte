@@ -136,7 +136,7 @@
 	}
 
 	.cinema-dropdown {
-		width: calc(100vw - 2rem);
+		width: 100%;
 		max-width: 280px;
 	}
 

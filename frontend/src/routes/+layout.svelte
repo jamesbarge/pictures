@@ -65,8 +65,8 @@
 		top: -100%;
 		left: 0;
 		z-index: 100;
-		padding: 0.5rem 1rem;
-		font-size: var(--font-size-xs);
+		padding: 0.75rem 1.5rem;
+		font-size: var(--font-size-sm);
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.08em;

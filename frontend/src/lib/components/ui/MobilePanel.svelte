@@ -29,7 +29,7 @@
 	}
 
 	.mobile-panel.open {
-		max-height: 80vh;
+		max-height: 85dvh;
 		border-bottom-width: 1px;
 		overflow-y: auto;
 	}

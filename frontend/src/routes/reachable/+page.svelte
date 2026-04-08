@@ -5,15 +5,16 @@
 	import ReachableResults from '$lib/components/reachable/ReachableResults.svelte';
 	import { reachableStore } from '$lib/stores/reachable.svelte';
 	import { getReachableScreenings, type Screening } from '$lib/travel-time';
-	import type { ScreeningWithDetails } from '$lib/types';
 
 	let { data } = $props();
+
+	type LoadedScreening = (typeof data.screenings)[number];
 
 	// Map API screenings to the shape travel-time expects
 	const mappedScreenings: Screening[] = $derived(
 		data.screenings
-			.filter((s: ScreeningWithDetails) => s.film && s.cinema)
-			.map((s: ScreeningWithDetails) => ({
+			.filter((s: LoadedScreening) => s.film && s.cinema)
+			.map((s: LoadedScreening) => ({
 				id: s.id,
 				datetime: s.datetime,
 				format: s.format,
@@ -233,6 +234,13 @@
 	.calculate-btn:disabled {
 		opacity: 0.4;
 		cursor: not-allowed;
+	}
+
+	@media (max-width: 767px) {
+		.calculate-btn {
+			padding: 1rem 1.5rem;
+			font-size: var(--font-size-sm);
+		}
 	}
 
 	.btn-spinner {

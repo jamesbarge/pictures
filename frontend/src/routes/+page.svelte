@@ -206,6 +206,12 @@
 		}
 	}
 
+	@media (max-width: 320px) {
+		.film-grid {
+			grid-template-columns: 1fr;
+		}
+	}
+
 	@media (min-width: 1280px) {
 		.film-grid {
 			grid-template-columns: repeat(6, 1fr);
