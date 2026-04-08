@@ -45,7 +45,7 @@
 							id: film.id,
 							title: film.title,
 							year: film.year,
-							director: film.directors?.[0] ?? null,
+							director: film.director ?? null,
 							runtime: film.runtime,
 							genres: [],
 							posterUrl: film.posterUrl,

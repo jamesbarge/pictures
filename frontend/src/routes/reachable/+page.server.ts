@@ -13,7 +13,7 @@ export const load: PageServerLoad = async ({ setHeaders }) => {
 	endDate.setDate(endDate.getDate() + 3);
 
 	const [{ screenings }, cinemas] = await Promise.all([
-		getScreeningsWithCursor({ startDate: now, endDate }, undefined, 500),
+		getScreeningsWithCursor({ startDate: now, endDate }, undefined, 200),
 		getActiveCinemas()
 	]);
 
@@ -21,17 +21,14 @@ export const load: PageServerLoad = async ({ setHeaders }) => {
 		cinemas,
 		screenings: screenings.map((s) => ({
 			id: s.id,
-			filmId: s.film.id,
-			cinemaId: s.cinema.id,
 			datetime: s.datetime.toISOString(),
 			format: s.format,
 			bookingUrl: s.bookingUrl,
-			isSoldOut: false,
 			film: {
 				id: s.film.id,
 				title: s.film.title,
 				year: s.film.year,
-				directors: s.film.directors,
+				director: s.film.directors?.[0] ?? null,
 				runtime: s.film.runtime,
 				posterUrl: s.film.posterUrl,
 				isRepertory: s.film.isRepertory
