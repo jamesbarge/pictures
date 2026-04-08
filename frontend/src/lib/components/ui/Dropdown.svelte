@@ -94,6 +94,8 @@
 			top: 49px;
 			width: auto;
 			max-width: none;
+			max-height: calc(100dvh - 49px - 1rem);
+			overflow-y: auto;
 		}
 	}
 </style>

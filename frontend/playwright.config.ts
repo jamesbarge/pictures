@@ -1,4 +1,4 @@
-import { defineConfig } from '@playwright/test';
+import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
 	testDir: '.',
@@ -9,6 +9,7 @@ export default defineConfig({
 		headless: true
 	},
 	projects: [
-		{ name: 'chromium', use: { browserName: 'chromium' } }
+		{ name: 'chromium', use: { browserName: 'chromium' } },
+		{ name: 'mobile-small', use: { ...devices['Galaxy S5'] } },
 	]
 });
