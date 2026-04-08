@@ -10,6 +10,7 @@
 	const isHome = $derived(page.url.pathname === '/');
 
 	let mobileMenuOpen = $state(false);
+	let headerEl = $state<HTMLElement>();
 
 	// Close mobile menu on route change
 	$effect(() => {
@@ -17,12 +18,29 @@
 		mobileMenuOpen = false;
 	});
 
+	// Measure header height and expose as CSS custom property for dropdown positioning.
+	// Re-runs when the filter bar appears/disappears (isHome, showFilters) or menu toggles.
+	$effect(() => {
+		// Track dependencies that change header height
+		void isHome;
+		void showFilters;
+		void mobileMenuOpen;
+		if (headerEl) {
+			// Read after a tick so the DOM has updated
+			requestAnimationFrame(() => {
+				if (headerEl) {
+					document.documentElement.style.setProperty('--header-height', `${headerEl.offsetHeight}px`);
+				}
+			});
+		}
+	});
+
 	function toggleMobileMenu() {
 		mobileMenuOpen = !mobileMenuOpen;
 	}
 </script>
 
-<header class="header" style="background-color: var(--color-bg);">
+<header bind:this={headerEl} class="header" style="background-color: var(--color-bg);">
 	<div class="header-inner">
 		<!-- ROW A: Brand bar -->
 		<div class="brand-bar">
