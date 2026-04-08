@@ -18,11 +18,20 @@
 		mobileMenuOpen = false;
 	});
 
-	// Measure header height and expose as CSS custom property for dropdown positioning
+	// Measure header height and expose as CSS custom property for dropdown positioning.
+	// Re-runs when the filter bar appears/disappears (isHome, showFilters) or menu toggles.
 	$effect(() => {
+		// Track dependencies that change header height
+		void isHome;
+		void showFilters;
+		void mobileMenuOpen;
 		if (headerEl) {
-			const height = headerEl.offsetHeight;
-			document.documentElement.style.setProperty('--header-height', `${height}px`);
+			// Read after a tick so the DOM has updated
+			requestAnimationFrame(() => {
+				if (headerEl) {
+					document.documentElement.style.setProperty('--header-height', `${headerEl.offsetHeight}px`);
+				}
+			});
 		}
 	});
 
