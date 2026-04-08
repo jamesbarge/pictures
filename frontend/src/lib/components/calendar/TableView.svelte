@@ -177,6 +177,24 @@
 		}
 	}
 
+	@media (max-width: 480px) {
+		.table-header {
+			grid-template-columns: 1fr 50px;
+		}
+
+		.th-year {
+			display: none;
+		}
+
+		.table-row {
+			grid-template-columns: 1fr 50px;
+		}
+
+		.td-year {
+			display: none;
+		}
+	}
+
 	.table-row {
 		display: grid;
 		grid-template-columns: 1fr 60px 160px 70px 80px 60px;

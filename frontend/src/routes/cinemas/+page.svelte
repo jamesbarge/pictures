@@ -35,7 +35,7 @@
 
 <section class="py-6">
 	<div class="max-w-[1400px] mx-auto px-4 md:px-8">
-		<div class="flex items-baseline justify-between mb-6 pb-1.5 border-b-2 border-[var(--color-border)]">
+		<div class="cinemas-header">
 			<div class="flex items-baseline gap-3">
 				<h1 class="font-display text-sm font-bold tracking-wide-swiss uppercase">CINEMAS</h1>
 				<span class="text-xs text-[var(--color-text-tertiary)] font-mono">{data.cinemas.length}</span>
@@ -75,6 +75,23 @@
 </section>
 
 <style>
+	.cinemas-header {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 0.75rem;
+		margin-bottom: 1.5rem;
+		padding-bottom: 0.375rem;
+		border-bottom: 2px solid var(--color-border);
+	}
+
+	@media (max-width: 767px) {
+		.cinemas-header {
+			flex-direction: column;
+			align-items: stretch;
+		}
+	}
+
 	.search-input {
 		font-size: var(--font-size-sm);
 		color: var(--color-text);
@@ -84,6 +101,13 @@
 		padding: 0.25rem 0;
 		outline: none;
 		width: 200px;
+		max-width: 100%;
+	}
+
+	@media (max-width: 767px) {
+		.search-input {
+			width: 100%;
+		}
 	}
 
 	.search-input:focus {
@@ -130,6 +154,13 @@
 		padding: 0.75rem 0.75rem 0.75rem 0;
 		border-bottom: 1px solid var(--color-border-subtle);
 		transition: background-color var(--duration-fast) var(--ease-sharp);
+		min-height: 48px;
+	}
+
+	@media (max-width: 767px) {
+		.cinema-card {
+			padding: 1rem 0.75rem 1rem 0;
+		}
 	}
 
 	.cinema-card:hover {

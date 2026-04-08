@@ -130,6 +130,7 @@ body {
 	align-items: center;
 	gap: 0.5rem;
 	padding: 0.25rem 0.5rem;
+	min-height: 28px;
 	background: var(--color-screening-bg);
 	color: var(--color-screening-text);
 	font-size: var(--font-size-xs);
@@ -138,6 +139,13 @@ body {
 	text-transform: uppercase;
 	letter-spacing: 0.04em;
 	transition: opacity var(--duration-fast) var(--ease-sharp);
+}
+
+@media (max-width: 767px) {
+	.screening-pill {
+		padding: 0.375rem 0.5rem;
+		min-height: 32px;
+	}
 }
 
 .screening-pill:hover {
@@ -167,6 +175,17 @@ body {
 ::selection {
 	background-color: var(--color-accent);
 	color: white;
+}
+
+/* ── Responsive Typography (scale down large display sizes on mobile) ── */
+@media (max-width: 767px) {
+	:root {
+		--font-size-3xl: 1.75rem;
+		--font-size-4xl: 2.25rem;
+		--font-size-5xl: 3rem;
+		--font-size-6xl: 4rem;
+		--font-size-7xl: 5rem;
+	}
 }
 
 /* ── Reduced Motion ── */

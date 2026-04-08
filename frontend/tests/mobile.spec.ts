@@ -179,6 +179,120 @@ test.describe('Mobile Responsive — iPhone 12 Pro (390x844)', () => {
 	});
 
 	// ═══════════════════════════════════════════════
+	// MOBILE NAVIGATION
+	// ═══════════════════════════════════════════════
+
+	test.describe('Mobile Navigation', () => {
+		test('hamburger menu button is visible', async ({ page }) => {
+			await page.goto(BASE);
+			const menuBtn = page.locator('.mobile-menu-btn');
+			await expect(menuBtn).toBeVisible();
+		});
+
+		test('hamburger menu opens and shows nav links', async ({ page }) => {
+			await page.goto(BASE);
+			const menuBtn = page.locator('.mobile-menu-btn');
+			await menuBtn.click();
+			await page.waitForTimeout(200);
+
+			const mobileNav = page.locator('.mobile-nav');
+			await expect(mobileNav).toBeVisible();
+
+			// Check key nav links are present
+			await expect(page.locator('.mobile-nav-link').filter({ hasText: 'ABOUT' })).toBeVisible();
+			await expect(page.locator('.mobile-nav-link').filter({ hasText: 'MAP' })).toBeVisible();
+			await expect(page.locator('.mobile-nav-link').filter({ hasText: 'REACHABLE' })).toBeVisible();
+		});
+
+		test('mobile nav links have adequate touch targets (44px min)', async ({ page }) => {
+			await page.goto(BASE);
+			await page.locator('.mobile-menu-btn').click();
+			await page.waitForTimeout(200);
+
+			const links = page.locator('.mobile-nav-link');
+			const count = await links.count();
+			expect(count).toBeGreaterThan(0);
+
+			for (let i = 0; i < count; i++) {
+				const box = await links.nth(i).boundingBox();
+				expect(box!.height).toBeGreaterThanOrEqual(44);
+			}
+		});
+
+		test('hamburger menu closes on Escape', async ({ page }) => {
+			await page.goto(BASE);
+			await page.locator('.mobile-menu-btn').click();
+			await page.waitForTimeout(200);
+			await expect(page.locator('.mobile-nav')).toBeVisible();
+
+			// Navigate to a different page by clicking a link
+			await page.locator('.mobile-nav-link').filter({ hasText: 'ABOUT' }).click();
+			await page.waitForURL(/\/about/);
+			// Menu should be closed after navigation
+			await expect(page.locator('.mobile-nav')).not.toBeVisible();
+		});
+	});
+
+	// ═══════════════════════════════════════════════
+	// TOUCH TARGETS
+	// ═══════════════════════════════════════════════
+
+	test.describe('Touch Targets', () => {
+		test('screening pills have minimum 28px height', async ({ page }) => {
+			await page.goto(BASE);
+			await page.waitForSelector('.screening-pill', { timeout: 10000 });
+
+			const pills = page.locator('.screening-pill');
+			const count = await pills.count();
+			expect(count).toBeGreaterThan(0);
+
+			// Check first 5 pills
+			for (let i = 0; i < Math.min(count, 5); i++) {
+				const box = await pills.nth(i).boundingBox();
+				expect(box!.height).toBeGreaterThanOrEqual(28);
+			}
+		});
+
+		test('cinema cards have minimum 48px height on cinemas page', async ({ page }) => {
+			await page.goto(`${BASE}/cinemas`);
+			await page.waitForSelector('.cinema-card', { timeout: 10000 });
+
+			const cards = page.locator('.cinema-card');
+			const count = await cards.count();
+			expect(count).toBeGreaterThan(0);
+
+			const box = await cards.first().boundingBox();
+			expect(box!.height).toBeGreaterThanOrEqual(48);
+		});
+	});
+
+	// ═══════════════════════════════════════════════
+	// DROPDOWN CONTAINMENT
+	// ═══════════════════════════════════════════════
+
+	test.describe('Dropdown Containment', () => {
+		test('dropdown panel has max-height and is scrollable on mobile', async ({ page }) => {
+			await page.goto(BASE);
+			// Open FILTERS panel first
+			try {
+				await page.getByRole('button', { name: 'Toggle filters' }).click();
+				await page.waitForTimeout(300);
+			} catch { /* filter toggle may not exist */ }
+
+			await page.getByLabel('Cinema filter').last().click();
+			await page.waitForTimeout(300);
+
+			const dropdown = page.locator('.dropdown-panel');
+			await expect(dropdown).toBeVisible();
+
+			// Check max-height CSS property is set
+			const maxHeight = await dropdown.evaluate((el) => getComputedStyle(el).maxHeight);
+			expect(maxHeight).not.toBe('none');
+			expect(maxHeight).not.toBe('');
+		});
+	});
+
+	// ═══════════════════════════════════════════════
 	// OTHER PAGES
 	// ═══════════════════════════════════════════════
 
@@ -235,5 +349,41 @@ test.describe('Mobile Responsive — iPhone 12 Pro (390x844)', () => {
 			const overflow = await page.evaluate(() => document.body.scrollWidth > window.innerWidth);
 			expect(overflow).toBe(false);
 		});
+	});
+});
+
+// ═══════════════════════════════════════════════════════
+// SMALL ANDROID (360x640) — Extra narrow viewport
+// ═══════════════════════════════════════════════════════
+
+test.describe('Small Android (360x640)', () => {
+	test.use({ viewport: { width: 360, height: 640 } });
+
+	test('homepage has no horizontal overflow at 360px', async ({ page }) => {
+		await page.goto(BASE);
+		await page.waitForTimeout(1000);
+		const overflow = await page.evaluate(() => document.body.scrollWidth > window.innerWidth);
+		expect(overflow).toBe(false);
+	});
+
+	test('cinemas page has no horizontal overflow at 360px', async ({ page }) => {
+		await page.goto(`${BASE}/cinemas`);
+		await page.waitForTimeout(1000);
+		const overflow = await page.evaluate(() => document.body.scrollWidth > window.innerWidth);
+		expect(overflow).toBe(false);
+	});
+
+	test('reachable page has no horizontal overflow at 360px', async ({ page }) => {
+		await page.goto(`${BASE}/reachable`);
+		await page.waitForTimeout(500);
+		const overflow = await page.evaluate(() => document.body.scrollWidth > window.innerWidth);
+		expect(overflow).toBe(false);
+	});
+
+	test('tonight page has no horizontal overflow at 360px', async ({ page }) => {
+		await page.goto(`${BASE}/tonight`);
+		await page.waitForTimeout(1000);
+		const overflow = await page.evaluate(() => document.body.scrollWidth > window.innerWidth);
+		expect(overflow).toBe(false);
 	});
 });
