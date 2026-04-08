@@ -47,7 +47,7 @@
 							year: film.year,
 							director: film.directors?.[0] ?? null,
 							runtime: film.runtime,
-							genres: film.genres ?? [],
+							genres: [],
 							posterUrl: film.posterUrl,
 							tmdbId: null
 						}}

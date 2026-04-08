@@ -2,10 +2,16 @@
 	import BreathingGrid from '$lib/components/pretext/BreathingGrid.svelte';
 	import FilterBar from '$lib/components/filters/FilterBar.svelte';
 	import DimmerDial from '$lib/components/ui/DimmerDial.svelte';
-	import type { Cinema } from '$lib/types';
 	import { page } from '$app/state';
 
-	let { cinemas = [], showFilters = true }: { cinemas?: Cinema[]; showFilters?: boolean } = $props();
+	interface HeaderCinema {
+		id: string;
+		name: string;
+		shortName: string | null;
+		address: { area: string } | null;
+	}
+
+	let { cinemas = [], showFilters = true }: { cinemas?: HeaderCinema[]; showFilters?: boolean } = $props();
 
 	const isHome = $derived(page.url.pathname === '/');
 
