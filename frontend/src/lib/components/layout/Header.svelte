@@ -10,6 +10,7 @@
 	const isHome = $derived(page.url.pathname === '/');
 
 	let mobileMenuOpen = $state(false);
+	let headerEl = $state<HTMLElement>();
 
 	// Close mobile menu on route change
 	$effect(() => {
@@ -17,12 +18,20 @@
 		mobileMenuOpen = false;
 	});
 
+	// Measure header height and expose as CSS custom property for dropdown positioning
+	$effect(() => {
+		if (headerEl) {
+			const height = headerEl.offsetHeight;
+			document.documentElement.style.setProperty('--header-height', `${height}px`);
+		}
+	});
+
 	function toggleMobileMenu() {
 		mobileMenuOpen = !mobileMenuOpen;
 	}
 </script>
 
-<header class="header" style="background-color: var(--color-bg);">
+<header bind:this={headerEl} class="header" style="background-color: var(--color-bg);">
 	<div class="header-inner">
 		<!-- ROW A: Brand bar -->
 		<div class="brand-bar">
