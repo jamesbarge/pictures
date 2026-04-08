@@ -219,7 +219,8 @@
 	}
 
 	.mobile-nav-link {
-		display: block;
+		display: flex;
+		align-items: center;
 		padding: 0.75rem 0;
 		font-size: var(--font-size-xs);
 		font-weight: 500;
@@ -228,8 +229,6 @@
 		color: var(--color-text-secondary);
 		transition: color var(--duration-fast) var(--ease-sharp);
 		min-height: 44px;
-		display: flex;
-		align-items: center;
 	}
 
 	.mobile-nav-link:hover {

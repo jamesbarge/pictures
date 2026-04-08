@@ -335,7 +335,8 @@ async function runAiVisualCheck(
   const issues: MobileIssue[] = [];
 
   try {
-    // Stagehand uses its own page — navigate there
+    // Stagehand uses its own browser — access its page via internal context API.
+    // Note: .context is not part of Stagehand's public API; wrapped in try/catch for safety.
     const stagehandPages = stagehandInstance.context.pages();
     const stagehandPage = stagehandPages[0];
     await stagehandPage.setViewportSize({ width: viewport.width, height: viewport.height });

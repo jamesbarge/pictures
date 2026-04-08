@@ -171,7 +171,7 @@ test.describe('Mobile Responsive — iPhone 12 Pro (390x844)', () => {
 			const icalBtn = page.locator('.ical-btn').first();
 			if (await icalBtn.isVisible()) {
 				const box = await icalBtn.boundingBox();
-				// Touch target should be at least 32px
+				// WCAG 2.5.8 minimum: 24px; our target: 28px
 				expect(box!.width).toBeGreaterThanOrEqual(28);
 				expect(box!.height).toBeGreaterThanOrEqual(28);
 			}
@@ -193,7 +193,6 @@ test.describe('Mobile Responsive — iPhone 12 Pro (390x844)', () => {
 			await page.goto(BASE);
 			const menuBtn = page.locator('.mobile-menu-btn');
 			await menuBtn.click();
-			await page.waitForTimeout(200);
 
 			const mobileNav = page.locator('.mobile-nav');
 			await expect(mobileNav).toBeVisible();
@@ -207,7 +206,7 @@ test.describe('Mobile Responsive — iPhone 12 Pro (390x844)', () => {
 		test('mobile nav links have adequate touch targets (44px min)', async ({ page }) => {
 			await page.goto(BASE);
 			await page.locator('.mobile-menu-btn').click();
-			await page.waitForTimeout(200);
+			await expect(page.locator('.mobile-nav')).toBeVisible();
 
 			const links = page.locator('.mobile-nav-link');
 			const count = await links.count();
@@ -219,10 +218,9 @@ test.describe('Mobile Responsive — iPhone 12 Pro (390x844)', () => {
 			}
 		});
 
-		test('hamburger menu closes on Escape', async ({ page }) => {
+		test('hamburger menu closes after navigation', async ({ page }) => {
 			await page.goto(BASE);
 			await page.locator('.mobile-menu-btn').click();
-			await page.waitForTimeout(200);
 			await expect(page.locator('.mobile-nav')).toBeVisible();
 
 			// Navigate to a different page by clicking a link
