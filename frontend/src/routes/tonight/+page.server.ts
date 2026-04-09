@@ -1,4 +1,4 @@
-import { getScreeningsWithCursor } from '$lib/server/repositories';
+import { apiFetch } from '$lib/server/api';
 import type { Config } from '@sveltejs/adapter-vercel';
 import type { PageServerLoad } from './$types';
 
@@ -6,7 +6,30 @@ export const config: Config = {
 	isr: { expiration: 900, allowQuery: [] }
 };
 
-export const load: PageServerLoad = async ({ setHeaders }) => {
+interface ScreeningsResponse {
+	screenings: Array<{
+		id: string;
+		datetime: string;
+		format: string | null;
+		bookingUrl: string;
+		film: {
+			id: string;
+			title: string;
+			year: number | null;
+			directors: string[];
+			runtime: number | null;
+			posterUrl: string | null;
+			isRepertory: boolean;
+		};
+		cinema: {
+			id: string;
+			name: string;
+			shortName: string | null;
+		};
+	}>;
+}
+
+export const load: PageServerLoad = async ({ fetch, setHeaders }) => {
 	setHeaders({ 'cache-control': 'public, s-maxage=900, stale-while-revalidate=3600' });
 	const now = new Date();
 	const londonDate = now.toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
@@ -27,16 +50,15 @@ export const load: PageServerLoad = async ({ setHeaders }) => {
 	const endUtc = new Date(`${londonDate}T23:59:59Z`);
 	endUtc.setUTCHours(endUtc.getUTCHours() - offsetHours);
 
-	const { screenings } = await getScreeningsWithCursor(
-		{ startDate: startUtc, endDate: endUtc },
-		undefined,
-		200
+	const data = await apiFetch<ScreeningsResponse>(
+		`/api/screenings?startDate=${startUtc.toISOString()}&endDate=${endUtc.toISOString()}&limit=200`,
+		fetch
 	);
 
 	return {
-		screenings: screenings.map((s) => ({
+		screenings: data.screenings.map((s) => ({
 			id: s.id,
-			datetime: s.datetime.toISOString(),
+			datetime: s.datetime,
 			format: s.format,
 			bookingUrl: s.bookingUrl,
 			film: {

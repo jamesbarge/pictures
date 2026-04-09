@@ -1,4 +1,4 @@
-import { getScreenings } from '$lib/server/repositories';
+import { apiFetch } from '$lib/server/api';
 import { endOfDay, addDays } from 'date-fns';
 import type { Config } from '@sveltejs/adapter-vercel';
 import type { PageServerLoad } from './$types';
@@ -13,17 +13,29 @@ export interface DirectorEntry {
 	films: string[];
 }
 
-export const load: PageServerLoad = async ({ setHeaders }) => {
+interface ScreeningsResponse {
+	screenings: Array<{
+		film: {
+			id: string;
+			title: string;
+			directors: string[];
+		};
+	}>;
+}
+
+export const load: PageServerLoad = async ({ fetch, setHeaders }) => {
 	setHeaders({ 'cache-control': 'public, s-maxage=3600, stale-while-revalidate=86400' });
 	const now = new Date();
-	const screenings = await getScreenings(
-		{ startDate: now, endDate: endOfDay(addDays(now, 14)) },
-		3000
+	const end = endOfDay(addDays(now, 14));
+
+	const data = await apiFetch<ScreeningsResponse>(
+		`/api/screenings?startDate=${now.toISOString()}&endDate=${end.toISOString()}&limit=3000`,
+		fetch
 	);
 
 	const directorMap = new Map<string, DirectorEntry>();
 
-	for (const s of screenings) {
+	for (const s of data.screenings) {
 		if (!s.film?.directors) continue;
 		for (const director of s.film.directors) {
 			const existing = directorMap.get(director);
