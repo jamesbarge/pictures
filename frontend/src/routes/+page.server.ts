@@ -1,5 +1,4 @@
-import { getScreeningsWithCursor } from '$lib/server/repositories';
-import { endOfDay, addDays } from 'date-fns';
+import { apiFetch } from '$lib/server/api';
 import type { Config } from '@sveltejs/adapter-vercel';
 import type { PageServerLoad } from './$types';
 
@@ -7,21 +6,39 @@ export const config: Config = {
 	isr: { expiration: 3600, allowQuery: [] }
 };
 
-export const load: PageServerLoad = async ({ setHeaders }) => {
-	setHeaders({ 'cache-control': 'public, s-maxage=3600, stale-while-revalidate=86400' });
-	const now = new Date();
-	const end = endOfDay(addDays(now, 7));
+interface ScreeningsResponse {
+	screenings: Array<{
+		id: string;
+		datetime: string;
+		format: string | null;
+		bookingUrl: string;
+		film: {
+			id: string;
+			title: string;
+			year: number | null;
+			directors: string[];
+			runtime: number | null;
+			posterUrl: string | null;
+			isRepertory: boolean;
+		};
+		cinema: {
+			id: string;
+			name: string;
+			shortName: string | null;
+		};
+	}>;
+	meta: { total: number; startDate: string; endDate: string };
+}
 
-	const { screenings } = await getScreeningsWithCursor(
-		{ startDate: now, endDate: end },
-		undefined,
-		200
-	);
+export const load: PageServerLoad = async ({ fetch, setHeaders }) => {
+	setHeaders({ 'cache-control': 'public, s-maxage=3600, stale-while-revalidate=86400' });
+
+	const data = await apiFetch<ScreeningsResponse>('/api/screenings?limit=200', fetch);
 
 	return {
-		screenings: screenings.map((s) => ({
+		screenings: data.screenings.map((s) => ({
 			id: s.id,
-			datetime: s.datetime.toISOString(),
+			datetime: s.datetime,
 			format: s.format,
 			bookingUrl: s.bookingUrl,
 			film: {
@@ -40,9 +57,9 @@ export const load: PageServerLoad = async ({ setHeaders }) => {
 			}
 		})),
 		meta: {
-			total: screenings.length,
-			startDate: now.toISOString(),
-			endDate: end.toISOString()
+			total: data.meta.total,
+			startDate: data.meta.startDate,
+			endDate: data.meta.endDate
 		}
 	};
 };
