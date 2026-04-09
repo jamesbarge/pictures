@@ -21,6 +21,10 @@ interface ScreeningsResponse {
 			directors: string[];
 		};
 	}>;
+	meta: {
+		cursor: string | null;
+		hasMore: boolean;
+	};
 }
 
 export const load: PageServerLoad = async ({ fetch, setHeaders }) => {
@@ -28,14 +32,31 @@ export const load: PageServerLoad = async ({ fetch, setHeaders }) => {
 	const now = new Date();
 	const end = endOfDay(addDays(now, 14));
 
-	const data = await apiFetch<ScreeningsResponse>(
-		`/api/screenings?startDate=${now.toISOString()}&endDate=${end.toISOString()}&limit=3000`,
-		fetch
-	);
+	// Fetch all screenings using cursor pagination (API max 500 per request)
+	const allScreenings: ScreeningsResponse['screenings'] = [];
+	let cursor: string | null = null;
+	let hasMore = true;
+
+	while (hasMore) {
+		const params = new URLSearchParams({
+			startDate: now.toISOString(),
+			endDate: end.toISOString(),
+			limit: '500'
+		});
+		if (cursor) params.set('cursor', cursor);
+
+		const data = await apiFetch<ScreeningsResponse>(
+			`/api/screenings?${params}`,
+			fetch
+		);
+		allScreenings.push(...data.screenings);
+		cursor = data.meta.cursor;
+		hasMore = data.meta.hasMore;
+	}
 
 	const directorMap = new Map<string, DirectorEntry>();
 
-	for (const s of data.screenings) {
+	for (const s of allScreenings) {
 		if (!s.film?.directors) continue;
 		for (const director of s.film.directors) {
 			const existing = directorMap.get(director);
