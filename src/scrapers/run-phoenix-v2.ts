@@ -8,7 +8,7 @@ import { createPhoenixScraper } from "./cinemas/phoenix";
 const config: SingleVenueConfig = {
   type: "single",
   venue: {
-    id: "phoenix",
+    id: "phoenix-east-finchley",
     name: "Phoenix Cinema",
     shortName: "Phoenix",
     website: "https://phoenixcinema.co.uk",

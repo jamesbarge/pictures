@@ -17,7 +17,7 @@ import { BOT_USER_AGENT } from "../constants";
 import { combineDateAndTime } from "../utils/date-parser";
 
 const PHOENIX_CONFIG: ScraperConfig & { programmeUrl: string } = {
-  cinemaId: "phoenix",
+  cinemaId: "phoenix-east-finchley",
   baseUrl: "https://www.phoenixcinema.co.uk",
   programmeUrl: "https://www.phoenixcinema.co.uk/whats-on/",
   requestsPerMinute: 10,

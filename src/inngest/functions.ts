@@ -220,11 +220,11 @@ const getScraperRegistry = (): Record<string, () => Promise<ScraperEntry>> => ({
     );
   },
 
-  "phoenix": async () => {
+  "phoenix-east-finchley": async () => {
     const { createPhoenixScraper } = await import("@/scrapers/cinemas/phoenix");
     return createIndependentEntry(
       {
-        id: "phoenix",
+        id: "phoenix-east-finchley",
         name: "Phoenix Cinema",
         shortName: "Phoenix",
         website: "https://phoenixcinema.co.uk",

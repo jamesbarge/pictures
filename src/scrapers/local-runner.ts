@@ -40,7 +40,7 @@ const PLAYWRIGHT_SCRAPERS = [
   { id: "everyman-screen-on-the-green", name: "Everyman (all venues)", script: "scrape:everyman", priority: 1, isChain: true },
   { id: "electric-portobello", name: "Electric Portobello", script: "scrape:electric", priority: 3 },
   { id: "lexi-cinema", name: "Lexi Cinema", script: "scrape:lexi", priority: 3 },
-  { id: "phoenix-cinema", name: "Phoenix Cinema", script: "scrape:phoenix", priority: 3 },
+  { id: "phoenix-east-finchley", name: "Phoenix Cinema", script: "scrape:phoenix", priority: 3 },
 ];
 
 // Dedupe by script (chains share the same script)

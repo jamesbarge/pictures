@@ -19,7 +19,7 @@ import { combineDateAndTime } from "../utils/date-parser";
 import { checkHealth } from "../utils/health-check";
 
 const DAVID_LEAN_CONFIG: ScraperConfig = {
-  cinemaId: "david-lean",
+  cinemaId: "david-lean-cinema",
   baseUrl: "https://www.davidleancinema.uk",
   requestsPerMinute: 10,
   delayBetweenRequests: 1000,
