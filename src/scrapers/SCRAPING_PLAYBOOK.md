@@ -77,6 +77,25 @@ Use this format when recording cinema-specific quirks:
 - Vista site codes: SOH1, MAY1, BLO1, ALD1, VIC1, HOX1, KIN1, RIC1, WIM01, CAM1
 - Last verified (2026-03-18): SSR token extraction working, all venues returning data
 
+### Barbican
+- Scraper: `src/scrapers/cinemas/barbican.ts`
+- Source URL pattern: `https://www.barbican.org.uk/whats-on/cinema?day=YYYY-MM-DD`
+- Approach: Daily cinema listing page (Cheerio, static HTML)
+- Date/time format: Times displayed as "12.00pm", "5.55pm" (dot separator, 12-hour with am/pm). Convert dot to colon before feeding to `parseScreeningTime()`.
+- Key selectors:
+  - `.cinema-listing-card` — film card container
+  - `.cinema-listing-card__title a` — film title + event URL (href to `/whats-on/YYYY/event/slug`)
+  - `.cinema-instance-list__instance` — individual showtime
+  - `a[href*="tickets.barbican"], a[href*="choose-seats"]` — booking link (text is the time)
+  - Sold out: no booking link; `<span>` contains "X.XXpm (Sold out)"
+- Known pitfalls:
+  - **BST timezone**: Displayed times are UK local. Must use `ukLocalToUTC()` to convert.
+  - **Sold-out screenings**: Have no `<a>` tag, only a `<span>` with "(Sold out)" appended to the time.
+  - **Coverage**: The `/whats-on/cinema?day=` page covers ALL cinema series (New Releases, Cold War Visions, Relaxed Screenings, London Soundtrack Festival, etc.). The old `/whats-on/series/new-releases` page only covered one series.
+  - **Day range**: The nav shows ~7 days but the `?day=` parameter accepts any future date. We scrape 14 days ahead.
+  - **Old performances endpoint**: The `/whats-on/event/{nodeId}/performances` page still works but its `datetime` attribute has a misleading `Z` suffix — the values are actually UK local time, not UTC. The old scraper used `new Date(attr)` which was off by 1 hour during BST.
+- Last verified (2026-04-10): Rewrote to use daily listing approach. 9 screenings parsed from April 10 test page, matching website exactly.
+
 ### Everyman
 - Scraper: `src/scrapers/chains/everyman.ts`
 - Notes: Playwright-heavy; more sensitive to markup and client-side app changes.
