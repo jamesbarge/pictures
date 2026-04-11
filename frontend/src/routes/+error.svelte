@@ -1,17 +1,11 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { browser } from '$app/environment';
 	import { onMount } from 'svelte';
-	import posthog from 'posthog-js';
+	import { trackException } from '$lib/analytics/posthog';
 
 	onMount(() => {
-		if (browser && page.error) {
-			posthog.capture('$exception', {
-				$exception_message: page.error.message,
-				$exception_type: 'SvelteKitError',
-				status_code: page.status,
-				url: window.location.href
-			});
+		if (page.error) {
+			trackException(page.error.message, page.status);
 		}
 	});
 </script>

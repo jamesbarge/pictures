@@ -268,6 +268,18 @@ export function resetUser() {
 	posthog.reset();
 }
 
+// ── Error Tracking ──────────────────────────────────────────────
+
+export function trackException(message: string, statusCode?: number) {
+	if (!browser) return;
+	posthog.capture('$exception', {
+		$exception_message: message,
+		$exception_type: 'SvelteKitError',
+		status_code: statusCode,
+		url: window.location.href
+	});
+}
+
 // ── Calendar & Share Events ─────────────────────────────────────
 
 export function trackCalendarExport(screening: ScreeningContext) {

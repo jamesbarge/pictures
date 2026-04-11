@@ -2,7 +2,7 @@
 	import { page } from '$app/state';
 	import { browser } from '$app/environment';
 	import posthog from 'posthog-js';
-	import { initPostHog, trackPageview, isAdminEmail } from './posthog';
+	import { initPostHog, trackPageview } from './posthog';
 	import { cookieConsent } from '$lib/stores/cookie-consent.svelte';
 	import CookieConsentBanner from '$lib/components/ui/CookieConsentBanner.svelte';
 
@@ -12,7 +12,7 @@
 
 	// ── Consent Management ──────────────────────────────────────────
 	type TrackingDecision = 'enable' | 'disable' | 'wait';
-	let lastAppliedDecision: TrackingDecision | null = null;
+	let lastAppliedDecision = $state<TrackingDecision | null>(null);
 
 	$effect(() => {
 		if (!browser) return;
@@ -31,6 +31,8 @@
 		if (decision === 'wait' || decision === lastAppliedDecision) return;
 
 		if (decision === 'enable') {
+			// Don't re-enable if admin was opted out by identifyUser()
+			if (posthog.has_opted_out_capturing()) return;
 			posthog.opt_in_capturing();
 			posthog.set_config({ persistence: 'localStorage+cookie' });
 			posthog.startSessionRecording();
