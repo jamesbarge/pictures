@@ -7,6 +7,8 @@
 	import { filters } from '$lib/stores/filters.svelte';
 	import { preferences } from '$lib/stores/preferences.svelte';
 	import { formatScreeningDate, toLondonDateStr, groupBy } from '$lib/utils';
+	import { trackFilterNoResults } from '$lib/analytics/posthog';
+	import { browser } from '$app/environment';
 
 	let { data } = $props();
 
@@ -113,6 +115,28 @@
 					cinema: s.cinema ?? { id: '', name: 'Unknown', shortName: null }
 				}))
 		}));
+	});
+
+	// Track when filters produce no results
+	let lastTrackedEmpty = false;
+
+	$effect(() => {
+		if (!browser) return;
+		const hasFilters = filters.cinemaIds.length > 0 || filters.dateFrom || filters.formats.length > 0 ||
+			filters.programmingTypes.length > 0 || filters.timeFrom !== null || filters.filmSearch;
+		const isEmpty = filmMap.size === 0;
+
+		if (isEmpty && hasFilters && !lastTrackedEmpty) {
+			trackFilterNoResults({
+				cinemaIds: filters.cinemaIds,
+				formats: filters.formats,
+				dateFrom: filters.dateFrom,
+				programmingTypes: filters.programmingTypes
+			});
+			lastTrackedEmpty = true;
+		} else if (!isEmpty) {
+			lastTrackedEmpty = false;
+		}
 	});
 </script>
 

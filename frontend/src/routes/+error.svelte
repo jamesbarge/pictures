@@ -1,5 +1,13 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import { onMount } from 'svelte';
+	import { trackException } from '$lib/analytics/posthog';
+
+	onMount(() => {
+		if (page.error) {
+			trackException(page.error.message, page.status);
+		}
+	});
 </script>
 
 <svelte:head>

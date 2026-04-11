@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import { formatTime } from '$lib/utils';
+	import { trackBookingClick } from '$lib/analytics/posthog';
 
 	interface TableFilm {
 		id: string;
@@ -102,6 +103,17 @@
 						rel="noopener noreferrer"
 						class="screening-row"
 						aria-label="Book {formatTime(screening.datetime)} at {screening.cinema?.name ?? 'cinema'}"
+						onclick={() => trackBookingClick({
+							filmId: film.id,
+							filmTitle: film.title,
+							filmYear: film.year,
+							screeningId: screening.id,
+							screeningTime: screening.datetime,
+							cinemaId: screening.cinema?.id,
+							cinemaName: screening.cinema?.name,
+							format: screening.format,
+							bookingUrl: screening.bookingUrl
+						}, 'calendar')}
 					>
 						<time class="sr-time" datetime={screening.datetime}>{formatTime(screening.datetime)}</time>
 						<span class="sr-cinema">{screening.cinema?.name ?? 'Unknown'}</span>

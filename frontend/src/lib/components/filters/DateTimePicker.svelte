@@ -3,6 +3,7 @@
 	import { filters } from '$lib/stores/filters.svelte';
 	import { TIME_PRESETS, formatHour } from '$lib/constants/filters';
 	import { toLondonDateStr } from '$lib/utils';
+	import { trackFilterChange } from '$lib/analytics/posthog';
 
 	let open = $state(false);
 	let showCustomTime = $state(false);
@@ -120,17 +121,21 @@
 
 	function selectPreset(preset: 'today' | 'weekend' | '7days') {
 		filters.setDatePreset(preset);
+		trackFilterChange('date', preset, 'set');
 	}
 
 	function clearDate() {
 		filters.setDatePreset(null);
+		trackFilterChange('date', null, 'cleared');
 	}
 
 	function selectTimePreset(from: number, to: number) {
 		if (filters.timeFrom === from && filters.timeTo === to) {
 			filters.clearTimeRange();
+			trackFilterChange('time', null, 'cleared');
 		} else {
 			filters.setTimePreset(from, to);
+			trackFilterChange('time', `${formatHour(from)}-${formatHour(to)}`, 'set');
 		}
 	}
 

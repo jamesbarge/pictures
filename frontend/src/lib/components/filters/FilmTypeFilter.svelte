@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { filters } from '$lib/stores/filters.svelte';
+	import { trackFilterChange } from '$lib/analytics/posthog';
 
 	const options = [
 		{ value: 'all', label: 'ALL' },
@@ -15,6 +16,7 @@
 	});
 
 	function handleSelect(value: string) {
+		trackFilterChange('programming_type', value, 'set');
 		if (value === 'all') {
 			filters.programmingTypes = [];
 		} else if (value === 'new') {

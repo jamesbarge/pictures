@@ -3,6 +3,8 @@
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
 	import type { ScreeningWithDetails } from '$lib/types';
 	import { formatDate } from '$lib/utils';
+	import { trackTonightNoScreenings } from '$lib/analytics/posthog';
+	import { onMount } from 'svelte';
 
 	let { data } = $props();
 
@@ -20,6 +22,12 @@
 			}
 		}
 		return [...map.values()];
+	});
+
+	onMount(() => {
+		if (filmMap.length === 0) {
+			trackTonightNoScreenings();
+		}
 	});
 </script>
 
