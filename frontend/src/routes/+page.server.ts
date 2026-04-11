@@ -33,7 +33,12 @@ interface ScreeningsResponse {
 export const load: PageServerLoad = async ({ fetch, setHeaders }) => {
 	setHeaders({ 'cache-control': 'public, s-maxage=3600, stale-while-revalidate=86400' });
 
-	const data = await apiFetch<ScreeningsResponse>('/api/screenings?limit=200', fetch);
+	const end = new Date();
+	end.setDate(end.getDate() + 30);
+	const data = await apiFetch<ScreeningsResponse>(
+		`/api/screenings?endDate=${end.toISOString()}`,
+		fetch
+	);
 
 	return {
 		screenings: data.screenings.map((s) => ({
