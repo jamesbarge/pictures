@@ -1,3 +1,11 @@
+## 2026-04-11: Fix Homepage — Show Full Month of Screenings
+**PR**: #421 | **Files**: `frontend/src/routes/+page.server.ts`
+- Homepage only showed today's screenings because `?limit=200` triggered cursor pagination and today's 250+ screenings consumed the entire limit
+- Removed limit param, added 30-day `endDate` — API's non-paginated path returns all ~3,000 screenings
+- ISR caches for 1 hour so the full month is served from Vercel's edge cache instantly
+
+---
+
 ## 2026-04-08: Comprehensive Mobile UI Fixes
 **PR**: #409 | **Files**: `Header.svelte`, `Dropdown.svelte`, `CinemaPicker.svelte`, `DateTimePicker.svelte`, `app.css`, `cinemas/+page.svelte`, `reachable/+page.svelte`, `TableView.svelte`, `MobilePanel.svelte`, `+layout.svelte`, `+page.svelte`
 - Fix dropdown overflow caused by `100vw` width calculation on mobile
