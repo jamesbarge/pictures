@@ -16,7 +16,15 @@
 		if (userId && userId !== lastUserId) {
 			// User signed in — start sync and identify for analytics
 			initSync(() => ctx.session.getToken());
-			identifyUser(userId);
+			identifyUser(userId, {
+				email: ctx.user?.primaryEmailAddress?.emailAddress,
+				name: ctx.user?.fullName,
+				firstName: ctx.user?.firstName,
+				lastName: ctx.user?.lastName,
+				username: ctx.user?.username,
+				imageUrl: ctx.user?.imageUrl,
+				createdAt: ctx.user?.createdAt
+			});
 			lastUserId = userId;
 		} else if (!userId && lastUserId) {
 			// User signed out

@@ -3,6 +3,7 @@
 	import Checkbox from '$lib/components/ui/Checkbox.svelte';
 	import { filters } from '$lib/stores/filters.svelte';
 	import { FORMAT_OPTIONS } from '$lib/constants/filters';
+	import { trackFilterChange } from '$lib/analytics/posthog';
 
 	let open = $state(false);
 
@@ -36,7 +37,11 @@
 				<Checkbox
 					checked={filters.formats.includes(fmt.value)}
 					label={fmt.label}
-					onToggle={() => filters.toggleFormat(fmt.value)}
+					onToggle={() => {
+						const wasSelected = filters.formats.includes(fmt.value);
+						filters.toggleFormat(fmt.value);
+						trackFilterChange('format', fmt.label, wasSelected ? 'removed' : 'added');
+					}}
 				/>
 			{/each}
 		</div>

@@ -1,5 +1,19 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import { browser } from '$app/environment';
+	import { onMount } from 'svelte';
+	import posthog from 'posthog-js';
+
+	onMount(() => {
+		if (browser && page.error) {
+			posthog.capture('$exception', {
+				$exception_message: page.error.message,
+				$exception_type: 'SvelteKitError',
+				status_code: page.status,
+				url: window.location.href
+			});
+		}
+	});
 </script>
 
 <svelte:head>
