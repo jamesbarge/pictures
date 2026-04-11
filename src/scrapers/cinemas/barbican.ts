@@ -1,13 +1,30 @@
 /**
  * Barbican Cinema Scraper
- * Scrapes film listings from barbican.org.uk
+ *
+ * Strategy: Scrape the daily cinema listing page at /whats-on/cinema?day=YYYY-MM-DD
+ * which shows ALL cinema screenings for a given day across every series (New Releases,
+ * Cold War Visions, Relaxed Screenings, London Soundtrack Festival, etc.).
+ *
+ * This is much more reliable than the old approach of scraping /whats-on/series/new-releases
+ * then fetching individual film pages and performance endpoints, because:
+ * 1. It covers ALL cinema series, not just "new-releases"
+ * 2. Fewer HTTP requests (14 pages vs 48+)
+ * 3. All data (title, time, booking URL) is on one page per day
+ * 4. No fragile node ID extraction step
+ *
+ * Each day page contains .cinema-listing-card elements with film titles and
+ * .cinema-instance-list__instance elements with showtimes and booking links.
+ * Times are displayed in UK local format like "12.00pm", "5.55pm".
  */
 
 import { BaseScraper } from "../base";
 import type { RawScreening, ScraperConfig } from "../types";
 import type { CheerioAPI } from "../utils/cheerio-types";
-import { parseFilmMetadata } from "../utils/metadata-parser";
+import { parseScreeningTime, ukLocalToUTC } from "../utils/date-parser";
 import { FestivalDetector } from "../festivals/festival-detector";
+
+/** Number of days ahead to scrape from today */
+const DAYS_AHEAD = 14;
 
 export class BarbicanScraper extends BaseScraper {
   config: ScraperConfig = {
@@ -18,80 +35,27 @@ export class BarbicanScraper extends BaseScraper {
   };
 
   protected async fetchPages(): Promise<string[]> {
-    // First get list of cinema films
-    const listingUrl = `${this.config.baseUrl}/whats-on/series/new-releases`;
-    console.log(`[${this.config.cinemaId}] Fetching film listing: ${listingUrl}`);
-
-    const listingHtml = await this.fetchUrl(listingUrl);
-    const $ = this.parseHtml(listingHtml);
-
-    // Extract film URLs - they're in format /whats-on/2025/event/slug
-    const filmUrls = new Set<string>();
-    $('a[href*="/whats-on/"]').each((_, el) => {
-      const href = $(el).attr("href");
-      if (href && /\/whats-on\/\d{4}\/event\//.test(href)) {
-        const fullUrl = href.startsWith("http") ? href : `${this.config.baseUrl}${href}`;
-        filmUrls.add(fullUrl);
-      }
-    });
-
-    console.log(`[${this.config.cinemaId}] Found ${filmUrls.size} film pages`);
-
-    // Fetch each film's detail page to get node ID, then fetch performances
     const pages: string[] = [];
-    const processedNodeIds = new Set<string>();
+    const today = new Date();
 
-    for (const filmUrl of Array.from(filmUrls).slice(0, 30)) {
+    for (let i = 0; i < DAYS_AHEAD; i++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() + i);
+      const dateStr = date.toISOString().split("T")[0]; // YYYY-MM-DD
+
+      const url = `${this.config.baseUrl}/whats-on/cinema?day=${dateStr}`;
+      console.log(`[${this.config.cinemaId}] Fetching: ${url}`);
+
       try {
-        console.log(`[${this.config.cinemaId}] Fetching: ${filmUrl}`);
-        const filmHtml = await this.fetchUrl(filmUrl);
-        const film$ = this.parseHtml(filmHtml);
-
-        // Get title - strip BBFC ratings like (15), (12A), (PG), etc.
-        let title = film$("h1").first().text().trim() ||
-                   film$('meta[property="og:title"]').attr("content")?.replace(" | Barbican", "").trim() ||
-                   "Unknown";
-
-        // Normalize whitespace (including newlines) and remove BBFC ratings
-        // Ratings can appear after a newline, e.g., "Die My Love\n(15)"
-        title = title
-          .replace(/\s+/g, " ")  // Collapse all whitespace (including newlines) to single spaces
-          .replace(/\s*\((U|PG|12A?|15|18)\*?\)\s*$/i, "")  // Remove BBFC rating at end
-          .trim();
-
-        // Find node ID from the booking button endpoint or page
-        const nodeMatch = filmHtml.match(/node\/(\d+)/);
-        if (!nodeMatch) {
-          console.log(`[${this.config.cinemaId}] No node ID found for ${title}`);
-          continue;
-        }
-
-        const nodeId = nodeMatch[1];
-        if (processedNodeIds.has(nodeId)) {
-          continue; // Skip duplicates
-        }
-        processedNodeIds.add(nodeId);
-
-        // Extract metadata (director, year) from the film detail page
-        // Barbican often includes this in the page content
-        const pageText = film$("body").text();
-        const metadata = parseFilmMetadata(pageText);
-
-        // Fetch performances page
-        const performancesUrl = `${this.config.baseUrl}/whats-on/event/${nodeId}/performances`;
-        console.log(`[${this.config.cinemaId}] Fetching performances for ${title}`);
-
-        const performancesHtml = await this.fetchUrl(performancesUrl);
-
-        // Store title, metadata, and performances HTML for parsing
-        pages.push(JSON.stringify({ title, nodeId, html: performancesHtml, metadata }));
-
-        await this.delay(this.config.delayBetweenRequests);
+        const html = await this.fetchUrl(url);
+        // Store the date and HTML together for parsing
+        pages.push(JSON.stringify({ date: dateStr, html }));
       } catch (error) {
-        console.error(`[${this.config.cinemaId}] Failed to fetch ${filmUrl}:`, error);
+        console.error(`[${this.config.cinemaId}] Failed to fetch ${url}:`, error);
       }
     }
 
+    console.log(`[${this.config.cinemaId}] Fetched ${pages.length} day pages`);
     return pages;
   }
 
@@ -101,17 +65,17 @@ export class BarbicanScraper extends BaseScraper {
 
     for (const page of htmlPages) {
       try {
-        const { title, nodeId, html, metadata } = JSON.parse(page);
+        const { date, html } = JSON.parse(page);
         const $ = this.parseHtml(html);
 
-        const filmScreenings = this.parsePerformances($, title, nodeId, metadata);
-        screenings.push(...filmScreenings);
+        const dayScreenings = this.parseDayPage($, date);
+        screenings.push(...dayScreenings);
 
-        if (filmScreenings.length > 0) {
-          console.log(`[${this.config.cinemaId}] ${title}: ${filmScreenings.length} screenings`);
+        if (dayScreenings.length > 0) {
+          console.log(`[${this.config.cinemaId}] ${date}: ${dayScreenings.length} screenings`);
         }
       } catch (error) {
-        console.error(`[${this.config.cinemaId}] Error parsing performances:`, error);
+        console.error(`[${this.config.cinemaId}] Error parsing day page:`, error);
       }
     }
 
@@ -119,60 +83,117 @@ export class BarbicanScraper extends BaseScraper {
     return screenings;
   }
 
-  private parsePerformances(
-    $: CheerioAPI,
-    title: string,
-    nodeId: string,
-    metadata?: { director?: string; year?: number }
-  ): RawScreening[] {
+  /**
+   * Parse a single day's cinema listing page.
+   *
+   * Structure:
+   *   .cinema-listing-card
+   *     .cinema-listing-card__title > a[href]  (film title + event URL)
+   *     .cinema-listing-card__instances
+   *       .cinema-instance-list__instance
+   *         a[href*="tickets.barbican"]  (booking link with time text like "12.00pm")
+   *         — OR for sold-out screenings —
+   *         span containing "X.XXpm (Sold out)"
+   */
+  private parseDayPage($: CheerioAPI, dateStr: string): RawScreening[] {
     const screenings: RawScreening[] = [];
-    const now = new Date();
+    const [year, month, day] = dateStr.split("-").map(Number);
 
-    // Each screening is in a .instance-listing element
-    $(".instance-listing").each((_, el) => {
-      const $instance = $(el);
+    $(this.getSelector("filmCard", ".cinema-listing-card")).each((_, cardEl) => {
+      const $card = $(cardEl);
 
-      // Get datetime from time[datetime] attribute
-      const timeEl = $instance.find("time[datetime]");
-      const datetimeAttr = timeEl.attr("datetime");
+      // Extract film title and event URL
+      const titleLink = $card.find(
+        this.getSelector("titleLink", ".cinema-listing-card__title a")
+      );
+      const rawTitle = titleLink.text().trim();
+      const eventHref = titleLink.attr("href") || "";
 
-      if (!datetimeAttr) return;
+      if (!rawTitle) return;
 
-      const datetime = new Date(datetimeAttr);
+      // Clean title: normalize whitespace and strip BBFC ratings
+      const title = rawTitle
+        .replace(/\s+/g, " ")
+        .replace(/\s*\((U|PG|12A?|15|18)\*?\)\s*$/i, "")
+        .trim();
 
-      // Skip past screenings
-      if (datetime < now) return;
+      // Build the event page URL for fallback booking links
+      const eventUrl = eventHref.startsWith("http")
+        ? eventHref
+        : `${this.config.baseUrl}${eventHref}`;
 
-      // Get venue/screen
-      const venue = $instance.find(".instance-listing__venue strong").text().trim();
+      // Parse each showtime instance within this film card
+      $card
+        .find(this.getSelector("instance", ".cinema-instance-list__instance"))
+        .each((_, instanceEl) => {
+          const $instance = $(instanceEl);
 
-      // Get booking URL - check multiple selectors as Barbican uses different formats
-      let bookingLink = $instance.find('a[href*="tickets.barbican"]').attr("href") ||
-                       $instance.find('a[href*="choose-seats"]').attr("href") ||
-                       $instance.find('a[href*="/book/"]').attr("href") ||
-                       $instance.find('a.btn--primary[href]').attr("href");
+          // Try to get time from booking link first (preferred — has href for booking URL)
+          const bookingLink = $instance.find('a[href*="tickets.barbican"], a[href*="choose-seats"]');
+          let timeText: string | null = null;
+          let bookingUrl: string | null = null;
+          let soldOut = false;
 
-      // Ensure absolute URL - relative URLs need base URL prepended
-      if (bookingLink && !bookingLink.startsWith("http")) {
-        bookingLink = `${this.config.baseUrl}${bookingLink.startsWith("/") ? "" : "/"}${bookingLink}`;
-      }
+          if (bookingLink.length > 0) {
+            // The link text contains the time, e.g. "12.00pm"
+            timeText = bookingLink.text().trim();
+            bookingUrl = bookingLink.attr("href") || null;
+          } else {
+            // Sold out: no booking link, time in a span like "6.30pm (Sold out)"
+            const spanText = $instance.find("span").first().text().trim();
+            const soldOutMatch = spanText.match(
+              /(\d{1,2}\.\d{2}(?:am|pm))\s*\(Sold out\)/i
+            );
+            if (soldOutMatch) {
+              timeText = soldOutMatch[1];
+              soldOut = true;
+            }
+          }
 
-      // Validate URL format before using
-      const bookingUrl = bookingLink && bookingLink.startsWith("http")
-        ? bookingLink
-        : `${this.config.baseUrl}/whats-on/event/${nodeId}/performances`;
+          if (!timeText) return;
 
-      screenings.push({
-        filmTitle: title,
-        datetime,
-        screen: venue || undefined,
-        bookingUrl,
-        sourceId: `barbican-${nodeId}-${datetime.toISOString()}`,
-        // Pass extracted metadata for better TMDB matching
-        year: metadata?.year,
-        director: metadata?.director,
-        ...FestivalDetector.detect("barbican", title, datetime, bookingUrl),
-      });
+          // Parse time — Barbican uses dot separator: "12.00pm", "5.55pm"
+          // Convert dot to colon for the shared parser: "12:00pm", "5:55pm"
+          const normalizedTime = timeText.replace(".", ":");
+          const parsedTime = parseScreeningTime(normalizedTime);
+
+          if (!parsedTime) {
+            console.warn(
+              `[${this.config.cinemaId}] Could not parse time "${timeText}" for ${title}`
+            );
+            return;
+          }
+
+          // Warn about suspiciously early times
+          if (parsedTime.hours < 10) {
+            console.warn(
+              `[${this.config.cinemaId}] Suspiciously early time ${parsedTime.hours}:${String(parsedTime.minutes).padStart(2, "0")} for ${title} — check parse`
+            );
+          }
+
+          // Construct UTC datetime from UK local time
+          // month is 0-indexed for ukLocalToUTC, dateStr month is 1-indexed
+          const datetime = ukLocalToUTC(year, month - 1, day, parsedTime.hours, parsedTime.minutes);
+
+          // Build a unique source ID from date + time + title slug
+          const titleSlug = title
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-")
+            .slice(0, 40);
+          const sourceId = `barbican-${dateStr}-${String(parsedTime.hours).padStart(2, "0")}${String(parsedTime.minutes).padStart(2, "0")}-${titleSlug}`;
+
+          // Fall back to event page URL if no booking link (sold out)
+          const finalBookingUrl = bookingUrl || eventUrl;
+
+          screenings.push({
+            filmTitle: title,
+            datetime,
+            bookingUrl: finalBookingUrl,
+            sourceId,
+            availabilityStatus: soldOut ? "sold_out" : "available",
+            ...FestivalDetector.detect("barbican", title, datetime, finalBookingUrl),
+          });
+        });
     });
 
     return screenings;

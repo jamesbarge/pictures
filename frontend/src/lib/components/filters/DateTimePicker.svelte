@@ -293,6 +293,7 @@
 
 	.datetime-dropdown {
 		width: 320px;
+		max-width: 100%;
 		padding: 0.5rem 0;
 	}
 

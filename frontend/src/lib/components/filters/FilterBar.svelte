@@ -7,9 +7,14 @@
 	import ViewToggle from './ViewToggle.svelte';
 	import ActiveFilterChips from './ActiveFilterChips.svelte';
 	import ClearFiltersButton from './ClearFiltersButton.svelte';
-	import type { Cinema } from '$lib/types';
+	interface FilterCinema {
+		id: string;
+		name: string;
+		shortName: string | null;
+		address: { area: string } | null;
+	}
 
-	let { cinemas = [] }: { cinemas: Cinema[] } = $props();
+	let { cinemas = [] }: { cinemas: FilterCinema[] } = $props();
 
 	let filtersOpen = $state(false);
 </script>
@@ -84,7 +89,7 @@
 		display: flex;
 		align-items: center;
 		gap: 0;
-		height: 40px;
+		min-height: 40px;
 	}
 
 	.filter-zone {
@@ -185,15 +190,16 @@
 
 	@media (max-width: 767px) {
 		.desktop-only {
-			display: none;
+			display: none !important;
 		}
 
 		.mobile-only {
-			display: flex;
+			display: flex !important;
 		}
 
 		.filter-grid {
 			flex-wrap: wrap;
+			height: auto;
 		}
 
 		.filter-zone-search {
@@ -203,6 +209,7 @@
 			margin-bottom: 0.25rem;
 			padding-right: 0;
 			margin-right: 0;
+			border-right: none;
 		}
 
 		.filter-zone-tabs {

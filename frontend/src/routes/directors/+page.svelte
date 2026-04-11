@@ -1,6 +1,11 @@
 <script lang="ts">
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
-	import type { DirectorEntry } from './+page.ts';
+
+	interface DirectorEntry {
+		name: string;
+		filmCount: number;
+		films: string[];
+	}
 
 	let { data }: { data: { directors: DirectorEntry[] } } = $props();
 	let search = $state('');

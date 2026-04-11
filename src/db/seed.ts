@@ -304,8 +304,8 @@ const londonCinemas = [
       "The birthplace of British cinema, where the Lumière brothers screened the first moving pictures in 1896. Historic single-screen venue at the University of Westminster.",
   },
   {
-    id: "david-lean",
-    name: "David Lean Cinema",
+    id: "david-lean-cinema",
+    name: "The David Lean Cinema",
     shortName: "David Lean",
     chain: null,
     address: {

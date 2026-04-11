@@ -252,7 +252,7 @@ const SCRAPERS: ScraperDefinition[] = [
     },
   },
   {
-    id: "phoenix",
+    id: "phoenix-east-finchley",
     name: "Phoenix Cinema",
     type: "independent",
     createConfig: async () => {
@@ -260,7 +260,7 @@ const SCRAPERS: ScraperDefinition[] = [
       return {
         type: "single",
         venue: {
-          id: "phoenix",
+          id: "phoenix-east-finchley",
           name: "Phoenix Cinema",
           shortName: "Phoenix",
           website: "https://phoenixcinema.co.uk",

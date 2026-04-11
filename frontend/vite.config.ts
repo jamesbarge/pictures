@@ -4,6 +4,10 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
 	plugins: [tailwindcss(), sveltekit()],
+	ssr: {
+		// date-fns must be bundled, not externalized — Vite 7 SSR fails to resolve it otherwise
+		noExternal: ['date-fns']
+	},
 	server: {
 		proxy: {
 			'/api': {

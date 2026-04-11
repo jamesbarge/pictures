@@ -99,10 +99,10 @@
 				id: film.id,
 				title: film.title,
 				year: film.year,
-				directors: film.directors ?? [],
+				directors: film.director ? [film.director] : [],
 				runtime: film.runtime,
 				isRepertory: film.isRepertory ?? false,
-				genres: film.genres ?? [],
+				genres: [],
 				posterUrl: film.posterUrl
 			},
 			screenings: screenings
@@ -184,9 +184,9 @@
 									id: film.id,
 									title: film.title,
 									year: film.year,
-									director: film.directors?.[0] ?? null,
+									director: film.director ?? null,
 									runtime: film.runtime,
-									genres: film.genres ?? [],
+									genres: [],
 									posterUrl: film.posterUrl,
 									tmdbId: null
 								}}
@@ -227,6 +227,12 @@
 		.film-grid {
 			grid-template-columns: repeat(4, 1fr);
 			column-gap: 1.25rem;
+		}
+	}
+
+	@media (max-width: 320px) {
+		.film-grid {
+			grid-template-columns: 1fr;
 		}
 	}
 

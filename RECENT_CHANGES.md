@@ -1,3 +1,22 @@
+## 2026-04-11: Fix Homepage — Show Full Month of Screenings
+**PR**: #421 | **Files**: `frontend/src/routes/+page.server.ts`
+- Homepage only showed today's screenings because `?limit=200` triggered cursor pagination and today's 250+ screenings consumed the entire limit
+- Removed limit param, added 30-day `endDate` — API's non-paginated path returns all ~3,000 screenings
+- ISR caches for 1 hour so the full month is served from Vercel's edge cache instantly
+
+---
+
+## 2026-04-08: Comprehensive Mobile UI Fixes
+**PR**: #409 | **Files**: `Header.svelte`, `Dropdown.svelte`, `CinemaPicker.svelte`, `DateTimePicker.svelte`, `app.css`, `cinemas/+page.svelte`, `reachable/+page.svelte`, `TableView.svelte`, `MobilePanel.svelte`, `+layout.svelte`, `+page.svelte`
+- Fix dropdown overflow caused by `100vw` width calculation on mobile
+- Add hamburger menu for mobile navigation (links were hidden with no replacement)
+- Increase touch targets: screening pills (28-32px), cinema cards (48px min), buttons
+- Add responsive typography scaling, MobilePanel height fix, TableView 480px breakpoint
+- New mobile audit script testing 13 routes at 3 viewports (360px, 375px, 390px)
+- 12 new Playwright regression tests for mobile nav, touch targets, dropdowns
+
+---
+
 ## 2026-04-06: Prevent Recurring Data Quality Issues at Source
 **PR**: #408 | **Files**: `src/scrapers/utils/film-title-cleaner.ts`, `src/scrapers/pipeline.ts`, `src/scrapers/utils/film-matching.ts`, `src/trigger/enrichment/daily-sweep.ts`
 - Add 10 new event prefixes from data-check patrol (Lob-sters, Gate's Birthday, Spare Ribs, etc.)

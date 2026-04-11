@@ -8,7 +8,7 @@ import { createDavidLeanScraper } from "./cinemas/david-lean";
 const config: SingleVenueConfig = {
   type: "single",
   venue: {
-    id: "david-lean",
+    id: "david-lean-cinema",
     name: "David Lean Cinema",
     shortName: "David Lean",
     website: "https://www.davidleancinema.org.uk",

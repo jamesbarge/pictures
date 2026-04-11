@@ -169,7 +169,12 @@
 			{#if loading}
 				<div class="results-loading">SEARCHING...</div>
 			{:else if totalResults === 0 && query.length >= 2}
-				<div class="results-empty">NO RESULTS</div>
+				<div class="results-empty">
+					<span>NO RESULTS</span>
+					<a href="/search?q={encodeURIComponent(query)}" class="search-all-link" onclick={() => { open = false; query = ''; }}>
+						SEARCH ALL DATES →
+					</a>
+				</div>
 			{:else}
 				{#if films.length > 0}
 					<div class="results-section-header">FILMS</div>
@@ -238,6 +243,13 @@
 		padding: 0.375rem 0.625rem;
 		border: 1px solid var(--color-border-subtle);
 		transition: border-color var(--duration-fast) var(--ease-sharp);
+		min-height: 44px;
+	}
+
+	@media (min-width: 768px) {
+		.search-input-wrap {
+			min-height: auto;
+		}
 	}
 
 	.search-input-wrap:focus-within {
@@ -266,11 +278,25 @@
 	}
 
 	.clear-btn {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		min-width: 44px;
+		min-height: 44px;
+		margin: -0.375rem -0.625rem -0.375rem 0;
 		padding: 2px;
 		color: var(--color-text-tertiary);
 		background: transparent;
 		border: none;
 		cursor: pointer;
+	}
+
+	@media (min-width: 768px) {
+		.clear-btn {
+			min-width: auto;
+			min-height: auto;
+			margin: 0;
+		}
 	}
 
 	.clear-btn:hover {
@@ -315,6 +341,24 @@
 		letter-spacing: 0.06em;
 		color: var(--color-text-tertiary);
 		text-align: center;
+	}
+
+	.results-empty {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+
+	.search-all-link {
+		font-size: var(--font-size-xs);
+		color: var(--color-text);
+		text-decoration: none;
+		font-weight: 500;
+		letter-spacing: 0.06em;
+	}
+
+	.search-all-link:hover {
+		text-decoration: underline;
 	}
 
 	.result-row {

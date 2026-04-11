@@ -3,9 +3,15 @@
 	import Checkbox from '$lib/components/ui/Checkbox.svelte';
 	import { filters } from '$lib/stores/filters.svelte';
 	import { trackFilterChange } from '$lib/analytics/posthog';
-	import type { Cinema } from '$lib/types';
 
-	let { cinemas = [] }: { cinemas: Cinema[] } = $props();
+	interface PickerCinema {
+		id: string;
+		name: string;
+		shortName: string | null;
+		address: { area: string } | null;
+	}
+
+	let { cinemas = [] }: { cinemas: PickerCinema[] } = $props();
 
 	let open = $state(false);
 	let search = $state('');
@@ -31,7 +37,7 @@
 	);
 
 	const grouped = $derived.by(() => {
-		const groups: Record<string, Cinema[]> = {};
+		const groups: Record<string, PickerCinema[]> = {};
 		for (const cinema of filteredCinemas) {
 			const area = cinema.address?.area ?? 'Other';
 			(groups[area] ??= []).push(cinema);
@@ -135,7 +141,7 @@
 	}
 
 	.cinema-dropdown {
-		width: calc(100vw - 2rem);
+		width: 100%;
 		max-width: 280px;
 	}
 

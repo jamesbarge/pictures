@@ -12,6 +12,7 @@ Before completing any task:
 2. Run type checking and linting
 3. Self-review: verify the solution matches the original request
 4. Check for regressions in related functionality
+5. **Always verify UI/frontend changes with Playwright** — run automated browser tests against the live site or dev server to confirm objectives were met. Never rely solely on code review for visual/layout changes; test them in a real browser at mobile and desktop viewports.
 
 Do not claim work is complete until all checks pass. Maximum 3 attempts per issue, then STOP and ask for guidance.
 
