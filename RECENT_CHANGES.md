@@ -1,3 +1,10 @@
+## 2026-04-16: Add phoenix legacy alias to Inngest known IDs
+**PR**: #426 | **Files**: `src/inngest/known-ids.ts`
+- Add `"phoenix"` as legacy alias for `phoenix-east-finchley` in `SCRAPER_REGISTRY_IDS`
+- Fixes 2 failing cinema-registry contract tests — last remaining CI test failures on main
+
+---
+
 ## 2026-04-16: Fix directors API TypeScript error blocking CI
 **PR**: #425 | **Files**: `src/app/api/directors/route.ts`
 - Replace `result.rows.map()` with `result.map()` — Drizzle's `db.execute()` returns a `RowList` (directly iterable), not an object with a `.rows` property
