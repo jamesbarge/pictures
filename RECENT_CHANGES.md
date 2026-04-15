@@ -1,3 +1,10 @@
+## 2026-04-16: Fix directors API TypeScript error blocking CI
+**PR**: #425 | **Files**: `src/app/api/directors/route.ts`
+- Replace `result.rows.map()` with `result.map()` — Drizzle's `db.execute()` returns a `RowList` (directly iterable), not an object with a `.rows` property
+- Fixes TS2339 error that has been failing CI on main since #420
+
+---
+
 ## 2026-04-15: Fix poster images not loading until hover
 **PR**: #424 | **Files**: `frontend/src/lib/components/calendar/FilmCard.svelte`
 - Remove `crossorigin="anonymous"` from poster `<img>` tags — caused lazy-loaded images to stall in the browser's IntersectionObserver when combined with CORS preflight overhead
