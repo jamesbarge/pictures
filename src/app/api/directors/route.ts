@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
     ORDER BY film_count DESC, d.director ASC
   `);
 
-  const directors = result.rows.map((row) => ({
+  const directors = result.map((row) => ({
     name: row.director,
     filmCount: row.film_count,
     films: row.films,
