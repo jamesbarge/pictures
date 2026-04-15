@@ -1,13 +1,13 @@
 <script lang="ts">
 	import FilmCard from '$lib/components/calendar/FilmCard.svelte';
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
-	import type { ScreeningWithDetails } from '$lib/types';
 	import { formatScreeningDate, toLondonDateStr, groupBy } from '$lib/utils';
 
 	let { data } = $props();
+	type LoadedScreening = (typeof data.screenings)[number];
 
 	const dayGroups = $derived.by(() => {
-		const allScreenings = data.screenings as ScreeningWithDetails[];
+		const allScreenings: LoadedScreening[] = data.screenings;
 		const grouped = groupBy(allScreenings.filter((s) => s.film), (s) => toLondonDateStr(s.datetime));
 
 		return Object.entries(grouped)

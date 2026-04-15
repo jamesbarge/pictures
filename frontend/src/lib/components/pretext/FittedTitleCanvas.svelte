@@ -1,3 +1,30 @@
+<script module lang="ts">
+	const MAX_IMAGE_CACHE = 50;
+	const imageLoadCache = new Map<string, Promise<HTMLImageElement>>();
+
+	function loadPosterImage(url: string): Promise<HTMLImageElement> {
+		const cached = imageLoadCache.get(url);
+		if (cached) return cached;
+
+		const pending = new Promise<HTMLImageElement>((resolve, reject) => {
+			const img = new Image();
+			img.crossOrigin = 'anonymous';
+			img.onload = () => resolve(img);
+			img.onerror = () => {
+				imageLoadCache.delete(url);
+				reject(new Error(`Failed to load poster image: ${url}`));
+			};
+			img.src = url;
+		});
+
+		imageLoadCache.set(url, pending);
+		if (imageLoadCache.size > MAX_IMAGE_CACHE) {
+			imageLoadCache.delete(imageLoadCache.keys().next().value!);
+		}
+		return pending;
+	}
+</script>
+
 <script lang="ts">
 	let { title, posterUrl }: { title: string; posterUrl: string } = $props();
 
@@ -103,17 +130,25 @@
 	$effect(() => {
 		// Re-run when posterUrl or title changes
 		const url = posterUrl;
-		const t = title;
+		void title;
 		visible = false;
 		posterImage = null;
+		let cancelled = false;
 
-		const img = new Image();
-		img.crossOrigin = 'anonymous';
-		img.onload = () => {
-			posterImage = img;
-			render();
+		loadPosterImage(url)
+			.then((img) => {
+				if (cancelled) return;
+				posterImage = img;
+				render();
+			})
+			.catch(() => {
+				if (cancelled) return;
+				visible = false;
+			});
+
+		return () => {
+			cancelled = true;
 		};
-		img.src = url;
 	});
 </script>
 

@@ -3,7 +3,7 @@
 	import { apiGet } from '$lib/api/client';
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
-	import { formatTime } from '$lib/utils';
+	import { formatTime, getPosterImageAttributes } from '$lib/utils';
 	import { onMount } from 'svelte';
 
 	interface WatchlistFilm {
@@ -124,7 +124,20 @@
 						{#each currentlyShowing as film (film.id)}
 							<a href="/film/{film.id}" class="watchlist-row">
 								{#if film.posterUrl}
-									<img src={film.posterUrl} alt="" class="wl-poster" loading="lazy" />
+									{@const posterImage = getPosterImageAttributes(film.posterUrl, {
+										baseSize: 'w92',
+										srcSetSizes: ['w92', 'w154'],
+										sizes: '36px'
+									})}
+									<img
+										src={posterImage?.src ?? film.posterUrl}
+										srcset={posterImage?.srcset}
+										sizes={posterImage?.sizes}
+										alt=""
+										class="wl-poster"
+										loading="lazy"
+										decoding="async"
+									/>
 								{:else}
 									<div class="wl-poster-empty"></div>
 								{/if}
@@ -160,7 +173,20 @@
 						{#each notPlaying as film (film.id)}
 							<a href="/film/{film.id}" class="watchlist-row muted">
 								{#if film.posterUrl}
-									<img src={film.posterUrl} alt="" class="wl-poster" loading="lazy" />
+									{@const posterImage = getPosterImageAttributes(film.posterUrl, {
+										baseSize: 'w92',
+										srcSetSizes: ['w92', 'w154'],
+										sizes: '36px'
+									})}
+									<img
+										src={posterImage?.src ?? film.posterUrl}
+										srcset={posterImage?.srcset}
+										sizes={posterImage?.sizes}
+										alt=""
+										class="wl-poster"
+										loading="lazy"
+										decoding="async"
+									/>
 								{:else}
 									<div class="wl-poster-empty"></div>
 								{/if}

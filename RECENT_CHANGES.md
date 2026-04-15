@@ -1,3 +1,13 @@
+## 2026-04-15: TMDB Responsive Poster Images
+**PR**: #423 | **Files**: `frontend/src/lib/utils.ts`, `frontend/src/app.html`, `FittedTitleCanvas.svelte`, `FilmCard.svelte`, `SearchInput.svelte`, `ReachableResults.svelte`, `film/[id]/+page.svelte`, `search/+page.svelte`, `watchlist/+page.svelte`, `tonight/+page.svelte`, `this-weekend/+page.svelte`, `festivals/+page.server.ts`
+- Add responsive `srcset` using TMDB's width tiers (w92–w780) so browsers pick optimal image size per device
+- Centralize image logic in `getPosterImageAttributes()` utility — all 8 consumer components use it
+- Add `preconnect` + `dns-prefetch` hints for TMDB CDN to eliminate connection latency
+- Module-level poster image cache in FittedTitleCanvas prevents redundant network requests
+- Watchlist thumbnails now load w92 (3KB) instead of original (500KB+)
+
+---
+
 ## 2026-04-11: Fix Homepage — Show Full Month of Screenings
 **PR**: #421 | **Files**: `frontend/src/routes/+page.server.ts`
 - Homepage only showed today's screenings because `?limit=200` triggered cursor pagination and today's 250+ screenings consumed the entire limit

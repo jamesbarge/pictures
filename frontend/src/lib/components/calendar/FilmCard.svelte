@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { formatTime } from '$lib/utils';
+	import { formatTime, getPosterImageAttributes } from '$lib/utils';
 	import FittedTitleCanvas from '$lib/components/pretext/FittedTitleCanvas.svelte';
 	import { trackScreeningClick } from '$lib/analytics/posthog';
 
@@ -64,6 +64,14 @@
 		if (film.genres?.length) parts.push(film.genres.slice(0, 2).join(', '));
 		return parts.join(' · ').toLowerCase();
 	});
+
+	const posterImage = $derived(
+		getPosterImageAttributes(film.posterUrl, {
+			baseSize: 'w342',
+			srcSetSizes: ['w185', 'w342', 'w500'],
+			sizes: '(min-width: 1280px) 220px, (min-width: 1024px) 23vw, (min-width: 768px) 30vw, 46vw'
+		})
+	);
 </script>
 
 <article
@@ -77,11 +85,14 @@
 		<div class="poster-container relative aspect-[2/3] overflow-hidden bg-[var(--color-bg-subtle)]">
 			{#if film.posterUrl}
 				<img
-					src={film.posterUrl}
+					src={posterImage?.src ?? film.posterUrl}
+					srcset={posterImage?.srcset}
+					sizes={posterImage?.sizes}
 					alt="{film.title} poster"
 					class="w-full h-full object-cover"
 					loading="lazy"
 					decoding="async"
+					crossorigin="anonymous"
 				/>
 			{:else}
 				<div class="w-full h-full flex items-center justify-center p-4">
@@ -94,7 +105,7 @@
 			{#if isHovered && film.posterUrl}
 				<FittedTitleCanvas
 					title={film.title}
-					posterUrl={film.posterUrl}
+					posterUrl={posterImage?.src ?? film.posterUrl}
 				/>
 			{/if}
 		</div>

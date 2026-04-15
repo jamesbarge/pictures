@@ -1,5 +1,6 @@
 <script lang="ts">
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
+	import { getPosterImageAttributes } from '$lib/utils';
 
 	let { data } = $props();
 
@@ -43,11 +44,19 @@
 						<a href="/film/{film.id}" class="group">
 							<div class="aspect-[2/3] bg-[var(--color-surface)] border border-[var(--color-border-subtle)] overflow-hidden mb-2">
 								{#if film.posterUrl}
+									{@const posterImage = getPosterImageAttributes(film.posterUrl, {
+										baseSize: 'w342',
+										srcSetSizes: ['w185', 'w342', 'w500'],
+										sizes: '(min-width: 1280px) 200px, (min-width: 1024px) 20vw, (min-width: 768px) 24vw, 46vw'
+									})}
 									<img
-										src={film.posterUrl}
+										src={posterImage?.src ?? film.posterUrl}
+										srcset={posterImage?.srcset}
+										sizes={posterImage?.sizes}
 										alt={film.title}
 										class="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-200"
 										loading="lazy"
+										decoding="async"
 									/>
 								{:else}
 									<div class="w-full h-full flex items-center justify-center p-2">

@@ -4,7 +4,7 @@
 	import JsonLd from '$lib/seo/JsonLd.svelte';
 	import { movieSchema, breadcrumbSchema } from '$lib/seo/json-ld';
 	import { filmStatuses } from '$lib/stores/film-status.svelte';
-	import { formatTime, formatScreeningDate, toLondonDateStr, groupBy } from '$lib/utils';
+	import { formatTime, formatScreeningDate, toLondonDateStr, groupBy, getPosterImageAttributes } from '$lib/utils';
 	import { trackFilmView, trackBookingClick, trackFilmStatusChange, trackCalendarExport } from '$lib/analytics/posthog';
 	import { browser } from '$app/environment';
 	import { onMount } from 'svelte';
@@ -46,6 +46,14 @@
 		const grouped = groupBy(futureScreenings, (s) => toLondonDateStr(s.datetime));
 		return Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b));
 	});
+
+	const posterImage = $derived(
+		getPosterImageAttributes(film.posterUrl, {
+			baseSize: 'w342',
+			srcSetSizes: ['w342', 'w500', 'w780'],
+			sizes: '(min-width: 768px) 280px, 50vw'
+		})
+	);
 </script>
 
 <svelte:head>
@@ -72,12 +80,15 @@
 		{#if film.posterUrl}
 			<div class="poster-col">
 				<img
-					src={film.posterUrl}
+					src={posterImage?.src ?? film.posterUrl}
+					srcset={posterImage?.srcset}
+					sizes={posterImage?.sizes}
 					alt="{film.title} poster"
 					class="w-full border border-[var(--color-border-subtle)]"
 					width="280"
 					height="420"
 					fetchpriority="high"
+					decoding="async"
 				/>
 			</div>
 		{/if}
