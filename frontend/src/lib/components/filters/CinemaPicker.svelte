@@ -2,6 +2,7 @@
 	import Dropdown from '$lib/components/ui/Dropdown.svelte';
 	import Checkbox from '$lib/components/ui/Checkbox.svelte';
 	import { filters } from '$lib/stores/filters.svelte';
+	import { trackFilterChange } from '$lib/analytics/posthog';
 
 	interface PickerCinema {
 		id: string;
@@ -90,7 +91,11 @@
 						<Checkbox
 							checked={filters.cinemaIds.includes(cinema.id)}
 							label={cinema.shortName ?? cinema.name}
-							onToggle={() => filters.toggleCinema(cinema.id)}
+							onToggle={() => {
+								const wasSelected = filters.cinemaIds.includes(cinema.id);
+								filters.toggleCinema(cinema.id);
+								trackFilterChange('cinema', cinema.name, wasSelected ? 'removed' : 'added');
+							}}
 						/>
 					{/each}
 				{/each}

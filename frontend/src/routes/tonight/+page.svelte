@@ -2,6 +2,8 @@
 	import FilmCard from '$lib/components/calendar/FilmCard.svelte';
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
 	import { formatDate } from '$lib/utils';
+	import { trackTonightNoScreenings } from '$lib/analytics/posthog';
+	import { onMount } from 'svelte';
 
 	let { data } = $props();
 	type LoadedScreening = (typeof data.screenings)[number];
@@ -20,6 +22,12 @@
 			}
 		}
 		return [...map.values()];
+	});
+
+	onMount(() => {
+		if (filmMap.length === 0) {
+			trackTonightNoScreenings();
+		}
 	});
 </script>
 

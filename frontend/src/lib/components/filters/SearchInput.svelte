@@ -3,7 +3,7 @@
 	import { onMount } from 'svelte';
 	import { debounce, getPosterImageAttributes } from '$lib/utils';
 	import { apiGet } from '$lib/api/client';
-	import { trackSearch, trackSearchNoResults } from '$lib/analytics/posthog';
+	import { trackSearch, trackSearchNoResults, trackSearchResultClick } from '$lib/analytics/posthog';
 
 	interface SearchResult {
 		id: string;
@@ -86,7 +86,13 @@
 
 	function navigateToResult(index: number) {
 		if (index < films.length) {
-			goto(`/film/${films[index].id}`);
+			const film = films[index];
+			trackSearchResultClick(query, {
+				filmId: film.id,
+				filmTitle: film.title,
+				filmYear: film.year
+			}, index);
+			goto(`/film/${film.id}`);
 		} else {
 			const cinemaIndex = index - films.length;
 			goto(`/cinemas/${cinemas[cinemaIndex].id}`);

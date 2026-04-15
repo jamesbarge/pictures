@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { formatTime, getPosterImageAttributes } from '$lib/utils';
 	import FittedTitleCanvas from '$lib/components/pretext/FittedTitleCanvas.svelte';
+	import { trackScreeningClick } from '$lib/analytics/posthog';
 
 	interface Screening {
 		id: string;
@@ -138,6 +139,14 @@
 						target={screening.bookingUrl ? '_blank' : undefined}
 						rel={screening.bookingUrl ? 'noopener noreferrer' : undefined}
 						aria-label="{screening.bookingUrl ? 'Book' : 'View'} {film.title} at {formatTime(screening.datetime)}, {screening.cinemaName}"
+						onclick={() => trackScreeningClick({
+							filmId: String(film.id),
+							filmTitle: film.title,
+							filmYear: film.year,
+							screeningId: screening.id,
+							screeningTime: screening.datetime,
+							cinemaName: screening.cinemaName
+						}, 'calendar')}
 					>
 						<time class="font-semibold" datetime={screening.datetime}>{formatTime(screening.datetime)}</time>
 						<span>{screening.cinemaName}</span>

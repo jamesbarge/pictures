@@ -5,7 +5,15 @@
 
 import posthog from 'posthog-js';
 import { browser } from '$app/environment';
-import { PUBLIC_POSTHOG_KEY, PUBLIC_POSTHOG_HOST } from '$env/static/public';
+import { PUBLIC_POSTHOG_KEY } from '$env/static/public';
+
+// Admin emails excluded from all PostHog tracking
+const ADMIN_EMAILS = ['jdwbarge@gmail.com'];
+
+export function isAdminEmail(email: string | undefined | null): boolean {
+	if (!email) return false;
+	return ADMIN_EMAILS.includes(email.toLowerCase());
+}
 
 // ── Init ────────────────────────────────────────────────────────
 
@@ -15,11 +23,24 @@ export function initPostHog() {
 	if (!browser || initialized || !PUBLIC_POSTHOG_KEY) return;
 
 	posthog.init(PUBLIC_POSTHOG_KEY, {
-		api_host: PUBLIC_POSTHOG_HOST || 'https://eu.i.posthog.com',
+		api_host: '/ingest',
+		ui_host: 'https://eu.posthog.com',
 		capture_pageview: false, // we track manually on route change
 		capture_pageleave: true,
-		persistence: 'localStorage+cookie',
-		cross_subdomain_cookie: false
+		persistence: 'memory', // upgraded to localStorage+cookie after consent
+		cross_subdomain_cookie: false,
+		opt_out_capturing_by_default: true, // GDPR: wait for consent
+		disable_session_recording: true, // enabled after consent
+		session_recording: {
+			maskAllInputs: true,
+			maskTextSelector: '[data-ph-mask]'
+		},
+		autocapture: {
+			dom_event_allowlist: ['click', 'submit', 'change'],
+			element_allowlist: ['button', 'a', 'input', 'select', 'textarea']
+		},
+		capture_performance: true,
+		capture_exceptions: true
 	});
 
 	initialized = true;
@@ -228,14 +249,47 @@ export function trackSyncFailed(error: string, phase: string) {
 
 // ── User Lifecycle ──────────────────────────────────────────────
 
-export function identifyUser(userId: string) {
+export function identifyUser(userId: string, properties?: Record<string, unknown>) {
 	if (!browser) return;
-	posthog.identify(userId);
+
+	// If admin, opt out entirely to prevent polluting analytics
+	const email = properties?.email as string | undefined;
+	if (isAdminEmail(email)) {
+		posthog.opt_out_capturing();
+		posthog.reset();
+		return;
+	}
+
+	posthog.identify(userId, properties);
 }
 
 export function resetUser() {
 	if (!browser) return;
 	posthog.reset();
+}
+
+// ── Error Tracking ──────────────────────────────────────────────
+
+export function trackException(message: string, statusCode?: number) {
+	if (!browser) return;
+	posthog.capture('$exception', {
+		$exception_message: message,
+		$exception_type: 'SvelteKitError',
+		status_code: statusCode,
+		url: window.location.href
+	});
+}
+
+// ── Calendar & Share Events ─────────────────────────────────────
+
+export function trackCalendarExport(screening: ScreeningContext) {
+	if (!browser) return;
+	posthog.capture('calendar_export_clicked', {
+		film_id: screening.filmId,
+		film_title: screening.filmTitle,
+		screening_id: screening.screeningId,
+		cinema_name: screening.cinemaName
+	});
 }
 
 // ── Feature Flags ───────────────────────────────────────────────

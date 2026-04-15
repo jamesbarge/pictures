@@ -1,11 +1,17 @@
 <script lang="ts">
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import { formatTime, formatScreeningDate, toLondonDateStr, groupBy } from '$lib/utils';
+	import { trackCinemaViewed } from '$lib/analytics/posthog';
+	import { onMount } from 'svelte';
 
 	let { data } = $props();
 
 	const cinema = $derived(data.cinema);
 	const screenings = $derived(data.screenings);
+
+	onMount(() => {
+		trackCinemaViewed(cinema.id, cinema.name, 'cinema_page');
+	});
 
 	const futureScreenings = $derived(
 		screenings

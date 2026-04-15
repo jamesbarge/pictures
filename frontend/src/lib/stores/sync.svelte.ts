@@ -6,6 +6,7 @@
 import { apiGet, apiPut, apiPost, apiDelete } from '$lib/api/client';
 import { filmStatuses } from './film-status.svelte';
 import { debounce } from '$lib/utils';
+import { trackSyncInitiated, trackSyncCompleted, trackSyncFailed } from '$lib/analytics/posthog';
 
 type FilmStatusValue = 'want_to_see' | 'seen' | 'not_interested';
 
@@ -54,6 +55,8 @@ async function pullFromServer() {
 
 	_syncing = true;
 	_syncError = null;
+	const startTime = Date.now();
+	trackSyncInitiated('sign_in', 0);
 
 	try {
 		const serverStatuses = await apiGet<ServerFilmStatus[]>('/api/user/film-statuses', { token });
@@ -68,9 +71,15 @@ async function pullFromServer() {
 		}
 
 		_lastSyncAt = new Date().toISOString();
+		trackSyncCompleted({
+			durationMs: Date.now() - startTime,
+			itemsSynced: serverStatuses.length,
+			conflictsResolved: 0
+		});
 	} catch (e) {
 		_syncError = e instanceof Error ? e.message : 'Sync failed';
 		console.error('[sync] Pull failed:', _syncError);
+		trackSyncFailed(_syncError, 'pull');
 	} finally {
 		_syncing = false;
 	}
@@ -91,7 +100,9 @@ export async function pushFilmStatus(filmId: string, status: FilmStatusValue | n
 			await apiPut(`/api/user/film-statuses/${filmId}`, { status }, { token });
 		}
 	} catch (e) {
-		console.error('[sync] Push film status failed:', e instanceof Error ? e.message : e);
+		const msg = e instanceof Error ? e.message : String(e);
+		console.error('[sync] Push film status failed:', msg);
+		trackSyncFailed(msg, 'push');
 	}
 }
 

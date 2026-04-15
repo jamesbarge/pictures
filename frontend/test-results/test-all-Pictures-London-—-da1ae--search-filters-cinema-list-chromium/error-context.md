@@ -1,0 +1,43 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e2]:
+  - link "Skip to content" [ref=e3] [cursor=pointer]:
+    - /url: "#main-content"
+  - generic [ref=e4]:
+    - banner [ref=e5]:
+      - generic [ref=e7]:
+        - link "pictures london — home" [ref=e8] [cursor=pointer]:
+          - /url: /
+          - img "pictures london" [ref=e9]:
+            - generic [ref=e10]: pictures · london
+        - generic [ref=e11]:
+          - navigation "Main" [ref=e12]:
+            - link "ABOUT" [ref=e13] [cursor=pointer]:
+              - /url: /about
+            - link "MAP" [ref=e14] [cursor=pointer]:
+              - /url: /map
+            - link "REACHABLE" [ref=e15] [cursor=pointer]:
+              - /url: /reachable
+          - link "SIGN IN" [ref=e17] [cursor=pointer]:
+            - /url: /sign-in
+          - generic [ref=e18]:
+            - generic [ref=e19]: HOUSE LIGHTS
+            - slider "House lights dimmer" [ref=e20] [cursor=pointer]
+    - main [ref=e23]:
+      - generic [ref=e26]:
+        - generic [ref=e27]:
+          - heading "CINEMAS" [level=1] [ref=e28]
+          - generic [ref=e29]: "0"
+        - searchbox "Search cinemas" [ref=e30]
+    - contentinfo [ref=e31]:
+      - generic [ref=e32]:
+        - generic [ref=e33]: pictures · london
+        - navigation "Footer" [ref=e34]:
+          - link "about" [ref=e35] [cursor=pointer]:
+            - /url: /about
+          - link "privacy" [ref=e36] [cursor=pointer]:
+            - /url: /privacy
+          - link "terms" [ref=e37] [cursor=pointer]:
+            - /url: /terms
+```

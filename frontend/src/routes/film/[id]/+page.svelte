@@ -5,7 +5,7 @@
 	import { movieSchema, breadcrumbSchema } from '$lib/seo/json-ld';
 	import { filmStatuses } from '$lib/stores/film-status.svelte';
 	import { formatTime, formatScreeningDate, toLondonDateStr, groupBy, getPosterImageAttributes } from '$lib/utils';
-	import { trackFilmView, trackBookingClick } from '$lib/analytics/posthog';
+	import { trackFilmView, trackBookingClick, trackFilmStatusChange, trackCalendarExport } from '$lib/analytics/posthog';
 	import { browser } from '$app/environment';
 	import { onMount } from 'svelte';
 	import type { FilmStatus } from '$lib/types';
@@ -27,7 +27,13 @@
 	});
 
 	function toggleStatus(status: FilmStatus) {
+		const previousStatus = currentStatus;
 		filmStatuses.toggleStatus(film.id, status);
+		trackFilmStatusChange(
+			{ filmId: film.id, filmTitle: film.title, filmYear: film.year, genres: film.genres, directors: film.directors },
+			previousStatus,
+			previousStatus === status ? null : status
+		);
 	}
 
 	const futureScreenings = $derived(
@@ -193,6 +199,16 @@
 									rel="noopener noreferrer"
 									class="screening-row"
 									aria-label="Book {formatTime(screening.datetime)} at {screening.cinema?.name ?? 'cinema'}"
+									onclick={() => trackBookingClick({
+										filmId: film.id,
+										filmTitle: film.title,
+										screeningId: screening.id,
+										screeningTime: screening.datetime,
+										cinemaId: screening.cinema?.id,
+										cinemaName: screening.cinema?.name,
+										format: screening.format,
+										bookingUrl: screening.bookingUrl
+									}, 'film_detail')}
 								>
 									<time class="screening-time" datetime={screening.datetime}>{formatTime(screening.datetime)}</time>
 									<span class="screening-cinema">{screening.cinema?.name ?? 'Unknown'}</span>
@@ -212,7 +228,15 @@
 									class="ical-btn"
 									title="Add to calendar"
 									aria-label="Add {formatTime(screening.datetime)} at {screening.cinema?.name ?? 'cinema'} to calendar"
-									onclick={(e) => e.stopPropagation()}
+									onclick={(e) => {
+										e.stopPropagation();
+										trackCalendarExport({
+											filmId: film.id,
+											filmTitle: film.title,
+											screeningId: screening.id,
+											cinemaName: screening.cinema?.name
+										});
+									}}
 								>
 									<svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
 										<rect x="1" y="2.5" width="12" height="10" rx="0" stroke="currentColor" stroke-width="1.2"/>
