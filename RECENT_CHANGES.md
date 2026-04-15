@@ -1,3 +1,11 @@
+## 2026-04-15: Fix poster images not loading until hover
+**PR**: #424 | **Files**: `frontend/src/lib/components/calendar/FilmCard.svelte`
+- Remove `crossorigin="anonymous"` from poster `<img>` tags — caused lazy-loaded images to stall in the browser's IntersectionObserver when combined with CORS preflight overhead
+- FittedTitleCanvas already handles its own CORS loading independently via `new Image()`
+- Regression from #423 (responsive TMDB poster images)
+
+---
+
 ## 2026-04-15: TMDB Responsive Poster Images
 **PR**: #423 | **Files**: `frontend/src/lib/utils.ts`, `frontend/src/app.html`, `FittedTitleCanvas.svelte`, `FilmCard.svelte`, `SearchInput.svelte`, `ReachableResults.svelte`, `film/[id]/+page.svelte`, `search/+page.svelte`, `watchlist/+page.svelte`, `tonight/+page.svelte`, `this-weekend/+page.svelte`, `festivals/+page.server.ts`
 - Add responsive `srcset` using TMDB's width tiers (w92–w780) so browsers pick optimal image size per device
