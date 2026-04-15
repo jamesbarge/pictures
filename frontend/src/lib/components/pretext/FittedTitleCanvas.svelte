@@ -1,4 +1,5 @@
 <script module lang="ts">
+	const MAX_IMAGE_CACHE = 50;
 	const imageLoadCache = new Map<string, Promise<HTMLImageElement>>();
 
 	function loadPosterImage(url: string): Promise<HTMLImageElement> {
@@ -17,6 +18,9 @@
 		});
 
 		imageLoadCache.set(url, pending);
+		if (imageLoadCache.size > MAX_IMAGE_CACHE) {
+			imageLoadCache.delete(imageLoadCache.keys().next().value!);
+		}
 		return pending;
 	}
 </script>

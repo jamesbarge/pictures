@@ -91,6 +91,7 @@
 					class="w-full h-full object-cover"
 					loading="lazy"
 					decoding="async"
+					crossorigin="anonymous"
 				/>
 			{:else}
 				<div class="w-full h-full flex items-center justify-center p-4">
