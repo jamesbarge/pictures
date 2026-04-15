@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
-	import { debounce } from '$lib/utils';
+	import { debounce, getPosterImageAttributes } from '$lib/utils';
 	import { apiGet } from '$lib/api/client';
 	import { trackSearch, trackSearchNoResults } from '$lib/analytics/posthog';
 
@@ -182,7 +182,20 @@
 							onclick={() => navigateToResult(i)}
 						>
 							{#if film.posterUrl}
-								<img src={film.posterUrl} alt="" class="result-poster" loading="lazy" decoding="async" />
+								{@const posterImage = getPosterImageAttributes(film.posterUrl, {
+									baseSize: 'w92',
+									srcSetSizes: ['w92', 'w154'],
+									sizes: '28px'
+								})}
+								<img
+									src={posterImage?.src ?? film.posterUrl}
+									srcset={posterImage?.srcset}
+									sizes={posterImage?.sizes}
+									alt=""
+									class="result-poster"
+									loading="lazy"
+									decoding="async"
+								/>
 							{:else}
 								<div class="result-poster-empty"></div>
 							{/if}

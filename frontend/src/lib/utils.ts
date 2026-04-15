@@ -66,3 +66,58 @@ export function groupBy<T>(items: T[], keyFn: (item: T) => string): Record<strin
 	}
 	return groups;
 }
+
+type TmdbPosterSize = 'w92' | 'w154' | 'w185' | 'w342' | 'w500' | 'w780';
+
+interface PosterImageOptions {
+	baseSize: TmdbPosterSize;
+	srcSetSizes?: TmdbPosterSize[];
+	sizes?: string;
+}
+
+interface PosterImageAttributes {
+	src: string;
+	srcset?: string;
+	sizes?: string;
+}
+
+const TMDB_IMAGE_HOST = 'image.tmdb.org';
+const TMDB_POSTER_PATH = /^\/t\/p\/(?:w92|w154|w185|w342|w500|w780|original)(\/.+)$/;
+
+function getTmdbPosterPath(posterUrl: string): string | null {
+	try {
+		const url = new URL(posterUrl);
+		if (url.hostname !== TMDB_IMAGE_HOST) return null;
+
+		const match = url.pathname.match(TMDB_POSTER_PATH);
+		return match?.[1] ?? null;
+	} catch {
+		return null;
+	}
+}
+
+function buildTmdbPosterUrl(path: string, size: TmdbPosterSize): string {
+	return `https://${TMDB_IMAGE_HOST}/t/p/${size}${path}`;
+}
+
+export function getPosterImageAttributes(
+	posterUrl: string | null | undefined,
+	options: PosterImageOptions
+): PosterImageAttributes | null {
+	if (!posterUrl) return null;
+
+	const tmdbPosterPath = getTmdbPosterPath(posterUrl);
+	if (!tmdbPosterPath) {
+		return { src: posterUrl };
+	}
+
+	const srcSetSizes = options.srcSetSizes?.length ? options.srcSetSizes : [options.baseSize];
+
+	return {
+		src: buildTmdbPosterUrl(tmdbPosterPath, options.baseSize),
+		srcset: srcSetSizes
+			.map((size) => `${buildTmdbPosterUrl(tmdbPosterPath, size)} ${size.slice(1)}w`)
+			.join(', '),
+		sizes: options.sizes
+	};
+}

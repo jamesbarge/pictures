@@ -1,15 +1,15 @@
 <script lang="ts">
 	import FilmCard from '$lib/components/calendar/FilmCard.svelte';
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
-	import type { ScreeningWithDetails } from '$lib/types';
 	import { formatDate } from '$lib/utils';
 
 	let { data } = $props();
+	type LoadedScreening = (typeof data.screenings)[number];
 
 	const todayLabel = formatDate(new Date());
 
 	const filmMap = $derived.by(() => {
-		const map = new Map<string, { film: ScreeningWithDetails['film']; screenings: ScreeningWithDetails[] }>();
+		const map = new Map<string, { film: LoadedScreening['film']; screenings: LoadedScreening[] }>();
 		for (const s of data.screenings) {
 			if (!s.film) continue;
 			const existing = map.get(s.film.id);

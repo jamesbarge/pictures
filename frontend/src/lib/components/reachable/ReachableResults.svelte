@@ -7,7 +7,7 @@
 		type ReachableScreening,
 		type UrgencyGroup
 	} from '$lib/travel-time';
-	import { formatTime } from '$lib/utils';
+	import { formatTime, getPosterImageAttributes } from '$lib/utils';
 
 	let {
 		screenings = [],
@@ -89,11 +89,19 @@
 								<!-- Poster -->
 								<div class="card-poster">
 									{#if screening.film.posterUrl}
+										{@const posterImage = getPosterImageAttributes(screening.film.posterUrl, {
+											baseSize: 'w185',
+											srcSetSizes: ['w92', 'w185'],
+											sizes: '80px'
+										})}
 										<img
-											src={screening.film.posterUrl}
+											src={posterImage?.src ?? screening.film.posterUrl}
+											srcset={posterImage?.srcset}
+											sizes={posterImage?.sizes}
 											alt={screening.film.title}
 											class="poster-img"
 											loading="lazy"
+											decoding="async"
 										/>
 									{:else}
 										<div class="poster-placeholder">
