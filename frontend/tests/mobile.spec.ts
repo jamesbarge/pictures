@@ -30,13 +30,23 @@ test.describe('Mobile Responsive — iPhone 12 Pro (390x844)', () => {
 			const viewportWidth = await page.evaluate(() => window.innerWidth);
 			expect(bodyWidth).toBeLessThanOrEqual(viewportWidth + 1);
 
-			// .brand-link has overflow:hidden, so clipping doesn't widen the body —
-			// detect it via scrollWidth > clientWidth on the brand-link itself.
-			const clipped = await page.evaluate(() => {
-				const el = document.querySelector('.brand-link') as HTMLElement | null;
-				return !!el && el.scrollWidth > el.clientWidth;
+			// .brand-link has overflow:hidden, so clipping doesn't widen the body
+			// and scrollWidth-based checks are unreliable (WebKit reports scrollWidth
+			// == clientWidth when overflow:hidden is on). Compare rendered positions
+			// from getBoundingClientRect instead.
+			// Only the right edge matters: the BreathingGrid uses a deliberate
+			// `margin-left: -3px` optical offset, so a tiny left-side poke-out is
+			// by design; a right-side overflow is the real clipping bug.
+			const rightOverflow = await page.evaluate(() => {
+				const link = document.querySelector('.brand-link') as HTMLElement | null;
+				const grid = document.querySelector('.breathing-grid') as HTMLElement | null;
+				if (!link || !grid) return null;
+				return grid.getBoundingClientRect().right - link.getBoundingClientRect().right;
 			});
-			expect(clipped).toBe(false);
+			expect(
+				rightOverflow,
+				`wordmark extends ${rightOverflow}px past the right edge of brand-link (clipped)`
+			).toBeLessThanOrEqual(1); // 1px tolerance for sub-pixel rounding
 		});
 
 		test('SIGN IN link is hidden in brand-bar on mobile (moved into hamburger menu)', async ({ page }) => {
