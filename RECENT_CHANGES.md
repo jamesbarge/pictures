@@ -1,3 +1,11 @@
+## 2026-04-16: Fix pictures·london wordmark clipped on mobile
+**PR**: TBD | **Files**: `frontend/src/lib/components/layout/Header.svelte`, `frontend/tests/mobile.spec.ts`
+- Move `SIGN IN` link out of the mobile header bar into the hamburger menu — frees ~74px so the BreathingGrid wordmark (~266px intrinsic width) fits without `overflow: hidden` clipping
+- Replace the weak `brand wordmark fits without overflow` test (which only checked body-level horizontal scroll, trivially satisfied by `overflow: hidden`) with a real `brand-link.scrollWidth > clientWidth` assertion
+- Desktop (≥768px) unchanged — SIGN IN still visible in the brand-right nav cluster
+
+---
+
 ## 2026-04-16: Add phoenix legacy alias to Inngest known IDs
 **PR**: #426 | **Files**: `src/inngest/known-ids.ts`
 - Add `"phoenix"` as legacy alias for `phoenix-east-finchley` in `SCRAPER_REGISTRY_IDS`

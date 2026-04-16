@@ -12,25 +12,52 @@ test.describe('Mobile Responsive — iPhone 12 Pro (390x844)', () => {
 	// ═══════════════════════════════════════════════
 
 	test.describe('Header', () => {
-		test('brand wordmark fits without overflow', async ({ page }) => {
+		test('brand wordmark fits within brand-link without clipping', async ({ page }) => {
 			await page.goto(BASE);
 			const header = page.locator('header');
 			await expect(header).toBeVisible();
+
+			// Wait for the post-mount BreathingGrid (15 individual cells, ~266px wide),
+			// not just the container — the pre-mount fallback is a single ~117px span
+			// that never clips, so testing against the fallback would hide the real bug.
+			await page.waitForFunction(
+				() => document.querySelectorAll('.breathing-grid .grid-cell').length === 15,
+				{ timeout: 10000 }
+			);
 
 			// Header should not cause horizontal scroll
 			const bodyWidth = await page.evaluate(() => document.body.scrollWidth);
 			const viewportWidth = await page.evaluate(() => window.innerWidth);
 			expect(bodyWidth).toBeLessThanOrEqual(viewportWidth + 1);
+
+			// .brand-link has overflow:hidden, so clipping doesn't widen the body
+			// and scrollWidth-based checks are unreliable (WebKit reports scrollWidth
+			// == clientWidth when overflow:hidden is on). Compare rendered positions
+			// from getBoundingClientRect instead.
+			// Only the right edge matters: the BreathingGrid uses a deliberate
+			// `margin-left: -3px` optical offset, so a tiny left-side poke-out is
+			// by design; a right-side overflow is the real clipping bug.
+			const rightOverflow = await page.evaluate(() => {
+				const link = document.querySelector('.brand-link') as HTMLElement | null;
+				const grid = document.querySelector('.breathing-grid') as HTMLElement | null;
+				if (!link || !grid) return null;
+				return grid.getBoundingClientRect().right - link.getBoundingClientRect().right;
+			});
+			expect(
+				rightOverflow,
+				`wordmark extends ${rightOverflow}px past the right edge of brand-link (clipped)`
+			).toBeLessThanOrEqual(1); // 1px tolerance for sub-pixel rounding
 		});
 
-		test('SIGN IN does not wrap to two lines', async ({ page }) => {
+		test('SIGN IN link is hidden in brand-bar on mobile (moved into hamburger menu)', async ({ page }) => {
 			await page.goto(BASE);
-			const signIn = page.getByText('SIGN IN', { exact: true });
-			await expect(signIn).toBeVisible();
 
-			const box = await signIn.boundingBox();
-			// Single line of 11px text should be under 20px tall
-			expect(box!.height).toBeLessThan(25);
+			// The standalone SIGN IN link in the brand-bar is hidden below 768px;
+			// it now lives inside the hamburger menu instead. This frees ~74px so
+			// the BreathingGrid wordmark can render at full scale.
+			const brandBarSignIn = page.locator('.brand-bar .sign-in-link');
+			await expect(brandBarSignIn).toHaveAttribute('href', '/sign-in');
+			await expect(brandBarSignIn).toBeHidden();
 		});
 
 		test('no horizontal page overflow', async ({ page }) => {
