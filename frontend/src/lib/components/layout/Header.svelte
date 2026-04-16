@@ -63,7 +63,7 @@
 
 				<div class="nav-divider"></div>
 
-					<a href="/sign-in" class="nav-link">SIGN IN</a>
+					<a href="/sign-in" class="nav-link sign-in-link">SIGN IN</a>
 
 				<DimmerDial />
 
@@ -102,6 +102,7 @@
 				<a href="/cinemas" class="mobile-nav-link" aria-current={page.url.pathname === '/cinemas' ? 'page' : undefined}>CINEMAS</a>
 				<a href="/tonight" class="mobile-nav-link" aria-current={page.url.pathname === '/tonight' ? 'page' : undefined}>TONIGHT</a>
 				<a href="/directors" class="mobile-nav-link" aria-current={page.url.pathname === '/directors' ? 'page' : undefined}>DIRECTORS</a>
+				<a href="/sign-in" class="mobile-nav-link">SIGN IN</a>
 			</nav>
 		{/if}
 	</div>
@@ -189,6 +190,16 @@
 
 	.nav-link:hover {
 		color: var(--color-text);
+	}
+
+	.sign-in-link {
+		display: none;
+	}
+
+	@media (min-width: 768px) {
+		.sign-in-link {
+			display: inline;
+		}
 	}
 
 	.nav-divider {
