@@ -65,7 +65,7 @@
 		</svg>
 	</button>
 
-	<Dropdown {open} onClose={() => (open = false)}>
+	<Dropdown {open} onClose={() => (open = false)} ariaLabel="Cinema filter options">
 		<div class="cinema-dropdown">
 			<div class="cinema-search-wrap">
 				<input

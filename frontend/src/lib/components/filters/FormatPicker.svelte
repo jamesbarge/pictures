@@ -31,7 +31,7 @@
 		</svg>
 	</button>
 
-	<Dropdown {open} onClose={() => (open = false)}>
+	<Dropdown {open} onClose={() => (open = false)} ariaLabel="Format filter options">
 		<div class="py-1">
 			{#each FORMAT_OPTIONS as fmt}
 				<Checkbox

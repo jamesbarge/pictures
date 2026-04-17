@@ -6,6 +6,7 @@
 		onClose,
 		align = 'left',
 		role = 'group',
+		ariaLabel = 'Filter options',
 		triggerEl = undefined,
 		children
 	}: {
@@ -13,6 +14,7 @@
 		onClose: () => void;
 		align?: 'left' | 'right';
 		role?: string;
+		ariaLabel?: string;
 		triggerEl?: HTMLElement | undefined;
 		children: import('svelte').Snippet;
 	} = $props();
@@ -61,7 +63,7 @@
 		class:align-right={align === 'right'}
 		tabindex="-1"
 		{role}
-		aria-label="Filter options"
+		aria-label={ariaLabel}
 	>
 		{@render children()}
 	</div>

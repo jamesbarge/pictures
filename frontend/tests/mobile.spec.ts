@@ -136,12 +136,9 @@ test.describe('Mobile Responsive — iPhone 12 Pro (390x844)', () => {
 
 		test('cinema search input is ≥16px on mobile (no iOS zoom on focus)', async ({ page }) => {
 			await page.goto(BASE);
-			// Wait for Svelte hydration before clicking (the breathing-grid cells
-			// only appear after onMount, so use them as a hydration signal).
-			await page.waitForFunction(
-				() => document.querySelectorAll('.breathing-grid .grid-cell').length === 15,
-				{ timeout: 15000 }
-			);
+			// Wait for network idle as a hydration proxy — once Vite finishes
+			// streaming modules, Svelte's onclick handlers are attached.
+			await page.waitForLoadState('networkidle');
 			await page.locator('.filters-toggle').click();
 			await page.locator('.mobile-filter-panel').waitFor({ state: 'visible' });
 			await page.locator('.mobile-filter-panel .picker-trigger[aria-label="Cinema filter"]').click();
