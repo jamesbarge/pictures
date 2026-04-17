@@ -1,3 +1,11 @@
+## 2026-04-17: Fix mobile input zoom + auto-keyboard on cinema filter
+**PR**: TBD | **Files**: `frontend/src/lib/components/ui/Dropdown.svelte`, `frontend/src/lib/components/filters/CinemaPicker.svelte`, `frontend/src/lib/components/filters/SearchInput.svelte`, `frontend/tests/mobile.spec.ts`
+- Focus the dropdown panel (via `tabindex="-1"`) instead of auto-focusing its first child input — opening the cinema filter no longer pops the soft keyboard on iOS, so users can scroll the cinema list
+- Bump `.cinema-search` and `.search-input` font-size to 16px on mobile (was 13px) — stops iOS Safari from zooming the page when the user explicitly taps a search input
+- Keyboard users still land inside the dropdown (panel is focused); explicit tap on the cinema search still works exactly as before
+
+---
+
 ## 2026-04-16: Fix pictures·london wordmark clipped on mobile
 **PR**: TBD | **Files**: `frontend/src/lib/components/layout/Header.svelte`, `frontend/tests/mobile.spec.ts`
 - Move `SIGN IN` link out of the mobile header bar into the hamburger menu — frees ~74px so the BreathingGrid wordmark (~266px intrinsic width) fits without `overflow: hidden` clipping
