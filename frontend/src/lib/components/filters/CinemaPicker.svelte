@@ -65,7 +65,7 @@
 		</svg>
 	</button>
 
-	<Dropdown {open} onClose={() => (open = false)}>
+	<Dropdown {open} onClose={() => (open = false)} ariaLabel="Cinema filter options">
 		<div class="cinema-dropdown">
 			<div class="cinema-search-wrap">
 				<input
@@ -150,13 +150,22 @@
 		border-bottom: 1px solid var(--color-border-subtle);
 	}
 
+	/* 16px mobile base avoids iOS Safari's auto-zoom on focus (triggers below
+	   16px). Desktop overrides to `--font-size-sm` for visual consistency with
+	   the rest of the UI. */
 	.cinema-search {
 		width: 100%;
 		border: none;
 		background: transparent;
-		font-size: var(--font-size-sm);
+		font-size: 16px;
 		color: var(--color-text);
 		outline: none;
+	}
+
+	@media (min-width: 768px) {
+		.cinema-search {
+			font-size: var(--font-size-sm);
+		}
 	}
 
 	.cinema-search::placeholder {

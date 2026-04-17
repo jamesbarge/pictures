@@ -6,6 +6,7 @@
 		onClose,
 		align = 'left',
 		role = 'group',
+		ariaLabel = 'Filter options',
 		triggerEl = undefined,
 		children
 	}: {
@@ -13,6 +14,7 @@
 		onClose: () => void;
 		align?: 'left' | 'right';
 		role?: string;
+		ariaLabel?: string;
 		triggerEl?: HTMLElement | undefined;
 		children: import('svelte').Snippet;
 	} = $props();
@@ -37,10 +39,11 @@
 	$effect(() => {
 		if (open && panelEl) {
 			tick().then(() => {
-				const focusable = panelEl?.querySelector<HTMLElement>(
-					'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-				);
-				focusable?.focus();
+				// Focus the panel itself, not the first focusable child.
+				// Auto-focusing an <input> on mobile pops the soft keyboard,
+				// covers the list, and prevents scrolling the options.
+				// Keyboard users can still Tab into interactive children from here.
+				panelEl?.focus({ preventScroll: true });
 			});
 		}
 	});
@@ -58,8 +61,9 @@
 		bind:this={panelEl}
 		class="dropdown-panel"
 		class:align-right={align === 'right'}
+		tabindex="-1"
 		{role}
-		aria-label="Filter options"
+		aria-label={ariaLabel}
 	>
 		{@render children()}
 	</div>
@@ -79,6 +83,14 @@
 		background: var(--color-surface);
 		border: 1px solid var(--color-border);
 		box-shadow: none;
+	}
+
+	/* Panel is programmatically focused when opened so keyboard users land
+	   inside it (and mobile users don't get an auto-focused input popping
+	   the keyboard). The visible open panel is the focus indicator — we
+	   don't need a second outline on the container itself. */
+	.dropdown-panel:focus {
+		outline: none;
 	}
 
 	.dropdown-panel.align-right {

@@ -119,6 +119,75 @@ test.describe('Mobile Responsive — iPhone 12 Pro (390x844)', () => {
 			const viewport = await page.evaluate(() => window.innerWidth);
 			expect(box!.x + box!.width).toBeLessThanOrEqual(viewport + 2);
 		});
+
+		// ───────────────────────────────────────────────
+		// iOS input-zoom + auto-keyboard fixes
+		// ───────────────────────────────────────────────
+
+		test('main search input is ≥16px on mobile (no iOS zoom on focus)', async ({ page }) => {
+			await page.goto(BASE);
+			const searchInput = page.locator('.search-input');
+			await expect(searchInput).toBeVisible();
+			const fontSize = await searchInput.evaluate(
+				(el) => parseFloat(window.getComputedStyle(el as HTMLElement).fontSize)
+			);
+			expect(fontSize).toBeGreaterThanOrEqual(16);
+		});
+
+		test('cinema search input is ≥16px on mobile (no iOS zoom on focus)', async ({ page }) => {
+			await page.goto(BASE);
+			// Wait for network idle as a hydration proxy — once Vite finishes
+			// streaming modules, Svelte's onclick handlers are attached.
+			await page.waitForLoadState('networkidle');
+			await page.locator('.filters-toggle').click();
+			await page.locator('.mobile-filter-panel').waitFor({ state: 'visible' });
+			await page.locator('.mobile-filter-panel .picker-trigger[aria-label="Cinema filter"]').click();
+			await page.locator('.dropdown-panel').waitFor({ state: 'visible' });
+
+			const input = page.locator('.dropdown-panel .cinema-search');
+			await expect(input).toBeVisible();
+			const fontSize = await input.evaluate(
+				(el) => parseFloat(window.getComputedStyle(el as HTMLElement).fontSize)
+			);
+			expect(fontSize).toBeGreaterThanOrEqual(16);
+		});
+
+		test('cinema dropdown does NOT auto-focus the search input', async ({ page }) => {
+			await page.goto(BASE);
+			await page.waitForFunction(
+				() => document.querySelectorAll('.breathing-grid .grid-cell').length === 15,
+				{ timeout: 15000 }
+			);
+			await page.locator('.filters-toggle').click();
+			await page.locator('.mobile-filter-panel').waitFor({ state: 'visible' });
+			await page.locator('.mobile-filter-panel .picker-trigger[aria-label="Cinema filter"]').click();
+			await page.locator('.dropdown-panel').waitFor({ state: 'visible' });
+
+			// Auto-focusing the search input would pop the soft keyboard and cover
+			// the list. Focus should land on the panel itself so users can scroll.
+			const active = await page.evaluate(() => ({
+				tag: document.activeElement?.tagName ?? null,
+				cls: document.activeElement?.className ?? ''
+			}));
+			expect(active.tag).not.toBe('INPUT');
+			expect(active.cls).toContain('dropdown-panel');
+		});
+
+		test('explicit tap on cinema search DOES focus it (keyboard opens then)', async ({ page }) => {
+			await page.goto(BASE);
+			await page.waitForFunction(
+				() => document.querySelectorAll('.breathing-grid .grid-cell').length === 15,
+				{ timeout: 15000 }
+			);
+			await page.locator('.filters-toggle').click();
+			await page.locator('.mobile-filter-panel').waitFor({ state: 'visible' });
+			await page.locator('.mobile-filter-panel .picker-trigger[aria-label="Cinema filter"]').click();
+			await page.locator('.dropdown-panel').waitFor({ state: 'visible' });
+
+			const input = page.locator('.dropdown-panel .cinema-search');
+			await input.click();
+			await expect(input).toBeFocused();
+		});
 	});
 
 	// ═══════════════════════════════════════════════

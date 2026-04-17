@@ -274,13 +274,21 @@
 		color: var(--color-text-tertiary);
 	}
 
+	/* 16px mobile base avoids iOS Safari's auto-zoom on focus (triggers below
+	   16px). Desktop overrides to `--font-size-sm` for visual consistency. */
 	.search-input {
 		flex: 1;
 		border: none;
 		background: transparent;
-		font-size: var(--font-size-sm);
+		font-size: 16px;
 		color: var(--color-text);
 		outline: none;
+	}
+
+	@media (min-width: 768px) {
+		.search-input {
+			font-size: var(--font-size-sm);
+		}
 	}
 
 	.search-input::placeholder {

@@ -167,7 +167,7 @@
 		</svg>
 	</button>
 
-	<Dropdown {open} onClose={() => (open = false)}>
+	<Dropdown {open} onClose={() => (open = false)} ariaLabel="Date and time filter options">
 		<div class="datetime-dropdown">
 			<!-- Date presets -->
 			<div class="section">
