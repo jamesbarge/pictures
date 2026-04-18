@@ -12,8 +12,11 @@
 
 	const filmMap = $derived.by(() => {
 		const map = new Map<string, { film: LoadedScreening['film']; screenings: LoadedScreening[] }>();
+		// Drop past screenings — ISR caches this page, so filter at render time.
+		const now = Date.now();
 		for (const s of data.screenings) {
 			if (!s.film) continue;
+			if (new Date(s.datetime).getTime() <= now) continue;
 			const existing = map.get(s.film.id);
 			if (existing) {
 				existing.screenings.push(s);

@@ -1,3 +1,11 @@
+## 2026-04-18: Hide past screenings on calendar/tonight/this-weekend (no empty film cards)
+**PR**: TBD | **Files**: `frontend/src/routes/+page.svelte`, `frontend/src/routes/tonight/+page.svelte`, `frontend/src/routes/this-weekend/+page.svelte`
+- Drop screenings where `datetime <= now()` in each page's derived film-grouping, so films whose only screenings today are already in the past stop appearing as empty cards (e.g. SIRĀT at 16:50 with a 14:00-only slot for today)
+- Root cause: these pages are ISR-cached (15m–1h). The server-side API filter can only use cache creation time, not the user's "now", so past-screening filtering has to happen client-side at render time
+- `FilmCard` already had this filter internally, but it only emptied the pill row — the card itself still rendered, reserving grid space
+
+---
+
 ## 2026-04-18: Fix grid/list ViewToggle overheight on desktop filter bar
 **PR**: TBD | **Files**: `frontend/src/lib/components/filters/ViewToggle.svelte`
 - Reduce ViewToggle buttons from 44px → 32px tall on desktop so they line up with neighboring `WHEN / ALL CINEMAS / FORMAT` dropdown triggers

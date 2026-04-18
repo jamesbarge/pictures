@@ -7,7 +7,11 @@
 	type LoadedScreening = (typeof data.screenings)[number];
 
 	const dayGroups = $derived.by(() => {
-		const allScreenings: LoadedScreening[] = data.screenings;
+		// Drop past screenings — ISR caches this page, so filter at render time.
+		const now = Date.now();
+		const allScreenings: LoadedScreening[] = data.screenings.filter(
+			(s) => new Date(s.datetime).getTime() > now
+		);
 		const grouped = groupBy(allScreenings.filter((s) => s.film), (s) => toLondonDateStr(s.datetime));
 
 		return Object.entries(grouped)
