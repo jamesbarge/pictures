@@ -40,8 +40,9 @@
 	}
 
 	.toggle-btn {
-		min-width: 2.75rem;
-		min-height: 2.75rem;
+		min-width: 2rem;
+		height: 2rem;
+		padding: 0 0.5rem;
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -56,6 +57,13 @@
 
 	.toggle-btn:last-child {
 		border-right: none;
+	}
+
+	@media (max-width: 767px) {
+		.toggle-btn {
+			min-width: 2.75rem;
+			height: 2.75rem;
+		}
 	}
 
 	.toggle-btn:hover {

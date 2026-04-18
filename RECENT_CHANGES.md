@@ -1,3 +1,11 @@
+## 2026-04-18: Fix grid/list ViewToggle overheight on desktop filter bar
+**PR**: TBD | **Files**: `frontend/src/lib/components/filters/ViewToggle.svelte`
+- Reduce ViewToggle buttons from 44px → 32px tall on desktop so they line up with neighboring `WHEN / ALL CINEMAS / FORMAT` dropdown triggers
+- Keep 44px touch targets on mobile (`max-width: 767px`) for WCAG 2.5.5 compliance
+- Fixes visual desync where the active (black-filled) button visibly overshot the filter bar row
+
+---
+
 ## 2026-04-17: Fix mobile input zoom + auto-keyboard on cinema filter
 **PR**: TBD | **Files**: `frontend/src/lib/components/ui/Dropdown.svelte`, `frontend/src/lib/components/filters/CinemaPicker.svelte`, `frontend/src/lib/components/filters/SearchInput.svelte`, `frontend/tests/mobile.spec.ts`
 - Focus the dropdown panel (via `tabindex="-1"`) instead of auto-focusing its first child input — opening the cinema filter no longer pops the soft keyboard on iOS, so users can scroll the cinema list
