@@ -19,8 +19,14 @@
 			screenings: (typeof data.screenings)[0][];
 		}>();
 
+		// Drop screenings that have already started. ISR caches this page for 1h,
+		// so the server can't filter by "now" — it has to happen at render time.
+		const now = Date.now();
+
 		for (const s of data.screenings) {
 			if (!s.film) continue;
+
+			if (new Date(s.datetime).getTime() <= now) continue;
 
 			// Apply film search filter
 			if (filters.filmSearch && !s.film.title.toLowerCase().includes(filters.filmSearch.toLowerCase())) continue;
