@@ -44,6 +44,15 @@
 
 ---
 
+## 2026-04-19: Fix cinema detail route resolving the wrong venue
+**PR**: TBD | **Files**: `frontend/src/routes/cinemas/[slug]/+page.ts`, `src/db/repositories/cinema.ts`
+- Remove the duplicate universal load for cinema detail pages so SvelteKit uses the existing server loader that fetches `/api/cinemas/[id]`
+- Fixes cinema links opened from the map and other `/cinemas/{id}` surfaces resolving against the wrong cinema record
+- Root cause: the deleted `+page.ts` called `/api/cinemas?id=...`, but the list endpoint ignores `id` and returned the full sorted cinema list, so the page could hydrate with the first venue instead of the requested one
+- Also bump `getUpcomingScreeningsForCinema` default limit from 100 → 200 to preserve the screening count the deleted loader requested (busy cinemas like BFI/PCC/Rio/Barbican routinely exceed 100 upcoming screenings)
+
+---
+
 ## 2026-04-19: V2a Literary Antiqua redesign — mobile + desktop listings and film detail
 **PR**: TBD | **Files**: `frontend/src/app.css`, `frontend/src/routes/+page.svelte`, `frontend/src/routes/film/[id]/+page.svelte`, `frontend/src/lib/components/layout/Header.svelte`, `frontend/src/lib/components/filters/{DesktopFilterSidebar,MobileFilterSheet,MobileDatePicker,CalendarPopover,FilmTypeFilter}.svelte`, `frontend/src/lib/components/calendar/{DayMasthead,DesktopHybridCard,MobileFilmRow}.svelte`, `frontend/vite.config.ts`
 - Full rebrand of pictures.london following the Claude Design handoff bundle (`pictures-london-v2a-hybrid.html` + siblings) the user landed on after iterating through 5 V2a typographic directions
