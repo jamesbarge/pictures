@@ -5,7 +5,7 @@
 
 import { db } from "@/db";
 import { films, screenings, cinemas } from "@/db/schema";
-import { eq, gte, and } from "drizzle-orm";
+import { eq, gte, and, inArray } from "drizzle-orm";
 import type { ContentType } from "@/types/film";
 import type { ScreeningFormat } from "@/types/screening";
 
@@ -95,6 +95,34 @@ export async function getFilmById(id: string): Promise<FilmDetail | null> {
     .limit(1);
 
   return film ?? null;
+}
+
+/**
+ * Look up a set of films by their TMDB IDs. Used by the "similar films" rail
+ * on the film detail page — we get a list of similar TMDB IDs from TMDB and
+ * intersect it with the films we actually carry.
+ */
+export async function findByTmdbIds(tmdbIds: number[]): Promise<Array<{
+  id: string;
+  tmdbId: number | null;
+  title: string;
+  year: number | null;
+  posterUrl: string | null;
+}>> {
+  if (tmdbIds.length === 0) return [];
+
+  // inArray excludes NULL tmdbIds on the column side (SQL `IN` never matches
+  // NULL), so films without a tmdbId are implicitly filtered out.
+  return db
+    .select({
+      id: films.id,
+      tmdbId: films.tmdbId,
+      title: films.title,
+      year: films.year,
+      posterUrl: films.posterUrl,
+    })
+    .from(films)
+    .where(inArray(films.tmdbId, tmdbIds));
 }
 
 /**
