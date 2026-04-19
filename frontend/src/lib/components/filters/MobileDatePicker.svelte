@@ -4,6 +4,19 @@
 
 	let { open, onClose }: { open: boolean; onClose: () => void } = $props();
 
+	// Modal a11y — Escape closes + body scroll locks while the picker is up.
+	$effect(() => {
+		if (!open) return;
+		const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+		document.addEventListener('keydown', handler);
+		const prevOverflow = document.body.style.overflow;
+		document.body.style.overflow = 'hidden';
+		return () => {
+			document.removeEventListener('keydown', handler);
+			document.body.style.overflow = prevOverflow;
+		};
+	});
+
 	const today = toLondonDateStr(new Date());
 	const initial = new Date((filters.dateFrom ?? today) + 'T12:00:00Z');
 	let viewMonth = $state(initial.getUTCMonth());

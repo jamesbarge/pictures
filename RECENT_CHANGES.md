@@ -1,3 +1,12 @@
+## 2026-04-19: Modal a11y — Escape close + body scroll lock
+**PR**: TBD | **Files**: `frontend/src/lib/components/filters/{MobileFilterSheet,MobileDatePicker,CalendarPopover}.svelte`, `frontend/tests/mobile.spec.ts`
+- Add a `$effect` to `MobileFilterSheet` and `MobileDatePicker` that, while the sheet is open, listens for `Escape` keydown (calls `onClose()`) and locks `document.body.style.overflow = 'hidden'` (restored on cleanup)
+- Add the same Escape handler to `CalendarPopover` — outside-click is already handled by its host, but Escape wasn't
+- Two new Playwright tests guard the behaviour: `Escape key dismisses the filter sheet` and `body scroll is locked while filter sheet is open`
+- Keeps the hand-rolled `role="dialog"` + `aria-modal="true"` markup rather than swapping in bits-ui primitives (an earlier attempt at `Dialog.Root` broke Svelte's scoped styles on portaled content)
+
+---
+
 ## 2026-04-19: Rewrite Playwright tests for V2a UI
 **PR**: TBD | **Files**: `frontend/test-all.spec.ts`, `frontend/tests/mobile.spec.ts`, `frontend/playwright.config.ts`
 - Rewrite both Playwright spec files against the V2a Literary Antiqua UI — delete tests for the removed header FilterBar dropdowns (`WHEN`, `ALL CINEMAS`, `FORMAT`), update tab assertions from uppercase `ALL/NEW/REPERTORY` to titlecase via `role="tab"`, re-scope to the new `DesktopFilterSidebar` / `MobileFilterSheet` topology

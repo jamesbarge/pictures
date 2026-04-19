@@ -26,6 +26,21 @@
 
 	let datePickerOpen = $state(false);
 
+	// Modal a11y — Escape closes the sheet and the page body stops scrolling
+	// behind it. We read $props in the effect (via the outer `open` binding)
+	// and attach/clean up the keydown listener on each open transition.
+	$effect(() => {
+		if (!open) return;
+		const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+		document.addEventListener('keydown', handler);
+		const prevOverflow = document.body.style.overflow;
+		document.body.style.overflow = 'hidden';
+		return () => {
+			document.removeEventListener('keydown', handler);
+			document.body.style.overflow = prevOverflow;
+		};
+	});
+
 	// Re-use the same area clusters
 	const AREA_CLUSTERS: Array<{ label: string; areas: string[] }> = [
 		{ label: 'Soho & West End', areas: ['Soho', 'West End', 'Leicester Square', 'Covent Garden', 'Mayfair', 'Bloomsbury'] },
