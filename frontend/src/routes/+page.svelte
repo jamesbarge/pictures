@@ -49,7 +49,14 @@
 			if (!s.film) continue;
 			if (new Date(s.datetime).getTime() <= now) continue;
 
-			if (filters.filmSearch && !s.film.title.toLowerCase().includes(filters.filmSearch.toLowerCase())) continue;
+			if (filters.filmSearch) {
+				const q = filters.filmSearch.toLowerCase();
+				const matches =
+					s.film.title.toLowerCase().includes(q) ||
+					(s.cinema?.name?.toLowerCase().includes(q) ?? false) ||
+					(s.film.director?.toLowerCase().includes(q) ?? false);
+				if (!matches) continue;
+			}
 			if (filters.cinemaIds.length > 0 && !filters.cinemaIds.includes(s.cinema?.id ?? '')) continue;
 
 			if (filters.dateFrom || filters.dateTo) {
@@ -474,7 +481,8 @@
 		outline: none;
 		font-family: var(--font-serif-italic);
 		font-style: italic;
-		font-size: 14px;
+		/* 16px minimum to prevent iOS Safari auto-zoom on focus. */
+		font-size: 16px;
 		color: var(--color-text);
 		min-width: 0;
 	}

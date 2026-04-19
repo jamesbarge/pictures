@@ -7,7 +7,9 @@
 	const today = $derived(toLondonDateStr(new Date()));
 	const activeDate = $derived(filters.dateFrom ?? today);
 
-	const activeDateObj = $derived(new Date(activeDate + 'T12:00:00'));
+	// Anchor to UTC noon so the London Intl formatter resolves to the intended
+	// civil date regardless of the user's local timezone.
+	const activeDateObj = $derived(new Date(activeDate + 'T12:00:00Z'));
 
 	// Ordinal e.g. "nineteenth". Cover 1..31.
 	const ORDINALS: Record<number, string> = {
