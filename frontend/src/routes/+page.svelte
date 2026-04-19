@@ -1,137 +1,120 @@
 <script lang="ts">
-	import FilmCard from '$lib/components/calendar/FilmCard.svelte';
-	import TableView from '$lib/components/calendar/TableView.svelte';
+	import DesktopHybridCard from '$lib/components/calendar/DesktopHybridCard.svelte';
+	import MobileFilmRow from '$lib/components/calendar/MobileFilmRow.svelte';
+	import DayMasthead from '$lib/components/calendar/DayMasthead.svelte';
+	import DesktopFilterSidebar from '$lib/components/filters/DesktopFilterSidebar.svelte';
+	import MobileFilterSheet from '$lib/components/filters/MobileFilterSheet.svelte';
+	import FilmTypeFilter from '$lib/components/filters/FilmTypeFilter.svelte';
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
 	import JsonLd from '$lib/seo/JsonLd.svelte';
 	import { webSiteSchema, faqSchema } from '$lib/seo/json-ld';
 	import { filters } from '$lib/stores/filters.svelte';
-	import { preferences } from '$lib/stores/preferences.svelte';
-	import { formatScreeningDate, toLondonDateStr, groupBy } from '$lib/utils';
+	import { toLondonDateStr, groupBy } from '$lib/utils';
 	import { trackFilterNoResults } from '$lib/analytics/posthog';
 	import { browser } from '$app/environment';
+	import { page } from '$app/state';
 
 	let { data } = $props();
 
-	// Group screenings by film, then by date
+	// Sidebar collapsed state — persist across sessions.
+	const SIDEBAR_STORAGE_KEY = 'pictures-sidebar-collapsed';
+	function loadCollapsed(): boolean {
+		if (!browser) return false;
+		try { return localStorage.getItem(SIDEBAR_STORAGE_KEY) === 'true'; } catch { return false; }
+	}
+	let sidebarCollapsed = $state(loadCollapsed());
+	$effect(() => {
+		if (!browser) return;
+		try { localStorage.setItem(SIDEBAR_STORAGE_KEY, String(sidebarCollapsed)); } catch { /* ignore */ }
+	});
+
+	const cinemas = $derived((page.data?.cinemas ?? []) as Array<{
+		id: string;
+		name: string;
+		shortName: string | null;
+		address: { area: string } | null;
+	}>);
+
+	let mobileFilterOpen = $state(false);
+
+	// Group screenings by film + apply filters.
 	const filmMap = $derived.by(() => {
 		const map = new Map<string, {
 			film: (typeof data.screenings)[0]['film'];
 			screenings: (typeof data.screenings)[0][];
 		}>();
-
-		// Drop screenings that have already started. ISR caches this page for 1h,
-		// so the server can't filter by "now" — it has to happen at render time.
 		const now = Date.now();
 
 		for (const s of data.screenings) {
 			if (!s.film) continue;
-
 			if (new Date(s.datetime).getTime() <= now) continue;
 
-			// Apply film search filter
 			if (filters.filmSearch && !s.film.title.toLowerCase().includes(filters.filmSearch.toLowerCase())) continue;
-
-			// Apply cinema filter
 			if (filters.cinemaIds.length > 0 && !filters.cinemaIds.includes(s.cinema?.id ?? '')) continue;
 
-			// Apply date filter
 			if (filters.dateFrom || filters.dateTo) {
-				const screeningDate = s.datetime.split('T')[0];
-				if (filters.dateFrom && screeningDate < filters.dateFrom) continue;
-				if (filters.dateTo && screeningDate > filters.dateTo) continue;
+				const dateStr = s.datetime.split('T')[0];
+				if (filters.dateFrom && dateStr < filters.dateFrom) continue;
+				if (filters.dateTo && dateStr > filters.dateTo) continue;
 			}
 
-			// Apply format filter — exclude screenings with no format when filtering
 			if (filters.formats.length > 0 && (!s.format || !filters.formats.includes(s.format))) continue;
 
-			// Apply time filter (use London timezone)
 			if (filters.timeFrom !== null && filters.timeTo !== null) {
 				const hour = parseInt(
-					new Date(s.datetime).toLocaleString('en-GB', {
-						hour: 'numeric', hour12: false, timeZone: 'Europe/London'
-					})
+					new Date(s.datetime).toLocaleString('en-GB', { hour: 'numeric', hour12: false, timeZone: 'Europe/London' })
 				);
 				if (hour < filters.timeFrom || hour > filters.timeTo) continue;
 			}
 
-			// Apply programming type filter (OR logic: show if film matches ANY selected type)
 			if (filters.programmingTypes.length > 0) {
 				const isRepertory = s.film.isRepertory;
-				const matchesAny = filters.programmingTypes.some((type) =>
-					type === 'repertory' ? isRepertory : !isRepertory
-				);
+				const matchesAny = filters.programmingTypes.some((type) => type === 'repertory' ? isRepertory : !isRepertory);
 				if (!matchesAny) continue;
 			}
 
 			const existing = map.get(s.film.id);
-			if (existing) {
-				existing.screenings.push(s);
-			} else {
-				map.set(s.film.id, { film: s.film, screenings: [s] });
-			}
+			if (existing) existing.screenings.push(s);
+			else map.set(s.film.id, { film: s.film, screenings: [s] });
 		}
-
 		return map;
 	});
 
-	// Group by date for day sections
 	const dayGroups = $derived.by(() => {
-		const allScreenings = [...filmMap.values()].flatMap((f) =>
-			f.screenings.map((s) => ({ ...s, film: f.film }))
-		);
-
-		const grouped = groupBy(allScreenings, (s) => toLondonDateStr(s.datetime));
-
+		const all = [...filmMap.values()].flatMap((f) => f.screenings.map((s) => ({ ...s, film: f.film })));
+		const grouped = groupBy(all, (s) => toLondonDateStr(s.datetime));
 		return Object.entries(grouped)
 			.sort(([a], [b]) => a.localeCompare(b))
 			.map(([date, screenings]) => {
-				// Group screenings by film within each day
 				const filmGroups = groupBy(screenings, (s) => s.film.id);
 				const films = Object.values(filmGroups).map((filmScreenings) => ({
 					film: filmScreenings[0].film,
-					screenings: filmScreenings.sort(
-						(a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime()
-					)
+					screenings: filmScreenings.sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime())
 				}));
-
 				return { date, films };
 			});
 	});
 
-	// For table view: flatten to rows of film + screenings
-	const tableRows = $derived.by(() => {
+	// Flat list of unique films (ordered by next screening) for the desktop hybrid grid
+	const hybridFilms = $derived.by(() => {
 		return [...filmMap.values()].map(({ film, screenings }) => ({
-			film: {
-				id: film.id,
-				title: film.title,
-				year: film.year,
-				directors: film.director ? [film.director] : [],
-				runtime: film.runtime,
-				isRepertory: film.isRepertory ?? false,
-				genres: [],
-				posterUrl: film.posterUrl
-			},
-			screenings: screenings
-				.sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime())
-				.map((s) => ({
-					id: s.id,
-					datetime: s.datetime,
-					format: s.format ?? null,
-					bookingUrl: s.bookingUrl,
-					cinema: s.cinema ?? { id: '', name: 'Unknown', shortName: null }
-				}))
+			film,
+			screenings: screenings.sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime())
 		}));
 	});
 
-	// Track when filters produce no results
-	let lastTrackedEmpty = false;
+	const screeningCount = $derived.by(() => {
+		let n = 0;
+		for (const { screenings } of filmMap.values()) n += screenings.length;
+		return n;
+	});
 
+	let lastTrackedEmpty = false;
 	$effect(() => {
 		if (!browser) return;
 		const hasFilters = filters.cinemaIds.length > 0 || filters.dateFrom || filters.formats.length > 0 ||
 			filters.programmingTypes.length > 0 || filters.timeFrom !== null || filters.filmSearch;
 		const isEmpty = filmMap.size === 0;
-
 		if (isEmpty && hasFilters && !lastTrackedEmpty) {
 			trackFilterNoResults({
 				cinemaIds: filters.cinemaIds,
@@ -144,14 +127,12 @@
 			lastTrackedEmpty = false;
 		}
 	});
+
+	const activeFilterCount = $derived(filters.activeFilterCount);
 </script>
 
 <div class="sr-only" aria-live="polite" role="status">
-	{#if dayGroups.length === 0}
-		No screenings found
-	{:else}
-		{filmMap.size} films showing
-	{/if}
+	{#if dayGroups.length === 0}No screenings found{:else}{filmMap.size} films showing{/if}
 </div>
 
 <JsonLd data={webSiteSchema()} />
@@ -162,89 +143,380 @@
 	{ question: 'Can I import my Letterboxd watchlist?', answer: 'Yes! Visit the Letterboxd Import page, enter your username, and see which films on your watchlist are currently showing in London cinemas.' }
 ])} />
 
-<section class="py-6">
-	<div class="max-w-[1400px] mx-auto px-4 md:px-8">
-		{#if dayGroups.length === 0}
-			<EmptyState
-				title="No screenings found"
-				description="Try adjusting your filters or check back later."
-			/>
-		{:else if preferences.viewMode === 'text'}
-			<TableView rows={tableRows} />
-		{:else}
-			{#each dayGroups as { date, films } (date)}
-				<div class="day-section mb-8">
-					<div class="day-header flex items-baseline gap-3 mb-4 pb-1.5 border-b-2 border-[var(--color-border)]">
-						<h2 class="font-display text-sm font-bold tracking-wide-swiss uppercase">
-							{formatScreeningDate(date)}
-						</h2>
-						<span class="text-xs text-[var(--color-text-tertiary)] tracking-wide-swiss uppercase">
-							{new Date(date + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Europe/London' }).toUpperCase()}
-						</span>
-					</div>
-
-					<div class="film-grid">
-						{#each films as { film, screenings } (film.id)}
-							<FilmCard
-								film={{
-									id: film.id,
-									title: film.title,
-									year: film.year,
-									director: film.director ?? null,
-									runtime: film.runtime,
-									genres: [],
-									posterUrl: film.posterUrl,
-									tmdbId: null
-								}}
-								screenings={screenings.map((s) => ({
-									id: s.id,
-									datetime: s.datetime,
-									cinemaName: s.cinema?.name ?? 'Unknown',
-									cinemaSlug: s.cinema?.id ?? '',
-									bookingUrl: s.bookingUrl
-								}))}
-								activeCinemaIds={filters.cinemaIds}
-							/>
-						{/each}
-					</div>
-				</div>
-			{/each}
-		{/if}
+<!-- ── DESKTOP LAYOUT (≥ 1024px) ── -->
+<div class="desktop-shell">
+	<div class="desktop-masthead-wrap">
+		<DayMasthead />
 	</div>
-</section>
+
+	<div class="desktop-grid" class:sidebar-collapsed={sidebarCollapsed}>
+		{#if !sidebarCollapsed}
+			<div class="sidebar-wrap">
+				<DesktopFilterSidebar
+					cinemas={cinemas}
+					filmCount={filmMap.size}
+					screeningCount={screeningCount}
+					onHide={() => (sidebarCollapsed = true)}
+				/>
+			</div>
+		{:else}
+			<button
+				type="button"
+				class="sidebar-rail"
+				onclick={() => (sidebarCollapsed = false)}
+				aria-label="Expand filters"
+				title="Expand filters"
+			>
+				<svg width="11" height="11" viewBox="0 0 14 14" aria-hidden="true">
+					<circle cx="6" cy="6" r="4.5" stroke="currentColor" stroke-width="1.2" fill="none"/>
+					<path d="M9.5 9.5L13 13" stroke="currentColor" stroke-width="1.2"/>
+				</svg>
+				<span class="rail-label">Filters</span>
+				{#if activeFilterCount > 0}
+					<span class="rail-count">·{activeFilterCount}</span>
+				{/if}
+				<span class="rail-chevron">›</span>
+			</button>
+		{/if}
+
+		<main class="desktop-main">
+			<div class="desktop-toolbar">
+				<FilmTypeFilter />
+				<span class="count-line">
+					<span class="count-num">{filmMap.size}</span> films ·
+					<span class="count-num">{screeningCount}</span> screenings
+				</span>
+			</div>
+
+			{#if filmMap.size === 0}
+				<EmptyState title="No screenings found" description="Try adjusting your filters or check back later." />
+			{:else}
+				<div class="desktop-film-grid">
+					{#each hybridFilms as { film, screenings } (film.id)}
+						<DesktopHybridCard
+							film={{
+								id: film.id,
+								title: film.title,
+								year: film.year,
+								director: film.director ?? null,
+								runtime: film.runtime,
+								posterUrl: film.posterUrl
+							}}
+							screenings={screenings.map((s) => ({
+								id: s.id,
+								datetime: s.datetime,
+								cinemaName: s.cinema?.name ?? 'Unknown',
+								cinemaSlug: s.cinema?.id ?? '',
+								format: s.format,
+								bookingUrl: s.bookingUrl
+							}))}
+						/>
+					{/each}
+				</div>
+			{/if}
+		</main>
+	</div>
+</div>
+
+<!-- ── MOBILE LAYOUT (< 1024px) ── -->
+<div class="mobile-shell">
+	<div class="mobile-header">
+		<div class="mobile-date-label">
+			{#if dayGroups.length > 0}
+				{@const d = new Date(dayGroups[0].date + 'T12:00:00Z')}
+				{@const weekday = new Intl.DateTimeFormat('en-GB', { weekday: 'long', timeZone: 'Europe/London' }).format(d)}
+				{@const dayNum = Number(new Intl.DateTimeFormat('en-GB', { day: 'numeric', timeZone: 'Europe/London' }).format(d))}
+				{@const ordinals = {1:'first',2:'second',3:'third',4:'fourth',5:'fifth',6:'sixth',7:'seventh',8:'eighth',9:'ninth',10:'tenth',11:'eleventh',12:'twelfth',13:'thirteenth',14:'fourteenth',15:'fifteenth',16:'sixteenth',17:'seventeenth',18:'eighteenth',19:'nineteenth',20:'twentieth',21:'twenty-first',22:'twenty-second',23:'twenty-third',24:'twenty-fourth',25:'twenty-fifth',26:'twenty-sixth',27:'twenty-seventh',28:'twenty-eighth',29:'twenty-ninth',30:'thirtieth',31:'thirty-first'} as Record<number, string>}
+				{weekday}<span class="italic-comma">,</span> the {ordinals[dayNum] ?? `${dayNum}th`}
+			{:else}
+				No films
+			{/if}
+		</div>
+
+		<div class="mobile-search-row">
+			<div class="mobile-search">
+				<svg width="11" height="11" viewBox="0 0 14 14" aria-hidden="true">
+					<circle cx="6" cy="6" r="4.5" stroke="currentColor" stroke-width="1.2" fill="none"/>
+					<path d="M9.5 9.5L13 13" stroke="currentColor" stroke-width="1.2"/>
+				</svg>
+				<input
+					type="search"
+					placeholder="Search films, cinemas, directors…"
+					bind:value={filters.filmSearch}
+					aria-label="Search films, cinemas, directors"
+				/>
+			</div>
+			<button class="mobile-filter-btn" onclick={() => (mobileFilterOpen = true)} aria-expanded={mobileFilterOpen}>
+				Filter
+				{#if activeFilterCount > 0}
+					<span class="count">·{activeFilterCount}</span>
+				{/if}
+			</button>
+		</div>
+
+		<div class="mobile-type-tabs">
+			<FilmTypeFilter />
+		</div>
+	</div>
+
+	{#if dayGroups.length === 0}
+		<EmptyState title="No screenings found" description="Try adjusting your filters or check back later." />
+	{:else}
+		<div class="mobile-list">
+			{#each dayGroups as { date, films } (date)}
+				<section class="mobile-day">
+					{#each films as { film, screenings } (film.id)}
+						<MobileFilmRow
+							film={{
+								id: film.id,
+								title: film.title,
+								year: film.year,
+								director: film.director ?? null,
+								runtime: film.runtime,
+								posterUrl: film.posterUrl
+							}}
+							screenings={screenings.map((s) => ({
+								id: s.id,
+								datetime: s.datetime,
+								cinemaName: s.cinema?.name ?? 'Unknown',
+								bookingUrl: s.bookingUrl
+							}))}
+						/>
+					{/each}
+				</section>
+			{/each}
+		</div>
+	{/if}
+</div>
+
+<MobileFilterSheet
+	cinemas={cinemas}
+	filmCount={filmMap.size}
+	open={mobileFilterOpen}
+	onClose={() => (mobileFilterOpen = false)}
+/>
 
 <style>
-	.film-grid {
-		display: grid;
-		grid-template-columns: repeat(2, 1fr);
-		column-gap: 1rem;
-		row-gap: 0;
-		grid-auto-rows: auto;
-	}
-
-	@media (min-width: 768px) {
-		.film-grid {
-			grid-template-columns: repeat(3, 1fr);
-			column-gap: 1.25rem;
-		}
+	/* ---------- Desktop ---------- */
+	.desktop-shell {
+		display: none;
 	}
 
 	@media (min-width: 1024px) {
-		.film-grid {
-			grid-template-columns: repeat(4, 1fr);
-			column-gap: 1.25rem;
+		.desktop-shell {
+			display: block;
+			max-width: 1400px;
+			margin: 0 auto;
+			padding: 0 2rem 4rem;
 		}
 	}
 
-	@media (max-width: 320px) {
-		.film-grid {
-			grid-template-columns: 1fr;
+	.desktop-masthead-wrap {
+		padding: 1.5rem 0 0;
+	}
+
+	.desktop-grid {
+		display: grid;
+		grid-template-columns: 240px 1fr;
+		min-height: 600px;
+	}
+
+	.desktop-grid.sidebar-collapsed {
+		grid-template-columns: 44px 1fr;
+	}
+
+	.sidebar-wrap {
+		display: flex;
+		flex-direction: column;
+	}
+
+	.sidebar-rail {
+		position: sticky;
+		top: var(--header-height, 56px);
+		align-self: start;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 10px;
+		padding: 18px 8px;
+		background: transparent;
+		border: none;
+		border-right: 1px solid var(--color-border);
+		color: var(--color-text-secondary);
+		cursor: pointer;
+		font-family: var(--font-serif);
+		font-size: 13px;
+		letter-spacing: -0.005em;
+		writing-mode: vertical-rl;
+		transition: background-color var(--duration-fast) var(--ease-sharp),
+			color var(--duration-fast) var(--ease-sharp);
+		min-height: 180px;
+	}
+
+	.sidebar-rail:hover {
+		background: var(--color-bg-subtle);
+		color: var(--color-text);
+	}
+
+	.sidebar-rail svg {
+		writing-mode: horizontal-tb;
+	}
+
+	.sidebar-rail .rail-count {
+		font-family: var(--font-serif-italic);
+		font-style: italic;
+		color: var(--color-accent);
+	}
+
+	.sidebar-rail .rail-chevron {
+		color: var(--color-text-tertiary);
+		writing-mode: horizontal-tb;
+	}
+
+	.desktop-main {
+		padding: 18px 0 60px;
+		padding-left: 2.5rem;
+	}
+
+	.sidebar-collapsed .desktop-main {
+		padding-left: 1.5rem;
+	}
+
+	.desktop-toolbar {
+		display: flex;
+		justify-content: space-between;
+		align-items: baseline;
+		margin-bottom: 18px;
+	}
+
+	.count-line {
+		font-family: var(--font-serif-italic);
+		font-style: italic;
+		font-size: 14px;
+		color: var(--color-text-tertiary);
+	}
+	.count-line .count-num { color: var(--color-text-secondary); }
+
+	.desktop-film-grid {
+		display: grid;
+		grid-template-columns: repeat(4, 1fr);
+		gap: 32px 22px;
+	}
+
+	@media (min-width: 1024px) and (max-width: 1279px) {
+		.desktop-film-grid {
+			grid-template-columns: repeat(3, 1fr);
+		}
+		.sidebar-collapsed .desktop-film-grid {
+			grid-template-columns: repeat(4, 1fr);
 		}
 	}
 
 	@media (min-width: 1280px) {
-		.film-grid {
-			grid-template-columns: repeat(6, 1fr);
+		.sidebar-collapsed .desktop-film-grid {
+			grid-template-columns: repeat(5, 1fr);
 		}
+	}
+
+	/* ---------- Mobile ---------- */
+	.mobile-shell {
+		display: block;
+		padding: 0.25rem 1.125rem 2rem;
+	}
+
+	@media (min-width: 1024px) {
+		.mobile-shell {
+			display: none;
+		}
+	}
+
+	.mobile-header {
+		padding: 12px 0 0;
+		border-bottom: 1px solid var(--color-border-subtle);
+	}
+
+	.mobile-date-label {
+		font-family: var(--font-serif-italic);
+		font-style: italic;
+		font-size: 22px;
+		font-weight: 400;
+		line-height: 1;
+		color: var(--color-text);
+		letter-spacing: -0.01em;
+		padding: 4px 0 14px;
+		border-bottom: 1px solid var(--color-border);
+	}
+
+	.mobile-date-label .italic-comma { font-style: italic; color: var(--color-text-tertiary); }
+
+	.mobile-search-row {
+		display: flex;
+		gap: 8px;
+		padding: 10px 0;
+	}
+
+	.mobile-search {
+		flex: 1;
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 9px 12px;
+		background: transparent;
+		border: 1px solid var(--color-border);
+		color: var(--color-text-tertiary);
+		min-width: 0;
+	}
+
+	.mobile-search input {
+		flex: 1;
+		background: transparent;
+		border: none;
+		outline: none;
+		font-family: var(--font-serif-italic);
+		font-style: italic;
+		font-size: 14px;
+		color: var(--color-text);
+		min-width: 0;
+	}
+
+	.mobile-search input::placeholder {
+		color: var(--color-text-tertiary);
+	}
+
+	.mobile-filter-btn {
+		padding: 0 16px;
+		border: 1px solid var(--color-border);
+		background: var(--color-text);
+		color: var(--color-bg);
+		font-family: var(--font-serif);
+		font-size: 13px;
+		font-weight: 500;
+		letter-spacing: -0.005em;
+		cursor: pointer;
+		font-variation-settings: '"SOFT" 100', '"opsz" 24';
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+	}
+
+	.mobile-filter-btn .count {
+		font-family: var(--font-serif-italic);
+		font-style: italic;
+		font-weight: 400;
+		opacity: 0.7;
+	}
+
+	.mobile-type-tabs {
+		padding: 0 0 12px;
+		border-bottom: 1px solid var(--color-border-subtle);
+	}
+
+	.mobile-list {
+		padding-top: 0;
+	}
+
+	.mobile-day {
+		display: flex;
+		flex-direction: column;
 	}
 </style>

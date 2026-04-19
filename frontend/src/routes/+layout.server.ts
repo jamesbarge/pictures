@@ -7,6 +7,7 @@ interface CinemasResponse {
 		name: string;
 		shortName: string | null;
 		address: { street?: string; area?: string; postcode?: string } | null;
+		coordinates: { lat: number; lng: number } | null;
 	}>;
 }
 
@@ -18,7 +19,8 @@ export const load: LayoutServerLoad = async ({ fetch }) => {
 			id: c.id,
 			name: c.name,
 			shortName: c.shortName,
-			address: c.address?.area ? { area: c.address.area } : null
+			address: c.address?.area ? { area: c.address.area } : null,
+			coordinates: c.coordinates
 		}))
 	};
 };

@@ -109,7 +109,7 @@
 
 <!-- Inline horizontal fader — lives in the header -->
 <div class="house-lights" class:dragging={isDragging}>
-	<span class="hl-label">HOUSE LIGHTS</span>
+	<span class="hl-label">House lights</span>
 
 	<div
 		bind:this={trackEl}
@@ -169,13 +169,12 @@
 	}
 
 	.hl-label {
-		font-size: 9px;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.1em;
-		color: var(--color-text-tertiary);
+		font-family: var(--font-serif);
+		font-size: 13px;
+		font-weight: 400;
+		letter-spacing: -0.005em;
+		color: var(--color-text-secondary);
 		white-space: nowrap;
-		font-family: var(--font-mono);
 	}
 
 	.hl-track {
