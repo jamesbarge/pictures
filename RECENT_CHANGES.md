@@ -1,3 +1,11 @@
+## 2026-04-19: Self-host Fraunces + Cormorant + IBM Plex Mono
+**PR**: TBD | **Files**: `frontend/src/app.css`, `frontend/src/app.html`, `frontend/static/fonts/{Fraunces,Cormorant-Italic,IBMPlexMono}.woff2`
+- Drop the Google Fonts `@import` at the top of `app.css` that was loading Fraunces, Cormorant, and IBM Plex Mono from `fonts.googleapis.com` — eliminates a render-blocking request + DNS/TLS roundtrip to a third-party host
+- Commit 3 woff2 files to `frontend/static/fonts/`: Fraunces (variable, latin subset, 120KB), Cormorant italic (variable, 38KB), IBM Plex Mono (weight 400, 15KB)
+- Add 3 `@font-face` blocks in `app.css` mirroring the existing Inter self-host pattern; add preload hints in `app.html` for Fraunces + Plex (Cormorant is below-the-fold only)
+
+---
+
 ## 2026-04-19: V2a Literary Antiqua redesign — mobile + desktop listings and film detail
 **PR**: TBD | **Files**: `frontend/src/app.css`, `frontend/src/routes/+page.svelte`, `frontend/src/routes/film/[id]/+page.svelte`, `frontend/src/lib/components/layout/Header.svelte`, `frontend/src/lib/components/filters/{DesktopFilterSidebar,MobileFilterSheet,MobileDatePicker,CalendarPopover,FilmTypeFilter}.svelte`, `frontend/src/lib/components/calendar/{DayMasthead,DesktopHybridCard,MobileFilmRow}.svelte`, `frontend/vite.config.ts`
 - Full rebrand of pictures.london following the Claude Design handoff bundle (`pictures-london-v2a-hybrid.html` + siblings) the user landed on after iterating through 5 V2a typographic directions
