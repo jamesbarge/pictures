@@ -18,6 +18,11 @@ export function isAdminEmail(email: string | undefined | null): boolean {
 // ── Init ────────────────────────────────────────────────────────
 
 let initialized = false;
+let adminOptedOut = false;
+
+export function isAdminOptedOut() {
+	return adminOptedOut;
+}
 
 export function initPostHog() {
 	if (!browser || initialized || !PUBLIC_POSTHOG_KEY) return;
@@ -255,6 +260,7 @@ export function identifyUser(userId: string, properties?: Record<string, unknown
 	// If admin, opt out entirely to prevent polluting analytics
 	const email = properties?.email as string | undefined;
 	if (isAdminEmail(email)) {
+		adminOptedOut = true;
 		posthog.opt_out_capturing();
 		posthog.reset();
 		return;
@@ -265,6 +271,7 @@ export function identifyUser(userId: string, properties?: Record<string, unknown
 
 export function resetUser() {
 	if (!browser) return;
+	adminOptedOut = false;
 	posthog.reset();
 }
 
