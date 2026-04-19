@@ -1,12 +1,14 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..700,0..100&family=Cormorant:ital,wght@0,400..600;1,400..600&family=IBM+Plex+Mono:wght@300..600&display=swap');
 @import "tailwindcss";
 
 /*
- * Pictures London — Swiss Brutalist Design System
- * International Typographic Style meets refined brutalism.
- * Typography-forward. Sharp edges. High contrast. Restrained motion.
+ * Pictures London — V2a Literary Antiqua
+ * Bookish editorial system: Fraunces SOFT display, Cormorant italic deck,
+ * IBM Plex Mono meta. Warm beige palette with oxblood accent.
+ * Zero radii preserved. Typography does the heavy lifting.
  */
 
-/* ── Self-hosted Inter Variable ── */
+/* ── Self-hosted Inter (retained for any sans fallback usage) ── */
 @font-face {
 	font-family: 'Inter Variable';
 	font-style: normal;
@@ -80,9 +82,14 @@
 	--radius-full: 0;
 
 	/* ── Font Families ── */
+	/* V2a literary system: Fraunces display + Cormorant italic + IBM Plex Mono */
+	--font-serif: "Fraunces", Georgia, "Times New Roman", serif;
+	--font-serif-italic: "Cormorant", Georgia, "Times New Roman", serif;
+	--font-mono-plex: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+	/* Retained aliases for any remaining sans usage */
 	--font-sans: "Inter Variable", "Inter", system-ui, -apple-system, sans-serif;
-	--font-mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
-	--font-display: "Space Grotesk", "Inter Variable", system-ui, sans-serif;
+	--font-mono: "IBM Plex Mono", "JetBrains Mono", ui-monospace, monospace;
+	--font-display: "Fraunces", Georgia, serif;
 
 	/* ── Animation ── */
 	--duration-instant: 0ms;
@@ -95,42 +102,43 @@
 	--ease-snap: cubic-bezier(0.2, 0, 0, 1);
 }
 
-/* ── Color System (CSS custom properties for theming) ── */
+/* ── Color System (V2a literary antiqua — warm beige + oxblood) ── */
 :root {
-	--color-bg: #f5f2eb;
-	--color-bg-subtle: #ece8df;
+	--color-bg: #efe9dc;
+	--color-bg-subtle: #e5dfd0;
 	--color-surface: #ffffff;
-	--color-text: #0a0a0a;
-	--color-text-secondary: #3a3a3a;
-	--color-text-tertiary: #6a6a6a;
-	--color-border: #0a0a0a;
-	--color-border-subtle: #d0ccc4;
-	--color-accent: #e63946;
-	--color-accent-hover: #c62f3c;
-	--color-screening-bg: #0a0a0a;
-	--color-screening-text: #f5f2eb;
+	--color-text: #1a1410;
+	--color-text-secondary: #4a3a2e;
+	--color-text-tertiary: #7a6a5c;
+	--color-border: #1a1410;
+	--color-border-subtle: rgba(26, 20, 16, 0.18);
+	--color-accent: #a83232;
+	--color-accent-hover: #8a2828;
+	--color-screening-bg: #1a1410;
+	--color-screening-text: #efe9dc;
 }
 
 [data-theme="dark"] {
-	--color-bg: #0a0a0a;
-	--color-bg-subtle: #141414;
-	--color-surface: #1a1a1a;
-	--color-text: #f5f2eb;
-	--color-text-secondary: #c0bdb6;
-	--color-text-tertiary: #7a7a7a;
-	--color-border: #f5f2eb;
-	--color-border-subtle: #2a2a2a;
-	--color-accent: #ff4d5a;
-	--color-accent-hover: #ff6b75;
-	--color-screening-bg: #f5f2eb;
-	--color-screening-text: #0a0a0a;
+	--color-bg: #1a1410;
+	--color-bg-subtle: #241c17;
+	--color-surface: #2a211b;
+	--color-text: #efe9dc;
+	--color-text-secondary: #c9bfae;
+	--color-text-tertiary: #8a7c6b;
+	--color-border: #efe9dc;
+	--color-border-subtle: rgba(239, 233, 220, 0.18);
+	--color-accent: #d0494a;
+	--color-accent-hover: #e45d5e;
+	--color-screening-bg: #efe9dc;
+	--color-screening-text: #1a1410;
 }
 
 /* ── Base Styles ── */
 html {
 	background-color: var(--color-bg);
 	color: var(--color-text);
-	font-family: var(--font-sans);
+	font-family: var(--font-serif);
+	font-variation-settings: '"SOFT" 100', '"opsz" 24';
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
 	overflow-x: hidden;
@@ -140,9 +148,38 @@ body {
 	min-height: 100dvh;
 }
 
+/* ── Mobile input zoom guard ──
+   iOS Safari auto-zooms the viewport when a focused form control's computed
+   font-size is below 16px. Applying 16px universally on mobile prevents that
+   for every input in the app — including page-level search bars that ship
+   with a smaller component-scoped class selector (which would otherwise win
+   on specificity over a bare tag rule). The `!important` is a known and
+   acceptable workaround for this browser-compatibility quirk; desktop (≥768px)
+   is unaffected and keeps whatever size each component declares. */
+@media (max-width: 767px) {
+	input,
+	textarea,
+	select {
+		font-size: 16px !important;
+	}
+}
+
 /* ── Typography Utilities ── */
 .font-display {
 	font-family: var(--font-display);
+}
+
+.font-serif {
+	font-family: var(--font-serif);
+}
+
+.font-serif-italic {
+	font-family: var(--font-serif-italic);
+	font-style: italic;
+}
+
+.font-mono-plex {
+	font-family: var(--font-mono-plex);
 }
 
 .tracking-swiss {
@@ -156,6 +193,14 @@ body {
 .tracking-wide-swiss {
 	letter-spacing: 0.08em;
 }
+
+/* V2a variable-font axis helpers */
+.soft-display-144 { font-variation-settings: '"SOFT" 100', '"opsz" 144'; }
+.soft-display-96 { font-variation-settings: '"SOFT" 100', '"opsz" 96'; }
+.soft-display-72 { font-variation-settings: '"SOFT" 100', '"opsz" 72'; }
+.soft-display-48 { font-variation-settings: '"SOFT" 100', '"opsz" 48'; }
+.soft-display-36 { font-variation-settings: '"SOFT" 100', '"opsz" 36'; }
+.soft-display-24 { font-variation-settings: '"SOFT" 100', '"opsz" 24'; }
 
 /* ── Screening Pill ── */
 .screening-pill {

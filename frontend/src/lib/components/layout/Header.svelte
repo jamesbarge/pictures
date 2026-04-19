@@ -1,9 +1,12 @@
 <script lang="ts">
 	import BreathingGrid from '$lib/components/pretext/BreathingGrid.svelte';
-	import FilterBar from '$lib/components/filters/FilterBar.svelte';
 	import DimmerDial from '$lib/components/ui/DimmerDial.svelte';
 	import { page } from '$app/state';
 
+	// `cinemas` and `showFilters` were previously used to feed the in-header
+	// FilterBar. They're kept on the prop type for backwards compatibility with
+	// call sites, but the header no longer renders filters itself — the
+	// homepage owns them via its sidebar / bottom sheet.
 	interface HeaderCinema {
 		id: string;
 		name: string;
@@ -11,9 +14,8 @@
 		address: { area: string } | null;
 	}
 
-	let { cinemas = [], showFilters = true }: { cinemas?: HeaderCinema[]; showFilters?: boolean } = $props();
-
-	const isHome = $derived(page.url.pathname === '/');
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	let { cinemas: _cinemas = [], showFilters: _showFilters = true }: { cinemas?: HeaderCinema[]; showFilters?: boolean } = $props();
 
 	let mobileMenuOpen = $state(false);
 	let headerEl = $state<HTMLElement>();
@@ -25,11 +27,8 @@
 	});
 
 	// Measure header height and expose as CSS custom property for dropdown positioning.
-	// Re-runs when the filter bar appears/disappears (isHome, showFilters) or menu toggles.
 	$effect(() => {
 		// Track dependencies that change header height
-		void isHome;
-		void showFilters;
 		void mobileMenuOpen;
 		if (headerEl) {
 			// Read after a tick so the DOM has updated
@@ -56,14 +55,15 @@
 
 			<div class="brand-right">
 				<nav class="nav-links" aria-label="Main">
-					<a href="/about" class="nav-link" aria-current={page.url.pathname === '/about' ? 'page' : undefined}>ABOUT</a>
-					<a href="/map" class="nav-link" aria-current={page.url.pathname === '/map' ? 'page' : undefined}>MAP</a>
-					<a href="/reachable" class="nav-link" aria-current={page.url.pathname.startsWith('/reachable') ? 'page' : undefined}>REACHABLE</a>
+					<a href="/watchlist" class="nav-link watchlist-link" aria-current={page.url.pathname === '/watchlist' ? 'page' : undefined}>Watchlist</a>
+					<a href="/about" class="nav-link" aria-current={page.url.pathname === '/about' ? 'page' : undefined}>About</a>
+					<a href="/map" class="nav-link" aria-current={page.url.pathname === '/map' ? 'page' : undefined}>Map</a>
+					<a href="/reachable" class="nav-link" aria-current={page.url.pathname.startsWith('/reachable') ? 'page' : undefined}>Reachable</a>
 				</nav>
 
 				<div class="nav-divider"></div>
 
-					<a href="/sign-in" class="nav-link sign-in-link">SIGN IN</a>
+					<a href="/sign-in" class="nav-link sign-in-link">Sign in</a>
 
 				<DimmerDial />
 
@@ -86,12 +86,10 @@
 			</div>
 		</div>
 
-		<!-- ROW B: Filter bar (homepage only) -->
-		{#if showFilters && isHome}
-			<div class="filter-bar-row">
-				<FilterBar {cinemas} />
-			</div>
-		{/if}
+		<!-- Filter bar is owned by the homepage (sidebar on desktop, bottom sheet
+			on mobile) and not rendered in the header anymore. Other routes render
+			their own filters when needed. -->
+
 
 		<!-- Mobile nav menu -->
 		{#if mobileMenuOpen}
@@ -178,17 +176,27 @@
 	}
 
 	.nav-link {
-		padding: 0.25rem 0.75rem;
-		font-size: 11px;
-		font-weight: 500;
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		color: var(--color-text-tertiary);
+		padding: 0.25rem 0.625rem;
+		font-family: var(--font-serif);
+		font-size: 13px;
+		font-weight: 400;
+		letter-spacing: -0.005em;
+		color: var(--color-text-secondary);
 		transition: color var(--duration-fast) var(--ease-sharp);
 		white-space: nowrap;
 	}
 
 	.nav-link:hover {
+		color: var(--color-text);
+	}
+
+	.nav-link.watchlist-link {
+		font-family: var(--font-serif-italic);
+		font-style: italic;
+		font-size: 13px;
+	}
+
+	.nav-link.sign-in-link {
 		color: var(--color-text);
 	}
 
@@ -198,7 +206,8 @@
 
 	@media (min-width: 768px) {
 		.sign-in-link {
-			display: inline;
+			display: inline-flex;
+			align-items: center;
 		}
 	}
 
@@ -273,10 +282,6 @@
 	.mobile-nav-link[aria-current='page'] {
 		color: var(--color-text);
 		font-weight: 600;
-	}
-
-	.filter-bar-row {
-		border-top: 1px solid var(--color-border-subtle);
 	}
 
 	.header-border {

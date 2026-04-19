@@ -1,3 +1,17 @@
+## 2026-04-19: V2a Literary Antiqua redesign — mobile + desktop listings and film detail
+**PR**: TBD | **Files**: `frontend/src/app.css`, `frontend/src/routes/+page.svelte`, `frontend/src/routes/film/[id]/+page.svelte`, `frontend/src/lib/components/layout/Header.svelte`, `frontend/src/lib/components/filters/{DesktopFilterSidebar,MobileFilterSheet,MobileDatePicker,CalendarPopover,FilmTypeFilter}.svelte`, `frontend/src/lib/components/calendar/{DayMasthead,DesktopHybridCard,MobileFilmRow}.svelte`, `frontend/vite.config.ts`
+- Full rebrand of pictures.london following the Claude Design handoff bundle (`pictures-london-v2a-hybrid.html` + siblings) the user landed on after iterating through 5 V2a typographic directions
+- Palette: warm beige (`#efe9dc`) + oxblood accent (`#a83232`) + deep ink text (`#1a1410`) — replaces the bright-red/warm-white Swiss brutalist scheme
+- Typography: Fraunces SOFT display + Cormorant italic deck/byline + IBM Plex Mono meta (was Inter + Space Grotesk + JetBrains Mono)
+- Homepage desktop: new 240px sidebar rail (Where / Time of day / Format / Genre / Era) + big italic-first-letter day masthead ("Friday, the nineteenth") + 4-col dense grid with inline screenings per card
+- Homepage mobile: serif italic date header + search + Filter button + All / New / Repertory bordered tabs + text-forward film rows with right-side posters
+- Mobile filter sheet: full-height overlay with literary chips; mobile date picker: bottom sheet with monthly calendar (Mon-start, weekend in accent)
+- Film detail: 320px poster + 96px italic display title hero, grouped-by-cinema chip-button screenings, day strip, Credits sidebar
+- Header: filter bar removed from header (homepage owns its own filters); watchlist + sign-in reflow in serif
+- Follow-up: 38 Playwright tests assert the old filter-bar DOM (WHEN/CINEMAS/FORMAT dropdowns) — those tests need restructuring to match the new sidebar/sheet topology
+
+---
+
 ## 2026-04-18: Hide past screenings on calendar/tonight/this-weekend (no empty film cards)
 **PR**: TBD | **Files**: `frontend/src/routes/+page.svelte`, `frontend/src/routes/tonight/+page.svelte`, `frontend/src/routes/this-weekend/+page.svelte`
 - Drop screenings where `datetime <= now()` in each page's derived film-grouping, so films whose only screenings today are already in the past stop appearing as empty cards (e.g. SIRĀT at 16:50 with a 14:00-only slot for today)

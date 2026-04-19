@@ -3,9 +3,9 @@
 	import { trackFilterChange } from '$lib/analytics/posthog';
 
 	const options = [
-		{ value: 'all', label: 'ALL' },
-		{ value: 'new', label: 'NEW' },
-		{ value: 'repertory', label: 'REPERTORY' }
+		{ value: 'all', label: 'All' },
+		{ value: 'new', label: 'New' },
+		{ value: 'repertory', label: 'Repertory' }
 	];
 
 	const selected = $derived.by(() => {
@@ -43,35 +43,37 @@
 
 <style>
 	.type-filter {
-		display: flex;
+		display: inline-flex;
 		gap: 0;
 	}
 
-	.type-tab:first-child {
-		padding-left: 0;
-	}
-
 	.type-tab {
-		padding: 0.375rem 0.625rem;
-		font-size: var(--font-size-xs);
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		color: var(--color-text-tertiary);
+		padding: 7px 16px;
+		font-family: var(--font-serif);
+		font-size: 13.5px;
+		font-weight: 400;
+		letter-spacing: -0.005em;
+		color: var(--color-text-secondary);
 		background: transparent;
-		border: none;
-		border-bottom: 2px solid transparent;
+		border: 1px solid var(--color-border);
 		cursor: pointer;
-		transition: color var(--duration-fast) var(--ease-sharp),
-			border-color var(--duration-fast) var(--ease-sharp);
+		font-variation-settings: '"SOFT" 100', '"opsz" 24';
+		transition: background-color var(--duration-fast) var(--ease-sharp),
+			color var(--duration-fast) var(--ease-sharp);
 	}
 
-	.type-tab:hover {
+	.type-tab:not(:last-child) {
+		border-right: none;
+	}
+
+	.type-tab:hover:not(.active) {
+		background: var(--color-bg-subtle);
 		color: var(--color-text);
 	}
 
 	.type-tab.active {
-		color: var(--color-text);
-		border-bottom-color: var(--color-accent);
+		background: var(--color-text);
+		color: var(--color-bg);
+		font-weight: 500;
 	}
 </style>
