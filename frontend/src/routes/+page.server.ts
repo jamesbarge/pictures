@@ -17,6 +17,7 @@ interface ScreeningsResponse {
 			title: string;
 			year: number | null;
 			directors: string[];
+			genres: string[];
 			runtime: number | null;
 			posterUrl: string | null;
 			isRepertory: boolean;
@@ -51,6 +52,7 @@ export const load: PageServerLoad = async ({ fetch, setHeaders }) => {
 				title: s.film.title,
 				year: s.film.year,
 				director: s.film.directors?.[0] ?? null,
+				genres: s.film.genres ?? [],
 				runtime: s.film.runtime,
 				posterUrl: s.film.posterUrl,
 				isRepertory: s.film.isRepertory

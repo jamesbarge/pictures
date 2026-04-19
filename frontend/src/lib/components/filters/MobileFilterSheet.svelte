@@ -138,9 +138,23 @@
 		{ value: '4k', label: '4K' }
 	];
 
-	// Genre + Era sections hidden until the homepage loader exposes genres and
-	// the filter pipeline is wired. Follow-up PR will restore them.
+	// Genre — chip labels map to lowercase keys. Mobile uses full-word labels.
+	const GENRES = ['Drama', 'Comedy', 'Documentary', 'Thriller', 'Sci-fi', 'Romance', 'Animation', 'Horror'];
+	function toggleGenre(g: string) {
+		const key = g.toLowerCase();
+		filters.genres = filters.genres.includes(key)
+			? filters.genres.filter(x => x !== key)
+			: [...filters.genres, key];
+	}
+	function isGenreActive(g: string) { return filters.genres.includes(g.toLowerCase()); }
 
+	// Era — decade chips. Matches the homepage filter chain's expected form.
+	const DECADES = ['2020s', '2010s', '2000s', '90s', '80s', '70s', 'Pre-1970'];
+	function toggleDecade(d: string) {
+		filters.decades = filters.decades.includes(d)
+			? filters.decades.filter(x => x !== d)
+			: [...filters.decades, d];
+	}
 </script>
 
 {#if open}
@@ -216,6 +230,31 @@
 					{#each FORMATS as fmt (fmt.value)}
 						{@const active = filters.formats.includes(fmt.value)}
 						<button type="button" class="chip" class:active onclick={() => filters.toggleFormat(fmt.value)} aria-pressed={active}>{fmt.label}</button>
+					{/each}
+				</div>
+			</section>
+
+			<!-- Genre -->
+			<section class="filter-section">
+				<div class="section-head"><h4>Genre</h4></div>
+				<div class="chips">
+					{#each GENRES as g (g)}
+						{@const active = isGenreActive(g)}
+						<button type="button" class="chip" class:active onclick={() => toggleGenre(g)} aria-pressed={active}>{g}</button>
+					{/each}
+				</div>
+			</section>
+
+			<!-- Era -->
+			<section class="filter-section">
+				<div class="section-head">
+					<h4>From the era of</h4>
+					<span class="hint">repertory only</span>
+				</div>
+				<div class="chips">
+					{#each DECADES as d (d)}
+						{@const active = filters.decades.includes(d)}
+						<button type="button" class="chip" class:active onclick={() => toggleDecade(d)} aria-pressed={active}>{d}</button>
 					{/each}
 				</div>
 			</section>

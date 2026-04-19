@@ -38,6 +38,7 @@ export const screeningWithDetailsSelect = {
     title: films.title,
     year: films.year,
     directors: films.directors,
+    genres: films.genres,
     posterUrl: films.posterUrl,
     runtime: films.runtime,
     isRepertory: films.isRepertory,
@@ -80,6 +81,7 @@ export type ScreeningWithDetails = {
     title: string;
     year: number | null;
     directors: string[];
+    genres: string[];
     posterUrl: string | null;
     runtime: number | null;
     isRepertory: boolean;
