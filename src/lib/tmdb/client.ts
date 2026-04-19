@@ -68,6 +68,15 @@ export class TMDBClient {
   }
 
   /**
+   * Get similar films by TMDB ID. TMDB returns up to 20 per page, ordered
+   * by similarity. We only care about the ids so we can intersect with our
+   * own DB — poster/title are re-read from our row, not TMDB's response.
+   */
+  async getSimilar(tmdbId: number): Promise<{ results: Array<{ id: number }> }> {
+    return this.fetch<{ results: Array<{ id: number }> }>(`/movie/${tmdbId}/similar`);
+  }
+
+  /**
    * Get credits (cast and crew) for a film
    */
   async getFilmCredits(tmdbId: number): Promise<TMDBCredits> {

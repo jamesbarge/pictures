@@ -1,3 +1,12 @@
+## 2026-04-20: "If you like this" similar films rail
+**PR**: TBD | **Files**: `src/app/api/films/[id]/similar/route.ts`, `src/lib/tmdb/client.ts`, `src/db/repositories/film.ts`, `frontend/src/routes/film/[id]/+page.{ts,svelte}`
+- New `/api/films/[id]/similar` Next.js route proxies TMDB's `/movie/{id}/similar`, intersects with films we carry (filtered to `contentType = 'film'`), preserves similarity ordering, returns up to 6. Caches 24 h on the happy path; 5 min on empty/fallback paths.
+- Frontend film-detail loader fetches similar in parallel with the main detail request; a failure hides the rail rather than breaking the page.
+- Rail renders below the body grid on both desktop (responsive grid, 132px cards) and mobile (scroll-snap horizontal rail) when `similar.length >= 2`.
+- Graceful hide when the film has no `tmdbId`, TMDB is down, or <2 matches we carry.
+
+---
+
 ## 2026-04-20: Self-host Fraunces + Cormorant + IBM Plex Mono
 **PR**: TBD | **Files**: `frontend/src/app.css`, `frontend/src/app.html`, `frontend/static/fonts/{Fraunces,Cormorant-Italic,IBMPlexMono,IBMPlexMono-500}.woff2`
 - Drop the Google Fonts `@import` at the top of `app.css` — eliminates a render-blocking stylesheet request and a DNS/TLS roundtrip to a third-party host
