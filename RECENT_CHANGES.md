@@ -1,8 +1,9 @@
-## 2026-04-19: Wire Genre + Era filters
-**PR**: TBD | **Files**: `src/db/repositories/screening.ts`, `frontend/src/routes/+page.server.ts`, `frontend/src/routes/+page.svelte`, `frontend/src/lib/components/filters/{DesktopFilterSidebar,MobileFilterSheet}.svelte`
-- Extend the `/api/screenings` response (and the homepage SvelteKit loader) with `film.genres: string[]` — pulled from the existing `films.genres` column, which was already populated
-- Add two filter clauses in the homepage `filmMap` derivation: `filters.genres` (case-insensitive includes against canonical TMDB genre names) and `filters.decades` (year-based: `'2020s'` / `'2010s'` / `'2000s'` / `'90s'` / `'80s'` / `'70s'` / `'Pre-1970'`)
-- Restore the hidden Genre + Era chip sections in `DesktopFilterSidebar` and `MobileFilterSheet` — both were removed in PR #431 because the loader didn't expose genres and clicking chips silently did nothing
+## 2026-04-20: Modal a11y — Escape close + body scroll lock
+**PR**: TBD | **Files**: `frontend/src/lib/components/filters/{MobileFilterSheet,MobileDatePicker,CalendarPopover}.svelte`, `frontend/tests/mobile.spec.ts`
+- Add a `$effect` to `MobileFilterSheet` and `MobileDatePicker` that, while the sheet is open, listens for `Escape` keydown (calls `onClose()`) and locks `document.body.style.overflow = 'hidden'` (restored on cleanup)
+- Add the same Escape handler to `CalendarPopover` — outside-click is already handled by its host, but Escape wasn't
+- Two new Playwright tests guard the behaviour: `Escape key dismisses the filter sheet` and `body scroll is locked while filter sheet is open`
+- Keeps the hand-rolled `role="dialog"` + `aria-modal="true"` markup rather than swapping in bits-ui primitives (an earlier attempt at `Dialog.Root` broke Svelte's scoped styles on portaled content)
 
 ---
 
