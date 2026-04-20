@@ -10,10 +10,27 @@ interface FilmDetailResponse {
 	meta: { screeningCount: number };
 }
 
+export interface SimilarFilm {
+	id: string;
+	title: string;
+	year: number | null;
+	posterUrl: string | null;
+}
+
+interface SimilarResponse {
+	similar: SimilarFilm[];
+}
+
 export async function load({ params, fetch }) {
 	try {
-		const res = await apiGet<FilmDetailResponse>(`/api/films/${params.id}`, { fetch });
-		return res;
+		// Fetch detail + similar in parallel. Similar is best-effort: a failure
+		// (network, backend down, TMDB quota) just hides the rail — we never
+		// break the detail page over it.
+		const [detail, similar] = await Promise.all([
+			apiGet<FilmDetailResponse>(`/api/films/${params.id}`, { fetch }),
+			apiGet<SimilarResponse>(`/api/films/${params.id}/similar`, { fetch }).catch(() => ({ similar: [] as SimilarFilm[] }))
+		]);
+		return { ...detail, similar: similar.similar };
 	} catch (e) {
 		throw error(404, 'Film not found');
 	}
