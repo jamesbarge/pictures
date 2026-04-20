@@ -477,7 +477,7 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 			await page.locator('.film-card a').first().click();
 			await page.waitForURL(/\/film\//);
 
-			await page.getByText('Want to see').click();
+			await page.getByRole('button', { name: 'Want to see' }).click();
 			await page.waitForTimeout(300);
 
 			await page.goto(`${BASE}/watchlist`);
