@@ -132,7 +132,7 @@ export async function getCinemaById(id: string): Promise<CinemaDetail | null> {
  */
 export async function getUpcomingScreeningsForCinema(
   cinemaId: string,
-  limit = 100
+  limit = 200
 ): Promise<CinemaScreening[]> {
   const now = new Date();
 
