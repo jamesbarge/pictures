@@ -9,6 +9,15 @@
 
 ---
 
+## 2026-04-19: Fix PostHog opt-in guard that blocked all event capture
+**PR**: TBD | **Files**: `frontend/src/lib/analytics/PostHogProvider.svelte`, `frontend/src/lib/analytics/posthog.ts`
+- PostHogProvider's consent effect called `posthog.has_opted_out_capturing()` before calling `opt_in_capturing()`, intending to preserve admin opt-out — but with `opt_out_capturing_by_default: true`, that check returns `true` for every default user, so `opt_in_capturing()` was never called
+- Result: since PR #422 (2026-04-11), no custom events (`film_viewed`, `booking_link_clicked`, search/filter events, etc.) were reaching PostHog from pictures.london — autocapture and pageviews were also blocked for users who accepted consent
+- Fix: track admin opt-out with an explicit `adminOptedOut` module flag set inside `identifyUser()`, replacing the `has_opted_out_capturing()` check with `isAdminOptedOut()`
+- Verified live on localhost: accepting consent now persists PostHog opt-in, upgrades storage to `localStorage+cookie`, and POSTs `$opt_in`, `$autocapture`, `$pageview`, `$exception` to `/ingest/e/` with the correct Pictures project token
+
+---
+
 ## 2026-04-19: V2a Literary Antiqua redesign — mobile + desktop listings and film detail
 **PR**: TBD | **Files**: `frontend/src/app.css`, `frontend/src/routes/+page.svelte`, `frontend/src/routes/film/[id]/+page.svelte`, `frontend/src/lib/components/layout/Header.svelte`, `frontend/src/lib/components/filters/{DesktopFilterSidebar,MobileFilterSheet,MobileDatePicker,CalendarPopover,FilmTypeFilter}.svelte`, `frontend/src/lib/components/calendar/{DayMasthead,DesktopHybridCard,MobileFilmRow}.svelte`, `frontend/vite.config.ts`
 - Full rebrand of pictures.london following the Claude Design handoff bundle (`pictures-london-v2a-hybrid.html` + siblings) the user landed on after iterating through 5 V2a typographic directions

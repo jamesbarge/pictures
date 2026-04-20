@@ -54,7 +54,7 @@
 
 		if (decision === 'enable') {
 			// Don't re-enable if admin was opted out by identifyUser()
-			if (posthogLib.has_opted_out_capturing()) return;
+			if (posthogModule?.isAdminOptedOut()) return;
 			posthogLib.opt_in_capturing();
 			posthogLib.set_config({ persistence: 'localStorage+cookie' });
 			posthogLib.startSessionRecording();
