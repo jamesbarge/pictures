@@ -13,6 +13,15 @@
 		width?: number;
 	} = $props();
 
+	// Escape closes the popover. Outside-click is handled by the host which
+	// toggles the {#if open} wrapper around this component.
+	$effect(() => {
+		if (!onClose) return;
+		const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose?.(); };
+		document.addEventListener('keydown', handler);
+		return () => document.removeEventListener('keydown', handler);
+	});
+
 	const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 	// Parse initial selected month/year. Reading `selected` once at mount time

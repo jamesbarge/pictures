@@ -110,6 +110,28 @@ test.describe('Mobile Responsive — iPhone 12 Pro (390x844)', () => {
 			await expect(sheet).toBeHidden();
 		});
 
+		test('Escape key dismisses the filter sheet', async ({ page }) => {
+			await page.goto(BASE);
+			await page.getByRole('button', { name: /^Filter/ }).click();
+			const sheet = page.getByRole('dialog', { name: 'Filter programme' });
+			await expect(sheet).toBeVisible();
+			await page.keyboard.press('Escape');
+			await expect(sheet).toBeHidden();
+		});
+
+		test('body scroll is locked while filter sheet is open', async ({ page }) => {
+			await page.goto(BASE);
+			const prev = await page.evaluate(() => document.body.style.overflow);
+			await page.getByRole('button', { name: /^Filter/ }).click();
+			await expect(page.getByRole('dialog', { name: 'Filter programme' })).toBeVisible();
+			const locked = await page.evaluate(() => document.body.style.overflow);
+			expect(locked).toBe('hidden');
+			await page.getByRole('button', { name: 'Close filters' }).click();
+			await expect(page.getByRole('dialog', { name: 'Filter programme' })).toBeHidden();
+			const restored = await page.evaluate(() => document.body.style.overflow);
+			expect(restored).toBe(prev);
+		});
+
 		test('Pick a date chip inside sheet opens mobile date picker', async ({ page }) => {
 			await page.goto(BASE);
 			await page.getByRole('button', { name: /^Filter/ }).click();
