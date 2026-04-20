@@ -1,7 +1,7 @@
 ## 2026-04-19: Wire Genre + Era filters
 **PR**: TBD | **Files**: `src/db/repositories/screening.ts`, `frontend/src/routes/+page.server.ts`, `frontend/src/routes/+page.svelte`, `frontend/src/lib/components/filters/{DesktopFilterSidebar,MobileFilterSheet}.svelte`
 - Extend the `/api/screenings` response (and the homepage SvelteKit loader) with `film.genres: string[]` — pulled from the existing `films.genres` column, which was already populated
-- Add two filter clauses in the homepage `filmMap` derivation: `filters.genres` (case-insensitive includes, dot stripped for "Doc.") and `filters.decades` (year-based: `'2020s' | '2010s' | '2000s' | '90s' | '80s' | '70s'`)
+- Add two filter clauses in the homepage `filmMap` derivation: `filters.genres` (case-insensitive includes against canonical TMDB genre names) and `filters.decades` (year-based: `'2020s'` / `'2010s'` / `'2000s'` / `'90s'` / `'80s'` / `'70s'` / `'Pre-1970'`)
 - Restore the hidden Genre + Era chip sections in `DesktopFilterSidebar` and `MobileFilterSheet` — both were removed in PR #431 because the loader didn't expose genres and clicking chips silently did nothing
 
 ---
@@ -14,6 +14,15 @@
 - Bump Playwright config: `workers: 2`, `retries: 2` — covers dev-server races on `localhost:5173` without masking real breakage
 - Two `test.fixme` markers on the cinemas-page mobile-overflow tests (pre-existing bug: `.cinema-card` grid doesn't collapse to 1-col below ~640px; not a V2a regression)
 - Result: 163/169 passing, 4 skipped (the fixme pair × 2 projects), 0 failed across `chromium` + `mobile-small` projects
+
+---
+
+## 2026-04-19: Fix PostHog opt-in guard that blocked all event capture
+**PR**: TBD | **Files**: `frontend/src/lib/analytics/PostHogProvider.svelte`, `frontend/src/lib/analytics/posthog.ts`
+- PostHogProvider's consent effect called `posthog.has_opted_out_capturing()` before calling `opt_in_capturing()`, intending to preserve admin opt-out — but with `opt_out_capturing_by_default: true`, that check returns `true` for every default user, so `opt_in_capturing()` was never called
+- Result: since PR #422 (2026-04-11), no custom events (`film_viewed`, `booking_link_clicked`, search/filter events, etc.) were reaching PostHog from pictures.london — autocapture and pageviews were also blocked for users who accepted consent
+- Fix: track admin opt-out with an explicit `adminOptedOut` module flag set inside `identifyUser()`, replacing the `has_opted_out_capturing()` check with `isAdminOptedOut()`
+- Verified live on localhost: accepting consent now persists PostHog opt-in, upgrades storage to `localStorage+cookie`, and POSTs `$opt_in`, `$autocapture`, `$pageview`, `$exception` to `/ingest/e/` with the correct Pictures project token
 
 ---
 
