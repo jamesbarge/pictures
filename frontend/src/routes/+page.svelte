@@ -81,19 +81,25 @@
 			}
 
 			if (filters.genres.length > 0) {
-				// Chip labels are stored as lowercase and stripped of trailing punctuation
-				// (e.g. "Doc." → "doc") to match the filter-store convention.
-				const filmGenres = (s.film.genres ?? []).map(g => g.toLowerCase().replace('.', ''));
+				// Chip keys are lowercase canonical genre names; `film.genres`
+				// is already lowercased by the backend pipeline.
+				const filmGenres = (s.film.genres ?? []).map(g => g.toLowerCase());
 				if (!filters.genres.some(g => filmGenres.includes(g))) continue;
 			}
 
 			if (filters.decades.length > 0) {
 				if (!s.film.year) continue;
-				// Label convention: '2020s', '2010s', '2000s' for the 2000+ eras,
-				// '90s', '80s', '70s' for pre-2000 (matching the chip labels).
-				const decade = s.film.year >= 2000
-					? `${Math.floor(s.film.year / 10) * 10}s`
-					: `${Math.floor((s.film.year % 100) / 10) * 10}s`;
+				// Label convention: '2020s' / '2010s' / '2000s' for 2000+ eras,
+				// '90s' / '80s' / '70s' for 1970s–1990s, 'Pre-1970' for anything
+				// earlier. Matches the chip labels in both filter surfaces.
+				let decade: string;
+				if (s.film.year < 1970) {
+					decade = 'Pre-1970';
+				} else if (s.film.year >= 2000) {
+					decade = `${Math.floor(s.film.year / 10) * 10}s`;
+				} else {
+					decade = `${Math.floor((s.film.year % 100) / 10) * 10}s`;
+				}
 				if (!filters.decades.includes(decade)) continue;
 			}
 

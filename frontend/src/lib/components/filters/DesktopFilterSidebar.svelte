@@ -123,13 +123,14 @@
 		filters.toggleFormat(fmt);
 	}
 
-	// Genre — chip labels map to lowercase keys (with '.' stripped for "Doc.")
-	// in the filters store. Homepage filter chain does a case-insensitive
-	// includes() against `film.genres` to decide visibility.
-	const GENRES = ['Drama', 'Comedy', 'Doc.', 'Thriller', 'Sci-fi', 'Romance', 'Horror'];
+	// Genre — labels are lowercased to form the filter key, which must match
+	// the canonical TMDB genre name as stored in `films.genres`
+	// ("drama", "comedy", "documentary", …). Never use a clipped form like
+	// "Doc." here — the key "doc" would never match the stored "documentary".
+	const GENRES = ['Drama', 'Comedy', 'Documentary', 'Thriller', 'Sci-fi', 'Romance', 'Horror'];
 
 	function toggleGenre(g: string) {
-		const key = g.toLowerCase().replace('.', '');
+		const key = g.toLowerCase();
 		if (filters.genres.includes(key)) {
 			filters.genres = filters.genres.filter(x => x !== key);
 		} else {
@@ -137,11 +138,11 @@
 		}
 	}
 	function isGenreActive(g: string) {
-		return filters.genres.includes(g.toLowerCase().replace('.', ''));
+		return filters.genres.includes(g.toLowerCase());
 	}
 
 	// Era — decade chips. Labels match the homepage filter chain's expected form.
-	const DECADES = ['2020s', '2010s', '2000s', '90s', '80s', '70s'];
+	const DECADES = ['2020s', '2010s', '2000s', '90s', '80s', '70s', 'Pre-1970'];
 
 	function toggleDecade(d: string) {
 		if (filters.decades.includes(d)) {
