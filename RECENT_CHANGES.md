@@ -1,3 +1,12 @@
+## 2026-04-20: Fix PostHog ingestion proxy failing on trailing-slash paths
+**PR**: TBD | **Files**: `frontend/vercel.json`
+- PostHog event POSTs to `/ingest/e/`, `/ingest/i/v0/e/`, `/ingest/flags/`, and `/ingest/api/surveys/` were all returning 404 because Vercel's `:path*` glob in the rewrite source didn't match trailing slashes — SvelteKit's catch-all handled them as 404s instead
+- Reproducible via `curl`: `/ingest/e` → 400 (proxied), `/ingest/e/` → 404 (not proxied). Every posthog-js ingestion endpoint has a trailing slash
+- Fix: swap `:path*` for the `(.*)` regex pattern PostHog's own reverse-proxy docs recommend; remove the now-redundant explicit `/ingest/decide` rule (captured by `/ingest/(.*)`)
+- Final piece of the PostHog restoration: combined with PR #433 (opt-in guard) and the Vercel env var newline cleanup, events now land end-to-end in the Pictures PostHog project
+
+---
+
 ## 2026-04-20: "If you like this" similar films rail
 **PR**: TBD | **Files**: `src/app/api/films/[id]/similar/route.ts`, `src/lib/tmdb/client.ts`, `src/db/repositories/film.ts`, `frontend/src/routes/film/[id]/+page.{ts,svelte}`
 - New `/api/films/[id]/similar` Next.js route proxies TMDB's `/movie/{id}/similar`, intersects with films we carry (filtered to `contentType = 'film'`), preserves similarity ordering, returns up to 6. Caches 24 h on the happy path; 5 min on empty/fallback paths.
