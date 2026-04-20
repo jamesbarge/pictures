@@ -1,3 +1,11 @@
+## 2026-04-19: Wire Genre + Era filters
+**PR**: TBD | **Files**: `src/db/repositories/screening.ts`, `frontend/src/routes/+page.server.ts`, `frontend/src/routes/+page.svelte`, `frontend/src/lib/components/filters/{DesktopFilterSidebar,MobileFilterSheet}.svelte`
+- Extend the `/api/screenings` response (and the homepage SvelteKit loader) with `film.genres: string[]` — pulled from the existing `films.genres` column, which was already populated
+- Add two filter clauses in the homepage `filmMap` derivation: `filters.genres` (case-insensitive includes against canonical TMDB genre names) and `filters.decades` (year-based: `'2020s'` / `'2010s'` / `'2000s'` / `'90s'` / `'80s'` / `'70s'` / `'Pre-1970'`)
+- Restore the hidden Genre + Era chip sections in `DesktopFilterSidebar` and `MobileFilterSheet` — both were removed in PR #431 because the loader didn't expose genres and clicking chips silently did nothing
+
+---
+
 ## 2026-04-19: Rewrite Playwright tests for V2a UI
 **PR**: TBD | **Files**: `frontend/test-all.spec.ts`, `frontend/tests/mobile.spec.ts`, `frontend/playwright.config.ts`
 - Rewrite both Playwright spec files against the V2a Literary Antiqua UI — delete tests for the removed header FilterBar dropdowns (`WHEN`, `ALL CINEMAS`, `FORMAT`), update tab assertions from uppercase `ALL/NEW/REPERTORY` to titlecase via `role="tab"`, re-scope to the new `DesktopFilterSidebar` / `MobileFilterSheet` topology

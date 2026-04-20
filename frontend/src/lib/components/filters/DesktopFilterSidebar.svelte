@@ -123,8 +123,34 @@
 		filters.toggleFormat(fmt);
 	}
 
-	// Genre + Era sections hidden until the homepage loader exposes genres and
-	// the filter pipeline is wired to year/decade. Follow-up PR will restore them.
+	// Genre — labels are lowercased to form the filter key, which must match
+	// the canonical TMDB genre name as stored in `films.genres`
+	// ("drama", "comedy", "documentary", …). Never use a clipped form like
+	// "Doc." here — the key "doc" would never match the stored "documentary".
+	const GENRES = ['Drama', 'Comedy', 'Documentary', 'Thriller', 'Sci-fi', 'Romance', 'Horror'];
+
+	function toggleGenre(g: string) {
+		const key = g.toLowerCase();
+		if (filters.genres.includes(key)) {
+			filters.genres = filters.genres.filter(x => x !== key);
+		} else {
+			filters.genres = [...filters.genres, key];
+		}
+	}
+	function isGenreActive(g: string) {
+		return filters.genres.includes(g.toLowerCase());
+	}
+
+	// Era — decade chips. Labels match the homepage filter chain's expected form.
+	const DECADES = ['2020s', '2010s', '2000s', '90s', '80s', '70s', 'Pre-1970'];
+
+	function toggleDecade(d: string) {
+		if (filters.decades.includes(d)) {
+			filters.decades = filters.decades.filter(x => x !== d);
+		} else {
+			filters.decades = [...filters.decades, d];
+		}
+	}
 </script>
 
 <aside class="sidebar" aria-label="Filters">
@@ -206,6 +232,33 @@
 				{@const active = filters.formats.includes(fmt.value)}
 				<button type="button" class="chip" class:active onclick={() => toggleFormat(fmt.value)} aria-pressed={active}>
 					{fmt.label}
+				</button>
+			{/each}
+		</div>
+	</section>
+
+	<section class="section">
+		<header class="section-head"><h4>Genre</h4></header>
+		<div class="chips">
+			{#each GENRES as g (g)}
+				{@const active = isGenreActive(g)}
+				<button type="button" class="chip" class:active onclick={() => toggleGenre(g)} aria-pressed={active}>
+					{g}
+				</button>
+			{/each}
+		</div>
+	</section>
+
+	<section class="section">
+		<header class="section-head">
+			<h4>Era</h4>
+			<span class="hint">repertory</span>
+		</header>
+		<div class="chips">
+			{#each DECADES as d (d)}
+				{@const active = filters.decades.includes(d)}
+				<button type="button" class="chip" class:active onclick={() => toggleDecade(d)} aria-pressed={active}>
+					{d}
 				</button>
 			{/each}
 		</div>

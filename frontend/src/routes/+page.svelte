@@ -80,6 +80,29 @@
 				if (!matchesAny) continue;
 			}
 
+			if (filters.genres.length > 0) {
+				// Chip keys are lowercase canonical genre names; `film.genres`
+				// is already lowercased by the backend pipeline.
+				const filmGenres = (s.film.genres ?? []).map(g => g.toLowerCase());
+				if (!filters.genres.some(g => filmGenres.includes(g))) continue;
+			}
+
+			if (filters.decades.length > 0) {
+				if (!s.film.year) continue;
+				// Label convention: '2020s' / '2010s' / '2000s' for 2000+ eras,
+				// '90s' / '80s' / '70s' for 1970s–1990s, 'Pre-1970' for anything
+				// earlier. Matches the chip labels in both filter surfaces.
+				let decade: string;
+				if (s.film.year < 1970) {
+					decade = 'Pre-1970';
+				} else if (s.film.year >= 2000) {
+					decade = `${Math.floor(s.film.year / 10) * 10}s`;
+				} else {
+					decade = `${Math.floor((s.film.year % 100) / 10) * 10}s`;
+				}
+				if (!filters.decades.includes(decade)) continue;
+			}
+
 			const existing = map.get(s.film.id);
 			if (existing) existing.screenings.push(s);
 			else map.set(s.film.id, { film: s.film, screenings: [s] });
