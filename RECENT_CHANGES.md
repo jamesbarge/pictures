@@ -1,3 +1,11 @@
+## 2026-04-20: Self-host Fraunces + Cormorant + IBM Plex Mono
+**PR**: TBD | **Files**: `frontend/src/app.css`, `frontend/src/app.html`, `frontend/static/fonts/{Fraunces,Cormorant-Italic,IBMPlexMono,IBMPlexMono-500}.woff2`
+- Drop the Google Fonts `@import` at the top of `app.css` — eliminates a render-blocking stylesheet request and a DNS/TLS roundtrip to a third-party host
+- Commit 4 woff2 files to `frontend/static/fonts/`: Fraunces (variable, latin subset, 120KB), Cormorant italic (variable, 38KB), IBM Plex Mono weights 400 + 500 (15KB each). Plex Mono ships two files because Google Fonts doesn't offer a variable Plex Mono and two call sites (film-detail slot time, desktop hybrid card screening time) use weight 500 — a single-weight file would fall back to faux-bold synthesis
+- Add `@font-face` blocks in `app.css` mirroring the existing Inter self-host pattern; preload Fraunces + Plex-400 in `app.html` (Cormorant is below-the-fold)
+
+---
+
 ## 2026-04-20: Modal a11y — Escape close + body scroll lock
 **PR**: TBD | **Files**: `frontend/src/lib/components/filters/{MobileFilterSheet,MobileDatePicker,CalendarPopover}.svelte`, `frontend/tests/mobile.spec.ts`
 - Add a `$effect` to `MobileFilterSheet` and `MobileDatePicker` that, while the sheet is open, listens for `Escape` keydown (calls `onClose()`) and locks `document.body.style.overflow = 'hidden'` (restored on cleanup)
