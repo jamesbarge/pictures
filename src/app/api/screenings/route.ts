@@ -79,9 +79,14 @@ export async function GET(request: NextRequest) {
     const startDate = params.startDate
       ? new Date(params.startDate)
       : new Date();
-    const endDate = params.endDate
+    const requestedEnd = params.endDate
       ? new Date(params.endDate)
       : endOfDay(addDays(new Date(), 14)); // Default: 2 weeks ahead
+
+    // Clamp to a 60-day window to prevent unbounded scans.
+    // The home page requests 30 days; 60 gives headroom for festival/season lookahead.
+    const maxEnd = endOfDay(addDays(startDate, 60));
+    const endDate = requestedEnd > maxEnd ? maxEnd : requestedEnd;
 
     const filters: ScreeningFilters = {
       startDate,
