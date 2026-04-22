@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { compareFilmsByCalendarPriority } from "../../frontend/src/lib/utils";
+import { compareFilmsByCalendarPriority } from "@/lib/calendar-sort";
 
 function makeFilm({
   letterboxdRating,

@@ -12,6 +12,7 @@
   `letterboxdRating` descending,
   `tmdbPopularity` descending,
   earliest upcoming screening ascending.
+- Add a repo-local `src/lib/calendar-sort.ts` module so the root Vitest suite can cover the ordering logic without importing SvelteKit code from `frontend/`, which was failing on Linux CI under `vite:oxc`.
 - Add regression coverage for the shared comparator, the screening repository select, and the screenings API response shape.
 
 ## Impact

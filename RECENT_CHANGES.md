@@ -3,6 +3,7 @@
 - Add nullable `tmdbPopularity` to the film model and `/api/screenings` payload so the live Svelte calendar pages have a real popularity fallback after Letterboxd rating
 - Replace duplicated route-local comparators on `/`, `/tonight`, and `/this-weekend` with one shared helper: rated films first, then `letterboxdRating`, then `tmdbPopularity`, then earliest screening
 - Persist TMDB popularity anywhere we already persist TMDB rating and add a targeted backfill script for existing matched films
+- Keep the root Vitest coverage on a repo-local comparator module so CI no longer needs to transform SvelteKit files under `frontend/`
 
 ---
 
