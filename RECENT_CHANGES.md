@@ -1,3 +1,11 @@
+## 2026-04-21: Remove 3000-screening cap from /api/screenings legacy path
+**PR**: TBD | **Files**: `src/db/repositories/screening.ts`, `src/db/repositories/screening.test.ts`
+- The non-paginated `/api/screenings` path capped results at 3000 rows, which at current scrape density truncated the home page's 30-day window to ~8 days. Films scheduled beyond that window were invisible (e.g. North by Northwest at Prince Charles, May 1–12, 2026)
+- Removed the hard-coded `limit = 3000` default from `getScreenings`, `getScreeningsByFestival`, and `getScreeningsBySeason`
+- Test mock updated to resolve at any step of the query chain so tests no longer depend on `.limit()` being the terminal call
+
+---
+
 ## 2026-04-20: Fix PostHog ingestion proxy failing on trailing-slash paths
 **PR**: TBD | **Files**: `frontend/vercel.json`
 - PostHog event POSTs to `/ingest/e/`, `/ingest/i/v0/e/`, `/ingest/flags/`, and `/ingest/api/surveys/` were all returning 404 because Vercel's `:path*` glob in the rewrite source didn't match trailing slashes — SvelteKit's catch-all handled them as 404s instead
