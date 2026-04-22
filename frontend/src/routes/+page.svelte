@@ -9,7 +9,7 @@
 	import JsonLd from '$lib/seo/JsonLd.svelte';
 	import { webSiteSchema, faqSchema } from '$lib/seo/json-ld';
 	import { filters } from '$lib/stores/filters.svelte';
-	import { toLondonDateStr, groupBy } from '$lib/utils';
+	import { toLondonDateStr, groupBy, compareFilmsByCalendarPriority } from '$lib/utils';
 	import { trackFilterNoResults } from '$lib/analytics/posthog';
 	import { browser } from '$app/environment';
 	import { page } from '$app/state';
@@ -117,20 +117,24 @@
 			.sort(([a], [b]) => a.localeCompare(b))
 			.map(([date, screenings]) => {
 				const filmGroups = groupBy(screenings, (s) => s.film.id);
-				const films = Object.values(filmGroups).map((filmScreenings) => ({
-					film: filmScreenings[0].film,
-					screenings: filmScreenings.sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime())
-				}));
+				const films = Object.values(filmGroups)
+					.map((filmScreenings) => ({
+						film: filmScreenings[0].film,
+						screenings: filmScreenings.sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime())
+					}))
+					.sort(compareFilmsByCalendarPriority);
 				return { date, films };
 			});
 	});
 
-	// Flat list of unique films (ordered by next screening) for the desktop hybrid grid
+	// Flat list of unique films for the desktop hybrid grid, sorted by calendar priority.
 	const hybridFilms = $derived.by(() => {
-		return [...filmMap.values()].map(({ film, screenings }) => ({
-			film,
-			screenings: screenings.sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime())
-		}));
+		return [...filmMap.values()]
+			.map(({ film, screenings }) => ({
+				film,
+				screenings: screenings.sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime())
+			}))
+			.sort(compareFilmsByCalendarPriority);
 	});
 
 	const screeningCount = $derived.by(() => {

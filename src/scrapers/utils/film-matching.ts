@@ -218,6 +218,7 @@ export async function matchAndCreateFromTMDB(
     isRepertory: isRepertoryFilm(details.details.release_date),
     decade: match.year ? getDecade(match.year) : null,
     tmdbRating: details.details.vote_average,
+    tmdbPopularity: details.details.popularity,
   });
 
   // Add to cache so subsequent lookups in this run find it
@@ -248,6 +249,7 @@ export async function matchAndCreateFromTMDB(
     contentType: "film",
     sourceImageUrl: null,
     tmdbRating: details.details.vote_average,
+    tmdbPopularity: details.details.popularity,
     letterboxdUrl: `https://letterboxd.com/tmdb/${match.tmdbId}`,
     letterboxdRating: null,
     matchConfidence: match.confidence ?? null,
@@ -333,6 +335,7 @@ export async function createFilmWithoutTMDB(
     tmdbId: null,
     imdbId: null,
     tmdbRating: null,
+    tmdbPopularity: null,
     letterboxdUrl: null,
     letterboxdRating: null,
     matchConfidence: null,

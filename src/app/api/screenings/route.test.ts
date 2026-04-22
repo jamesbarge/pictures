@@ -1,12 +1,6 @@
-/**
- * Screenings API Tests
- * Tests rate limiting on GET endpoint
- */
-
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { NextRequest } from "next/server";
 
-// Mock rate limiting
 vi.mock("@/lib/rate-limit", () => ({
   checkRateLimit: vi.fn().mockResolvedValue({ success: true, remaining: 99, resetIn: 60 }),
   getClientIP: vi.fn().mockReturnValue("127.0.0.1"),
@@ -16,28 +10,16 @@ vi.mock("@/lib/rate-limit", () => ({
   },
 }));
 
-// Mock database
-vi.mock("@/db", () => ({
-  db: {
-    select: vi.fn().mockReturnThis(),
-    from: vi.fn().mockReturnThis(),
-    innerJoin: vi.fn().mockReturnThis(),
-    where: vi.fn().mockReturnThis(),
-    orderBy: vi.fn().mockReturnThis(),
-    limit: vi.fn().mockResolvedValue([]),
-  },
-}));
-
-vi.mock("@/db/schema", () => ({
-  screenings: {},
-  films: {},
-  cinemas: {},
-  festivalScreenings: {},
-  festivals: {},
+vi.mock("@/db/repositories", () => ({
+  getScreenings: vi.fn().mockResolvedValue([]),
+  getScreeningsWithCursor: vi.fn().mockResolvedValue({ screenings: [], cursor: null, hasMore: false }),
+  getScreeningsByFestival: vi.fn().mockResolvedValue({ festival: { id: "festival-1" }, screenings: [] }),
+  getScreeningsBySeason: vi.fn().mockResolvedValue({ season: { id: "season-1", name: "Season" }, screenings: [] }),
 }));
 
 import { GET } from "./route";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { getScreenings } from "@/db/repositories";
 
 describe("Screenings API", () => {
   beforeEach(() => {
@@ -91,5 +73,50 @@ describe("Screenings API", () => {
       expect(response.status).toBe(429);
       expect(response.headers.get("Retry-After")).toBe("30");
     });
+  });
+
+  it("returns film tmdbPopularity from the screenings payload", async () => {
+    vi.mocked(getScreenings).mockResolvedValueOnce([
+      {
+        id: "screening-1",
+        datetime: new Date("2026-04-23T19:00:00.000Z"),
+        format: null,
+        screen: null,
+        eventType: null,
+        eventDescription: null,
+        bookingUrl: "https://example.com/book",
+        isFestivalScreening: false,
+        availabilityStatus: null,
+        hasSubtitles: false,
+        hasAudioDescription: false,
+        isRelaxedScreening: false,
+        film: {
+          id: "film-1",
+          title: "Test Film",
+          year: 2024,
+          directors: ["Director"],
+          genres: ["drama"],
+          posterUrl: null,
+          runtime: 120,
+          isRepertory: false,
+          letterboxdRating: 4.1,
+          tmdbPopularity: 73.5,
+          contentType: "film",
+          tmdbRating: 7.9,
+        },
+        cinema: {
+          id: "cinema-1",
+          name: "Cinema",
+          shortName: "CIN",
+        },
+      },
+    ]);
+
+    const request = new NextRequest("http://localhost/api/screenings");
+    const response = await GET(request);
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.screenings[0].film.tmdbPopularity).toBe(73.5);
   });
 });

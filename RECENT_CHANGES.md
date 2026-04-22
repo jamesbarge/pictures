@@ -1,3 +1,11 @@
+## 2026-04-22: Restore calendar ordering by Letterboxd rating then TMDB popularity
+**PR**: TBD | **Files**: `src/db/schema/films.ts`, `src/db/repositories/screening.ts`, `frontend/src/lib/utils.ts`, `src/db/backfill-tmdb-popularity.ts`
+- Add nullable `tmdbPopularity` to the film model and `/api/screenings` payload so the live Svelte calendar pages have a real popularity fallback after Letterboxd rating
+- Replace duplicated route-local comparators on `/`, `/tonight`, and `/this-weekend` with one shared helper: rated films first, then `letterboxdRating`, then `tmdbPopularity`, then earliest screening
+- Persist TMDB popularity anywhere we already persist TMDB rating and add a targeted backfill script for existing matched films
+
+---
+
 ## 2026-04-20: Fix PostHog ingestion proxy failing on trailing-slash paths
 **PR**: TBD | **Files**: `frontend/vercel.json`
 - PostHog event POSTs to `/ingest/e/`, `/ingest/i/v0/e/`, `/ingest/flags/`, and `/ingest/api/surveys/` were all returning 404 because Vercel's `:path*` glob in the rewrite source didn't match trailing slashes — SvelteKit's catch-all handled them as 404s instead

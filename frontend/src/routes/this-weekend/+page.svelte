@@ -1,7 +1,7 @@
 <script lang="ts">
 	import FilmCard from '$lib/components/calendar/FilmCard.svelte';
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
-	import { formatScreeningDate, toLondonDateStr, groupBy } from '$lib/utils';
+	import { formatScreeningDate, toLondonDateStr, groupBy, compareFilmsByCalendarPriority } from '$lib/utils';
 
 	let { data } = $props();
 	type LoadedScreening = (typeof data.screenings)[number];
@@ -18,10 +18,12 @@
 			.sort(([a], [b]) => a.localeCompare(b))
 			.map(([date, screenings]) => {
 				const filmGroups = groupBy(screenings, (s) => s.film.id);
-				const films = Object.values(filmGroups).map((filmScreenings) => ({
-					film: filmScreenings[0].film,
-					screenings: filmScreenings.sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime())
-				}));
+				const films = Object.values(filmGroups)
+					.map((filmScreenings) => ({
+						film: filmScreenings[0].film,
+						screenings: filmScreenings.sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime())
+					}))
+					.sort(compareFilmsByCalendarPriority);
 				return { date, films };
 			});
 	});

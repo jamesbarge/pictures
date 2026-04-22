@@ -1,7 +1,7 @@
 <script lang="ts">
 	import FilmCard from '$lib/components/calendar/FilmCard.svelte';
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
-	import { formatDate } from '$lib/utils';
+	import { formatDate, compareFilmsByCalendarPriority } from '$lib/utils';
 	import { trackTonightNoScreenings } from '$lib/analytics/posthog';
 	import { onMount } from 'svelte';
 
@@ -24,7 +24,12 @@
 				map.set(s.film.id, { film: s.film, screenings: [s] });
 			}
 		}
-		return [...map.values()];
+		// Ensure each film's screenings are datetime ASC so the shared sort helper
+		// can use `screenings[0]` as the final earliest-time fallback.
+		for (const entry of map.values()) {
+			entry.screenings.sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime());
+		}
+		return [...map.values()].sort(compareFilmsByCalendarPriority);
 	});
 
 	onMount(() => {

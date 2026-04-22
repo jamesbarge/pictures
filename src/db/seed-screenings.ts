@@ -23,6 +23,7 @@ const sampleFilms = [
     isRepertory: true,
     decade: "1960s",
     tmdbRating: 8.3,
+    tmdbPopularity: 25.1,
   },
   {
     title: "In the Mood for Love",
@@ -36,6 +37,7 @@ const sampleFilms = [
     isRepertory: true,
     decade: "2000s",
     tmdbRating: 8.1,
+    tmdbPopularity: 22.8,
   },
   {
     title: "The Substance",
@@ -49,6 +51,7 @@ const sampleFilms = [
     isRepertory: false,
     decade: "2020s",
     tmdbRating: 7.3,
+    tmdbPopularity: 64.4,
   },
   {
     title: "Anora",
@@ -62,6 +65,7 @@ const sampleFilms = [
     isRepertory: false,
     decade: "2020s",
     tmdbRating: 7.6,
+    tmdbPopularity: 52.3,
   },
   {
     title: "Paris, Texas",
@@ -75,6 +79,7 @@ const sampleFilms = [
     isRepertory: true,
     decade: "1980s",
     tmdbRating: 8.0,
+    tmdbPopularity: 19.4,
   },
   {
     title: "Mulholland Drive",
@@ -88,6 +93,7 @@ const sampleFilms = [
     isRepertory: true,
     decade: "2000s",
     tmdbRating: 7.9,
+    tmdbPopularity: 28.6,
   },
   {
     title: "Nosferatu",
@@ -101,6 +107,7 @@ const sampleFilms = [
     isRepertory: false,
     decade: "2020s",
     tmdbRating: 7.1,
+    tmdbPopularity: 57.9,
   },
   {
     title: "Stalker",
@@ -114,6 +121,7 @@ const sampleFilms = [
     isRepertory: true,
     decade: "1970s",
     tmdbRating: 8.1,
+    tmdbPopularity: 18.7,
   },
 ];
 
@@ -150,6 +158,7 @@ async function seedScreenings() {
       isRepertory: film.isRepertory,
       decade: film.decade,
       tmdbRating: film.tmdbRating,
+      tmdbPopularity: film.tmdbPopularity,
       countries: [],
       languages: [],
     });

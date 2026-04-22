@@ -177,6 +177,7 @@ async function cleanup() {
             isRepertory: isRepertoryFilm(details.details.release_date),
             decade: match.year ? getDecade(match.year) : film.decade,
             tmdbRating: details.details.vote_average,
+            tmdbPopularity: details.details.popularity,
             updatedAt: new Date(),
           })
           .where(eq(films.id, film.id));

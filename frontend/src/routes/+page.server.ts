@@ -21,6 +21,8 @@ interface ScreeningsResponse {
 			runtime: number | null;
 			posterUrl: string | null;
 			isRepertory: boolean;
+			letterboxdRating: number | null;
+			tmdbPopularity: number | null;
 		};
 		cinema: {
 			id: string;
@@ -55,7 +57,9 @@ export const load: PageServerLoad = async ({ fetch, setHeaders }) => {
 				genres: s.film.genres ?? [],
 				runtime: s.film.runtime,
 				posterUrl: s.film.posterUrl,
-				isRepertory: s.film.isRepertory
+				isRepertory: s.film.isRepertory,
+				letterboxdRating: s.film.letterboxdRating,
+				tmdbPopularity: s.film.tmdbPopularity ?? null
 			},
 			cinema: {
 				id: s.cinema.id,

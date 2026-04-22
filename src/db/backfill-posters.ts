@@ -570,6 +570,7 @@ async function backfillPosters(): Promise<void> {
                   ? `https://image.tmdb.org/t/p/w1280${details.details.backdrop_path}`
                   : film.backdropUrl,
                 tmdbRating: details.details.vote_average,
+                tmdbPopularity: details.details.popularity,
                 matchStrategy: "backfill-with-year",
                 matchConfidence: match.confidence,
                 matchedAt: new Date(),

@@ -86,6 +86,7 @@ describe("screeningWithDetailsSelect", () => {
     expect(screeningWithDetailsSelect.film.directors).toBeDefined();
     expect(screeningWithDetailsSelect.film.posterUrl).toBeDefined();
     expect(screeningWithDetailsSelect.film.isRepertory).toBeDefined();
+    expect(screeningWithDetailsSelect.film.tmdbPopularity).toBeDefined();
   });
 
   it("should include cinema nested fields", async () => {

@@ -33,6 +33,7 @@ export interface FilmDetail {
   isRepertory: boolean;
   decade: string | null;
   tmdbRating: number | null;
+  tmdbPopularity: number | null;
   letterboxdRating: number | null;
   letterboxdUrl: string | null;
 }
@@ -87,6 +88,7 @@ export async function getFilmById(id: string): Promise<FilmDetail | null> {
       isRepertory: films.isRepertory,
       decade: films.decade,
       tmdbRating: films.tmdbRating,
+      tmdbPopularity: films.tmdbPopularity,
       letterboxdRating: films.letterboxdRating,
       letterboxdUrl: films.letterboxdUrl,
     })
