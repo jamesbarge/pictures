@@ -40,6 +40,7 @@ export interface Film {
 	releaseStatus: ReleaseStatus | null;
 	decade: string | null;
 	tmdbRating: number | null;
+	tmdbPopularity: number | null;
 	letterboxdUrl: string | null;
 	letterboxdRating: number | null;
 	contentType: ContentType;

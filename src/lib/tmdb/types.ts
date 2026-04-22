@@ -36,6 +36,7 @@ export interface TMDBMovieDetails {
   poster_path: string | null;
   backdrop_path: string | null;
   vote_average: number;
+  popularity: number;
   vote_count: number;
   genres: TMDBGenre[];
   production_countries: TMDBCountry[];

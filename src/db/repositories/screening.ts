@@ -43,6 +43,7 @@ export const screeningWithDetailsSelect = {
     runtime: films.runtime,
     isRepertory: films.isRepertory,
     letterboxdRating: films.letterboxdRating,
+    tmdbPopularity: films.tmdbPopularity,
     contentType: films.contentType,
     tmdbRating: films.tmdbRating,
   },
@@ -86,6 +87,7 @@ export type ScreeningWithDetails = {
     runtime: number | null;
     isRepertory: boolean;
     letterboxdRating: number | null;
+    tmdbPopularity: number | null;
     contentType: string;
     tmdbRating: number | null;
   };

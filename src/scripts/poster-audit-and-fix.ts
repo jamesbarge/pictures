@@ -398,6 +398,7 @@ async function phase3TmdbMatch(
               ? `https://image.tmdb.org/t/p/w1280${details.details.backdrop_path}`
               : film.backdropUrl,
             tmdbRating: details.details.vote_average,
+            tmdbPopularity: details.details.popularity,
             matchStrategy: "poster-audit-match",
             matchConfidence: match.confidence,
             matchedAt: new Date(),

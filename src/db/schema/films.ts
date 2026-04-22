@@ -64,6 +64,7 @@ export const films = pgTable("films", {
 
   // External ratings
   tmdbRating: real("tmdb_rating"),
+  tmdbPopularity: real("tmdb_popularity"),
   letterboxdUrl: text("letterboxd_url"),
   letterboxdRating: real("letterboxd_rating"), // 0-5 scale
 

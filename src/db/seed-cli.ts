@@ -300,6 +300,7 @@ const TEST_FILMS = [
     isRepertory: true,
     decade: "1960s",
     tmdbRating: 8.3,
+    tmdbPopularity: 25.1,
   },
   {
     title: "In the Mood for Love",
@@ -313,6 +314,7 @@ const TEST_FILMS = [
     isRepertory: true,
     decade: "2000s",
     tmdbRating: 8.1,
+    tmdbPopularity: 22.8,
   },
   {
     title: "The Substance",
@@ -326,6 +328,7 @@ const TEST_FILMS = [
     isRepertory: false,
     decade: "2020s",
     tmdbRating: 7.3,
+    tmdbPopularity: 64.4,
   },
   {
     title: "Stalker",
@@ -339,6 +342,7 @@ const TEST_FILMS = [
     isRepertory: true,
     decade: "1970s",
     tmdbRating: 8.1,
+    tmdbPopularity: 18.7,
   },
 ];
 
@@ -438,6 +442,7 @@ async function seedTestScreenings(): Promise<{ films: number; screenings: number
       isRepertory: film.isRepertory,
       decade: film.decade,
       tmdbRating: film.tmdbRating,
+      tmdbPopularity: film.tmdbPopularity,
       countries: [],
       languages: [],
     });

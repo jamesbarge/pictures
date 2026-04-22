@@ -28,6 +28,7 @@ function makeMaliciousFilm(title: string): Film {
     tmdbId: null,
     imdbId: null,
     tmdbRating: null,
+    tmdbPopularity: null,
     letterboxdUrl: null,
     contentType: "film",
     sourceImageUrl: null,

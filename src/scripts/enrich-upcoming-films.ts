@@ -267,6 +267,7 @@ async function main() {
             ? `https://image.tmdb.org/t/p/w1280${details.details.backdrop_path}`
             : null,
           tmdbRating: details.details.vote_average,
+          tmdbPopularity: details.details.popularity,
           matchConfidence: tmdbMatch.confidence,
           matchStrategy: "auto-enrichment-upcoming",
           matchedAt: new Date(),

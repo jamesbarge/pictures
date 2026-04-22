@@ -271,6 +271,7 @@ async function phase2TMDBMatching(upcomingFilms: FilmRow[]): Promise<{ matched: 
             ? `https://image.tmdb.org/t/p/w1280${details.details.backdrop_path}`
             : null,
           tmdbRating: details.details.vote_average,
+          tmdbPopularity: details.details.popularity,
           matchConfidence: tmdbMatch.confidence,
           matchStrategy: "cleanup-upcoming",
           matchedAt: new Date(),
