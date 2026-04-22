@@ -152,8 +152,7 @@ function buildConditions(filters: ScreeningFilters): SQL[] {
  * Get screenings with film and cinema details
  */
 export async function getScreenings(
-  filters: ScreeningFilters,
-  limit = 3000
+  filters: ScreeningFilters
 ): Promise<ScreeningWithDetails[]> {
   const conditions = buildConditions(filters);
 
@@ -163,8 +162,7 @@ export async function getScreenings(
     .innerJoin(films, eq(screenings.filmId, films.id))
     .innerJoin(cinemas, eq(screenings.cinemaId, cinemas.id))
     .where(and(...conditions))
-    .orderBy(screenings.datetime)
-    .limit(limit);
+    .orderBy(screenings.datetime);
 }
 
 /**
@@ -172,8 +170,7 @@ export async function getScreenings(
  */
 export async function getScreeningsByFestival(
   festivalSlug: string,
-  filters: ScreeningFilters,
-  limit = 3000
+  filters: ScreeningFilters
 ): Promise<{ festival: { id: string } | null; screenings: FestivalScreeningDetails[] }> {
   // First, get the festival ID
   const [festival] = await db
@@ -195,8 +192,7 @@ export async function getScreeningsByFestival(
     .innerJoin(films, eq(screenings.filmId, films.id))
     .innerJoin(cinemas, eq(screenings.cinemaId, cinemas.id))
     .where(and(eq(festivalScreenings.festivalId, festival.id), ...conditions))
-    .orderBy(screenings.datetime)
-    .limit(limit);
+    .orderBy(screenings.datetime);
 
   return { festival, screenings: results };
 }
@@ -206,8 +202,7 @@ export async function getScreeningsByFestival(
  */
 export async function getScreeningsBySeason(
   seasonSlug: string,
-  filters: ScreeningFilters,
-  limit = 3000
+  filters: ScreeningFilters
 ): Promise<{ season: { id: string; name: string } | null; screenings: ScreeningWithDetails[] }> {
   // First, get the season
   const [season] = await db
@@ -238,7 +233,7 @@ export async function getScreeningsBySeason(
     filmIds,
   };
 
-  const results = await getScreenings(filtersWithFilms, limit);
+  const results = await getScreenings(filtersWithFilms);
   return { season, screenings: results };
 }
 

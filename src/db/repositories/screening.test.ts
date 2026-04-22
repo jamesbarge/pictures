@@ -8,19 +8,17 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { ScreeningFilters } from "./screening";
 
-// Create a chainable mock that handles all query patterns
+// Create a chainable mock that handles all query patterns.
+// The chain is thenable so `await` terminates at any step (mimics Drizzle).
 const createQueryChain = () => {
   const chain: Record<string, unknown> = {};
   const methods = ["from", "innerJoin", "where", "orderBy", "limit", "select"];
 
   methods.forEach((method) => {
-    chain[method] = vi.fn(() => {
-      if (method === "limit") {
-        return Promise.resolve([]);
-      }
-      return chain;
-    });
+    chain[method] = vi.fn(() => chain);
   });
+
+  chain.then = (resolve: (value: unknown[]) => unknown) => resolve([]);
 
   return chain;
 };

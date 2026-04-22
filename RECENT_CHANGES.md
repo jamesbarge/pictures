@@ -1,9 +1,18 @@
 ## 2026-04-22: Restore calendar ordering by Letterboxd rating then TMDB popularity
-**PR**: TBD | **Files**: `src/db/schema/films.ts`, `src/db/repositories/screening.ts`, `frontend/src/lib/utils.ts`, `src/db/backfill-tmdb-popularity.ts`
+**PR**: #444 | **Files**: `src/db/schema/films.ts`, `src/db/repositories/screening.ts`, `frontend/src/lib/utils.ts`, `src/lib/calendar-sort.ts`, `src/db/backfill-tmdb-popularity.ts`
 - Add nullable `tmdbPopularity` to the film model and `/api/screenings` payload so the live Svelte calendar pages have a real popularity fallback after Letterboxd rating
 - Replace duplicated route-local comparators on `/`, `/tonight`, and `/this-weekend` with one shared helper: rated films first, then `letterboxdRating`, then `tmdbPopularity`, then earliest screening
 - Persist TMDB popularity anywhere we already persist TMDB rating and add a targeted backfill script for existing matched films
-- Keep the root Vitest coverage on a repo-local comparator module so CI no longer needs to transform SvelteKit files under `frontend/`
+- Keep the root Vitest coverage on a repo-local comparator module (`src/lib/calendar-sort.ts`) so CI no longer needs to transform SvelteKit files under `frontend/`
+
+---
+
+## 2026-04-21: Remove 3000-screening cap from /api/screenings legacy path
+**PR**: #443 | **Files**: `src/db/repositories/screening.ts`, `src/app/api/screenings/route.ts`, `src/db/repositories/screening.test.ts`
+- The non-paginated `/api/screenings` path capped results at 3000 rows, which at current scrape density truncated the home page's 30-day window to ~8 days. Films scheduled beyond that window were invisible (e.g. North by Northwest at Prince Charles, May 1–12, 2026)
+- Removed the hard-coded `limit = 3000` default from `getScreenings`, `getScreeningsByFestival`, and `getScreeningsBySeason`
+- Replaced row-count backpressure with an explicit 60-day `endDate` clamp in the API route
+- Test mock updated to resolve at any step of the query chain so tests no longer depend on `.limit()` being the terminal call
 
 ---
 
