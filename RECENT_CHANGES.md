@@ -1,3 +1,11 @@
+## 2026-04-25: Stop tracking Playwright `test-results/` artifacts
+**PR**: TBD | **Files**: `.gitignore`, `frontend/.gitignore`, `frontend/test-results/*` (deleted)
+- Three Playwright artifacts had been committed by accident at some point (`frontend/test-results/.last-run.json` plus two `error-context.md` files), and neither root nor `frontend/` `.gitignore` excluded `test-results/`. Result: every run of the test suite produced "untracked test-results clutter" in `git status` and occasionally got committed back in.
+- `git rm`'d the 3 tracked files; added `/test-results/` to root `.gitignore` and `test-results/` + `playwright-report/` to `frontend/.gitignore`.
+- This is the root-cause fix for the recurring noise that surfaced repeatedly during today's session.
+
+---
+
 ## 2026-04-25: Make Homepage Playwright suite resilient to sparse-data hours
 **PR**: #452 | **Files**: `frontend/test-all.spec.ts`
 - Three Homepage tests were failing late evening because today's listings have thinned out by then (most films have already started). They now use Playwright's `test.skip()` when the data can't actually exhibit what's being asserted, preserving the original assertion intent: filters must narrow when there's data to narrow.
