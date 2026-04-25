@@ -1,30 +1,26 @@
 import type { FilterProgrammingType } from '$lib/constants/filters';
 import { toLondonDateStr } from '$lib/utils';
 
-// Minimal structural type the filter cares about; intentionally narrower
-// than the full `+page.server.ts` payload so callers can pass either the
-// home payload or a film-detail payload as long as it has these fields.
+// Minimal structural type — only the fields `buildFilmMap` actually reads.
+// Callers can pass any wider type that satisfies this constraint; the output
+// preserves the caller's full screening shape via the `<S>` generic on
+// `FilmGroup`, so the homepage's richer payload (poster, runtime, ratings,
+// etc.) flows through untouched.
 export interface CalendarScreening {
 	id: string;
 	datetime: string;
 	format: string | null;
-	bookingUrl: string;
 	film: {
 		id: string;
 		title: string;
 		year: number | null;
 		director: string | null;
 		genres: string[];
-		runtime: number | null;
-		posterUrl: string | null;
 		isRepertory: boolean;
-		letterboxdRating: number | null;
-		tmdbPopularity: number | null;
 	} | null;
 	cinema: {
 		id: string;
 		name: string;
-		shortName: string | null;
 	} | null;
 }
 
@@ -56,6 +52,12 @@ export interface FilmGroup<S extends CalendarScreening = CalendarScreening> {
 	screenings: S[];
 }
 
+// Module-scope dedup for the one-sided-range invariant warning. Lives here
+// (rather than in the calling component) because the invariant is about the
+// helper's own input — a future caller breaking the convention should be
+// surfaced regardless of which Svelte component happened to invoke us.
+let lastOneSidedRangeWarnKey = '';
+
 /**
  * Group upcoming screenings by film, applying the active filters.
  *
@@ -78,15 +80,38 @@ export function buildFilmMap<S extends CalendarScreening>(
 	const effectiveTo = filters.dateTo ?? today;
 	const searchQuery = filters.filmSearch ? filters.filmSearch.toLowerCase() : '';
 
+	// Every current caller (setDatePreset in `filters.svelte.ts`,
+	// `DayMasthead.selectDate`) assigns dateFrom and dateTo together, but
+	// `set dateFrom` / `set dateTo` on the store are public — if a future
+	// caller sets only one, we silently default the other to today. The
+	// dev-only warning below surfaces that drift instead of swallowing it.
+	if (
+		import.meta.env.DEV &&
+		(filters.dateFrom === null) !== (filters.dateTo === null)
+	) {
+		const key = `${filters.dateFrom}|${filters.dateTo}`;
+		if (lastOneSidedRangeWarnKey !== key) {
+			lastOneSidedRangeWarnKey = key;
+			console.warn('buildFilmMap: one-sided date range — invariant broken', {
+				dateFrom: filters.dateFrom,
+				dateTo: filters.dateTo
+			});
+		}
+	}
+
 	for (const s of screenings) {
-		if (!s.film) continue;
-		if (new Date(s.datetime).getTime() <= now) continue;
+		const film = s.film;
+		if (!film) continue;
+
+		const dt = new Date(s.datetime);
+		const dtMs = dt.getTime();
+		if (dtMs <= now) continue;
 
 		if (searchQuery) {
 			const matches =
-				s.film.title.toLowerCase().includes(searchQuery) ||
+				film.title.toLowerCase().includes(searchQuery) ||
 				(s.cinema?.name?.toLowerCase().includes(searchQuery) ?? false) ||
-				(s.film.director?.toLowerCase().includes(searchQuery) ?? false);
+				(film.director?.toLowerCase().includes(searchQuery) ?? false);
 			if (!matches) continue;
 		}
 		if (filters.cinemaIds.length > 0 && !filters.cinemaIds.includes(s.cinema?.id ?? '')) continue;
@@ -99,17 +124,18 @@ export function buildFilmMap<S extends CalendarScreening>(
 
 		if (filters.timeFrom !== null && filters.timeTo !== null) {
 			const hour = parseInt(
-				new Date(s.datetime).toLocaleString('en-GB', {
+				dt.toLocaleString('en-GB', {
 					hour: 'numeric',
 					hour12: false,
 					timeZone: 'Europe/London'
-				})
+				}),
+				10
 			);
 			if (hour < filters.timeFrom || hour > filters.timeTo) continue;
 		}
 
 		if (filters.programmingTypes.length > 0) {
-			const isRepertory = s.film.isRepertory;
+			const isRepertory = film.isRepertory;
 			const matchesAny = filters.programmingTypes.some((type) =>
 				type === 'repertory' ? isRepertory : !isRepertory
 			);
@@ -119,29 +145,29 @@ export function buildFilmMap<S extends CalendarScreening>(
 		if (filters.genres.length > 0) {
 			// Chip keys are lowercase canonical genre names; `film.genres`
 			// is already lowercased by the backend pipeline.
-			const filmGenres = (s.film.genres ?? []).map((g) => g.toLowerCase());
+			const filmGenres = (film.genres ?? []).map((g) => g.toLowerCase());
 			if (!filters.genres.some((g) => filmGenres.includes(g))) continue;
 		}
 
 		if (filters.decades.length > 0) {
-			if (!s.film.year) continue;
+			if (!film.year) continue;
 			// Label convention: '2020s' / '2010s' / '2000s' for 2000+ eras,
 			// '90s' / '80s' / '70s' for 1970s–1990s, 'Pre-1970' for anything
 			// earlier. Matches the chip labels in both filter surfaces.
 			let decade: string;
-			if (s.film.year < 1970) {
+			if (film.year < 1970) {
 				decade = 'Pre-1970';
-			} else if (s.film.year >= 2000) {
-				decade = `${Math.floor(s.film.year / 10) * 10}s`;
+			} else if (film.year >= 2000) {
+				decade = `${Math.floor(film.year / 10) * 10}s`;
 			} else {
-				decade = `${Math.floor((s.film.year % 100) / 10) * 10}s`;
+				decade = `${Math.floor((film.year % 100) / 10) * 10}s`;
 			}
 			if (!filters.decades.includes(decade)) continue;
 		}
 
-		const existing = map.get(s.film.id);
+		const existing = map.get(film.id);
 		if (existing) existing.screenings.push(s);
-		else map.set(s.film.id, { film: s.film as NonNullable<S['film']>, screenings: [s] });
+		else map.set(film.id, { film: film as NonNullable<S['film']>, screenings: [s] });
 	}
 	return map;
 }

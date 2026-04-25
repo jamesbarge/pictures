@@ -39,35 +39,11 @@
 
 	let mobileFilterOpen = $state(false);
 
-	// Dedup key for the one-sided date-range invariant warning so the dev
-	// console isn't spammed when filmMap re-derives on every reactive tick.
-	let oneSidedDateRangeWarnKey = '';
-
 	// Group screenings by film + apply filters via the pure helper in
-	// `$lib/calendar-filter`. Keeping the snapshot-shape extraction intact
-	// here preserves the surface area for the lock-in test and keeps the
-	// derivation reactive to the same set of state reads as before.
-	const filmMap = $derived.by(() => {
-		// Default to today (London) when no explicit range is set so listings
-		// match the masthead, which already shows today as the active date.
-		// Every current caller of the date-filter setters (setDatePreset,
-		// DayMasthead.selectDate) assigns dateFrom and dateTo together, but
-		// `set dateFrom` / `set dateTo` on `filters` are public — if a future
-		// caller sets only one, this defaults the other to today. The dev-only
-		// warning below surfaces that drift instead of silently collapsing the
-		// range to a single day.
-		if (
-			import.meta.env.DEV &&
-			(filters.dateFrom === null) !== (filters.dateTo === null) &&
-			oneSidedDateRangeWarnKey !== `${filters.dateFrom}|${filters.dateTo}`
-		) {
-			oneSidedDateRangeWarnKey = `${filters.dateFrom}|${filters.dateTo}`;
-			console.warn('homepage: one-sided date range — invariant broken', {
-				dateFrom: filters.dateFrom,
-				dateTo: filters.dateTo
-			});
-		}
-		return buildFilmMap(
+	// `$lib/calendar-filter`. The helper owns the one-sided-range invariant
+	// warning internally — see calendar-filter.ts.
+	const filmMap = $derived.by(() =>
+		buildFilmMap(
 			data.screenings,
 			{
 				filmSearch: filters.filmSearch,
@@ -82,8 +58,8 @@
 				decades: filters.decades
 			},
 			{ today: todayStore.value, now: Date.now() }
-		);
-	});
+		)
+	);
 
 	const dayGroups = $derived.by(() => {
 		const all = [...filmMap.values()].flatMap((f) => f.screenings.map((s) => ({ ...s, film: f.film })));
