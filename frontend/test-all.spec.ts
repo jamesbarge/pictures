@@ -96,6 +96,60 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 			expect(repCount).toBeLessThanOrEqual(allCount);
 		});
 
+		test('persisted New filter renders matching posters and titles', async ({ page, context }) => {
+			// Regression for fix/poster-title-mismatch: persisted filter loaded
+			// at module init produced a SSR/CSR hydration mismatch where titles
+			// updated to the new film set but <img src> attributes stayed bound
+			// to the SSR'd "All" view's films. This test loads the page with a
+			// New filter persisted in localStorage and confirms each card's
+			// poster URL matches the title set produced by clicking the tab.
+			await page.setViewportSize({ width: 1440, height: 900 });
+
+			const readPairs = () =>
+				page.evaluate(() =>
+					Array.from(document.querySelectorAll('article.film-card')).slice(0, 5).map((c) => ({
+						title: c.querySelector('h3.film-title')?.textContent?.trim() ?? '',
+						imgSrc: (c.querySelector('img') as HTMLImageElement | null)?.src ?? ''
+					}))
+				);
+
+			// Capture title→poster pairs from clicking the New tab on a fresh page.
+			await page.goto(BASE);
+			await page.waitForSelector('.film-card', { timeout: 10000 });
+			await page.locator('.desktop-toolbar').getByRole('tab', { name: 'New', exact: true }).click();
+			await expect(
+				page.locator('.desktop-toolbar [role="tab"][aria-selected="true"]')
+			).toHaveText('New');
+			await page.waitForTimeout(800);
+			const expected = await readPairs();
+			expect(expected.length).toBe(5);
+			// Sanity: titles are unique per card (catches obvious render glitches).
+			expect(new Set(expected.map((p) => p.title)).size).toBe(expected.length);
+
+			// Persist the New filter, reload, and verify the same pairings appear.
+			await context.addInitScript(() => {
+				try {
+					localStorage.setItem(
+						'pictures-filters',
+						JSON.stringify({
+							cinemaIds: [],
+							formats: [],
+							programmingTypes: ['new_release'],
+							genres: [],
+							decades: []
+						})
+					);
+				} catch { /* ignore */ }
+			});
+			await page.goto(BASE);
+			await page.waitForSelector('.film-card', { timeout: 10000 });
+			await expect(
+				page.locator('.desktop-toolbar [role="tab"][aria-selected="true"]')
+			).toHaveText('New');
+			// Poll for the deferred persisted-state apply to settle.
+			await expect.poll(readPairs, { timeout: 5000 }).toEqual(expected);
+		});
+
 		test('cinema area chip narrows results', async ({ page }) => {
 			await page.setViewportSize({ width: 1440, height: 900 });
 			await page.goto(BASE);
