@@ -1,3 +1,11 @@
+## 2026-04-25: Shared "today (London)" store ticks at midnight
+**PR**: TBD | **Files**: `frontend/src/lib/stores/today.svelte.ts`, `frontend/src/lib/components/calendar/DayMasthead.svelte`, `frontend/src/routes/+page.svelte`, `frontend/src/routes/film/[id]/+page.svelte`
+- Added `frontend/src/lib/stores/today.svelte.ts`: a single `$state`-backed source of truth for today's London civil date that re-evaluates via `setTimeout` at the next London midnight (computed via `Intl` `formatToParts` so BST/GMT transitions handle naturally — 23h spring days, 25h autumn days). Also re-checks on `visibilitychange` so a tab that was backgrounded across midnight catches up immediately.
+- Migrated three consumers off `toLondonDateStr(new Date())`-per-derivation: the `DayMasthead` `activeDate`, the homepage `filmMap`'s default range when no filter is set, and the film-detail `nextScreeningLabel` and day-strip `dayLabel`. All three now advance together when the day rolls over instead of each picking up the change on its next derivation tick.
+- Why this matters: a user who left the homepage open across 00:00 London previously kept seeing yesterday's listings until they touched a filter; the masthead headline could disagree with the grid for a render tick on the first interaction after midnight. The shared store eliminates both classes of drift.
+
+---
+
 ## 2026-04-25: Bump inngest to ^3.54.0 to clear Vercel vulnerability gate
 **PR**: TBD | **Files**: `package.json`, `package-lock.json`
 - All `filmcal2` (Next.js backend / api.pictures.london) deployments — production and preview — were failing post-build with `Vulnerable version of inngest detected (3.52.6). Please update to version 3.54.0 or later.` Vercel's vulnerability scanner started enforcing this threshold mid-day; no code regression on our side.

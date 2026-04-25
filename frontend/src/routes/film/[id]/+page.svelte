@@ -4,6 +4,7 @@
 	import JsonLd from '$lib/seo/JsonLd.svelte';
 	import { movieSchema, breadcrumbSchema } from '$lib/seo/json-ld';
 	import { filmStatuses } from '$lib/stores/film-status.svelte';
+	import { today as todayStore } from '$lib/stores/today.svelte';
 	import { formatTime, formatScreeningDate, toLondonDateStr, groupBy, getPosterImageAttributes } from '$lib/utils';
 	import { trackFilmView, trackBookingClick, trackFilmStatusChange, trackCalendarExport } from '$lib/analytics/posthog';
 	import { onMount } from 'svelte';
@@ -46,7 +47,7 @@
 
 	const nextScreeningLabel = $derived.by(() => {
 		if (!nextScreening) return null;
-		const today = toLondonDateStr(new Date());
+		const today = todayStore.value;
 		const nextDate = toLondonDateStr(nextScreening.datetime);
 		if (nextDate === today) return 'today';
 		// Resolve "tomorrow" through the same London-civil-date helper used for
@@ -117,7 +118,9 @@
 	const titleFirst = $derived(film.title.charAt(0));
 	const titleRest = $derived(film.title.slice(1));
 
-	const todayStr = toLondonDateStr(new Date());
+	// Pulled from the shared today store so the "Today" pill in the day strip
+	// advances at midnight without requiring a route re-load.
+	const todayStr = $derived(todayStore.value);
 	function dayLabel(date: string) {
 		if (date === todayStr) return 'Today';
 		return new Intl.DateTimeFormat('en-GB', { weekday: 'short', timeZone: 'Europe/London' }).format(new Date(date + 'T12:00:00Z'));
