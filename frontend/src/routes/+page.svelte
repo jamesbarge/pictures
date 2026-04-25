@@ -44,6 +44,14 @@
 			screenings: (typeof data.screenings)[0][];
 		}>();
 		const now = Date.now();
+		// Default to today (London) when no explicit range is set so listings
+		// match the masthead, which already shows today as the active date.
+		// Invariant: both setters always assign dateFrom and dateTo together
+		// (filters.svelte.ts setDatePreset, DayMasthead.svelte selectDate). If
+		// that ever changes, swap effectiveTo's default for a far-future bound.
+		const today = toLondonDateStr(new Date());
+		const effectiveFrom = filters.dateFrom ?? today;
+		const effectiveTo = filters.dateTo ?? today;
 
 		for (const s of data.screenings) {
 			if (!s.film) continue;
@@ -59,11 +67,12 @@
 			}
 			if (filters.cinemaIds.length > 0 && !filters.cinemaIds.includes(s.cinema?.id ?? '')) continue;
 
-			if (filters.dateFrom || filters.dateTo) {
-				const dateStr = s.datetime.split('T')[0];
-				if (filters.dateFrom && dateStr < filters.dateFrom) continue;
-				if (filters.dateTo && dateStr > filters.dateTo) continue;
-			}
+			// Compare London civil dates: late-night BST screenings have a UTC
+			// date that rolls back a day; toLondonDateStr keeps them on the
+			// right calendar day, matching the masthead and date filter.
+			const dateStr = toLondonDateStr(s.datetime);
+			if (dateStr < effectiveFrom) continue;
+			if (dateStr > effectiveTo) continue;
 
 			if (filters.formats.length > 0 && (!s.format || !filters.formats.includes(s.format))) continue;
 
