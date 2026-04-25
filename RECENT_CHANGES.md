@@ -1,5 +1,5 @@
 ## 2026-04-25: Homepage listings default to today (matches masthead)
-**PR**: TBD | **Files**: `frontend/src/routes/+page.svelte`
+**PR**: #445 | **Files**: `frontend/src/routes/+page.svelte`
 - The desktop hybrid grid was rendering the full 30-day screenings payload under each poster whenever no date filter was set, even though the day masthead already framed the page as "today". Listings now default to today's London date when neither `dateFrom` nor `dateTo` is selected.
 - Replaced the `s.datetime.split('T')[0]` UTC-date extraction with `toLondonDateStr(s.datetime)` so late-night BST screenings sit on the correct civil day for comparison with the London-time filter values and the day-grouped mobile sections.
 - Multi-day presets (Weekend, 7 days) and explicit Pick-date selections are unaffected because they set both `dateFrom` and `dateTo` and bypass the new default.

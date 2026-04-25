@@ -1,6 +1,6 @@
 # Homepage listings default to today (matches masthead)
 
-**PR**: TBD
+**PR**: #445
 **Date**: 2026-04-25
 
 ## Changes
