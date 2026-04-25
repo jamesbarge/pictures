@@ -49,9 +49,14 @@
 		const today = toLondonDateStr(new Date());
 		const nextDate = toLondonDateStr(nextScreening.datetime);
 		if (nextDate === today) return 'today';
+		// Resolve "tomorrow" through the same London-civil-date helper used for
+		// `today` and `nextDate` so all three operands speak the same date
+		// language. Behaviour-equivalent here (UTC noon and London noon are
+		// always the same calendar day), but the previous shape mixed UTC
+		// slices with London civils — the same code-smell that masked #445.
 		const tomorrowD = new Date(today + 'T12:00:00Z');
 		tomorrowD.setUTCDate(tomorrowD.getUTCDate() + 1);
-		if (nextDate === tomorrowD.toISOString().split('T')[0]) return 'tomorrow';
+		if (nextDate === toLondonDateStr(tomorrowD)) return 'tomorrow';
 		return new Intl.DateTimeFormat('en-GB', { weekday: 'long', timeZone: 'Europe/London' })
 			.format(new Date(nextScreening.datetime))
 			.toLowerCase();

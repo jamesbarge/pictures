@@ -1,5 +1,14 @@
+## 2026-04-25: Defensive hardening on frontend date handling
+**PR**: TBD | **Files**: `frontend/src/lib/utils.ts`, `frontend/src/routes/+page.svelte`, `frontend/src/routes/film/[id]/+page.svelte`
+- Soften the `filmMap` invariant comment on the homepage — `set dateFrom`/`set dateTo` are public store accessors and a future caller could break the both-set-together convention; comment now flags the convention plus what would happen if it lapses.
+- Surface that lapse instead of swallowing it: `console.warn` in the homepage `filmMap` derivation when exactly one of `filters.dateFrom`/`filters.dateTo` is null, so a future one-sided setter doesn't silently collapse the range to today.
+- Warn on malformed input to `toLondonDateStr`: `new Date('garbage').toLocaleDateString` returns the literal `"Invalid Date"`, which lexicographically beats every YYYY-MM-DD and silently drops the row from filmMap range filters and dayGroups bucketing. Now logs a console warning so the upstream data-quality issue surfaces.
+- Replace `tomorrowD.toISOString().split('T')[0]` (UTC date portion) with `toLondonDateStr(tomorrowD)` in the film detail page's "TOMORROW" badge so all three date strings (today / nextDate / tomorrow) speak the same London-civil-date language.
+
+---
+
 ## 2026-04-25: Lock-in test for homepage date-filter default
-**PR**: TBD | **Files**: `frontend/test-all.spec.ts`
+**PR**: #447 | **Files**: `frontend/test-all.spec.ts`
 - Adds the regression test the #445 review flagged: on initial homepage load, every screening time visible in the desktop hybrid grid resolves to today's London date; clicking the next-day strip button narrows them to a single non-today date.
 - One assertion catches both halves of the original bug — a leaked future-day screening or a UTC-vs-London string mismatch would surface as a `datetime` whose London date isn't today.
 
