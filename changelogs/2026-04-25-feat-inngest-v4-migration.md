@@ -27,18 +27,20 @@ inngest.createFunction(
 **After (v4):**
 ```typescript
 inngest.createFunction(
-  { id: "run-cinema-scraper", retries: 2, triggers: { event: "scraper/run" } },
+  { id: "run-cinema-scraper", retries: 2, triggers: [{ event: "scraper/run" }] },
   async ({ event, step }) => { ... }
 );
 ```
 
 All six functions migrated:
-- `runCinemaScraper` — `triggers: { event: "scraper/run" }`
-- `scheduledScrapeAll` — `triggers: { cron: "0 6 * * *" }`
-- `handleFunctionFailure` — `triggers: { event: "inngest/function.failed" }`
-- `scheduledBFIPDFImport` — `triggers: { cron: "0 6 * * 0" }`
-- `scheduledBFIChanges` — `triggers: { cron: "0 10 * * *" }`
-- `scheduledLetterboxdEnrichment` — `triggers: { cron: "0 8 * * *" }`
+- `runCinemaScraper` — `triggers: [{ event: "scraper/run" }]`
+- `scheduledScrapeAll` — `triggers: [{ cron: "0 6 * * *" }]`
+- `handleFunctionFailure` — `triggers: [{ event: "inngest/function.failed" }]`
+- `scheduledBFIPDFImport` — `triggers: [{ cron: "0 6 * * 0" }]`
+- `scheduledBFIChanges` — `triggers: [{ cron: "0 10 * * *" }]`
+- `scheduledLetterboxdEnrichment` — `triggers: [{ cron: "0 8 * * *" }]`
+
+> **Important:** `triggers` MUST be an array, even for a single trigger. v4's TypeScript signature is `triggers?: TTriggers extends InngestFunction.Trigger<string>[]` (`node_modules/inngest/components/InngestFunction.d.ts:100-101`) and the wire-format schema is `z.array(...)` (`node_modules/inngest/types.d.ts:1181`). The official migration guide's single-object example was misleading — TypeScript accepts the singular form because the generic default falls back to a permissive shape, but Inngest cloud will silently fail to register the trigger on the wire. First pass of this PR used the singular form; caught in code review before merge.
 
 ### 2. Things we did NOT migrate (and why)
 
