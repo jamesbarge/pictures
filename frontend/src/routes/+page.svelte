@@ -37,6 +37,10 @@
 
 	let mobileFilterOpen = $state(false);
 
+	// Dedup key for the one-sided date-range invariant warning so the dev
+	// console isn't spammed when filmMap re-derives on every reactive tick.
+	let oneSidedDateRangeWarnKey = '';
+
 	// Group screenings by film + apply filters.
 	const filmMap = $derived.by(() => {
 		const map = new Map<string, {
@@ -46,10 +50,24 @@
 		const now = Date.now();
 		// Default to today (London) when no explicit range is set so listings
 		// match the masthead, which already shows today as the active date.
-		// Invariant: both setters always assign dateFrom and dateTo together
-		// (filters.svelte.ts setDatePreset, DayMasthead.svelte selectDate). If
-		// that ever changes, swap effectiveTo's default for a far-future bound.
+		// Every current caller of the date-filter setters (setDatePreset,
+		// DayMasthead.selectDate) assigns dateFrom and dateTo together, but
+		// `set dateFrom` / `set dateTo` on `filters` are public — if a future
+		// caller sets only one, this defaults the other to today. The dev-only
+		// warning below surfaces that drift instead of silently collapsing the
+		// range to a single day.
 		const today = toLondonDateStr(new Date());
+		if (
+			import.meta.env.DEV &&
+			(filters.dateFrom === null) !== (filters.dateTo === null) &&
+			oneSidedDateRangeWarnKey !== `${filters.dateFrom}|${filters.dateTo}`
+		) {
+			oneSidedDateRangeWarnKey = `${filters.dateFrom}|${filters.dateTo}`;
+			console.warn('homepage: one-sided date range — invariant broken', {
+				dateFrom: filters.dateFrom,
+				dateTo: filters.dateTo
+			});
+		}
 		const effectiveFrom = filters.dateFrom ?? today;
 		const effectiveTo = filters.dateTo ?? today;
 

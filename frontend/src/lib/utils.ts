@@ -25,8 +25,21 @@ export function formatDate(date: Date | string): string {
 	}).toUpperCase();
 }
 
+const invalidDateWarned = new Set<string>();
 export function toLondonDateStr(date: Date | string): string {
 	const d = typeof date === 'string' ? new Date(date) : date;
+	// `toLocaleDateString` on Invalid Date returns the literal "Invalid Date",
+	// which silently sorts after every YYYY-MM-DD and excludes the row from
+	// range-filter compares without surfacing the upstream data corruption.
+	// Log each unique invalid input once so a single bad row doesn't spam the
+	// console (this helper is hot — called inside derived map/filter loops).
+	if (Number.isNaN(d.getTime())) {
+		const key = String(date);
+		if (!invalidDateWarned.has(key)) {
+			invalidDateWarned.add(key);
+			console.warn('toLondonDateStr received invalid date:', date);
+		}
+	}
 	return d.toLocaleDateString('en-CA', { timeZone: 'Europe/London' }); // YYYY-MM-DD
 }
 
