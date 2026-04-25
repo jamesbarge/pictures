@@ -9,6 +9,7 @@
 	import JsonLd from '$lib/seo/JsonLd.svelte';
 	import { webSiteSchema, faqSchema } from '$lib/seo/json-ld';
 	import { filters } from '$lib/stores/filters.svelte';
+	import { today as todayStore } from '$lib/stores/today.svelte';
 	import { toLondonDateStr, groupBy, compareFilmsByCalendarPriority } from '$lib/utils';
 	import { trackFilterNoResults } from '$lib/analytics/posthog';
 	import { browser } from '$app/environment';
@@ -56,7 +57,7 @@
 		// caller sets only one, this defaults the other to today. The dev-only
 		// warning below surfaces that drift instead of silently collapsing the
 		// range to a single day.
-		const today = toLondonDateStr(new Date());
+		const today = todayStore.value;
 		if (
 			import.meta.env.DEV &&
 			(filters.dateFrom === null) !== (filters.dateTo === null) &&

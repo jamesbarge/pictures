@@ -1,10 +1,12 @@
 <script lang="ts">
 	import { filters } from '$lib/stores/filters.svelte';
-	import { toLondonDateStr } from '$lib/utils';
+	import { today as todayStore } from '$lib/stores/today.svelte';
 	import CalendarPopover from '$lib/components/filters/CalendarPopover.svelte';
 
-	// Effective date — filter if set, else today (London).
-	const today = $derived(toLondonDateStr(new Date()));
+	// Effective date — filter if set, else today (London). Reads from the
+	// shared today store so a midnight rollover advances every consumer
+	// (masthead, filmMap default, dayGroups bucketing) at the same tick.
+	const today = $derived(todayStore.value);
 	const activeDate = $derived(filters.dateFrom ?? today);
 
 	// Anchor to UTC noon so the London Intl formatter resolves to the intended
