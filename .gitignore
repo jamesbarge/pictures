@@ -15,6 +15,7 @@
 /playwright-report/
 /scripts/audit/results/
 /screenshots/
+/test-results/
 
 # next.js
 /.next/
