@@ -1,5 +1,5 @@
 ## 2026-04-25: Make Homepage Playwright suite resilient to sparse-data hours
-**PR**: TBD | **Files**: `frontend/test-all.spec.ts`
+**PR**: #452 | **Files**: `frontend/test-all.spec.ts`
 - Three Homepage tests were failing late evening because today's listings have thinned out by then (most films have already started). They now use Playwright's `test.skip()` when the data can't actually exhibit what's being asserted, preserving the original assertion intent: filters must narrow when there's data to narrow.
 - `cinema area chip narrows results` (line 209): post-click skip when filtered count is 0 (no Soho/West End films right now) or equals the all-count (every visible film already is in Soho/West End). Both legitimately occur at sparse-data hours and aren't a chip-wiring bug.
 - `format chip (35mm) reduces displayed films` (line 221): skip when no 35mm films are currently visible — the chip can't narrow what isn't there. Detected via `.film-card` text containing the rendered "35MM" format pill.
@@ -9,11 +9,21 @@
 ---
 
 ## 2026-04-25: Address retroactive review of calendar-filter extraction
-**PR**: TBD | **Files**: `frontend/src/lib/calendar-filter.ts`, `frontend/src/routes/+page.svelte`, `changelogs/2026-04-25-refactor-extract-filmmap-helper.md`
+**PR**: #451 | **Files**: `frontend/src/lib/calendar-filter.ts`, `frontend/src/routes/+page.svelte`, `changelogs/2026-04-25-refactor-extract-filmmap-helper.md`
 - Slim `CalendarScreening` interface to only the fields `buildFilmMap` actually reads — drop unused `bookingUrl`, `runtime`, `posterUrl`, `letterboxdRating`, `tmdbPopularity`, `cinema.shortName`. The output still carries the caller's full screening shape via the `<S>` generic on `FilmGroup`, so the homepage's richer payload flows through untouched.
 - Move the dev-only one-sided-range invariant warning (`(dateFrom == null) !== (dateTo == null)`) from `+page.svelte` into `buildFilmMap`. The invariant is about the helper's input, not component state — module-scope dedup key inside the helper is the right home for it, and removes the leakage of the helper's contract into the caller. `+page.svelte`'s `filmMap` derivation is now a single `buildFilmMap(...)` call.
 - Hoist `s.film` to a local `const film` inside the loop after the null guard so the type narrows by control flow (no more `as NonNullable<S['film']>` cast at the `map.set` callsite — well, almost; one cast remains where TS doesn't propagate generic-indexed-access narrowing through). Cache `new Date(s.datetime)` once per iteration so the now-check and time-of-day filter share the parse. Add radix `10` to `parseInt`.
 - Backfill `## Impact` section in the original extraction changelog (`changelogs/2026-04-25-refactor-extract-filmmap-helper.md`).
+
+---
+
+## 2026-04-25: Migrate to Inngest SDK v4
+**PR**: #450 | **Files**: `package.json`, `package-lock.json`, `src/inngest/functions.ts`
+- Bumped `inngest` from `^3.54.0` to `^4.2.4`. Inngest v4 is the long-term path; v3 will eventually stop receiving security backports (today's Vercel-gate incident showed the cost of being on a stale minor).
+- Migrated all 6 `createFunction` call sites in `src/inngest/functions.ts` to v4's signature: triggers move from the second positional argument into the `triggers` field of the first (options) argument (and must be wrapped in an array — caught in code review).
+- Skipped the optional `eventType()` / `staticSchema()` migration — our exported `Events` / `ScraperEvent` types are decorative (we never wired them into the `Inngest` client via the v3 generic or `schemas` option), so there's no v3 schema pattern to translate.
+- v4's "default mode is cloud" change is invisible to us: the production deploy already sets `INNGEST_SIGNING_KEY`, which is what v4 now requires by default.
+- Verification: `npx tsc --noEmit` clean, `npm run test:run` 913/913 pass; Vercel preview `GET /api/inngest` confirms `function_count: 6, mode: "cloud"`.
 
 ---
 
