@@ -21,27 +21,47 @@ function loadPersisted(): Partial<PersistedFilters> {
 	}
 }
 
-const persisted = loadPersisted();
-
-// Filter state — Svelte 5 runes module
+// Filter state starts with SSR-safe defaults on both server and client.
+// Persisted state is applied after hydration via a microtask — applying it
+// synchronously here creates an SSR/CSR mismatch where Svelte 5's keyed
+// {#each} block leaves stale <img src> attributes on cards whose keys
+// changed during hydration (mismatched posters / titles).
 let filmSearch = $state('');
-let cinemaIds = $state<string[]>(persisted.cinemaIds ?? []);
+let cinemaIds = $state<string[]>([]);
 let dateFrom = $state<string | null>(null);
 let dateTo = $state<string | null>(null);
 let timeFrom = $state<number | null>(null);
 let timeTo = $state<number | null>(null);
-let formats = $state<string[]>(persisted.formats ?? []);
-let programmingTypes = $state<FilterProgrammingType[]>(persisted.programmingTypes ?? []);
-let genres = $state<string[]>(persisted.genres ?? []);
-let decades = $state<string[]>(persisted.decades ?? []);
+let formats = $state<string[]>([]);
+let programmingTypes = $state<FilterProgrammingType[]>([]);
+let genres = $state<string[]>([]);
+let decades = $state<string[]>([]);
 let hideSeen = $state(false);
 let hideNotInterested = $state(true);
 let showSoldOut = $state(false);
 
-// Persist selected fields to localStorage
+let hydrated = false;
+
 if (browser) {
+	// Two RAFs guarantee we run after Svelte's hydration commit and the
+	// first paint. queueMicrotask fires too close to hydration and trips a
+	// keyed-{#each} bug where <img src> attributes don't pick up the new
+	// reactive value when the each-block keys change.
+	requestAnimationFrame(() => {
+		requestAnimationFrame(() => {
+			const persisted = loadPersisted();
+			if (persisted.cinemaIds?.length) cinemaIds = persisted.cinemaIds;
+			if (persisted.formats?.length) formats = persisted.formats;
+			if (persisted.programmingTypes?.length) programmingTypes = persisted.programmingTypes;
+			if (persisted.genres?.length) genres = persisted.genres;
+			if (persisted.decades?.length) decades = persisted.decades;
+			hydrated = true;
+		});
+	});
+
 	$effect.root(() => {
 		$effect(() => {
+			// Track all persisted fields so the effect re-runs when any change.
 			const data: PersistedFilters = {
 				cinemaIds,
 				formats,
@@ -49,6 +69,9 @@ if (browser) {
 				genres,
 				decades
 			};
+			// Skip until persisted state has been applied; otherwise the first
+			// run would clobber localStorage with the SSR defaults.
+			if (!hydrated) return;
 			localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 		});
 	});
