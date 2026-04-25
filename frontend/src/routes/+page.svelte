@@ -10,6 +10,7 @@
 	import { webSiteSchema, faqSchema } from '$lib/seo/json-ld';
 	import { filters } from '$lib/stores/filters.svelte';
 	import { today as todayStore } from '$lib/stores/today.svelte';
+	import { buildFilmMap } from '$lib/calendar-filter';
 	import { toLondonDateStr, groupBy, compareFilmsByCalendarPriority } from '$lib/utils';
 	import { trackFilterNoResults } from '$lib/analytics/posthog';
 	import { browser } from '$app/environment';
@@ -42,13 +43,11 @@
 	// console isn't spammed when filmMap re-derives on every reactive tick.
 	let oneSidedDateRangeWarnKey = '';
 
-	// Group screenings by film + apply filters.
+	// Group screenings by film + apply filters via the pure helper in
+	// `$lib/calendar-filter`. Keeping the snapshot-shape extraction intact
+	// here preserves the surface area for the lock-in test and keeps the
+	// derivation reactive to the same set of state reads as before.
 	const filmMap = $derived.by(() => {
-		const map = new Map<string, {
-			film: (typeof data.screenings)[0]['film'];
-			screenings: (typeof data.screenings)[0][];
-		}>();
-		const now = Date.now();
 		// Default to today (London) when no explicit range is set so listings
 		// match the masthead, which already shows today as the active date.
 		// Every current caller of the date-filter setters (setDatePreset,
@@ -57,7 +56,6 @@
 		// caller sets only one, this defaults the other to today. The dev-only
 		// warning below surfaces that drift instead of silently collapsing the
 		// range to a single day.
-		const today = todayStore.value;
 		if (
 			import.meta.env.DEV &&
 			(filters.dateFrom === null) !== (filters.dateTo === null) &&
@@ -69,73 +67,22 @@
 				dateTo: filters.dateTo
 			});
 		}
-		const effectiveFrom = filters.dateFrom ?? today;
-		const effectiveTo = filters.dateTo ?? today;
-
-		for (const s of data.screenings) {
-			if (!s.film) continue;
-			if (new Date(s.datetime).getTime() <= now) continue;
-
-			if (filters.filmSearch) {
-				const q = filters.filmSearch.toLowerCase();
-				const matches =
-					s.film.title.toLowerCase().includes(q) ||
-					(s.cinema?.name?.toLowerCase().includes(q) ?? false) ||
-					(s.film.director?.toLowerCase().includes(q) ?? false);
-				if (!matches) continue;
-			}
-			if (filters.cinemaIds.length > 0 && !filters.cinemaIds.includes(s.cinema?.id ?? '')) continue;
-
-			// Compare London civil dates: late-night BST screenings have a UTC
-			// date that rolls back a day; toLondonDateStr keeps them on the
-			// right calendar day, matching the masthead and date filter.
-			const dateStr = toLondonDateStr(s.datetime);
-			if (dateStr < effectiveFrom) continue;
-			if (dateStr > effectiveTo) continue;
-
-			if (filters.formats.length > 0 && (!s.format || !filters.formats.includes(s.format))) continue;
-
-			if (filters.timeFrom !== null && filters.timeTo !== null) {
-				const hour = parseInt(
-					new Date(s.datetime).toLocaleString('en-GB', { hour: 'numeric', hour12: false, timeZone: 'Europe/London' })
-				);
-				if (hour < filters.timeFrom || hour > filters.timeTo) continue;
-			}
-
-			if (filters.programmingTypes.length > 0) {
-				const isRepertory = s.film.isRepertory;
-				const matchesAny = filters.programmingTypes.some((type) => type === 'repertory' ? isRepertory : !isRepertory);
-				if (!matchesAny) continue;
-			}
-
-			if (filters.genres.length > 0) {
-				// Chip keys are lowercase canonical genre names; `film.genres`
-				// is already lowercased by the backend pipeline.
-				const filmGenres = (s.film.genres ?? []).map(g => g.toLowerCase());
-				if (!filters.genres.some(g => filmGenres.includes(g))) continue;
-			}
-
-			if (filters.decades.length > 0) {
-				if (!s.film.year) continue;
-				// Label convention: '2020s' / '2010s' / '2000s' for 2000+ eras,
-				// '90s' / '80s' / '70s' for 1970s–1990s, 'Pre-1970' for anything
-				// earlier. Matches the chip labels in both filter surfaces.
-				let decade: string;
-				if (s.film.year < 1970) {
-					decade = 'Pre-1970';
-				} else if (s.film.year >= 2000) {
-					decade = `${Math.floor(s.film.year / 10) * 10}s`;
-				} else {
-					decade = `${Math.floor((s.film.year % 100) / 10) * 10}s`;
-				}
-				if (!filters.decades.includes(decade)) continue;
-			}
-
-			const existing = map.get(s.film.id);
-			if (existing) existing.screenings.push(s);
-			else map.set(s.film.id, { film: s.film, screenings: [s] });
-		}
-		return map;
+		return buildFilmMap(
+			data.screenings,
+			{
+				filmSearch: filters.filmSearch,
+				cinemaIds: filters.cinemaIds,
+				dateFrom: filters.dateFrom,
+				dateTo: filters.dateTo,
+				formats: filters.formats,
+				timeFrom: filters.timeFrom,
+				timeTo: filters.timeTo,
+				programmingTypes: filters.programmingTypes,
+				genres: filters.genres,
+				decades: filters.decades
+			},
+			{ today: todayStore.value, now: Date.now() }
+		);
 	});
 
 	const dayGroups = $derived.by(() => {

@@ -1,3 +1,11 @@
+## 2026-04-25: Extract homepage filmMap to a pure helper
+**PR**: TBD | **Files**: `frontend/src/lib/calendar-filter.ts`, `frontend/src/routes/+page.svelte`
+- Pulled the homepage `filmMap` derivation body out of `+page.svelte` into a pure function `buildFilmMap(screenings, filters, { today, now })` in a new `frontend/src/lib/calendar-filter.ts`. Same behaviour, but now isolated from Svelte runes and reactive scope so it can be tested as a plain TS function.
+- The homepage component is now a thin reactive wrapper that snapshots store state, runs the helper, and returns the result. The dev-side one-sided-range warning stays in the component (it reads reactive state directly).
+- Vitest wiring deferred — the extraction is the foundation; landing test infra can ship as its own PR once the dependency baseline is settled.
+
+---
+
 ## 2026-04-25: Shared "today (London)" store ticks at midnight
 **PR**: TBD | **Files**: `frontend/src/lib/stores/today.svelte.ts`, `frontend/src/lib/components/calendar/DayMasthead.svelte`, `frontend/src/routes/+page.svelte`, `frontend/src/routes/film/[id]/+page.svelte`
 - Added `frontend/src/lib/stores/today.svelte.ts`: a single `$state`-backed source of truth for today's London civil date that re-evaluates via `setTimeout` at the next London midnight (computed via `Intl` `formatToParts` so BST/GMT transitions handle naturally — 23h spring days, 25h autumn days). Also re-checks on `visibilitychange` so a tab that was backgrounded across midnight catches up immediately.
