@@ -1,5 +1,14 @@
+## 2026-04-25: Address retroactive review of calendar-filter extraction
+**PR**: TBD | **Files**: `frontend/src/lib/calendar-filter.ts`, `frontend/src/routes/+page.svelte`, `changelogs/2026-04-25-refactor-extract-filmmap-helper.md`
+- Slim `CalendarScreening` interface to only the fields `buildFilmMap` actually reads — drop unused `bookingUrl`, `runtime`, `posterUrl`, `letterboxdRating`, `tmdbPopularity`, `cinema.shortName`. The output still carries the caller's full screening shape via the `<S>` generic on `FilmGroup`, so the homepage's richer payload flows through untouched.
+- Move the dev-only one-sided-range invariant warning (`(dateFrom == null) !== (dateTo == null)`) from `+page.svelte` into `buildFilmMap`. The invariant is about the helper's input, not component state — module-scope dedup key inside the helper is the right home for it, and removes the leakage of the helper's contract into the caller. `+page.svelte`'s `filmMap` derivation is now a single `buildFilmMap(...)` call.
+- Hoist `s.film` to a local `const film` inside the loop after the null guard so the type narrows by control flow (no more `as NonNullable<S['film']>` cast at the `map.set` callsite — well, almost; one cast remains where TS doesn't propagate generic-indexed-access narrowing through). Cache `new Date(s.datetime)` once per iteration so the now-check and time-of-day filter share the parse. Add radix `10` to `parseInt`.
+- Backfill `## Impact` section in the original extraction changelog (`changelogs/2026-04-25-refactor-extract-filmmap-helper.md`).
+
+---
+
 ## 2026-04-25: Extract homepage filmMap to a pure helper
-**PR**: TBD | **Files**: `frontend/src/lib/calendar-filter.ts`, `frontend/src/routes/+page.svelte`
+**PR**: direct-to-main `c5733f93` (gate-violation; reviewed retroactively in follow-up PR) | **Files**: `frontend/src/lib/calendar-filter.ts`, `frontend/src/routes/+page.svelte`
 - Pulled the homepage `filmMap` derivation body out of `+page.svelte` into a pure function `buildFilmMap(screenings, filters, { today, now })` in a new `frontend/src/lib/calendar-filter.ts`. Same behaviour, but now isolated from Svelte runes and reactive scope so it can be tested as a plain TS function.
 - The homepage component is now a thin reactive wrapper that snapshots store state, runs the helper, and returns the result. The dev-side one-sided-range warning stays in the component (it reads reactive state directly).
 - Vitest wiring deferred — the extraction is the foundation; landing test infra can ship as its own PR once the dependency baseline is settled.

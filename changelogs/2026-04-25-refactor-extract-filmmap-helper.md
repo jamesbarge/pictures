@@ -21,10 +21,15 @@ The behavioural contract is documented in the file and matches what the homepage
 - Screenings are bucketed by `film.id` in insertion order; the caller is responsible for any ordering.
 
 ### `frontend/src/routes/+page.svelte`
-Replaced the ~85-line `filmMap` derivation body with a 16-line snapshot construction + call to `buildFilmMap`. The dev-side one-sided-range warning stays in the component because it reads `filters.dateFrom`/`filters.dateTo` directly to track the warn dedup key. The component is now a thin reactive wrapper.
+Replaced the ~85-line `filmMap` derivation body with a snapshot construction + call to `buildFilmMap`. The component is now a thin reactive wrapper.
 
 ## Why
 Pre-test-analyzer's call-out on the #445 review: the inlined derivation was untestable as written, and the BST midnight boundary (where the original bug lived) is hard to hit through Playwright. Extracting the pure function gives a clear unit-test surface — even before a test runner lands on the frontend, the function shape itself is the win, because it's now possible to pass arbitrary fixture data through the same code that runs in production.
+
+## Impact
+- **No user-facing change.** The Playwright lock-in test from #447 still passes against the refactored code, confirming behaviour-preservation.
+- **Future test surface unblocked.** `buildFilmMap` is callable from any test runner without rendering the homepage; passing `today` and `now` explicitly makes the function deterministic and avoids hidden clock reads that would diverge between SSR and CSR.
+- **No SSR/hydration impact.** Same inputs in production produce the same `Map` they did when the logic was inlined.
 
 ## Verification
 - `npx svelte-check --threshold error` — no new errors (11 pre-existing in unrelated files).
