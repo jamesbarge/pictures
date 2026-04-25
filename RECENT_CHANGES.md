@@ -1,3 +1,10 @@
+## 2026-04-25: Lock-in test for homepage date-filter default
+**PR**: TBD | **Files**: `frontend/test-all.spec.ts`
+- Adds the regression test the #445 review flagged: on initial homepage load, every screening time visible in the desktop hybrid grid resolves to today's London date; clicking the next-day strip button narrows them to a single non-today date.
+- One assertion catches both halves of the original bug — a leaked future-day screening or a UTC-vs-London string mismatch would surface as a `datetime` whose London date isn't today.
+
+---
+
 ## 2026-04-25: Fix poster/title mismatch on hydration when filter is persisted
 **PR**: #446 | **Files**: `frontend/src/lib/stores/filters.svelte.ts`, `frontend/test-all.spec.ts`
 - Cards on the homepage were rendering the SSR'd "All" view's poster image alongside the persisted "New" view's title — Harakiri's poster under "It's Never Over, Jeff Buckley", Stop Making Sense's poster under "One Battle After Another", etc.

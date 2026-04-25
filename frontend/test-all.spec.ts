@@ -53,6 +53,55 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 			await expect(today).toBeVisible();
 		});
 
+		test('listings under each poster default to today and follow the day strip', async ({ page }) => {
+			// Locks in PR #445: filmMap previously skipped its date predicate
+			// when no range was set, leaking the full 30-day payload into every
+			// poster. It also compared `s.datetime.split('T')[0]` (UTC date)
+			// against London-time filter values, so late-night BST screenings
+			// landed on the wrong calendar day. This single assertion catches
+			// both halves: a leaked future-day or a UTC-vs-London mismatch
+			// produces a `datetime` that resolves to a London date != today.
+			const londonDate = (iso: string) =>
+				new Date(iso).toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
+			const today = londonDate(new Date().toISOString());
+
+			await page.goto(BASE);
+			await page.waitForSelector('.film-card .screening time', { timeout: 10000 });
+
+			const collectDates = async () => {
+				const times = page.locator('.film-card .screening time');
+				const n = await times.count();
+				const out: string[] = [];
+				for (let i = 0; i < n; i++) {
+					const dt = await times.nth(i).getAttribute('datetime');
+					if (dt) out.push(dt);
+				}
+				return out;
+			};
+
+			const initial = await collectDates();
+			expect(initial.length, 'expected at least one screening on the homepage').toBeGreaterThan(0);
+			const offToday = initial.filter((d) => londonDate(d) !== today);
+			expect(
+				offToday,
+				`expected every visible screening to be on ${today} (London); ${offToday.length} were on other days: ${offToday.slice(0, 3).join(', ')}`
+			).toEqual([]);
+
+			// Click the next-day strip button — listings should narrow to that day.
+			const stripButtons = page.locator('.day-strip .strip-btn:not(.strip-arrow)');
+			await stripButtons.nth(1).click(); // index 0 = Today, 1 = +1 day
+			await page.waitForTimeout(300);
+			const after = await collectDates();
+			if (after.length > 0) {
+				const uniqueDays = new Set(after.map(londonDate));
+				expect(
+					uniqueDays.size,
+					`expected screenings to narrow to a single day after strip click, got ${[...uniqueDays].join(', ')}`
+				).toBe(1);
+				expect([...uniqueDays][0]).not.toBe(today);
+			}
+		});
+
 		test('Pick date button opens calendar popover', async ({ page }) => {
 			await page.goto(BASE);
 			await page.getByRole('button', { name: /Pick date/ }).first().click();
