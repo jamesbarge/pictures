@@ -489,8 +489,8 @@ export const runCinemaScraper = inngest.createFunction(
   {
     id: "run-cinema-scraper",
     retries: 2,
+    triggers: [{ event: "scraper/run" }],
   },
-  { event: "scraper/run" },
   async ({ event, step }) => {
     const { cinemaId, scraperId, triggeredBy } = event.data;
     const startTime = Date.now();
@@ -620,8 +620,8 @@ export const scheduledScrapeAll = inngest.createFunction(
   {
     id: "scheduled-scrape-all",
     retries: 0, // Don't retry the scheduler itself - individual scrapers have their own retries
+    triggers: [{ cron: "0 6 * * *" }], // 6:00 AM UTC daily
   },
-  { cron: "0 6 * * *" }, // 6:00 AM UTC daily
   async ({ step }) => {
     console.log(`[Inngest] Starting scheduled scrape for ${CHEERIO_CINEMAS.length} cinemas`);
 
@@ -656,8 +656,8 @@ export const handleFunctionFailure = inngest.createFunction(
   {
     id: "handle-function-failure",
     retries: 0, // Don't retry failure handlers
+    triggers: [{ event: "inngest/function.failed" }],
   },
-  { event: "inngest/function.failed" },
   async ({ event, step }) => {
     const { function_id, run_id, error } = event.data;
     const originalEvent = event.data.event;
@@ -787,8 +787,8 @@ export const scheduledBFIPDFImport = inngest.createFunction(
   {
     id: "scheduled-bfi-pdf-import",
     retries: 2,
+    triggers: [{ cron: "0 6 * * 0" }], // 6:00 AM UTC every Sunday
   },
-  { cron: "0 6 * * 0" }, // 6:00 AM UTC every Sunday
   async ({ step }) => {
     console.log("[Inngest] Starting scheduled BFI PDF import...");
 
@@ -824,8 +824,8 @@ export const scheduledBFIChanges = inngest.createFunction(
   {
     id: "scheduled-bfi-changes",
     retries: 2,
+    triggers: [{ cron: "0 10 * * *" }], // 10:00 AM UTC daily
   },
-  { cron: "0 10 * * *" }, // 10:00 AM UTC daily
   async ({ step }) => {
     console.log("[Inngest] Starting scheduled BFI programme changes import...");
 
@@ -861,8 +861,8 @@ export const scheduledLetterboxdEnrichment = inngest.createFunction(
   {
     id: "scheduled-letterboxd-enrichment",
     retries: 1,
+    triggers: [{ cron: "0 8 * * *" }], // 8:00 AM UTC daily (2 hours after scrapers)
   },
-  { cron: "0 8 * * *" }, // 8:00 AM UTC daily (2 hours after scrapers)
   async ({ step }) => {
     console.log("[Inngest] Starting scheduled Letterboxd enrichment...");
 
