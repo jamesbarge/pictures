@@ -1,5 +1,13 @@
+## 2026-04-26: Bump uuid to v14 + drop redundant @types/uuid
+**PR**: TBD | **Files**: `package.json`, `package-lock.json`
+- `uuid` 13.0.0 → 14.0.0. Six call sites all use `import { v4 as uuidv4 } from "uuid"` — signature unchanged.
+- Removed `@types/uuid@^10.0.0` from `devDependencies`. uuid v14 ships its own type declarations (`./dist/index.d.ts`), making the separate `@types/*` package redundant.
+- Phase 2 item 6 from `tasks/todo.md`.
+
+---
+
 ## 2026-04-26: Bump tailwind-merge to v3 (frontend)
-**PR**: TBD | **Files**: `frontend/package.json`, `frontend/package-lock.json`
+**PR**: #461 | **Files**: `frontend/package.json`, `frontend/package-lock.json`
 - `tailwind-merge` 2.6.1 → 3.5.0. Single usage at `frontend/src/lib/utils.ts:5` — the `cn()` wrapper around `twMerge(clsx(inputs))`.
 - The `twMerge()` function signature is unchanged in v3; v3's breaking changes are around custom config shapes which we don't use.
 - Verification: `npm run check` 13 errors / 2 warnings (matches origin/main exactly — all pre-existing). Dev server boots clean and `/`, `/cinemas`, `/map` all return HTTP 200.

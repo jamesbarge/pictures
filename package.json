@@ -132,7 +132,7 @@
     "tailwind-merge": "^3.4.0",
     "unpdf": "^1.4.0",
     "use-debounce": "^10.0.6",
-    "uuid": "^13.0.0",
+    "uuid": "^14.0.0",
     "zod": "^4.2.1",
     "zustand": "^5.0.9"
   },
@@ -149,7 +149,6 @@
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@types/uuid": "^10.0.0",
     "@vitest/coverage-v8": "^4.0.16",
     "apify-client": "^2.22.0",
     "babel-plugin-react-compiler": "1.0.0",
