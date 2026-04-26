@@ -1,3 +1,14 @@
+## 2026-04-26: Trigger.dev completeness push + DeepSeek-V4-Flash enrichment
+**PR**: TBD | **Files**: `src/lib/deepseek.ts`, `src/agents/enrichment/index.ts`, `src/trigger/scrape-all.ts`, `src/trigger/enrichment/daily-sweep.ts`, `src/lib/data-quality/index.ts`, `scripts/audit/trigger-runs-audit.ts`, `.env.local.example`
+- **Enrichment AI swap**: `src/agents/enrichment/index.ts` now uses DeepSeek-V4-Flash via the existing `openai` SDK pointed at `https://api.deepseek.com`. New env var: `DEEPSEEK_API_KEY`. All other Gemini callers (QA analyzer, scraper-health, fallback enrichment, autoresearch) untouched.
+- **Daily orchestrator** (was weekly Mon): `scrape-all-orchestrator` cron flipped to `0 3 * * *`. Audit on 2026-04-26 found most cinemas were only being scraped on Mondays, so a Tuesday-breaking scraper meant no fresh data until the following Monday.
+- **Anomaly digest in orchestrator**: after waves complete, `summariseRunsSince()` queries `scraper_runs` from this run window and surfaces anomalies, failures, and zero-count returns in the Telegram report. Audit found 66/67 cinemas had no `cinema_baselines` row, so anomaly detection was silently disabled — zero-count fallback compensates.
+- **Daily-sweep gains data-quality passes**: new `src/lib/data-quality/` module exports `runNonFilmDetection()`, `detectDodgyEntries()`, `applyKnownTmdbCorrections()`. These run as a new "Phase 5" inside `daily-sweep`, replicating the in-process portions of `audit-and-fix-upcoming.ts` so `/data-check` no longer needs human invocation for these issue classes.
+- **New audit script**: `scripts/audit/trigger-runs-audit.ts` — generates a markdown report of silent breakers, recurring anomalies, and missing-baseline cinemas from the last 30 days of `scraper_runs`. Run output: `tasks/trigger-audit-YYYY-MM-DD.md`.
+- **Deferred to follow-up**: duplicate-cleanup pass (needs refactor of `cleanup-duplicate-films.ts` to a callable module), tag-validation pass (needs new logic), stale-screening Tier-1 auto-delete (needs careful query). These remain in `/data-check` for now.
+
+---
+
 ## 2026-04-25: Stop tracking Playwright `test-results/` artifacts
 **PR**: TBD | **Files**: `.gitignore`, `frontend/.gitignore`, `frontend/test-results/*` (deleted)
 - Three Playwright artifacts had been committed by accident at some point (`frontend/test-results/.last-run.json` plus two `error-context.md` files), and neither root nor `frontend/` `.gitignore` excluded `test-results/`. Result: every run of the test suite produced "untracked test-results clutter" in `git status` and occasionally got committed back in.

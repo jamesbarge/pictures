@@ -11,7 +11,7 @@
  * Uses aggressive auto-fix: automatically applies matches with confidence > 0.8
  */
 
-import { generateTextWithUsage } from "@/lib/gemini";
+import { generateTextWithUsage } from "@/lib/deepseek";
 import { db, schema } from "@/db";
 import { eq, isNull, sql } from "drizzle-orm";
 import { analyzeTitleAmbiguity, hasSufficientMetadata } from "@/lib/tmdb/ambiguity";
