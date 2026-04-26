@@ -1,5 +1,14 @@
+## 2026-04-26: Declare Node engine in package.json
+**PR**: TBD | **Files**: `package.json`
+- Added `"engines": {"node": "^20.20.0 || >=22.22.0"}` to root `package.json`. Matches the strictest dep requirement (`@posthog/ai` 7.16.10, `posthog-node` 5.30.4).
+- No CI workflow change — `.github/workflows/*.yml` already use Node 24, well above the floor. `.nvmrc` stays at `22` (resolves to current 22 LTS, satisfies the engine).
+- Effect: local devs on older Node now get an explicit `EBADENGINE` warning at install time pointing at the requirement. Vercel will continue to use a compatible runtime (its current default exceeds the floor).
+- Phase 2 item 2 from `tasks/todo.md`.
+
+---
+
 ## 2026-04-26: Add generated-dir ignores to ESLint config
-**PR**: TBD | **Files**: `eslint.config.mjs`
+**PR**: #457 | **Files**: `eslint.config.mjs`
 - `globalIgnores()` now covers `.trigger/**`, `.vercel/**`, `frontend/.svelte-kit/**`, `frontend/.vercel/**`. The existing `.next/**` already covered Next's typegen output.
 - Reproduced the bug: with a populated `frontend/.svelte-kit/` (created by frontend's `prepare` script), `npm run lint` reports **81 errors / 170 warnings** of phantom rule violations against generated code. After the fix: **0 errors / 41 warnings**, identical to a clean checkout.
 - Caught during PR #455 verification — chasing 251 fake errors burned ~1 hr. This is the root-cause fix so the next dep-update author doesn't repeat the goose chase.
