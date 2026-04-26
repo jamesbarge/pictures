@@ -1,5 +1,15 @@
-## 2026-04-26: Bump Vite to v8 + @sveltejs/vite-plugin-svelte to v7 (frontend)
+## 2026-04-26: Drop unused @chenglou/pretext from frontend deps
 **PR**: TBD | **Files**: `frontend/package.json`, `frontend/package-lock.json`
+- Plan item 11 was "bump @chenglou/pretext 0.0.3 → 0.0.6", but `grep -rE "@chenglou"` returns zero hits in `frontend/src/**`. Same situation the Anthropic SDKs were in (item 1) — listed in `package.json` but never imported.
+- The local `frontend/src/lib/components/pretext/` directory contains custom Svelte components (`BreathingGrid.svelte`, `FittedTitleCanvas.svelte`) inspired by the package's design language but written from scratch in this codebase. They don't import the package.
+- Decision: remove the unused dep instead of bumping it. Saves install footprint and removes a 0.x version bomb from the maintenance surface.
+- Verification: svelte-check 13/2 (matches baseline). Dev server boots clean and `/`, `/cinemas`, `/map`, `/this-weekend` all return HTTP 200.
+- Phase 2 item 11 from `tasks/todo.md`.
+
+---
+
+## 2026-04-26: Bump Vite to v8 + @sveltejs/vite-plugin-svelte to v7 (frontend)
+**PR**: #465 | **Files**: `frontend/package.json`, `frontend/package-lock.json`
 - `vite` 7.3.2 → 8.0.10
 - `@sveltejs/vite-plugin-svelte` 6.2.4 → 7.0.0 (paired bump per upstream peer-dep requirement)
 - Plugin v7 dropped its dependency on the separate `@sveltejs/vite-plugin-svelte-inspector` package — the inspector functionality moved internal. Required a clean lockfile rebuild (`rm -rf node_modules package-lock.json && npm install`) to clear the leftover v6 inspector entry.

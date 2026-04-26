@@ -24,7 +24,6 @@
 		"vite": "^8.0.10"
 	},
 	"dependencies": {
-		"@chenglou/pretext": "^0.0.3",
 		"@formkit/auto-animate": "^0.9.0",
 		"@sveltejs/adapter-vercel": "^6.3.3",
 		"bits-ui": "^2.16.5",
