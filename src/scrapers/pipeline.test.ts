@@ -98,6 +98,68 @@ describe("normalizeTitle", () => {
       );
     });
   });
+
+  describe("anniversary / re-release suffixes (prevention layer)", () => {
+    // These are the Phase-1.5 prevention cases. The patrol logs in
+    // Obsidian Vault/Pictures/Data Quality/ kept catching films like
+    // "Amélie - 25th Anniversary" being inserted as duplicates of "Amélie"
+    // because the normalized key for the suffixed title didn't collide
+    // with the canonical one. Adding cleanFilmTitle to the front of the
+    // pipeline collapses both into the same key.
+    it("collapses '- 25th Anniversary' onto canonical title", () => {
+      expect(normalizeTitle("Amélie - 25th Anniversary")).toBe(
+        normalizeTitle("Amélie")
+      );
+    });
+
+    it("collapses '(25th Anniversary Re-release)' onto canonical title", () => {
+      expect(normalizeTitle("Amélie (25th Anniversary Re-release)")).toBe(
+        normalizeTitle("Amélie")
+      );
+    });
+
+    it("collapses '(50th Anniversary, 4K Restoration)'", () => {
+      expect(normalizeTitle("Dr. Strangelove (50th Anniversary, 4K Restoration)")).toBe(
+        normalizeTitle("Dr. Strangelove")
+      );
+    });
+
+    it("collapses '(2026 Re-release)'", () => {
+      expect(normalizeTitle("Akira (2026 Re-release)")).toBe(
+        normalizeTitle("Akira")
+      );
+    });
+
+    it("collapses '(4K Restoration)' standalone", () => {
+      expect(normalizeTitle("Apocalypse Now (4K Restoration)")).toBe(
+        normalizeTitle("Apocalypse Now")
+      );
+    });
+
+    it("decodes HTML entities so '&amp;' doesn't fork the key", () => {
+      expect(normalizeTitle("Tom &amp; Jerry")).toBe(
+        normalizeTitle("Tom & Jerry")
+      );
+    });
+
+    it("repairs Latin-1 mojibake so '8&Acirc;&frac12;' matches '8½'", () => {
+      // Real-world example from the patrol logs
+      expect(normalizeTitle("8&Acirc;&frac12;")).toBe(
+        normalizeTitle("8½")
+      );
+    });
+
+    it("is idempotent — running normalizeTitle twice returns the same key", () => {
+      const once = normalizeTitle("Amélie - 25th Anniversary");
+      const twice = normalizeTitle(once);
+      expect(twice).toBe(once);
+    });
+
+    it("does not chop legitimate titles that contain the word 'Anniversary'", () => {
+      // Sanity guard against false-positive suffix stripping
+      expect(normalizeTitle("Anniversary")).toBe("anniversary");
+    });
+  });
 });
 
 // =============================================================================
