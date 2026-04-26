@@ -1,3 +1,12 @@
+## 2026-04-26: Drop unused @anthropic-ai/* deps
+**PR**: TBD | **Files**: `package.json`, `package-lock.json`
+- Removed `@anthropic-ai/sdk` and `@anthropic-ai/claude-agent-sdk` from `dependencies` / `devDependencies`. The 2026-02-28 Gemini migration replaced their runtime usage but left both packages listed — `grep -rE "from ['\"]@anthropic-ai" --include="*.ts"` returns zero results.
+- `npm uninstall` removed 330 transitive lockfile entries (~5 MB of install footprint, faster cold installs in CI).
+- Verification: `npm run lint` 0 errors / 41 warnings, `npx tsc --noEmit` clean, `npm run test:run` 913/913 pass.
+- Phase 2 item 1 (warm-up) — see `tasks/todo.md`.
+
+---
+
 ## 2026-04-26: Bump backend + frontend deps within current majors (Phase 1)
 **PR**: #455 | **Files**: `package.json`, `package-lock.json`, `frontend/package-lock.json`
 - Backend: ran `npm update` for caret-range bumps + explicit installs for pinned versions. Notable bumps: `next` 16.1.0 → 16.2.4, `react`/`react-dom` 19.2.3 → 19.2.5, `@clerk/nextjs` 6.39.0 → 6.39.3, `drizzle-orm` 0.45.1 → 0.45.2, `@supabase/supabase-js` 2.99.1 → 2.104.1, `@tanstack/react-query` 5.90.21 → 5.100.5, `@playwright/test`/`playwright` 1.57.0 → 1.59.1, `posthog-js` 1.362.0 → 1.372.1, `vitest`/`@vitest/coverage-v8` 4.1.0 → 4.1.5. Loosened `@playwright/test`/`playwright` ranges from `~1.57.0` to `^1.59.1` to match frontend.
