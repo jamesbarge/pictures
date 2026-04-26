@@ -1,10 +1,21 @@
 ## 2026-04-26: Bump backend + frontend deps within current majors (Phase 1)
-**PR**: TBD | **Files**: `package.json`, `package-lock.json`, `frontend/package-lock.json`
+**PR**: #455 | **Files**: `package.json`, `package-lock.json`, `frontend/package-lock.json`
 - Backend: ran `npm update` for caret-range bumps + explicit installs for pinned versions. Notable bumps: `next` 16.1.0 → 16.2.4, `react`/`react-dom` 19.2.3 → 19.2.5, `@clerk/nextjs` 6.39.0 → 6.39.3, `drizzle-orm` 0.45.1 → 0.45.2, `@supabase/supabase-js` 2.99.1 → 2.104.1, `@tanstack/react-query` 5.90.21 → 5.100.5, `@playwright/test`/`playwright` 1.57.0 → 1.59.1, `posthog-js` 1.362.0 → 1.372.1, `vitest`/`@vitest/coverage-v8` 4.1.0 → 4.1.5. Loosened `@playwright/test`/`playwright` ranges from `~1.57.0` to `^1.59.1` to match frontend.
 - Frontend: ran `npm update` for caret-range bumps. Notable: `@sveltejs/kit` 2.55.0 → 2.58.0, `svelte` 5.55.1 → 5.55.5, `vite` 7.3.1 → 7.3.2, `bits-ui` 2.16.5 → 2.18.0, `maplibre-gl` 5.21.1 → 5.24.0, `posthog-js` 1.364.2 → 1.372.1, `@playwright/test` 1.58.2 → 1.59.1.
 - Verification: backend `npm run lint` 0 errors / 41 warnings (origin/main: 0/40), `npx tsc --noEmit` clean, `npm run test:run` 913/913 pass. Frontend dev server boots clean and `/`, `/about`, `/cinemas`, `/map`, `/festivals` all return HTTP 200.
 - Major-version bumps deferred to Phase 2 PRs (each its own migration scope): `@clerk/nextjs` v7, `vite` v8 + `@sveltejs/vite-plugin-svelte` v7, `typescript` v6, `eslint` v10, `@vercel/analytics` v2, `@vercel/speed-insights` v2, `lucide-react` 1.x, `tailwind-merge` v3, `uuid` v14, `jsdom` v29.
 - Side note: `@anthropic-ai/sdk` and `@anthropic-ai/claude-agent-sdk` are in `package.json` but no source code imports them (project moved to `@google/genai`). Out of scope for this PR — separate cleanup ticket.
+
+---
+
+## 2026-04-26: Trigger.dev completeness push + DeepSeek-V4-Flash enrichment
+**PR**: #454 | **Files**: `src/lib/deepseek.ts`, `src/agents/enrichment/index.ts`, `src/trigger/scrape-all.ts`, `src/trigger/enrichment/daily-sweep.ts`, `src/lib/data-quality/index.ts`, `scripts/audit/trigger-runs-audit.ts`, `.env.local.example`
+- **Enrichment AI swap**: `src/agents/enrichment/index.ts` now uses DeepSeek-V4-Flash via the existing `openai` SDK pointed at `https://api.deepseek.com`. New env var: `DEEPSEEK_API_KEY`. All other Gemini callers (QA analyzer, scraper-health, fallback enrichment, autoresearch) untouched.
+- **Daily orchestrator** (was weekly Mon): `scrape-all-orchestrator` cron flipped to `0 3 * * *`. Audit on 2026-04-26 found most cinemas were only being scraped on Mondays, so a Tuesday-breaking scraper meant no fresh data until the following Monday.
+- **Anomaly digest in orchestrator**: after waves complete, `summariseRunsSince()` queries `scraper_runs` from this run window and surfaces anomalies, failures, and zero-count returns in the Telegram report. Audit found 66/67 cinemas had no `cinema_baselines` row, so anomaly detection was silently disabled — zero-count fallback compensates.
+- **Daily-sweep gains data-quality passes**: new `src/lib/data-quality/` module exports `runNonFilmDetection()`, `detectDodgyEntries()`, `applyKnownTmdbCorrections()`. These run as a new "Phase 5" inside `daily-sweep`, replicating the in-process portions of `audit-and-fix-upcoming.ts` so `/data-check` no longer needs human invocation for these issue classes.
+- **New audit script**: `scripts/audit/trigger-runs-audit.ts` — generates a markdown report of silent breakers, recurring anomalies, and missing-baseline cinemas from the last 30 days of `scraper_runs`. Run output: `tasks/trigger-audit-YYYY-MM-DD.md`.
+- **Deferred to follow-up**: duplicate-cleanup pass (needs refactor of `cleanup-duplicate-films.ts` to a callable module), tag-validation pass (needs new logic), stale-screening Tier-1 auto-delete (needs careful query). These remain in `/data-check` for now.
 
 ---
 

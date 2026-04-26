@@ -19,6 +19,11 @@ import { eq, isNull, and, gte, isNotNull, sql } from "drizzle-orm";
 import { generateTitleVariations, extractYearFromTitle } from "@/lib/enrichment/title-variations";
 import { matchFilmToTMDB } from "@/lib/tmdb/match";
 import { loadThresholdsAsync } from "@/autoresearch/autoquality/load-thresholds";
+import {
+  runNonFilmDetection,
+  detectDodgyEntries,
+  applyKnownTmdbCorrections,
+} from "@/lib/data-quality";
 import { sendTelegramAlert } from "../utils/telegram";
 import type { EnrichmentStatus, EnrichmentAttempt } from "@/types/enrichment";
 
@@ -356,6 +361,55 @@ export const dailyEnrichmentSweep = schedules.task({
       }
     }
 
+    // ───── Phase 5: Data Quality Cleanup ─────
+    // Push the in-process pieces of /data-check + audit-and-fix-upcoming into
+    // the scheduled flow so issues get caught here instead of by the human
+    // running the slash command.
+    const dq = {
+      nonFilm: { scanned: 0, reclassified: 0, deleted: 0 },
+      learnings: { scanned: 0, corrected: 0 },
+      dodgyCount: 0,
+    };
+
+    if (!isTimeBudgetExceeded(startTime)) {
+      try {
+        dq.nonFilm = await runNonFilmDetection();
+        console.log(
+          `[daily-sweep] Phase 5a: scanned ${dq.nonFilm.scanned}, reclassified ${dq.nonFilm.reclassified}, deleted ${dq.nonFilm.deleted}`,
+        );
+      } catch (err) {
+        console.warn("[daily-sweep] Non-film detection error:", err);
+      }
+    }
+
+    if (!isTimeBudgetExceeded(startTime)) {
+      try {
+        const result = await applyKnownTmdbCorrections();
+        dq.learnings = { scanned: result.scanned, corrected: result.corrected };
+        console.log(
+          `[daily-sweep] Phase 5b: applied ${result.corrected} TMDB corrections from learnings`,
+        );
+      } catch (err) {
+        console.warn("[daily-sweep] Learnings TMDB correction error:", err);
+      }
+    }
+
+    if (!isTimeBudgetExceeded(startTime)) {
+      try {
+        const dodgy = await detectDodgyEntries();
+        dq.dodgyCount = dodgy.length;
+        if (dodgy.length > 0) {
+          console.log(`[daily-sweep] Phase 5c: ${dodgy.length} dodgy entries flagged`);
+          // Top 10 to logs for triage
+          for (const d of dodgy.slice(0, 10)) {
+            console.log(`  • "${d.title}": ${d.reasons.join("; ")}`);
+          }
+        }
+      } catch (err) {
+        console.warn("[daily-sweep] Dodgy detection error:", err);
+      }
+    }
+
     // ───── Summary ─────
     const duration = Math.round((Date.now() - startTime) / 1000 / 60);
 
@@ -376,6 +430,9 @@ export const dailyEnrichmentSweep = schedules.task({
       `TMDB matched: ${stats.tmdbMatched} new, ${stats.tmdbBackfilled} backfilled`,
       `Letterboxd: ${stats.letterboxd} rated`,
       `Posters: ${stats.posters} found`,
+      `Non-film: ${dq.nonFilm.reclassified} reclassified, ${dq.nonFilm.deleted} deleted`,
+      `TMDB corrections (learnings): ${dq.learnings.corrected}`,
+      `Dodgy entries flagged: ${dq.dodgyCount}`,
       `TMDB skipped (backoff): ${stats.tmdbSkipped}, failed: ${stats.tmdbFailed}`,
       `Still missing: ${stillMissingTmdb} TMDB, ${stillMissingPoster} poster`,
       `Duration: ${duration}min`,
@@ -393,6 +450,10 @@ export const dailyEnrichmentSweep = schedules.task({
       ...stats,
       stillMissingTmdb: Number(stillMissingTmdb),
       stillMissingPoster: Number(stillMissingPoster),
+      nonFilmReclassified: dq.nonFilm.reclassified,
+      nonFilmDeleted: dq.nonFilm.deleted,
+      tmdbCorrectionsApplied: dq.learnings.corrected,
+      dodgyEntriesFlagged: dq.dodgyCount,
       durationMinutes: duration,
     };
   },
