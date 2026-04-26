@@ -1,5 +1,14 @@
+## 2026-04-26: Add generated-dir ignores to ESLint config
+**PR**: TBD | **Files**: `eslint.config.mjs`
+- `globalIgnores()` now covers `.trigger/**`, `.vercel/**`, `frontend/.svelte-kit/**`, `frontend/.vercel/**`. The existing `.next/**` already covered Next's typegen output.
+- Reproduced the bug: with a populated `frontend/.svelte-kit/` (created by frontend's `prepare` script), `npm run lint` reports **81 errors / 170 warnings** of phantom rule violations against generated code. After the fix: **0 errors / 41 warnings**, identical to a clean checkout.
+- Caught during PR #455 verification — chasing 251 fake errors burned ~1 hr. This is the root-cause fix so the next dep-update author doesn't repeat the goose chase.
+- Phase 2 item 13 from `tasks/todo.md`.
+
+---
+
 ## 2026-04-26: Drop unused @anthropic-ai/* deps
-**PR**: TBD | **Files**: `package.json`, `package-lock.json`
+**PR**: #456 | **Files**: `package.json`, `package-lock.json`
 - Removed `@anthropic-ai/sdk` and `@anthropic-ai/claude-agent-sdk` from `dependencies` / `devDependencies`. The 2026-02-28 Gemini migration replaced their runtime usage but left both packages listed — `grep -rE "from ['\"]@anthropic-ai" --include="*.ts"` returns zero results.
 - `npm uninstall` removed 330 transitive lockfile entries (~5 MB of install footprint, faster cold installs in CI).
 - Verification: `npm run lint` 0 errors / 41 warnings, `npx tsc --noEmit` clean, `npm run test:run` 913/913 pass.
