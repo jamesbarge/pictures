@@ -146,6 +146,7 @@
     "@testing-library/react": "^16.3.1",
     "@testing-library/user-event": "^14.6.1",
     "@types/cheerio": "^0.22.35",
+    "@types/google.maps": "^3.64.0",
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -167,7 +168,7 @@
     "tailwindcss": "^4",
     "tsconfig-paths": "^4.2.0",
     "tsx": "^4.21.0",
-    "typescript": "^5",
+    "typescript": "^6.0.3",
     "vitest": "^4.0.16"
   }
 }

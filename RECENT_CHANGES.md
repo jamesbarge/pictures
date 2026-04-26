@@ -1,5 +1,14 @@
+## 2026-04-26: Bump TypeScript to v6 (both halves)
+**PR**: TBD | **Files**: `package.json`, `package-lock.json`, `frontend/package.json`, `frontend/package-lock.json`, `types/globals.d.ts`
+- `typescript` 5.9.3 → 6.0.3 in both root and `frontend/`. Single PR per the plan, keeping versions in lock-step.
+- New file `types/globals.d.ts` with `/// <reference types="google.maps" />`. TS v6 tightened auto-loading of transitive `@types/*` packages — `@types/google.maps` (used by `src/components/map/cinema-map.tsx` for the `google.maps.X` namespace) comes in via `@vis.gl/react-google-maps` and was no longer auto-resolved. The single-line global reference makes the dependency explicit.
+- Verification: backend lint 0/41, tsc clean, 913/913 tests pass. Frontend svelte-check 13 errors / 2 warnings (matches origin/main exactly — all pre-existing). Dev server boots, `/`, `/cinemas`, `/map` all HTTP 200.
+- Phase 2 item 9 from `tasks/todo.md`.
+
+---
+
 ## 2026-04-26: Bump jsdom to v29
-**PR**: TBD | **Files**: `package.json`, `package-lock.json`
+**PR**: #463 | **Files**: `package.json`, `package-lock.json`
 - `jsdom` 27.4.0 → 29.0.2. Test environment only — used by Vitest for `@testing-library/react` rendering.
 - No source code changes. All 913 tests pass without modification across the v27 → v29 jump.
 - Phase 2 item 7 from `tasks/todo.md`.
