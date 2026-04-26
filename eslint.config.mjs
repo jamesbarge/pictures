@@ -42,6 +42,12 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Local one-off analysis scripts
     ".tmp-*.js",
+    // Generated build artifacts that previously triggered phantom lint errors
+    // when present locally. Matched root-relative because eslint runs from /.
+    ".trigger/**",
+    ".vercel/**",
+    "frontend/.svelte-kit/**",
+    "frontend/.vercel/**",
   ]),
   // Rule overrides - temporarily downgrade problematic rules to warnings
   // TODO: Fix these issues incrementally and remove these overrides
