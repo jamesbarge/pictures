@@ -1,5 +1,16 @@
+## 2026-04-26: Bump Vite to v8 + @sveltejs/vite-plugin-svelte to v7 (frontend)
+**PR**: TBD | **Files**: `frontend/package.json`, `frontend/package-lock.json`
+- `vite` 7.3.2 → 8.0.10
+- `@sveltejs/vite-plugin-svelte` 6.2.4 → 7.0.0 (paired bump per upstream peer-dep requirement)
+- Plugin v7 dropped its dependency on the separate `@sveltejs/vite-plugin-svelte-inspector` package — the inspector functionality moved internal. Required a clean lockfile rebuild (`rm -rf node_modules package-lock.json && npm install`) to clear the leftover v6 inspector entry.
+- `frontend/vite.config.ts` left unchanged. The `ssr.noExternal: ['date-fns']` workaround for Vite 7 still applies in v8 (verified — date-fns SSR resolution didn't change between versions).
+- Verification: svelte-check 13/2 (matches origin/main baseline). Vite 8 dev server boots in ~1s. Smoke tested 6 routes (`/`, `/about`, `/cinemas`, `/map`, `/festivals`, `/this-weekend`) — all HTTP 200. Full Playwright suite will run on CI.
+- Phase 2 item 10 from `tasks/todo.md`.
+
+---
+
 ## 2026-04-26: Bump TypeScript to v6 (both halves)
-**PR**: TBD | **Files**: `package.json`, `package-lock.json`, `frontend/package.json`, `frontend/package-lock.json`, `types/globals.d.ts`
+**PR**: #464 | **Files**: `package.json`, `package-lock.json`, `frontend/package.json`, `frontend/package-lock.json`, `types/globals.d.ts`
 - `typescript` 5.9.3 → 6.0.3 in both root and `frontend/`. Single PR per the plan, keeping versions in lock-step.
 - New file `types/globals.d.ts` with `/// <reference types="google.maps" />`. TS v6 tightened auto-loading of transitive `@types/*` packages — `@types/google.maps` (used by `src/components/map/cinema-map.tsx` for the `google.maps.X` namespace) comes in via `@vis.gl/react-google-maps` and was no longer auto-resolved. The single-line global reference makes the dependency explicit.
 - Verification: backend lint 0/41, tsc clean, 913/913 tests pass. Frontend svelte-check 13 errors / 2 warnings (matches origin/main exactly — all pre-existing). Dev server boots, `/`, `/cinemas`, `/map` all HTTP 200.
