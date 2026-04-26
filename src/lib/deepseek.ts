@@ -13,7 +13,8 @@ import OpenAI from "openai";
 
 /** Available DeepSeek model identifiers. */
 export const DEEPSEEK_MODELS = {
-  flash: "DeepSeek-V4-Flash",
+  flash: "deepseek-v4-flash",
+  pro: "deepseek-v4-pro",
 } as const;
 
 type DeepSeekModelId = (typeof DEEPSEEK_MODELS)[keyof typeof DEEPSEEK_MODELS];
