@@ -25,11 +25,14 @@
 	let {
 		film,
 		screenings,
-		maxScreenings = 3
+		maxScreenings = 3,
+		priority = false
 	}: {
 		film: Film;
 		screenings: Screening[];
 		maxScreenings?: number;
+		/** Mark this card's poster as the LCP candidate (above-fold). */
+		priority?: boolean;
 	} = $props();
 
 	const upcoming = $derived.by(() =>
@@ -93,7 +96,8 @@
 					srcset={posterImage?.srcset}
 					sizes={posterImage?.sizes}
 					alt=""
-					loading="lazy"
+					loading={priority ? 'eager' : 'lazy'}
+					fetchpriority={priority ? 'high' : 'auto'}
 					decoding="async"
 				/>
 			{:else}
@@ -147,6 +151,15 @@
 		display: flex;
 		flex-direction: column;
 		gap: 0;
+		/* Skip layout/paint for offscreen cards. `contain-intrinsic-size`
+		   reserves enough vertical space (poster aspect + meta + screenings)
+		   so scroll anchoring stays stable and there's no CLS on first reveal.
+		   Real cards are ~550–700px on a 4-col grid (poster ~450px tall at
+		   2:3 in a ~300px column, plus title/byline/meta/3 screenings); under-
+		   reserving causes visible jumps as offscreen cards reveal. `auto`
+		   lets the browser refine after first measurement. */
+		content-visibility: auto;
+		contain-intrinsic-size: auto 640px;
 	}
 
 	.poster-link {

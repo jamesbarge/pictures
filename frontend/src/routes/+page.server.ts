@@ -36,8 +36,11 @@ interface ScreeningsResponse {
 export const load: PageServerLoad = async ({ fetch, setHeaders }) => {
 	setHeaders({ 'cache-control': 'public, s-maxage=3600, stale-while-revalidate=86400' });
 
+	// Trim initial payload to a 14-day window. Filter UI defaults to a near-term
+	// view, and trimming halves transfer size + JSON parse time on the homepage
+	// LCP path. Films further out are still reachable via /search and date filters.
 	const end = new Date();
-	end.setDate(end.getDate() + 30);
+	end.setDate(end.getDate() + 14);
 	const data = await apiFetch<ScreeningsResponse>(
 		`/api/screenings?endDate=${end.toISOString()}`,
 		fetch

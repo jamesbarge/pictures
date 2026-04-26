@@ -177,7 +177,7 @@
 				<EmptyState title="No screenings found" description="Try adjusting your filters or check back later." />
 			{:else}
 				<div class="desktop-film-grid">
-					{#each hybridFilms as { film, screenings } (film.id)}
+					{#each hybridFilms as { film, screenings }, hi (film.id)}
 						<DesktopHybridCard
 							film={{
 								id: film.id,
@@ -195,6 +195,7 @@
 								format: s.format,
 								bookingUrl: s.bookingUrl
 							}))}
+							priority={hi < 4}
 						/>
 					{/each}
 				</div>
@@ -248,9 +249,9 @@
 		<EmptyState title="No screenings found" description="Try adjusting your filters or check back later." />
 	{:else}
 		<div class="mobile-list">
-			{#each dayGroups as { date, films } (date)}
+			{#each dayGroups as { date, films }, di (date)}
 				<section class="mobile-day">
-					{#each films as { film, screenings } (film.id)}
+					{#each films as { film, screenings }, fi (film.id)}
 						<MobileFilmRow
 							film={{
 								id: film.id,
@@ -266,6 +267,7 @@
 								cinemaName: s.cinema?.name ?? 'Unknown',
 								bookingUrl: s.bookingUrl
 							}))}
+							priority={di === 0 && fi === 0}
 						/>
 					{/each}
 				</section>

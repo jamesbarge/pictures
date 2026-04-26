@@ -1,9 +1,15 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { onMount } from 'svelte';
-	import { debounce, getPosterImageAttributes } from '$lib/utils';
+	import { onMount, tick } from 'svelte';
+	import { getPosterImageAttributes } from '$lib/utils';
 	import { apiGet } from '$lib/api/client';
-	import { trackSearch, trackSearchNoResults, trackSearchResultClick } from '$lib/analytics/posthog';
+	import {
+		trackSearch,
+		trackSearchNoResults,
+		trackSearchResultClick,
+		trackSearchCinemaClick
+	} from '$lib/analytics/posthog';
+	import { recentSearches } from '$lib/stores/recent-searches.svelte';
 
 	interface SearchResult {
 		id: string;
@@ -20,6 +26,9 @@
 		address: string | null;
 	}
 
+	const DEBOUNCE_MS = 120;
+	const MIN_QUERY_LEN = 2;
+
 	let query = $state('');
 	let films = $state<SearchResult[]>([]);
 	let cinemas = $state<CinemaResult[]>([]);
@@ -27,37 +36,94 @@
 	let selectedIndex = $state(-1);
 	let inputEl = $state<HTMLInputElement>();
 	let loading = $state(false);
+	let liveStatus = $state('');
 
+	const recents = $derived(recentSearches.entries);
+	const showRecents = $derived(query.length === 0 && recents.length > 0);
 	const totalResults = $derived(films.length + cinemas.length);
+	const totalNavigable = $derived(showRecents ? recents.length : totalResults);
 
-	const doSearch = debounce(async (q: string) => {
-		if (q.length < 2) {
+	let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+	let inFlight: AbortController | null = null;
+	let queuedAnnouncement: ReturnType<typeof setTimeout> | null = null;
+
+	function scheduleSearch(q: string) {
+		if (debounceTimer) clearTimeout(debounceTimer);
+		debounceTimer = setTimeout(() => doSearch(q), DEBOUNCE_MS);
+	}
+
+	async function doSearch(q: string) {
+		if (q.length < MIN_QUERY_LEN) {
 			films = [];
 			cinemas = [];
+			loading = false;
 			return;
 		}
+
+		// Abort any in-flight request — we only care about the latest query.
+		if (inFlight) inFlight.abort();
+		const controller = new AbortController();
+		inFlight = controller;
+
 		loading = true;
+		const startedAt = performance.now();
 		try {
 			const res = await apiGet<{ results: SearchResult[]; cinemas: CinemaResult[] }>(
-				`/api/films/search?q=${encodeURIComponent(q)}`
+				`/api/films/search?q=${encodeURIComponent(q)}`,
+				{ signal: controller.signal }
 			);
+			if (controller.signal.aborted) return;
 			films = res.results;
 			cinemas = res.cinemas;
 			const total = films.length + cinemas.length;
-			trackSearch(q, total);
+			const latencyMs = Math.round(performance.now() - startedAt);
+			trackSearch(q, total, {
+				latencyMs,
+				filmsCount: films.length,
+				cinemasCount: cinemas.length
+			});
 			if (total === 0) trackSearchNoResults(q);
+			announceResults(total);
 		} catch (e) {
+			if (controller.signal.aborted) return;
 			console.error('[search] Failed to search:', e instanceof Error ? e.message : e);
 			films = [];
 			cinemas = [];
+		} finally {
+			if (inFlight === controller) {
+				inFlight = null;
+				loading = false;
+			}
 		}
-		loading = false;
-	}, 200);
+	}
+
+	function announceResults(total: number) {
+		if (queuedAnnouncement) clearTimeout(queuedAnnouncement);
+		// Delay slightly so the announcement reflects the settled state, not
+		// every keystroke. Avoids screen-reader spam.
+		queuedAnnouncement = setTimeout(() => {
+			liveStatus =
+				total === 0
+					? `No results for ${query}`
+					: `${total} result${total === 1 ? '' : 's'} for ${query}`;
+		}, 250);
+	}
 
 	function handleInput() {
 		selectedIndex = -1;
-		open = query.length >= 2;
-		doSearch(query);
+		// Only open the dropdown when we'll show *something*: live results
+		// (≥ MIN_QUERY_LEN) or the recents drawer (when query is empty).
+		// Closing for sub-min queries avoids an empty panel flash on the
+		// 1-char transition between recents and live results.
+		open = query.length >= MIN_QUERY_LEN || (query.length === 0 && recents.length > 0);
+		if (query.length === 0) {
+			if (inFlight) inFlight.abort();
+			films = [];
+			cinemas = [];
+			loading = false;
+			return;
+		}
+		scheduleSearch(query);
 	}
 
 	function handleKeydown(e: KeyboardEvent) {
@@ -65,18 +131,18 @@
 
 		if (e.key === 'ArrowDown') {
 			e.preventDefault();
-			selectedIndex = Math.min(selectedIndex + 1, totalResults - 1);
+			selectedIndex = Math.min(selectedIndex + 1, totalNavigable - 1);
 		} else if (e.key === 'ArrowUp') {
 			e.preventDefault();
 			selectedIndex = Math.max(selectedIndex - 1, -1);
 		} else if (e.key === 'Enter') {
 			e.preventDefault();
-			if (selectedIndex >= 0) {
+			if (showRecents && selectedIndex >= 0) {
+				applyRecent(recents[selectedIndex]);
+			} else if (!showRecents && selectedIndex >= 0) {
 				navigateToResult(selectedIndex);
-			} else if (query.trim().length >= 2) {
-				open = false;
-				goto(`/search?q=${encodeURIComponent(query.trim())}`);
-				query = '';
+			} else if (query.trim().length >= MIN_QUERY_LEN) {
+				submitFullSearch();
 			}
 		} else if (e.key === 'Escape') {
 			open = false;
@@ -84,28 +150,59 @@
 		}
 	}
 
-	function navigateToResult(index: number) {
-		if (index < films.length) {
-			const film = films[index];
-			trackSearchResultClick(query, {
-				filmId: film.id,
-				filmTitle: film.title,
-				filmYear: film.year
-			}, index);
-			goto(`/film/${film.id}`);
-		} else {
-			const cinemaIndex = index - films.length;
-			goto(`/cinemas/${cinemas[cinemaIndex].id}`);
-		}
+	function submitFullSearch() {
+		const q = query.trim();
+		if (q.length < MIN_QUERY_LEN) return;
+		recentSearches.add(q);
 		open = false;
+		goto(`/search?q=${encodeURIComponent(q)}`);
 		query = '';
 	}
 
-	function handleFocus() {
-		if (query.length >= 2) open = true;
+	function navigateToResult(index: number) {
+		const q = query.trim();
+		if (index < films.length) {
+			const film = films[index];
+			trackSearchResultClick(
+				q,
+				{ filmId: film.id, filmTitle: film.title, filmYear: film.year },
+				index,
+				'film'
+			);
+			if (q.length >= MIN_QUERY_LEN) recentSearches.add(q);
+			goto(`/film/${film.id}`);
+		} else {
+			const cinemaIndex = index - films.length;
+			const cinema = cinemas[cinemaIndex];
+			trackSearchCinemaClick(q, cinema.id, cinema.name, index);
+			goto(`/cinemas/${cinema.id}`);
+		}
+		open = false;
+		query = '';
+		films = [];
+		cinemas = [];
+	}
+
+	function applyRecent(q: string) {
+		query = q;
+		open = true;
+		selectedIndex = -1;
+		// Jump straight to typeahead results for that query.
+		scheduleSearch(q);
+	}
+
+	async function handleFocus() {
+		if (query.length >= MIN_QUERY_LEN) {
+			open = true;
+		} else if (recents.length > 0) {
+			open = true;
+		}
+		// Ensure dropdown geometry is settled before keyboard nav.
+		await tick();
 	}
 
 	function handleBlur() {
+		// Defer so click handlers on results fire first.
 		setTimeout(() => (open = false), 200);
 	}
 
@@ -113,9 +210,40 @@
 		query = '';
 		films = [];
 		cinemas = [];
-		open = false;
+		if (inFlight) inFlight.abort();
+		open = recents.length > 0;
 		inputEl?.focus();
 	}
+
+	function clearOneRecent(q: string, e: MouseEvent) {
+		e.stopPropagation();
+		recentSearches.remove(q);
+	}
+
+	// Visual match highlighting: split a string around the case-insensitive
+	// occurrence(s) of the query. Returns alternating non-match / match parts.
+	function highlightParts(text: string, q: string): Array<{ text: string; match: boolean }> {
+		if (!q || q.length < MIN_QUERY_LEN) return [{ text, match: false }];
+		const parts: Array<{ text: string; match: boolean }> = [];
+		const lowerText = text.toLowerCase();
+		const lowerQ = q.toLowerCase();
+		let i = 0;
+		let idx = lowerText.indexOf(lowerQ, i);
+		while (idx !== -1) {
+			if (idx > i) parts.push({ text: text.slice(i, idx), match: false });
+			parts.push({ text: text.slice(idx, idx + q.length), match: true });
+			i = idx + q.length;
+			idx = lowerText.indexOf(lowerQ, i);
+		}
+		if (i < text.length) parts.push({ text: text.slice(i), match: false });
+		return parts;
+	}
+
+	const activeDescendant = $derived.by(() => {
+		if (!open || selectedIndex < 0) return undefined;
+		if (showRecents) return `search-opt-recent-${selectedIndex}`;
+		return `search-opt-${selectedIndex}`;
+	});
 
 	onMount(() => {
 		function globalKeydown(e: KeyboardEvent) {
@@ -125,7 +253,12 @@
 			}
 		}
 		document.addEventListener('keydown', globalKeydown);
-		return () => document.removeEventListener('keydown', globalKeydown);
+		return () => {
+			document.removeEventListener('keydown', globalKeydown);
+			if (debounceTimer) clearTimeout(debounceTimer);
+			if (queuedAnnouncement) clearTimeout(queuedAnnouncement);
+			if (inFlight) inFlight.abort();
+		};
 	});
 </script>
 
@@ -142,19 +275,23 @@
 			onfocus={handleFocus}
 			onblur={handleBlur}
 			onkeydown={handleKeydown}
-			type="text"
-			role="combobox" autocapitalize="off"
-			placeholder="Search films, cinemas, directors..."
-			class="search-input"
+			type="search"
+			role="combobox"
+			inputmode="search"
+			enterkeyhint="search"
+			autocapitalize="off"
 			autocomplete="off"
 			spellcheck="false"
+			placeholder="Search films, cinemas, directors..."
+			class="search-input"
 			aria-label="Search films, cinemas, directors"
 			aria-expanded={open}
 			aria-controls={open ? 'search-results' : undefined}
 			aria-autocomplete="list"
+			aria-activedescendant={activeDescendant}
 		/>
 		{#if query}
-			<button class="clear-btn" onclick={clearSearch} aria-label="Clear search">
+			<button class="clear-btn" type="button" onclick={clearSearch} aria-label="Clear search">
 				<svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10" fill="none">
 					<path d="M1 1L9 9M9 1L1 9" stroke="currentColor" stroke-width="1.2" stroke-linecap="square"/>
 				</svg>
@@ -164,11 +301,63 @@
 		{/if}
 	</div>
 
+	<!-- visually-hidden polite live region for screen-reader result counts -->
+	<div class="sr-only" aria-live="polite" aria-atomic="true">{liveStatus}</div>
+
 	{#if open}
 		<div class="results-dropdown" id="search-results" role="listbox" aria-label="Search results">
-			{#if loading}
+			{#if showRecents}
+				<div class="results-section-header">
+					<span>RECENT</span>
+					<button
+						class="recents-clear"
+						type="button"
+						onclick={() => recentSearches.clear()}
+						aria-label="Clear all recent searches"
+					>CLEAR</button>
+				</div>
+				{#each recents as recent, i (recent)}
+					<!-- Recent row uses div+role=option (not <button>) so the inline
+					     remove button can nest without invalid HTML. Listbox
+					     keyboard nav happens on the input via aria-activedescendant. -->
+					<div
+						class="result-row recent-row"
+						class:selected={selectedIndex === i}
+						id="search-opt-recent-{i}"
+						role="option"
+						aria-selected={selectedIndex === i}
+						tabindex="-1"
+						onmouseenter={() => (selectedIndex = i)}
+						onclick={() => applyRecent(recent)}
+						onkeydown={(e) => {
+							if (e.key === 'Enter' || e.key === ' ') {
+								e.preventDefault();
+								applyRecent(recent);
+							}
+						}}
+					>
+						<svg aria-hidden="true" class="result-clock" width="12" height="12" viewBox="0 0 12 12" fill="none">
+							<circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+							<path d="M6 3V6L8 7.5" stroke="currentColor" stroke-width="1" stroke-linecap="square" opacity="0.7"/>
+						</svg>
+						<div class="result-info">
+							<span class="result-title">{recent}</span>
+						</div>
+						<button
+							type="button"
+							class="recent-remove"
+							onclick={(e) => clearOneRecent(recent, e)}
+							aria-label="Remove {recent} from recent searches"
+						>
+							<svg aria-hidden="true" width="8" height="8" viewBox="0 0 8 8" fill="none">
+								<path d="M1 1L7 7M7 1L1 7" stroke="currentColor" stroke-width="1" stroke-linecap="square"/>
+							</svg>
+						</button>
+					</div>
+				{/each}
+			{:else if loading && totalResults === 0}
 				<div class="results-loading">SEARCHING...</div>
-			{:else if totalResults === 0 && query.length >= 2}
+			{:else if totalResults === 0 && query.length >= MIN_QUERY_LEN}
 				<div class="results-empty">
 					<span>NO RESULTS</span>
 					<a href="/search?q={encodeURIComponent(query)}" class="search-all-link" onclick={() => { open = false; query = ''; }}>
@@ -177,11 +366,13 @@
 				</div>
 			{:else}
 				{#if films.length > 0}
-					<div class="results-section-header">FILMS</div>
-					{#each films as film, i}
+					<div class="results-section-header"><span>FILMS</span></div>
+					{#each films as film, i (film.id)}
 						<button
+							type="button"
 							class="result-row"
 							class:selected={selectedIndex === i}
+							id="search-opt-{i}"
 							role="option"
 							aria-selected={selectedIndex === i}
 							onmouseenter={() => (selectedIndex = i)}
@@ -201,26 +392,34 @@
 									class="result-poster"
 									loading="lazy"
 									decoding="async"
+									width="28"
+									height="42"
 								/>
 							{:else}
 								<div class="result-poster-empty"></div>
 							{/if}
 							<div class="result-info">
-								<span class="result-title">{film.title}</span>
+								<span class="result-title">
+									{#each highlightParts(film.title, query) as part, pi (pi)}{#if part.match}<mark>{part.text}</mark>{:else}{part.text}{/if}{/each}
+								</span>
 								<span class="result-meta">
-									{film.year ?? ''}{film.directors.length ? ` · ${film.directors[0]}` : ''}
+									{film.year ?? ''}{#if film.directors.length} ·
+										{#each highlightParts(film.directors[0], query) as part, pi (pi)}{#if part.match}<mark>{part.text}</mark>{:else}{part.text}{/if}{/each}
+									{/if}
 								</span>
 							</div>
 						</button>
 					{/each}
 				{/if}
 				{#if cinemas.length > 0}
-					<div class="results-section-header">CINEMAS</div>
-					{#each cinemas as cinema, i}
+					<div class="results-section-header"><span>CINEMAS</span></div>
+					{#each cinemas as cinema, i (cinema.id)}
 						{@const idx = films.length + i}
 						<button
+							type="button"
 							class="result-row"
 							class:selected={selectedIndex === idx}
+							id="search-opt-{idx}"
 							role="option"
 							aria-selected={selectedIndex === idx}
 							onmouseenter={() => (selectedIndex = idx)}
@@ -230,7 +429,9 @@
 								<path d="M6 0C2.7 0 0 2.7 0 6c0 4.5 6 10 6 10s6-5.5 6-10c0-3.3-2.7-6-6-6z" fill="currentColor" opacity="0.4"/>
 							</svg>
 							<div class="result-info">
-								<span class="result-title">{cinema.name}</span>
+								<span class="result-title">
+									{#each highlightParts(cinema.name, query) as part, pi (pi)}{#if part.match}<mark>{part.text}</mark>{:else}{part.text}{/if}{/each}
+								</span>
 								{#if cinema.address}
 									<span class="result-meta">{cinema.address}</span>
 								{/if}
@@ -244,6 +445,18 @@
 </div>
 
 <style>
+	.sr-only {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
+	}
+
 	.search-container {
 		flex: 1;
 		min-width: 0;
@@ -275,7 +488,9 @@
 	}
 
 	/* 16px mobile base avoids iOS Safari's auto-zoom on focus (triggers below
-	   16px). Desktop overrides to `--font-size-sm` for visual consistency. */
+	   16px). Desktop overrides to `--font-size-sm` for visual consistency.
+	   `inputmode="search"` and `enterkeyhint="search"` on the element ensure
+	   the iOS keyboard shows the right return key + search-tuned layout. */
 	.search-input {
 		flex: 1;
 		border: none;
@@ -283,6 +498,13 @@
 		font-size: 16px;
 		color: var(--color-text);
 		outline: none;
+	}
+
+	/* Strip the WebKit cancel button — we render our own clear button. */
+	.search-input::-webkit-search-cancel-button,
+	.search-input::-webkit-search-decoration {
+		-webkit-appearance: none;
+		appearance: none;
 	}
 
 	@media (min-width: 768px) {
@@ -346,12 +568,31 @@
 	}
 
 	.results-section-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
 		padding: 0.5rem 0.75rem 0.25rem;
 		font-size: 10px;
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.1em;
 		color: var(--color-text-tertiary);
+	}
+
+	.recents-clear {
+		font-size: 10px;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.1em;
+		color: var(--color-text-tertiary);
+		background: transparent;
+		border: none;
+		padding: 2px 4px;
+		cursor: pointer;
+	}
+
+	.recents-clear:hover {
+		color: var(--color-text);
 	}
 
 	.results-loading,
@@ -402,6 +643,21 @@
 		border-left-color: var(--color-accent);
 	}
 
+	.result-row mark {
+		background: transparent;
+		color: var(--color-text);
+		font-weight: 600;
+	}
+
+	.recent-row {
+		padding-left: 0.875rem;
+	}
+
+	.result-clock {
+		flex-shrink: 0;
+		color: var(--color-text-tertiary);
+	}
+
 	.result-poster {
 		width: 28px;
 		height: 42px;
@@ -427,6 +683,7 @@
 		display: flex;
 		flex-direction: column;
 		min-width: 0;
+		flex: 1;
 	}
 
 	.result-title {
@@ -444,5 +701,30 @@
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
+	}
+
+	.recent-remove {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		min-width: 28px;
+		min-height: 28px;
+		padding: 4px;
+		color: var(--color-text-tertiary);
+		background: transparent;
+		border: none;
+		cursor: pointer;
+		opacity: 0;
+		transition: opacity var(--duration-fast) var(--ease-sharp);
+	}
+
+	.result-row:hover .recent-remove,
+	.result-row.selected .recent-remove,
+	.recent-remove:focus {
+		opacity: 1;
+	}
+
+	.recent-remove:hover {
+		color: var(--color-text);
 	}
 </style>
