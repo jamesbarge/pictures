@@ -1,5 +1,14 @@
+## 2026-04-26: Bump tailwind-merge to v3 (frontend)
+**PR**: TBD | **Files**: `frontend/package.json`, `frontend/package-lock.json`
+- `tailwind-merge` 2.6.1 → 3.5.0. Single usage at `frontend/src/lib/utils.ts:5` — the `cn()` wrapper around `twMerge(clsx(inputs))`.
+- The `twMerge()` function signature is unchanged in v3; v3's breaking changes are around custom config shapes which we don't use.
+- Verification: `npm run check` 13 errors / 2 warnings (matches origin/main exactly — all pre-existing). Dev server boots clean and `/`, `/cinemas`, `/map` all return HTTP 200.
+- Phase 2 item 5 from `tasks/todo.md`.
+
+---
+
 ## 2026-04-26: Bump lucide-react to v1
-**PR**: TBD | **Files**: `package.json`, `package-lock.json`
+**PR**: #460 | **Files**: `package.json`, `package-lock.json`
 - `lucide-react` 0.562.0 → 1.11.0 (the v1.0 stabilization release).
 - Audited all 78 unique icon imports across `src/**/*.{ts,tsx}` — every name still exists in v1.11.0. `npx tsc --noEmit` resolves all imports cleanly.
 - No source code changes required.
