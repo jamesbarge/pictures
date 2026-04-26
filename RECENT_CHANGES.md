@@ -1,5 +1,13 @@
-## 2026-04-26: Bump uuid to v14 + drop redundant @types/uuid
+## 2026-04-26: Bump jsdom to v29
 **PR**: TBD | **Files**: `package.json`, `package-lock.json`
+- `jsdom` 27.4.0 → 29.0.2. Test environment only — used by Vitest for `@testing-library/react` rendering.
+- No source code changes. All 913 tests pass without modification across the v27 → v29 jump.
+- Phase 2 item 7 from `tasks/todo.md`.
+
+---
+
+## 2026-04-26: Bump uuid to v14 + drop redundant @types/uuid
+**PR**: #462 | **Files**: `package.json`, `package-lock.json`
 - `uuid` 13.0.0 → 14.0.0. Six call sites all use `import { v4 as uuidv4 } from "uuid"` — signature unchanged.
 - Removed `@types/uuid@^10.0.0` from `devDependencies`. uuid v14 ships its own type declarations (`./dist/index.d.ts`), making the separate `@types/*` package redundant.
 - Phase 2 item 6 from `tasks/todo.md`.
