@@ -2,6 +2,9 @@
   "name": "pictures",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": "^20.20.0 || >=22.22.0"
+  },
   "lint-staged": {
     "*.{ts,tsx}": [
       "eslint --fix"
