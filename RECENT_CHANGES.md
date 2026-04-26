@@ -1,5 +1,14 @@
+## 2026-04-26: Bump @vercel/analytics + @vercel/speed-insights to v2
+**PR**: TBD | **Files**: `package.json`, `package-lock.json`
+- `@vercel/analytics` 1.6.1 → 2.0.1, `@vercel/speed-insights` 1.3.1 → 2.0.0. Both used only in `src/app/layout.tsx` via the `/next` subpath.
+- v2's `/next` subpath still exports the same `Analytics` and `SpeedInsights` named components — drop-in replacement, zero source code changes needed.
+- Phase 2 item 3 from `tasks/todo.md` (lowest-risk major).
+- Verification: lint 0 errors / 41 warnings, tsc clean, 913/913 tests pass. Will confirm analytics events still flow once Vercel preview deploys.
+
+---
+
 ## 2026-04-26: Declare Node engine in package.json
-**PR**: TBD | **Files**: `package.json`
+**PR**: #458 | **Files**: `package.json`
 - Added `"engines": {"node": "^20.20.0 || >=22.22.0"}` to root `package.json`. Matches the strictest dep requirement (`@posthog/ai` 7.16.10, `posthog-node` 5.30.4).
 - No CI workflow change — `.github/workflows/*.yml` already use Node 24, well above the floor. `.nvmrc` stays at `22` (resolves to current 22 LTS, satisfies the engine).
 - Effect: local devs on older Node now get an explicit `EBADENGINE` warning at install time pointing at the requirement. Vercel will continue to use a compatible runtime (its current default exceeds the floor).
