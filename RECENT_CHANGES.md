@@ -1,5 +1,14 @@
-## 2026-04-26: Bump @vercel/analytics + @vercel/speed-insights to v2
+## 2026-04-26: Bump lucide-react to v1
 **PR**: TBD | **Files**: `package.json`, `package-lock.json`
+- `lucide-react` 0.562.0 → 1.11.0 (the v1.0 stabilization release).
+- Audited all 78 unique icon imports across `src/**/*.{ts,tsx}` — every name still exists in v1.11.0. `npx tsc --noEmit` resolves all imports cleanly.
+- No source code changes required.
+- Phase 2 item 4 from `tasks/todo.md`.
+
+---
+
+## 2026-04-26: Bump @vercel/analytics + @vercel/speed-insights to v2
+**PR**: #459 | **Files**: `package.json`, `package-lock.json`
 - `@vercel/analytics` 1.6.1 → 2.0.1, `@vercel/speed-insights` 1.3.1 → 2.0.0. Both used only in `src/app/layout.tsx` via the `/next` subpath.
 - v2's `/next` subpath still exports the same `Analytics` and `SpeedInsights` named components — drop-in replacement, zero source code changes needed.
 - Phase 2 item 3 from `tasks/todo.md` (lowest-risk major).
