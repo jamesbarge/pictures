@@ -7,7 +7,7 @@
 
 import { db, isDatabaseAvailable } from "@/db";
 import { autoresearchExperiments } from "@/db/schema/admin";
-import { sendTelegramAlert } from "@/trigger/utils/telegram";
+import { sendTelegramAlert } from "@/lib/telegram";
 import type { ExperimentResult, OvernightSummary, TargetSummary } from "./types";
 
 /** Score thresholds for overnight summary classification */
