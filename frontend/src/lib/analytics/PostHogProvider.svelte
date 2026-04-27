@@ -14,13 +14,20 @@
 		if (!browser) return;
 
 		const loadPostHog = () => {
-			Promise.all([import('./posthog'), import('posthog-js')]).then(([mod, ph]) => {
+			Promise.all([
+				import('./posthog'),
+				import('posthog-js'),
+				import('./web-vitals')
+			]).then(([mod, ph, webVitals]) => {
 				mod.initPostHog();
 				posthogModule = mod;
 				posthogLib = ph.default;
 				// Track initial pageview (deferred)
 				mod.trackPageview(page.url.href);
 				lastPath = page.url.pathname;
+				// Start web-vitals reporting once PostHog is alive. The reporter
+				// is idempotent on subsequent calls.
+				void webVitals.startWebVitals(ph.default);
 			});
 		};
 

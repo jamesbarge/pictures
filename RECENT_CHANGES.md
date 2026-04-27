@@ -1,5 +1,20 @@
+## 2026-04-27: Frontend perf + search-UX batch
+**PR**: TBD | **Files**: 4 new + 9 modified across `frontend/src`
+- **Perf:** Ship `web-vitals` v5 → PostHog with route × viewport × connection dims (`web_vital` event), replacing PostHog's redundant `capture_performance` flag. Universal #1 pick across all 9 panel agents.
+- **Perf:** Trim homepage server payload from 30-day to 14-day window (UX Architect's unique pick) — halves transfer size + JSON parse on LCP path.
+- **Perf:** Add `preconnect` + `dns-prefetch` for `api.pictures.london` (TMDB already had it).
+- **Perf:** Mark first 1 mobile poster + first 4 desktop posters with `fetchpriority="high"` + `loading="eager"`; rest stay lazy. Add `content-visibility: auto` + `contain-intrinsic-size` on calendar row/card components to skip offscreen layout.
+- **Refactor:** Split `frontend/src/routes/film/[id]/+page.svelte` from 1,113 → 867 lines by extracting `FilmSidebar.svelte` (eager) and `FilmSimilarRail.svelte` (lazy via `requestIdleCallback`).
+- **Search UX:** Full `SearchInput.svelte` rewrite — adds `inputmode="search"` + `enterkeyhint="search"` (UI Designer's iOS zoom + keyboard fix), `AbortController` on every keystroke, debounce 200ms → 120ms, full ARIA combobox pattern (`aria-activedescendant`, `aria-live` result-count), `<mark>` match highlighting on titles + directors + cinema names.
+- **Search predictions:** Recent searches drawer (last 5, localStorage) shown on focus when query is empty. New `lib/stores/recent-searches.svelte.ts`.
+- **Search instrumentation:** Extend `search_performed` event with `latency_ms`, `films_count`, `cinemas_count`. Add `entity_type` to `search_result_clicked` + new `trackSearchCinemaClick`.
+- Code-reviewed: bumped `DesktopHybridCard` `contain-intrinsic-size` from 360px → 640px after reviewer flagged real CLS risk on 4-col grid.
+- Backend search-relevance work (pg_trgm + unaccent + ranking) is the consensus #1 from the search panel but lives in the Next.js API; queued as a separate PR.
+
+---
+
 ## 2026-04-26: Drop unused @chenglou/pretext from frontend deps
-**PR**: TBD | **Files**: `frontend/package.json`, `frontend/package-lock.json`
+**PR**: #466 | **Files**: `frontend/package.json`, `frontend/package-lock.json`
 - Plan item 11 was "bump @chenglou/pretext 0.0.3 → 0.0.6", but `grep -rE "@chenglou"` returns zero hits in `frontend/src/**`. Same situation the Anthropic SDKs were in (item 1) — listed in `package.json` but never imported.
 - The local `frontend/src/lib/components/pretext/` directory contains custom Svelte components (`BreathingGrid.svelte`, `FittedTitleCanvas.svelte`) inspired by the package's design language but written from scratch in this codebase. They don't import the package.
 - Decision: remove the unused dep instead of bumping it. Saves install footprint and removes a 0.x version bomb from the maintenance surface.

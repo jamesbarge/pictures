@@ -15,7 +15,7 @@ export class ApiError extends Error {
 
 export async function apiGet<T>(
 	path: string,
-	opts?: { fetch?: typeof fetch; token?: string }
+	opts?: { fetch?: typeof fetch; token?: string; signal?: AbortSignal }
 ): Promise<T> {
 	const f = opts?.fetch ?? fetch;
 	const headers: Record<string, string> = {
@@ -25,7 +25,7 @@ export async function apiGet<T>(
 		headers['Authorization'] = `Bearer ${opts.token}`;
 	}
 
-	const res = await f(`${API_BASE}${path}`, { headers });
+	const res = await f(`${API_BASE}${path}`, { headers, signal: opts?.signal });
 	if (!res.ok) {
 		throw new ApiError(res.status, await res.text());
 	}

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import LetterboxdRatingReveal from '$lib/components/film/LetterboxdRatingReveal.svelte';
+	import FilmSidebar from '$lib/components/film/FilmSidebar.svelte';
 	import CalendarPopover from '$lib/components/filters/CalendarPopover.svelte';
 	import JsonLd from '$lib/seo/JsonLd.svelte';
 	import { movieSchema, breadcrumbSchema } from '$lib/seo/json-ld';
@@ -8,7 +9,13 @@
 	import { formatTime, formatScreeningDate, toLondonDateStr, groupBy, getPosterImageAttributes } from '$lib/utils';
 	import { trackFilmView, trackBookingClick, trackFilmStatusChange, trackCalendarExport } from '$lib/analytics/posthog';
 	import { onMount } from 'svelte';
+	import { browser } from '$app/environment';
 	import type { FilmStatus } from '$lib/types';
+
+	// Lazy-load the below-the-fold "If you like this" rail after first paint.
+	// The component is image-heavy and never needed for LCP. Awaiting on a
+	// browser-only promise keeps it out of the SSR/hydration critical path.
+	let SimilarRail = $state<typeof import('$lib/components/film/FilmSimilarRail.svelte').default | null>(null);
 
 	let { data } = $props();
 
@@ -25,6 +32,20 @@
 			genres: film.genres,
 			directors: film.directors
 		}, 'film_detail');
+
+		// Defer the similar-rail chunk until the browser is idle so it doesn't
+		// compete with the hero/showings paint.
+		if (browser) {
+			const load = () =>
+				import('$lib/components/film/FilmSimilarRail.svelte').then((m) => {
+					SimilarRail = m.default;
+				});
+			if ('requestIdleCallback' in window) {
+				requestIdleCallback(load, { timeout: 2000 });
+			} else {
+				setTimeout(load, 1500);
+			}
+		}
 	});
 
 	function toggleStatus(status: FilmStatus) {
@@ -375,94 +396,25 @@
 		</div>
 	</section>
 
-	<aside class="sidebar">
-		<section class="credits-section">
-			<h3 class="credits-title">Credits</h3>
-
-			{#if film.directors?.length}
-				<div class="credit-row">
-					<span class="credit-key">Director{film.directors.length > 1 ? 's' : ''}</span>
-					<span class="credit-val">{film.directors.join(', ')}</span>
-				</div>
-			{/if}
-
-			{#if film.cast?.length}
-				<div class="credit-row">
-					<span class="credit-key">Cast</span>
-					<span class="credit-val">{film.cast.slice(0, 5).map((c) => c.name).join(', ')}</span>
-				</div>
-			{/if}
-
-			{#if film.countries?.length}
-				<div class="credit-row">
-					<span class="credit-key">Country</span>
-					<span class="credit-val">{film.countries.join(', ')}</span>
-				</div>
-			{/if}
-
-			{#if film.languages?.length}
-				<div class="credit-row">
-					<span class="credit-key">Language</span>
-					<span class="credit-val">{film.languages.join(', ')}</span>
-				</div>
-			{/if}
-		</section>
-
-		{#if film.tagline}
-			<section class="tagline-section">
-				<p class="tagline">{film.tagline}</p>
-			</section>
-		{/if}
-
-		<section class="status-section">
-			<h3 class="credits-title"><span class="italic-cap">S</span>tatus</h3>
-			<div class="status-row">
-				<button
-					type="button"
-					class="status-btn"
-					class:active={currentStatus === 'want_to_see'}
-					onclick={() => toggleStatus('want_to_see')}
-					aria-pressed={currentStatus === 'want_to_see'}
-				>
-					Want to see
-				</button>
-				<button
-					type="button"
-					class="status-btn"
-					class:active={currentStatus === 'not_interested'}
-					onclick={() => toggleStatus('not_interested')}
-					aria-pressed={currentStatus === 'not_interested'}
-				>
-					Not interested
-				</button>
-			</div>
-		</section>
-	</aside>
+	<FilmSidebar
+		film={{
+			id: film.id,
+			title: film.title,
+			year: film.year,
+			genres: film.genres,
+			directors: film.directors,
+			cast: film.cast,
+			countries: film.countries,
+			languages: film.languages,
+			tagline: film.tagline
+		}}
+		{currentStatus}
+		onToggleStatus={toggleStatus}
+	/>
 </div>
 
-{#if similar.length >= 2}
-	<section class="similar" aria-labelledby="similar-heading">
-		<header class="similar-head">
-			<h2 id="similar-heading" class="similar-title">
-				<span class="italic-cap">I</span>f you like this
-			</h2>
-		</header>
-		<div class="similar-rail">
-			{#each similar as s (s.id)}
-				<a href="/film/{s.id}" class="similar-card">
-					<div class="similar-poster">
-						{#if s.posterUrl}
-							<img src={s.posterUrl} alt={s.title} loading="lazy" />
-						{:else}
-							<div class="similar-poster-fallback"><span>{s.title}</span></div>
-						{/if}
-					</div>
-					<h3 class="similar-name">{s.title}</h3>
-					{#if s.year}<p class="similar-year">{s.year}</p>{/if}
-				</a>
-			{/each}
-		</div>
-	</section>
+{#if SimilarRail && similar.length >= 2}
+	<SimilarRail {similar} />
 {/if}
 
 <style>
@@ -912,202 +864,4 @@
 	}
 
 	.ext:hover { color: var(--color-text); }
-
-	/* Sidebar */
-	.sidebar {
-		padding-left: 0;
-	}
-
-	@media (min-width: 1024px) {
-		.sidebar {
-			border-left: 1px solid var(--color-border-subtle);
-			padding-left: 32px;
-		}
-	}
-
-	.credits-section, .status-section, .tagline-section {
-		padding-bottom: 20px;
-		border-bottom: 1px solid var(--color-border-subtle);
-		margin-bottom: 18px;
-	}
-
-	.credits-title {
-		margin: 0 0 10px;
-		font-family: var(--font-serif);
-		font-size: 14px;
-		font-weight: 500;
-		letter-spacing: -0.005em;
-		color: var(--color-text);
-	}
-	.credits-title .italic-cap { font-style: italic; }
-
-	.credit-row {
-		padding: 5px 0;
-		display: flex;
-		gap: 8px;
-		align-items: baseline;
-	}
-
-	.credit-key {
-		font-family: var(--font-mono-plex);
-		font-size: 10px;
-		color: var(--color-text-tertiary);
-		letter-spacing: 0.12em;
-		text-transform: uppercase;
-		min-width: 90px;
-		padding-top: 3px;
-	}
-
-	.credit-val {
-		flex: 1;
-		font-family: var(--font-serif-italic);
-		font-style: italic;
-		font-size: 13px;
-		color: var(--color-text-secondary);
-		line-height: 1.3;
-	}
-
-	.tagline {
-		margin: 0;
-		font-family: var(--font-serif-italic);
-		font-style: italic;
-		font-size: 16px;
-		color: var(--color-text-secondary);
-		line-height: 1.35;
-	}
-
-	.status-row {
-		display: flex;
-		border: 1px solid var(--color-border);
-	}
-
-	.status-btn {
-		flex: 1;
-		padding: 8px 10px;
-		font-family: var(--font-serif);
-		font-size: 12.5px;
-		font-weight: 400;
-		letter-spacing: -0.005em;
-		color: var(--color-text-secondary);
-		background: transparent;
-		border: none;
-		border-right: 1px solid var(--color-border);
-		cursor: pointer;
-		transition: background-color var(--duration-fast) var(--ease-sharp),
-			color var(--duration-fast) var(--ease-sharp);
-	}
-
-	.status-btn:last-child { border-right: none; }
-
-	.status-btn:hover {
-		background: var(--color-bg-subtle);
-		color: var(--color-text);
-	}
-
-	.status-btn.active {
-		background: var(--color-text);
-		color: var(--color-bg);
-		font-weight: 500;
-	}
-
-	/* ── Similar films rail ── */
-	.similar {
-		max-width: 1400px;
-		margin: 0 auto;
-		padding: 32px 2rem 64px;
-		border-top: 1px solid var(--color-border-subtle);
-	}
-
-	.similar-head {
-		margin-bottom: 20px;
-	}
-
-	.similar-title {
-		margin: 0;
-		font-family: var(--font-serif);
-		font-weight: 400;
-		font-size: 28px;
-		letter-spacing: -0.02em;
-		line-height: 1;
-		color: var(--color-text);
-		font-variation-settings: '"SOFT" 100', '"opsz" 36';
-	}
-
-	.similar-title .italic-cap {
-		font-family: var(--font-serif-italic);
-		font-style: italic;
-	}
-
-	.similar-rail {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
-		gap: 20px 18px;
-	}
-
-	@media (max-width: 767px) {
-		.similar-rail {
-			display: flex;
-			overflow-x: auto;
-			scroll-snap-type: x mandatory;
-			gap: 14px;
-			padding-bottom: 8px;
-		}
-		.similar-card {
-			flex: 0 0 132px;
-			scroll-snap-align: start;
-		}
-	}
-
-	.similar-card {
-		display: flex;
-		flex-direction: column;
-		color: var(--color-text);
-		text-decoration: none;
-	}
-
-	.similar-poster {
-		position: relative;
-		aspect-ratio: 2 / 3;
-		background: var(--color-bg-subtle);
-		border: 1px solid var(--color-border-subtle);
-		margin-bottom: 8px;
-		overflow: hidden;
-	}
-
-	.similar-poster img {
-		width: 100%;
-		height: 100%;
-		object-fit: cover;
-	}
-
-	.similar-poster-fallback {
-		position: absolute;
-		inset: 0;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		text-align: center;
-		padding: 8px;
-		font-family: var(--font-serif);
-		font-size: 12px;
-		color: var(--color-text-tertiary);
-	}
-
-	.similar-name {
-		margin: 0 0 2px;
-		font-family: var(--font-serif);
-		font-weight: 400;
-		font-size: 14px;
-		line-height: 1.2;
-		color: var(--color-text);
-		font-variation-settings: '"SOFT" 100', '"opsz" 24';
-	}
-
-	.similar-year {
-		margin: 0;
-		font-family: var(--font-serif-italic);
-		font-style: italic;
-		font-size: 12px;
-		color: var(--color-text-tertiary);
-	}
 </style>

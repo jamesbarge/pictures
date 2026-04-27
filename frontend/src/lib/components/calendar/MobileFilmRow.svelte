@@ -23,11 +23,14 @@
 	let {
 		film,
 		screenings,
-		maxScreenings = 3
+		maxScreenings = 3,
+		priority = false
 	}: {
 		film: Film;
 		screenings: Screening[];
 		maxScreenings?: number;
+		/** Mark this row's poster as the LCP candidate (first row above fold). */
+		priority?: boolean;
 	} = $props();
 
 	const upcoming = $derived.by(() =>
@@ -124,7 +127,8 @@
 					alt=""
 					width="116"
 					height="174"
-					loading="lazy"
+					loading={priority ? 'eager' : 'lazy'}
+					fetchpriority={priority ? 'high' : 'auto'}
 					decoding="async"
 				/>
 			{:else}
@@ -141,6 +145,11 @@
 		align-items: flex-start;
 		padding: 18px 0 20px;
 		border-bottom: 1px solid var(--color-border-subtle);
+		/* Skip layout/paint for offscreen rows. The browser renders only when
+		   the row scrolls within ~viewport. `contain-intrinsic-size` reserves
+		   space so scroll position and Cmd-F still work, with no CLS. */
+		content-visibility: auto;
+		contain-intrinsic-size: auto 220px;
 	}
 
 	.text-col {

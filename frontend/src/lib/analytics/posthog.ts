@@ -44,7 +44,10 @@ export function initPostHog() {
 			dom_event_allowlist: ['click', 'submit', 'change'],
 			element_allowlist: ['button', 'a', 'input', 'select', 'textarea']
 		},
-		capture_performance: true,
+		// Disabled in favour of the web-vitals reporter at $lib/analytics/web-vitals,
+		// which captures LCP/INP/CLS/TTFB/FCP with route + viewport + connection
+		// dimensions PostHog's built-in flag doesn't expose.
+		capture_performance: false,
 		capture_exceptions: true
 	});
 
@@ -159,22 +162,48 @@ export function trackFilmStatusChange(
 
 // ── Search Events ───────────────────────────────────────────────
 
-export function trackSearch(query: string, resultCount: number) {
+export function trackSearch(
+	query: string,
+	resultCount: number,
+	options?: { latencyMs?: number; filmsCount?: number; cinemasCount?: number }
+) {
 	if (!browser) return;
 	posthog.capture('search_performed', {
 		query,
 		query_length: query.length,
-		result_count: resultCount
+		result_count: resultCount,
+		latency_ms: options?.latencyMs,
+		films_count: options?.filmsCount,
+		cinemas_count: options?.cinemasCount
 	});
 }
 
-export function trackSearchResultClick(query: string, film: FilmContext, resultPosition: number) {
+type SearchResultEntity = 'film' | 'cinema' | 'recent';
+
+export function trackSearchResultClick(
+	query: string,
+	film: FilmContext,
+	resultPosition: number,
+	entityType: SearchResultEntity = 'film'
+) {
 	if (!browser) return;
 	posthog.capture('search_result_clicked', {
 		query,
 		film_id: film.filmId,
 		film_title: film.filmTitle,
-		result_position: resultPosition
+		result_position: resultPosition,
+		entity_type: entityType
+	});
+}
+
+export function trackSearchCinemaClick(query: string, cinemaId: string, cinemaName: string, resultPosition: number) {
+	if (!browser) return;
+	posthog.capture('search_result_clicked', {
+		query,
+		cinema_id: cinemaId,
+		cinema_name: cinemaName,
+		result_position: resultPosition,
+		entity_type: 'cinema' as SearchResultEntity
 	});
 }
 
