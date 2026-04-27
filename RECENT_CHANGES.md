@@ -1,3 +1,11 @@
+## 2026-04-27: Fix desktop film-grid overflow on wide viewports
+**PR**: TBD | **Files**: `frontend/src/routes/+page.svelte`
+- Switched all four `.desktop-film-grid` declarations from `repeat(N, 1fr)` → `repeat(N, minmax(0, 1fr))`.
+- Why: `1fr` is shorthand for `minmax(auto, 1fr)`, where `auto` honors each grid item's intrinsic min-width. The recent perf batch (#468) added `contain-intrinsic-size: auto 640px` to `DesktopHybridCard` to prevent CLS, which gave offscreen cards a 640px intrinsic width. Grid columns then locked to 640px each, blew past the 1400px shell, and pushed posters off-screen on the right at any viewport ≥ 1280px.
+- Verified at 2560×1440, 1280×900, and 1100×900 — `bodyOverflow: 0` everywhere; columns now share remaining space (e.g. 248px each on a 4-col grid at 2560px).
+
+---
+
 ## 2026-04-27: Frontend perf + search-UX batch
 **PR**: TBD | **Files**: 4 new + 9 modified across `frontend/src`
 - **Perf:** Ship `web-vitals` v5 → PostHog with route × viewport × connection dims (`web_vital` event), replacing PostHog's redundant `capture_performance` flag. Universal #1 pick across all 9 panel agents.

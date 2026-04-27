@@ -386,22 +386,22 @@
 
 	.desktop-film-grid {
 		display: grid;
-		grid-template-columns: repeat(4, 1fr);
+		grid-template-columns: repeat(4, minmax(0, 1fr));
 		gap: 32px 22px;
 	}
 
 	@media (min-width: 1024px) and (max-width: 1279px) {
 		.desktop-film-grid {
-			grid-template-columns: repeat(3, 1fr);
+			grid-template-columns: repeat(3, minmax(0, 1fr));
 		}
 		.sidebar-collapsed .desktop-film-grid {
-			grid-template-columns: repeat(4, 1fr);
+			grid-template-columns: repeat(4, minmax(0, 1fr));
 		}
 	}
 
 	@media (min-width: 1280px) {
 		.sidebar-collapsed .desktop-film-grid {
-			grid-template-columns: repeat(5, 1fr);
+			grid-template-columns: repeat(5, minmax(0, 1fr));
 		}
 	}
 
