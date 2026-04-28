@@ -126,6 +126,24 @@ AI-driven experiment loops that self-improve data quality overnight. Details in 
 - `/autoquality` — Compute baseline DQS, tune thresholds, write Obsidian report
 - Reports: `Obsidian Vault/Pictures/AutoResearch/`
 
+## Vision (optional)
+Self-hosted DeepSeek-OCR via Ollama for screenshot → screenings extraction. Used by future vision-mode cinema scrapers (e.g. Barbican's React grid). DeepSeek-only — do NOT introduce Google/Gemini for new vision work.
+
+One-time setup:
+```bash
+brew install ollama
+brew services start ollama
+ollama pull deepseek-ocr
+```
+
+Notes:
+- Model is ~3B params; runs on M-series Macs with 32GB+ RAM.
+- No API keys at runtime — entirely local. Endpoint: `http://localhost:11434`.
+- Helper module: `src/lib/vision.ts` (`extractScreeningsFromScreenshot`, `checkOllamaHealth`). Override via `OLLAMA_VISION_MODEL` / `OLLAMA_URL` env vars.
+- Scheduler probes `checkOllamaHealth()` at boot — vision-mode cinemas fail soft to HTML parsing if Ollama is down.
+- If accuracy is insufficient, the upgrade path to DeepSeek-OCR-2 is via custom MLX/PyTorch (deferred).
+- Healthcheck: `curl -s http://localhost:11434/api/tags | jq '.models[].model'`
+
 ## Obsidian Vault
 Maintain the Pictures Obsidian vault at `/Users/jamesbarge/Documents/Obsidian Vault/Pictures/`. When producing strategy reports, audits, research documents, or other project artefacts that have long-term reference value, copy them into the appropriate vault folder (Research, Audits, Data Quality, etc.).
 

@@ -23,6 +23,7 @@ import Bree from "bree";
 loadEnv({ path: path.resolve(process.cwd(), ".env.local") });
 
 import { sendTelegramAlert } from "@/lib/telegram";
+import { checkOllamaHealth } from "@/lib/vision";
 import { runCatchUpScan } from "./catch-up";
 
 // Resolve the jobs directory relative to this file rather than CWD, so the
@@ -45,6 +46,7 @@ interface JobDefinition {
  *
  *   scrape-all          03:00 daily     — orchestrates all 27 cinema scrapers
  *   daily-sweep         04:30 daily     — TMDB / poster / Letterboxd enrichment
+ *   autoscrape-repair   05:00 daily     — Stagehand-driven repair on anomalies
  *   letterboxd-ratings  08:00 Mondays   — refresh ratings for matched films
  *   bfi-pdf             06:00 Sundays   — full BFI programme PDF + changes
  *   bfi-changes         10:00 Wednesdays — mid-week BFI changes refresh
@@ -55,6 +57,7 @@ interface JobDefinition {
 const JOBS: JobDefinition[] = [
   { name: "scrape-all", cron: "0 3 * * *", description: "Daily scrape of all 27 cinemas" },
   { name: "daily-sweep", cron: "30 4 * * *", description: "Daily enrichment sweep" },
+  { name: "autoscrape-repair", cron: "0 5 * * *", description: "Stagehand-driven repair for anomaly/zero-count cinemas" },
   { name: "letterboxd-ratings", cron: "0 8 * * 1", description: "Weekly Letterboxd rating refresh" },
   { name: "bfi-pdf", cron: "0 6 * * 0", description: "Weekly BFI programme PDF import" },
   { name: "bfi-changes", cron: "0 10 * * 3", description: "Mid-week BFI programme changes" },
@@ -90,8 +93,32 @@ function buildBree(): Bree {
   });
 }
 
+async function probeVisionStack(): Promise<void> {
+  // Phase 7 — Ollama-backed DeepSeek-OCR is optional. Probe it at boot so we
+  // log whether vision-mode cinemas (none yet) will work this session.
+  // Vision-mode scrapers are expected to fail soft via try/catch; this is
+  // observability only.
+  try {
+    const health = await checkOllamaHealth();
+    if (health.available) {
+      console.log("[scheduler] Vision (Ollama DeepSeek-OCR) available");
+    } else {
+      console.warn(
+        `[scheduler] Vision unavailable — ${health.reason}. ` +
+          `Vision-mode cinemas will fall back to HTML parsing.`,
+      );
+    }
+  } catch (err) {
+    console.warn(
+      "[scheduler] Vision health check threw:",
+      err instanceof Error ? err.message : err,
+    );
+  }
+}
+
 async function main(): Promise<void> {
   const startedAt = new Date();
+  await probeVisionStack();
   const bree = buildBree();
 
   bree.on("worker created", (name) => {
