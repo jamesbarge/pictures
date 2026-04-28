@@ -2,7 +2,7 @@
 /**
  * QA Dry Run — Local manual execution against prod
  *
- * Runs the QA pipeline locally without Trigger.dev:
+ * Runs the QA pipeline locally without the cloud orchestrator:
  *   1. Browse pictures.london with Playwright
  *   2. Load DB state and run deterministic checks
  *   3. Print findings (no DB writes, no Gemini calls)
@@ -19,8 +19,8 @@ import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
 import * as schema from "@/db/schema";
 import { eq, gte, lte, and } from "drizzle-orm";
-import { extractFrontEndData, checkCompleteness } from "@/trigger/qa/utils/front-end-extractor";
-import { normalizeTitle } from "@/trigger/qa/utils/title-utils";
+import { extractFrontEndData, checkCompleteness } from "@/lib/qa/utils/front-end-extractor";
+import { normalizeTitle } from "@/lib/qa/utils/title-utils";
 
 const DIVIDER = "═".repeat(60);
 

@@ -1,7 +1,7 @@
 /**
  * Telegram alerting helper.
  *
- * Pure-Node module — no Trigger.dev coupling. Callable from any context
+ * Pure-Node module — no the cloud orchestrator coupling. Callable from any context
  * (scheduler jobs, admin API routes, scripts, tests).
  *
  * Reads TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID at call time; returns

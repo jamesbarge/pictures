@@ -12,7 +12,7 @@ import {
   getCinemaById,
   getCanonicalId,
 } from "@/config/cinema-registry";
-import { getTriggerTaskId } from "@/trigger/task-registry";
+import { getTriggerTaskId } from "@/scrapers/task-registry";
 import { getScraperByTaskId } from "@/scrapers/registry";
 import { runScraper } from "@/scrapers/runner-factory";
 

@@ -4,10 +4,9 @@
  *
  * Body: { dryRun?: boolean } (defaults to true)
  *
- * NOTE: The QA pipeline has not yet been extracted from Trigger.dev into a
- * pure-Node job module (Phase 4). Until that work lands, this route returns
- * 501 Not Implemented. Run the pipeline manually via the Trigger.dev
- * dashboard for now.
+ * NOTE: The QA pipeline has not yet been extracted into a pure-Node job
+ * module. Until that work lands, this route returns 501 Not Implemented.
+ * Run the pipeline manually via `npx tsx scripts/qa-dry-run.ts`.
  */
 
 import { withAdminAuth } from "@/lib/auth";
@@ -18,7 +17,7 @@ export const POST = withAdminAuth(async () => {
       error: "QA pipeline migration pending",
       message:
         "The QA pipeline has not been migrated to the local job runner yet. " +
-        "Run it via the Trigger.dev dashboard until Phase 4 ships.",
+        "Run it manually via `npx tsx scripts/qa-dry-run.ts` for now.",
     },
     { status: 501 },
   );

@@ -16,7 +16,7 @@ const AUTORESEARCH_DIR = join(OBSIDIAN_VAULT, "AutoResearch");
 const CURSOR_PATH = join(AUTORESEARCH_DIR, "autoresearch-cursor.md");
 
 /**
- * Detect if running in a cloud environment (Trigger.dev, Vercel, etc.)
+ * Detect if running in a cloud environment (the cloud orchestrator, Vercel, etc.)
  * where the local Obsidian vault path doesn't exist.
  */
 function isCloudEnvironment(): boolean {

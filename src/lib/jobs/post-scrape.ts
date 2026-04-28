@@ -2,7 +2,7 @@
  * Post-Scrape Enrichment — pure-Node job module.
  *
  * Extracted out of src/trigger/enrichment/post-scrape.ts so the same logic
- * runs locally (Bree scheduler, CLI, admin API) without any Trigger.dev
+ * runs locally (Bree scheduler, CLI, admin API) without any the cloud orchestrator
  * dependency. The trigger wrapper is now a thin shim that calls
  * runPostScrapeEnrichment().
  *

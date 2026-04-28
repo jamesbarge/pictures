@@ -2,7 +2,7 @@
  * Post-Deploy Verification — pure-Node job module.
  *
  * Extracted out of src/trigger/ops/post-deploy-verify.ts so the same logic
- * runs locally (Bree scheduler, CLI, admin API) without any Trigger.dev
+ * runs locally (Bree scheduler, CLI, admin API) without any the cloud orchestrator
  * dependency. The trigger wrapper is now a thin shim that calls runPostDeployVerify().
  *
  * Runs after every Vercel production deploy to verify the app is healthy.

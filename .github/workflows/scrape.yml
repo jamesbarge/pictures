@@ -2,7 +2,7 @@ name: Weekly Cinema Scrape
 
 on:
   # schedule:
-  #   # Disabled — migrated to Trigger.dev (2026-03-04)
+  #   # Disabled — moved to local Bree+PM2 scheduler (2026-03-04)
   #   - cron: '0 3 * * 0'
   workflow_dispatch: # Manual trigger from GitHub UI (emergency fallback)
 

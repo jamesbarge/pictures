@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 /**
- * Trigger.dev + Scraper Runs Audit
+ * Scraper Runs Audit
  *
  * Pulls the last 30 days of scraper_runs from the DB to surface:
  *  - Cinemas with no recent run (silent breakers — orchestrator never invoked them)
@@ -93,7 +93,7 @@ async function main() {
   // Render markdown report
   const today = new Date().toISOString().slice(0, 10);
   const out: string[] = [];
-  out.push(`# Trigger.dev / Scraper Runs Audit — ${today}`);
+  out.push(`# Scraper Runs Audit — ${today}`);
   out.push("");
   out.push(`Window: last 30 days (${since.toISOString().slice(0, 10)} → ${today})`);
   out.push(`Cinemas total: ${all.length}`);

@@ -562,7 +562,7 @@ async function buildPrompt(vars: {
 
 /**
  * Load the current config overlay for a cinema as a JSON string.
- * Checks DB first (persists across Trigger.dev deploys), falls back to filesystem.
+ * Checks DB first (persists across the cloud orchestrator deploys), falls back to filesystem.
  */
 async function loadCurrentOverlay(cinemaId: string): Promise<string | null> {
   const dbKey = `autoscrape/overlay/${cinemaId}`;

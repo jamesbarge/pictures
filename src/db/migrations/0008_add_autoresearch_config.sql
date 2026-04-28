@@ -1,6 +1,6 @@
 -- AutoResearch Config persistence table
 -- Stores threshold configs and scraper overlays in the database
--- so Trigger.dev cloud runs accumulate learning across deploys.
+-- so the cloud orchestrator cloud runs accumulate learning across deploys.
 --
 -- Key patterns:
 --   "autoquality/thresholds"           → full thresholds JSON

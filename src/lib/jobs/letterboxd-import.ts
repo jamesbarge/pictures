@@ -2,7 +2,7 @@
  * Letterboxd Import — pure-Node job module.
  *
  * Extracted out of src/trigger/enrichment/letterboxd-import.ts so the same
- * logic runs locally (CLI, admin API) without any Trigger.dev dependency.
+ * logic runs locally (CLI, admin API) without any the cloud orchestrator dependency.
  * The trigger wrapper is now a thin shim that calls runLetterboxdImport().
  *
  * Processes unmatched Letterboxd watchlist entries by looking them up via TMDB,
@@ -51,7 +51,7 @@ function sleep(ms: number): Promise<void> {
 export async function runLetterboxdImport(
   payload: LetterboxdImportPayload,
 ): Promise<LetterboxdImportOutput> {
-  // Dynamic imports to avoid bundling issues (following existing Trigger.dev patterns)
+  // Dynamic imports to avoid bundling issues (following existing the cloud orchestrator patterns)
   const { matchFilmToTMDB, getTMDBClient, isRepertoryFilm, getDecade } =
     await import("@/lib/tmdb");
   const { db } = await import("@/db");

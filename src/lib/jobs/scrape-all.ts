@@ -2,7 +2,7 @@
  * Scrape-All Orchestrator — pure-Node job module.
  *
  * Extracted out of src/trigger/scrape-all.ts so the same logic runs locally
- * (Bree scheduler, CLI, admin API) without any Trigger.dev dependency. The
+ * (Bree scheduler, CLI, admin API) without any the cloud orchestrator dependency. The
  * trigger wrapper is now a thin shim that calls runScrapeAll().
  *
  * Fans out scrapers in 4 waves using the in-process registry:
@@ -11,7 +11,7 @@
  *   3. Cheerio / API independents (16 scrapers, parallel cap 4)
  *   4. Enrichment — Letterboxd ratings + post-scrape enrichment hooks
  *
- * Replaces Trigger.dev's `batch.triggerAndWait` with a local Promise.all-based
+ * Replaces the cloud orchestrator's `batch.triggerAndWait` with a local Promise.all-based
  * fan-out, capped at concurrency=4 per wave to avoid overwhelming the host.
  * Logs anomaly/failure/zero-count signals via summariseRunsSince and
  * dispatches a Telegram digest at the end (same shape as before).

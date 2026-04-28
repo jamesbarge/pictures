@@ -44,7 +44,7 @@ export async function POST(req: Request) {
     const results = await getOrCreateImportResults(username);
 
     // Include slim unmatched entries so the client can forward them to
-    // the save endpoint, which triggers background TMDB lookup via Trigger.dev.
+    // the save endpoint, which triggers background TMDB lookup via the cloud orchestrator.
     const unmatchedEntries = results.unmatched.map((e) => ({
       title: e.title,
       year: e.year,

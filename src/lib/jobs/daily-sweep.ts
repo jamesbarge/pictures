@@ -2,7 +2,7 @@
  * Daily Enrichment Sweep — pure-Node job module.
  *
  * Extracted out of src/trigger/enrichment/daily-sweep.ts so the same logic
- * runs locally (Bree scheduler, CLI, admin API) without any Trigger.dev
+ * runs locally (Bree scheduler, CLI, admin API) without any the cloud orchestrator
  * dependency. The trigger wrapper is now a thin shim that calls runDailySweep().
  *
  * Processes under-enriched films with upcoming screenings:

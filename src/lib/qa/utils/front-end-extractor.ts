@@ -4,7 +4,7 @@
  * Visits the live site, extracts film cards from the homepage and
  * screening details from each film detail page using a 3-worker pool.
  *
- * Used by the QA browse task (Trigger.dev).
+ * Used by the QA browse task (the cloud orchestrator).
  */
 
 import type { Browser, BrowserContext, Page } from "rebrowser-playwright";

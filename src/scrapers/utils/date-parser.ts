@@ -3,7 +3,7 @@
  * Handles various date formats used by UK cinemas
  *
  * IMPORTANT: All dates are constructed as UTC and corrected for UK timezone (GMT/BST).
- * Scrapers run on UTC servers (Trigger.dev), so we must explicitly account for BST
+ * Scrapers run on UTC servers (the cloud orchestrator), so we must explicitly account for BST
  * (last Sunday of March 01:00 UTC through last Sunday of October 01:00 UTC).
  */
 

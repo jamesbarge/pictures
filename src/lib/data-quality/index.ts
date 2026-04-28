@@ -1,7 +1,7 @@
 /**
  * Data quality cleanup primitives — extracted from
  * scripts/audit-and-fix-upcoming.ts so the same logic can run inside
- * Trigger.dev's daily-sweep without shelling out.
+ * the cloud orchestrator's daily-sweep without shelling out.
  *
  * Each function returns counts; the caller is responsible for logging and
  * Telegram reporting. Pure DB I/O — no shell, no fs (except for the
@@ -221,7 +221,7 @@ function loadLearnings(): LearningsFile {
   if (!existsSync(path)) {
     console.warn(
       `[data-quality] Learnings file not found at ${path}; TMDB corrections will no-op. ` +
-        "Verify the file is bundled with the Trigger.dev deployment.",
+        "Verify the file is bundled with the the cloud orchestrator deployment.",
     );
     return {};
   }

@@ -2,7 +2,7 @@
  * Scheduler entry point — Bree-based local cron supervisor.
  *
  * Phase 1 + Phase 5 of the local-scraping rebuild:
- *   - Phase 1: Replace Trigger.dev cron schedules with locally-supervised Bree
+ *   - Phase 1: Replace the cloud orchestrator cron schedules with locally-supervised Bree
  *     workers, each invoking the corresponding pure-Node job in src/lib/jobs/.
  *   - Phase 5: On startup, scan scraper_runs for cinemas whose most recent
  *     successful run is older than 24h and enqueue an immediate catch-up

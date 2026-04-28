@@ -24,7 +24,7 @@ import {
 import {
   buildChainConfig,
   getVenueFromRegistry,
-} from "@/trigger/utils/venue-from-registry";
+} from "@/scrapers/utils/venue-from-registry";
 
 // Chain factories
 import { createCurzonScraper } from "@/scrapers/chains/curzon";
