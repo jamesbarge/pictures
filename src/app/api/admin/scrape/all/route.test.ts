@@ -1,6 +1,10 @@
 /**
  * Tests for Re-scan All API route
- * Tests the endpoint that queues all scrapers via Inngest
+ *
+ * The route now invokes `runScrapeAll()` in-process (fire-and-forget) and
+ * returns 202 immediately. The previous Inngest/Trigger.dev event-fanout
+ * tests were obsolete after the local-scraping rebuild — replaced with
+ * tests that match the new fire-and-forget contract.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
@@ -11,12 +15,10 @@ vi.mock("@clerk/nextjs/server", () => ({
   currentUser: vi.fn(),
 }));
 
-// Mock Inngest
-const mockSend = vi.fn();
-vi.mock("@/inngest/client", () => ({
-  inngest: {
-    send: mockSend,
-  },
+// Mock the in-process job runner so the test never actually starts a scrape.
+const runScrapeAllMock = vi.fn();
+vi.mock("@/lib/jobs/scrape-all", () => ({
+  runScrapeAll: runScrapeAllMock,
 }));
 
 import { auth, currentUser } from "@clerk/nextjs/server";
@@ -29,7 +31,15 @@ describe("POST /api/admin/scrape/all", () => {
     vi.mocked(currentUser).mockResolvedValue({
       emailAddresses: [{ emailAddress: "jdwbarge@gmail.com" }],
     } as never);
-    // Import fresh module
+    runScrapeAllMock.mockResolvedValue({
+      durationMin: 0,
+      totalSucceeded: 0,
+      totalFailed: 0,
+      waves: [],
+      anomalies: 0,
+      failures: 0,
+      zeroCounts: 0,
+    });
     const module = await import("./route");
     POST = module.POST;
   });
@@ -63,109 +73,50 @@ describe("POST /api/admin/scrape/all", () => {
     expect(response.status).toBe(403);
   });
 
-  it("queues all scrapers when authenticated", async () => {
+  it("returns 202 with status:started when authenticated", async () => {
     vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as never);
-    mockSend.mockResolvedValue({ ids: ["event-1", "event-2"] });
 
     const request = new Request("http://localhost/api/admin/scrape/all", {
       method: "POST",
     });
 
     const response = await POST(request, {});
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(202);
 
     const data = await response.json();
+    expect(data.status).toBe("started");
     expect(data.success).toBe(true);
-    expect(data.count).toBeGreaterThan(0);
-    expect(data.cinemas).toBeInstanceOf(Array);
-    expect(data.eventIds).toBeDefined();
+    expect(data.orchestrator).toBe("local");
+    expect(data.triggeredBy).toBe("user_123");
   });
 
-  it("includes both independent and chain cinemas", async () => {
+  it("invokes runScrapeAll fire-and-forget — does not block on completion", async () => {
     vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as never);
-    mockSend.mockResolvedValue({ ids: [] });
+
+    // Make runScrapeAll never resolve so the test would hang if the route
+    // awaited it. The route should still return 202 quickly.
+    runScrapeAllMock.mockImplementation(() => new Promise(() => { /* never */ }));
 
     const request = new Request("http://localhost/api/admin/scrape/all", {
       method: "POST",
     });
 
     const response = await POST(request, {});
-    const data = await response.json();
-
-    // Check for some known cinemas
-    expect(data.cinemas).toContain("bfi-southbank");
-    expect(data.cinemas).toContain("prince-charles");
-    expect(data.cinemas).toContain("curzon-soho");
-    expect(data.cinemas).toContain("picturehouse-central");
+    expect(response.status).toBe(202);
+    expect(runScrapeAllMock).toHaveBeenCalledTimes(1);
   });
 
-  it("sends scraper/run events to Inngest", async () => {
+  it("does not surface 500 when runScrapeAll rejects asynchronously", async () => {
     vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as never);
-    mockSend.mockResolvedValue({ ids: [] });
-
-    const request = new Request("http://localhost/api/admin/scrape/all", {
-      method: "POST",
-    });
-
-    await POST(request, {});
-
-    // Verify Inngest.send was called
-    expect(mockSend).toHaveBeenCalledTimes(1);
-
-    // Check the events structure
-    const events = mockSend.mock.calls[0][0];
-    expect(events).toBeInstanceOf(Array);
-    expect(events.length).toBeGreaterThan(0);
-
-    // Each event should have the correct structure
-    events.forEach((event: { name: string; data: { cinemaId: string; scraperId: string; triggeredBy: string } }) => {
-      expect(event.name).toBe("scraper/run");
-      expect(event.data.cinemaId).toBeDefined();
-      expect(event.data.scraperId).toBeDefined();
-      expect(event.data.triggeredBy).toBe("user_123");
-    });
-  });
-
-  it("queues BFI PDF import once and deduplicates chain triggers", async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as never);
-    mockSend.mockResolvedValue({ ids: [] });
-
-    const request = new Request("http://localhost/api/admin/scrape/all", {
-      method: "POST",
-    });
-
-    await POST(request, {});
-
-    const events = mockSend.mock.calls[0][0] as Array<{
-      name: string;
-      data: { cinemaId: string; scraperId: string; triggeredBy: string };
-    }>;
-
-    const bfiEvents = events.filter((event) => event.data.cinemaId === "bfi-southbank");
-    expect(bfiEvents).toHaveLength(1);
-
-    const curzonEvents = events.filter((event) => event.data.scraperId === "curzon");
-    const picturehouseEvents = events.filter((event) => event.data.scraperId === "picturehouse");
-    const everymanEvents = events.filter((event) => event.data.scraperId === "everyman");
-
-    expect(curzonEvents).toHaveLength(1);
-    expect(picturehouseEvents).toHaveLength(1);
-    expect(everymanEvents).toHaveLength(1);
-  });
-
-  it("returns 500 when Inngest fails", async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as never);
-    mockSend.mockRejectedValue(new Error("Inngest service unavailable"));
+    runScrapeAllMock.mockRejectedValue(new Error("orchestrator boom"));
 
     const request = new Request("http://localhost/api/admin/scrape/all", {
       method: "POST",
     });
 
     const response = await POST(request, {});
-    expect(response.status).toBe(500);
-
-    const data = await response.json();
-    expect(data.error).toBe("Failed to trigger scrapers");
+    // Fire-and-forget — the promise's rejection is logged but the response
+    // is already 202 by then. This is the contract.
+    expect(response.status).toBe(202);
   });
 });
-
