@@ -1,3 +1,18 @@
+## 2026-04-27: Local-scraping rebuild — delete Trigger.dev, add Bree+PM2 scheduler, AutoScrape repair, DeepSeek-OCR vision
+**PR**: #469 | **Files**: 92+ in `src/{lib,scheduler,scrapers}`, `ecosystem.config.cjs`, deletions across all of `src/trigger/` (52 files), `trigger.config.ts`, `.github/workflows/deploy-trigger.yml`
+- **Trigger.dev gone**: Trigger cloud deploys had been failing 16+ days due to upstream Playwright extension bug. Deleted entire `src/trigger/` tree (52 files), `trigger.config.ts`, `deploy-trigger.yml`. Removed `@trigger.dev/build` and `@trigger.dev/sdk` from deps. Zero Trigger.dev references remain in source.
+- **Bree+PM2 scheduler**: All 7 cron jobs (scrape-all, daily-sweep, letterboxd-ratings, bfi-pdf/changes/cleanup, eventive) now run locally via Bree worker threads supervised by PM2 (config at `ecosystem.config.cjs`). New entry point at `src/scheduler/index.ts`. Catch-up runner backfills missed slots when the dev Mac wakes up.
+- **Pure-Node job modules**: Extracted business logic from each Trigger task into `src/lib/jobs/*.ts` (daily-sweep, scrape-all, post-scrape, letterboxd-import, post-deploy-verify, autoscrape-repair). Callable from Bree, admin API routes, or CLI.
+- **Scraper registry**: New `src/scrapers/registry.ts` maps 27 cinema task IDs to scraper config builders. The new `runScrapeAll()` fans out via `runScraper(buildConfig())` directly — replaces Trigger.dev's `batch.triggerAndWait`.
+- **Admin/user API routes refactored**: 4 routes (`/api/admin/scrape`, `/api/admin/scrape/all`, `/api/admin/qa`, `/api/user/import-letterboxd`) now fire-and-forget the pure-Node functions instead of triggering Trigger tasks. Return HTTP 202 with `status:"started"`.
+- **Stealth upgrade — rebrowser-playwright**: Drop-in swap from `playwright` to `rebrowser-playwright` across 18 files. Patches the Runtime.Enable CDP leak that's the biggest 2026 bot-detection signal. Composed with playwright-extra stealth plugins via `addExtra(rebrowserChromium)` in `src/scrapers/utils/browser.ts`.
+- **AutoScrape repair (NEW)**: Stagehand v3 + DeepSeek-V4-Pro autonomously navigates broken-cinema sites and attempts to extract screenings. Telegram report on success; no auto-DB-writes (humans review first). Scheduled at 5am UTC daily (after scrape-all + daily-sweep). Kill-switch via `AUTOSCRAPE_DISABLED=1`.
+- **Vision via DeepSeek-OCR (NEW)**: Self-hosted via Ollama at `localhost:11434`. New `src/lib/vision.ts` with `extractScreeningsFromScreenshot()` + `checkOllamaHealth()`. No new API keys at runtime. Scheduler probes Ollama health at boot. Setup: `brew install ollama && ollama pull deepseek-ocr`.
+- **Phase 1.5 prevention layer**: `normalizeTitle` in `src/scrapers/pipeline.ts` now applies `cleanFilmTitle` first → eliminates the entire dup-from-anniversary-suffix class (Amélie ×22 → 0, Strangelove ×9 → 0, recurring Akira → 0 in patrol cycles). 9 new prevention tests. Synthesised from review of 1,363 `/data-check` patrol logs in Obsidian.
+- **Cutover audit**: New `scripts/audit/local-vs-baseline.ts` produces a per-cinema diff report comparing recent local-pipeline output to the 30-day rolling baseline. Exit code 1 if any cinema regressed >50% (Phase 8 verification gate).
+
+---
+
 ## 2026-04-27: Frontend perf + search-UX batch
 **PR**: TBD | **Files**: 4 new + 9 modified across `frontend/src`
 - **Perf:** Ship `web-vitals` v5 → PostHog with route × viewport × connection dims (`web_vital` event), replacing PostHog's redundant `capture_performance` flag. Universal #1 pick across all 9 panel agents.
