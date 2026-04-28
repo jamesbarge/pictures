@@ -13,7 +13,7 @@
  * Captures data by intercepting GraphQL responses from the page
  */
 
-import { chromium } from "playwright";
+import { chromium } from "rebrowser-playwright";
 
 import { BOT_USER_AGENT } from "../constants";
 import { checkHealth } from "../utils/health-check";

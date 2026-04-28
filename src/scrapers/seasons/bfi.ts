@@ -10,7 +10,7 @@
  * - Detail: whatson.bfi.org.uk/Online/default.asp?BOparam::WScontent::loadArticle::permalink=[season-name]
  */
 
-import type { Page } from "playwright";
+import type { Page } from "rebrowser-playwright";
 import { BaseSeasonScraper } from "./base";
 import type { RawSeason, RawSeasonFilm, SeasonScraperConfig } from "./types";
 import {

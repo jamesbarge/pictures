@@ -1,7 +1,7 @@
 /**
  * Debug script for Lexi Cinema
  */
-import { chromium } from "playwright";
+import { chromium } from "rebrowser-playwright";
 
 async function debug() {
   console.log("[debug-lexi] Starting browser...");

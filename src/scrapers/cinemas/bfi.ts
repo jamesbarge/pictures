@@ -7,7 +7,7 @@
 import * as cheerio from "cheerio";
 import type { RawScreening, ScraperConfig } from "../types";
 import { getBrowser, closeBrowser, createPage, waitForCloudflare } from "../utils/browser";
-import type { Page } from "playwright";
+import type { Page } from "rebrowser-playwright";
 import { parseFilmMetadata } from "../utils/metadata-parser";
 import { FestivalDetector } from "../festivals/festival-detector";
 

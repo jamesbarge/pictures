@@ -11,7 +11,7 @@
  * - No duplicate film cards on the same day
  */
 
-import type { Page } from "playwright";
+import type { Page } from "rebrowser-playwright";
 import type { AuditIssue, FilmCardData, FilmDetailData } from "../types";
 
 const BASE_URL = "https://pictures.london";

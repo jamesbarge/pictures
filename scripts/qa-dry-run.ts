@@ -14,7 +14,7 @@
 import { config } from "dotenv";
 config({ path: ".env.local" });
 
-import { chromium } from "playwright";
+import { chromium } from "rebrowser-playwright";
 import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
 import * as schema from "@/db/schema";

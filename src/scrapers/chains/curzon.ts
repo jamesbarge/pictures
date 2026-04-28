@@ -21,7 +21,7 @@ import type { ChainConfig, VenueConfig, RawScreening, ChainScraper } from "../ty
 import { CHROME_USER_AGENT } from "../constants";
 import { FestivalDetector } from "../festivals/festival-detector";
 import { getBrowser, closeBrowser, createPage } from "../utils/browser";
-import type { Page } from "playwright";
+import type { Page } from "rebrowser-playwright";
 
 // ============================================================================
 // Curzon Venue Configurations

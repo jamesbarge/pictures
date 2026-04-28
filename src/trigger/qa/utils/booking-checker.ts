@@ -7,7 +7,7 @@
  */
 
 import { getBrowser, createPage, waitForCloudflare } from "@/scrapers/utils/browser";
-import type { Page } from "playwright";
+import type { Page } from "rebrowser-playwright";
 import type { BookingCheck } from "../types";
 import { CHROME_USER_AGENT_FULL } from "@/scrapers/constants";
 

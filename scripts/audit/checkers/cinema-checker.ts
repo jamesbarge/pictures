@@ -9,7 +9,7 @@
  * - Cinema detail pages load successfully
  */
 
-import type { Page } from "playwright";
+import type { Page } from "rebrowser-playwright";
 import type { AuditIssue, CinemaListEntry, CinemaDetailData } from "../types";
 
 const BASE_URL = "https://pictures.london";

@@ -19,7 +19,7 @@
 import * as dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
 
-import { chromium } from "playwright";
+import { chromium } from "rebrowser-playwright";
 import postgres from "postgres";
 import * as cheerio from "cheerio";
 import * as fs from "fs";
@@ -461,7 +461,7 @@ function readPreviousState(): CursorState {
 // ── Phase B: Front-End Browsing ──────────────────────────────────
 
 async function extractHomepageFilms(
-  page: import("playwright").Page,
+  page: import("rebrowser-playwright").Page,
 ): Promise<FrontEndFilm[]> {
   await page.goto(BASE_URL, { waitUntil: "networkidle", timeout: 30_000 });
   await page.waitForSelector("article", { timeout: 15_000 });
@@ -528,7 +528,7 @@ async function extractHomepageFilms(
 }
 
 async function extractDetailScreenings(
-  page: import("playwright").Page,
+  page: import("rebrowser-playwright").Page,
   film: FrontEndFilm,
 ): Promise<FrontEndScreening[]> {
   const url = `${BASE_URL}/film/${film.slug}`;
