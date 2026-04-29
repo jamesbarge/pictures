@@ -205,12 +205,17 @@ async function attemptCinema(
       });
     }
 
-    const extracted = await stagehand.extract(
+    // Stagehand's extract() has overloads for (instruction) -> defaultExtractSchema
+    // and (instruction, schema) -> schema-inferred. TypeScript picks the wrong
+    // overload here because our Zod 4 ZodObject doesn't narrow `T extends
+    // StagehandZodSchema` cleanly; cast the result to the schema's inferred
+    // shape so downstream code stays typed.
+    const extracted = (await stagehand.extract(
       "Extract every film screening listed on this page. For each screening, " +
         "capture the film title, the date+time of the screening combined into " +
         "ISO 8601, and the booking URL if present.",
       ExtractionSchema,
-    );
+    )) as z.infer<typeof ExtractionSchema>;
 
     const screenings: ExtractedScreening[] = Array.isArray(extracted?.screenings)
       ? extracted.screenings
