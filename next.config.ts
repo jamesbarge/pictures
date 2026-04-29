@@ -10,10 +10,16 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: __dirname,
   },
-  // Exclude Playwright/Puppeteer from webpack bundling (used by scrapers via Inngest)
+  // Exclude Playwright/Puppeteer from webpack bundling (used by scrapers via Inngest).
+  // rebrowser-playwright and playwright-extra were added in the local-scraping
+  // rebuild (Phase 3); both wrap playwright-core but ship their own copies in
+  // node_modules. Webpack tries to recurse through their .ttf/.html/electron
+  // assets unless the wrapper itself is externalized.
   serverExternalPackages: [
     "playwright",
     "playwright-core",
+    "playwright-extra",
+    "rebrowser-playwright",
     "puppeteer-extra",
     "puppeteer-extra-plugin",
     "puppeteer-extra-plugin-stealth",

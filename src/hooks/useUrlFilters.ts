@@ -240,6 +240,5 @@ export function useUrlFilters(options: UseUrlFiltersOptions = {}) {
     getShareableUrl,
     copyShareableUrl,
     hasUrlFilters,
-    hasHydratedFromUrl: hasHydratedFromUrl.current,
   };
 }

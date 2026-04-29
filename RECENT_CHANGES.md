@@ -1,3 +1,12 @@
+## 2026-04-29: Fix CI for PR #469 — ESLint flat-config plugin scoping + Vercel webpack externals
+**PR**: #469 | **Files**: `eslint.config.mjs`, `next.config.ts`, `src/hooks/useUrlFilters.ts`
+- **ESLint**: Scope our `jsx-a11y/*`, `react-hooks/*`, `@typescript-eslint/*`, `@next/next/*` rule overrides via `files: ["**/*.{js,jsx,mjs,ts,tsx,mts,cts}"]` so they only apply where `eslint-config-next` registers those plugins. Reverts the (incorrect) explicit `jsx-a11y` re-registration from d6501bbc that triggered "Cannot redefine plugin 'jsx-a11y'" — `eslint-config-next/core-web-vitals` already registers it.
+- **Vercel webpack**: Add `rebrowser-playwright` and `playwright-extra` to `serverExternalPackages` in `next.config.ts`. Without externalization, webpack recursed into the wrappers' nested `playwright-core` and tried to bundle electron/.ttf/.html assets, breaking the production build for `/api/inngest/route.ts`.
+- **useUrlFilters**: Drop unused `hasHydratedFromUrl: hasHydratedFromUrl.current` from the public return — it was a `react-hooks/refs` violation (refs read during render don't trigger re-renders) that no caller actually consumes. Latent bug, surfaced once the lint config repair let the rule actually run.
+- Verified locally: `npm run lint` (0 errors), `npm run test:run` (923/923), `npx tsc --noEmit` (clean), `npm run build` webpack compile succeeds.
+
+---
+
 ## 2026-04-27: Local-scraping rebuild — delete Trigger.dev, add Bree+PM2 scheduler, AutoScrape repair, DeepSeek-OCR vision
 **PR**: #469 | **Files**: 92+ in `src/{lib,scheduler,scrapers}`, `ecosystem.config.cjs`, deletions across all of `src/trigger/` (52 files), `trigger.config.ts`, `.github/workflows/deploy-trigger.yml`
 - **Trigger.dev gone**: Trigger cloud deploys had been failing 16+ days due to upstream Playwright extension bug. Deleted entire `src/trigger/` tree (52 files), `trigger.config.ts`, `deploy-trigger.yml`. Removed `@trigger.dev/build` and `@trigger.dev/sdk` from deps. Zero Trigger.dev references remain in source.
