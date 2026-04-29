@@ -46,14 +46,22 @@ interface PipelineResult {
 }
 
 /**
- * Normalize a film title for comparison
- * Uses unicode-aware normalization that preserves accented characters:
- * - "Amélie" → "amelie" (not "amlie" which the old [^\w\s] produced)
- * - "Delicatessen" → "delicatessen"
- * - "Crouching Tiger, Hidden Dragon" → "crouching tiger hidden dragon"
+ * Normalize a film title for comparison.
+ *
+ * Two-stage:
+ * 1. Apply `cleanFilmTitle` to strip event prefixes (e.g. "Saturday Morning
+ *    Picture Club:"), HTML entities (`&amp;`, `&Acirc;&frac12;` mojibake), and
+ *    version/anniversary suffixes (`(25th Anniversary)`, `- 50th Anniversary`,
+ *    `(2026 Re-release)`, `(4K Restoration)`). This is the prevention layer for
+ *    the duplicate-film class that the data-check patrol kept catching after
+ *    the fact — "Amélie" appeared 22 times as anniversary-suffix variants in a
+ *    single 2026-04-26 patrol cycle.
+ * 2. Unicode-aware lowercase + diacritic strip, preserving accented characters
+ *    correctly: "Amélie" → "amelie" (not "amlie" which the old [^\w\s] produced),
+ *    "Crouching Tiger, Hidden Dragon" → "crouching tiger hidden dragon".
  */
 export function normalizeTitle(title: string): string {
-  return title
+  return cleanFilmTitle(title)
     .normalize("NFKD")                    // Decompose unicode (é → e + combining accent)
     .replace(/[\u0300-\u036f]/g, "")      // Strip combining diacritical marks only
     .toLowerCase()

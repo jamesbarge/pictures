@@ -3,7 +3,7 @@
  * Debug script to investigate Riverside Studios website
  */
 
-import { chromium } from "playwright";
+import { chromium } from "rebrowser-playwright";
 
 async function debugRiverside() {
   console.log("[debug] Starting Riverside Studios investigation...");

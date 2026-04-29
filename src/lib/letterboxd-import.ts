@@ -6,7 +6,7 @@
  *
  * Used by:
  * - API routes (unauthenticated preview + authenticated import)
- * - Trigger.dev background task for unmatched entries
+ * - the cloud orchestrator background task for unmatched entries
  */
 
 import * as cheerio from "cheerio";

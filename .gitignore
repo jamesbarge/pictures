@@ -84,5 +84,8 @@ scratchpad/
 # Debug logs
 firebase-debug.log
 
+# PM2 / Bree scheduler runtime logs
+logs/
+
 # Data exports
 *.xlsx

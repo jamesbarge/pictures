@@ -92,7 +92,7 @@ async function loadProgramTemplate(): Promise<string> {
   try {
     return await readFile(PROGRAM_PATH, "utf-8");
   } catch {
-    // Trigger.dev cloud: .md file not available — use inline template
+    // the cloud orchestrator cloud: .md file not available — use inline template
     return FALLBACK_PROGRAM_TEMPLATE;
   }
 }

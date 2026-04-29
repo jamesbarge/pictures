@@ -1,112 +1,40 @@
 /**
- * Admin Scrape All API
- * Triggers ALL scrapers via Inngest or Trigger.dev
+ * Admin Scrape-All API
+ * Runs the daily scrape orchestrator in-process via the local job runner.
  *
  * POST /api/admin/scrape/all
+ *
+ * Fire-and-forget: returns 202 immediately while the orchestrator fans out
+ * scrapers in 4 waves in the same Node process. Errors are logged but never
+ * block the response.
  */
 
 import { withAdminAuth } from "@/lib/auth";
-import { inngest } from "@/inngest/client";
-import { getActiveCinemas, getInngestCinemaId } from "@/config/cinema-registry";
-import { USE_TRIGGER_DEV } from "@/config/feature-flags";
-
-function buildScrapeAllEvents(triggeredBy: string) {
-  const events: Array<{
-    name: "scraper/run";
-    data: { cinemaId: string; scraperId: string; triggeredBy: string };
-  }> = [];
-  const queuedCinemas: string[] = [];
-
-  const queuedChains = new Set<string>();
-  let queuedBfiPdf = false;
-
-  for (const cinema of getActiveCinemas()) {
-    // For non-BFI chains, trigger one representative venue to run the full chain scraper.
-    if (cinema.chain && cinema.chain !== "bfi") {
-      if (queuedChains.has(cinema.chain)) continue;
-      queuedChains.add(cinema.chain);
-
-      const cinemaId = getInngestCinemaId(cinema.id);
-      events.push({
-        name: "scraper/run",
-        data: {
-          cinemaId,
-          scraperId: cinema.chain,
-          triggeredBy,
-        },
-      });
-      queuedCinemas.push(cinema.id);
-      continue;
-    }
-
-    // BFI is PDF-first now; queue one import event for both Southbank + IMAX.
-    if (cinema.chain === "bfi") {
-      if (queuedBfiPdf) continue;
-      queuedBfiPdf = true;
-
-      events.push({
-        name: "scraper/run",
-        data: {
-          cinemaId: "bfi-southbank",
-          scraperId: "bfi-southbank",
-          triggeredBy,
-        },
-      });
-      queuedCinemas.push("bfi-southbank");
-      continue;
-    }
-
-    const cinemaId = getInngestCinemaId(cinema.id);
-    events.push({
-      name: "scraper/run",
-      data: {
-        cinemaId,
-        scraperId: cinemaId,
-        triggeredBy,
-      },
-    });
-    queuedCinemas.push(cinema.id);
-  }
-
-  return { events, queuedCinemas };
-}
+import { runScrapeAll } from "@/lib/jobs/scrape-all";
 
 export const POST = withAdminAuth(async (_req, admin) => {
   try {
-    if (USE_TRIGGER_DEV) {
-      const { tasks } = await import("@trigger.dev/sdk/v3");
-
-      // Trigger the orchestrator task which handles waves internally
-      const handle = await tasks.trigger("scrape-all-orchestrator", {
-        triggeredBy: admin.userId,
-      });
-
-      return Response.json({
-        success: true,
-        message: "Scrape-all orchestrator triggered",
-        runId: handle.id,
-        orchestrator: "trigger.dev",
-      });
-    }
-
-    // --- Inngest path (default) ---
-    const { events, queuedCinemas } = buildScrapeAllEvents(admin.userId);
-
-    const { ids } = await inngest.send(events);
-
-    return Response.json({
-      success: true,
-      message: `Queued ${events.length} scrapers`,
-      count: events.length,
-      eventIds: ids,
-      cinemas: queuedCinemas,
-      orchestrator: "inngest",
+    // Fire-and-forget — runs in the same Node process. For long-running jobs,
+    // log errors but don't block the response.
+    runScrapeAll().catch((err) => {
+      console.error("[api/admin/scrape/all] runScrapeAll failed:", err);
     });
-  } catch (error) {
-    console.error("Error triggering all scrapers:", error);
+
     return Response.json(
-      { error: "Failed to trigger scrapers" },
-      { status: 500 }
+      {
+        status: "started",
+        success: true,
+        message: "Scrape-all orchestrator started",
+        triggeredBy: admin.userId,
+        orchestrator: "local",
+      },
+      { status: 202 },
+    );
+  } catch (error) {
+    console.error("Error starting scrape-all:", error);
+    return Response.json(
+      { error: "Failed to start scrape-all" },
+      { status: 500 },
     );
   }
 });

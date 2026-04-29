@@ -10,19 +10,14 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      - name: Trigger post-deploy verification
+      - name: Smoke-test production homepage
         env:
-          TRIGGER_SECRET_KEY: ${{ secrets.TRIGGER_SECRET_KEY }}
           DEPLOY_URL: ${{ github.event.deployment_status.target_url }}
-          DEPLOY_ENV: ${{ github.event.deployment_status.environment }}
-          COMMIT_SHA: ${{ github.event.deployment.sha }}
         run: |
-          curl -sf -X POST "https://api.trigger.dev/api/v1/tasks/post-deploy-verify/trigger" \
-            -H "Authorization: Bearer $TRIGGER_SECRET_KEY" \
-            -H "Content-Type: application/json" \
-            -d "$(jq -n \
-              --arg url "$DEPLOY_URL" \
-              --arg env "$DEPLOY_ENV" \
-              --arg sha "$COMMIT_SHA" \
-              '{payload: {deploymentUrl: $url, environment: $env, commitSha: $sha}}'
-            )"
+          # Prefer the freshly-deployed URL; fall back to the apex domain.
+          TARGET="${DEPLOY_URL:-https://pictures.london}"
+          echo "Verifying $TARGET ..."
+          curl --fail --show-error --silent --location \
+            --retry 3 --retry-delay 5 --max-time 30 \
+            -o /dev/null -w "HTTP %{http_code} in %{time_total}s\n" \
+            "$TARGET"

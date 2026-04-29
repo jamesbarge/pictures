@@ -1,10 +1,10 @@
 import { inArray, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { tasks } from "@trigger.dev/sdk/v3";
 
 import { db } from "@/db";
 import { films, userFilmStatuses } from "@/db/schema";
 import { requireAuth, unauthorizedResponse } from "@/lib/auth";
+import { runLetterboxdImport } from "@/lib/jobs/letterboxd-import";
 
 const MAX_FILM_IDS = 500;
 
@@ -123,28 +123,29 @@ export async function POST(req: Request) {
         });
     }
 
-    // If there are unmatched entries, trigger background TMDB lookup
+    // If there are unmatched entries, fire-and-forget a background TMDB lookup.
+    // Runs in the same Node process — log errors but never block the response.
     let backgroundTaskTriggered = false;
     if (hasUnmatchedEntries(username, unmatchedEntries)) {
       const validEntries = unmatchedEntries.slice(0, MAX_FILM_IDS);
-      try {
-        await tasks.trigger("letterboxd-import-lookup", {
-          userId,
-          username: username as string,
-          entries: validEntries.map((e) => ({
-            title: e.title,
-            year: e.year,
-            slug: e.slug,
-          })),
-        });
-        backgroundTaskTriggered = true;
-        console.log(
-          `[import-letterboxd] Triggered background lookup for ${validEntries.length} unmatched entries`,
+      runLetterboxdImport({
+        userId,
+        username: username as string,
+        entries: validEntries.map((e) => ({
+          title: e.title,
+          year: e.year,
+          slug: e.slug,
+        })),
+      }).catch((err) => {
+        console.error(
+          "[import-letterboxd] runLetterboxdImport failed:",
+          err,
         );
-      } catch (err) {
-        // Log but don't fail the request -- background task is best-effort
-        console.error("[import-letterboxd] Failed to trigger background lookup:", err);
-      }
+      });
+      backgroundTaskTriggered = true;
+      console.log(
+        `[import-letterboxd] Started background lookup for ${validEntries.length} unmatched entries`,
+      );
     }
 
     const pendingCount = hasUnmatchedEntries(username, unmatchedEntries)

@@ -1,21 +1,20 @@
 /**
  * Admin Scrape API
- * Triggers a scraper for a specific cinema via Inngest or Trigger.dev
+ * Runs the scraper for a specific cinema in-process via the local job runner.
  * POST /api/admin/scrape
+ *
+ * Fire-and-forget: returns 202 immediately while the scraper runs in the same
+ * Node process. Errors are logged but never block the response.
  */
 
 import { withAdminAuth } from "@/lib/auth";
-import { inngest } from "@/inngest/client";
 import {
   getCinemaById,
-  getCinemaToScraperMap,
   getCanonicalId,
-  getInngestCinemaId,
 } from "@/config/cinema-registry";
-import { USE_TRIGGER_DEV } from "@/config/feature-flags";
-
-// Get the cinema-to-scraper mapping from the canonical registry
-const CINEMA_TO_SCRAPER = getCinemaToScraperMap();
+import { getTriggerTaskId } from "@/scrapers/task-registry";
+import { getScraperByTaskId } from "@/scrapers/registry";
+import { runScraper } from "@/scrapers/runner-factory";
 
 export const POST = withAdminAuth(async (request, admin) => {
   try {
@@ -33,72 +32,54 @@ export const POST = withAdminAuth(async (request, admin) => {
     if (!cinema) {
       return Response.json(
         { error: `Unknown cinema: ${rawCinemaId}` },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    if (USE_TRIGGER_DEV) {
-      const { tasks } = await import("@trigger.dev/sdk/v3");
-      const { getTriggerTaskId } = await import("@/trigger/task-registry");
+    // Map cinema → scraper-registry task ID (e.g. "scraper-bfi", "scraper-chain-curzon")
+    const taskId = getTriggerTaskId(canonicalId);
+    if (!taskId) {
+      return Response.json(
+        { error: `No scraper task for cinema: ${canonicalId}` },
+        { status: 400 },
+      );
+    }
 
-      const taskId = getTriggerTaskId(canonicalId);
-      if (!taskId) {
-        return Response.json(
-          { error: `No Trigger.dev task for cinema: ${canonicalId}` },
-          { status: 400 }
-        );
-      }
+    const entry = getScraperByTaskId(taskId);
+    if (!entry) {
+      return Response.json(
+        { error: `No registry entry for task: ${taskId}` },
+        { status: 400 },
+      );
+    }
 
-      const handle = await tasks.trigger(taskId, {
-        cinemaId: canonicalId,
-        triggeredBy: admin.userId,
-      });
+    // Fire-and-forget — runs in the same Node process. For long-running jobs,
+    // log errors but don't block the response.
+    runScraper(entry.buildConfig(), { useValidation: true }).catch((err) => {
+      console.error(
+        `[api/admin/scrape] runScraper failed for ${taskId}:`,
+        err,
+      );
+    });
 
-      return Response.json({
+    return Response.json(
+      {
+        status: "started",
         success: true,
-        message: `Scraper queued for ${cinema.name}`,
+        message: `Scraper started for ${cinema.name}`,
         cinemaId: canonicalId,
         cinemaName: cinema.name,
         taskId,
-        runId: handle.id,
-        orchestrator: "trigger.dev",
-      });
-    }
-
-    // --- Inngest path (default) ---
-    const scraperId = CINEMA_TO_SCRAPER[rawCinemaId] || CINEMA_TO_SCRAPER[canonicalId];
-    if (!scraperId) {
-      return Response.json(
-        { error: `No scraper configured for cinema: ${rawCinemaId}` },
-        { status: 400 }
-      );
-    }
-
-    const inngestCinemaId = getInngestCinemaId(canonicalId);
-
-    const { ids } = await inngest.send({
-      name: "scraper/run",
-      data: {
-        cinemaId: inngestCinemaId,
-        scraperId,
         triggeredBy: admin.userId,
+        orchestrator: "local",
       },
-    });
-
-    return Response.json({
-      success: true,
-      message: `Scraper queued for ${cinema.name}`,
-      cinemaId: canonicalId,
-      cinemaName: cinema.name,
-      scraperId,
-      eventId: ids[0],
-      orchestrator: "inngest",
-    });
+      { status: 202 },
+    );
   } catch (error) {
-    console.error("Error triggering scraper:", error);
+    console.error("Error starting scraper:", error);
     return Response.json(
-      { error: "Failed to trigger scraper" },
-      { status: 500 }
+      { error: "Failed to start scraper" },
+      { status: 500 },
     );
   }
 });

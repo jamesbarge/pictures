@@ -1,5 +1,29 @@
+## 2026-04-29: Fix CI for PR #469 — ESLint flat-config plugin scoping + Vercel webpack externals
+**PR**: #469 | **Files**: `eslint.config.mjs`, `next.config.ts`, `src/hooks/useUrlFilters.ts`
+- **ESLint**: Scope our `jsx-a11y/*`, `react-hooks/*`, `@typescript-eslint/*`, `@next/next/*` rule overrides via `files: ["**/*.{js,jsx,mjs,ts,tsx,mts,cts}"]` so they only apply where `eslint-config-next` registers those plugins. Reverts the (incorrect) explicit `jsx-a11y` re-registration from d6501bbc that triggered "Cannot redefine plugin 'jsx-a11y'" — `eslint-config-next/core-web-vitals` already registers it.
+- **Vercel webpack**: Add `rebrowser-playwright` and `playwright-extra` to `serverExternalPackages` in `next.config.ts`. Without externalization, webpack recursed into the wrappers' nested `playwright-core` and tried to bundle electron/.ttf/.html assets, breaking the production build for `/api/inngest/route.ts`.
+- **useUrlFilters**: Drop unused `hasHydratedFromUrl: hasHydratedFromUrl.current` from the public return — it was a `react-hooks/refs` violation (refs read during render don't trigger re-renders) that no caller actually consumes. Latent bug, surfaced once the lint config repair let the rule actually run.
+- Verified locally: `npm run lint` (0 errors), `npm run test:run` (923/923), `npx tsc --noEmit` (clean), `npm run build` webpack compile succeeds.
+
+---
+
+## 2026-04-27: Local-scraping rebuild — delete Trigger.dev, add Bree+PM2 scheduler, AutoScrape repair, DeepSeek-OCR vision
+**PR**: #469 | **Files**: 92+ in `src/{lib,scheduler,scrapers}`, `ecosystem.config.cjs`, deletions across all of `src/trigger/` (52 files), `trigger.config.ts`, `.github/workflows/deploy-trigger.yml`
+- **Trigger.dev gone**: Trigger cloud deploys had been failing 16+ days due to upstream Playwright extension bug. Deleted entire `src/trigger/` tree (52 files), `trigger.config.ts`, `deploy-trigger.yml`. Removed `@trigger.dev/build` and `@trigger.dev/sdk` from deps. Zero Trigger.dev references remain in source.
+- **Bree+PM2 scheduler**: All 7 cron jobs (scrape-all, daily-sweep, letterboxd-ratings, bfi-pdf/changes/cleanup, eventive) now run locally via Bree worker threads supervised by PM2 (config at `ecosystem.config.cjs`). New entry point at `src/scheduler/index.ts`. Catch-up runner backfills missed slots when the dev Mac wakes up.
+- **Pure-Node job modules**: Extracted business logic from each Trigger task into `src/lib/jobs/*.ts` (daily-sweep, scrape-all, post-scrape, letterboxd-import, post-deploy-verify, autoscrape-repair). Callable from Bree, admin API routes, or CLI.
+- **Scraper registry**: New `src/scrapers/registry.ts` maps 27 cinema task IDs to scraper config builders. The new `runScrapeAll()` fans out via `runScraper(buildConfig())` directly — replaces Trigger.dev's `batch.triggerAndWait`.
+- **Admin/user API routes refactored**: 4 routes (`/api/admin/scrape`, `/api/admin/scrape/all`, `/api/admin/qa`, `/api/user/import-letterboxd`) now fire-and-forget the pure-Node functions instead of triggering Trigger tasks. Return HTTP 202 with `status:"started"`.
+- **Stealth upgrade — rebrowser-playwright**: Drop-in swap from `playwright` to `rebrowser-playwright` across 18 files. Patches the Runtime.Enable CDP leak that's the biggest 2026 bot-detection signal. Composed with playwright-extra stealth plugins via `addExtra(rebrowserChromium)` in `src/scrapers/utils/browser.ts`.
+- **AutoScrape repair (NEW)**: Stagehand v3 + DeepSeek-V4-Pro autonomously navigates broken-cinema sites and attempts to extract screenings. Telegram report on success; no auto-DB-writes (humans review first). Scheduled at 5am UTC daily (after scrape-all + daily-sweep). Kill-switch via `AUTOSCRAPE_DISABLED=1`.
+- **Vision via DeepSeek-OCR (NEW)**: Self-hosted via Ollama at `localhost:11434`. New `src/lib/vision.ts` with `extractScreeningsFromScreenshot()` + `checkOllamaHealth()`. No new API keys at runtime. Scheduler probes Ollama health at boot. Setup: `brew install ollama && ollama pull deepseek-ocr`.
+- **Phase 1.5 prevention layer**: `normalizeTitle` in `src/scrapers/pipeline.ts` now applies `cleanFilmTitle` first → eliminates the entire dup-from-anniversary-suffix class (Amélie ×22 → 0, Strangelove ×9 → 0, recurring Akira → 0 in patrol cycles). 9 new prevention tests. Synthesised from review of 1,363 `/data-check` patrol logs in Obsidian.
+- **Cutover audit**: New `scripts/audit/local-vs-baseline.ts` produces a per-cinema diff report comparing recent local-pipeline output to the 30-day rolling baseline. Exit code 1 if any cinema regressed >50% (Phase 8 verification gate).
+
+---
+
 ## 2026-04-27: Fix desktop film-grid overflow on wide viewports
-**PR**: TBD | **Files**: `frontend/src/routes/+page.svelte`
+**PR**: #470 | **Files**: `frontend/src/routes/+page.svelte`
 - Switched all four `.desktop-film-grid` declarations from `repeat(N, 1fr)` → `repeat(N, minmax(0, 1fr))`.
 - Why: `1fr` is shorthand for `minmax(auto, 1fr)`, where `auto` honors each grid item's intrinsic min-width. The recent perf batch (#468) added `contain-intrinsic-size: auto 640px` to `DesktopHybridCard` to prevent CLS, which gave offscreen cards a 640px intrinsic width. Grid columns then locked to 640px each, blew past the 1400px shell, and pushed posters off-screen on the right at any viewport ≥ 1280px.
 - Verified at 2560×1440, 1280×900, and 1100×900 — `bodyOverflow: 0` everywhere; columns now share remaining space (e.g. 248px each on a 4-col grid at 2560px).

@@ -159,7 +159,7 @@ export abstract class BaseScraper implements CinemaScraper {
    * then falls back to filesystem (local dev).
    */
   protected async loadConfigOverlay(): Promise<void> {
-    // Try DB first (survives Trigger.dev container restarts).
+    // Try DB first (survives the cloud orchestrator container restarts).
     // Uses a module-level cache so only 1 DB query per process, not per scraper.
     try {
       if (dbOverlayCache === null) {

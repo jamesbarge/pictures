@@ -208,7 +208,7 @@ export const autoresearchExperiments = pgTable("autoresearch_experiments", {
 
 /**
  * AutoResearch config persistence — key-value JSONB store.
- * Stores thresholds and scraper overlays so Trigger.dev cloud runs
+ * Stores thresholds and scraper overlays so the cloud orchestrator cloud runs
  * accumulate learning across deploys instead of resetting every time.
  *
  * Key patterns:

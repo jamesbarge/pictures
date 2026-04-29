@@ -5,9 +5,14 @@ import nextTs from "eslint-config-next/typescript";
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
-  // Accessibility linting - strengthen a11y rules from eslint-config-next
-  // The jsx-a11y plugin is already registered by eslint-config-next
+  // Accessibility linting - strengthen a11y rules from eslint-config-next.
+  // jsx-a11y is registered by eslint-config-next/core-web-vitals under the
+  // 'next' config object with files: '**/*.{js,jsx,mjs,ts,tsx,mts,cts}'.
+  // We must scope our rule overrides to the same files so ESLint can resolve
+  // the 'jsx-a11y' plugin prefix; an unscoped block triggers
+  // "could not find plugin 'jsx-a11y'" on files outside that glob.
   {
+    files: ["**/*.{js,jsx,mjs,ts,tsx,mts,cts}"],
     rules: {
       // Critical: Elements must have accessible names
       "jsx-a11y/alt-text": "error",
@@ -49,9 +54,12 @@ const eslintConfig = defineConfig([
     "frontend/.svelte-kit/**",
     "frontend/.vercel/**",
   ]),
-  // Rule overrides - temporarily downgrade problematic rules to warnings
+  // Rule overrides - temporarily downgrade problematic rules to warnings.
+  // Scoped to the same files glob as eslint-config-next's plugin registration
+  // so '@next/next', 'react-hooks', and '@typescript-eslint' prefixes resolve.
   // TODO: Fix these issues incrementally and remove these overrides
   {
+    files: ["**/*.{js,jsx,mjs,ts,tsx,mts,cts}"],
     rules: {
       // Migration scripts assign to module.exports pattern - fix incrementally
       "@next/next/no-assign-module-variable": "warn",

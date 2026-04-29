@@ -20,7 +20,7 @@
  *   - @browserbasehq/stagehand installed (for --ai visual checks)
  */
 
-import { chromium, type Browser, type BrowserContext, type Page } from "playwright";
+import { chromium, type Browser, type BrowserContext, type Page } from "rebrowser-playwright";
 import * as fs from "fs";
 import * as path from "path";
 

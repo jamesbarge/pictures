@@ -1,7 +1,7 @@
 /**
  * DB-backed threshold persistence for AutoQuality.
  *
- * Solves the #1 AutoResearch problem: Trigger.dev cloud has ephemeral
+ * Solves the #1 AutoResearch problem: the cloud orchestrator cloud has ephemeral
  * filesystems, so thresholds.json resets to bundled defaults on every deploy.
  * This module reads/writes thresholds to the `autoresearch_config` table,
  * falling back to bundled defaults if no DB row exists.

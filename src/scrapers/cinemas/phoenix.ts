@@ -10,7 +10,7 @@
  */
 
 import { parse, getYear } from "date-fns";
-import { chromium } from "playwright";
+import { chromium } from "rebrowser-playwright";
 
 import type { RawScreening, ScraperConfig, CinemaScraper } from "../types";
 import { BOT_USER_AGENT } from "../constants";

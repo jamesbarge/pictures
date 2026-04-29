@@ -11,7 +11,7 @@
  */
 
 import { parse, getYear, addYears } from "date-fns";
-import { chromium } from "playwright";
+import { chromium } from "rebrowser-playwright";
 
 import { BOT_USER_AGENT } from "../constants";
 import type { RawScreening, ScraperConfig, CinemaScraper } from "../types";

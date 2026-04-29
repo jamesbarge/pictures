@@ -8,7 +8,7 @@
  * - Past screenings displayed
  */
 
-import type { Page } from "playwright";
+import type { Page } from "rebrowser-playwright";
 import type { AuditIssue } from "../types";
 
 const BASE_URL = "https://pictures.london";

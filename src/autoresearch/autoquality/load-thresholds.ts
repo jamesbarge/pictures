@@ -8,13 +8,13 @@
  *   1. In-process cache (if already loaded)
  *   2. Database `autoresearch_config` row (async only)
  *   3. Filesystem `thresholds.json` (local dev)
- *   4. Bundled JSON import (Trigger.dev cloud fallback)
+ *   4. Bundled JSON import (the cloud orchestrator cloud fallback)
  */
 
 import { readFileSync } from "fs";
 import { join } from "path";
 
-// Static import ensures esbuild bundles the JSON for Trigger.dev cloud,
+// Static import ensures esbuild bundles the JSON for the cloud orchestrator cloud,
 // where __dirname + readFileSync won't find the file on the ephemeral filesystem.
 import defaultThresholds from "./thresholds.json";
 
@@ -87,7 +87,7 @@ export function reloadThresholds(): Thresholds {
     delete parsed.$comment;
     cachedThresholds = parsed as Thresholds;
   } catch {
-    // Trigger.dev cloud: __dirname doesn't have the JSON file — use bundled import
+    // the cloud orchestrator cloud: __dirname doesn't have the JSON file — use bundled import
     const copy = { ...defaultThresholds } as Record<string, unknown>;
     delete copy.$comment;
     cachedThresholds = copy as unknown as Thresholds;

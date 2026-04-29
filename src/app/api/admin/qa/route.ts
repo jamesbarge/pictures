@@ -3,38 +3,22 @@
  * POST /api/admin/qa — Trigger QA pipeline on-demand
  *
  * Body: { dryRun?: boolean } (defaults to true)
+ *
+ * NOTE: The QA pipeline has not yet been extracted into a pure-Node job
+ * module. Until that work lands, this route returns 501 Not Implemented.
+ * Run the pipeline manually via `npx tsx scripts/qa-dry-run.ts`.
  */
 
 import { withAdminAuth } from "@/lib/auth";
-import { tasks } from "@trigger.dev/sdk/v3";
 
-export const POST = withAdminAuth(async (req, admin) => {
-  try {
-    let dryRun = true;
-    try {
-      const body = await req.json();
-      if (typeof body.dryRun === "boolean") {
-        dryRun = body.dryRun;
-      }
-    } catch {
-      // No body or invalid JSON — use default
-    }
-
-    const handle = await tasks.trigger("qa-pipeline", {
-      dryRun,
-      triggeredBy: admin.userId,
-    });
-
-    return Response.json({
-      success: true,
-      message: `QA pipeline triggered (dryRun=${dryRun})`,
-      runId: handle.id,
-    });
-  } catch (error) {
-    console.error("Error triggering QA pipeline:", error);
-    return Response.json(
-      { error: "Failed to trigger QA pipeline" },
-      { status: 500 }
-    );
-  }
+export const POST = withAdminAuth(async () => {
+  return Response.json(
+    {
+      error: "QA pipeline migration pending",
+      message:
+        "The QA pipeline has not been migrated to the local job runner yet. " +
+        "Run it manually via `npx tsx scripts/qa-dry-run.ts` for now.",
+    },
+    { status: 501 },
+  );
 });

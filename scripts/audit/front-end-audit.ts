@@ -11,7 +11,7 @@
  * Expected runtime: 15-30 minutes depending on film/screening count.
  */
 
-import { chromium, type Browser, type BrowserContext, type Page } from "playwright";
+import { chromium, type Browser, type BrowserContext, type Page } from "rebrowser-playwright";
 import { extractCinemaList, checkCinemaDirectory, checkCinemaDetail } from "./checkers/cinema-checker";
 import { extractFilmCards, checkFilmCard, checkFilmDetail, checkDuplicateCards } from "./checkers/film-checker";
 import { checkBookingLinks } from "./checkers/booking-checker";

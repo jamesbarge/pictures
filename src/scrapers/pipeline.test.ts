@@ -98,6 +98,67 @@ describe("normalizeTitle", () => {
       );
     });
   });
+
+  describe("anniversary / re-release suffixes (prevention layer)", () => {
+    // Synthesized from 1,363 /data-check patrol logs in
+    // Obsidian Vault/Pictures/Data Quality/. Top recurring issue: anniversary
+    // suffix variants creating duplicate film rows. Single 2026-04-26 patrol
+    // cycle merged 22 dupes of "Amélie", 9 of "Dr. Strangelove", recurring Akira.
+    // Adding cleanFilmTitle to the front of normalizeTitle collapses the
+    // entire variant class onto the canonical title.
+    it("collapses '- 25th Anniversary' onto canonical title", () => {
+      expect(normalizeTitle("Amélie - 25th Anniversary")).toBe(
+        normalizeTitle("Amélie")
+      );
+    });
+
+    it("collapses '(25th Anniversary Re-release)' onto canonical title", () => {
+      expect(normalizeTitle("Amélie (25th Anniversary Re-release)")).toBe(
+        normalizeTitle("Amélie")
+      );
+    });
+
+    it("collapses '(50th Anniversary, 4K Restoration)'", () => {
+      expect(normalizeTitle("Dr. Strangelove (50th Anniversary, 4K Restoration)")).toBe(
+        normalizeTitle("Dr. Strangelove")
+      );
+    });
+
+    it("collapses '(2026 Re-release)'", () => {
+      expect(normalizeTitle("Akira (2026 Re-release)")).toBe(
+        normalizeTitle("Akira")
+      );
+    });
+
+    it("collapses '(4K Restoration)' standalone", () => {
+      expect(normalizeTitle("Apocalypse Now (4K Restoration)")).toBe(
+        normalizeTitle("Apocalypse Now")
+      );
+    });
+
+    it("decodes HTML entities so '&amp;' doesn't fork the key", () => {
+      expect(normalizeTitle("Tom &amp; Jerry")).toBe(
+        normalizeTitle("Tom & Jerry")
+      );
+    });
+
+    it("repairs Latin-1 mojibake so '8&Acirc;&frac12;' matches '8½'", () => {
+      // Real-world example from the patrol logs
+      expect(normalizeTitle("8&Acirc;&frac12;")).toBe(
+        normalizeTitle("8½")
+      );
+    });
+
+    it("is idempotent — running normalizeTitle twice returns the same key", () => {
+      const once = normalizeTitle("Amélie - 25th Anniversary");
+      const twice = normalizeTitle(once);
+      expect(twice).toBe(once);
+    });
+
+    it("does not chop legitimate titles that contain the word 'Anniversary'", () => {
+      expect(normalizeTitle("Anniversary")).toBe("anniversary");
+    });
+  });
 });
 
 // =============================================================================
