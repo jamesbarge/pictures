@@ -1,13 +1,20 @@
 import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
+import jsxA11y from "eslint-plugin-jsx-a11y";
 
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
-  // Accessibility linting - strengthen a11y rules from eslint-config-next
-  // The jsx-a11y plugin is already registered by eslint-config-next
+  // Accessibility linting — eslint-config-next 16.x does NOT auto-register
+  // jsx-a11y (verified by grep: no jsx-a11y references in
+  // node_modules/eslint-config-next), so we register it explicitly here.
+  // Keep `eslint-plugin-jsx-a11y` as a direct devDependency so npm/pnpm
+  // resolve a single instance and CI installs are deterministic.
   {
+    plugins: {
+      "jsx-a11y": jsxA11y,
+    },
     rules: {
       // Critical: Elements must have accessible names
       "jsx-a11y/alt-text": "error",
