@@ -205,16 +205,19 @@ async function attemptCinema(
       });
     }
 
-    // Stagehand's extract() has overloads for (instruction) -> defaultExtractSchema
-    // and (instruction, schema) -> schema-inferred. TypeScript picks the wrong
-    // overload here because our Zod 4 ZodObject doesn't narrow `T extends
-    // StagehandZodSchema` cleanly; cast the result to the schema's inferred
-    // shape so downstream code stays typed.
+    // Stagehand's TypeScript types reference Zod 3's `ZodType<any,any,any>` for
+    // the schema-aware extract() overload, but our project uses Zod 4 — whose
+    // ZodObject lacks the `_type`/`_parse`/etc. internal properties Zod 3
+    // expects. At runtime Stagehand handles both via isZod4Schema/isZod3Schema
+    // helpers in zodCompat, so cast to `any` to bypass the type-only mismatch.
+    // Also pass an explicit (empty) options arg so TS picks the 3-param
+    // schema-aware overload over the 2-param `(instruction, options?)` one.
     const extracted = (await stagehand.extract(
       "Extract every film screening listed on this page. For each screening, " +
         "capture the film title, the date+time of the screening combined into " +
         "ISO 8601, and the booking URL if present.",
-      ExtractionSchema,
+      ExtractionSchema as any, // eslint-disable-line @typescript-eslint/no-explicit-any -- zod 3/4 type-only mismatch; runtime is fine
+      {},
     )) as z.infer<typeof ExtractionSchema>;
 
     const screenings: ExtractedScreening[] = Array.isArray(extracted?.screenings)
