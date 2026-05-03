@@ -1,3 +1,13 @@
+## 2026-05-03: Drop deprecated playwright-extra + StealthPlugin
+**PR**: TBD | **Files**: `src/scrapers/utils/browser.ts`, `package.json`, `next.config.ts`
+- Stream 1: `playwright-extra` is dead (last meaningful commit March 2023). `puppeteer-extra-plugin-stealth` is consistently blocked by Cloudflare 2024+. Both are dead-ware.
+- Drop the `addExtra(rebrowserChromium).use(stealth)` double-layer + 17 stealth evasion enables. Keep `rebrowser-playwright` directly + the hand-rolled `addInitScript` evasions in `createPage()` (those still work).
+- The `as unknown as Browser` cast that was needed for the playwright-extra/rebrowser type mismatch is no longer needed — types unify cleanly with single-package imports.
+- Full Patchright migration deferred — requires `npm install` which hangs in the agent sandbox. This PR ships the easy half (dropping verifiably-dead deps).
+- Tests: 918/918. Typecheck clean.
+
+---
+
 ## 2026-05-03: Retire AutoScrape and AutoQuality harnesses
 **PR**: TBD | **Files**: deleted `src/autoresearch/` (16 files), relocated thresholds config to `src/lib/data-quality/`
 - Stream 7: AutoScrape produced zero outputs ever; the directory it was supposed to write to in Obsidian doesn't even exist. BFI IMAX silent-breaker case (2026-04-27/28) was missed entirely.

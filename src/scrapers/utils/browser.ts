@@ -1,64 +1,33 @@
 /**
- * Browser utilities for Playwright-based scraping
- * Handles sites with JavaScript rendering and bot protection
+ * Browser utilities for Playwright-based scraping. Handles sites with
+ * JavaScript rendering and bot protection.
  *
- * Layered stealth posture:
- *   1. rebrowser-playwright (drop-in for `playwright`) patches the
- *      Runtime.Enable CDP leak that Cloudflare/DataDome detect in 2026.
- *   2. playwright-extra's StealthPlugin layers fingerprint-level
- *      evasions (navigator.webdriver, chrome.runtime, etc.) on top.
+ * Stealth posture: rebrowser-playwright's binary CDP patches (the
+ * Runtime.Enable leak Cloudflare/DataDome detect in 2026) plus the
+ * hand-rolled `addInitScript` evasions in `createPage()` below.
  *
- * `addExtra(rebrowserChromium)` is the composition primitive that lets us
- * keep both — without it, `import { chromium } from "playwright-extra"`
- * uses vanilla playwright-core under the hood and skips the rebrowser patch.
+ * The previous double-layer (`addExtra(rebrowserChromium).use(stealth)`)
+ * was dropped 2026-05-03 — `playwright-extra` has no meaningful commit
+ * since March 2023 and `puppeteer-extra-plugin-stealth` is consistently
+ * blocked by Cloudflare's 2024+ behavioural analysis. The hand-rolled
+ * evasions in `createPage()` cover the same surface deterministically.
+ *
+ * For reasoning + replacement options (Patchright, Camoufox), see
+ * `Pictures/Research/scraping-rethink-2026-05/01-browser-automation-libraries.md`.
  */
 
-import { addExtra } from "playwright-extra";
-import { chromium as rebrowserChromium } from "rebrowser-playwright";
-import StealthPlugin from "puppeteer-extra-plugin-stealth";
-import type { Browser, Page } from "rebrowser-playwright";
-
-const chromium = addExtra(rebrowserChromium);
+import { chromium, type Browser, type Page } from "rebrowser-playwright";
 import { CHROME_USER_AGENT_FULL } from "../constants";
-
-// Add stealth plugin with all evasions enabled
-const stealth = StealthPlugin();
-stealth.enabledEvasions.add("chrome.app");
-stealth.enabledEvasions.add("chrome.csi");
-stealth.enabledEvasions.add("chrome.loadTimes");
-stealth.enabledEvasions.add("chrome.runtime");
-stealth.enabledEvasions.add("defaultArgs");
-stealth.enabledEvasions.add("iframe.contentWindow");
-stealth.enabledEvasions.add("media.codecs");
-stealth.enabledEvasions.add("navigator.hardwareConcurrency");
-stealth.enabledEvasions.add("navigator.languages");
-stealth.enabledEvasions.add("navigator.permissions");
-stealth.enabledEvasions.add("navigator.plugins");
-stealth.enabledEvasions.add("navigator.webdriver");
-stealth.enabledEvasions.add("sourceurl");
-stealth.enabledEvasions.add("user-agent-override");
-stealth.enabledEvasions.add("webgl.vendor");
-stealth.enabledEvasions.add("window.outerdimensions");
-chromium.use(stealth);
 
 let browser: Browser | null = null;
 
-/**
- * Get or create a shared browser instance with stealth mode.
- *
- * Note on the `as Browser` cast: `chromium.launch()` returns a Browser
- * typed against the playwright-extra resolved playwright-core version,
- * but our Browser/Page types come from rebrowser-playwright (which uses
- * rebrowser-playwright-core). The two packages share the runtime shape
- * but TypeScript can't unify the nominally-distinct module-scoped types.
- * The cast is structural-shape-safe and was vetted in Phase 3.
- */
+/** Get or create a shared browser instance with stealth flags. */
 export async function getBrowser(): Promise<Browser> {
   if (!browser) {
-    browser = (await chromium.launch({
+    browser = await chromium.launch({
       headless: true,
       args: [
-        "--headless=new", // New headless mode, harder to detect
+        "--headless=new",
         "--disable-blink-features=AutomationControlled",
         "--no-sandbox",
         "--disable-setuid-sandbox",
@@ -76,7 +45,7 @@ export async function getBrowser(): Promise<Browser> {
         "--disable-backgrounding-occluded-windows",
         "--disable-renderer-backgrounding",
       ],
-    })) as unknown as Browser;
+    });
   }
   return browser;
 }
