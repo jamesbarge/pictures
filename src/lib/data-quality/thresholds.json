@@ -1,5 +1,5 @@
 {
-  "$comment": "Tunable thresholds for the data quality pipeline. AutoQuality experiments modify one threshold at a time.",
+  "$comment": "Static thresholds for the data quality pipeline. Previously tuned by the (now-retired) AutoQuality harness; AutoQuality plateaued at DQS 90.0-90.3 across 30 experiments without finding any beneficial change. Edit by hand if you want to adjust.",
 
   "tmdb": {
     "minTitleSimilarity": 0.6,

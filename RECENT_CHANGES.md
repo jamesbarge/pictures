@@ -1,3 +1,13 @@
+## 2026-05-03: Retire AutoScrape and AutoQuality harnesses
+**PR**: TBD | **Files**: deleted `src/autoresearch/` (16 files), relocated thresholds config to `src/lib/data-quality/`
+- Stream 7: AutoScrape produced zero outputs ever; the directory it was supposed to write to in Obsidian doesn't even exist. BFI IMAX silent-breaker case (2026-04-27/28) was missed entirely.
+- Stream 8: ~£8.70/month sunk-cost recovery from killed Gemini 3.1 Pro API calls.
+- AutoQuality plateaued at DQS 90.0-90.3 across 30 experiments — its own report concluded "biggest remaining lever is direct enrichment via Claude Code scripts."
+- The thresholds config stays — relocated from `src/autoresearch/autoquality/thresholds.json` to `src/lib/data-quality/thresholds.json` since `tmdb/match.ts` + 3 other call sites still need them. The DB-first loading path and cache mutation surface both removed; thresholds are now a static bundled JSON.
+- Tests: 918/918 passing. Typecheck clean.
+
+---
+
 ## 2026-05-03: Remove Bree+PM2 scheduler — `/scrape` is now the only entry point
 **PR**: TBD | **Files**: deleted `src/scheduler/` (12 files), `ecosystem.config.cjs`; `package.json` (-2 deps, -5 scripts)
 - Per `Pictures/Research/scraping-rethink-2026-05/SYNTHESIS.md`, the user runs scraping weekly via `/scrape`. The 03:00 UTC daily cron + 6 secondary jobs no longer match the workflow.

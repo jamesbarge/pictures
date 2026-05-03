@@ -17,7 +17,7 @@
 import { db } from "../src/db";
 import { films, screenings } from "../src/db/schema";
 import { sql, inArray } from "drizzle-orm";
-import { loadThresholds } from "../src/autoresearch/autoquality/load-thresholds";
+import { loadThresholds } from "../src/lib/data-quality/load-thresholds";
 
 // -- Types -------------------------------------------------------------------
 

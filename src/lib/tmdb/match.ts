@@ -10,7 +10,7 @@
  */
 
 import { levenshteinDistance } from "@/lib/levenshtein";
-import { loadThresholds } from "@/autoresearch/autoquality/load-thresholds";
+import { loadThresholds } from "@/lib/data-quality/load-thresholds";
 
 import { getTMDBClient } from "./client";
 import type { TMDBSearchResult } from "./types";

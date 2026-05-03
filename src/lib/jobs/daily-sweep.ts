@@ -20,7 +20,7 @@ import { films, screenings } from "@/db/schema";
 import { eq, isNull, and, gte, isNotNull, sql } from "drizzle-orm";
 import { generateTitleVariations, extractYearFromTitle } from "@/lib/enrichment/title-variations";
 import { matchFilmToTMDB } from "@/lib/tmdb/match";
-import { loadThresholdsAsync } from "@/autoresearch/autoquality/load-thresholds";
+import { loadThresholdsAsync } from "@/lib/data-quality/load-thresholds";
 import {
   runNonFilmDetection,
   detectDodgyEntries,
