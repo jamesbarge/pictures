@@ -1,3 +1,13 @@
+## 2026-05-03: Remove Bree+PM2 scheduler — `/scrape` is now the only entry point
+**PR**: TBD | **Files**: deleted `src/scheduler/` (12 files), `ecosystem.config.cjs`; `package.json` (-2 deps, -5 scripts)
+- Per `Pictures/Research/scraping-rethink-2026-05/SYNTHESIS.md`, the user runs scraping weekly via `/scrape`. The 03:00 UTC daily cron + 6 secondary jobs no longer match the workflow.
+- Drops `bree` and `pm2` npm deps. Drops scheduler:dev/start/stop/logs/restart scripts.
+- All 7 cron jobs are absorbed by `/scrape` (scrape-all + Letterboxd in runScrapeAll, daily-sweep as cleanup:upcoming+audit:films, AutoScrape retired in next commit, BFI PDF/Eventive remain available via standalone npm scripts).
+- Tests: 918/918 passing (5 deleted catch-up tests gone). Typecheck clean.
+- `package-lock.json` not synced in this commit — npm install hung in the agent sandbox; user runs `npm install` once locally to update.
+
+---
+
 ## 2026-05-03: Unified `/scrape` slash command (Phase 1 MVP) — single-shot scrape + enrichment + silent-breaker detection
 **PR**: TBD | **Files**: `src/lib/scrape-quarantine.ts` (new), `src/scripts/run-scrape-and-enrich.ts` (new), `.claude/commands/scrape.md` (rewritten), `.claude/commands/scrape-one.md` (renamed from old scrape.md), `package.json` (+1 npm script)
 - **New `/scrape` slash command**: single entry point that runs `runScrapeAll()` + `cleanup:upcoming` + `audit:films` + silent-breaker detection in order. No cron required. Args: empty (full run), `enrich` (skip scrape), `scrape` (skip enrich), `health` (read-only quarantine).
