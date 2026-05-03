@@ -1,3 +1,13 @@
+## 2026-05-03: Unified `/scrape` slash command (Phase 1 MVP) — single-shot scrape + enrichment + silent-breaker detection
+**PR**: TBD | **Files**: `src/lib/scrape-quarantine.ts` (new), `src/scripts/run-scrape-and-enrich.ts` (new), `.claude/commands/scrape.md` (rewritten), `.claude/commands/scrape-one.md` (renamed from old scrape.md), `package.json` (+1 npm script)
+- **New `/scrape` slash command**: single entry point that runs `runScrapeAll()` + `cleanup:upcoming` + `audit:films` + silent-breaker detection in order. No cron required. Args: empty (full run), `enrich` (skip scrape), `scrape` (skip enrich), `health` (read-only quarantine).
+- **Silent-breaker detection (`src/lib/scrape-quarantine.ts`)**: Prowlarr-style `IndexerStatusService` pattern — flags any cinema whose last N (default 2) consecutive runs are `success && screening_count=0`. Read-only against `scraper_runs`. Validated against current DB: 0 silent breakers, BFI IMAX recovered 2026-04-29.
+- **Orchestrator (`src/scripts/run-scrape-and-enrich.ts`)**: Spawns `cleanup:upcoming` and `audit:films` as child processes (failure isolation), calls `runScrapeAll()` in-process. Streams output to parent. Reports per-phase ✓/✗ + duration + final action items.
+- **Existing `/scrape` preserved**: Renamed to `/scrape-one` for single-cinema testing. Old behaviour intact.
+- **Driven by**: `Pictures/Research/scraping-rethink-2026-05/SYNTHESIS.md` (Phase 1 MVP section). Defers Patchright migration, bge-m3 embedding dedup, and append-only corrections table to Phases 2–3.
+
+---
+
 ## 2026-04-29: Fix CI for PR #469 — ESLint flat-config plugin scoping + Vercel webpack externals
 **PR**: #469 | **Files**: `eslint.config.mjs`, `next.config.ts`, `src/hooks/useUrlFilters.ts`
 - **ESLint**: Scope our `jsx-a11y/*`, `react-hooks/*`, `@typescript-eslint/*`, `@next/next/*` rule overrides via `files: ["**/*.{js,jsx,mjs,ts,tsx,mts,cts}"]` so they only apply where `eslint-config-next` registers those plugins. Reverts the (incorrect) explicit `jsx-a11y` re-registration from d6501bbc that triggered "Cannot redefine plugin 'jsx-a11y'" — `eslint-config-next/core-web-vitals` already registers it.

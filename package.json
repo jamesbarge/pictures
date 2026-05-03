@@ -74,6 +74,7 @@
     "scrape:chains": "npm run scrape:curzon && npm run scrape:picturehouse && npm run scrape:everyman",
     "scrape:all": "npm run scrape:bfi && npm run scrape:pcc && npm run scrape:ica && npm run scrape:barbican && npm run scrape:rio && npm run scrape:chains && npm run scrape:independents",
     "scrape:local": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/local-runner.ts",
+    "scrape:unified": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scripts/run-scrape-and-enrich.ts",
     "load:bfi-manual": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/load-bfi-manual.ts",
     "agents": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/agents/run-agents.ts all",
     "agents:links": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/agents/run-agents.ts links",
