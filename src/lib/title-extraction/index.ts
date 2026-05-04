@@ -3,9 +3,12 @@
  *
  * Single entry point for all film title extraction needs:
  * - Sync pattern extraction (for enrichment agent / fast loops)
- * - Async AI extraction (for pipeline / scripts)
- * - Hybrid extraction (patterns first, AI fallback)
+ * - Async pattern extraction (legacy `extractFilmTitleAI` API)
  * - Caching and batch processing wrappers
+ *
+ * Title extraction is now fully deterministic — no LLM calls. The async
+ * variants exist for backward-compatibility with callers that already
+ * await the result.
  */
 
 export { extractFilmTitleSync, type PatternExtractionResult } from "./pattern-extractor";
@@ -15,28 +18,20 @@ export { generateSearchVariations } from "./search-variants";
 import { extractFilmTitleAI, isLikelyCleanTitle, type AIExtractionResult } from "./ai-extractor";
 
 /**
- * Hybrid title extraction: tries AI extraction (which uses a local heuristic
- * for clean titles, then falls back to Gemini for ambiguous ones).
- *
- * This is the default async extractor for scripts and new callers.
+ * Async pattern-based title extraction. Wraps the sync extractor for callers
+ * that prefer the async signature. No network calls under the hood.
  */
 export async function extractFilmTitle(rawTitle: string): Promise<AIExtractionResult> {
   return extractFilmTitleAI(rawTitle);
 }
 
-/**
- * Cache for extracted titles (avoids repeated API calls within a session).
- */
+/** Cache for extracted titles. */
 const titleCache = new Map<string, AIExtractionResult>();
 
-/**
- * Extract with caching — used by the scraper pipeline.
- */
+/** Extract with caching — used by the scraper pipeline. */
 export async function extractFilmTitleCached(rawTitle: string): Promise<AIExtractionResult> {
   const cached = titleCache.get(rawTitle);
-  if (cached) {
-    return cached;
-  }
+  if (cached) return cached;
 
   const result = await extractFilmTitle(rawTitle);
   titleCache.set(rawTitle, result);
@@ -44,12 +39,9 @@ export async function extractFilmTitleCached(rawTitle: string): Promise<AIExtrac
 }
 
 /**
- * Batch extract titles with deduplication and rate limiting.
- *
- * Two-pass approach: first classify titles as clean (no API needed) or
- * needing extraction, then process each group appropriately. This ensures
- * every Gemini API call gets a 500ms delay, even when Gemini returns
- * "high" confidence for a successful extraction.
+ * Batch extract titles with deduplication. The previous implementation
+ * sequenced "ambiguous" titles through an LLM with rate limiting; that's
+ * gone now, so this is just a deduped fan-out.
  */
 export async function batchExtractTitles(
   rawTitles: string[]
@@ -57,35 +49,18 @@ export async function batchExtractTitles(
   const results = new Map<string, AIExtractionResult>();
   const uniqueTitles = [...new Set(rawTitles)];
 
-  // Pass 1: process clean titles locally (no API call, no delay)
-  const needsExtraction: string[] = [];
-
   for (const title of uniqueTitles) {
     if (isLikelyCleanTitle(title)) {
-      const result = await extractFilmTitle(title);
-      results.set(title, result);
+      results.set(title, await extractFilmTitle(title));
     } else {
-      needsExtraction.push(title);
-    }
-  }
-
-  // Pass 2: process ambiguous titles via API with rate limiting (~2 req/s)
-  for (let i = 0; i < needsExtraction.length; i++) {
-    const title = needsExtraction[i];
-    const result = await extractFilmTitle(title);
-    results.set(title, result);
-
-    if (i < needsExtraction.length - 1) {
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      results.set(title, await extractFilmTitle(title));
     }
   }
 
   return results;
 }
 
-/**
- * Clear the title cache.
- */
+/** Clear the title cache. */
 export function clearTitleCache(): void {
   titleCache.clear();
 }

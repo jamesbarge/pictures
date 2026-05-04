@@ -1,38 +1,26 @@
 /**
- * AI-Powered Film Title Extractor
+ * Async Film Title Extractor (deterministic adapter)
  *
- * Uses Gemini to intelligently extract actual film titles from event names.
- * Async — makes API calls for ambiguous titles. Falls back to basic cleaning
- * when the title is likely already clean (via heuristic check).
+ * The "AI" in this module's name is a historical artifact. It used to call
+ * Gemini for ambiguous listings; the LLM dependency was removed in favour
+ * of the synchronous pattern-based extractor in `pattern-extractor.ts`,
+ * which already powered the enrichment agent's hot path.
+ *
+ * This file now exists purely as an async adapter so that callers expecting
+ * the previous API (`extractFilmTitleAI`, `hasWordOverlap`, `AIExtractionResult`)
+ * keep compiling unchanged. New callers should prefer `extractFilmTitleSync`
+ * directly.
  */
 
-import { generateText, stripCodeFences } from "../gemini";
-import {
-  EVENT_PREFIX_PATTERNS,
-  VERSION_SUFFIX_PATTERNS,
-  FRANCHISE_PATTERN,
-} from "./patterns";
+import { VERSION_SUFFIX_PATTERNS, EVENT_PREFIX_PATTERNS, FRANCHISE_PATTERN } from "./patterns";
+import { extractFilmTitleSync } from "./pattern-extractor";
 
 /**
- * Check if two titles share meaningful word overlap.
- * Used to guard against AI hallucination — if the AI returns a title
- * with <30% word overlap, it's likely a hallucination.
+ * Result of pattern-based title extraction (kept under the historical name).
  */
-export function hasWordOverlap(rawTitle: string, aiTitle: string, threshold = 0.3): boolean {
-  const normalize = (s: string) =>
-    s.toLowerCase().replace(/[^a-z0-9\s]/g, "").split(/\s+/).filter(w => w.length > 1);
-  const rawWords = normalize(rawTitle);
-  const aiWords = new Set(normalize(aiTitle));
-  if (rawWords.length === 0 || aiWords.size === 0) return true;
-  const overlapping = rawWords.filter(w => aiWords.has(w)).length;
-  const denominator = Math.min(rawWords.length, aiWords.size);
-  return overlapping / denominator >= threshold;
-}
-
-/** Result of AI-powered title extraction via Gemini */
 export interface AIExtractionResult {
   filmTitle: string;
-  /** Base title for matching/deduplication (without version suffixes like "Final Cut") */
+  /** Base title for matching/deduplication (without version suffixes) */
   canonicalTitle: string;
   /** Version/cut if present (e.g., "Final Cut", "Director's Cut") */
   version?: string;
@@ -41,8 +29,29 @@ export interface AIExtractionResult {
 }
 
 /**
- * Extract version suffix from a title.
- * Returns the base title and version string if found, null otherwise.
+ * Check whether two titles share meaningful word overlap.
+ *
+ * Originally a hallucination guard against AI output; retained because
+ * other modules (e.g. similarity matchers) still call it as a generic
+ * title-similarity helper.
+ */
+export function hasWordOverlap(rawTitle: string, candidate: string, threshold = 0.3): boolean {
+  const normalize = (s: string) =>
+    s
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, "")
+      .split(/\s+/)
+      .filter((w) => w.length > 1);
+  const rawWords = normalize(rawTitle);
+  const candidateWords = new Set(normalize(candidate));
+  if (rawWords.length === 0 || candidateWords.size === 0) return true;
+  const overlapping = rawWords.filter((w) => candidateWords.has(w)).length;
+  const denominator = Math.min(rawWords.length, candidateWords.size);
+  return overlapping / denominator >= threshold;
+}
+
+/**
+ * Extract the version suffix (e.g. "Final Cut") from a title.
  */
 function extractVersionSuffix(title: string): { baseTitle: string; version: string } | null {
   for (const pattern of VERSION_SUFFIX_PATTERNS) {
@@ -57,46 +66,28 @@ function extractVersionSuffix(title: string): { baseTitle: string; version: stri
 }
 
 /**
- * Check if a title has a version suffix that needs canonical extraction.
- */
-function hasVersionSuffix(title: string): boolean {
-  return VERSION_SUFFIX_PATTERNS.some((pattern) => pattern.test(title));
-}
-
-/**
- * Check if a title is likely already clean (no event prefixes).
- * Returns true if the title can skip the AI call.
+ * Whether a title can skip extraction entirely (i.e. it's already clean).
+ *
+ * Retained as a public export because `pattern-extractor` and
+ * `title-extraction/index.ts` both branch on it for batch processing.
  */
 export function isLikelyCleanTitle(title: string): boolean {
   const normalized = title.toLowerCase().trim();
 
   for (const pattern of EVENT_PREFIX_PATTERNS) {
-    if (pattern.test(normalized)) {
-      return false;
-    }
+    if (pattern.test(normalized)) return false;
   }
 
   // Titles with parenthesized years like "Crash (1997)" should go through extraction
-  if (/\(\d{4}\)\s*$/.test(title)) {
-    return false;
-  }
+  if (/\(\d{4}\)\s*$/.test(title)) return false;
 
   // ALL CAPS titles often have appended cruft or need normalization
-  if (title === title.toUpperCase() && title.length > 3) {
-    return false;
-  }
+  if (title === title.toUpperCase() && title.length > 3) return false;
 
   // Very long titles likely have appended event info or descriptions
-  if (title.length > 60) {
-    return false;
-  }
+  if (title.length > 60) return false;
 
-  // Check for version suffixes — these are clean titles we handle locally
-  if (hasVersionSuffix(title)) {
-    return true;
-  }
-
-  // Check for suspicious colon patterns (but allow film subtitles)
+  // Suspicious colon: short prefix that isn't a known franchise
   if (normalized.includes(":")) {
     const beforeColon = normalized.split(":")[0];
     const words = beforeColon.trim().split(/\s+/);
@@ -109,35 +100,38 @@ export function isLikelyCleanTitle(title: string): boolean {
 }
 
 /**
- * Basic title cleanup (BBFC ratings, format suffixes, etc.).
+ * Basic title cleanup (BBFC ratings, format suffixes, Q&A markers).
  */
 function cleanBasicCruft(title: string): string {
   return title
     .replace(/\s+/g, " ")
     .trim()
-    .replace(/\s*\((U|PG|12A?|15|18)\*?\)\s*$/i, "")
+    .replace(/\s*\((?:U|PG|12A?|15|18)\*?\)\s*$/i, "")
     .replace(/\s*\[.*?\]\s*$/g, "")
-    .replace(/\s*-\s*(35mm|70mm|4k|imax)\s*$/i, "")
-    .replace(/\s*\+\s*(q\s*&\s*a|discussion|intro)\s*$/i, "")
+    .replace(/\s*-\s*(?:35mm|70mm|4k|imax)\s*$/i, "")
+    .replace(/\s*\+\s*(?:q\s*&\s*a|discussion|intro)\s*$/i, "")
     .trim();
 }
 
 /**
- * Extract the actual film title from a screening event name using AI.
- *
- * Tries a local heuristic first (for clearly clean titles), then falls back
- * to Gemini for ambiguous cases.
- *
- * Examples:
- * - "Saturday Morning Picture Club: The Muppets Christmas Carol" → "The Muppets Christmas Carol"
- * - "35mm: Casablanca" → "Casablanca"
- * - "Apocalypse Now : Final Cut" → filmTitle: "Apocalypse Now : Final Cut", canonicalTitle: "Apocalypse Now"
+ * Map the synchronous pattern extractor's numeric confidence to the
+ * three-level enum the previous AI extractor exposed.
+ */
+function bucketConfidence(numeric: number): "high" | "medium" | "low" {
+  if (numeric >= 0.85) return "high";
+  if (numeric >= 0.5) return "medium";
+  return "low";
+}
+
+/**
+ * Extract the underlying film title from a (potentially noisy) screening
+ * listing. Async signature retained for caller compatibility; the work
+ * itself is synchronous.
  */
 export async function extractFilmTitleAI(rawTitle: string): Promise<AIExtractionResult> {
-  // Quick pass: if it looks like a clean title already, skip the API call
+  // Hot path: titles that look already clean skip the regex pipeline.
   if (isLikelyCleanTitle(rawTitle)) {
     const displayTitle = cleanBasicCruft(rawTitle);
-
     const versionInfo = extractVersionSuffix(displayTitle);
     if (versionInfo) {
       return {
@@ -147,7 +141,6 @@ export async function extractFilmTitleAI(rawTitle: string): Promise<AIExtraction
         confidence: "high",
       };
     }
-
     return {
       filmTitle: displayTitle,
       canonicalTitle: displayTitle,
@@ -155,69 +148,31 @@ export async function extractFilmTitleAI(rawTitle: string): Promise<AIExtraction
     };
   }
 
-  try {
-    const text = await generateText(`Extract film title information from this cinema screening listing.
+  // Otherwise run the synchronous pattern-based extractor.
+  const sync = extractFilmTitleSync(rawTitle);
+  const displayTitle = cleanBasicCruft(sync.extractedTitle || rawTitle);
+  const versionInfo = extractVersionSuffix(displayTitle);
 
-Listing: "${rawTitle}"
+  // Map sync extractor's metadata into the legacy event-type label.
+  let eventType: string | undefined;
+  if (sync.isLiveBroadcast) eventType = "live broadcast";
+  else if (sync.isNonFilm) eventType = "non-film event";
+  else if (sync.extractionMethod !== "none") eventType = sync.extractionMethod;
 
-Return ONLY a JSON object (no markdown) with:
-- title: The display title (as shown, with version if present)
-- canonical: The base film title without version suffixes like "Director's Cut", "Final Cut", "Extended Edition", "Redux", "Restored", "Remastered" (for matching/deduplication)
-- version: The version/cut if present (e.g., "Final Cut", "Director's Cut")
-- event: Event type if any (e.g., "35mm screening", "Q&A", "kids screening")
-- confidence: "high" | "medium" | "low"
-
-IMPORTANT: "canonical" should strip version suffixes but keep legitimate subtitles.
-- "Apocalypse Now : Final Cut" → canonical: "Apocalypse Now", version: "Final Cut"
-- "Blade Runner : The Final Cut" → canonical: "Blade Runner", version: "The Final Cut"
-- "Star Wars: A New Hope" → canonical: "Star Wars: A New Hope" (subtitle, not version)
-- "Amadeus: Director's Cut" → canonical: "Amadeus", version: "Director's Cut"
-
-Examples:
-- "Saturday Morning Picture Club: The Muppets Christmas Carol" → {"title": "The Muppets Christmas Carol", "canonical": "The Muppets Christmas Carol", "event": "kids screening", "confidence": "high"}
-- "Apocalypse Now : Final Cut" → {"title": "Apocalypse Now : Final Cut", "canonical": "Apocalypse Now", "version": "Final Cut", "confidence": "high"}
-- "35mm: Casablanca (PG)" → {"title": "Casablanca", "canonical": "Casablanca", "event": "35mm screening", "confidence": "high"}`);
-
-    const parsed = JSON.parse(stripCodeFences(text));
-    const aiTitle = parsed.title || "";
-
-    // Guard: reject AI output that bears no resemblance to input
-    if (!hasWordOverlap(rawTitle, aiTitle)) {
-      console.warn(`[TitleExtractor] AI hallucination detected: "${rawTitle}" → "${aiTitle}". Falling back.`);
-      return {
-        filmTitle: cleanBasicCruft(rawTitle),
-        canonicalTitle: cleanBasicCruft(rawTitle),
-        confidence: "low",
-      };
-    }
-
-    const displayTitle = cleanBasicCruft(aiTitle || rawTitle);
-
+  if (versionInfo) {
     return {
       filmTitle: displayTitle,
-      canonicalTitle: parsed.canonical || displayTitle,
-      version: parsed.version,
-      eventType: parsed.event,
-      confidence: parsed.confidence || "medium",
-    };
-  } catch (error) {
-    console.warn(`[TitleExtractor] AI extraction failed for "${rawTitle}":`, error);
-    const displayTitle = cleanBasicCruft(rawTitle);
-    const versionInfo = extractVersionSuffix(displayTitle);
-
-    if (versionInfo) {
-      return {
-        filmTitle: displayTitle,
-        canonicalTitle: versionInfo.baseTitle,
-        version: versionInfo.version,
-        confidence: "low",
-      };
-    }
-
-    return {
-      filmTitle: displayTitle,
-      canonicalTitle: displayTitle,
-      confidence: "low",
+      canonicalTitle: versionInfo.baseTitle,
+      version: versionInfo.version,
+      eventType,
+      confidence: bucketConfidence(sync.confidence),
     };
   }
+
+  return {
+    filmTitle: displayTitle,
+    canonicalTitle: displayTitle,
+    eventType,
+    confidence: bucketConfidence(sync.confidence),
+  };
 }

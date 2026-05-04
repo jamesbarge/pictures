@@ -1,44 +1,40 @@
 /**
- * AI-Powered Content Classifier
+ * Content Classifier
  *
- * Unified service that classifies cinema listings and extracts:
- * - Clean film title (stripped of event prefixes/suffixes)
- * - Content type (film, concert, live_broadcast, event)
- * - Year (extracted from title if present)
- * - Poster strategy (which source to use for images)
+ * Classifies cinema listings into a content type (film, concert,
+ * live_broadcast, event), extracts the clean title and year, and recommends
+ * a poster sourcing strategy.
  *
- * This replaces the title-extractor with a more comprehensive solution.
+ * Implementation is a deterministic rules engine — heuristics first, with a
+ * sane "treat as film, look up via TMDB" default for genuinely ambiguous
+ * cases. The previous Gemini-backed AI fallback was rarely producing better
+ * answers than this default during local runs (and silently degraded
+ * whenever the API key was misconfigured), so the LLM dependency was
+ * removed in favour of explicit, auditable rules.
  */
 
-import { generateText, stripCodeFences } from "./gemini";
 import type { ContentType } from "@/types/film";
 
-/** Strategy for sourcing a poster image: TMDB lookup, scraper-provided URL, or AI generation */
+/** Strategy for sourcing a poster image: TMDB lookup or scraper-provided URL */
 type PosterStrategy = "tmdb" | "scraper_image" | "generate";
 
 /** Output of the content classifier: clean title, type, year, and poster strategy */
 interface ClassificationResult {
-  /** The clean film/event title, stripped of prefixes and suffixes */
   cleanTitle: string;
-  /** Extracted year if found in title (e.g., "Solaris (1972)" -> 1972) */
   year: number | null;
-  /** Content type classification */
   contentType: ContentType;
-  /** Recommended strategy for finding a poster/image */
   posterStrategy: PosterStrategy;
-  /** Confidence level of the classification */
   confidence: "high" | "medium" | "low";
-  /** Optional: detected event type for context */
   eventType?: string;
 }
 
 /**
- * Quick heuristics to skip AI for obvious cases
+ * Quick heuristics that resolve the bulk of titles without further work.
  */
 function quickClassify(rawTitle: string): ClassificationResult | null {
   const normalized = rawTitle.toLowerCase().trim();
 
-  // Quick detection of non-film content that doesn't need AI
+  // Quick detection of non-film content
   const nonFilmPatterns: Array<{ pattern: RegExp; type: ContentType }> = [
     { pattern: /^(quiz|trivia)\b/i, type: "event" },
     { pattern: /\bquiz\s*night\b/i, type: "event" },
@@ -48,11 +44,10 @@ function quickClassify(rawTitle: string): ClassificationResult | null {
     { pattern: /^private\s+hire/i, type: "event" },
     { pattern: /^reading\s+group/i, type: "event" },
     { pattern: /^baby\s+comptines/i, type: "event" },
-    { pattern: /^mystery\s+movie/i, type: "film" }, // This is still a film screening
-    // Additional event patterns from patrol logs
+    { pattern: /^mystery\s+movie/i, type: "film" }, // mystery movie nights are still films
     { pattern: /\bmusical\s+bingo\b/i, type: "event" },
-    { pattern: /\bcomedy\s+(club|night)\b/i, type: "event" },
-    { pattern: /\bmember\s+(poll|quiz)\b/i, type: "event" },
+    { pattern: /\bcomedy\s+(?:club|night)\b/i, type: "event" },
+    { pattern: /\bmember\s+(?:poll|quiz)\b/i, type: "event" },
     { pattern: /\bin\s+conversation\s+with\b/i, type: "event" },
   ];
 
@@ -68,24 +63,23 @@ function quickClassify(rawTitle: string): ClassificationResult | null {
     }
   }
 
-  // Quick detection of live broadcasts
+  // Live broadcasts: NT Live, Met Opera, Royal Ballet, etc.
   const liveBroadcastPatterns = [
     /^national\s+theatre\s+live[:\s]/i,
     /^nt\s+live[:\s]/i,
-    /^met\s+opera\s+(live|encore)[:\s]/i,
+    /^met\s+opera\s+(?:live|encore)[:\s]/i,
     /^royal\s+opera\s+house[:\s]/i,
     /^the\s+royal\s+opera[:\s]/i,
-    /^roh\s+(live|encore|cinema)[:\s]/i,
+    /^roh\s+(?:live|encore|cinema)[:\s]/i,
     /^royal\s+ballet[:\s]/i,
     /^bolshoi\s+ballet[:\s]/i,
-    /^rbo\s+(cinema\s+season|encore|cinema)[:\s]/i,
+    /^rbo\s+(?:cinema\s+season|encore|cinema)[:\s]/i,
     /^berliner\s+philharmoniker/i,
     /^exhibition\s+on\s+screen[:\s]/i,
   ];
 
   for (const pattern of liveBroadcastPatterns) {
     if (pattern.test(normalized)) {
-      // Extract the show name after the prefix
       const match = rawTitle.match(/^[^:]+:\s*(.+)$/);
       const cleanTitle = match ? match[1].trim() : rawTitle;
       const yearMatch = cleanTitle.match(/\((\d{4})\)\s*$/);
@@ -103,9 +97,11 @@ function quickClassify(rawTitle: string): ClassificationResult | null {
     }
   }
 
-  // Quick detection of concerts
-  const concertPatterns = [
+  // Concerts: "X in concert", album-tribute screenings, etc.
+  const concertPatterns: ReadonlyArray<RegExp> = [
     /\bin\s+concert\b/i,
+    /\b(?:live|concert|tour|performance)\b.*\b(?:anniversary|tribute)\b/i,
+    /\b(?:anniversary|tribute)\b.*\b(?:live|concert|tour|performance)\b/i,
   ];
 
   for (const pattern of concertPatterns) {
@@ -121,7 +117,7 @@ function quickClassify(rawTitle: string): ClassificationResult | null {
     }
   }
 
-  // If it looks like a simple, clean title (no colons, no event markers), skip AI
+  // Otherwise, treat as a film and clean the title.
   if (isLikelyCleanFilmTitle(rawTitle)) {
     const yearMatch = rawTitle.match(/\((\d{4})\)\s*$/);
     const cleanTitle = yearMatch
@@ -137,30 +133,32 @@ function quickClassify(rawTitle: string): ClassificationResult | null {
     };
   }
 
-  return null; // Needs AI classification
+  return null;
 }
 
 /**
- * Check if a title is likely already a clean film title
- * Returns false if AI classification is needed
+ * Check whether a title is likely already a clean film title.
+ *
+ * Returns false when the title contains event prefixes, suspicious colon
+ * patterns, or potential concert markers — those need additional cleanup
+ * via the fallback path.
  */
 function isLikelyCleanFilmTitle(title: string): boolean {
   const normalized = title.toLowerCase().trim();
 
-  // Known event prefix patterns that need AI extraction
   const eventPatterns = [
-    /^(saturday|sunday|weekday)\s+(morning|afternoon)/i,
-    /^(kids?|family|toddler|baby)\s*(club|time|film)/i,
-    /^(uk|world|london)\s+premiere/i,
-    /^(35|70)mm[:\s]/i,
-    /^(imax|4k|restoration)[:\s]/i,
-    /^(sing[\s-]?a[\s-]?long|quote[\s-]?a[\s-]?long)/i,
-    /^(preview|sneak|advance)[:\s]/i,
-    /^(special|member'?s?)\s+screening/i,
-    /^(double|triple)\s+(feature|bill)/i,
-    /^(cult|classic|christmas)\s+(classic|film)/i,
-    /^(late\s+night|midnight)/i,
-    /^(marathon|retrospective|tribute)[:\s]/i,
+    /^(?:saturday|sunday|weekday)\s+(?:morning|afternoon)/i,
+    /^(?:kids?|family|toddler|baby)\s*(?:club|time|film)/i,
+    /^(?:uk|world|london)\s+premiere/i,
+    /^(?:35|70)mm[:\s]/i,
+    /^(?:imax|4k|restoration)[:\s]/i,
+    /^(?:sing[\s-]?a[\s-]?long|quote[\s-]?a[\s-]?long)/i,
+    /^(?:preview|sneak|advance)[:\s]/i,
+    /^(?:special|member'?s?)\s+screening/i,
+    /^(?:double|triple)\s+(?:feature|bill)/i,
+    /^(?:cult|classic|christmas)\s+(?:classic|film)/i,
+    /^(?:late\s+night|midnight)/i,
+    /^(?:marathon|retrospective|tribute)[:\s]/i,
     /^drink\s*[&+]\s*dine/i,
     /^films?\s+for\s+workers/i,
     /^queer\s+horror\s+nights/i,
@@ -171,7 +169,6 @@ function isLikelyCleanFilmTitle(title: string): boolean {
     /^reclaim\s+the\s+frame/i,
     /^doc\s*'?n'?\s*roll/i,
     /^exhibition\s+on\s+screen/i,
-    // Community/cultural screening series
     /^screen\s+cuba\s+presents?/i,
     /^shasha\s+movies?\s+presents?/i,
     /^lafs\s+presents?/i,
@@ -180,40 +177,22 @@ function isLikelyCleanFilmTitle(title: string): boolean {
     /^queer\s+east\s+presents?/i,
     /^girls?\s+in\s+film\s+presents?/i,
     /^east\s+london\s+doc\s+club/i,
-    // Suffix patterns
     /\+\s*q\s*&?\s*a\s*$/i,
     /with\s+shadow\s+cast/i,
-    /\+\s*(discussion|intro|live)/i,
+    /\+\s*(?:discussion|intro|live)/i,
   ];
 
   for (const pattern of eventPatterns) {
-    if (pattern.test(normalized)) {
-      return false;
-    }
+    if (pattern.test(normalized)) return false;
   }
 
-  // Patterns that suggest music/concert content - need AI to classify
-  const potentialConcertPatterns = [
-    /\b(anniversary|tribute)\b/i, // "50th Anniversary" often for concerts
-    /[''].*['']/, // Quoted album names like 'Desire'
-    /\b(live|concert|tour|performance)\b/i,
-    /\b(album|record|vinyl)\b/i,
-  ];
-
-  for (const pattern of potentialConcertPatterns) {
-    if (pattern.test(normalized)) {
-      return false; // Needs AI to determine if film or concert
-    }
-  }
-
-  // Check for suspicious colon patterns
+  // Suspicious colon: "X: Y" where X is short and not a known franchise.
   if (normalized.includes(":")) {
     const beforeColon = normalized.split(":")[0].trim();
     const words = beforeColon.split(/\s+/);
 
-    // Known film franchises with colons are OK
     const franchisePatterns =
-      /^(star\s+wars|indiana\s+jones|harry\s+potter|lord\s+of\s+the\s+rings|mission\s+impossible|pirates|fast|jurassic|matrix|batman|spider|alien|terminator|mad\s+max|back\s+to\s+the\s+future|die\s+hard|toy\s+story|finding|avengers|guardians|shrek|the\s+dark\s+knight)/i;
+      /^(?:star\s+wars|indiana\s+jones|harry\s+potter|lord\s+of\s+the\s+rings|mission\s+impossible|pirates|fast|jurassic|matrix|batman|spider|alien|terminator|mad\s+max|back\s+to\s+the\s+future|die\s+hard|toy\s+story|finding|avengers|guardians|shrek|the\s+dark\s+knight)/i;
 
     if (words.length <= 2 && !franchisePatterns.test(beforeColon)) {
       return false;
@@ -224,118 +203,90 @@ function isLikelyCleanFilmTitle(title: string): boolean {
 }
 
 /**
- * Basic cleanup for titles
+ * Basic title cleanup — strips BBFC ratings, format suffixes, edition
+ * markers, and similar low-information cruft.
  */
 function cleanBasicCruft(title: string): string {
   return title
     .replace(/\s+/g, " ")
     .trim()
-    .replace(/\s*\((U|PG|12A?|15|18)\*?\)\s*$/i, "") // BBFC ratings
+    .replace(/\s*\((?:U|PG|12A?|15|18)\*?\)\s*$/i, "") // BBFC ratings
     .replace(/\s*\[.*?\]\s*$/g, "") // Bracketed notes
-    .replace(/\s*-\s*(35mm|70mm|4k|imax)\s*$/i, "") // Format suffixes
-    .replace(/\s*\+\s*(q\s*&\s*a|discussion|intro)\s*$/i, "") // Q&A suffixes
-    .replace(/\s*4K\s*$/i, "") // Trailing 4K
-    .replace(/\s*\(Extended\s+Cut\)\s*$/i, "") // Extended cut
-    .replace(/\s*\(Director'?s?\s+Cut\)\s*$/i, "") // Director's cut
+    .replace(/\s*-\s*(?:35mm|70mm|4k|imax)\s*$/i, "") // Format suffixes
+    .replace(/\s*\+\s*(?:q\s*&\s*a|discussion|intro)\s*$/i, "") // Q&A suffixes
+    .replace(/\s*4K\s*$/i, "")
+    .replace(/\s*\(Extended\s+Cut\)\s*$/i, "")
+    .replace(/\s*\(Director'?s?\s+Cut\)\s*$/i, "")
     .trim();
 }
 
 /**
- * Classify a cinema listing using AI
+ * Strip a leading event prefix ("X presents:", "Y Festival:") so a clean
+ * underlying film title remains. Used as the last-ditch path for inputs
+ * that fall through every other rule.
  */
-export async function classifyContent(
-  rawTitle: string
-): Promise<ClassificationResult> {
-  // Try quick heuristics first
-  const quickResult = quickClassify(rawTitle);
-  if (quickResult) {
-    return quickResult;
+function stripLeadingPrefix(rawTitle: string): { title: string; eventType?: string } {
+  const colonMatch = rawTitle.match(/^([^:]{2,80}):\s*(.+)$/);
+  if (colonMatch) {
+    const before = colonMatch[1].trim();
+    const after = colonMatch[2].trim();
+
+    // Heuristic: short prefix or "presents/festival/club"-style phrase
+    // → strip it and keep the rest as the title.
+    const looksLikePresenter =
+      /\b(?:presents?|festival|club|series|season|programme)\b/i.test(before) ||
+      before.split(/\s+/).length <= 3;
+
+    if (looksLikePresenter && after.length > 2) {
+      return { title: after, eventType: before };
+    }
   }
-
-  try {
-    const text = await generateText(`Classify this cinema listing and extract the actual content title.
-
-Listing: "${rawTitle}"
-
-Respond with ONLY a JSON object (no markdown):
-{
-  "title": "The clean title without event prefixes/suffixes",
-  "year": null or the year if in the title (e.g., "Solaris (1972)" -> 1972),
-  "type": "film" | "concert" | "live_broadcast" | "event",
-  "poster": "tmdb" | "scraper_image",
-  "confidence": "high" | "medium" | "low",
-  "event": "optional event type description"
-}
-
-Classification guide:
-- film: Traditional movies (use tmdb for poster)
-- concert: Music performances, album screenings, artist tributes (use scraper_image)
-- live_broadcast: NT Live, Met Opera, ballet broadcasts (use scraper_image)
-- event: Quiz nights, discussions, non-screening events (use scraper_image)
-
-Examples:
-- "DRINK & DINE: Bohemian Rhapsody Sing-Along" -> {"title":"Bohemian Rhapsody","year":null,"type":"film","poster":"tmdb","confidence":"high","event":"sing-along"}
-- "Bob Dylan 'Desire' (50th Anniversary)" -> {"title":"Bob Dylan 'Desire' (50th Anniversary)","year":null,"type":"concert","poster":"scraper_image","confidence":"high"}
-- "NT Live: Hamlet (2026)" -> {"title":"Hamlet","year":2026,"type":"live_broadcast","poster":"scraper_image","confidence":"high"}
-- "Solaris (1972)" -> {"title":"Solaris","year":1972,"type":"film","poster":"tmdb","confidence":"high"}
-- "The Killer (1989)" -> {"title":"The Killer","year":1989,"type":"film","poster":"tmdb","confidence":"high"}
-- "Films For Workers: Killer of Sheep" -> {"title":"Killer of Sheep","year":null,"type":"film","poster":"tmdb","confidence":"high","event":"film club"}`);
-
-    const parsed = JSON.parse(stripCodeFences(text));
-
-    return {
-      cleanTitle: cleanBasicCruft(parsed.title || rawTitle),
-      year: parsed.year || null,
-      contentType: parsed.type || "film",
-      posterStrategy: parsed.poster || "tmdb",
-      confidence: parsed.confidence || "medium",
-      eventType: parsed.event,
-    };
-  } catch (error) {
-    console.warn(
-      `[ContentClassifier] AI classification failed for "${rawTitle}":`,
-      error
-    );
-
-    // Fallback: assume it's a film and clean up the title
-    const yearMatch = rawTitle.match(/\((\d{4})\)\s*$/);
-    return {
-      cleanTitle: cleanBasicCruft(
-        yearMatch ? rawTitle.replace(/\s*\(\d{4}\)\s*$/, "") : rawTitle
-      ),
-      year: yearMatch ? parseInt(yearMatch[1]) : null,
-      contentType: "film",
-      posterStrategy: "tmdb",
-      confidence: "low",
-    };
-  }
+  return { title: rawTitle };
 }
 
 /**
- * Cache for classification results
+ * Classify a cinema listing.
+ *
+ * Async signature preserved for backward compatibility — there are no
+ * network calls under the hood now, so the promise resolves synchronously.
+ */
+export async function classifyContent(rawTitle: string): Promise<ClassificationResult> {
+  // Try the deterministic heuristics first.
+  const quickResult = quickClassify(rawTitle);
+  if (quickResult) return quickResult;
+
+  // Fallback: strip any leading event prefix and treat the rest as a film.
+  const yearMatch = rawTitle.match(/\((\d{4})\)\s*$/);
+  const stripped = stripLeadingPrefix(
+    yearMatch ? rawTitle.replace(/\s*\(\d{4}\)\s*$/, "").trim() : rawTitle
+  );
+
+  return {
+    cleanTitle: cleanBasicCruft(stripped.title),
+    year: yearMatch ? parseInt(yearMatch[1]) : null,
+    contentType: "film",
+    posterStrategy: "tmdb",
+    confidence: "medium",
+    eventType: stripped.eventType,
+  };
+}
+
+/**
+ * Cache for classification results.
  */
 const classificationCache = new Map<string, ClassificationResult>();
 
-/**
- * Classify with caching
- */
 export async function classifyContentCached(
   rawTitle: string
 ): Promise<ClassificationResult> {
   const cached = classificationCache.get(rawTitle);
-  if (cached) {
-    return cached;
-  }
+  if (cached) return cached;
 
   const result = await classifyContent(rawTitle);
   classificationCache.set(rawTitle, result);
   return result;
 }
 
-/**
- * Clear the classification cache
- */
 export function clearClassificationCache(): void {
   classificationCache.clear();
 }
-
