@@ -18,6 +18,7 @@ import type { RawScreening, ScraperConfig } from "../types";
 import { FestivalDetector } from "../festivals/festival-detector";
 import { combineDateAndTime } from "../utils/date-parser";
 import { normalizeUrl, slugify } from "../utils/url";
+import { escapeRegex } from "@/lib/title-extraction/patterns";
 
 export class GardenCinemaScraper extends BaseScraper {
   config: ScraperConfig = {
@@ -73,17 +74,11 @@ export class GardenCinemaScraper extends BaseScraper {
 
         // Get film title - it's in the title link
         const $titleLink = $film.find(".films-list__by-date__film__title a");
-        let title = $titleLink.text().trim();
+        const rawTitle = $titleLink.text();
 
-        // Remove rating from title (e.g., "Little Women U" -> "Little Women")
-        // Rating is in a span within the link
         const $rating = $film.find(".films-list__by-date__film__rating");
         const rating = $rating.text().trim();
-        if (rating) {
-          title = title.replace(rating, "").trim();
-          // Clean up any trailing whitespace
-          title = title.replace(/\s+$/, "").trim();
-        }
+        const title = GardenCinemaScraper.cleanTitle(rawTitle, rating);
 
         if (!title) {
           return;
@@ -136,6 +131,25 @@ export class GardenCinemaScraper extends BaseScraper {
 
     console.log(`[${this.config.cinemaId}] Found ${screenings.length} future screenings`);
     return screenings;
+  }
+
+  /**
+   * Strip a trailing BBFC rating from a Garden Cinema title and collapse
+   * internal whitespace. The Garden site emits markup like
+   * `<a>What's Up, Doc?          U</a>`, where "U" is a separate `<span>`
+   * with the rating but Cheerio's `.text()` flattens both into one string.
+   *
+   * The previous implementation used `title.replace(rating, "")` which
+   * matched the *first* occurrence — eating the "U" in "Up" before the
+   * trailing rating's "U". Anchor to end-of-string instead.
+   */
+  static cleanTitle(rawTitle: string, rating: string): string {
+    let title = rawTitle.trim();
+    if (rating) {
+      const trailing = new RegExp(`\\s*${escapeRegex(rating)}\\s*$`);
+      title = title.replace(trailing, "").trim();
+    }
+    return title.replace(/\s+/g, " ").trim();
   }
 
   /**
