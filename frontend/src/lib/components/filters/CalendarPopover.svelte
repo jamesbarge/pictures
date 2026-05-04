@@ -84,7 +84,7 @@
 	<div class="cal-head">
 		<button class="cal-nav" onclick={prev} aria-label="Previous month" type="button">‹</button>
 		<div class="cal-title">
-			<span class="italic-cap">{MONTH_NAMES[viewMonth].charAt(0)}</span>{MONTH_NAMES[viewMonth].slice(1)}
+			{MONTH_NAMES[viewMonth]}
 			<span class="year">{viewYear}</span>
 		</div>
 		<button class="cal-nav" onclick={next} aria-label="Next month" type="button">›</button>
@@ -157,7 +157,6 @@
 		font-variation-settings: '"SOFT" 100', '"opsz" 72';
 	}
 
-	.cal-title .italic-cap { font-style: italic; font-weight: 400; }
 	.cal-title .year {
 		font-family: var(--font-serif-italic);
 		font-style: italic;

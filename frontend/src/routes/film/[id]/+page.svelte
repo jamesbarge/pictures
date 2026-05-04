@@ -136,9 +136,6 @@
 		return parts;
 	});
 
-	const titleFirst = $derived(film.title.charAt(0));
-	const titleRest = $derived(film.title.slice(1));
-
 	// Pulled from the shared today store so the "Today" pill in the day strip
 	// advances at midnight without requiring a route re-load.
 	const todayStr = $derived(todayStore.value);
@@ -198,9 +195,7 @@
 			{#if nextScreening} · next screening {nextScreeningLabel}{/if}
 		</div>
 
-		<h1 class="film-title">
-			<span class="italic-cap">{titleFirst}</span><span>{titleRest}</span>
-		</h1>
+		<h1 class="film-title">{film.title}</h1>
 
 		{#if film.originalTitle && film.originalTitle !== film.title}
 			<p class="original-title">{film.originalTitle}</p>
@@ -265,9 +260,7 @@
 <div class="body-grid">
 	<section class="showings" aria-labelledby="showings-heading">
 		<div class="showings-head">
-			<h2 id="showings-heading" class="showings-title">
-				<span class="italic-cap">S</span>howings
-			</h2>
+			<h2 id="showings-heading" class="showings-title">Showings</h2>
 
 			<div class="day-strip">
 				{#if groupedByDate.length > 1}
@@ -517,8 +510,6 @@
 		.film-title { font-size: 96px; }
 	}
 
-	.film-title .italic-cap { font-weight: 400; font-style: italic; }
-
 	.original-title {
 		font-family: var(--font-serif-italic);
 		font-style: italic;
@@ -661,8 +652,6 @@
 	@media (min-width: 1024px) {
 		.showings-title { font-size: 32px; }
 	}
-
-	.showings-title .italic-cap { font-style: italic; }
 
 	.day-strip {
 		display: flex;

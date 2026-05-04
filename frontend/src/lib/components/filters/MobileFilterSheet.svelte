@@ -175,7 +175,7 @@
 {#if open}
 	<div class="sheet" role="dialog" aria-label="Filter programme" aria-modal="true">
 		<header class="sheet-head">
-			<h2 class="sheet-title"><span class="italic-cap">F</span>ilter</h2>
+			<h2 class="sheet-title">Filter</h2>
 			<button class="close" onclick={onClose} aria-label="Close filters" type="button">×</button>
 		</header>
 
@@ -318,8 +318,6 @@
 		color: var(--color-text);
 		font-variation-settings: '"SOFT" 100', '"opsz" 144';
 	}
-
-	.sheet-title .italic-cap { font-style: italic; font-weight: 400; }
 
 	.close {
 		width: 36px;
