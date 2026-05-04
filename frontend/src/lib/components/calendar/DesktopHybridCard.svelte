@@ -44,9 +44,6 @@
 	const visible = $derived(upcoming.slice(0, maxScreenings));
 	const overflow = $derived(Math.max(0, upcoming.length - maxScreenings));
 
-	const titleFirst = $derived(film.title.charAt(0));
-	const titleRest = $derived(film.title.slice(1));
-
 	const bylineText = $derived.by(() => {
 		const parts: string[] = [];
 		if (film.director) parts.push(film.director);
@@ -107,9 +104,7 @@
 	</a>
 
 	<a href="/film/{film.id}" class="title-link">
-		<h3 class="title film-title">
-			<span class="title-italic-cap">{titleFirst}</span><span>{titleRest}</span>
-		</h3>
+		<h3 class="title film-title">{film.title}</h3>
 	</a>
 
 	{#if bylineText}
@@ -210,10 +205,6 @@
 		line-height: 0.98;
 		color: var(--color-text);
 		font-variation-settings: '"SOFT" 100', '"opsz" 48';
-	}
-
-	.title-italic-cap {
-		font-style: italic;
 	}
 
 	.byline {

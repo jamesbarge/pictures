@@ -76,7 +76,7 @@
 
 <section class="masthead">
 	<h1 class="masthead-title" aria-label="{weekday}, the {ordinal}">
-		<span class="italic-cap">{weekday.charAt(0)}</span><span>{weekday.slice(1)}</span><span class="italic-comma">,</span> <span class="masthead-muted">the {ordinal}</span>
+		{weekday}<span class="italic-comma">,</span> <span class="masthead-muted">the {ordinal}</span>
 	</h1>
 
 	<div class="day-strip">
@@ -146,11 +146,6 @@
 		letter-spacing: -0.03em;
 		color: var(--color-text);
 		font-variation-settings: '"SOFT" 100', '"opsz" 144';
-	}
-
-	.masthead-title .italic-cap {
-		font-weight: 400;
-		font-style: italic;
 	}
 
 	.masthead-title .italic-comma {

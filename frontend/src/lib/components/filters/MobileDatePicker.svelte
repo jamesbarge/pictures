@@ -81,14 +81,14 @@
 		<div class="grabber-wrap"><div class="grabber"></div></div>
 
 		<div class="sheet-head">
-			<h3 class="title"><span class="italic-cap">P</span>ick a date</h3>
+			<h3 class="title">Pick a date</h3>
 			<button class="close-btn" type="button" onclick={onClose}>Close</button>
 		</div>
 
 		<div class="month-head">
 			<button type="button" class="nav-btn" onclick={prev} aria-label="Previous month">‹</button>
 			<div class="month-name">
-				<span class="italic-cap">{MONTH_NAMES[viewMonth].charAt(0)}</span>{MONTH_NAMES[viewMonth].slice(1)}
+				{MONTH_NAMES[viewMonth]}
 				<span class="year">{viewYear}</span>
 			</div>
 			<button type="button" class="nav-btn" onclick={next} aria-label="Next month">›</button>
@@ -176,8 +176,6 @@
 		font-variation-settings: '"SOFT" 100', '"opsz" 48';
 	}
 
-	.title .italic-cap { font-style: italic; font-weight: 400; }
-
 	.close-btn {
 		background: transparent;
 		border: none;
@@ -215,7 +213,6 @@
 		font-variation-settings: '"SOFT" 100', '"opsz" 72';
 	}
 
-	.month-name .italic-cap { font-style: italic; font-weight: 400; }
 	.month-name .year {
 		font-family: var(--font-serif-italic);
 		font-style: italic;

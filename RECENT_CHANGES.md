@@ -1,3 +1,12 @@
+## 2026-05-04: Remove italic first-letter treatment from titles and headings
+**PR**: TBD | **Files**: `frontend/src/lib/components/calendar/{DayMasthead,DesktopHybridCard,MobileFilmRow}.svelte`, `frontend/src/lib/components/filters/{MobileFilterSheet,MobileDatePicker,CalendarPopover}.svelte`, `frontend/src/lib/components/film/{FilmSimilarRail,FilmSidebar}.svelte`, `frontend/src/routes/film/[id]/+page.svelte`
+- Drop the `italic-cap` / `title-italic-cap` drop-cap-lite pattern that gave the first character of titles, day mastheads, and section headings a distinct italic glyph (e.g. the italic *M* in "Monday, the fourth").
+- Strip the `<span class="italic-cap">X</span>Y` wrappers, the matching CSS rules, and the now-orphaned `titleFirst`/`titleRest` derivations across 9 components/pages.
+- Italic comma in the day masthead and italic month-strip elsewhere are left in place — only the first-letter treatment was removed.
+- Verified at desktop (1440×900) and mobile (390×844): masthead, film cards, mobile film rows, mobile Filter sheet, and mobile Date picker all render with no `italic-cap` nodes in DOM.
+
+---
+
 ## 2026-04-29: Fix CI for PR #469 — ESLint flat-config plugin scoping + Vercel webpack externals
 **PR**: #469 | **Files**: `eslint.config.mjs`, `next.config.ts`, `src/hooks/useUrlFilters.ts`
 - **ESLint**: Scope our `jsx-a11y/*`, `react-hooks/*`, `@typescript-eslint/*`, `@next/next/*` rule overrides via `files: ["**/*.{js,jsx,mjs,ts,tsx,mts,cts}"]` so they only apply where `eslint-config-next` registers those plugins. Reverts the (incorrect) explicit `jsx-a11y` re-registration from d6501bbc that triggered "Cannot redefine plugin 'jsx-a11y'" — `eslint-config-next/core-web-vitals` already registers it.

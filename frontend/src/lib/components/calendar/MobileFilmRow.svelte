@@ -75,17 +75,12 @@
 			cinemaName: s.cinemaName
 		}, 'calendar');
 	}
-
-	const titleFirst = $derived(film.title.charAt(0));
-	const titleRest = $derived(film.title.slice(1));
 </script>
 
 <article class="row film-card">
 	<div class="text-col">
 		<a href="/film/{film.id}" class="title-link">
-			<h3 class="title film-title">
-				<span class="title-italic-cap">{titleFirst}</span><span>{titleRest}</span>
-			</h3>
+			<h3 class="title film-title">{film.title}</h3>
 		</a>
 		{#if bylineText}
 			<p class="byline">a film by {bylineText}</p>
@@ -168,11 +163,6 @@
 		line-height: 0.92;
 		color: var(--color-text);
 		font-variation-settings: '"SOFT" 100', '"opsz" 144';
-	}
-
-	.title-italic-cap {
-		font-weight: 400;
-		font-style: italic;
 	}
 
 	.byline {
