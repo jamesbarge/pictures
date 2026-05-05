@@ -12,9 +12,7 @@
 {#if similar.length >= 2}
 	<section class="similar" aria-labelledby="similar-heading">
 		<header class="similar-head">
-			<h2 id="similar-heading" class="similar-title">
-				<span class="italic-cap">I</span>f you like this
-			</h2>
+			<h2 id="similar-heading" class="similar-title">If you like this</h2>
 		</header>
 		<div class="similar-rail">
 			{#each similar as s (s.id)}
@@ -55,11 +53,6 @@
 		line-height: 1;
 		color: var(--color-text);
 		font-variation-settings: '"SOFT" 100', '"opsz" 36';
-	}
-
-	.similar-title .italic-cap {
-		font-family: var(--font-serif-italic);
-		font-style: italic;
 	}
 
 	.similar-rail {

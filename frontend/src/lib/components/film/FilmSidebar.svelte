@@ -64,7 +64,7 @@
 	{/if}
 
 	<section class="status-section">
-		<h3 class="credits-title"><span class="italic-cap">S</span>tatus</h3>
+		<h3 class="credits-title">Status</h3>
 		<div class="status-row">
 			<button
 				type="button"
@@ -114,8 +114,6 @@
 		letter-spacing: -0.005em;
 		color: var(--color-text);
 	}
-	.credits-title :global(.italic-cap) { font-style: italic; }
-
 	.credit-row {
 		padding: 5px 0;
 		display: flex;

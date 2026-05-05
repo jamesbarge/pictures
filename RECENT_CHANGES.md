@@ -1,11 +1,20 @@
 ## 2026-05-04: Remove Gemini from `/scrape` pipeline + fix two pre-existing data quality issues
-**PR**: TBD | **Files**: `src/lib/{event-classifier,content-classifier,film-similarity}.ts`, `src/lib/title-extraction/{ai-extractor,index}.ts`, `src/scrapers/cinemas/garden.ts`, `scripts/unmerge-bad-films.ts`, tests
+**PR**: #472 | **Files**: `src/lib/{event-classifier,content-classifier,film-similarity}.ts`, `src/lib/title-extraction/{ai-extractor,index}.ts`, `src/scrapers/cinemas/garden.ts`, `scripts/unmerge-bad-films.ts`, tests
 - `/scrape` no longer invokes any LLM. The three pipeline classifiers (event, content, title) are now deterministic rules engines / adapters on top of `extractFilmTitleSync`. Run time dropped ~33% (Garden: 35s → 23s) because the previous Gemini error path retried with exponential backoff before falling back.
 - Fixed Garden's "Up→p" bug — `title.replace(rating, "")` was a substring replace that ate the "U" in "Up" before the trailing rating's "U". Anchored to end-of-string.
 - Fixed pg_trgm matcher merging different films with similar short titles (Thin Man → Third Man at 64%, Awful Truth → Truth at 60%). Added length-aware threshold (≤3 words → 0.78) plus year disambiguation (>5-year delta = reject).
 - Un-merged the two bad merges already in production Supabase via `scripts/unmerge-bad-films.ts --apply`. Created fresh records for The Thin Man (1934) + The Awful Truth (1937), re-linked their screenings.
 - Tests: 887/887 passing (76 AI-specific tests dropped from `ai-extractor.test.ts`, 31 new tests added). Lint + tsc clean.
 - `@google/genai` and `src/lib/gemini.ts` remain for admin-only paths; their cleanup is a separate follow-up.
+
+---
+
+## 2026-05-04: Remove italic first-letter treatment from titles and headings
+**PR**: #471 | **Files**: `frontend/src/lib/components/calendar/{DayMasthead,DesktopHybridCard,MobileFilmRow}.svelte`, `frontend/src/lib/components/filters/{MobileFilterSheet,MobileDatePicker,CalendarPopover}.svelte`, `frontend/src/lib/components/film/{FilmSimilarRail,FilmSidebar}.svelte`, `frontend/src/routes/film/[id]/+page.svelte`
+- Drop the `italic-cap` / `title-italic-cap` drop-cap-lite pattern that gave the first character of titles, day mastheads, and section headings a distinct italic glyph (e.g. the italic *M* in "Monday, the fourth").
+- Strip the `<span class="italic-cap">X</span>Y` wrappers, the matching CSS rules, and the now-orphaned `titleFirst`/`titleRest` derivations across 9 components/pages.
+- Italic comma in the day masthead and italic month-strip elsewhere are left in place — only the first-letter treatment was removed.
+- Verified at desktop (1440×900) and mobile (390×844): masthead, film cards, mobile film rows, mobile Filter sheet, and mobile Date picker all render with no `italic-cap` nodes in DOM.
 
 ---
 
