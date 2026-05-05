@@ -1,3 +1,11 @@
+## 2026-05-05: Delete phantom Stoma screening + surface (cinema, source_id) duplicate issue
+**PR**: TBD | **Files**: `scripts/delete-stoma-phantom.ts`
+- Stoma → Guo Ran from yesterday's audit was not a fuzzy-matcher misfire (trigram sim was 0.016, far below any threshold). Two distinct screening rows shared the same `(cinema_id, source_id, datetime)` for Garden's 2026-05-17 18:00 Stoma showing — one wrongly linked to Guo Ran (scraped 2026-04-29), one correctly linked to Stoma (scraped 2026-05-05).
+- Deleted the phantom Guo Ran row (id `cbcdfce0`) via `scripts/delete-stoma-phantom.ts --apply`. Four pre-flight guards: target id match, target film_title='Guo Ran', source_id contains 'stoma', sibling row linked to film_title='Stoma'.
+- **Broader finding (out of scope, separate ticket)**: the `screenings` table has no unique constraint beyond `PRIMARY KEY (id)`. The same audit surfaced 20+ other `(cinema_id, source_id, datetime)` collisions where re-scrapes inserted duplicate rows that resolved to different `film_id`s — across Picturehouse, Rio, Prince Charles, Everyman, ICA, Curzon, Garden. Calendar likely renders these as doubled screenings.
+
+---
+
 ## 2026-05-04: Remove Gemini from `/scrape` pipeline + fix two pre-existing data quality issues
 **PR**: #472 | **Files**: `src/lib/{event-classifier,content-classifier,film-similarity}.ts`, `src/lib/title-extraction/{ai-extractor,index}.ts`, `src/scrapers/cinemas/garden.ts`, `scripts/unmerge-bad-films.ts`, tests
 - `/scrape` no longer invokes any LLM. The three pipeline classifiers (event, content, title) are now deterministic rules engines / adapters on top of `extractFilmTitleSync`. Run time dropped ~33% (Garden: 35s → 23s) because the previous Gemini error path retried with exponential backoff before falling back.
