@@ -14,7 +14,6 @@ import { getPosterService } from "@/lib/posters";
 import {
   findMatchingFilm,
   isSimilarityConfigured,
-  isGeminiConfigured,
 } from "@/lib/film-similarity";
 import { v4 as uuidv4 } from "uuid";
 
@@ -113,11 +112,7 @@ export async function findFilmBySimilarity(
   }
 
   try {
-    const match = await findMatchingFilm(
-      matchingTitle,
-      scraperYear,
-      isGeminiConfigured()
-    );
+    const match = await findMatchingFilm(matchingTitle, scraperYear);
 
     if (match) {
       console.log(

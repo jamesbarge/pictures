@@ -1,10 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
-
-// Mock Gemini so AI fallback doesn't fire
-vi.mock("./gemini", () => ({
-  generateText: vi.fn().mockRejectedValue(new Error("AI should not be called for deterministic patterns")),
-  stripCodeFences: vi.fn((s: string) => s),
-}));
+import { describe, it, expect } from "vitest";
 
 import { classifyContent } from "./content-classifier";
 

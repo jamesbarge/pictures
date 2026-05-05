@@ -1,9 +1,60 @@
+## 2026-05-04: Remove Gemini from `/scrape` pipeline + fix two pre-existing data quality issues
+**PR**: #472 | **Files**: `src/lib/{event-classifier,content-classifier,film-similarity}.ts`, `src/lib/title-extraction/{ai-extractor,index}.ts`, `src/scrapers/cinemas/garden.ts`, `scripts/unmerge-bad-films.ts`, tests
+- `/scrape` no longer invokes any LLM. The three pipeline classifiers (event, content, title) are now deterministic rules engines / adapters on top of `extractFilmTitleSync`. Run time dropped ~33% (Garden: 35s → 23s) because the previous Gemini error path retried with exponential backoff before falling back.
+- Fixed Garden's "Up→p" bug — `title.replace(rating, "")` was a substring replace that ate the "U" in "Up" before the trailing rating's "U". Anchored to end-of-string.
+- Fixed pg_trgm matcher merging different films with similar short titles (Thin Man → Third Man at 64%, Awful Truth → Truth at 60%). Added length-aware threshold (≤3 words → 0.78) plus year disambiguation (>5-year delta = reject).
+- Un-merged the two bad merges already in production Supabase via `scripts/unmerge-bad-films.ts --apply`. Created fresh records for The Thin Man (1934) + The Awful Truth (1937), re-linked their screenings.
+- Tests: 887/887 passing (76 AI-specific tests dropped from `ai-extractor.test.ts`, 31 new tests added). Lint + tsc clean.
+- `@google/genai` and `src/lib/gemini.ts` remain for admin-only paths; their cleanup is a separate follow-up.
+
+---
+
 ## 2026-05-04: Remove italic first-letter treatment from titles and headings
-**PR**: TBD | **Files**: `frontend/src/lib/components/calendar/{DayMasthead,DesktopHybridCard,MobileFilmRow}.svelte`, `frontend/src/lib/components/filters/{MobileFilterSheet,MobileDatePicker,CalendarPopover}.svelte`, `frontend/src/lib/components/film/{FilmSimilarRail,FilmSidebar}.svelte`, `frontend/src/routes/film/[id]/+page.svelte`
+**PR**: #471 | **Files**: `frontend/src/lib/components/calendar/{DayMasthead,DesktopHybridCard,MobileFilmRow}.svelte`, `frontend/src/lib/components/filters/{MobileFilterSheet,MobileDatePicker,CalendarPopover}.svelte`, `frontend/src/lib/components/film/{FilmSimilarRail,FilmSidebar}.svelte`, `frontend/src/routes/film/[id]/+page.svelte`
 - Drop the `italic-cap` / `title-italic-cap` drop-cap-lite pattern that gave the first character of titles, day mastheads, and section headings a distinct italic glyph (e.g. the italic *M* in "Monday, the fourth").
 - Strip the `<span class="italic-cap">X</span>Y` wrappers, the matching CSS rules, and the now-orphaned `titleFirst`/`titleRest` derivations across 9 components/pages.
 - Italic comma in the day masthead and italic month-strip elsewhere are left in place — only the first-letter treatment was removed.
 - Verified at desktop (1440×900) and mobile (390×844): masthead, film cards, mobile film rows, mobile Filter sheet, and mobile Date picker all render with no `italic-cap` nodes in DOM.
+
+---
+
+## 2026-05-03: Drop deprecated playwright-extra + StealthPlugin
+**PR**: TBD | **Files**: `src/scrapers/utils/browser.ts`, `package.json`, `next.config.ts`
+- Stream 1: `playwright-extra` is dead (last meaningful commit March 2023). `puppeteer-extra-plugin-stealth` is consistently blocked by Cloudflare 2024+. Both are dead-ware.
+- Drop the `addExtra(rebrowserChromium).use(stealth)` double-layer + 17 stealth evasion enables. Keep `rebrowser-playwright` directly + the hand-rolled `addInitScript` evasions in `createPage()` (those still work).
+- The `as unknown as Browser` cast that was needed for the playwright-extra/rebrowser type mismatch is no longer needed — types unify cleanly with single-package imports.
+- Full Patchright migration deferred — requires `npm install` which hangs in the agent sandbox. This PR ships the easy half (dropping verifiably-dead deps).
+- Tests: 918/918. Typecheck clean.
+
+---
+
+## 2026-05-03: Retire AutoScrape and AutoQuality harnesses
+**PR**: TBD | **Files**: deleted `src/autoresearch/` (16 files), relocated thresholds config to `src/lib/data-quality/`
+- Stream 7: AutoScrape produced zero outputs ever; the directory it was supposed to write to in Obsidian doesn't even exist. BFI IMAX silent-breaker case (2026-04-27/28) was missed entirely.
+- Stream 8: ~£8.70/month sunk-cost recovery from killed Gemini 3.1 Pro API calls.
+- AutoQuality plateaued at DQS 90.0-90.3 across 30 experiments — its own report concluded "biggest remaining lever is direct enrichment via Claude Code scripts."
+- The thresholds config stays — relocated from `src/autoresearch/autoquality/thresholds.json` to `src/lib/data-quality/thresholds.json` since `tmdb/match.ts` + 3 other call sites still need them. The DB-first loading path and cache mutation surface both removed; thresholds are now a static bundled JSON.
+- Tests: 918/918 passing. Typecheck clean.
+
+---
+
+## 2026-05-03: Remove Bree+PM2 scheduler — `/scrape` is now the only entry point
+**PR**: TBD | **Files**: deleted `src/scheduler/` (12 files), `ecosystem.config.cjs`; `package.json` (-2 deps, -5 scripts)
+- Per `Pictures/Research/scraping-rethink-2026-05/SYNTHESIS.md`, the user runs scraping weekly via `/scrape`. The 03:00 UTC daily cron + 6 secondary jobs no longer match the workflow.
+- Drops `bree` and `pm2` npm deps. Drops scheduler:dev/start/stop/logs/restart scripts.
+- All 7 cron jobs are absorbed by `/scrape` (scrape-all + Letterboxd in runScrapeAll, daily-sweep as cleanup:upcoming+audit:films, AutoScrape retired in next commit, BFI PDF/Eventive remain available via standalone npm scripts).
+- Tests: 918/918 passing (5 deleted catch-up tests gone). Typecheck clean.
+- `package-lock.json` not synced in this commit — npm install hung in the agent sandbox; user runs `npm install` once locally to update.
+
+---
+
+## 2026-05-03: Unified `/scrape` slash command (Phase 1 MVP) — single-shot scrape + enrichment + silent-breaker detection
+**PR**: TBD | **Files**: `src/lib/scrape-quarantine.ts` (new), `src/scripts/run-scrape-and-enrich.ts` (new), `.claude/commands/scrape.md` (rewritten), `.claude/commands/scrape-one.md` (renamed from old scrape.md), `package.json` (+1 npm script)
+- **New `/scrape` slash command**: single entry point that runs `runScrapeAll()` + `cleanup:upcoming` + `audit:films` + silent-breaker detection in order. No cron required. Args: empty (full run), `enrich` (skip scrape), `scrape` (skip enrich), `health` (read-only quarantine).
+- **Silent-breaker detection (`src/lib/scrape-quarantine.ts`)**: Prowlarr-style `IndexerStatusService` pattern — flags any cinema whose last N (default 2) consecutive runs are `success && screening_count=0`. Read-only against `scraper_runs`. Validated against current DB: 0 silent breakers, BFI IMAX recovered 2026-04-29.
+- **Orchestrator (`src/scripts/run-scrape-and-enrich.ts`)**: Spawns `cleanup:upcoming` and `audit:films` as child processes (failure isolation), calls `runScrapeAll()` in-process. Streams output to parent. Reports per-phase ✓/✗ + duration + final action items.
+- **Existing `/scrape` preserved**: Renamed to `/scrape-one` for single-cinema testing. Old behaviour intact.
+- **Driven by**: `Pictures/Research/scraping-rethink-2026-05/SYNTHESIS.md` (Phase 1 MVP section). Defers Patchright migration, bge-m3 embedding dedup, and append-only corrections table to Phases 2–3.
 
 ---
 

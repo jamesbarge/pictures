@@ -16,7 +16,7 @@ import { films, screenings } from "@/db/schema";
 import { eq, isNull, and, gte } from "drizzle-orm";
 import { generateTitleVariations, extractYearFromTitle } from "@/lib/enrichment/title-variations";
 import { matchFilmToTMDB } from "@/lib/tmdb/match";
-import { loadThresholdsAsync } from "@/autoresearch/autoquality/load-thresholds";
+import { loadThresholdsAsync } from "@/lib/data-quality/load-thresholds";
 import type { EnrichmentStatus, EnrichmentAttempt } from "@/types/enrichment";
 
 const TMDB_SPACING_MS = 250;

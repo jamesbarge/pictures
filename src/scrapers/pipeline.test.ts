@@ -1,11 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
-
-// Mock Gemini client (imported transitively via film-similarity → pipeline)
-vi.mock("@/lib/gemini", () => ({
-  generateText: vi.fn().mockResolvedValue("{}"),
-  stripCodeFences: (text: string) => text,
-  isGeminiConfigured: () => false,
-}));
+import { describe, it, expect } from "vitest";
 
 import { normalizeTitle, cleanFilmTitle } from "./pipeline";
 

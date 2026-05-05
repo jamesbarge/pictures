@@ -1,11 +1,20 @@
 /**
  * Event Classifier
  *
- * Uses Claude to extract structured event metadata from film titles and descriptions.
- * Detects: event types, formats, accessibility features, and seasons.
+ * Extracts structured event metadata from a screening title and optional
+ * description using deterministic regex rules — no LLM calls. Emits an
+ * EventClassification covering: clean film title, event types, screening
+ * format, accessibility flags, and (when present) the season/series name.
+ *
+ * The rules below were lifted from the previous Gemini prompt's "Rules:"
+ * section and codified verbatim. The output shape is identical to the
+ * previous AI-backed implementation, so callers do not change.
  */
 
-import { generateText, stripCodeFences } from "./gemini";
+import {
+  extractFilmTitleSync,
+  type PatternExtractionResult,
+} from "./title-extraction/pattern-extractor";
 import type { EventType, ScreeningFormat } from "@/types/screening";
 
 // Valid event types from the schema
@@ -24,168 +33,210 @@ const VALID_EVENT_TYPES: EventType[] = [
   "members_only",
   "relaxed",
 ];
-const VALID_EVENT_TYPE_SET = new Set<string>(VALID_EVENT_TYPES);
-
-// Valid formats from the schema
-const VALID_FORMATS: ScreeningFormat[] = [
-  "35mm",
-  "70mm",
-  "70mm_imax",
-  "dcp",
-  "dcp_4k",
-  "imax",
-  "imax_laser",
-  "dolby_cinema",
-  "4dx",
-  "screenx",
-];
 
 interface EventClassification {
-  // The actual film title (cleaned of event info)
   cleanTitle: string;
-
-  // Event classification
   isSpecialEvent: boolean;
-  eventTypes: EventType[]; // Can have multiple (e.g., premiere + q_and_a)
+  eventTypes: EventType[];
   eventDescription: string | null;
-
-  // Format
   format: ScreeningFormat | null;
   is3D: boolean;
-
-  // Accessibility
   hasSubtitles: boolean;
   subtitleLanguage: string | null;
   hasAudioDescription: boolean;
   isRelaxedScreening: boolean;
-
-  // Season/Series
   season: string | null;
-
-  // Confidence
   confidence: "high" | "medium" | "low";
 }
 
+/* -------------------------------------------------------------------------- */
+/* Rules tables                                                               */
+/* -------------------------------------------------------------------------- */
+
+// Event type detection. Order matters: more specific patterns first.
+const EVENT_TYPE_RULES: ReadonlyArray<{ pattern: RegExp; type: EventType }> = [
+  { pattern: /\brestoration\s+premiere\b/i, type: "restoration_premiere" },
+  { pattern: /\b(?:uk|world|london|european)\s+premiere\b|\bpremiere\b/i, type: "premiere" },
+  { pattern: /\bsneak\s+preview\b|\bpreview\s+screening\b|\b\+\s*preview\b|\bpreview\b/i, type: "preview" },
+  { pattern: /\bsing[\s-]*a[\s-]*long\b|\bsingalong\b/i, type: "singalong" },
+  { pattern: /\bquote[\s-]*a[\s-]*long\b/i, type: "quote_along" },
+  { pattern: /\bq\s*&\s*a\b|\+\s*q&a/i, type: "q_and_a" },
+  { pattern: /\bintro(?:duced)?\s+by\b|\b\+\s*intro\b|\bwith\s+intro\b/i, type: "intro" },
+  { pattern: /\bpanel\s+discussion\b|\b\+\s*discussion\b/i, type: "discussion" },
+  { pattern: /\bdouble\s+bill\b|\bdouble\s+feature\b|\b2\s+films\b/i, type: "double_bill" },
+  { pattern: /\bmarathon\b/i, type: "marathon" },
+  { pattern: /\b\d+(?:st|nd|rd|th)\s+anniversary\b|\banniversary\s+screening\b/i, type: "anniversary" },
+  { pattern: /\bmembers[\s']*only\b|\bmembership\s+screening\b/i, type: "members_only" },
+  { pattern: /\brelaxed\s+(?:screening|film|cinema)\b/i, type: "relaxed" },
+];
+
+// Format detection. Order matters: 70mm IMAX before plain 70mm/IMAX.
+const FORMAT_RULES: ReadonlyArray<{ pattern: RegExp; format: ScreeningFormat }> = [
+  { pattern: /\b70mm\s+imax\b/i, format: "70mm_imax" },
+  { pattern: /\b70mm\b|\(70mm\)/i, format: "70mm" },
+  { pattern: /\b35mm\b|\(35mm\)/i, format: "35mm" },
+  { pattern: /\bimax\s+(?:laser|with\s+laser)\b/i, format: "imax_laser" },
+  { pattern: /\bimax\b/i, format: "imax" },
+  { pattern: /\bdolby\s+cinema\b/i, format: "dolby_cinema" },
+  { pattern: /\b4dx\b/i, format: "4dx" },
+  { pattern: /\bscreenx\b/i, format: "screenx" },
+  { pattern: /\b4k\s+restoration\b|\b4k\s+remaster(?:ed)?\b|\b\(4k\)\b/i, format: "dcp_4k" },
+];
+
+// 3D and accessibility flags
+const IS_3D_PATTERN = /\b(?:in\s+)?3d\b|\b3-d\b/i;
+const RELAXED_PATTERN = /\brelaxed\s+(?:screening|film|cinema|performance)\b/i;
+const SUBTITLES_PATTERN = /\b(?:with\s+)?subtitles?\b|\bsubtitled\b|\bsubt\.?\b|\bcc\b(?!\s*\.)/i;
+const AUDIO_DESCRIPTION_PATTERN = /\baudio[\s-]+described?\b|\b\bAD\b(?!\w)/;
+
+// Season / retrospective extraction. We try to detect "X Season:", "X
+// Retrospective:", "X presents:" etc. and capture the prefix as season name.
+const SEASON_PATTERNS: ReadonlyArray<RegExp> = [
+  /^([A-Z][^:]{4,80}?\s+(?:Season|Retrospective|Series|Festival|Programme|Strand))\s*:/i,
+  /^([A-Z][^:]{4,80}?\s+presents?)\s*:/i,
+];
+
+// Subtitle-language hints. Map common keywords to ISO-ish language codes.
+const SUBTITLE_LANGUAGE_RULES: ReadonlyArray<{ pattern: RegExp; lang: string }> = [
+  { pattern: /\bfrench\s+subtitles\b/i, lang: "fr" },
+  { pattern: /\bgerman\s+subtitles\b/i, lang: "de" },
+  { pattern: /\bspanish\s+subtitles\b/i, lang: "es" },
+  { pattern: /\bitalian\s+subtitles\b/i, lang: "it" },
+  { pattern: /\b(?:english\s+subtitles|english\s+st)\b/i, lang: "en" },
+  { pattern: /\bjapanese\s+subtitles\b/i, lang: "ja" },
+];
+
+/* -------------------------------------------------------------------------- */
+/* Classifier                                                                 */
+/* -------------------------------------------------------------------------- */
+
 /**
- * Classify a screening based on its title and optional description
+ * Classify a screening based on its title and optional description.
+ *
+ * Async signature retained for backward compatibility with existing
+ * callers (the previous implementation made network calls).
  */
 export async function classifyEvent(
   title: string,
   description?: string
 ): Promise<EventClassification> {
-  const prompt = `You are a cinema event classifier. Analyze this screening and extract structured metadata.
+  const haystack = description ? `${title} ${description}` : title;
 
-Title: "${title}"
-${description ? `Description: "${description}"` : ""}
+  // 1) Event types — collect all matches, dedupe, preserve schema order.
+  const matchedTypes = new Set<EventType>();
+  for (const rule of EVENT_TYPE_RULES) {
+    if (rule.pattern.test(haystack)) {
+      matchedTypes.add(rule.type);
+    }
+  }
+  const eventTypes: EventType[] = VALID_EVENT_TYPES.filter((t) => matchedTypes.has(t));
 
-Extract the following information in JSON format:
-
-{
-  "cleanTitle": "The actual film title without event prefixes/suffixes (e.g., 'UK PREMIERE: The Movie + Q&A' → 'The Movie')",
-  "isSpecialEvent": true/false,
-  "eventTypes": ["array of event types from: ${VALID_EVENT_TYPES.join(", ")}"],
-  "eventDescription": "Brief description of the event or null",
-  "format": "one of: ${VALID_FORMATS.join(", ")} or null",
-  "is3D": true/false,
-  "hasSubtitles": true/false,
-  "subtitleLanguage": "language code or null",
-  "hasAudioDescription": true/false,
-  "isRelaxedScreening": true/false,
-  "season": "Name of season/retrospective or null (e.g., 'Hitchcock: Master of Suspense')",
-  "confidence": "high/medium/low"
-}
-
-Rules:
-- "Sing-A-Long", "Singalong" → eventTypes: ["singalong"]
-- "Q&A", "+ Q&A" → eventTypes include "q_and_a"
-- "Preview" → eventTypes: ["preview"]
-- "UK/World/London Premiere" → eventTypes: ["premiere"]
-- "Double Bill", "2 films" → eventTypes: ["double_bill"]
-- "Marathon" → eventTypes: ["marathon"]
-- "(35mm)", "35mm print" → format: "35mm"
-- "(70mm)" → format: "70mm"
-- "IMAX" → format: "imax"
-- "4K", "4K Restoration" → format: "dcp_4k"
-- "3D" → is3D: true
-- "Relaxed screening" → isRelaxedScreening: true
-- "With subtitles", "Subtitled" → hasSubtitles: true
-- "Audio described", "AD" → hasAudioDescription: true
-- Season examples: "BFI Thriller Season", "Hitchcock Retrospective", "French New Wave"
-
-Return ONLY valid JSON, no explanation.`;
-
-  // Retry with exponential backoff for rate limits
-  const maxRetries = 3;
-  let lastError: Error | null = null;
-
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    try {
-      const text = await generateText(prompt);
-
-      // Parse JSON response
-      const json = JSON.parse(stripCodeFences(text));
-
-      // Validate and normalize the response
-      return {
-        cleanTitle: json.cleanTitle || title,
-        isSpecialEvent: json.isSpecialEvent === true || (json.eventTypes?.length || 0) > 0,
-        eventTypes: (json.eventTypes || []).filter((t: string) =>
-          VALID_EVENT_TYPE_SET.has(t)
-        ),
-        eventDescription: json.eventDescription || null,
-        format: VALID_FORMATS.includes(json.format) ? json.format : null,
-        is3D: json.is3D === true,
-        hasSubtitles: json.hasSubtitles === true,
-        subtitleLanguage: json.subtitleLanguage || null,
-        hasAudioDescription: json.hasAudioDescription === true,
-        isRelaxedScreening: json.isRelaxedScreening === true,
-        season: json.season || null,
-        confidence: json.confidence || "medium",
-      };
-    } catch (e: unknown) {
-      lastError = e as Error;
-
-      // Check for rate limit error (429 or RESOURCE_EXHAUSTED)
-      const isRateLimit =
-        (e as { status?: number })?.status === 429 ||
-        (e as { message?: string })?.message?.includes("RESOURCE_EXHAUSTED");
-
-      if (isRateLimit && attempt < maxRetries - 1) {
-        // Exponential backoff: 15s, 30s, 60s (respects 5 req/min limit)
-        const waitTime = 15000 * Math.pow(2, attempt);
-        console.warn(
-          `[EventClassifier] Rate limited, waiting ${waitTime / 1000}s before retry ${attempt + 2}/${maxRetries}...`
-        );
-        await new Promise((r) => setTimeout(r, waitTime));
-        continue;
-      }
-
-      // Non-rate-limit error or final retry - don't retry
+  // 2) Format — first match wins (rules ordered specific→general).
+  let format: ScreeningFormat | null = null;
+  for (const rule of FORMAT_RULES) {
+    if (rule.pattern.test(haystack)) {
+      format = rule.format;
       break;
     }
   }
 
-  // All retries failed
-  console.warn("[EventClassifier] Failed to classify:", title, lastError);
+  // 3) 3D and accessibility flags
+  const is3D = IS_3D_PATTERN.test(haystack);
+  const isRelaxedScreening = RELAXED_PATTERN.test(haystack);
+  const hasSubtitles = SUBTITLES_PATTERN.test(haystack);
+  const hasAudioDescription = AUDIO_DESCRIPTION_PATTERN.test(haystack);
+
+  // 4) Subtitle language (only meaningful if subtitles are present)
+  let subtitleLanguage: string | null = null;
+  if (hasSubtitles) {
+    for (const rule of SUBTITLE_LANGUAGE_RULES) {
+      if (rule.pattern.test(haystack)) {
+        subtitleLanguage = rule.lang;
+        break;
+      }
+    }
+  }
+
+  // 5) Season / series extraction — match against the title only, since
+  // descriptions often mention seasons in passing.
+  let season: string | null = null;
+  for (const pattern of SEASON_PATTERNS) {
+    const match = title.match(pattern);
+    if (match) {
+      season = match[1].trim();
+      break;
+    }
+  }
+
+  // 6) Clean title — delegate to the synchronous pattern-based extractor.
+  const cleaned = extractFilmTitleSync(title);
+  const cleanTitle = cleaned.extractedTitle || title;
+
+  // 7) Confidence — high when the pattern extractor was confident or no
+  // event signals fired; medium otherwise; low only on truly ambiguous
+  // input (long title, no signals, multiple colons).
+  const confidence = computeConfidence(title, cleaned, eventTypes, format);
+
+  // 8) isSpecialEvent — true if any event signal fired.
+  const isSpecialEvent =
+    eventTypes.length > 0 ||
+    format !== null ||
+    is3D ||
+    hasSubtitles ||
+    hasAudioDescription ||
+    isRelaxedScreening ||
+    season !== null;
+
+  // 9) Event description — surface the title remainder when extraction
+  // stripped a prefix or suffix; otherwise null.
+  const eventDescription =
+    cleaned.extractionMethod !== "none" && cleaned.extractedTitle !== title
+      ? title.replace(cleaned.extractedTitle, "").replace(/^[\s:|+\-]+|[\s:|+\-]+$/g, "") || null
+      : null;
+
   return {
-    cleanTitle: title,
-    isSpecialEvent: false,
-    eventTypes: [],
-    eventDescription: null,
-    format: null,
-    is3D: false,
-    hasSubtitles: false,
-    subtitleLanguage: null,
-    hasAudioDescription: false,
-    isRelaxedScreening: false,
-    season: null,
-    confidence: "low",
+    cleanTitle,
+    isSpecialEvent,
+    eventTypes,
+    eventDescription,
+    format,
+    is3D,
+    hasSubtitles,
+    subtitleLanguage,
+    hasAudioDescription,
+    isRelaxedScreening,
+    season,
+    confidence,
   };
 }
 
+function computeConfidence(
+  rawTitle: string,
+  cleaned: PatternExtractionResult,
+  eventTypes: EventType[],
+  format: ScreeningFormat | null
+): "high" | "medium" | "low" {
+  // Pattern extractor's numeric confidence (0–1) is the strongest signal.
+  if (cleaned.confidence >= 0.85) return "high";
+  if (cleaned.confidence >= 0.5) return "medium";
+
+  // If we matched at least one event signal but the extractor was unsure,
+  // bias toward medium rather than low — we still produced useful metadata.
+  if (eventTypes.length > 0 || format !== null) return "medium";
+
+  // Title with multiple colons and no extractor confidence is ambiguous.
+  if (rawTitle.split(":").length > 2) return "low";
+
+  // Default: medium for everything else.
+  return "medium";
+}
+
 /**
- * Quick heuristic check - does this title likely need classification?
- * Use this to filter before calling the more expensive Claude API
+ * Quick heuristic check — does this title likely need classification?
+ * Use this to skip the classifier entirely on obviously-clean titles.
+ *
+ * Same regex set as the previous implementation — kept as a public export
+ * because callers (e.g. screening-classification) use it as a gate.
  */
 export function likelyNeedsClassification(title: string): boolean {
   const patterns = [
@@ -216,11 +267,11 @@ export function likelyNeedsClassification(title: string): boolean {
   return patterns.some((p) => p.test(title));
 }
 
-// Cache for classifications to avoid re-processing
+// Cache for classifications to avoid re-processing identical titles.
 const classificationCache = new Map<string, EventClassification>();
 
 /**
- * Classify with caching
+ * Classify with caching. Async signature preserved for caller compatibility.
  */
 export async function classifyEventCached(
   title: string,
@@ -228,13 +279,10 @@ export async function classifyEventCached(
 ): Promise<EventClassification> {
   const cacheKey = `${title}|${description || ""}`;
 
-  if (classificationCache.has(cacheKey)) {
-    return classificationCache.get(cacheKey)!;
-  }
+  const cached = classificationCache.get(cacheKey);
+  if (cached) return cached;
 
   const result = await classifyEvent(title, description);
   classificationCache.set(cacheKey, result);
-
   return result;
 }
-
