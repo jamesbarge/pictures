@@ -8,7 +8,7 @@
  * This is much more reliable than the old approach of scraping /whats-on/series/new-releases
  * then fetching individual film pages and performance endpoints, because:
  * 1. It covers ALL cinema series, not just "new-releases"
- * 2. Fewer HTTP requests (14 pages vs 48+)
+ * 2. Fewer HTTP requests (30 pages vs 48+)
  * 3. All data (title, time, booking URL) is on one page per day
  * 4. No fragile node ID extraction step
  *
@@ -24,7 +24,7 @@ import { parseScreeningTime, ukLocalToUTC } from "../utils/date-parser";
 import { FestivalDetector } from "../festivals/festival-detector";
 
 /** Number of days ahead to scrape from today */
-const DAYS_AHEAD = 14;
+const DAYS_AHEAD = 30;
 
 export class BarbicanScraper extends BaseScraper {
   config: ScraperConfig = {

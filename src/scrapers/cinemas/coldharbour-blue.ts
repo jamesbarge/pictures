@@ -119,11 +119,19 @@ export class ColdharbourBlueScraper implements CinemaScraper {
   private convertToRawScreenings(events: TribeEvent[]): RawScreening[] {
     return events
       .filter((event) => {
-        // Only include events in the "Screenings" category
-        const isScreening = event.categories.some(
+        // Include events tagged "screenings", OR events whose title indicates a film screening
+        // (some film nights are tagged only as "events" but are still cinema screenings)
+        const inScreeningsCategory = event.categories.some(
           (cat) => cat.slug === "screenings" || cat.name.toLowerCase() === "screenings"
         );
-        return isScreening;
+        if (inScreeningsCategory) return true;
+
+        const title = event.title.toLowerCase();
+        // Strong cinema signals — bare "screening"/"cinema" excluded to avoid future
+        // false positives like "Health Screening Workshop". The "screening + q&a"
+        // pattern is intentional: it's the only standalone "screening" the regex
+        // catches, since film screenings overwhelmingly bundle a Q&A or discussion.
+        return /\b(movie night|film club|film festival|film screening)\b|\bscreening\s*[+&]/.test(title);
       })
       .map((event) => {
         // Parse the datetime - format is "2026-01-06 20:00:00"
