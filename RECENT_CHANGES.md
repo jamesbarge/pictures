@@ -1,3 +1,14 @@
+## 2026-05-06: Dedupe 413 screening rows + prevent (cinema, source_id, datetime) duplicates
+**PR**: TBD | **Files**: `src/scrapers/utils/screening-classification.ts`, `src/scrapers/pipeline.ts`, `scripts/audit-screening-duplicates.ts`, `scripts/dedupe-screening-source-id-duplicates.ts`
+- Audit found 398 duplicate `(cinema_id, source_id, datetime)` triples in production — 813 rows / 413 excess / 387 future-dated / 45 cinemas affected. Every triple had a film mismatch. Calendar was rendering doubled screenings.
+- Root cause: the existing unique index on `(film_id, cinema_id, datetime)` doesn't fire when a re-scrape resolves the same `source_id` to a different `film_id` — that's the matcher's *output*, not the cinema's operational identity.
+- Deduplicated all 398 triples via `scripts/dedupe-screening-source-id-duplicates.ts --apply`. Tier 1 (sim-dominance ≥0.10 gap): 66 triples; Tier 2 (year-presence-tiebreak): 250; Tier 3 (most-recent-scrape tiebreak): 82; Tier 4 (deterministic id): 0. Some Tier 2 winners are verbose event titles ("Throwback: Top Gun (40th Anniversary)" beating "Top Gun" 1986); those will self-heal as the new code path lets future re-scrapes UPDATE existing rows when the matcher resolves the same source_id to a better film.
+- Added preventative code: `checkForDuplicate` (in `screening-classification.ts`) now does a Layer 0 lookup by `(cinema_id, source_id, datetime)` and returns the existing row when matched. `pipeline.ts`'s UPDATE path now sets `filmId` so source_id-matched rows whose previous resolution was wrong get healed automatically.
+- Verified: 0 duplicate triples remaining, 9,218 screening rows (8,514 future), `npm run test:run` 887/887, `npm run lint` 0 errors, `npx tsc --noEmit` clean.
+- **Out of scope (separate follow-up)**: adding `uniqueIndex(cinemaId, sourceId, datetime)` at the schema level. Application-layer prevention covers the common case; the schema constraint is defense in depth and has a known edge case (matcher-flip producing a transient `(filmId, cinemaId, datetime)` collision against the existing index).
+
+---
+
 ## 2026-05-05: Delete phantom Stoma screening + surface (cinema, source_id) duplicate issue
 **PR**: TBD | **Files**: `scripts/delete-stoma-phantom.ts`
 - Stoma → Guo Ran from yesterday's audit was not a fuzzy-matcher misfire (trigram sim was 0.016, far below any threshold). Two distinct screening rows shared the same `(cinema_id, source_id, datetime)` for Garden's 2026-05-17 18:00 Stoma showing — one wrongly linked to Guo Ran (scraped 2026-04-29), one correctly linked to Stoma (scraped 2026-05-05).

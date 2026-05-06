@@ -118,7 +118,13 @@ interface DuplicateCheckResult {
 /**
  * Check for duplicate screenings.
  *
- * Two-layer dedup:
+ * Three-layer dedup:
+ * 0. Same (cinemaId + sourceId + datetime) regardless of filmId. The cinema's
+ *    source_id is the operational identity of a showing — if we've seen the
+ *    same source_id at the same datetime before, it IS the same showing,
+ *    even if a previous scrape resolved it to a different film. Returning
+ *    the existing row lets the caller refresh its filmId to the current
+ *    matcher's resolution.
  * 1. Exact composite key (filmId + cinemaId + datetime)
  * 2. Same (cinemaId + datetime) with a different filmId but same normalized title
  *    (catches duplicate film records creating duplicate screenings)
@@ -127,8 +133,28 @@ export async function checkForDuplicate(
   filmId: string,
   cinemaId: string,
   datetime: Date,
-  normalizeTitle: (title: string) => string
+  normalizeTitle: (title: string) => string,
+  sourceId?: string
 ): Promise<DuplicateCheckResult> {
+  // Layer 0: same (cinemaId, sourceId, datetime) regardless of filmId.
+  if (sourceId) {
+    const [bySource] = await db
+      .select()
+      .from(screeningsTable)
+      .where(
+        and(
+          eq(screeningsTable.cinemaId, cinemaId),
+          eq(screeningsTable.sourceId, sourceId),
+          eq(screeningsTable.datetime, datetime)
+        )
+      )
+      .limit(1);
+
+    if (bySource) {
+      return { duplicate: bySource, shouldSkip: false };
+    }
+  }
+
   // Check for existing screening using exact composite key
   const [duplicate] = await db
     .select()
