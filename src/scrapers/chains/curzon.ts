@@ -354,8 +354,12 @@ export class CurzonScraper implements ChainScraper {
 
       console.log(`[curzon] ${venue.name}: ${dates.length} dates to fetch`);
 
-      // Fetch showtimes for each date (limit to 14 days ahead)
-      const datesToFetch = dates.slice(0, 14);
+      // Fetch showtimes for the next 30 published dates. The Vista API returns
+      // a list of business dates with screenings, not consecutive calendar
+      // days — taking the first N entries is a horizon on "days with anything
+      // programmed", which suits Curzon's release-driven schedule. 30 covers
+      // their typical 4-8 week publication window.
+      const datesToFetch = dates.slice(0, 30);
 
       for (const date of datesToFetch) {
         try {
