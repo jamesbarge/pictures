@@ -1,5 +1,15 @@
+## 2026-05-06: Castle / Castle Sidcup — switch from homepage JSON-LD to /calendar/ parser
+**PR**: #476 | **Files**: `src/scrapers/cinemas/castle-calendar.ts` (new), `src/scrapers/cinemas/castle-calendar.test.ts` (new), `src/scrapers/cinemas/castle.ts`, `src/scrapers/cinemas/castle-sidcup.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`
+- Per-cinema audit found Castle Cinema (Hackney) and Castle Sidcup were missing 89 screenings combined because their scrapers parsed homepage JSON-LD (~7-day surface) instead of the `/calendar/` page (full programmed window).
+- Built shared `castle-calendar` parser. Parses `<a class="performance-button" data-perf-id data-start-time href>` elements; resolves film titles by walking back to the nearest preceding `<h1>` in document order, scoped to the calendar block (anchored by the first `<h3 class="date">`) so page-chrome `<h1>` tags can't bleed in.
+- Live smoke-test: Castle 53 → **91** (23 distinct dates through 2026-10-22), Sidcup 81 → **132** (17 distinct dates through 2026-06-25).
+- Hardened after code review: scoped `<h1>` collection, HTML-entity decoding for titles, hard-error sentinel when `class="performance-button"` tags are present but the structured pattern matches zero (template drift signal).
+- 14 unit tests covering DOM contract, BST conversion, page-chrome rejection, entity decoding, and template-drift detection. `npm run test:run` 901/901. `npx tsc --noEmit` clean. `npm run lint` 0 errors.
+
+---
+
 ## 2026-05-06: Scraper coverage — Barbican horizon 14→30 days, Coldharbour Blue category filter relaxed
-**PR**: TBD | **Files**: `src/scrapers/cinemas/barbican.ts`, `src/scrapers/cinemas/coldharbour-blue.ts`
+**PR**: #475 | **Files**: `src/scrapers/cinemas/barbican.ts`, `src/scrapers/cinemas/coldharbour-blue.ts`
 - Per-cinema audit found Barbican capped at a hardcoded 14-day fetch horizon while the cinema publishes ~3 weeks ahead (verified day-19 endpoint returns 7 cards, day-30+ returns 0). Bumped `DAYS_AHEAD` to 30; trade-off is ~5 min scrape runtime vs ~2.3 min, well within the 6 req/min limit.
 - Coldharbour Blue's WordPress Tribe Events API returns 14 events but the scraper kept only the 10 tagged `screenings`. The other 4 are real film screenings tagged `events` (Crafty Movie Night, Herne Hill Free Film Festival, To Call You A Forest – Screening + Q&A, Crafty Movie Night x The Great British Yarn). Filter now also accepts `events`-only items whose title matches `\b(movie night|film club|film festival|film screening)\b` or the `screening + Q&A` pattern.
 - Regex tightened after code review: bare `screening`/`cinema` removed to avoid future false positives like "Health Screening Workshop". 9-case test (4 expected match + 5 false-positive guards) all passes.
