@@ -434,12 +434,15 @@ async function insertScreening(
   // Classify screening metadata (event type, format, accessibility)
   const metadata = await classifyScreening(screening);
 
-  // Check for duplicate screenings (exact match + normalized title dedup)
+  // Check for duplicate screenings (exact match + normalized title dedup + source_id).
+  // The sourceId match (Layer 0 of checkForDuplicate) lets us update an existing
+  // row's filmId when a re-scrape resolves the same source_id to a different film.
   const { duplicate, shouldSkip } = await checkForDuplicate(
     filmId,
     cinemaId,
     screening.datetime,
-    normalizeTitle
+    normalizeTitle,
+    screening.sourceId
   );
 
   if (shouldSkip) {
@@ -447,32 +450,62 @@ async function insertScreening(
   }
 
   if (duplicate) {
-    // Update existing
+    // Update existing. Always set filmId so source_id-matched rows whose previous
+    // film resolution was wrong (e.g. pre-PR-#472 LLM misclassification) get healed.
     const now = new Date();
-    await db
-      .update(screeningsTable)
-      .set({
-        format: metadata.format,
-        screen: screening.screen,
-        isSpecialEvent: metadata.isSpecialEvent,
-        eventType: metadata.eventType,
-        eventDescription: metadata.eventDescription,
-        is3D: metadata.is3D,
-        hasSubtitles: metadata.hasSubtitles,
-        subtitleLanguage: metadata.subtitleLanguage,
-        hasAudioDescription: metadata.hasAudioDescription,
-        isRelaxedScreening: metadata.isRelaxedScreening,
-        season: metadata.season,
-        bookingUrl: screening.bookingUrl,
-        // Update availability if provided by scraper
-        ...(screening.availabilityStatus && {
-          availabilityStatus: screening.availabilityStatus,
-          availabilityCheckedAt: now,
-        }),
-        scrapedAt: now,
-        updatedAt: now,
-      })
-      .where(eq(screeningsTable.id, duplicate.id));
+    const isFilmIdFlip = duplicate.filmId !== filmId;
+    if (isFilmIdFlip) {
+      // Observability: log when a re-scrape changes the film_id of an existing
+      // row. Frequency tells us whether the deferred unique index on
+      // (cinemaId, sourceId, datetime) is safe to add.
+      console.log(
+        `[Pipeline] film_id flip on ${cinemaId}/${screening.sourceId ?? "<nosrc>"}` +
+          `@${screening.datetime.toISOString()}: ${duplicate.filmId} -> ${filmId}`
+      );
+    }
+    try {
+      await db
+        .update(screeningsTable)
+        .set({
+          filmId,
+          format: metadata.format,
+          screen: screening.screen,
+          isSpecialEvent: metadata.isSpecialEvent,
+          eventType: metadata.eventType,
+          eventDescription: metadata.eventDescription,
+          is3D: metadata.is3D,
+          hasSubtitles: metadata.hasSubtitles,
+          subtitleLanguage: metadata.subtitleLanguage,
+          hasAudioDescription: metadata.hasAudioDescription,
+          isRelaxedScreening: metadata.isRelaxedScreening,
+          season: metadata.season,
+          bookingUrl: screening.bookingUrl,
+          // Update availability if provided by scraper
+          ...(screening.availabilityStatus && {
+            availabilityStatus: screening.availabilityStatus,
+            availabilityCheckedAt: now,
+          }),
+          scrapedAt: now,
+          updatedAt: now,
+        })
+        .where(eq(screeningsTable.id, duplicate.id));
+    } catch (err: unknown) {
+      // Postgres 23505 = unique_violation. Can fire when a film_id flip would
+      // collide with an existing row at (newFilmId, cinemaId, datetime) under
+      // a different source_id. Log and continue — losing one row update on
+      // this scrape pass is preferable to aborting the cinema's whole run.
+      const pgCode = (err as { cause?: { code?: string }; code?: string })?.cause?.code
+        ?? (err as { code?: string })?.code;
+      if (pgCode === "23505") {
+        console.warn(
+          `[Pipeline] Skipping update for duplicate ${duplicate.id.slice(0, 8)} ` +
+            `(${cinemaId}/${screening.sourceId ?? "<nosrc>"}@${screening.datetime.toISOString()}): ` +
+            `film_id flip ${duplicate.filmId} -> ${filmId} would violate (film_id, cinema_id, datetime) unique index.`
+        );
+        return false;
+      }
+      throw err;
+    }
 
     return false; // Updated, not added
   }
