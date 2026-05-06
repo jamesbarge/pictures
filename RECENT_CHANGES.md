@@ -1,3 +1,12 @@
+## 2026-05-06: Scraper coverage follow-ups — Curzon horizon 14→30, drop dead castle-v2 scaffolding, Regent Street verified
+**PR**: TBD | **Files**: `src/scrapers/chains/curzon.ts`, `src/scrapers/cinemas/castle-v2.ts` (deleted), `src/scrapers/run-castle-v2.ts` (deleted)
+- Curzon's chain scraper was hardcoded to `dates.slice(0, 14)` — a horizon on "days with anything programmed". Bumped to 30 to cover the typical 4-8 week publication window. Empty-day API calls return quickly so the cost is negligible.
+- Deleted `castle-v2.ts` (experimental scraper class, never wired into the registry, zero TS imports). Kept `run-castle-v2.ts` as a 32-line runner-factory shell — `npm run scrape:castle` (`package.json:63`) references it; the new shell wires the canonical `createCastleScraper` (calendar-page parser from PR #476) and matches the shape of the other v2 runners.
+- Investigated Regent Street Cinema (the third deferred item from the audit): instrumented the programme page with Playwright + 30s of extra wait, captured every `showingsForDate` GraphQL batch. All 4 batches arrive in the first 5 seconds; the existing 3-second post-first-batch timeout is fine. Total 27 distinct showings spanning 2026-05-06 → 2026-07-14 (10+ weeks); DB count of 26 matches the live site. **Not a bug** — Regent Street is a small single-screen venue with low volume.
+- Verified: `npm run test:run` 901/901, `npx tsc --noEmit` clean, `npm run lint` 0 errors. Audit doc updated: `Pictures/Audits/scraper-coverage-2026-05-06.md`.
+
+---
+
 ## 2026-05-06: Castle / Castle Sidcup — switch from homepage JSON-LD to /calendar/ parser
 **PR**: #476 | **Files**: `src/scrapers/cinemas/castle-calendar.ts` (new), `src/scrapers/cinemas/castle-calendar.test.ts` (new), `src/scrapers/cinemas/castle.ts`, `src/scrapers/cinemas/castle-sidcup.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`
 - Per-cinema audit found Castle Cinema (Hackney) and Castle Sidcup were missing 89 screenings combined because their scrapers parsed homepage JSON-LD (~7-day surface) instead of the `/calendar/` page (full programmed window).
