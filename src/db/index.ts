@@ -31,10 +31,18 @@ const hasValidDatabaseUrl =
 //   - idle_timeout: client-side recycle of idle conns to dodge stale pooler links.
 //   - connect_timeout: bound the initial handshake so a dead pooler fails fast.
 //   - max_lifetime: rotate conns so no single one stays open across pooler restarts.
+// `max` is configurable via DB_POOL_MAX so local /scrape can use multiple
+// connection slots — a wedged half-open conn no longer blocks all subsequent
+// queries while we wait for max_lifetime rotation. Defaults to 1 to preserve
+// serverless-safe behavior on Vercel; bump to 3 in .env.local for local runs.
+const poolMax = process.env.DB_POOL_MAX
+  ? Math.max(1, Number(process.env.DB_POOL_MAX))
+  : 1;
+
 const client = hasValidDatabaseUrl
   ? postgres(connectionString, {
       prepare: false, // Required for Supabase connection pooling (transaction mode)
-      max: 1, // Limit connections in serverless
+      max: poolMax,
       idle_timeout: 20, // seconds
       connect_timeout: 15, // seconds
       max_lifetime: 60 * 30, // 30 minutes — if you add db.transaction(...), keep blocks under this
@@ -58,3 +66,39 @@ export { schema };
 
 // Type exports for convenience
 export type Database = typeof db;
+
+/**
+ * Client-side hard ceiling on a DB call. Rejects after `ms` if the underlying
+ * postgres-js promise hasn't settled.
+ *
+ * Why this exists (added 2026-05-07): postgres-js + Supabase pooler can leave
+ * the client blocked on `recv()` for a connection the pooler silently dropped
+ * at the TCP layer. The server-side `statement_timeout` only fires if the
+ * server receives the query. `idle_timeout` only kills idle conns. macOS's
+ * default TCP keepalive is 7200s. Net effect: a query promise hangs forever.
+ *
+ * This wrapper bounds every wrapped call. On timeout the per-cinema try/catch
+ * in pipeline.ts logs the failure and moves on — same recovery posture as the
+ * existing 57014 (query_canceled) catch path.
+ *
+ * Note: this stops *waiting* on the promise; the underlying socket is still
+ * held by postgres-js until its own cleanup runs. That's acceptable here
+ * because `max: 1` means at most one stuck conn, and `max_lifetime: 30min`
+ * eventually rotates it.
+ */
+export function withDbTimeout<T>(
+  p: Promise<T>,
+  ms = 10_000,
+  label = "db query",
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`${label} timeout after ${ms}ms (client-side)`)),
+      ms,
+    );
+  });
+  return Promise.race([p, timeout]).finally(() => {
+    if (timer) clearTimeout(timer);
+  });
+}

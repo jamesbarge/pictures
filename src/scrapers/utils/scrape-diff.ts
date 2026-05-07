@@ -8,7 +8,7 @@
  * - Suspicious patterns (sudden drops, holiday screenings, etc.)
  */
 
-import { db } from "@/db";
+import { db, withDbTimeout } from "@/db";
 import { screenings, films, cinemas } from "@/db/schema";
 import { eq, and, gte, lte } from "drizzle-orm";
 import type { RawScreening } from "../types";
@@ -53,30 +53,35 @@ export async function generateScrapeDiff(
   const futureLimit = addDays(now, MAX_DAYS_IN_FUTURE_FOR_COMPARISON);
 
   // Get cinema info
-  const [cinema] = await db
-    .select()
-    .from(cinemas)
-    .where(eq(cinemas.id, cinemaId));
+  const [cinema] = await withDbTimeout(
+    db.select().from(cinemas).where(eq(cinemas.id, cinemaId)),
+    15_000,
+    `generateScrapeDiff: cinema lookup (${cinemaId})`,
+  );
 
   const cinemaName = cinema?.name ?? cinemaId;
 
   // Get existing screenings for this cinema (next 30 days)
-  const existingScreenings = await db
-    .select({
-      id: screenings.id,
-      datetime: screenings.datetime,
-      filmTitle: films.title,
-      scrapedAt: screenings.scrapedAt,
-    })
-    .from(screenings)
-    .innerJoin(films, eq(screenings.filmId, films.id))
-    .where(
-      and(
-        eq(screenings.cinemaId, cinemaId),
-        gte(screenings.datetime, now),
-        lte(screenings.datetime, futureLimit)
-      )
-    );
+  const existingScreenings = await withDbTimeout(
+    db
+      .select({
+        id: screenings.id,
+        datetime: screenings.datetime,
+        filmTitle: films.title,
+        scrapedAt: screenings.scrapedAt,
+      })
+      .from(screenings)
+      .innerJoin(films, eq(screenings.filmId, films.id))
+      .where(
+        and(
+          eq(screenings.cinemaId, cinemaId),
+          gte(screenings.datetime, now),
+          lte(screenings.datetime, futureLimit),
+        ),
+      ),
+    15_000,
+    `generateScrapeDiff: existing screenings (${cinemaId})`,
+  );
 
   // Create lookup key for screenings (title + datetime)
   const makeKey = (title: string, datetime: Date) =>

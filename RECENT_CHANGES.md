@@ -1,3 +1,20 @@
+## 2026-05-07: Client-side DB query timeout + pool-max env override — fix the /scrape hang #479 didn't catch
+**PR**: TBD | **Files**: `src/db/index.ts`, `src/scrapers/pipeline.ts`, `src/scrapers/utils/scrape-diff.ts`, `src/scrapers/utils/film-matching.ts`
+- Local `/scrape` hung again at 32 cinemas in. Process at 0.0% CPU, sleeping for 87+ minutes after `[Pipeline] 58 valid screenings to process` with no errors logged.
+- Root cause: postgres-js + Supabase pooler half-open connection. The pooler silently dropped its end of the TCP socket between query bursts. The next query write succeeded (TCP send buffer accepts bytes), but `recv()` blocked forever waiting for a response the server never sees. Server-side `statement_timeout` (#479) doesn't fire because the server didn't receive the query. macOS default TCP keepalive is 7200s — useless.
+- Fix part 1 (query ceiling): added `withDbTimeout(p, ms, label)` helper in `src/db/index.ts` — Promise.race against a default 10s reject (overridable per call-site). Applied at every hot-path DB call in `runScraperPipeline`:
+  - `generateScrapeDiff` cinema lookup + existing-screenings query (15s each)
+  - `initFilmCache` films table load (15s)
+  - per-film `getOrCreateFilm` (20s — has TMDB calls inside)
+  - per-film `linkFilmToMatchingSeasons` (10s)
+  - per-screening `insertScreening` (15s — covers checkForDuplicate + insert/update)
+- Fix part 2 (no cascading failure): pool `max` is now configurable via `DB_POOL_MAX` env var (default 1 to keep serverless behavior on Vercel; bump to 3 in `.env.local` for local runs). Without this, a single wedged connection blocks every subsequent query for up to 30 min until `max_lifetime` rotates it. With `max: 3` locally, two healthy slots keep the run moving while the wedged one drains.
+- On timeout: throws → caught by the per-cinema try/catch in `pipeline.ts:218` → cinema gets skipped, the rest of the scrape continues. Same recovery posture as the existing `57014` (query_canceled) catch path.
+- Reviewed by code-reviewer agent before commit; addressed coverage gaps (per-film loop calls were unwrapped) and cascading-failure mode (single `max:1` slot caused 30min downtime per wedge). Deferred follow-up: client-recreate on timeout (requires re-architecting the `db` const export).
+- Tests 890/890. tsc + lint clean.
+
+---
+
 ## 2026-05-07: Prioritise stale cinemas in /scrape — stalest first within each wave
 **PR**: TBD | **Files**: `src/lib/jobs/scrape-all.ts`
 - `runScrapeAll` now loads each cinema's last successful scrape timestamp from `scraper_runs` once, up front.
