@@ -120,7 +120,6 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "drizzle-orm": "^0.45.1",
-    "inngest": "^4.2.4",
     "lottie-react": "^2.4.1",
     "lucide-react": "^1.11.0",
     "next": "^16.2.4",

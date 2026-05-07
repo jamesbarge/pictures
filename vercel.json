@@ -1,20 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "regions": ["lhr1"],
-  "crons": [
-    {
-      "path": "/api/cron/cleanup",
-      "schedule": "0 4 * * *"
-    },
-    {
-      "path": "/api/cron/posthog-sync",
-      "schedule": "0 5 * * *"
-    },
-    {
-      "path": "/api/cron/health-check",
-      "schedule": "0 7 * * *"
-    }
-  ],
   "functions": {
     "src/app/api/**": {
       "maxDuration": 60,

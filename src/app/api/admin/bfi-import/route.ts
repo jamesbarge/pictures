@@ -66,9 +66,6 @@ export const GET = withAdminAuth(async () => {
       changesOnly: "POST /api/admin/bfi-import?changesOnly=true",
     },
     description: "Manually trigger BFI PDF import. Full import parses the monthly guide PDF. Changes-only is faster and just checks the programme changes page.",
-    scheduled: {
-      fullImport: "Sundays 6:00 AM UTC (via Inngest)",
-      changesOnly: "Daily 10:00 AM UTC (via Inngest)",
-    },
+    scheduled: "Manual only — no scheduled runner (off-Mac automation removed 2026-05-07).",
   });
 });
