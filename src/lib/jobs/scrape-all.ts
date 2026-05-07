@@ -22,6 +22,7 @@ import { db } from "@/db";
 import { scraperRuns } from "@/db/schema/admin";
 import { cinemas } from "@/db/schema/cinemas";
 import { sendTelegramAlert } from "@/lib/telegram";
+import { stampProgress } from "@/lib/scrape-progress";
 import { runScraper } from "@/scrapers/runner-factory";
 import {
   SCRAPER_REGISTRY,
@@ -120,14 +121,52 @@ async function runWithConcurrency<T>(
 /** Run a single scraper-registry entry and return wave-summary contribution. */
 async function runScraperEntry(
   entry: ScraperRegistryEntry,
+  waveLabel: string,
 ): Promise<{ succeeded: boolean; error?: string }> {
+  const taskId = entry.taskId.replace(/^scraper-/, "");
+  const startedAt = new Date();
+  const startedAtIso = startedAt.toISOString();
+  console.log(`[scrape-all] ${waveLabel}: ${taskId} started`);
+  await stampProgress({
+    wave: waveLabel,
+    cinemaId: taskId,
+    phase: "scraper-entry-start",
+    startedAt: startedAtIso,
+  });
   try {
     const config = entry.buildConfig();
     const result = await runScraper(config, { useValidation: true });
+    const ms = Date.now() - startedAt.getTime();
+    console.log(
+      `[scrape-all] ${waveLabel}: ${taskId} done ${ms}ms ${
+        result.success ? "ok" : "fail"
+      } (added ${result.totalScreeningsAdded}, updated ${result.totalScreeningsUpdated})`,
+    );
+    await stampProgress({
+      wave: waveLabel,
+      cinemaId: taskId,
+      phase: "scraper-entry-done",
+      startedAt: startedAtIso,
+      durationMs: ms,
+      meta: {
+        ok: result.success,
+        added: result.totalScreeningsAdded,
+        updated: result.totalScreeningsUpdated,
+      },
+    });
     return { succeeded: result.success };
   } catch (err) {
+    const ms = Date.now() - startedAt.getTime();
     const message = err instanceof Error ? err.message : String(err);
-    console.log(`[scrape-all] ${entry.taskId} threw: ${message}`);
+    console.log(`[scrape-all] ${waveLabel}: ${taskId} threw after ${ms}ms: ${message}`);
+    await stampProgress({
+      wave: waveLabel,
+      cinemaId: taskId,
+      phase: "scraper-entry-error",
+      startedAt: startedAtIso,
+      durationMs: ms,
+      error: message,
+    });
     return { succeeded: false, error: message };
   }
 }
@@ -200,7 +239,7 @@ async function runWave(
     console.log(`[scrape-all] ${label} order (stalest first): ${orderStr}`);
   }
   const entries = ranked.map((r) => r.entry);
-  const tasks = entries.map((entry) => () => runScraperEntry(entry));
+  const tasks = entries.map((entry) => () => runScraperEntry(entry, label));
   const settled = await runWithConcurrency(tasks, concurrency);
 
   let succeeded = 0;

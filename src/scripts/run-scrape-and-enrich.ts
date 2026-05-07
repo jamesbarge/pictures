@@ -84,6 +84,25 @@ async function main(): Promise<void> {
   const startedAt = new Date();
   const phases: PhaseResult[] = [];
 
+  // Phase 0: Pre-flight quarantine — read-only, ~1s. Tells the user which
+  // cinemas have been silently broken for ≥2 runs BEFORE they sit through
+  // a 30-60 min /scrape that just re-runs them. Always runs.
+  phases.push(
+    await runPhase("Pre-flight (silent-breaker check)", async () => {
+      const breakers = await detectSilentBreakers();
+      if (breakers.length === 0) {
+        console.log("[pre-flight] No silently-broken cinemas detected — proceeding.");
+      } else {
+        console.log(formatQuarantineReport(breakers));
+        console.log(
+          `[pre-flight] ${breakers.length} cinema(s) above. Consider \`/scrape-one <slug>\` ` +
+            "to investigate before starting a full run.",
+        );
+      }
+      return { ok: true, detail: `${breakers.length} flagged` };
+    }),
+  );
+
   // Phase 1: Scrape (unless skipped)
   if (!SKIP_SCRAPE) {
     phases.push(

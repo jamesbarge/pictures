@@ -1,3 +1,17 @@
+## 2026-05-07: /scrape observability + concurrency fixes (Ship 1 of plan)
+**PR**: TBD | **Files**: `src/lib/scrape-progress.ts` (new), `src/scrapers/pipeline.ts`, `src/scrapers/runner-factory.ts`, `src/scrapers/utils/film-matching.ts`, `src/lib/jobs/scrape-all.ts`, `src/scripts/run-scrape-and-enrich.ts`, `.gitignore`
+- After today's 87-minute silent hang, six specialised agents audited `/scrape` end-to-end. Plan at `~/.claude/plans/before-we-do-this-silly-deer.md`. Ship 1 lands the cheapest, highest-leverage findings: observability (so the next hang is visible in seconds, not 87 minutes) and two concurrency hazards we'd been getting away with.
+- **New `src/lib/scrape-progress.ts`** — atomic `tmp/scrape-progress.json` stamper (`tail -f | jq` to watch live state) plus a `runPhase(cinemaId, name, fn, meta)` helper that adds `[Pipeline] <cinema> > <phase> start/done <ms>ms` logs around any async phase. `tmp/` added to `.gitignore`.
+- **Pipeline phases instrumented** in `src/scrapers/pipeline.ts:processScreenings` — `diff`, `init-film-cache`, `extract-titles`, `film-loop`, `cleanup-superseded` are each wrapped with `runPhase`. The exact silent gap that produced today's 87-min hang now emits start/done lines + duration + progress stamps.
+- **Per-cinema visibility in `runScraperEntry`** (`src/lib/jobs/scrape-all.ts`) — `[scrape-all] {wave}: {cinema} started`/`done {ms}ms ok|fail (added X, updated Y)` lines fire for every wave entry, with progress stamps too.
+- **Pre-flight Phase 0** in `src/scripts/run-scrape-and-enrich.ts` — `detectSilentBreakers` runs at the START of `/scrape` so the user sees "N cinemas silently broken — consider /scrape-one first" before sitting through a 30–60 min full run.
+- **Concurrency fix #1: per-call film cache** (`src/scrapers/utils/film-matching.ts`) — module-level `filmCache`/`tmdbIdIndex`/`cacheStats`/`normalizeFn` singletons replaced with a `FilmCache` interface threaded through `initFilmCache` / `lookupFilmInCache` / `addToFilmCache` / `matchAndCreateFromTMDB` / `createFilmWithoutTMDB` / `logCacheStats`. Real bug: `runWave` runs cinemas concurrently (cap 4) and the previous shape reset module state per cinema, so cinema B's reset could wipe cinema A's mid-run cache → A re-creates films via `createFilmWithoutTMDB` → duplicate film rows for the dedup script to merge.
+- **Concurrency fix #2: per-`runScraper` pendingRecords via AsyncLocalStorage** (`src/scrapers/runner-factory.ts`) — module-level `pendingRecords: Promise<void>[]` was shared across all 26 scraper invocations in a process. `flushPendingRecords` doing `splice(0)` could swallow another concurrent `runScraper`'s pending writes mid-flush. Replaced with `AsyncLocalStorage<Promise<void>[]>` per-call context; `runScraper` wraps its body in `try/finally` so flush is guaranteed even on throw.
+- Reviewed by code-reviewer agent before commit; addressed the one blocker (no-op flush in `createMain`'s old failure path) by moving flush into the `runScraper` wrapper's `finally` and deleting the redundant outer call.
+- Tests 890/890. tsc + lint clean.
+
+---
+
 ## 2026-05-07: Client-side DB query timeout + pool-max env override — fix the /scrape hang #479 didn't catch
 **PR**: TBD | **Files**: `src/db/index.ts`, `src/scrapers/pipeline.ts`, `src/scrapers/utils/scrape-diff.ts`, `src/scrapers/utils/film-matching.ts`
 - Local `/scrape` hung again at 32 cinemas in. Process at 0.0% CPU, sleeping for 87+ minutes after `[Pipeline] 58 valid screenings to process` with no errors logged.
