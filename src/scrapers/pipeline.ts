@@ -3,7 +3,7 @@
  * Normalizes, enriches, and persists scraped screening data
  */
 
-import { db } from "@/db";
+import { db, withDbTimeout } from "@/db";
 import { screenings as screeningsTable, cinemas, festivals, festivalScreenings } from "@/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { extractFilmTitleCached, batchExtractTitles } from "@/lib/title-extraction";
@@ -208,17 +208,28 @@ export async function processScreenings(
   console.log(`[Pipeline] ${screeningsByFilm.size} unique films after AI extraction`);
 
   // Process each film
+  // The two awaited boundaries — getOrCreateFilm and insertScreening — are
+  // wrapped with withDbTimeout. If a half-open Supabase conn wedges any inner
+  // DB call (or a TMDB lookup hangs in getOrCreateFilm), the wrapper throws
+  // after the ceiling and the surrounding try/catch logs and skips. Same
+  // recovery posture as a Postgres 57014 — one film loses, the rest of the
+  // cinema (and the rest of the run) continues.
   for (const [normalizedTitle, filmScreenings] of screeningsByFilm) {
     try {
       // Get the first screening for film metadata (use any scraper-provided data)
       const firstScreening = filmScreenings[0];
 
-      // Get or create film record, passing any scraper-extracted metadata
-      const filmId = await getOrCreateFilm(
-        firstScreening.filmTitle,
-        firstScreening.year,
-        firstScreening.director,
-        firstScreening.posterUrl
+      // Get or create film record, passing any scraper-extracted metadata.
+      // 20s ceiling: covers internal DB selects + a TMDB API call.
+      const filmId = await withDbTimeout(
+        getOrCreateFilm(
+          firstScreening.filmTitle,
+          firstScreening.year,
+          firstScreening.director,
+          firstScreening.posterUrl
+        ),
+        20_000,
+        `getOrCreateFilm: ${firstScreening.filmTitle}`,
       );
 
       if (!filmId) {
@@ -229,12 +240,21 @@ export async function processScreenings(
 
       // Link film to any matching seasons
       // This ensures films are associated with seasons as soon as they're scraped
-      await linkFilmToMatchingSeasons(filmId, firstScreening.filmTitle);
+      await withDbTimeout(
+        linkFilmToMatchingSeasons(filmId, firstScreening.filmTitle),
+        10_000,
+        `linkFilmToMatchingSeasons: ${firstScreening.filmTitle}`,
+      );
 
-      // Insert screenings (normalize timestamps to zero seconds/ms)
+      // Insert screenings (normalize timestamps to zero seconds/ms).
+      // 15s ceiling per screening: covers checkForDuplicate + insert/update.
       for (const screening of filmScreenings) {
         const normalizedScreening = { ...screening, datetime: normalizeTimestamp(screening.datetime) };
-        const added = await insertScreening(filmId, cinemaId, normalizedScreening);
+        const added = await withDbTimeout(
+          insertScreening(filmId, cinemaId, normalizedScreening),
+          15_000,
+          `insertScreening: ${cinemaId}/${normalizedScreening.sourceId ?? "<nosrc>"}`,
+        );
         if (added) {
           result.added++;
         } else {

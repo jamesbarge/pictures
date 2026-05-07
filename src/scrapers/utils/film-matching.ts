@@ -6,7 +6,7 @@
  * getOrCreateFilm() focused on orchestration.
  */
 
-import { db } from "@/db";
+import { db, withDbTimeout } from "@/db";
 import { films } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { matchFilmToTMDB, getTMDBClient, isRepertoryFilm, getDecade } from "@/lib/tmdb";
@@ -45,7 +45,11 @@ export async function initFilmCache(
   normalizeFn = normalizeTitle;
 
   cacheStats.dbQueries++;
-  const allFilms = await db.select().from(films);
+  const allFilms = await withDbTimeout(
+    db.select().from(films),
+    15_000,
+    "initFilmCache: select films",
+  );
 
   for (const film of allFilms) {
     const normalized = normalizeTitle(film.title);
