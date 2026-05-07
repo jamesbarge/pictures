@@ -1,3 +1,16 @@
+## 2026-05-07: Add postgres-js client timeouts to fix /scrape stalls
+**PR**: TBD | **Files**: `src/db/index.ts`
+- Local `/scrape` stalled twice for 12+ hours each before being killed manually. Cause: postgres-js with `max:1` connection on Supabase's transaction-mode pooler. When a pooler-side connection silently drops mid-query, the driver doesn't notice — the query promise never resolves and all subsequent queries queue behind it.
+- Added 4 timeouts to the postgres-js client:
+  - `statement_timeout: 60_000` (server-side cap on any single query — Postgres terminates after 60s)
+  - `idle_timeout: 20` (recycle idle conns to dodge stale pooler links)
+  - `connect_timeout: 15` (bound the initial handshake so a dead pooler fails fast)
+  - `max_lifetime: 60 * 30` (rotate conns every 30 min so no single one stays open across pooler restarts)
+- The pipeline already has a per-film try/catch in `processScreenings`, so a `statement_timeout`-fired error on one film doesn't abort the whole cinema's run — it just skips that film and continues.
+- Tests 890/890. tsc + lint clean.
+
+---
+
 ## 2026-05-07: Remove all off-Mac automation — Inngest, Vercel crons, GitHub Actions schedules
 **PR**: TBD | **Files**: `src/inngest/` (deleted), `src/app/api/inngest/route.ts` (deleted), `src/app/api/cron/` (deleted), `src/config/cinema-registry.ts`, `src/config/cinema-registry.test.ts` (deleted), `vercel.json`, `.github/workflows/social-outreach.yml`, `.github/workflows/scrape.yml` (deleted), `.github/workflows/scrape-playwright.yml` (deleted), `package.json`
 - Per "no off-Mac automation" policy. `/scrape` is the sole scrape entry point and runs locally; nothing scheduled should run from cloud infrastructure.
