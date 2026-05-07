@@ -17,7 +17,7 @@
  * dispatches a Telegram digest at the end (same shape as before).
  */
 
-import { gte, eq } from "drizzle-orm";
+import { gte, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { scraperRuns } from "@/db/schema/admin";
 import { cinemas } from "@/db/schema/cinemas";
@@ -132,13 +132,74 @@ async function runScraperEntry(
   }
 }
 
+/**
+ * Map of cinema_id → last successful scrape timestamp. Cinemas that have never
+ * been scraped successfully are absent from the map.
+ */
+type FreshnessMap = Map<string, Date>;
+
+/** Load each cinema's most recent successful scrape timestamp from scraper_runs. */
+async function loadFreshnessMap(): Promise<FreshnessMap> {
+  const rows = await db
+    .select({
+      cinemaId: scraperRuns.cinemaId,
+      lastScrape: sql<Date>`MAX(${scraperRuns.completedAt})`.as("lastScrape"),
+    })
+    .from(scraperRuns)
+    .where(eq(scraperRuns.status, "success"))
+    .groupBy(scraperRuns.cinemaId);
+
+  const map: FreshnessMap = new Map();
+  for (const r of rows) {
+    if (r.lastScrape) map.set(r.cinemaId, new Date(r.lastScrape));
+  }
+  return map;
+}
+
+/** Extract every cinema_id a registry entry will scrape. */
+function getEntryCinemaIds(entry: ScraperRegistryEntry): string[] {
+  const config = entry.buildConfig();
+  if (config.type === "single") return [config.venue.id];
+  return config.venues.map((v) => v.id);
+}
+
+/**
+ * Staleness key for sorting: the OLDEST last-scrape across the entry's venues.
+ * Returns 0 (epoch) for entries with any never-scraped venue, so they sort first.
+ */
+function entryStaleness(entry: ScraperRegistryEntry, freshness: FreshnessMap): number {
+  const ids = getEntryCinemaIds(entry);
+  let oldest = Number.POSITIVE_INFINITY;
+  for (const id of ids) {
+    const last = freshness.get(id);
+    if (!last) return 0; // never-scraped venue → top priority
+    if (last.getTime() < oldest) oldest = last.getTime();
+  }
+  return oldest === Number.POSITIVE_INFINITY ? 0 : oldest;
+}
+
 /** Fan-out scrapers in a single wave with the given concurrency cap. */
 async function runWave(
   wave: ScraperWave,
   label: string,
   concurrency: number,
+  freshness: FreshnessMap,
 ): Promise<WaveSummary> {
-  const entries = SCRAPER_REGISTRY.filter((e) => e.wave === wave);
+  // Sort by staleness ASC (never-scraped first, then oldest, then most recent last).
+  // Compute the staleness key once per entry; sort + log share the result.
+  const ranked = SCRAPER_REGISTRY.filter((e) => e.wave === wave)
+    .map((entry) => ({ entry, ms: entryStaleness(entry, freshness) }))
+    .sort((a, b) => a.ms - b.ms);
+  if (ranked.length > 0) {
+    const orderStr = ranked
+      .map(({ entry, ms }) => {
+        const age = ms === 0 ? "never" : `${Math.floor((Date.now() - ms) / 86_400_000)}d`;
+        return `${entry.taskId.replace(/^scraper-/, "")}(${age})`;
+      })
+      .join(", ");
+    console.log(`[scrape-all] ${label} order (stalest first): ${orderStr}`);
+  }
+  const entries = ranked.map((r) => r.entry);
   const tasks = entries.map((entry) => () => runScraperEntry(entry));
   const settled = await runWithConcurrency(tasks, concurrency);
 
@@ -210,14 +271,19 @@ export async function runScrapeAll(): Promise<ScrapeAllResult> {
   const startedAt = new Date(startTime);
   const waveSummaries: WaveSummary[] = [];
 
+  // Load each cinema's last successful scrape timestamp once, up front.
+  // Within each wave, entries are sorted stalest-first so that if the run is
+  // interrupted, the cinemas that need the most refresh have already gone.
+  const freshness = await loadFreshnessMap();
+
   // Wave 1: Chain scrapers (3 — fully parallel)
-  waveSummaries.push(await runWave("chain", "Chains", 4));
+  waveSummaries.push(await runWave("chain", "Chains", 4, freshness));
 
   // Wave 2: Playwright independents (7 — cap at 4 for memory headroom)
-  waveSummaries.push(await runWave("playwright", "Playwright", 4));
+  waveSummaries.push(await runWave("playwright", "Playwright", 4, freshness));
 
   // Wave 3: Cheerio / API independents (16 — cap at 4 to mirror prior chunking)
-  waveSummaries.push(await runWave("cheerio", "Cheerio", 4));
+  waveSummaries.push(await runWave("cheerio", "Cheerio", 4, freshness));
 
   // Wave 4: Post-scrape enrichment (Letterboxd ratings)
   waveSummaries.push(await runEnrichmentWave());

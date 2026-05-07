@@ -1,3 +1,14 @@
+## 2026-05-07: Prioritise stale cinemas in /scrape — stalest first within each wave
+**PR**: TBD | **Files**: `src/lib/jobs/scrape-all.ts`
+- `runScrapeAll` now loads each cinema's last successful scrape timestamp from `scraper_runs` once, up front.
+- Within each wave (chains, playwright, cheerio), entries are sorted by their oldest-venue-staleness ASC: never-scraped venues first, then oldest, then most recent.
+- For chains/multi-venue entries, the staleness key is the OLDEST `MAX(completed_at)` across all venues the entry owns — so a chain runs early if any one of its venues is stale.
+- Logs the per-wave order: `[scrape-all] Chains order (stalest first): chain-curzon(7d), chain-everyman(2d), chain-picturehouse(0d)`.
+- Wave structure unchanged (chains still parallel for auth-sharing reasons; cheerio still cap-4 concurrency). Ordering is within-wave only.
+- Tests 890/890. tsc + lint clean. No new tests added — this is observability + ordering only, no behavior change to per-cinema logic.
+
+---
+
 ## 2026-05-07: Add postgres-js client timeouts to fix /scrape stalls
 **PR**: TBD | **Files**: `src/db/index.ts`
 - Local `/scrape` stalled twice for 12+ hours each before being killed manually. Cause: postgres-js with `max:1` connection on Supabase's transaction-mode pooler. When a pooler-side connection silently drops mid-query, the driver doesn't notice — the query promise never resolves and all subsequent queries queue behind it.
