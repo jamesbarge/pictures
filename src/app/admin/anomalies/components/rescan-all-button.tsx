@@ -2,7 +2,7 @@
 
 /**
  * Re-scan All Button Component
- * Triggers all scrapers via Inngest
+ * Triggers all scrapers via /api/admin/scrape/all (in-process orchestrator).
  */
 
 import { useState } from "react";

@@ -1,11 +1,7 @@
 name: Social Outreach Pipeline
 
 on:
-  # Run every Sunday at 10am UTC
-  schedule:
-    - cron: '0 10 * * 0'
-  
-  # Allow manual trigger
+  # Manual trigger only — schedule disabled per "no off-Mac automation" policy.
   workflow_dispatch:
     inputs:
       dry_run:

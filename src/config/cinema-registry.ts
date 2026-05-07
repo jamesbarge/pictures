@@ -4,9 +4,6 @@
  * SINGLE SOURCE OF TRUTH for all cinema definitions.
  *
  * All other files should derive their cinema lists from this registry:
- * - src/inngest/functions.ts → getCheeriocinemas(), getScraperRegistry()
- * - src/app/api/admin/scrape/route.ts → getCinemaToScraperMap()
- * - src/scrapers/local-runner.ts → getPlaywrightCinemas()
  * - src/db/seed-cli.ts → getCinemasSeedData()
  *
  * To add a new cinema:
@@ -1235,8 +1232,7 @@ export function getLegacyIdMappings(): Map<string, string> {
 // ============================================================================
 
 /**
- * Get all Cheerio-based cinemas that can run on Vercel serverless
- * Replaces CHEERIO_CINEMAS in src/inngest/functions.ts
+ * Get all Cheerio-based cinemas that can run in any Node runtime.
  */
 export function getCheeriocinemas(): CinemaDefinition[] {
   return CINEMA_REGISTRY.filter(
@@ -1245,8 +1241,7 @@ export function getCheeriocinemas(): CinemaDefinition[] {
 }
 
 /**
- * Get all Playwright-based cinemas that require browser runtime
- * Replaces PLAYWRIGHT_SCRAPERS in src/scrapers/local-runner.ts
+ * Get all Playwright-based cinemas that require browser runtime.
  */
 export function getPlaywrightCinemas(): CinemaDefinition[] {
   return CINEMA_REGISTRY.filter(
@@ -1317,91 +1312,6 @@ export function getChainIds(): ChainId[] {
 }
 
 // ============================================================================
-// Admin API Functions
-// ============================================================================
-
-/**
- * IDs where Inngest uses a different key than the canonical registry ID.
- * This handles both:
- * 1. SCRAPER_REGISTRY keys (for independent cinemas)
- * 2. CHAIN_CINEMA_MAPPING keys (for chain cinemas)
- *
- * These are temporary until Inngest functions are updated to use canonical registry.
- */
-const INNGEST_ID_OVERRIDES: Record<string, string> = {
-  // Independent cinemas where Inngest uses legacy ID
-  "the-nickel": "nickel",
-  "phoenix-east-finchley": "phoenix",
-  "electric": "electric-portobello",
-  // Picturehouse chain where Inngest uses old naming convention
-  "picturehouse-hackney": "hackney-picturehouse",
-  "picturehouse-crouch-end": "crouch-end-picturehouse",
-  "picturehouse-east-dulwich": "east-dulwich-picturehouse",
-  "picturehouse-greenwich": "greenwich-picturehouse",
-  "picturehouse-finsbury-park": "finsbury-park-picturehouse",
-  "gate-notting-hill": "gate-picturehouse",
-  "picturehouse-clapham": "clapham-picturehouse",
-  "ritzy-brixton": "picturehouse-ritzy",
-  "picturehouse-west-norwood": "west-norwood-picturehouse",
-  "picturehouse-ealing": "ealing-picturehouse",
-  // Everyman: screen-on-the-green uses legacy prefix in Inngest
-  "screen-on-the-green": "everyman-screen-on-the-green",
-};
-
-/**
- * Get the cinema ID that Inngest expects for a given canonical ID.
- * Inngest's CHAIN_CINEMA_MAPPING and SCRAPER_REGISTRY may use different IDs
- * than the canonical registry until they are migrated.
- */
-export function getInngestCinemaId(canonicalId: string): string {
-  return INNGEST_ID_OVERRIDES[canonicalId] || canonicalId;
-}
-
-/**
- * Get cinema-to-scraper mapping for admin API
- * Maps both canonical and legacy IDs to the scraper ID that Inngest expects.
- * Replaces CINEMA_TO_SCRAPER in src/app/api/admin/scrape/route.ts
- */
-export function getCinemaToScraperMap(): Record<string, string> {
-  const map: Record<string, string> = {};
-
-  for (const cinema of CINEMA_REGISTRY) {
-    // Determine the scraper ID that Inngest expects
-    let scraperId: string;
-    if (cinema.chain && cinema.chain !== "bfi") {
-      // For chain cinemas, map to the chain scraper
-      scraperId = cinema.chain;
-    } else if (INNGEST_ID_OVERRIDES[cinema.id]) {
-      // Use the legacy ID that Inngest expects
-      scraperId = INNGEST_ID_OVERRIDES[cinema.id];
-    } else {
-      // For most independents, use the canonical ID
-      scraperId = cinema.id;
-    }
-
-    // Map the canonical ID
-    map[cinema.id] = scraperId;
-
-    // Also map any legacy IDs to the same scraper
-    if (cinema.legacyIds) {
-      for (const legacyId of cinema.legacyIds) {
-        map[legacyId] = scraperId;
-      }
-    }
-  }
-
-  return map;
-}
-
-/**
- * Check if a cinema requires Playwright
- */
-export function requiresPlaywright(cinemaId: string): boolean {
-  const cinema = getCinemaById(cinemaId);
-  return cinema?.scraperType === "playwright";
-}
-
-// ============================================================================
 // Database Seed Functions
 // ============================================================================
 
@@ -1429,46 +1339,3 @@ export function getCinemasSeedData() {
     description: cinema.description,
   }));
 }
-
-// ============================================================================
-// Inngest Registry Functions
-// ============================================================================
-
-/**
- * Get the venue definition for Inngest scraper registration
- */
-export function getInnguestVenueDefinition(cinemaId: string) {
-  const cinema = getCinemaById(cinemaId);
-  if (!cinema) return undefined;
-
-  return {
-    id: cinema.id,
-    name: cinema.name,
-    shortName: cinema.shortName,
-    website: cinema.website,
-    address: {
-      street: cinema.address.street,
-      area: cinema.address.area,
-      postcode: cinema.address.postcode,
-    },
-    features: cinema.features,
-  };
-}
-
-/**
- * Get chain-to-cinema mapping for Inngest
- * Replaces CHAIN_CINEMA_MAPPING in src/inngest/functions.ts
- */
-export function getChainCinemaMapping(): Record<string, string> {
-  const mapping: Record<string, string> = {};
-  for (const cinema of CINEMA_REGISTRY) {
-    if (cinema.chain && cinema.chain !== "bfi") {
-      mapping[cinema.id] = cinema.chain;
-    }
-  }
-  return mapping;
-}
-
-// Note: getPlaywrightScrapersForRunner was removed as it was unused and had
-// incorrect script name generation. The local-runner.ts should continue using
-// its existing PLAYWRIGHT_SCRAPERS array until a proper migration is done.

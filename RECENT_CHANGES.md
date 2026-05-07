@@ -1,3 +1,15 @@
+## 2026-05-07: Remove all off-Mac automation — Inngest, Vercel crons, GitHub Actions schedules
+**PR**: TBD | **Files**: `src/inngest/` (deleted), `src/app/api/inngest/route.ts` (deleted), `src/app/api/cron/` (deleted), `src/config/cinema-registry.ts`, `src/config/cinema-registry.test.ts` (deleted), `vercel.json`, `.github/workflows/social-outreach.yml`, `.github/workflows/scrape.yml` (deleted), `.github/workflows/scrape-playwright.yml` (deleted), `package.json`
+- Per "no off-Mac automation" policy. `/scrape` is the sole scrape entry point and runs locally; nothing scheduled should run from cloud infrastructure.
+- **Inngest entirely removed**: `src/inngest/` (3 files), `/api/inngest/route.ts` (webhook), `inngest` npm dep. Was running 4 scheduled cron functions (`scheduledScrapeAll` daily 06:00 UTC, plus BFI PDF/changes and Letterboxd enrichment) — these are exactly the ghost cron that's been creating duplicate screenings since deployment.
+- **Vercel crons removed**: `crons` block from `vercel.json` (cleanup, posthog-sync, health-check). Route handlers `src/app/api/cron/*` deleted. `verifyCronSecret` helper kept in `src/lib/auth.ts` for future use.
+- **GitHub Actions schedules**: `social-outreach.yml` schedule removed (still manually triggerable via `workflow_dispatch`). `scrape.yml` and `scrape-playwright.yml` deleted (already commented-out reminders of retired infrastructure).
+- **`cinema-registry.ts` cleanup**: removed `INNGEST_ID_OVERRIDES`, `getInngestCinemaId`, `getCinemaToScraperMap`, `requiresPlaywright`, `getInnguestVenueDefinition`, `getChainCinemaMapping` — all dead after Inngest removal. Header comment updated.
+- Tests 890/890 (-4 from cron tests, was 894). tsc + lint clean.
+- **Side effect**: Inngest's cloud dashboard webhook endpoint now 404s — its scheduled functions can't reach the app, so cron firing is dead. Manual cleanup of the Inngest dashboard registration is recommended but not load-bearing.
+
+---
+
 ## 2026-05-06: Scraper coverage follow-ups — Curzon horizon 14→30, drop dead castle-v2 scaffolding, Regent Street verified
 **PR**: TBD | **Files**: `src/scrapers/chains/curzon.ts`, `src/scrapers/cinemas/castle-v2.ts` (deleted), `src/scrapers/run-castle-v2.ts` (deleted)
 - Curzon's chain scraper was hardcoded to `dates.slice(0, 14)` — a horizon on "days with anything programmed". Bumped to 30 to cover the typical 4-8 week publication window. Empty-day API calls return quickly so the cost is negligible.
