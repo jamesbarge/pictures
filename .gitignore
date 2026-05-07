@@ -89,3 +89,6 @@ logs/
 
 # Data exports
 *.xlsx
+
+# /scrape progress stamp + scratch
+/tmp/

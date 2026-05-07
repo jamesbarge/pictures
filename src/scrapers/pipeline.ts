@@ -13,6 +13,8 @@ import { validateScreenings, printValidationSummary } from "./utils/screening-va
 import { generateScrapeDiff, printDiffReport, shouldBlockScrape } from "./utils/scrape-diff";
 import { linkFilmToMatchingSeasons } from "./seasons/season-linker";
 
+import { runPhase, stampProgress } from "@/lib/scrape-progress";
+
 // Extracted utility modules
 import {
   initFilmCache,
@@ -22,6 +24,7 @@ import {
   matchAndCreateFromTMDB,
   createFilmWithoutTMDB,
   tryUpdatePoster,
+  type FilmCache,
 } from "./utils/film-matching";
 import {
   classifyScreening,
@@ -134,6 +137,7 @@ export async function processScreenings(
   rawScreenings: RawScreening[]
 ): Promise<PipelineResult> {
   console.log(`[Pipeline] Processing ${rawScreenings.length} screenings for ${cinemaId}`);
+  await stampProgress({ cinemaId, phase: "pipeline-start", startedAt: new Date().toISOString(), meta: { rawCount: rawScreenings.length } });
 
   // Validate screenings before processing - reject invalid data early
   const { validScreenings, rejectedScreenings, summary } = validateScreenings(rawScreenings);
@@ -147,8 +151,13 @@ export async function processScreenings(
   const screeningsToProcess = validScreenings;
   console.log(`[Pipeline] ${screeningsToProcess.length} valid screenings to process`);
 
-  // Generate diff report to detect suspicious patterns
-  const diffReport = await generateScrapeDiff(cinemaId, screeningsToProcess);
+  // Generate diff report to detect suspicious patterns.
+  // Wrapped in runPhase: between this and initFilmCache below was the
+  // dead zone where /scrape silently hung for 87 minutes on 2026-05-07.
+  // We now log start/done + duration and stamp tmp/scrape-progress.json.
+  const diffReport = await runPhase(cinemaId, "diff", () =>
+    generateScrapeDiff(cinemaId, screeningsToProcess),
+  );
   if (diffReport.hasIssues) {
     printDiffReport(diffReport);
 
@@ -167,8 +176,11 @@ export async function processScreenings(
     }
   }
 
-  // Initialize film cache for O(1) lookups
-  await initFilmCache(normalizeTitle);
+  // Initialize per-cinema-run film cache for O(1) lookups.
+  // Per-call cache (not module-level) — see FilmCache JSDoc in film-matching.ts.
+  const filmCache = await runPhase(cinemaId, "init-film-cache", () =>
+    initFilmCache(normalizeTitle),
+  );
 
   const result: PipelineResult = {
     cinemaId,
@@ -180,12 +192,14 @@ export async function processScreenings(
     scrapedAt: new Date(),
   };
 
-  // Extract film titles using AI for event-style names
+  // Extract film titles for event-style names
   // This ensures "Saturday Morning Picture Club: The Muppets Christmas Carol" and
   // "The Muppets Christmas Carol" get grouped together
   const uniqueRawTitles = [...new Set(screeningsToProcess.map((s) => s.filmTitle))];
   console.log(`[Pipeline] Extracting titles from ${uniqueRawTitles.length} unique raw titles`);
-  const titleExtractions = await batchExtractTitles(uniqueRawTitles);
+  const titleExtractions = await runPhase(cinemaId, "extract-titles", () =>
+    batchExtractTitles(uniqueRawTitles),
+  );
 
   // Group screenings by canonical title for deduplication
   // This ensures "Apocalypse Now" and "Apocalypse Now : Final Cut" are grouped together
@@ -205,7 +219,7 @@ export async function processScreenings(
     screeningsByFilm.get(key)!.push(screening);
   }
 
-  console.log(`[Pipeline] ${screeningsByFilm.size} unique films after AI extraction`);
+  console.log(`[Pipeline] ${screeningsByFilm.size} unique films after extraction`);
 
   // Process each film
   // The two awaited boundaries — getOrCreateFilm and insertScreening — are
@@ -214,66 +228,76 @@ export async function processScreenings(
   // after the ceiling and the surrounding try/catch logs and skips. Same
   // recovery posture as a Postgres 57014 — one film loses, the rest of the
   // cinema (and the rest of the run) continues.
-  for (const [normalizedTitle, filmScreenings] of screeningsByFilm) {
-    try {
-      // Get the first screening for film metadata (use any scraper-provided data)
-      const firstScreening = filmScreenings[0];
+  await runPhase(
+    cinemaId,
+    "film-loop",
+    async () => {
+      for (const [normalizedTitle, filmScreenings] of screeningsByFilm) {
+        try {
+          // Get the first screening for film metadata (use any scraper-provided data)
+          const firstScreening = filmScreenings[0];
 
-      // Get or create film record, passing any scraper-extracted metadata.
-      // 20s ceiling: covers internal DB selects + a TMDB API call.
-      const filmId = await withDbTimeout(
-        getOrCreateFilm(
-          firstScreening.filmTitle,
-          firstScreening.year,
-          firstScreening.director,
-          firstScreening.posterUrl
-        ),
-        20_000,
-        `getOrCreateFilm: ${firstScreening.filmTitle}`,
-      );
+          // Get or create film record, passing any scraper-extracted metadata.
+          // 20s ceiling: covers internal DB selects + a TMDB API call.
+          const filmId = await withDbTimeout(
+            getOrCreateFilm(
+              filmCache,
+              firstScreening.filmTitle,
+              firstScreening.year,
+              firstScreening.director,
+              firstScreening.posterUrl
+            ),
+            20_000,
+            `getOrCreateFilm: ${firstScreening.filmTitle}`,
+          );
 
-      if (!filmId) {
-        console.warn(`[Pipeline] Could not create film: ${firstScreening.filmTitle}`);
-        result.failed += filmScreenings.length;
-        continue;
-      }
+          if (!filmId) {
+            console.warn(`[Pipeline] Could not create film: ${firstScreening.filmTitle}`);
+            result.failed += filmScreenings.length;
+            continue;
+          }
 
-      // Link film to any matching seasons
-      // This ensures films are associated with seasons as soon as they're scraped
-      await withDbTimeout(
-        linkFilmToMatchingSeasons(filmId, firstScreening.filmTitle),
-        10_000,
-        `linkFilmToMatchingSeasons: ${firstScreening.filmTitle}`,
-      );
+          // Link film to any matching seasons
+          // This ensures films are associated with seasons as soon as they're scraped
+          await withDbTimeout(
+            linkFilmToMatchingSeasons(filmId, firstScreening.filmTitle),
+            10_000,
+            `linkFilmToMatchingSeasons: ${firstScreening.filmTitle}`,
+          );
 
-      // Insert screenings (normalize timestamps to zero seconds/ms).
-      // 15s ceiling per screening: covers checkForDuplicate + insert/update.
-      for (const screening of filmScreenings) {
-        const normalizedScreening = { ...screening, datetime: normalizeTimestamp(screening.datetime) };
-        const added = await withDbTimeout(
-          insertScreening(filmId, cinemaId, normalizedScreening),
-          15_000,
-          `insertScreening: ${cinemaId}/${normalizedScreening.sourceId ?? "<nosrc>"}`,
-        );
-        if (added) {
-          result.added++;
-        } else {
-          result.updated++;
+          // Insert screenings (normalize timestamps to zero seconds/ms).
+          // 15s ceiling per screening: covers checkForDuplicate + insert/update.
+          for (const screening of filmScreenings) {
+            const normalizedScreening = { ...screening, datetime: normalizeTimestamp(screening.datetime) };
+            const added = await withDbTimeout(
+              insertScreening(filmId, cinemaId, normalizedScreening),
+              15_000,
+              `insertScreening: ${cinemaId}/${normalizedScreening.sourceId ?? "<nosrc>"}`,
+            );
+            if (added) {
+              result.added++;
+            } else {
+              result.updated++;
+            }
+          }
+        } catch (error) {
+          console.error(`[Pipeline] Error processing film "${normalizedTitle}":`, error);
+          result.failed += filmScreenings.length;
         }
       }
-    } catch (error) {
-      console.error(`[Pipeline] Error processing film "${normalizedTitle}":`, error);
-      result.failed += filmScreenings.length;
-    }
-  }
+    },
+    { uniqueFilms: screeningsByFilm.size },
+  );
 
   // Clean up superseded same-day screenings (time-shift orphans)
   // Only runs when the scrape wasn't blocked and produced results
   if (!result.blocked && result.added + result.updated > 0) {
-    const cleaned = await cleanupSupersededScreenings(cinemaId, result.scrapedAt);
-    if (cleaned > 0) {
-      console.log(`[Pipeline] Cleaned ${cleaned} superseded same-day screenings`);
-    }
+    await runPhase(cinemaId, "cleanup-superseded", async () => {
+      const cleaned = await cleanupSupersededScreenings(cinemaId, result.scrapedAt);
+      if (cleaned > 0) {
+        console.log(`[Pipeline] Cleaned ${cleaned} superseded same-day screenings`);
+      }
+    });
   }
 
   // Update cinema's lastScrapedAt
@@ -287,7 +311,7 @@ export async function processScreenings(
   );
 
   // Log cache performance stats
-  logCacheStats();
+  logCacheStats(filmCache);
 
   // Run agent-based analysis if enabled
   if (AGENTS_ENABLED && result.added > 0) {
@@ -371,6 +395,7 @@ async function runPostScrapeAgents(
  * Uses AI-powered title extraction for event-style titles
  */
 async function getOrCreateFilm(
+  filmCache: FilmCache,
   title: string,
   scraperYear?: number,
   scraperDirector?: string,
@@ -406,7 +431,7 @@ async function getOrCreateFilm(
   const normalized = normalizeTitle(matchingTitle);
 
   // Try to find existing film using the pre-loaded cache (O(1) lookup)
-  const existing = lookupFilmInCache(normalized);
+  const existing = lookupFilmInCache(filmCache, normalized);
 
   if (existing) {
     // If existing film lacks a poster, try to find one
@@ -425,6 +450,7 @@ async function getOrCreateFilm(
   // Try to match with TMDB
   try {
     const tmdbFilmId = await matchAndCreateFromTMDB(
+      filmCache,
       matchingTitle,
       scraperYear,
       scraperDirector,
@@ -438,7 +464,7 @@ async function getOrCreateFilm(
   }
 
   // Fallback: Create film without TMDB data
-  return createFilmWithoutTMDB(matchingTitle, scraperYear, scraperDirector, scraperPosterUrl);
+  return createFilmWithoutTMDB(filmCache, matchingTitle, scraperYear, scraperDirector, scraperPosterUrl);
 }
 
 /**

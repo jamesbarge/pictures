@@ -8,6 +8,7 @@
  * - Consistent health checks and pipeline processing
  */
 
+import { AsyncLocalStorage } from "node:async_hooks";
 import type { CinemaScraper, ChainScraper, RawScreening } from "./types";
 import { processScreenings, saveScreenings, ensureCinemaExists } from "./pipeline";
 import { db, isDatabaseAvailable } from "../db";
@@ -133,19 +134,43 @@ function log(entry: Omit<LogEntry, "timestamp">): void {
 }
 
 // ============================================================================
-// Run Recording (fire-and-forget with flush)
+// Run Recording (fire-and-forget with per-call flush)
 // ============================================================================
 
-/** Pending record promises — collected so we can flush before process exit */
-const pendingRecords: Promise<void>[] = [];
-
 /**
- * Await all pending recordScraperRun writes (with a 5s timeout).
- * Call before process.exit to prevent data loss.
+ * Per-`runScraper`-call array of pending `recordScraperRun` promises.
+ *
+ * Was previously a module-level array shared across every concurrent
+ * `runScraper` call in the process. With waves running 4 scrapers in
+ * parallel and `flushPendingRecords` doing `splice(0)` to drain, two
+ * flushes overlapping could swallow each other's pending writes. Each
+ * `runScraper` invocation now enters its own `AsyncLocalStorage` context
+ * with its own array — fire-and-forget pushes go to the active call's
+ * list, the flush at the end of `runScraper` drains exactly that list.
  */
+const pendingRecordsContext = new AsyncLocalStorage<Promise<void>[]>();
+
+/** Push a fire-and-forget recordScraperRun into the current `runScraper` context. */
+function pushPendingRecord(promise: Promise<void>): void {
+  const list = pendingRecordsContext.getStore();
+  if (list) {
+    list.push(promise);
+    return;
+  }
+  // Caller is outside any runScraper context — invariant violation. Log it
+  // (so the next regression of the wiring is observable) and detach from the
+  // await chain so an unhandled rejection can't crash the process.
+  console.warn(
+    "[runner-factory] recordScraperRun pushed outside runScraper context — fire-and-forget without flush",
+  );
+  promise.catch(() => {});
+}
+
+/** Await all pending records in the current `runScraper` context (with 5s ceiling). */
 async function flushPendingRecords(): Promise<void> {
-  if (pendingRecords.length === 0) return;
-  const pending = pendingRecords.splice(0);
+  const list = pendingRecordsContext.getStore();
+  if (!list || list.length === 0) return;
+  const pending = list.splice(0);
   await Promise.race([
     Promise.allSettled(pending),
     new Promise((resolve) => setTimeout(resolve, 5000)),
@@ -324,7 +349,7 @@ async function runSingleVenue(
           event: "venue_blocked",
           data: { venueId: venue.id, screeningsFound: screenings.length, durationMs },
         });
-        pendingRecords.push(recordScraperRun({
+        pushPendingRecord(recordScraperRun({
           cinemaId: venue.id,
           startedAt: new Date(startTime),
           status: "failed",
@@ -363,7 +388,7 @@ async function runSingleVenue(
       });
 
       // Record successful scraper run (fire-and-forget)
-      pendingRecords.push(recordScraperRun({
+      pushPendingRecord(recordScraperRun({
         cinemaId: venue.id,
         startedAt: new Date(startTime),
         status: "success",
@@ -420,7 +445,7 @@ async function runSingleVenue(
   });
 
   // Record failed scraper run (fire-and-forget)
-  pendingRecords.push(recordScraperRun({
+  pushPendingRecord(recordScraperRun({
     cinemaId: venue.id,
     startedAt: new Date(startTime),
     status: "failed",
@@ -459,6 +484,23 @@ const DEFAULT_OPTIONS: Required<RunnerOptions> = {
  * Run a scraper configuration with unified error handling and logging
  */
 export async function runScraper(
+  config: ScraperRunnerConfig,
+  userOptions: RunnerOptions = {}
+): Promise<RunnerResult> {
+  // Per-call context for fire-and-forget recordScraperRun pushes — see
+  // pendingRecordsContext doc above. The try/finally guarantees the flush
+  // runs whether runScraperInner returns or throws, so pending records are
+  // always drained before the AsyncLocalStorage context unwinds.
+  return pendingRecordsContext.run([], async () => {
+    try {
+      return await runScraperInner(config, userOptions);
+    } finally {
+      await flushPendingRecords();
+    }
+  });
+}
+
+async function runScraperInner(
   config: ScraperRunnerConfig,
   userOptions: RunnerOptions = {}
 ): Promise<RunnerResult> {
@@ -579,7 +621,7 @@ export async function runScraper(
           }
 
           // Record chain per-venue scraper run (fire-and-forget)
-          pendingRecords.push(recordScraperRun({
+          pushPendingRecord(recordScraperRun({
             cinemaId: venueId,
             startedAt: new Date(venueStartTime),
             status: venueBlocked ? "failed" : "success",
@@ -612,7 +654,7 @@ export async function runScraper(
         // Mark all venues as failed
         for (const venue of venuesToScrape) {
           // Record chain failure per-venue (fire-and-forget)
-          pendingRecords.push(recordScraperRun({
+          pushPendingRecord(recordScraperRun({
             cinemaId: venue.id,
             startedAt: new Date(startTime),
             status: "failed",
@@ -675,9 +717,8 @@ export async function runScraper(
     },
   });
 
-  // Flush any pending record writes before returning
-  await flushPendingRecords();
-
+  // Note: flushPendingRecords runs in the runScraper wrapper's `finally`
+  // — guaranteed regardless of whether this function returns or throws.
   return result;
 }
 
@@ -772,7 +813,9 @@ export function createMain(
     const result = await runScraper(config, runnerOptions);
 
     if (!result.success) {
-      await flushPendingRecords();
+      // runScraper's wrapper finally already flushed pending records inside
+      // its AsyncLocalStorage context — calling flushPendingRecords here
+      // would be a no-op (no active store) so we just exit.
       process.exit(1);
     }
   };

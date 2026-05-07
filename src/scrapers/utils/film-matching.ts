@@ -23,28 +23,42 @@ type FilmRecord = typeof films.$inferSelect;
 // Film Cache
 // ============================================================================
 
-/** Film cache for efficient lookups during pipeline run (normalizedTitle -> film record) */
-let filmCache: Map<string, FilmRecord> | null = null;
-/** Secondary index: Maps tmdbId -> film record for dedup by TMDB ID */
-let tmdbIdIndex: Map<number, FilmRecord> | null = null;
-/** Track cache stats for logging */
-let cacheStats = { hits: 0, misses: 0, dbQueries: 0 };
-/** Stored normalizeTitle function reference (set during initFilmCache) */
-let normalizeFn: ((title: string) => string) | null = null;
+/**
+ * Per-pipeline-run film cache.
+ *
+ * Replaces module-level singletons (was a real concurrency hazard:
+ * `runWave` runs cinemas in parallel — cap 4 — and the pre-2026-05-07
+ * shape reset module-level cache state on every per-cinema call to
+ * `initFilmCache`, so cinema B's reset could wipe cinema A's mid-run
+ * cache and cause A to create duplicate film rows for entries it had
+ * already cached. Now each `processScreenings` invocation owns its own
+ * `FilmCache` object — no shared mutable state.)
+ */
+export interface FilmCache {
+  /** normalizedTitle -> film record */
+  byTitle: Map<string, FilmRecord>;
+  /** tmdbId -> film record, for dedup by TMDB ID */
+  byTmdbId: Map<number, FilmRecord>;
+  /** Stats for end-of-run logging */
+  stats: { hits: number; misses: number; dbQueries: number };
+  /** Stored normalizer so cache writes use the same one as the load */
+  normalizeTitle: (title: string) => string;
+}
 
 /**
- * Initialize film cache for O(1) lookups during pipeline run.
+ * Initialize a film cache for O(1) lookups during one pipeline run.
  * Loads all films once - with ~750 films this is fast and simple.
  */
 export async function initFilmCache(
-  normalizeTitle: (title: string) => string
-): Promise<Map<string, FilmRecord>> {
-  const cache = new Map<string, FilmRecord>();
-  const tmdbIndex = new Map<number, FilmRecord>();
-  cacheStats = { hits: 0, misses: 0, dbQueries: 0 };
-  normalizeFn = normalizeTitle;
+  normalizeTitle: (title: string) => string,
+): Promise<FilmCache> {
+  const cache: FilmCache = {
+    byTitle: new Map(),
+    byTmdbId: new Map(),
+    stats: { hits: 0, misses: 0, dbQueries: 1 },
+    normalizeTitle,
+  };
 
-  cacheStats.dbQueries++;
   const allFilms = await withDbTimeout(
     db.select().from(films),
     15_000,
@@ -54,48 +68,48 @@ export async function initFilmCache(
   for (const film of allFilms) {
     const normalized = normalizeTitle(film.title);
     // If duplicate normalized titles exist, keep the one with more data (has TMDB ID)
-    const existing = cache.get(normalized);
+    const existing = cache.byTitle.get(normalized);
     if (!existing || (film.tmdbId && !existing.tmdbId)) {
-      cache.set(normalized, film);
+      cache.byTitle.set(normalized, film);
     }
     // Build TMDB ID index — two films with same TMDB ID are always the same film
     if (film.tmdbId) {
-      tmdbIndex.set(film.tmdbId, film);
+      cache.byTmdbId.set(film.tmdbId, film);
     }
   }
 
-  tmdbIdIndex = tmdbIndex;
-  filmCache = cache;
-  console.log(`[Pipeline] Film cache initialized with ${cache.size} unique films, ${tmdbIndex.size} TMDB IDs (${allFilms.length} total)`);
+  console.log(
+    `[Pipeline] Film cache initialized with ${cache.byTitle.size} unique films, ${cache.byTmdbId.size} TMDB IDs (${allFilms.length} total)`,
+  );
   return cache;
 }
 
 /** Lookup a film in cache (O(1) access). Returns null on cache miss. */
-export function lookupFilmInCache(normalizedTitle: string): FilmRecord | null {
-  const cached = filmCache?.get(normalizedTitle);
+export function lookupFilmInCache(cache: FilmCache, normalizedTitle: string): FilmRecord | null {
+  const cached = cache.byTitle.get(normalizedTitle);
   if (cached) {
-    cacheStats.hits++;
+    cache.stats.hits++;
     return cached;
   }
-  cacheStats.misses++;
+  cache.stats.misses++;
   return null;
 }
 
 /** Log cache performance stats. */
-export function logCacheStats(): void {
-  const total = cacheStats.hits + cacheStats.misses;
-  const hitRate = total > 0 ? ((cacheStats.hits / total) * 100).toFixed(1) : "0";
-  console.log(`[Pipeline] Cache stats: ${cacheStats.hits} hits, ${cacheStats.misses} misses (${hitRate}% hit rate), ${cacheStats.dbQueries} DB queries`);
+export function logCacheStats(cache: FilmCache): void {
+  const total = cache.stats.hits + cache.stats.misses;
+  const hitRate = total > 0 ? ((cache.stats.hits / total) * 100).toFixed(1) : "0";
+  console.log(
+    `[Pipeline] Cache stats: ${cache.stats.hits} hits, ${cache.stats.misses} misses (${hitRate}% hit rate), ${cache.stats.dbQueries} DB queries`,
+  );
 }
 
 /** Add a new film to the cache. */
-function addToFilmCache(film: FilmRecord) {
-  if (filmCache && normalizeFn) {
-    const normalized = normalizeFn(film.title);
-    filmCache.set(normalized, film);
-  }
-  if (tmdbIdIndex && film.tmdbId) {
-    tmdbIdIndex.set(film.tmdbId, film);
+function addToFilmCache(cache: FilmCache, film: FilmRecord) {
+  const normalized = cache.normalizeTitle(film.title);
+  cache.byTitle.set(normalized, film);
+  if (film.tmdbId) {
+    cache.byTmdbId.set(film.tmdbId, film);
   }
 }
 
@@ -140,6 +154,7 @@ export async function findFilmBySimilarity(
  * Returns the new filmId or null if no TMDB match.
  */
 export async function matchAndCreateFromTMDB(
+  cache: FilmCache,
   matchingTitle: string,
   scraperYear?: number,
   scraperDirector?: string,
@@ -155,18 +170,18 @@ export async function matchAndCreateFromTMDB(
   }
 
   // Check if we already have this TMDB ID — cache first, then DB fallback
-  const cachedByTmdb = tmdbIdIndex?.get(match.tmdbId);
+  const cachedByTmdb = cache.byTmdbId.get(match.tmdbId);
   if (cachedByTmdb) {
-    cacheStats.hits++;
+    cache.stats.hits++;
     return cachedByTmdb.id;
   }
 
-  const byTmdbId = await db
-    .select()
-    .from(films)
-    .where(eq(films.tmdbId, match.tmdbId))
-    .limit(1);
-  cacheStats.dbQueries++;
+  const byTmdbId = await withDbTimeout(
+    db.select().from(films).where(eq(films.tmdbId, match.tmdbId)).limit(1),
+    10_000,
+    `matchAndCreateFromTMDB: tmdbId lookup ${match.tmdbId}`,
+  );
+  cache.stats.dbQueries++;
 
   if (byTmdbId.length > 0) {
     return byTmdbId[0].id;
@@ -221,7 +236,7 @@ export async function matchAndCreateFromTMDB(
   });
 
   // Add to cache so subsequent lookups in this run find it
-  addToFilmCache({
+  addToFilmCache(cache, {
     id: filmId,
     tmdbId: match.tmdbId,
     imdbId: details.details.imdb_id,
@@ -268,6 +283,7 @@ export async function matchAndCreateFromTMDB(
  * Returns the new filmId.
  */
 export async function createFilmWithoutTMDB(
+  cache: FilmCache,
   matchingTitle: string,
   scraperYear?: number,
   scraperDirector?: string,
@@ -309,7 +325,7 @@ export async function createFilmWithoutTMDB(
   });
 
   // Add to cache so subsequent lookups in this run find it
-  addToFilmCache({
+  addToFilmCache(cache, {
     id: filmId,
     title: matchingTitle,
     originalTitle: null,
