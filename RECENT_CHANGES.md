@@ -1,3 +1,14 @@
+## 2026-05-11: Picturehouse BST fix + 478 ghost cleanup + /spot-check loop
+**PR**: TBD | **Files**: `src/scrapers/chains/picturehouse.ts`, `scripts/spot-check-and-fix.ts`, `scripts/_cleanup-bst-ghost-screenings.ts`, `scripts/_fix-boy-and-the-world.ts`, 6 diagnostic scripts, `tasks/spot-check-2026-05-11.md`, `changelogs/2026-05-11-picturehouse-bst-and-spot-check-loop.md`
+- **Picturehouse BST fix**: `picturehouse.ts:255` had the same `new Date(tzlessString)` bug as Everyman. API probe confirmed the no-TZ format. Migrated to `parseUKLocalDateTime`. Curzon independently checked — clean (Vista OCAPI returns Z-suffixed strings).
+- **478 ghost screenings deleted**: BST-signature dupe-group cleanup across Everyman + Picturehouse venues. Pattern: same `(cinema_id, source_id)` with `MAX(datetime) - MIN(datetime) = INTERVAL '1 hour'` exactly. Kept the row with min(datetime) (BST-correct UTC), dropped all later rows. Post-cleanup: 0 remaining BST dupes.
+- **New `/spot-check` slash command**: samples the 100 films with the soonest screenings, finds all H/M/L issues, applies safe auto-fixes (prefix strip, is_repertory flip, year/runtime/poster/synopsis/directors/genres UPDATE from TMDB), iterates until convergence. First post-#483/#484 run: 10 fixes across 3 iterations.
+- **Boy and the World TMDB fix**: row `960847a6` had TMDB 302430 ("Rumblestrips" — wrong). Corrected to 223706 (Brazilian animation *O Menino e o Mundo*).
+- 6 diagnostic `_*.ts` scripts committed for traceability.
+- `npx tsc --noEmit` clean. `npm run test:run src/scrapers/chains` 4/4 pass.
+
+---
+
 ## 2026-05-11: Fix Everyman chain scraper BST timezone bug
 **PR**: TBD | **Files**: `src/scrapers/chains/everyman.ts`
 - Found via a 100-film post-merge spot-check: 2 `Hokum` screenings at Everyman Broadgate flagged in the 00:00–09:59 London window. Cross-referencing booking URLs revealed each appears twice in the DB — once at the correct evening time, once at +1h.
