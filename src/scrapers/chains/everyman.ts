@@ -15,6 +15,7 @@
  */
 
 import { CHROME_USER_AGENT } from "../constants";
+import { parseUKLocalDateTime } from "../utils/date-parser";
 
 import type { ChainConfig, VenueConfig, RawScreening, ChainScraper } from "../types";
 import { addDays, format } from "date-fns";
@@ -455,7 +456,12 @@ export class EverymanScraper implements ChainScraper {
         for (const showtime of showtimes) {
           if (showtime.isExpired) continue;
 
-          const datetime = new Date(showtime.startsAt);
+          // showtime.startsAt is a TZ-less ISO string in UK local time (the API
+          // is keyed by `timeZone: "Europe/London"`). `new Date(str)` interprets
+          // a TZ-less string in the runtime TZ — under TZ=UTC (cron, CI) that
+          // produces a silent +1h offset during BST. parseUKLocalDateTime treats
+          // the string as UK local time explicitly.
+          const datetime = parseUKLocalDateTime(showtime.startsAt);
           if (datetime < now) continue;
 
           // Get booking URL (prefer DESKTOP provider)

@@ -1,3 +1,14 @@
+## 2026-05-11: Fix Everyman chain scraper BST timezone bug
+**PR**: TBD | **Files**: `src/scrapers/chains/everyman.ts`
+- Found via a 100-film post-merge spot-check: 2 `Hokum` screenings at Everyman Broadgate flagged in the 00:00–09:59 London window. Cross-referencing booking URLs revealed each appears twice in the DB — once at the correct evening time, once at +1h.
+- Root cause: `new Date(showtime.startsAt)` at `everyman.ts:458` interpreted the API's TZ-less ISO string (e.g. `"2026-05-12T11:15:00"`) in the runtime TZ. Under `TZ=Europe/London` (developer Mac) → correct; under `TZ=UTC` (cron, CI) → silently +1h during BST.
+- Same bug class as the 11 scrapers migrated in #483, but with a different surface (no-TZ string → `new Date(str)`). Fix: `parseUKLocalDateTime(showtime.startsAt)` from `utils/date-parser.ts` — treats no-TZ strings as UK local time explicitly.
+- **348 upcoming Everyman screenings are currently involved in duplicate sets** across all 15 Everyman venues. The +1h ghosts need to be cleaned up separately (destructive — requires explicit approval).
+- Curzon and Picturehouse chain scrapers have similar `new Date(api.startsAt)` patterns but no booking-URL duplicate evidence in current data. Worth probing their API formats as a follow-up.
+- `npx tsc --noEmit` clean. `npm run test:run src/scrapers/chains` 4/4 pass.
+
+---
+
 ## 2026-05-10: Sort /scrape by fewest screenings first + finish BST hardening
 **PR**: TBD | **Files**: `src/lib/jobs/scrape-all.ts`, `src/scrapers/cinemas/close-up.ts`, `src/scrapers/cinemas/electric.ts`, `src/scrapers/cinemas/electric-v2.ts`, `src/scrapers/cinemas/peckhamplex.ts`, `src/scrapers/cinemas/genesis.ts`, `src/scrapers/cinemas/genesis-v2.ts`, `src/scrapers/cinemas/lexi.ts`, `src/scrapers/cinemas/lexi-v2.ts`, `src/scrapers/bfi-pdf/pdf-parser.ts`, `src/scrapers/bfi-pdf/programme-changes-parser.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`
 - **New primary sort key in `runWave`**: fewest upcoming screenings first, staleness (the prior key from #480) as tiebreaker. Cinemas with broken scrapers — which show as low screening counts in the 2026-05-06 coverage audit — now surface within the first concurrency slot of their wave instead of running last.
