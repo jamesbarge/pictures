@@ -12,6 +12,7 @@
 
 import type { ChainConfig, VenueConfig, RawScreening, ChainScraper } from "../types";
 import { CHROME_USER_AGENT } from "../constants";
+import { parseUKLocalDateTime } from "../utils/date-parser";
 
 // ============================================================================
 // Picturehouse Venue Configurations
@@ -251,8 +252,12 @@ export class PicturehouseScraper implements ChainScraper {
 
     for (const movie of data.movies) {
       for (const showTime of movie.show_times) {
-        // Parse datetime from ISO format Showtime field
-        const datetime = new Date(showTime.Showtime);
+        // showTime.Showtime is a TZ-less ISO string in UK local time
+        // (e.g. "2026-05-17T15:30:00"). `new Date(tzlessStr)` interprets the
+        // string in the runtime TZ — under TZ=UTC (cron, CI) that silently
+        // adds 1h during BST. parseUKLocalDateTime treats the string as UK
+        // local time explicitly and applies the BST offset.
+        const datetime = parseUKLocalDateTime(showTime.Showtime);
         if (isNaN(datetime.getTime())) continue;
 
         // Skip sold out screenings (optional - might want to show them)
