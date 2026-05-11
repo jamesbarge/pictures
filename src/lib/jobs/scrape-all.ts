@@ -21,6 +21,7 @@ import { gte, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { scraperRuns } from "@/db/schema/admin";
 import { cinemas } from "@/db/schema/cinemas";
+import { screenings } from "@/db/schema/screenings";
 import { sendTelegramAlert } from "@/lib/telegram";
 import { stampProgress } from "@/lib/scrape-progress";
 import { runScraper } from "@/scrapers/runner-factory";
@@ -195,6 +196,31 @@ async function loadFreshnessMap(): Promise<FreshnessMap> {
   return map;
 }
 
+/**
+ * Map of cinema_id → count of upcoming screenings. Used as the PRIMARY sort
+ * key within a wave so cinemas with low coverage (likely scraper failures)
+ * are scraped first. Cinemas absent from the map have 0 screenings.
+ */
+type ScreeningCountMap = Map<string, number>;
+
+/** Load each cinema's count of upcoming (future) screenings. */
+async function loadScreeningCountMap(): Promise<ScreeningCountMap> {
+  const rows = await db
+    .select({
+      cinemaId: screenings.cinemaId,
+      count: sql<number>`COUNT(*)::int`.as("count"),
+    })
+    .from(screenings)
+    .where(gte(screenings.datetime, new Date()))
+    .groupBy(screenings.cinemaId);
+
+  const map: ScreeningCountMap = new Map();
+  for (const r of rows) {
+    map.set(r.cinemaId, r.count);
+  }
+  return map;
+}
+
 /** Extract every cinema_id a registry entry will scrape. */
 function getEntryCinemaIds(entry: ScraperRegistryEntry): string[] {
   const config = entry.buildConfig();
@@ -217,26 +243,50 @@ function entryStaleness(entry: ScraperRegistryEntry, freshness: FreshnessMap): n
   return oldest === Number.POSITIVE_INFINITY ? 0 : oldest;
 }
 
+/**
+ * Screening-count key for sorting: the LOWEST upcoming-screening count across
+ * the entry's venues. A multi-venue chain with one starved venue sorts first
+ * — that venue is most likely broken. Missing venues are treated as 0.
+ */
+function entryScreeningCount(
+  entry: ScraperRegistryEntry,
+  countMap: ScreeningCountMap,
+): number {
+  const ids = getEntryCinemaIds(entry);
+  let lowest = Number.POSITIVE_INFINITY;
+  for (const id of ids) {
+    const n = countMap.get(id) ?? 0;
+    if (n < lowest) lowest = n;
+  }
+  return lowest === Number.POSITIVE_INFINITY ? 0 : lowest;
+}
+
 /** Fan-out scrapers in a single wave with the given concurrency cap. */
 async function runWave(
   wave: ScraperWave,
   label: string,
   concurrency: number,
   freshness: FreshnessMap,
+  countMap: ScreeningCountMap,
 ): Promise<WaveSummary> {
-  // Sort by staleness ASC (never-scraped first, then oldest, then most recent last).
-  // Compute the staleness key once per entry; sort + log share the result.
+  // Sort by screening count ASC (fewest first — broken scrapers surface fast),
+  // staleness ASC as tiebreaker (preserve rotation when counts are equal).
+  // Compute both keys once per entry; sort + log share the results.
   const ranked = SCRAPER_REGISTRY.filter((e) => e.wave === wave)
-    .map((entry) => ({ entry, ms: entryStaleness(entry, freshness) }))
-    .sort((a, b) => a.ms - b.ms);
+    .map((entry) => ({
+      entry,
+      count: entryScreeningCount(entry, countMap),
+      ms: entryStaleness(entry, freshness),
+    }))
+    .sort((a, b) => a.count - b.count || a.ms - b.ms);
   if (ranked.length > 0) {
     const orderStr = ranked
-      .map(({ entry, ms }) => {
+      .map(({ entry, count, ms }) => {
         const age = ms === 0 ? "never" : `${Math.floor((Date.now() - ms) / 86_400_000)}d`;
-        return `${entry.taskId.replace(/^scraper-/, "")}(${age})`;
+        return `${entry.taskId.replace(/^scraper-/, "")}(${count}scr, ${age})`;
       })
       .join(", ");
-    console.log(`[scrape-all] ${label} order (stalest first): ${orderStr}`);
+    console.log(`[scrape-all] ${label} order (fewest screenings, then stalest): ${orderStr}`);
   }
   const entries = ranked.map((r) => r.entry);
   const tasks = entries.map((entry) => () => runScraperEntry(entry, label));
@@ -310,19 +360,22 @@ export async function runScrapeAll(): Promise<ScrapeAllResult> {
   const startedAt = new Date(startTime);
   const waveSummaries: WaveSummary[] = [];
 
-  // Load each cinema's last successful scrape timestamp once, up front.
-  // Within each wave, entries are sorted stalest-first so that if the run is
-  // interrupted, the cinemas that need the most refresh have already gone.
-  const freshness = await loadFreshnessMap();
+  // Load sort signals once, up front. Within each wave, entries are sorted
+  // fewest-screenings first (broken scrapers surface fast) with staleness as
+  // a tiebreaker (preserves the rotation behaviour from commit 712ee16).
+  const [freshness, countMap] = await Promise.all([
+    loadFreshnessMap(),
+    loadScreeningCountMap(),
+  ]);
 
   // Wave 1: Chain scrapers (3 — fully parallel)
-  waveSummaries.push(await runWave("chain", "Chains", 4, freshness));
+  waveSummaries.push(await runWave("chain", "Chains", 4, freshness, countMap));
 
   // Wave 2: Playwright independents (7 — cap at 4 for memory headroom)
-  waveSummaries.push(await runWave("playwright", "Playwright", 4, freshness));
+  waveSummaries.push(await runWave("playwright", "Playwright", 4, freshness, countMap));
 
   // Wave 3: Cheerio / API independents (16 — cap at 4 to mirror prior chunking)
-  waveSummaries.push(await runWave("cheerio", "Cheerio", 4, freshness));
+  waveSummaries.push(await runWave("cheerio", "Cheerio", 4, freshness, countMap));
 
   // Wave 4: Post-scrape enrichment (Letterboxd ratings)
   waveSummaries.push(await runEnrichmentWave());

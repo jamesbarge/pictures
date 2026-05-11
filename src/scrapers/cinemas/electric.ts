@@ -11,6 +11,7 @@
 import type { RawScreening, ScraperConfig, CinemaScraper, VenueConfig } from "../types";
 import { CHROME_USER_AGENT } from "../constants";
 import { checkHealth } from "../utils/health-check";
+import { ukLocalToUTC } from "../utils/date-parser";
 
 // ============================================================================
 // Electric Cinema Configuration
@@ -238,8 +239,8 @@ export class ElectricScraper implements CinemaScraper {
         return null;
       }
 
-      // Create date in local time (UK timezone)
-      const date = new Date(year, month - 1, day, hours, minutes, 0, 0);
+      // Build UTC explicitly with BST offset — never rely on the runtime TZ.
+      const date = ukLocalToUTC(year, month - 1, day, hours, minutes);
 
       // Validate the date
       if (isNaN(date.getTime())) {

@@ -10,6 +10,7 @@
 
 import { BaseScraper } from "../base";
 import type { RawScreening, ScraperConfig } from "../types";
+import { ukLocalToUTC } from "../utils/date-parser";
 
 // Re-export config and venue for compatibility
 export { ELECTRIC_CONFIG, ELECTRIC_VENUES } from "./electric";
@@ -170,7 +171,8 @@ export class ElectricScraperV2 extends BaseScraper {
       return null;
     }
 
-    const date = new Date(year, month - 1, day, hours, minutes, 0, 0);
+    // Build UTC explicitly with BST offset — never rely on the runtime TZ.
+    const date = ukLocalToUTC(year, month - 1, day, hours, minutes);
     return isNaN(date.getTime()) ? null : date;
   }
 

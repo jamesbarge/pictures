@@ -1,3 +1,19 @@
+## 2026-05-10: Sort /scrape by fewest screenings first + finish BST hardening
+**PR**: TBD | **Files**: `src/lib/jobs/scrape-all.ts`, `src/scrapers/cinemas/close-up.ts`, `src/scrapers/cinemas/electric.ts`, `src/scrapers/cinemas/electric-v2.ts`, `src/scrapers/cinemas/peckhamplex.ts`, `src/scrapers/cinemas/genesis.ts`, `src/scrapers/cinemas/genesis-v2.ts`, `src/scrapers/cinemas/lexi.ts`, `src/scrapers/cinemas/lexi-v2.ts`, `src/scrapers/bfi-pdf/pdf-parser.ts`, `src/scrapers/bfi-pdf/programme-changes-parser.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`
+- **New primary sort key in `runWave`**: fewest upcoming screenings first, staleness (the prior key from #480) as tiebreaker. Cinemas with broken scrapers — which show as low screening counts in the 2026-05-06 coverage audit — now surface within the first concurrency slot of their wave instead of running last.
+- Added `loadScreeningCountMap()` next to `loadFreshnessMap()`, querying `SELECT cinema_id, COUNT(*) FROM screenings WHERE datetime >= NOW() GROUP BY cinema_id`. Both maps load in parallel via `Promise.all` at the top of `runScrapeAll`.
+- Added `entryScreeningCount(entry, countMap)` returning the MIN count across the entry's venues — mirrors `entryStaleness`'s "oldest within entry" semantics so a multi-venue chain with one starved venue sorts first.
+- Per-wave log now shows both signals: `[scrape-all] Cheerio order (fewest screenings, then stalest): peckhamplex(0scr, never), regent-street(26scr, 30d), …`.
+- **BST hardening — completes the in-progress migration**: replaced every remaining unsafe `new Date(year, month, day, hours, minutes)` constructor with `ukLocalToUTC(...)` from `src/scrapers/utils/date-parser.ts`. The native constructor interprets numeric args as the runtime TZ, silently producing +1h offsets during BST when scrapers run under `TZ=UTC`. Six additional callsites fixed beyond the five already in the working tree:
+  - `cinemas/close-up.ts:304` (second method — the diff at line 390 missed this one)
+  - `cinemas/electric.ts:242` + `cinemas/electric-v2.ts:173`
+  - `cinemas/peckhamplex.ts:225`
+  - `bfi-pdf/pdf-parser.ts:365` + `bfi-pdf/programme-changes-parser.ts:283`
+- Static guarantee: `grep -rn "new Date(.*month.*day.*hour" src/scrapers/` now returns zero hits outside `date-parser.ts` itself (where `Date.UTC` is the canonical, correct call).
+- `npx tsc --noEmit` clean. `npm run lint` 0 errors (41 pre-existing warnings). 890/890 tests pass.
+
+---
+
 ## 2026-05-07: /scrape observability + concurrency fixes (Ship 1 of plan)
 **PR**: TBD | **Files**: `src/lib/scrape-progress.ts` (new), `src/scrapers/pipeline.ts`, `src/scrapers/runner-factory.ts`, `src/scrapers/utils/film-matching.ts`, `src/lib/jobs/scrape-all.ts`, `src/scripts/run-scrape-and-enrich.ts`, `.gitignore`
 - After today's 87-minute silent hang, six specialised agents audited `/scrape` end-to-end. Plan at `~/.claude/plans/before-we-do-this-silly-deer.md`. Ship 1 lands the cheapest, highest-leverage findings: observability (so the next hang is visible in seconds, not 87 minutes) and two concurrency hazards we'd been getting away with.

@@ -15,6 +15,7 @@
 import { BaseScraper } from "../base";
 import type { RawScreening, ScraperConfig } from "../types";
 import type { CheerioAPI, CheerioSelection } from "../utils/cheerio-types";
+import { ukLocalToUTC } from "../utils/date-parser";
 
 // Re-export config and venue for compatibility
 export { GENESIS_CONFIG, GENESIS_VENUE } from "./genesis";
@@ -303,11 +304,12 @@ export class GenesisScraper extends BaseScraper {
         hours += 12;
       }
 
-      const date = new Date(year, month, day, hours, minutes);
+      // Build UTC explicitly with BST offset — never rely on the runtime TZ.
+      let date = ukLocalToUTC(year, month, day, hours, minutes);
 
       // If date is in the past, assume next year (only for text-based dates without explicit year)
       if (date < new Date() && !/^\d{8}$/.test(dateStr)) {
-        date.setFullYear(date.getFullYear() + 1);
+        date = ukLocalToUTC(year + 1, month, day, hours, minutes);
       }
 
       return date;

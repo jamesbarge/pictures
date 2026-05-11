@@ -14,6 +14,7 @@
 import type { RawScreening, ScraperConfig, CinemaScraper } from "../types";
 import { CHROME_USER_AGENT } from "../constants";
 import { checkHealth } from "../utils/health-check";
+import { ukLocalToUTC } from "../utils/date-parser";
 
 export const LEXI_CONFIG: ScraperConfig = {
   cinemaId: "lexi",
@@ -256,7 +257,8 @@ export class LexiScraper implements CinemaScraper {
       return null;
     }
 
-    return new Date(year, month, day, hours, minutes, 0);
+    // Build UTC explicitly with BST offset — never rely on the runtime TZ.
+    return ukLocalToUTC(year, month, day, hours, minutes);
   }
 
   private cleanTitle(title: string): string {

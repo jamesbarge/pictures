@@ -22,6 +22,7 @@ import type { CheerioSelection } from "../utils/cheerio-types";
 import { fetchWithRetry } from "../utils/fetch-with-retry";
 import { CHROME_USER_AGENT_FULL } from "../constants";
 import { buildBFISearchUrl } from "./url-builder";
+import { ukLocalToUTC } from "../utils/date-parser";
 
 /**
  * Fetches a URL, optionally through a proxy service.
@@ -280,7 +281,8 @@ function parseScreeningsFromText(text: string): ParsedChangeScreening[] {
       year = currentYear + 1;
     }
 
-    const datetime = new Date(year, monthNum, parseInt(date, 10), parseInt(hours, 10), parseInt(minutes, 10));
+    // Build UTC explicitly with BST offset — never rely on the runtime TZ.
+    const datetime = ukLocalToUTC(year, monthNum, parseInt(date, 10), parseInt(hours, 10), parseInt(minutes, 10));
 
     // Skip past screenings
     if (datetime < now) continue;

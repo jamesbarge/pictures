@@ -21,6 +21,7 @@ import { extractText as unpdfExtractText, getDocumentProxy } from "unpdf";
 import type { RawScreening } from "../types";
 import type { FetchedPDF } from "./fetcher";
 import { buildBFISearchUrl } from "./url-builder";
+import { ukLocalToUTC } from "../utils/date-parser";
 
 // Venue mapping from PDF screen names to our cinema IDs
 const VENUE_MAP: Record<string, string> = {
@@ -362,7 +363,8 @@ function parseScreeningLine(line: string, pdfYear: number): ParsedScreening[] {
       year = pdfYear + 1;
     }
 
-    const datetime = new Date(year, monthNum, parseInt(date, 10), parseInt(hours, 10), parseInt(minutes, 10));
+    // Build UTC explicitly with BST offset — never rely on the runtime TZ.
+    const datetime = ukLocalToUTC(year, monthNum, parseInt(date, 10), parseInt(hours, 10), parseInt(minutes, 10));
 
     // Map venue to cinema ID — reject unknown venues instead of defaulting
     const venueUpper = venue.toUpperCase();
