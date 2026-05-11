@@ -14,6 +14,7 @@ Update this playbook whenever you:
 - If a time is `1-9` with no AM/PM, default to PM.
 - Treat times before `10:00` as likely parse errors and log warnings.
 - Use `src/scrapers/utils/date-parser.ts` for shared parsing behavior.
+- **Never use `new Date(year, month, day, hours, minutes)` to construct screening datetimes.** That ctor interprets numeric args as the runtime's local timezone, which silently produces +1h offsets during BST when the scraper runs under `TZ=UTC` (cron, CI, container). Always call `ukLocalToUTC(...)` from `utils/date-parser.ts` — it builds UTC explicitly and applies BST. Same goes for `parseUKLocalDateTime()` for ISO-like strings without a timezone suffix.
 - After fixing time parsing bugs, verify and clean bad historical screenings (`00:00-09:59`) only when confirmed wrong.
 
 ## Primary Entrypoints

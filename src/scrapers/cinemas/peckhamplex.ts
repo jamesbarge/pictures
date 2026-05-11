@@ -15,6 +15,7 @@ import type { RawScreening, ScraperConfig, CinemaScraper } from "../types";
 import type { CheerioAPI } from "../utils/cheerio-types";
 import { checkHealth } from "../utils/health-check";
 import { CHROME_USER_AGENT_FULL } from "../constants";
+import { ukLocalToUTC } from "../utils/date-parser";
 
 // ============================================================================
 // Peckhamplex Configuration
@@ -221,8 +222,8 @@ export class PeckhamplexScraper implements CinemaScraper {
         return null;
       }
 
-      // Create date in local time
-      const date = new Date(year, month - 1, day, hours, minutes);
+      // Build UTC explicitly with BST offset — never rely on the runtime TZ.
+      const date = ukLocalToUTC(year, month - 1, day, hours, minutes);
 
       // Validate the date
       if (isNaN(date.getTime())) {

@@ -19,6 +19,7 @@ import * as cheerio from "cheerio";
 import { BaseScraper } from "../base";
 import type { RawScreening, ScraperConfig } from "../types";
 import { normalizeUrl } from "../utils/url";
+import { ukLocalToUTC } from "../utils/date-parser";
 import { FestivalDetector } from "../festivals/festival-detector";
 
 /** Month name → zero-indexed month number (shared across date-parsing methods). */
@@ -300,7 +301,8 @@ export class CloseUpCinemaScraper extends BaseScraper {
       year++;
     }
 
-    return new Date(year, monthNum, parseInt(day, 10), hourNum, minuteNum, 0);
+    // Build UTC explicitly with BST offset — never rely on the runtime TZ.
+    return ukLocalToUTC(year, monthNum, parseInt(day, 10), hourNum, minuteNum);
   }
 
   /**
@@ -389,7 +391,10 @@ export class CloseUpCinemaScraper extends BaseScraper {
     const minutes = parseInt(timeMatch[2], 10);
     const seconds = parseInt(timeMatch[3], 10);
 
-    return new Date(year, month, day, hours, minutes, seconds);
+    // Build UTC explicitly with BST offset — never rely on the runtime TZ.
+    const date = ukLocalToUTC(year, month, day, hours, minutes);
+    if (seconds) date.setUTCSeconds(seconds);
+    return date;
   }
 
 }

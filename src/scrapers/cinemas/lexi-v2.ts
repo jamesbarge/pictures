@@ -10,6 +10,7 @@
 
 import { BaseScraper } from "../base";
 import type { RawScreening, ScraperConfig } from "../types";
+import { ukLocalToUTC } from "../utils/date-parser";
 
 // Re-export config and venue for compatibility
 export { LEXI_CONFIG, LEXI_VENUE } from "./lexi";
@@ -149,7 +150,8 @@ export class LexiScraperV2 extends BaseScraper {
       return null;
     }
 
-    return new Date(year, month, day, hours, minutes, 0);
+    // Build UTC explicitly with BST offset — never rely on the runtime TZ.
+    return ukLocalToUTC(year, month, day, hours, minutes);
   }
 
   private cleanTitle(title: string): string {
