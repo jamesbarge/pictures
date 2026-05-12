@@ -289,6 +289,21 @@ export async function createFilmWithoutTMDB(
   scraperDirector?: string,
   scraperPosterUrl?: string
 ): Promise<string> {
+  // Sanitize scraperYear: many scrapers send the SCREENING year (the year the
+  // screening takes place) when they can't extract a true release year. That
+  // contaminated `films.year` for ~12 films per patrol batch and broke the
+  // isRepertory heuristic for every old film mis-tagged with the current year.
+  //
+  // Rule: only accept `scraperYear` if it's strictly before the current year.
+  // For the current calendar year we can't distinguish "new release" from
+  // "screening year as placeholder" with confidence, so leave it null and let
+  // TMDB enrichment fill it. Sane bounds also reject 0/negative/future years.
+  const currentYear = new Date().getFullYear();
+  const cleanYear =
+    scraperYear && scraperYear >= 1900 && scraperYear < currentYear
+      ? scraperYear
+      : undefined;
+
   // Try to find a poster from other sources
   let posterUrl: string | null = null;
 
@@ -298,7 +313,7 @@ export async function createFilmWithoutTMDB(
   } else {
     posterUrl = await findPosterFromService({
       title: matchingTitle,
-      year: scraperYear,
+      year: cleanYear,
       scraperPosterUrl,
     });
   }
@@ -311,13 +326,17 @@ export async function createFilmWithoutTMDB(
     .replace(/\s+With\s+.*/i, "")
     .trim() || undefined;
 
+  // isRepertory is intentionally false when we have no year — enrichment will
+  // overwrite it from the TMDB release date. Don't guess.
+  const isRepertory = cleanYear ? cleanYear < currentYear - 2 : false;
+
   await db.insert(films).values({
     id: filmId,
     title: matchingTitle,
-    year: scraperYear,
+    year: cleanYear,
     directors: cleanedDirector ? [cleanedDirector] : [],
     posterUrl,
-    isRepertory: scraperYear ? scraperYear < new Date().getFullYear() - 2 : false,
+    isRepertory,
     cast: [],
     genres: [],
     countries: [],
@@ -329,7 +348,7 @@ export async function createFilmWithoutTMDB(
     id: filmId,
     title: matchingTitle,
     originalTitle: null,
-    year: scraperYear ?? null,
+    year: cleanYear ?? null,
     runtime: null,
     directors: cleanedDirector ? [cleanedDirector] : [],
     cast: [],
@@ -342,7 +361,7 @@ export async function createFilmWithoutTMDB(
     posterUrl,
     backdropUrl: null,
     trailerUrl: null,
-    isRepertory: scraperYear ? scraperYear < new Date().getFullYear() - 2 : false,
+    isRepertory,
     releaseStatus: null,
     decade: null,
     contentType: "film",

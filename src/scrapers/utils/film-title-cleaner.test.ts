@@ -239,6 +239,143 @@ describe("recurring event prefixes (data-check patrol cycles 7-12)", () => {
   });
 });
 
+describe("Castle Cinema prefix family (cycles 15-17)", () => {
+  it("strips Cine-real presents prefix", () => {
+    expect(cleanFilmTitle("Cine-real presents: Badlands")).toBe("Badlands");
+    expect(cleanFilmTitle("Cine real presents: Imitation of Life")).toBe("Imitation of Life");
+    expect(cleanFilmTitle("Cinereal presents: Vertigo")).toBe("Vertigo");
+  });
+
+  it("strips CLUB ROOM prefix", () => {
+    expect(cleanFilmTitle("CLUB ROOM: Lynnie Snow")).toBe("Lynnie Snow");
+    expect(cleanFilmTitle("Club Room: Hutch")).toBe("Hutch");
+  });
+
+  it("strips CAMP CLASSICS presents prefix", () => {
+    expect(cleanFilmTitle("CAMP CLASSICS presents: Another Gay Sequel")).toBe("Another Gay Sequel");
+  });
+
+  it("strips BETTER THAN NOTHING presents prefix", () => {
+    expect(cleanFilmTitle("BETTER THAN NOTHING PRESENTS: Mulholland Drive")).toBe("Mulholland Drive");
+  });
+
+  it("strips generic '<Distributor> Films presents:' prefix", () => {
+    expect(cleanFilmTitle("Alborada Films presents: Identidad")).toBe("Identidad");
+    expect(cleanFilmTitle("Lost Films presents: The Day The Clown Cried")).toBe("The Day The Clown Cried");
+  });
+
+  it("does NOT strip 'Films present:' singular variant (too generic)", () => {
+    // Distributor strands always say "presents" with the trailing s.
+    // Singular "present" is too generic — could be a verb in a title.
+    expect(cleanFilmTitle("My Films Present: A Documentary")).toBe("My Films Present: A Documentary");
+  });
+
+  it("does NOT strip bare '<X> Films:' without 'presents'", () => {
+    // Bare colon-separated venue branding (e.g. "Coldharbour Films:") is not
+    // a distributor strand — it routes through the colon handler instead.
+    // We don't aggressively strip it here.
+    expect(cleanFilmTitle("Coldharbour Films: Anniversary Screening")).not.toBe("");
+  });
+});
+
+describe("idempotency on AI-canonical-style titles", () => {
+  // cleanFilmTitle now runs over AI-extracted canonical titles in pipeline.ts.
+  // The colon handler in particular has heuristics that could reshape a clean
+  // canonical. Lock in idempotency for the realistic canonical shapes.
+  it("is idempotent on clean canonical titles", () => {
+    const canonicals = [
+      "Apocalypse Now",
+      "Apocalypse Now: Final Cut",
+      "Star Wars: A New Hope",
+      "Dr. Strangelove",
+      "Spider-Man",
+      "8½",
+      "Amélie",
+      "Crouching Tiger, Hidden Dragon",
+      "2001: A Space Odyssey",
+      "The Godfather: Part II",
+    ];
+    for (const title of canonicals) {
+      const once = cleanFilmTitle(title);
+      const twice = cleanFilmTitle(once);
+      expect(twice).toBe(once);
+    }
+  });
+});
+
+describe("premiere prefix does NOT eat I-words", () => {
+  // Regression guard for the regex bug where [:|I]? matched the leading
+  // capital I of an I-titled film under /i. Previously: "UK Premiere Iron Man"
+  // → "ron Man". Char class is now [:|]? only.
+  it("preserves first letter of I-titled films", () => {
+    expect(cleanFilmTitle("UK Premiere Iron Man")).toBe("Iron Man");
+    expect(cleanFilmTitle("UK Premiere It Follows")).toBe("It Follows");
+    expect(cleanFilmTitle("UK Premiere I Am Legend")).toBe("I Am Legend");
+    expect(cleanFilmTitle("London Premiere I'm Still Here")).toBe("I'm Still Here");
+    expect(cleanFilmTitle("World Premiere Inception")).toBe("Inception");
+  });
+});
+
+describe("premiere prefix without separator (UK/London/World)", () => {
+  it("strips UK PREMIERE without colon separator", () => {
+    expect(cleanFilmTitle("UK PREMIERE Fuck The Polis")).toBe("Fuck The Polis");
+    expect(cleanFilmTitle("UK PREMIERE Phantoms of July")).toBe("Phantoms of July");
+    expect(cleanFilmTitle("UK PREMIERE Tycoon")).toBe("Tycoon");
+  });
+
+  it("strips LONDON PREMIERE without separator", () => {
+    expect(cleanFilmTitle("LONDON PREMIERE Dracula")).toBe("Dracula");
+  });
+
+  it("strips WORLD PREMIERE without separator", () => {
+    expect(cleanFilmTitle("WORLD PREMIERE The Brutalist")).toBe("The Brutalist");
+  });
+
+  it("strips EUROPEAN PREMIERE without separator", () => {
+    expect(cleanFilmTitle("EUROPEAN PREMIERE Anora")).toBe("Anora");
+  });
+});
+
+describe("Birthday Season suffix (typo-tolerant)", () => {
+  it("strips '- Birthday Season' suffix", () => {
+    expect(cleanFilmTitle("Top Gun- Birthday Season")).toBe("Top Gun");
+    expect(cleanFilmTitle("Transformers- Birthday Season")).toBe("Transformers");
+    expect(cleanFilmTitle("Tokyo Story - Birthday Season")).toBe("Tokyo Story");
+  });
+
+  it("strips '- Birthday Seaon' typo variant", () => {
+    expect(cleanFilmTitle("Toyko Story- Birthday Seaon")).toBe("Toyko Story");
+    expect(cleanFilmTitle("The Skin I Live In- Birthday Seaon")).toBe("The Skin I Live In");
+  });
+});
+
+describe("anniversary + format combo suffixes", () => {
+  it("strips (Nth Anniversary 35mm)", () => {
+    expect(cleanFilmTitle("Amélie (25th Anniversary 35mm)")).toBe("Amélie");
+    expect(cleanFilmTitle("Pulp Fiction (30th Anniversary 35mm)")).toBe("Pulp Fiction");
+  });
+
+  it("strips (Nth Anniversary 70mm/IMAX/4K)", () => {
+    expect(cleanFilmTitle("2001: A Space Odyssey (50th Anniversary 70mm)")).toBe("2001: A Space Odyssey");
+    expect(cleanFilmTitle("Oppenheimer (Nth Anniversary IMAX)".replace("Nth", "5th"))).toBe("Oppenheimer");
+  });
+
+  it("strips dash-prefixed anniversary with no leading space", () => {
+    expect(cleanFilmTitle("Bugsy Malone- 50th anniversary")).toBe("Bugsy Malone");
+    expect(cleanFilmTitle("Bugsy Malone-50th anniversary")).toBe("Bugsy Malone");
+  });
+});
+
+describe("premiere-format combo suffixes", () => {
+  it("strips (4K Restoration Premiere) parenthetical", () => {
+    expect(cleanFilmTitle("Vampire's Kiss (4K Restoration Premiere)")).toBe("Vampire's Kiss");
+  });
+
+  it("strips ': 4K Restoration Premiere' colon-separated variant", () => {
+    expect(cleanFilmTitle("Vampire's Kiss : 4K Restoration Premiere")).toBe("Vampire's Kiss");
+  });
+});
+
 describe("anniversary suffix stripping", () => {
   it("strips (Nth Anniversary) without year prefix", () => {
     expect(cleanFilmTitle("Alien (40th Anniversary)")).toBe("Alien");

@@ -405,8 +405,18 @@ async function getOrCreateFilm(
   // e.g., "Saturday Morning Picture Club: The Muppets Christmas Carol" → "The Muppets Christmas Carol"
   const extraction = await extractFilmTitleCached(title);
 
-  // If AI extraction failed or has low/medium confidence without a canonical title, apply regex fallback
-  let cleanedTitle = extraction.filmTitle;
+  // ALWAYS apply the regex cleaner on top of whatever the AI produced. Patrols
+  // showed that "high" confidence AI extractions still preserve well-known
+  // prefixes (e.g. "Classic Matinee: JAWS" → "Classic Matinee: JAWS") and
+  // suffix noise (e.g. "Akira (2026 Re-release)" → unchanged). The two layers
+  // are additive and `cleanFilmTitle` is idempotent on already-clean strings.
+  //
+  // Previously the regex fallback ran only when confidence was low/medium AND
+  // there was no canonicalTitle — that meant the most common AI failure mode
+  // (high-confidence pass-through of a prefix the regex would have caught) had
+  // no safety net and produced one duplicate film row per scrape. Cycle 16-17
+  // patrols were merging 6-14 such rows per 40-film batch.
+  let cleanedTitle = cleanFilmTitle(extraction.filmTitle ?? title);
   if ((extraction.confidence === "low" || extraction.confidence === "medium") && !extraction.canonicalTitle) {
     cleanedTitle = cleanFilmTitle(title);
   }
@@ -419,9 +429,13 @@ async function getOrCreateFilm(
     }
   }
 
-  // Use canonical title for matching (without version suffixes like "Final Cut")
-  // This ensures "Apocalypse Now" and "Apocalypse Now : Final Cut" match to the same film
-  const matchingTitle = extraction.canonicalTitle || cleanedTitle;
+  // Use canonical title for matching (without version suffixes like "Final Cut").
+  // This ensures "Apocalypse Now" and "Apocalypse Now : Final Cut" match to the
+  // same film. The canonical title also gets passed through cleanFilmTitle —
+  // AI can return canonicals that still carry prefix cruft.
+  const matchingTitle = extraction.canonicalTitle
+    ? cleanFilmTitle(extraction.canonicalTitle)
+    : cleanedTitle;
 
   if (cleanedTitle !== title) {
     const versionNote = extraction.version ? ` [version: ${extraction.version}]` : "";
