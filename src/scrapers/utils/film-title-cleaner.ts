@@ -26,9 +26,16 @@ export const EVENT_PREFIXES = [
   /^baby\s+club[:\s]+/i,
 
   // Special screenings
-  /^london\s+premiere\s*/i,
-  /^uk\s+premiere\s*[:\|I]\s*/i,
-  /^world\s+premiere\s*[:\|I]\s*/i,
+  // NOTE: separator is optional — patrols caught "UK PREMIERE Fuck The Polis"
+  // (space-only, no colon/pipe). Accept colon, pipe, or just whitespace.
+  // Do NOT include `I` in the char class: with the `/i` flag it case-insensitively
+  // matches a leading capital I in the next word ("UK Premiere Iron Man" → "ron
+  // Man"), eating the first letter of any I-titled film. The `\s+` after
+  // already handles the no-separator case fine.
+  /^london\s+premiere\s*[:|]?\s+/i,
+  /^uk\s+premiere\s*[:|]?\s+/i,
+  /^world\s+premiere\s*[:|]?\s+/i,
+  /^european?\s+premiere\s*[:|]?\s+/i,
   /^preview[:\s]+/i,
   /^sneak\s+preview[:\s]+/i,
   /^advance\s+screening[:\s]+/i,
@@ -165,6 +172,26 @@ export const EVENT_PREFIXES = [
   /^lrb\s+screen\s*x\s*mubi[:\s]+/i,
   /^ukaff\s+\d{4}\s+closing\s+night[:\s]+/i,
   /^\d+\s+and\s+under[:\s]+/i,
+
+  // Castle Cinema family \u2014 recurring catches across cycles 15-17.
+  // Patrol noted these are the largest single source of cinema-prefix
+  // duplicates in the entire DB. Patterns confirmed by 6+ merges each.
+  /^cine[\s-]?real\s+presents?[:\s]+/i,
+  /^club\s+room[:\s]+/i,
+  /^camp\s+classics\s+presents?[:\s]+/i,
+  /^better\s+than\s+nothing\s+presents?[:\s]+/i,
+  /^bar\s+trash[:\s]+/i, // bare "Bar Trash:" (no episode number, separate from "Bar Trash 42:")
+
+  // Generic "<Distributor/Org> Films presents:" \u2014 catches "Alborada Films
+  // presents:" and similar. Distinct from the existing "X Film Club/Festival
+  // presents:" generic.
+  // Tightened per code review:
+  // - Requires plural "Films" (singular too generic \u2014 "My Film Presents\u2026")
+  // - Requires "presents" with the trailing s (singular "present" too generic)
+  // - Does NOT catch bare "X Films:" (no "presents"); those route through the
+  //   colon handler instead, which is the correct path for venues like
+  //   Coldharbour where the colon form is just venue branding, not a strand.
+  /^[\w&''\u2019-][\w\s&''\u2019-]*?\s+films\s+presents[:\s]+/i,
 ];
 
 /** Result of cleaning a film title with metadata about what was stripped */
@@ -216,6 +243,13 @@ export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
 
   // Strip "on 35mm" / "on 70mm" film format suffixes (PCC/Lost Reels style)
   cleaned = cleaned.replace(/\s+on\s+(35mm|70mm)\s*$/i, "").trim();
+
+  // Strip ": 4K Restoration Premiere" / similar format-noise colon suffixes
+  // BEFORE the generic colon handler. The colon handler would otherwise
+  // mis-identify "Vampire's Kiss" as the event prefix and "4K Restoration
+  // Premiere" as the real title (because "Vampire's Kiss" is 2 words and the
+  // after-colon is longer). Strip the noise here so the handler doesn't see it.
+  cleaned = cleaned.replace(/\s*:\s*4k\s+restoration\s+premiere\s*$/i, "").trim();
 
   // Handle remaining colon-separated titles where film is after colon
   // but only if the part before colon looks like an event name (not a film title)
@@ -281,14 +315,29 @@ export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
     .replace(/\s*\(extended\s+(edition|cut)\)\s*$/i, "")
     // Remove re-release / special edition suffixes: "(2026 Re-release)", "(4K Restoration)", "(2026 Encore)"
     .replace(/\s*\(\d{4}\s+(?:re-?release|restoration|reissue|encore)\)\s*$/i, "")
-    // Remove anniversary suffixes: "(25th Anniversary)", "(50th Anniversary, 4K Restoration)", "(25th Anniversary Re-release)"
-    .replace(/\s*\(\d+(?:th|st|nd|rd)\s+anniversary(?:[\s,]+(?:4k\s+)?re(?:storation|lease|-release))?\)\s*$/i, "")
-    // Remove dash-prefixed anniversary: "- 50th Anniversary"
-    .replace(/\s*-\s+\d+(?:th|st|nd|rd)\s+anniversary\b.*$/i, "")
+    // Remove anniversary suffixes: "(25th Anniversary)", "(50th Anniversary, 4K Restoration)",
+    // "(25th Anniversary Re-release)", "(25th Anniversary 35mm)", "(50th Anniversary IMAX)".
+    // The trailing-noise group now matches any anniversary-adjacent qualifier
+    // (restoration/release/re-release/35mm/70mm/imax/4k), not just restoration/re-release.
+    .replace(/\s*\(\d+(?:th|st|nd|rd)\s+anniversary(?:[\s,]+(?:4k\s+)?(?:re(?:storation|lease|-release)|35mm|70mm|imax))?\)\s*$/i, "")
+    // Remove dash-prefixed anniversary: "- 50th Anniversary", "-50th anniversary" (no space).
+    // Patrols caught "Bugsy Malone- 50th anniversary" (space-after-dash) and we
+    // also see the no-space variant. \s* before the dash allows zero or more,
+    // \s+ after still requires whitespace before the number to avoid matching
+    // legitimate hyphenated titles.
+    .replace(/\s*-\s*\d+(?:th|st|nd|rd)\s+anniversary\b.*$/i, "")
+    // Remove "- Birthday Season" / "- Birthday Seaon" suffix (typo-tolerant).
+    // Castle Cinema's "Birthday Season" strand. Caught 10+ times across patrol
+    // cycles 16-17 — both "- Birthday Season" and the recurring "Birthday Seaon"
+    // misspelling. The `s?` on "Seaso?n" matches both "Season" and "Seaon".
+    .replace(/\s*-\s*birthday\s+seas?o?n\s*$/i, "")
     // Remove standalone "(4K Restoration)" without year prefix
     .replace(/\s*\(4k\s+restoration\)\s*$/i, "")
-    // Remove premiere suffixes: "(World Premiere)", "(UK Premiere)", "(London Premiere)"
-    .replace(/\s*\((?:world|uk|london|european?)\s+premiere\)\s*$/i, "")
+    // Remove premiere suffixes: "(World Premiere)", "(UK Premiere)", "(London Premiere)",
+    // including variants with " Premiere" trailing word: "(4K Restoration Premiere)".
+    // Patrols caught "Vampire's Kiss (4K Restoration Premiere)" — the colon form
+    // is handled BEFORE the colon handler runs (above).
+    .replace(/\s*\((?:world|uk|london|european?|4k\s+restoration)\s+premiere\)\s*$/i, "")
     // Remove standalone "(Sing-Along)" suffix (prefix version already handled above)
     .replace(/\s*\(sing[\s-]*a[\s-]*long\)\s*$/i, "")
     // Remove "- Weird Wednesdays" and similar event series suffixes
