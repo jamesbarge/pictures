@@ -67,7 +67,7 @@ Use this format when recording cinema-specific quirks:
   - Primary extraction: `page.evaluate()` reads the token from the JS context
   - Fallback: request interception on `digital-api.curzon.com` requests
   - Token issuer: `https://auth.moviexchange.com/` (Vista Connect)
-- Date/time format: ISO 8601 from API (`schedule.startsAt`)
+- Date/time format: TZ-less ISO 8601 from API (`schedule.startsAt`, e.g. `"2026-05-13T14:15:00"`) — UK local time. Must use `parseUKLocalDateTime()` (NOT `new Date()`).
 - Known pitfalls:
   - **Cloudflare protection**: Raw fetch returns 403; requires Playwright with stealth plugin
   - **networkidle never fires**: Curzon SPA loads analytics/chunks indefinitely. Use `domcontentloaded`.
@@ -75,6 +75,7 @@ Use this format when recording cinema-specific quirks:
   - **Booking URL format change (2026-03-01)**: Moved from path-based to `?sessionId=` query param
   - **Headless detection**: Without stealth plugin + `--disable-blink-features=AutomationControlled`, the Vista SDK does not initialize and no API calls are made
   - **healthCheck**: Cloudflare blocks HEAD to `www.curzon.com`; use API endpoint instead (401 = healthy)
+  - **BST timezone (fixed 2026-05-12)**: `schedule.startsAt` is TZ-less. Original `new Date(startsAt)` silently added 1h under `TZ=UTC` during BST. Migrated to `parseUKLocalDateTime`. Duplicate-pair probe confirmed 15 ghost rows existed; cleaned in same change. Same fix class as #484 (Everyman) and #485 (Picturehouse).
 - Vista site codes: SOH1, MAY1, BLO1, ALD1, VIC1, HOX1, KIN1, RIC1, WIM01, CAM1
 - Last verified (2026-03-18): SSR token extraction working, all venues returning data
 

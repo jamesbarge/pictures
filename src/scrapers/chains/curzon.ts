@@ -21,6 +21,7 @@ import type { ChainConfig, VenueConfig, RawScreening, ChainScraper } from "../ty
 import { CHROME_USER_AGENT } from "../constants";
 import { FestivalDetector } from "../festivals/festival-detector";
 import { getBrowser, closeBrowser, createPage } from "../utils/browser";
+import { parseUKLocalDateTime } from "../utils/date-parser";
 import type { Page } from "rebrowser-playwright";
 
 // ============================================================================
@@ -461,8 +462,14 @@ export class CurzonScraper implements ChainScraper {
         continue;
       }
 
-      // Parse datetime from ISO string
-      const datetime = new Date(showtime.schedule.startsAt);
+      // showtime.schedule.startsAt is a TZ-less ISO string in UK local time
+      // (Vista OCAPI convention — same as Everyman/Picturehouse). `new Date(str)`
+      // interprets a TZ-less string in the runtime TZ — under TZ=UTC (cron, CI)
+      // that silently adds 1h during BST. parseUKLocalDateTime treats the string
+      // as UK local time explicitly. Verified via duplicate-pair probe: 15/15
+      // upcoming duplicate rows share the same booking_url and are exactly 1h
+      // apart — the definitive BST-ghost signature. Same fix class as #484.
+      const datetime = parseUKLocalDateTime(showtime.schedule.startsAt);
       if (isNaN(datetime.getTime())) {
         console.warn(`[curzon] Invalid datetime: ${showtime.schedule.startsAt}`);
         continue;

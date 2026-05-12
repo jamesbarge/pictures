@@ -1,3 +1,13 @@
+## 2026-05-12: Curzon BST fix + 15 ghost cleanup
+**PR**: TBD | **Files**: `src/scrapers/chains/curzon.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`, `scripts/_tmp_curzon_bst_probe.ts`, `scripts/_tmp_curzon_bst_cleanup.ts`, `changelogs/2026-05-12-curzon-bst-timezone-fix.md`
+- **Third and final Vista OCAPI chain scraper migrated to `parseUKLocalDateTime`.** After Everyman (#484) and Picturehouse (#485), Curzon was the remaining vulnerable chain. The /data-check patrol's recurring "broken_booking_url" cluster pointed at Picturehouse circuit films; cross-checking Curzon for the same signature revealed 15 same-URL +1h ghost pairs.
+- Root cause identical to #484/#485: `new Date(showtime.schedule.startsAt)` interprets a TZ-less ISO string in the runtime TZ. Vista OCAPI returns `"2026-05-13T14:15:00"` (no Z, no offset). Under `TZ=UTC` (cron, CI) → silently +1h during BST.
+- Duplicate-pair probe found 15/15 ghost pairs sharing `booking_url` and exactly 1h apart — definitive BST signature. All were "The Devil Wears Prada 2" across Curzon Aldgate/Victoria/Hoxton/Kingston (the same release the Picturehouse fix surfaced).
+- Cleaned in same change. Pre-cleanup: 1314 upcoming Curzon screenings. Post-cleanup: 1299. Re-probe: 0/0 remaining ghosts.
+- `npx tsc --noEmit` clean. `npm run test:run src/scrapers/chains` 4/4 pass.
+
+---
+
 ## 2026-05-11: Picturehouse BST fix + 478 ghost cleanup + /spot-check loop
 **PR**: TBD | **Files**: `src/scrapers/chains/picturehouse.ts`, `scripts/spot-check-and-fix.ts`, `scripts/_cleanup-bst-ghost-screenings.ts`, `scripts/_fix-boy-and-the-world.ts`, 6 diagnostic scripts, `tasks/spot-check-2026-05-11.md`, `changelogs/2026-05-11-picturehouse-bst-and-spot-check-loop.md`
 - **Picturehouse BST fix**: `picturehouse.ts:255` had the same `new Date(tzlessString)` bug as Everyman. API probe confirmed the no-TZ format. Migrated to `parseUKLocalDateTime`. Curzon independently checked — clean (Vista OCAPI returns Z-suffixed strings).
