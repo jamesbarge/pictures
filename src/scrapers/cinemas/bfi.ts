@@ -10,6 +10,7 @@ import { createPersistentPage, waitForCloudflare } from "../utils/browser";
 import type { BrowserContext, Page } from "rebrowser-playwright";
 import { parseFilmMetadata } from "../utils/metadata-parser";
 import { FestivalDetector } from "../festivals/festival-detector";
+import { runBFIImport } from "../bfi-pdf";
 
 interface BFIVenueConfig {
   id: "bfi-southbank" | "bfi-imax";
@@ -48,6 +49,42 @@ export class BFIScraper {
   }
 
   async scrape(): Promise<RawScreening[]> {
+    // The Playwright click-flow below is structurally broken under Cloudflare:
+    // every internal navigation triggers a fresh challenge that doesn't clear
+    // locally. Verified 2026-05-14: it produces 0 screenings for both venues.
+    //
+    // Route to the PDF importer instead, which is the playbook-preferred path
+    // anyway. runBFIImport handles BOTH bfi-southbank and bfi-imax in one pass:
+    // - Fetches the monthly PDF guide (via persistent Playwright context to
+    //   bypass Cloudflare on the discovery page)
+    // - Parses screenings for both venues
+    // - Saves directly via the standard `saveScreenings` pipeline
+    //
+    // We dedupe across the two venue instances with `bfiImportRunPromise`
+    // so the PDF is fetched + parsed once per /scrape session. The second
+    // venue instance shares the cached promise and the importer's per-venue
+    // save side-effects are already complete.
+    //
+    // Returning [] is correct here: runBFIImport has already persisted both
+    // venues' screenings. The unified pipeline will report "0 added, 0 updated"
+    // for each BFI venue in its per-cinema summary, but the DB state is right.
+    console.log(`[${this.config.cinemaId}] Routing to PDF importer (Playwright click-flow is Cloudflare-blocked)...`);
+    try {
+      await getOrRunBFIImport();
+    } catch (error) {
+      console.error(`[${this.config.cinemaId}] PDF importer failed:`, error);
+      // Fall through with [] — better to underreport than to throw and abort
+      // the rest of the /scrape wave.
+    }
+    return [];
+  }
+
+  /**
+   * @deprecated Kept for reference / future use if the Playwright path becomes
+   * viable again (e.g. Cloudflare relaxes, or we add a paid proxy). Currently
+   * unreachable — `scrape()` always routes to the PDF importer.
+   */
+  async _legacyPlaywrightScrape(): Promise<RawScreening[]> {
     console.log(`[${this.config.cinemaId}] Starting scrape with Playwright stealth mode...`);
     await FestivalDetector.preload();
 
@@ -493,4 +530,31 @@ export class BFIScraper {
 /** Creates a scraper for a BFI venue (Southbank or IMAX). */
 export function createBFIScraper(venueId: "bfi-southbank" | "bfi-imax"): BFIScraper {
   return new BFIScraper(venueId);
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// PDF importer dedupe
+// ────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Module-scope cache so the PDF import runs ONCE per process even when the
+ * unified scrape calls `createBFIScraper("bfi-southbank").scrape()` and
+ * `createBFIScraper("bfi-imax").scrape()` in succession (or in parallel).
+ *
+ * runBFIImport saves screenings for BOTH venues in a single call, so the
+ * second invocation would just re-fetch and re-save the same data. Caching
+ * the promise lets the second caller await the first one's result.
+ *
+ * Reset each session by re-importing the module; the cache lives in memory
+ * only for one Node process.
+ */
+let bfiImportRunPromise: Promise<void> | null = null;
+
+async function getOrRunBFIImport(): Promise<void> {
+  if (!bfiImportRunPromise) {
+    bfiImportRunPromise = (async () => {
+      await runBFIImport();
+    })();
+  }
+  return bfiImportRunPromise;
 }

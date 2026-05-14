@@ -1,3 +1,14 @@
+## 2026-05-14: Route BFI scraper in /scrape to the PDF importer
+**PR**: TBD | **Files**: `src/scrapers/cinemas/bfi.ts`
+- Follow-up to #488. The PDF importer worked via `npm run scrape:bfi-pdf` but the unified `/scrape` registry still ran the broken Playwright click-flow.
+- `BFIScraper.scrape()` now delegates to `runBFIImport()` and returns `[]`. The importer saves to DB directly via the standard `saveScreenings` path, covering both Southbank and IMAX in one PDF fetch.
+- Module-scope `bfiImportRunPromise` cache dedupes across the two venue invocations — second call shares the cached promise (~1s instead of re-fetching).
+- The old Playwright click-flow is kept as `_legacyPlaywrightScrape()` for reference; structurally broken under Cloudflare's per-action challenges.
+- Verified: `npm run scrape:bfi` now imports 94 screenings (vs 0). BFI Southbank: 1031 upcoming. Total run time: 25s (was 4+ min).
+- Known limitation: unified pipeline reports `0 added, 0 updated` for both BFI venues in its per-cinema summary because we route around the pipeline. The data IS in the DB; the count is just not credited to BFI in the unified summary. Accept the trade-off vs leaving BFI broken.
+
+---
+
 ## 2026-05-14: BFI scraper — Cloudflare bypass via persistent context + PDF importer revived (0 → 99 screenings)
 **PR**: TBD | **Files**: `src/scrapers/utils/browser.ts`, `src/scrapers/cinemas/bfi.ts`, `src/scrapers/bfi-pdf/fetcher.ts`, `src/scrapers/bfi-pdf/pdf-parser.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`, `changelogs/2026-05-14-bfi-scraper-fix.md`
 - **Symptom**: BFI Southbank + BFI IMAX returned 0 screenings in the 2026-05-12 /scrape run (Cloudflare timeout, "Found 0 active dates" for both venues). Was the only silent breaker from /scrape.
