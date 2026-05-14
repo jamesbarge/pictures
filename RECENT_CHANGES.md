@@ -1,3 +1,13 @@
+## 2026-05-14: BFI scraper returns venue-filtered screenings so /scrape records them properly
+**PR**: TBD | **Files**: `src/scrapers/cinemas/bfi.ts`, `src/scrapers/bfi-pdf/importer.ts`, `src/scrapers/bfi-pdf/index.ts`
+- Follow-up to #489. That PR routed BFI to the PDF importer but had `scrape()` return `[]` (because `runBFIImport` saved directly). Result: `scraper_runs.screening_count` was 0, triggering the silent-breaker detector to quarantine BFI.
+- New `loadBFIScreenings()` exported from `bfi-pdf/` — fetches + parses + merges without saving. `BFIScraper.scrape()` calls it (cached across the two venue instances), filters by `getBFIVenueKey`, returns the slice for its venue. The unified pipeline saves them normally and `screening_count` reflects reality.
+- `runBFIImport` (the standalone CLI path) is unchanged — still does load + save + persist run record.
+- Verified: BFI Southbank now returns 94 screenings to the pipeline (was 0). Silent-breaker detector should clear after the next /scrape.
+- Known limitation surfaced: BFI IMAX still returns 0 because the PDF parser doesn't catch IMAX entries (the IMAX section uses screening-first-then-title ordering, opposite of Southbank's title-first format). Separate follow-up.
+
+---
+
 ## 2026-05-14: Route BFI scraper in /scrape to the PDF importer
 **PR**: TBD | **Files**: `src/scrapers/cinemas/bfi.ts`
 - Follow-up to #488. The PDF importer worked via `npm run scrape:bfi-pdf` but the unified `/scrape` registry still ran the broken Playwright click-flow.

@@ -17,7 +17,7 @@ export type { ParsedFilm, ParsedScreening, ParseResult } from "./pdf-parser";
 export { fetchProgrammeChanges, parseChangesPage } from "./programme-changes-parser";
 export type { ProgrammeChange, ParsedChangeScreening, ProgrammeChangesResult } from "./programme-changes-parser";
 
-export { runBFIImport, runProgrammeChangesImport, scrape } from "./importer";
+export { runBFIImport, runProgrammeChangesImport, scrape, loadBFIScreenings, getBFIVenueKey } from "./importer";
 export type { ImportResult } from "./importer";
 
 export { runBFICleanup } from "./cleanup";

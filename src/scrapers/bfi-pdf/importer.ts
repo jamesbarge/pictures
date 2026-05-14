@@ -243,6 +243,68 @@ async function finalizeImportResult(
  * This is the main entry point for importing BFI screenings from PDFs
  * and programme changes.
  */
+/**
+ * Fetch + parse + merge BFI screenings WITHOUT saving. Use this when you
+ * want the screenings returned for processing through the standard scraper
+ * pipeline (e.g. from `BFIScraper.scrape()` so the unified /scrape records
+ * the correct screening_count per cinema in `scraper_runs`).
+ *
+ * For the standalone CLI path (`npm run scrape:bfi-pdf`), use `runBFIImport`
+ * which calls this and then saves + persists a run record.
+ */
+export async function loadBFIScreenings(): Promise<{
+  screenings: RawScreening[];
+  pdfInfo: { label: string; contentHash: string } | undefined;
+  sourceStatus: { pdf: SourceStatus; programmeChanges: SourceStatus };
+}> {
+  const sourceStatus: { pdf: SourceStatus; programmeChanges: SourceStatus } = {
+    pdf: "empty",
+    programmeChanges: "empty",
+  };
+
+  let pdfResult: ParseResult | null = null;
+  let changesResult: ProgrammeChangesResult | null = null;
+  let fetchedPdf: FetchedPDF | null = null;
+
+  console.log("[BFI-Load] Fetching latest PDF...");
+  try {
+    fetchedPdf = await fetchLatestPDF();
+    if (fetchedPdf) {
+      pdfResult = await parsePDF(fetchedPdf);
+      sourceStatus.pdf = pdfResult.screenings.length > 0 ? "success" : "empty";
+      console.log(`[BFI-Load] PDF parsed: ${pdfResult.screenings.length} screenings from ${pdfResult.films.length} films`);
+    } else {
+      sourceStatus.pdf = "failed";
+    }
+  } catch (error) {
+    sourceStatus.pdf = "failed";
+    console.error(`[BFI-Load] PDF fetch/parse failed:`, error);
+  }
+
+  console.log("[BFI-Load] Fetching programme changes...");
+  try {
+    changesResult = await fetchProgrammeChanges();
+    sourceStatus.programmeChanges = changesResult.screenings.length > 0 ? "success" : "empty";
+    console.log(`[BFI-Load] Changes parsed: ${changesResult.screenings.length} screenings from ${changesResult.changes.length} changes`);
+  } catch (error) {
+    sourceStatus.programmeChanges = "failed";
+    console.error(`[BFI-Load] Programme changes fetch failed:`, error);
+  }
+
+  const screenings = mergeScreenings(
+    pdfResult?.screenings || [],
+    changesResult?.screenings || []
+  );
+
+  return {
+    screenings,
+    pdfInfo: fetchedPdf
+      ? { label: fetchedPdf.info.label, contentHash: fetchedPdf.contentHash }
+      : undefined,
+    sourceStatus,
+  };
+}
+
 export async function runBFIImport(context?: ImportContext): Promise<ImportResult> {
   const startedAt = new Date();
   const startTime = Date.now();
@@ -487,13 +549,16 @@ function isImaxBookingUrl(bookingUrl: string | undefined): boolean {
   }
 }
 
-function getVenueKey(screening: RawScreening): "bfi-southbank" | "bfi-imax" {
+export function getBFIVenueKey(screening: RawScreening): "bfi-southbank" | "bfi-imax" {
   const screen = screening.screen?.toUpperCase() || "";
   if (screen.includes("IMAX") || isImaxBookingUrl(screening.bookingUrl)) {
     return "bfi-imax";
   }
   return "bfi-southbank";
 }
+
+// Internal alias preserved for legacy call-sites inside this file.
+const getVenueKey = getBFIVenueKey;
 
 /**
  * Create a unique key for a screening based on venue, film, datetime, and screen.
