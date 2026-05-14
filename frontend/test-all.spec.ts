@@ -53,14 +53,14 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 			await expect(today).toBeVisible();
 		});
 
-		test('listings under each poster default to today and follow the day strip', async ({ page }) => {
-			// Locks in PR #445: filmMap previously skipped its date predicate
-			// when no range was set, leaking the full 30-day payload into every
-			// poster. It also compared `s.datetime.split('T')[0]` (UTC date)
-			// against London-time filter values, so late-night BST screenings
-			// landed on the wrong calendar day. This single assertion catches
-			// both halves: a leaked future-day or a UTC-vs-London mismatch
-			// produces a `datetime` that resolves to a London date != today.
+		test('listings default to a rolling multi-day window from today onwards', async ({ page }) => {
+			// Contract since the multi-day rolling-calendar change: the homepage
+			// shows today + the next few days (until ~24 films are visible), each
+			// in its own `<section>` with a day header. The lock-in invariant is
+			// that NO visible screening can resolve to a London date < today —
+			// a leaked past screening or a UTC-vs-London comparison bug would
+			// produce a `datetime` that resolves to a London date strictly before
+			// today.
 			const londonDate = (iso: string) =>
 				new Date(iso).toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
 			const today = londonDate(new Date().toISOString());
@@ -81,24 +81,26 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 
 			const initial = await collectDates();
 			expect(initial.length, 'expected at least one screening on the homepage').toBeGreaterThan(0);
-			const offToday = initial.filter((d) => londonDate(d) !== today);
+			const beforeToday = initial.filter((d) => londonDate(d) < today);
 			expect(
-				offToday,
-				`expected every visible screening to be on ${today} (London); ${offToday.length} were on other days: ${offToday.slice(0, 3).join(', ')}`
+				beforeToday,
+				`expected no screening before ${today} (London); ${beforeToday.length} leaked: ${beforeToday.slice(0, 3).join(', ')}`
 			).toEqual([]);
 
-			// Click the next-day strip button — listings should narrow to that day.
+			// Click the next-day strip button — window now anchors from that day
+			// forward. Every visible screening must resolve to a London date >=
+			// the clicked day (no past leakage, but multiple days are allowed).
 			const stripButtons = page.locator('.day-strip .strip-btn:not(.strip-arrow)');
 			await stripButtons.nth(1).click(); // index 0 = Today, 1 = +1 day
-			await page.waitForTimeout(300);
+			await page.waitForTimeout(400);
 			const after = await collectDates();
 			if (after.length > 0) {
-				const uniqueDays = new Set(after.map(londonDate));
+				const dates = after.map(londonDate);
+				const earliest = [...dates].sort()[0];
 				expect(
-					uniqueDays.size,
-					`expected screenings to narrow to a single day after strip click, got ${[...uniqueDays].join(', ')}`
-				).toBe(1);
-				expect([...uniqueDays][0]).not.toBe(today);
+					earliest > today,
+					`after clicking next-day strip, earliest visible date should be > today (${today}), got ${earliest}`
+				).toBe(true);
 			}
 		});
 

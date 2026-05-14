@@ -28,6 +28,10 @@
 			} else if (filters.dateTo) {
 				const dTo = new Date(filters.dateTo + 'T00:00:00');
 				parts.push(`${d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} – ${dTo.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`);
+			} else {
+				// One-sided range — the rolling-window anchor set by the day strip
+				// (`DayMasthead.selectDate` clears `dateTo`).
+				parts.push(`From ${d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}`);
 			}
 		}
 

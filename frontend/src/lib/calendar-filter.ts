@@ -61,11 +61,14 @@ let lastOneSidedRangeWarnKey = '';
 /**
  * Group upcoming screenings by film, applying the active filters.
  *
- * Behavioural contract (locked in by tests + the lock-in Playwright assert):
+ * Behavioural contract:
  * - Excludes screenings whose `datetime` is at or before `now`.
  * - Excludes screenings without a `film`.
- * - Date range defaults to `[today, today]` when neither end is set on the
- *   snapshot (matches the masthead's single-day framing on the homepage).
+ * - Date range defaults to `[today, ∞)` when neither end is set on the
+ *   snapshot — the homepage shows a rolling multi-day window and slices the
+ *   visible days downstream in `+page.svelte`.
+ * - A `dateFrom`-only range (no `dateTo`) is valid: it anchors the rolling
+ *   window from that date forward.
  * - All date comparisons use London civil dates, never UTC ISO slices.
  * - Screenings are bucketed by `film.id` in insertion order; the caller is
  *   responsible for any ordering.
@@ -77,22 +80,23 @@ export function buildFilmMap<S extends CalendarScreening>(
 ): Map<string, FilmGroup<S>> {
 	const map = new Map<string, FilmGroup<S>>();
 	const effectiveFrom = filters.dateFrom ?? today;
-	const effectiveTo = filters.dateTo ?? today;
+	// '9999-12-31' is string-compare-safe since YYYY-MM-DD sorts lexicographically;
+	// any real screening date is strictly less.
+	const effectiveTo = filters.dateTo ?? '9999-12-31';
 	const searchQuery = filters.filmSearch ? filters.filmSearch.toLowerCase() : '';
 
-	// Every current caller (setDatePreset in `filters.svelte.ts`,
-	// `DayMasthead.selectDate`) assigns dateFrom and dateTo together, but
-	// `set dateFrom` / `set dateTo` on the store are public — if a future
-	// caller sets only one, we silently default the other to today. The
-	// dev-only warning below surfaces that drift instead of swallowing it.
+	// A `dateTo`-only range (with no `dateFrom`) is unusual — every UI surface
+	// that exposes a single-day filter sets both ends. Warn in dev so a drifting
+	// caller surfaces instead of silently defaulting `dateFrom` to today.
 	if (
 		import.meta.env.DEV &&
-		(filters.dateFrom === null) !== (filters.dateTo === null)
+		filters.dateFrom === null &&
+		filters.dateTo !== null
 	) {
 		const key = `${filters.dateFrom}|${filters.dateTo}`;
 		if (lastOneSidedRangeWarnKey !== key) {
 			lastOneSidedRangeWarnKey = key;
-			console.warn('buildFilmMap: one-sided date range — invariant broken', {
+			console.warn('buildFilmMap: dateTo set without dateFrom', {
 				dateFrom: filters.dateFrom,
 				dateTo: filters.dateTo
 			});
