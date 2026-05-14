@@ -6,8 +6,8 @@
 
 import * as cheerio from "cheerio";
 import type { RawScreening, ScraperConfig } from "../types";
-import { getBrowser, closeBrowser, createPage, waitForCloudflare } from "../utils/browser";
-import type { Page } from "rebrowser-playwright";
+import { createPersistentPage, waitForCloudflare } from "../utils/browser";
+import type { BrowserContext, Page } from "rebrowser-playwright";
 import { parseFilmMetadata } from "../utils/metadata-parser";
 import { FestivalDetector } from "../festivals/festival-detector";
 
@@ -33,6 +33,7 @@ const VENUES: Record<string, BFIVenueConfig> = {
 export class BFIScraper {
   private venue: BFIVenueConfig;
   private page: Page | null = null;
+  private context: BrowserContext | null = null;
 
   config: ScraperConfig;
 
@@ -66,35 +67,57 @@ export class BFIScraper {
   }
 
   private async initialize(): Promise<void> {
-    console.log(`[${this.config.cinemaId}] Launching browser with enhanced stealth mode...`);
-    await getBrowser();
-    this.page = await createPage();
+    // BFI requires a persistent browser context to bypass Cloudflare. The shared
+    // browser singleton (used by Curzon, Phoenix, etc.) launches cold every run
+    // and re-issues the challenge — verified to time out in the 2026-05-12
+    // /scrape run. The persistent context preserves the cf_clearance cookie and
+    // browser fingerprint across runs, so the challenge passes on subsequent
+    // visits. Profile key keeps BFI Southbank and BFI IMAX isolated so their
+    // cookies don't interfere.
+    console.log(`[${this.config.cinemaId}] Launching persistent browser context...`);
+    const { context, page } = await createPersistentPage(this.config.cinemaId);
+    this.context = context;
+    this.page = page;
 
-    // First visit the homepage to establish session/cookies and bypass initial Cloudflare
-    console.log(`[${this.config.cinemaId}] Warming up session on homepage...`);
-    await this.page.goto(this.venue.baseUrl, {
+    // Warm up the session directly on the CALENDAR URL we'll actually scrape.
+    // Previously this warmed up on `baseUrl` (e.g. /Online), which cleared the
+    // challenge for that URL but then re-triggered a fresh challenge when
+    // fetchAllDates() navigated to `/Online/default.asp` — burning the cf_clearance
+    // budget on a URL we never use. Warming on the target URL lets a single
+    // challenge pass cover the whole scrape session.
+    const calendarUrl = `${this.venue.baseUrl}/default.asp`;
+    console.log(`[${this.config.cinemaId}] Warming up session on calendar URL: ${calendarUrl}`);
+    await this.page.goto(calendarUrl, {
       waitUntil: "domcontentloaded",
-      timeout: 60000,
+      timeout: 90000,
     });
 
-    // Wait for Cloudflare challenge if present (uses enhanced human-like behavior)
-    const passed = await waitForCloudflare(this.page, 60);
+    // Cloudflare can take 30-60s to clear; 90s gives headroom under load.
+    // (Standalone diagnostic cleared in ~38s; the scraper context runs slower
+    // alongside other Playwright tasks in the same wave.)
+    const passed = await waitForCloudflare(this.page, 90);
     if (!passed) {
       console.log(`[${this.config.cinemaId}] Cloudflare challenge timeout, continuing anyway...`);
     }
 
-    // Wait for page to settle
-    await this.page.waitForTimeout(2000);
+    // Wait for the calendar grid to render after Cloudflare passes
+    await this.page.waitForTimeout(3000);
     console.log(`[${this.config.cinemaId}] Session established`);
   }
 
   private async cleanup(): Promise<void> {
     if (this.page) {
-      await this.page.close();
+      await this.page.close().catch(() => { /* page may already be closed */ });
       this.page = null;
     }
-    await closeBrowser();
-    console.log(`[${this.config.cinemaId}] Browser closed`);
+    if (this.context) {
+      await this.context.close().catch(() => { /* context may already be closed */ });
+      this.context = null;
+    }
+    // NOTE: do NOT call closeBrowser() — this scraper owns its own persistent
+    // context, not the shared singleton. Closing the singleton would tear down
+    // a browser other scrapers in the same wave may still be using.
+    console.log(`[${this.config.cinemaId}] Browser context closed`);
   }
 
   /**
@@ -143,7 +166,10 @@ export class BFIScraper {
 
     await cell.click();
     await this.page.waitForTimeout(2000);
-    await waitForCloudflare(this.page, 10);
+    // Cloudflare re-challenges on every internal navigation. 60s matches what
+    // we see clear in the wild — the 10s previously used was the proximate
+    // cause of the 0-screenings runs (challenge still active when parsed).
+    await waitForCloudflare(this.page, 60);
 
     const html = await this.page.content();
     const dayScreenings = this.parseSearchResults(html);
@@ -156,7 +182,7 @@ export class BFIScraper {
       waitUntil: "domcontentloaded",
       timeout: 30000,
     });
-    await waitForCloudflare(this.page, 10);
+    await waitForCloudflare(this.page, 60);
     await this.page.waitForTimeout(1500);
 
     // Navigate back to the same month we were scraping
@@ -178,20 +204,11 @@ export class BFIScraper {
     const screenings: RawScreening[] = [];
 
     try {
-      // Navigate to the calendar page first
-      console.log(`[${this.config.cinemaId}] Opening calendar...`);
-
-      await this.page.goto(`${this.venue.baseUrl}/default.asp`, {
-        waitUntil: "domcontentloaded",
-        timeout: 60000,
-      });
-
-      const cloudflareCleared = await waitForCloudflare(this.page, 45);
-      if (!cloudflareCleared) {
-        console.log(`[${this.config.cinemaId}] Cloudflare did not clear, trying anyway...`);
-      }
-
-      await this.page.waitForTimeout(3000);
+      // initialize() has already navigated to the calendar URL and waited for
+      // Cloudflare to clear, so we're on the right page already. Re-navigating
+      // here would trigger a fresh Cloudflare challenge and burn another 60s+
+      // (and in practice, our 45s window often wasn't long enough to pass it).
+      console.log(`[${this.config.cinemaId}] Reusing session from initialize()...`);
 
       // Navigate to a month with active programming
       await this.navigateToActiveMonth();
@@ -440,33 +457,34 @@ export class BFIScraper {
   }
 
   async healthCheck(): Promise<boolean> {
+    let context: BrowserContext | null = null;
     try {
       console.log(`[${this.config.cinemaId}] Running health check...`);
-      const page = await createPage();
+      // Same persistent-context fix as initialize() — the shared browser
+      // singleton can't pass Cloudflare cold, and the previous implementation
+      // failed in the wild with: "page.content: Unable to retrieve content
+      // because the page is navigating and changing the content" on BFI IMAX.
+      const persistent = await createPersistentPage(`${this.config.cinemaId}-healthcheck`);
+      context = persistent.context;
+      const page = persistent.page;
 
       await page.goto(this.venue.baseUrl, {
         waitUntil: "domcontentloaded",
         timeout: 30000,
       });
 
-      // Wait for potential Cloudflare challenge
-      for (let i = 0; i < 15; i++) {
-        const html = await page.content();
-        if (!html.includes("challenge-platform") && !html.includes("Checking your browser")) {
-          break;
-        }
-        await page.waitForTimeout(1000);
-      }
+      // Wait for potential Cloudflare challenge — use the shared helper which
+      // already handles "page is navigating" by polling instead of single-shot
+      // content() reads.
+      await waitForCloudflare(page, 15);
 
-      const title = await page.title();
-      await page.close();
-      await closeBrowser();
-
+      const title = await page.title().catch(() => "");
       return title.toLowerCase().includes("bfi");
     } catch (error) {
       console.error(`[${this.config.cinemaId}] Health check failed:`, error);
-      await closeBrowser();
       return false;
+    } finally {
+      if (context) await context.close().catch(() => { /* may be closed */ });
     }
   }
 

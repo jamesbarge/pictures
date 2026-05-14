@@ -1,3 +1,28 @@
+## 2026-05-14: BFI scraper — Cloudflare bypass via persistent context + PDF importer revived (0 → 99 screenings)
+**PR**: TBD | **Files**: `src/scrapers/utils/browser.ts`, `src/scrapers/cinemas/bfi.ts`, `src/scrapers/bfi-pdf/fetcher.ts`, `src/scrapers/bfi-pdf/pdf-parser.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`, `changelogs/2026-05-14-bfi-scraper-fix.md`
+- **Symptom**: BFI Southbank + BFI IMAX returned 0 screenings in the 2026-05-12 /scrape run (Cloudflare timeout, "Found 0 active dates" for both venues). Was the only silent breaker from /scrape.
+- **Root causes (multiple, stacked)**:
+  1. Shared `getBrowser()` launches cold every run → Cloudflare challenge re-triggered + never clears in time
+  2. `waitForCloudflare()` checked for "challenge-platform" string in HTML — false-positives on embedded Cloudflare scripts that persist even on cleared pages
+  3. `waitForCloudflare()` threw on transient `page.content` navigation errors (BFI IMAX health check)
+  4. The Playwright click-based flow triggers a fresh Cloudflare challenge PER ACTION that doesn't clear — structurally broken for local headless
+  5. BFI PDF importer (the playbook-preferred path) was failing: `bfi_import_runs` table missing (migration unapplied); `unpdf@1.4.0` throws `Promise.try is not a function` on Node < 22.7; PDF text extracted as one continuous string with no newlines, so line-based parser found 0 films; `bfi_import_status` enum was created with stale values (`pending, processing, completed, failed`) before the migration spec added `success, degraded`
+- **Fixes**:
+  1. New `createPersistentPage(profileKey)` helper in `utils/browser.ts` — minimal-config `launchPersistentContext` that preserves `cf_clearance` across runs (verified to bypass Cloudflare). Profile dir lives in `os.tmpdir()/pictures-scraper-<key>`. Over-engineered anti-detection actually *tripped* Cloudflare fingerprinting — minimal config wins.
+  2. `waitForCloudflare()` now checks the **page title** (`Just a moment...`, `Attention Required! | Cloudflare`, etc.) instead of HTML strings. Errors during `page.title()` treated as "still settling".
+  3. `bfi-pdf/fetcher.ts` now falls back to `createPersistentPage` on 403/503 from direct fetch. PDF binaries on `core-cms.bfi.org.uk` are NOT Cloudflare-protected — direct fetch keeps working there.
+  4. Applied migration `0006_add_bfi_import_runs.sql` (table was missing from prod DB); ALTERed `bfi_import_status` enum to add missing `success` and `degraded` values.
+  5. Polyfilled `Promise.try` at the top of `pdf-parser.ts` before the unpdf import (matches Stage-3 ES2026 spec).
+  6. Added `segmentBFIText()` to inject newlines at screening-pattern and metadata-pattern boundaries — recovers the line structure pdfjs lost. Parser also rejects parse-artifact titles (country-code prefixes like "UK-", lowercase fragments).
+- **Result**: `npm run scrape:bfi-pdf` now imports 99 screenings across 53 films (vs 0 before). BFI Southbank DB total: 1023 upcoming screenings.
+- **Known limitations / follow-ups**:
+  - PDF importer is the canonical path, but the Playwright click-based scraper in the unified `/scrape` registry is still wired. Either (a) replace `createBFIScraper` to delegate to `runBFIImport`, or (b) drop BFI from the Playwright wave and rely on `npm run scrape:bfi-pdf` as a separate weekly step.
+  - Coverage at ~57% (99 imported vs 174 screening patterns in the PDF). Improving the segmentation regex would close the gap.
+  - Only the most recent PDF is parsed; `fetchAllRelevantPDFs()` exists but isn't used.
+  - Programme changes page also Cloudflare-blocked; PDF + Playwright fallback may close this too with a small change.
+
+---
+
 ## 2026-05-12: /scrape title hygiene — close the AI-extractor escape hatch + 8 new prefix/suffix patterns + year contamination guard
 **PR**: #487 | **Files**: `src/scrapers/pipeline.ts`, `src/scrapers/utils/film-title-cleaner.ts`, `src/scrapers/utils/film-title-cleaner.test.ts`, `src/scrapers/utils/film-matching.ts`, `changelogs/2026-05-12-scrape-title-hygiene.md`
 - **Root cause of recurring duplicate-film rows**: the pipeline runs AI title extraction first, with `cleanFilmTitle` as a regex fallback. The fallback only fired when AI confidence was "low"/"medium" AND no canonical title was returned. When AI returned "high" confidence with a still-prefixed title (e.g. "Classic Matinee: JAWS", "Akira (2026 Re-release)") the regex never ran and the bad title hit the DB. Cycle 16-17 patrols merged 6-14 such rows per 40-film batch — these were the source.

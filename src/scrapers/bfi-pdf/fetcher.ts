@@ -16,6 +16,7 @@ import * as cheerio from "cheerio";
 import { createHash } from "crypto";
 import { fetchWithRetry } from "../utils/fetch-with-retry";
 import { CHROME_USER_AGENT_FULL } from "../constants";
+import { createPersistentPage, waitForCloudflare } from "../utils/browser";
 
 /**
  * Fetches a URL, optionally through a proxy service.
@@ -82,7 +83,7 @@ async function proxyFetch(url: string, options: RequestInit = {}): Promise<Respo
   }
 
   // Direct fetch with browser-like headers
-  return fetch(url, {
+  const directResponse = await fetch(url, {
     ...options,
     headers: {
       "User-Agent": CHROME_USER_AGENT_FULL,
@@ -91,6 +92,52 @@ async function proxyFetch(url: string, options: RequestInit = {}): Promise<Respo
       ...options.headers,
     },
   });
+
+  // If direct fetch is blocked by Cloudflare (403/503), fall back to a
+  // persistent-context Playwright browser. Verified 2026-05-14: this is the
+  // only locally-reliable way to read `whatson.bfi.org.uk` without paying
+  // for ScraperAPI. The persistent context keeps the cf_clearance cookie
+  // across runs so subsequent pages stay fast.
+  if (directResponse.status === 403 || directResponse.status === 503) {
+    console.log(
+      `[BFI-PDF] Direct fetch blocked (${directResponse.status}), falling back to persistent Playwright context...`,
+    );
+    return fetchViaPlaywright(url);
+  }
+
+  return directResponse;
+}
+
+/**
+ * Last-resort HTML fetch via persistent Playwright context. Used when direct
+ * fetch is Cloudflare-blocked and no ScraperAPI key is available.
+ *
+ * Wraps the body in a Response object so callers can treat it like a normal
+ * fetch result — the only methods used downstream are `.ok`, `.status`,
+ * `.text()`, and `.statusText`.
+ */
+async function fetchViaPlaywright(url: string): Promise<Response> {
+  const { context, page } = await createPersistentPage("bfi-pdf-discovery");
+  try {
+    const response = await page.goto(url, {
+      waitUntil: "domcontentloaded",
+      timeout: 90000,
+    });
+    const passed = await waitForCloudflare(page, 60);
+    if (!passed) {
+      console.warn("[BFI-PDF] Cloudflare did not clear within 60s — trying HTML anyway");
+    }
+    await page.waitForTimeout(2000);
+    const html = await page.content();
+    const status = response?.status() ?? 200;
+    return new Response(html, {
+      status,
+      statusText: response?.statusText() ?? "OK",
+      headers: { "Content-Type": "text/html; charset=utf-8" },
+    });
+  } finally {
+    await context.close();
+  }
 }
 
 export interface PDFInfo {

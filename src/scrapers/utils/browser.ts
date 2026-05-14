@@ -16,8 +16,10 @@
  * `Pictures/Research/scraping-rethink-2026-05/01-browser-automation-libraries.md`.
  */
 
-import { chromium, type Browser, type Page } from "rebrowser-playwright";
+import { chromium, type Browser, type BrowserContext, type Page } from "rebrowser-playwright";
 import { CHROME_USER_AGENT_FULL } from "../constants";
+import * as os from "os";
+import * as path from "path";
 
 let browser: Browser | null = null;
 
@@ -152,21 +154,111 @@ export async function createPage(): Promise<Page> {
 }
 
 /**
- * Wait for Cloudflare challenge to complete with human-like behavior
+ * Create a persistent-context Page for sites that require cookie persistence
+ * across runs to bypass Cloudflare (notably BFI).
+ *
+ * Unlike `getBrowser()` + `createPage()`, this launches its own browser using
+ * a stable user data directory on disk — Cloudflare's `cf_clearance` cookie
+ * and the JA3/JA4 fingerprint warmth are preserved between runs. A cold
+ * `chromium.launch()` re-issues the Cloudflare challenge every time; the
+ * persistent context lets us pass it once and reuse the result.
+ *
+ * Verified 2026-05-14 against BFI Southbank: cold persistent run cleared
+ * the challenge and returned real HTML; the previous shared-browser path
+ * timed out the challenge and got 0 dates parsed.
+ *
+ * Returns `{ context, page }`. Caller MUST `context.close()` in cleanup
+ * (do NOT call `closeBrowser()` — this context is independent of the
+ * shared singleton).
  */
+/**
+ * IMPORTANT: profileKey must be unique per concurrent caller. Chromium uses a
+ * SingletonLock file inside the user-data directory; if two processes call
+ * `launchPersistentContext` with the same dir simultaneously, the second one
+ * will fail to start or silently corrupt the profile. In practice we always
+ * use distinct keys ("bfi-southbank", "bfi-imax", "bfi-southbank-healthcheck",
+ * "bfi-pdf-discovery") and the scrapers don't fan out beyond one venue per
+ * Playwright wave slot — but if you add a new caller that may overlap with an
+ * existing one, namespace your profileKey accordingly.
+ */
+export async function createPersistentPage(
+  profileKey: string,
+): Promise<{ context: BrowserContext; page: Page }> {
+  const userDataDir = path.join(os.tmpdir(), `pictures-scraper-${profileKey}`);
+
+  // Intentionally minimal config. The standalone bypass test (see
+  // `scripts/_tmp_bfi_persistent_test.ts`) showed that a *minimal* persistent
+  // context with only the webdriver-flag eviction passes Cloudflare on BFI,
+  // while the full anti-detection suite from `createPage()` (plugins, hardware,
+  // languages, chrome.runtime overrides) trips fingerprint inconsistency
+  // detection and the challenge never clears. Less is more here.
+  const context = await chromium.launchPersistentContext(userDataDir, {
+    headless: true,
+    userAgent: CHROME_USER_AGENT_FULL,
+    viewport: { width: 1920, height: 1080 },
+    locale: "en-GB",
+    timezoneId: "Europe/London",
+    args: [
+      "--disable-blink-features=AutomationControlled",
+      "--no-sandbox",
+      "--window-size=1920,1080",
+    ],
+  });
+
+  // Persistent contexts ship with one blank page already. Reuse it.
+  const page = context.pages()[0] ?? await context.newPage();
+
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "webdriver", { get: () => undefined });
+  });
+
+  return { context, page };
+}
+
+/**
+ * Wait for Cloudflare challenge to complete with human-like behavior.
+ *
+ * The challenge state is detected via the page **title**, not HTML body. The
+ * old body-string check (which looked for "challenge-platform" / "Just a
+ * moment" / "Checking your browser" / "cf-spinner") false-positived on every
+ * Cloudflare-protected site even when the challenge had cleared — those
+ * strings persist in embedded Cloudflare scripts even on fully-loaded pages.
+ * Verified 2026-05-14: BFI Southbank pages load fully with HTTP 200 and real
+ * content but the body still contains "challenge-platform" via inline scripts.
+ *
+ * Title-based detection is reliable because Cloudflare uses dedicated
+ * interstitial titles ("Just a moment...", "One moment, please...",
+ * "Attention Required! | Cloudflare") during the actual challenge and the
+ * real site title appears immediately on pass.
+ *
+ * Also: `page.title()` / `page.content()` can throw during in-flight
+ * navigation (the "page is navigating" error seen on BFI IMAX health check
+ * in the 2026-05-12 /scrape run). Treat thrown errors as "still settling"
+ * rather than terminal — keep polling until the timeout.
+ */
+const CLOUDFLARE_CHALLENGE_TITLES = [
+  /^just a moment/i,
+  /^one moment, please/i,
+  /^please wait/i,
+  /^checking your browser/i,
+  /attention required.*cloudflare/i,
+];
+
 export async function waitForCloudflare(page: Page, maxWaitSeconds = 60): Promise<boolean> {
   const startTime = Date.now();
 
   while ((Date.now() - startTime) / 1000 < maxWaitSeconds) {
-    const html = await page.content();
-
-    // Check if challenge is complete
-    if (!html.includes("challenge-platform") &&
-        !html.includes("Checking your browser") &&
-        !html.includes("Just a moment") &&
-        !html.includes("cf-spinner")) {
-      return true;
+    let title = "";
+    try {
+      title = await page.title();
+    } catch {
+      // page may be navigating; retry after a tick
+      await page.waitForTimeout(500);
+      continue;
     }
+
+    const stillChallenged = title === "" || CLOUDFLARE_CHALLENGE_TITLES.some(rx => rx.test(title));
+    if (!stillChallenged) return true;
 
     // Simulate human-like mouse movement during challenge
     try {
@@ -174,15 +266,13 @@ export async function waitForCloudflare(page: Page, maxWaitSeconds = 60): Promis
       const y = 100 + Math.random() * 200;
       await page.mouse.move(x, y);
 
-      // Occasionally click (but not on the challenge itself)
       if (Math.random() < 0.1) {
         await page.mouse.click(x, y);
       }
     } catch {
-      // Ignore mouse movement errors
+      // ignore mouse movement errors during navigation
     }
 
-    // Random delay between checks (1-2 seconds)
     await page.waitForTimeout(1000 + Math.random() * 1000);
   }
 
