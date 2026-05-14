@@ -52,8 +52,14 @@ Use this format when recording cinema-specific quirks:
 
 ## High-Impact Sources (Current)
 ### BFI
-- Scrapers: `src/scrapers/cinemas/bfi.ts`, `src/scrapers/bfi-pdf/`
+- Scrapers: `src/scrapers/cinemas/bfi.ts` (Playwright; currently broken locally — see below), `src/scrapers/bfi-pdf/` (PDF importer; **preferred**)
+- Manual run: `npm run scrape:bfi-pdf` — imports both BFI Southbank and BFI IMAX from the monthly PDF guide
 - Notes: Prefer PDF importer path for resilience; monitor `bfi_import_runs` health.
+- **Cloudflare bypass (2026-05-14)**: `whatson.bfi.org.uk` is Cloudflare-protected. Locally, only `createPersistentPage()` (`launchPersistentContext` + minimal config) bypasses the challenge — the shared `getBrowser()` singleton in `utils/browser.ts` triggers the challenge cold every run and times out. The PDF importer's `proxyFetch()` falls back to a persistent Playwright context for the discovery page HTML when direct fetch returns 403/503.
+- **PDF binaries are NOT Cloudflare-protected**: `core-cms.bfi.org.uk/media/*/download` serves directly via plain `fetch()`. Only the discovery page (which lists the PDF URLs) needs the bypass.
+- **The Playwright click-based scraper (`cinemas/bfi.ts`) is structurally broken locally**: BFI's Vista Online .asp form submits trigger a fresh Cloudflare challenge per click that does not clear, so it produces 0 screenings. The PDF importer is the workaround.
+- **PDF text comes as one continuous string** (no newlines). `pdf-parser.ts` calls `segmentBFIText()` to insert newlines at screening-pattern and metadata-pattern boundaries before line-based parsing.
+- **`Promise.try` polyfill**: `unpdf@1.4.0` requires `Promise.try` (Node ≥22.7 / V8 13.3). `pdf-parser.ts` has a top-of-file polyfill that runs BEFORE the unpdf import to keep older Node versions working.
 
 ### Picturehouse
 - Scraper: `src/scrapers/chains/picturehouse.ts`

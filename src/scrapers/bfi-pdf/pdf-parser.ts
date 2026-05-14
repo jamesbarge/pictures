@@ -17,6 +17,11 @@
  * Accessibility flags: AD (Audio Description), DS (Descriptive Subtitles), CC (Closed Captions), BSL (BSL interpreted)
  */
 
+// MUST be the first import in this file. ES module imports are hoisted, so the
+// polyfill needs to be in its own module imported before unpdf — otherwise
+// unpdf's module body evaluates with Promise.try still undefined. See the
+// polyfill file for full context.
+import "./_promise-try-polyfill";
 import { extractText as unpdfExtractText, getDocumentProxy } from "unpdf";
 import type { RawScreening } from "../types";
 import type { FetchedPDF } from "./fetcher";
@@ -84,7 +89,44 @@ export interface ParseResult {
 async function extractText(buffer: Buffer): Promise<string> {
   const pdf = await getDocumentProxy(new Uint8Array(buffer));
   const { text } = await unpdfExtractText(pdf, { mergePages: true });
-  return text;
+  // unpdf returns the text as one continuous string with no line breaks —
+  // verified 2026-05-14 on the BFI June 2026 accessible guide. The existing
+  // line-based parser logic needs separable lines, so we inject newlines at
+  // known structural boundaries:
+  //   1. Before every screening line "DAY DD MON HH:MM VENUE"
+  //   2. Before every metadata line "Country YYYY. Director ..."
+  // This recovers the line structure the PDF "should" have had if pdf.js
+  // preserved layout. After segmentation, each film entry is roughly:
+  //   <title (mixed case)>
+  //   Country YYYY. Director X. With Y. Nmin. Format. Cert.
+  //   <description>
+  //   DAY DD MON HH:MM VENUE  (one per screening)
+  return segmentBFIText(Array.isArray(text) ? text.join(" ") : text);
+}
+
+/**
+ * Insert newlines at structural boundaries in the BFI PDF text. See extractText
+ * above for why this is needed.
+ */
+function segmentBFIText(text: string): string {
+  // Insert \n BEFORE each screening pattern. The lookahead ensures we don't
+  // consume the match itself, so it ends up on its own line.
+  let segmented = text.replace(
+    /(?=\b(?:MON|TUE|WED|THU|FRI|SAT|SUN)\s+\d{1,2}\s+(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s+\d{1,2}:\d{2}\s+(?:NFT\d|IMAX|STUDIO|BFI\s+IMAX))/gi,
+    "\n",
+  );
+  // Insert \n BEFORE each metadata line. Detect by "Country YYYY. Director" —
+  // country can be:
+  //   - single word: "UK", "Cuba", "France"
+  //   - multi-word: "Czech Republic", "United States of America" (up to 4 words)
+  //   - hyphenated co-production: "UK-France", "USA-UK-Canada-Germany"
+  //   - mixed: "United States-Canada"
+  // Allow {0,3} additional words after the initial cap word (4 total).
+  segmented = segmented.replace(
+    /(?=\b[A-Z][A-Za-z\-À-ſ]*(?:\s+(?:of\s+|the\s+|and\s+)?[A-Z][A-Za-z\-À-ſ]*){0,3}(?:[-\/][A-Z][A-Za-z\-À-ſ]*(?:\s+(?:of\s+|the\s+|and\s+)?[A-Z][A-Za-z\-À-ſ]*){0,3})*\s+(?:19|20)\d{2}\.\s+(?:Director|Dir\.))/g,
+    "\n",
+  );
+  return segmented;
 }
 
 /**
@@ -175,6 +217,10 @@ function tryParseFilm(
   pdfYear: number,
   currentSeason?: string
 ): { film: ParsedFilm; nextIndex: number } | null {
+  // Title is the LAST text on the title line — the segmentation regex breaks
+  // BEFORE country/year metadata, which means the previous film's description
+  // tail is concatenated with the next film's title on the same line. Take the
+  // last 3-12 words as the candidate title.
   const titleLine = lines[startIndex];
 
   // Skip obviously non-title lines
@@ -184,6 +230,20 @@ function tryParseFilm(
 
   // Title should be reasonably short and not contain screening patterns
   if (titleLine.length > 100) return null;
+
+  // Filter parse artifacts: titles that are a country-code stub with a trailing
+  // hyphen (the artifact signature — segmentation pulled too little text and
+  // left a dangling co-production hyphen). Require a terminal `-` so we don't
+  // accidentally reject legitimate short caps titles like THX, JFK, M, Z, RAN.
+  // Examples this catches: "UK-", "USA-", "UK-France-", "USA-UK-".
+  if (/^[A-Z]{2,5}(?:-[A-Z][a-z]+)*-$/.test(titleLine)) return null;
+  if (titleLine.length < 2) return null;
+  // Lowercase-leading: real titles can legitimately start lowercase via
+  // articles or particles in many languages. Allowlist common ones; if the
+  // title doesn't start with a known particle AND starts lowercase, reject.
+  // BFI programmes a lot of European cinema so the list spans EN/ES/IT/FR/DE/NL.
+  const lowercaseParticles = /^(de|la|le|el|il|al|las|los|lo|un|una|o|a|du|des|der|die|das|den|van|von|zu|y)\s/i;
+  if (/^[a-z]/.test(titleLine) && !lowercaseParticles.test(titleLine)) return null;
 
   const film: ParsedFilm = {
     title: titleLine,
