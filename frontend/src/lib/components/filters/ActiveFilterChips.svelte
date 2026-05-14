@@ -12,9 +12,16 @@
 		const c: Chip[] = [];
 
 		if (filters.dateFrom || filters.dateTo) {
-			const label = filters.dateFrom === filters.dateTo
-				? filters.dateFrom ?? ''
-				: `${filters.dateFrom ?? '…'} – ${filters.dateTo ?? '…'}`;
+			let label: string;
+			if (filters.dateFrom === filters.dateTo) {
+				label = filters.dateFrom ?? '';
+			} else if (filters.dateFrom && !filters.dateTo) {
+				// One-sided range: anchors the rolling multi-day window from this
+				// day forward (set by `DayMasthead.selectDate`).
+				label = `From ${filters.dateFrom}`;
+			} else {
+				label = `${filters.dateFrom ?? '…'} – ${filters.dateTo ?? '…'}`;
+			}
 			c.push({ key: 'date', label, onRemove: () => { filters.dateFrom = null; filters.dateTo = null; } });
 		}
 

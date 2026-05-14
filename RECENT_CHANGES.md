@@ -1,3 +1,12 @@
+## 2026-05-14: Multi-day rolling calendar — always show upcoming films
+**PR**: TBD | **Files**: `frontend/src/lib/calendar-filter.ts`, `frontend/src/routes/+page.svelte`, `frontend/src/lib/components/calendar/DayMasthead.svelte`, `frontend/test-all.spec.ts`, `frontend/tests/mobile.spec.ts`
+- Homepage no longer goes blank late at night when today's screenings are all past. The default view now shows a rolling window: today + as many upcoming days as needed to fill at least ~24 films (capped at 7 days).
+- Each day is its own `<section>` with a day header ("Today · Thursday, the fourteenth", "Tomorrow · Friday, the fifteenth", or just "Saturday, the sixteenth" for later days). Films within each day stay sorted by Letterboxd rating (the existing `compareFilmsByCalendarPriority` ordering), but the sort **resets per day**.
+- `buildFilmMap` default range changed from `[today, today]` to `[today, ∞)`. The DayMasthead day-strip buttons now anchor the window from the clicked day onwards (one-sided range) instead of collapsing to a single day. Date-picker / filter-sidebar single-day presets still set both ends.
+- Desktop's old `hybridFilms` flat-grid is replaced with day-grouped sections. Mobile's global `.mobile-date-label` is replaced with per-section headers.
+
+---
+
 ## 2026-05-14: BFI IMAX parser — handle screening-before-title layout + fix segmenter over-firing
 **PR**: TBD | **Files**: `src/scrapers/bfi-pdf/pdf-parser.ts`
 - Follow-up to #490. BFI IMAX was returning 0 screenings because the IMAX section of the PDF uses **screening-first** ordering (screening line before the film's title), opposite to BFI Southbank's title-first format.

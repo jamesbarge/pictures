@@ -59,8 +59,10 @@
 			filters.dateFrom = null;
 			filters.dateTo = null;
 		} else {
+			// Anchor the rolling multi-day window — leave `dateTo` open so the
+			// homepage's `visibleDayGroups` slice extends forward from `iso`.
 			filters.dateFrom = iso;
-			filters.dateTo = iso;
+			filters.dateTo = null;
 		}
 	}
 

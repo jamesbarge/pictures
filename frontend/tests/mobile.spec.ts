@@ -69,11 +69,14 @@ test.describe('Mobile Responsive — iPhone 12 Pro (390x844)', () => {
 	// ═══════════════════════════════════════════════
 
 	test.describe('Mobile Homepage', () => {
-		test('day label renders with weekday + ordinal', async ({ page }) => {
+		test('day header renders with weekday + ordinal in first mobile section', async ({ page }) => {
 			await page.goto(BASE);
-			const label = page.locator('.mobile-date-label');
-			await expect(label).toBeVisible();
-			const text = (await label.textContent())?.toLowerCase() ?? '';
+			// First mobile-day section now carries its own h2.day-header — the
+			// global `.mobile-date-label` was removed when the homepage moved to a
+			// multi-day rolling layout.
+			const firstHeader = page.locator('section.mobile-day h2.day-header').first();
+			await expect(firstHeader).toBeVisible();
+			const text = (await firstHeader.textContent())?.toLowerCase() ?? '';
 			expect(text).toMatch(/monday|tuesday|wednesday|thursday|friday|saturday|sunday/);
 		});
 

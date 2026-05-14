@@ -78,19 +78,40 @@
 			});
 	});
 
-	// Flat list of unique films for the desktop hybrid grid, sorted by calendar priority.
-	const hybridFilms = $derived.by(() => {
-		return [...filmMap.values()]
-			.map(({ film, screenings }) => ({
-				film,
-				screenings: screenings.sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime())
-			}))
-			.sort(compareFilmsByCalendarPriority);
+	// Rolling-window slice: take days from the start of `dayGroups` until we've
+	// accumulated enough films to fill the viewport. Late at night today is
+	// usually empty (all past), so the window naturally extends to tomorrow /
+	// the day after without the page going blank.
+	const MIN_FILMS_VISIBLE = 24;
+	const MAX_DAYS_VISIBLE = 7;
+	const visibleDayGroups = $derived.by(() => {
+		const out: typeof dayGroups = [];
+		let filmCount = 0;
+		for (const day of dayGroups) {
+			out.push(day);
+			filmCount += day.films.length;
+			if (out.length >= MAX_DAYS_VISIBLE) break;
+			if (filmCount >= MIN_FILMS_VISIBLE) break;
+		}
+		return out;
 	});
 
+	// Visible counts (across the rolling-window slice, not the full filter set).
+	// `filmMap.size` would count every unique film within the entire date range
+	// up to 14 days — much larger than what the user actually sees in the
+	// sliced view. Same film playing multiple days is counted once here.
+	const visibleFilmCount = $derived.by(() => {
+		const ids = new Set<string>();
+		for (const day of visibleDayGroups) {
+			for (const { film } of day.films) ids.add(film.id);
+		}
+		return ids.size;
+	});
 	const screeningCount = $derived.by(() => {
 		let n = 0;
-		for (const { screenings } of filmMap.values()) n += screenings.length;
+		for (const day of visibleDayGroups) {
+			for (const { screenings } of day.films) n += screenings.length;
+		}
 		return n;
 	});
 
@@ -119,6 +140,19 @@
 <div class="sr-only" aria-live="polite" role="status">
 	{#if dayGroups.length === 0}No screenings found{:else}{filmMap.size} films showing{/if}
 </div>
+
+{#snippet dayHeader(iso: string)}
+	{@const d = new Date(iso + 'T12:00:00Z')}
+	{@const weekday = new Intl.DateTimeFormat('en-GB', { weekday: 'long', timeZone: 'Europe/London' }).format(d)}
+	{@const dayNum = Number(new Intl.DateTimeFormat('en-GB', { day: 'numeric', timeZone: 'Europe/London' }).format(d))}
+	{@const ordinals = {1:'first',2:'second',3:'third',4:'fourth',5:'fifth',6:'sixth',7:'seventh',8:'eighth',9:'ninth',10:'tenth',11:'eleventh',12:'twelfth',13:'thirteenth',14:'fourteenth',15:'fifteenth',16:'sixteenth',17:'seventeenth',18:'eighteenth',19:'nineteenth',20:'twentieth',21:'twenty-first',22:'twenty-second',23:'twenty-third',24:'twenty-fourth',25:'twenty-fifth',26:'twenty-sixth',27:'twenty-seventh',28:'twenty-eighth',29:'twenty-ninth',30:'thirtieth',31:'thirty-first'} as Record<number, string>}
+	{@const todayIso = todayStore.value}
+	{@const tomorrowIso = (() => { const t = new Date(todayIso + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() + 1); return t.toISOString().split('T')[0]; })()}
+	{@const relative = iso === todayIso ? 'Today' : iso === tomorrowIso ? 'Tomorrow' : null}
+	<h2 class="day-header">
+		{#if relative}<span class="day-header-relative">{relative}</span><span class="day-header-sep"> · </span>{/if}<span class="day-header-weekday">{weekday}</span><span class="italic-comma">,</span> <span class="day-header-ordinal">the {ordinals[dayNum] ?? `${dayNum}th`}</span>
+	</h2>
+{/snippet}
 
 <JsonLd data={webSiteSchema()} />
 <JsonLd data={faqSchema([
@@ -168,37 +202,42 @@
 			<div class="desktop-toolbar">
 				<FilmTypeFilter />
 				<span class="count-line">
-					<span class="count-num">{filmMap.size}</span> films ·
+					<span class="count-num">{visibleFilmCount}</span> films ·
 					<span class="count-num">{screeningCount}</span> screenings
 				</span>
 			</div>
 
-			{#if filmMap.size === 0}
+			{#if visibleDayGroups.length === 0}
 				<EmptyState title="No screenings found" description="Try adjusting your filters or check back later." />
 			{:else}
-				<div class="desktop-film-grid">
-					{#each hybridFilms as { film, screenings }, hi (film.id)}
-						<DesktopHybridCard
-							film={{
-								id: film.id,
-								title: film.title,
-								year: film.year,
-								director: film.director ?? null,
-								runtime: film.runtime,
-								posterUrl: film.posterUrl
-							}}
-							screenings={screenings.map((s) => ({
-								id: s.id,
-								datetime: s.datetime,
-								cinemaName: s.cinema?.name ?? 'Unknown',
-								cinemaSlug: s.cinema?.id ?? '',
-								format: s.format,
-								bookingUrl: s.bookingUrl
-							}))}
-							priority={hi < 4}
-						/>
-					{/each}
-				</div>
+				{#each visibleDayGroups as { date, films }, di (date)}
+					<section class="desktop-day">
+						{@render dayHeader(date)}
+						<div class="desktop-film-grid">
+							{#each films as { film, screenings }, fi (film.id)}
+								<DesktopHybridCard
+									film={{
+										id: film.id,
+										title: film.title,
+										year: film.year,
+										director: film.director ?? null,
+										runtime: film.runtime,
+										posterUrl: film.posterUrl
+									}}
+									screenings={screenings.map((s) => ({
+										id: s.id,
+										datetime: s.datetime,
+										cinemaName: s.cinema?.name ?? 'Unknown',
+										cinemaSlug: s.cinema?.id ?? '',
+										format: s.format,
+										bookingUrl: s.bookingUrl
+									}))}
+									priority={di === 0 && fi < 4}
+								/>
+							{/each}
+						</div>
+					</section>
+				{/each}
 			{/if}
 		</main>
 	</div>
@@ -207,18 +246,6 @@
 <!-- ── MOBILE LAYOUT (< 1024px) ── -->
 <div class="mobile-shell">
 	<div class="mobile-header">
-		<div class="mobile-date-label">
-			{#if dayGroups.length > 0}
-				{@const d = new Date(dayGroups[0].date + 'T12:00:00Z')}
-				{@const weekday = new Intl.DateTimeFormat('en-GB', { weekday: 'long', timeZone: 'Europe/London' }).format(d)}
-				{@const dayNum = Number(new Intl.DateTimeFormat('en-GB', { day: 'numeric', timeZone: 'Europe/London' }).format(d))}
-				{@const ordinals = {1:'first',2:'second',3:'third',4:'fourth',5:'fifth',6:'sixth',7:'seventh',8:'eighth',9:'ninth',10:'tenth',11:'eleventh',12:'twelfth',13:'thirteenth',14:'fourteenth',15:'fifteenth',16:'sixteenth',17:'seventeenth',18:'eighteenth',19:'nineteenth',20:'twentieth',21:'twenty-first',22:'twenty-second',23:'twenty-third',24:'twenty-fourth',25:'twenty-fifth',26:'twenty-sixth',27:'twenty-seventh',28:'twenty-eighth',29:'twenty-ninth',30:'thirtieth',31:'thirty-first'} as Record<number, string>}
-				{weekday}<span class="italic-comma">,</span> the {ordinals[dayNum] ?? `${dayNum}th`}
-			{:else}
-				No films
-			{/if}
-		</div>
-
 		<div class="mobile-search-row">
 			<div class="mobile-search">
 				<svg width="11" height="11" viewBox="0 0 14 14" aria-hidden="true">
@@ -245,12 +272,13 @@
 		</div>
 	</div>
 
-	{#if dayGroups.length === 0}
+	{#if visibleDayGroups.length === 0}
 		<EmptyState title="No screenings found" description="Try adjusting your filters or check back later." />
 	{:else}
 		<div class="mobile-list">
-			{#each dayGroups as { date, films }, di (date)}
+			{#each visibleDayGroups as { date, films }, di (date)}
 				<section class="mobile-day">
+					{@render dayHeader(date)}
 					{#each films as { film, screenings }, fi (film.id)}
 						<MobileFilmRow
 							film={{
@@ -384,6 +412,16 @@
 	}
 	.count-line .count-num { color: var(--color-text-secondary); }
 
+	.desktop-day {
+		display: flex;
+		flex-direction: column;
+		margin-bottom: 48px;
+	}
+
+	.desktop-day:last-child {
+		margin-bottom: 0;
+	}
+
 	.desktop-film-grid {
 		display: grid;
 		grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -405,6 +443,40 @@
 		}
 	}
 
+	/* ---------- Day headers (shared mobile + desktop) ---------- */
+	.day-header {
+		font-family: var(--font-serif-italic);
+		font-style: italic;
+		font-weight: 400;
+		letter-spacing: -0.01em;
+		color: var(--color-text);
+		margin: 0;
+	}
+
+	.day-header .italic-comma { color: var(--color-text-tertiary); }
+	.day-header .day-header-relative { font-style: normal; font-family: var(--font-serif); color: var(--color-text); }
+	.day-header .day-header-sep { color: var(--color-text-tertiary); font-style: normal; }
+	.day-header .day-header-ordinal { color: var(--color-text-secondary); }
+
+	@media (min-width: 1024px) {
+		.day-header {
+			font-size: 28px;
+			line-height: 1;
+			padding: 0 0 18px;
+			border-bottom: 1px solid var(--color-border);
+			margin-bottom: 22px;
+		}
+	}
+
+	@media (max-width: 1023px) {
+		.day-header {
+			font-size: 22px;
+			line-height: 1;
+			padding: 14px 0 12px;
+			border-bottom: 1px solid var(--color-border);
+		}
+	}
+
 	/* ---------- Mobile ---------- */
 	.mobile-shell {
 		display: block;
@@ -421,20 +493,6 @@
 		padding: 12px 0 0;
 		border-bottom: 1px solid var(--color-border-subtle);
 	}
-
-	.mobile-date-label {
-		font-family: var(--font-serif-italic);
-		font-style: italic;
-		font-size: 22px;
-		font-weight: 400;
-		line-height: 1;
-		color: var(--color-text);
-		letter-spacing: -0.01em;
-		padding: 4px 0 14px;
-		border-bottom: 1px solid var(--color-border);
-	}
-
-	.mobile-date-label .italic-comma { font-style: italic; color: var(--color-text-tertiary); }
 
 	.mobile-search-row {
 		display: flex;
