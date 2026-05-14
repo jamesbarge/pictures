@@ -1,3 +1,16 @@
+## 2026-05-14: BFI IMAX parser — handle screening-before-title layout + fix segmenter over-firing
+**PR**: TBD | **Files**: `src/scrapers/bfi-pdf/pdf-parser.ts`
+- Follow-up to #490. BFI IMAX was returning 0 screenings because the IMAX section of the PDF uses **screening-first** ordering (screening line before the film's title), opposite to BFI Southbank's title-first format.
+- **Three coordinated parser fixes:**
+  1. **Segmenter over-firing**: the metadata-line regex matched at every cap-word position inside a long phrase (e.g. "E.T. the Extra Terrestrial USA 1982" inserted newlines before "Extra", "Terrestrial", AND "USA"). Added a `(?<![A-Za-z\-])` lookbehind to reject positions inside cap-word phrases. Also restricted the country-phrase pattern to hyphen-extended cap words only (covers real co-productions `USA-UK-Canada` without matching title fragments).
+  2. **`tryParseFilm` handles title-after-venue**: when the starting line is a screening pattern followed by title text (e.g. `SUN 31 MAY 13:00 BFI IMAX E.T. the Extra Terrestrial`), extract the screening AND treat the trailing text as the candidate title.
+  3. **Pending-screening queue for standalone screening lines**: when a line is just a screening (no trailing title), stash it. The next film parsed claims any pending screenings as its own (handles IMAX's "screening alone on line, title on next line" pattern).
+  4. **Trailing-title hand-off** in the follow-up screening loop: when an internal screening line has trailing text that looks like a new film's title, BREAK so the next iteration of the main loop can claim it. Prevents Ready Player One from incorrectly absorbing Jurassic Park 3D's screening line.
+- Verified: BFI IMAX now imports **E.T. the Extra Terrestrial** + **Ready Player One** (was 0). Total: 47 films / 110 screenings (Southbank 108 + IMAX 2). Silent-breaker quarantine should clear for IMAX after this run.
+- Known remaining: Close Encounters of the Third Kind and Jurassic Park 3D + intro are visible in the segmented PDF but still get dropped — likely because the screening lookahead loop is consuming their screening lines as additional screenings of the previous film. Acceptable incremental progress; further parser surgery deferred.
+
+---
+
 ## 2026-05-14: BFI scraper returns venue-filtered screenings so /scrape records them properly
 **PR**: TBD | **Files**: `src/scrapers/cinemas/bfi.ts`, `src/scrapers/bfi-pdf/importer.ts`, `src/scrapers/bfi-pdf/index.ts`
 - Follow-up to #489. That PR routed BFI to the PDF importer but had `scrape()` return `[]` (because `runBFIImport` saved directly). Result: `scraper_runs.screening_count` was 0, triggering the silent-breaker detector to quarantine BFI.

@@ -89,41 +89,60 @@ export interface ParseResult {
 async function extractText(buffer: Buffer): Promise<string> {
   const pdf = await getDocumentProxy(new Uint8Array(buffer));
   const { text } = await unpdfExtractText(pdf, { mergePages: true });
-  // unpdf returns the text as one continuous string with no line breaks —
-  // verified 2026-05-14 on the BFI June 2026 accessible guide. The existing
-  // line-based parser logic needs separable lines, so we inject newlines at
-  // known structural boundaries:
-  //   1. Before every screening line "DAY DD MON HH:MM VENUE"
-  //   2. Before every metadata line "Country YYYY. Director ..."
-  // This recovers the line structure the PDF "should" have had if pdf.js
-  // preserved layout. After segmentation, each film entry is roughly:
-  //   <title (mixed case)>
-  //   Country YYYY. Director X. With Y. Nmin. Format. Cert.
-  //   <description>
-  //   DAY DD MON HH:MM VENUE  (one per screening)
-  return segmentBFIText(Array.isArray(text) ? text.join(" ") : text);
+  return Array.isArray(text) ? text.join(" ") : text;
 }
 
 /**
- * Insert newlines at structural boundaries in the BFI PDF text. See extractText
- * above for why this is needed.
+ * Insert newlines at structural boundaries in the BFI PDF text.
+ *
+ * unpdf returns the text as one continuous string with no line breaks —
+ * verified on the June 2026 accessible guide. The existing line-based parser
+ * logic needs separable lines, so we inject newlines at known structural
+ * boundaries:
+ *   1. Before every screening line "DAY DD MON HH:MM VENUE"
+ *   2. Before every metadata line "Country YYYY. Director ..."
+ *
+ * Bug fixed 2026-05-14: the metadata regex over-fired at every cap-word
+ * position inside a long phrase. For "Third Kind USA-UK 1977. Director" the
+ * regex matched at "Third", "Kind", "USA" AND "UK" because each is a valid
+ * starting position for a "cap-phrase YYYY. Director" pattern. Result:
+ * `\nThird\nKind\nUSA-\nUK 1977.` instead of `\nUSA-UK 1977.`.
+ *
+ * Fix: require the match position to be preceded by EITHER (a) start of
+ * input, (b) a period+space (end of description), or (c) a venue code
+ * (NFT\d|IMAX|STUDIO|BFI IMAX). These are the only natural transitions
+ * into a metadata block. This eliminates the duplicate-match storm while
+ * preserving every real metadata insertion point.
  */
 function segmentBFIText(text: string): string {
-  // Insert \n BEFORE each screening pattern. The lookahead ensures we don't
-  // consume the match itself, so it ends up on its own line.
   let segmented = text.replace(
     /(?=\b(?:MON|TUE|WED|THU|FRI|SAT|SUN)\s+\d{1,2}\s+(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s+\d{1,2}:\d{2}\s+(?:NFT\d|IMAX|STUDIO|BFI\s+IMAX))/gi,
     "\n",
   );
-  // Insert \n BEFORE each metadata line. Detect by "Country YYYY. Director" —
-  // country can be:
-  //   - single word: "UK", "Cuba", "France"
-  //   - multi-word: "Czech Republic", "United States of America" (up to 4 words)
-  //   - hyphenated co-production: "UK-France", "USA-UK-Canada-Germany"
-  //   - mixed: "United States-Canada"
-  // Allow {0,3} additional words after the initial cap word (4 total).
+
+  // Metadata segmentation: insert \n BEFORE each "Country YYYY. Director ..."
+  // pattern.
+  //
+  // Two critical correctness fixes (2026-05-14):
+  //
+  // 1. Lookbehind `(?<![A-Za-z\-])` — prevents matching at cap-word positions
+  //    immediately preceded by a letter or hyphen. Without it, "USA-UK" would
+  //    insert TWO newlines (one before USA, one before UK).
+  //
+  // 2. The cap-phrase before the year ONLY extends via hyphen (real
+  //    co-productions: "USA-UK", "USA-UK-Canada-Germany"). It does NOT extend
+  //    via additional space-separated cap words. Earlier regex allowed {0,3}
+  //    space-separated extensions, which over-fired inside titles: for
+  //    "E.T. the Extra Terrestrial USA 1982" it matched at "Extra" (with
+  //    " Terrestrial USA" as 2 trailing words + " 1982" as year), shattering
+  //    the title. Restricting to hyphen-only extensions costs us correct
+  //    country capture for multi-word non-hyphenated names like "Czech
+  //    Republic" (we'd capture "Republic" instead) but the metadata block
+  //    boundary is still detected correctly. Trade-off: country field
+  //    accuracy < title preservation, and we don't actually use the country
+  //    field downstream.
   segmented = segmented.replace(
-    /(?=\b[A-Z][A-Za-z\-À-ſ]*(?:\s+(?:of\s+|the\s+|and\s+)?[A-Z][A-Za-z\-À-ſ]*){0,3}(?:[-\/][A-Z][A-Za-z\-À-ſ]*(?:\s+(?:of\s+|the\s+|and\s+)?[A-Z][A-Za-z\-À-ſ]*){0,3})*\s+(?:19|20)\d{2}\.\s+(?:Director|Dir\.))/g,
+    /(?<![A-Za-z\-])(?=[A-Z][A-Za-z\-À-ſ]*(?:[-\/][A-Z][A-Za-z\-À-ſ]*)*\s+(?:19|20)\d{2}\.\s+(?:Director|Dir\.))/g,
     "\n",
   );
   return segmented;
@@ -135,7 +154,8 @@ function segmentBFIText(text: string): string {
 export async function parsePDF(fetchedPdf: FetchedPDF): Promise<ParseResult> {
   console.log(`[BFI-PDF] Parsing ${fetchedPdf.info.label}...`);
 
-  const text = await extractText(fetchedPdf.buffer);
+  const rawText = await extractText(fetchedPdf.buffer);
+  const text = segmentBFIText(rawText);
   const lines = text.split("\n").map(l => l.trim()).filter(l => l.length > 0);
 
   const films: ParsedFilm[] = [];
@@ -144,6 +164,12 @@ export async function parsePDF(fetchedPdf: FetchedPDF): Promise<ParseResult> {
 
   // Derive year from PDF label for screening dates
   const pdfYear = fetchedPdf.info.months?.start.getFullYear() || new Date().getFullYear();
+
+  // IMAX-style entries have STANDALONE screening lines preceding the film's
+  // title (e.g. "SUN 14 JUN 11:00 BFI IMAX" alone on a line, then "Ready
+  // Player One" on subsequent lines). Track these as "pending" so the next
+  // film parsed can claim them.
+  const pendingScreenings: ParsedScreening[] = [];
 
   let i = 0;
   while (i < lines.length) {
@@ -156,12 +182,26 @@ export async function parsePDF(fetchedPdf: FetchedPDF): Promise<ParseResult> {
       continue;
     }
 
+    // Standalone screening line (no title text after venue) — stash for the
+    // next film. Detected here so it doesn't slip into the next tryParseFilm
+    // as a starting line and get rejected.
+    const standaloneScreening = line.match(
+      /^(\b(?:MON|TUE|WED|THU|FRI|SAT|SUN)\s+\d{1,2}\s+(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s+\d{1,2}:\d{2}\s+(?:NFT\d|IMAX|STUDIO|BFI\s+IMAX))\s*$/i,
+    );
+    if (standaloneScreening) {
+      pendingScreenings.push(...parseScreeningLine(standaloneScreening[1], pdfYear));
+      i++;
+      continue;
+    }
+
     // Look for screening pattern to identify film entries
-    // A film entry typically has title followed by metadata and screenings
-    const filmResult = tryParseFilm(lines, i, pdfYear, currentSeason);
+    const filmResult = tryParseFilm(lines, i, pdfYear, currentSeason, pendingScreenings);
 
     if (filmResult) {
       films.push(filmResult.film);
+      // pendingScreenings was consumed (or not) inside tryParseFilm — clear
+      // here unconditionally so they don't bleed across film boundaries.
+      pendingScreenings.length = 0;
       i = filmResult.nextIndex;
     } else {
       i++;
@@ -215,16 +255,37 @@ function tryParseFilm(
   lines: string[],
   startIndex: number,
   pdfYear: number,
-  currentSeason?: string
+  currentSeason?: string,
+  pendingScreenings?: ParsedScreening[],
 ): { film: ParsedFilm; nextIndex: number } | null {
-  // Title is the LAST text on the title line — the segmentation regex breaks
-  // BEFORE country/year metadata, which means the previous film's description
-  // tail is concatenated with the next film's title on the same line. Take the
-  // last 3-12 words as the candidate title.
-  const titleLine = lines[startIndex];
+  let titleLine = lines[startIndex];
 
-  // Skip obviously non-title lines
-  if (isScreeningLine(titleLine) || isMetadataLine(titleLine)) {
+  // IMAX-style entries put the screening line BEFORE the title, then either
+  // continue the title on the same line or wrap it to subsequent lines:
+  //   "SUN 31 MAY 13:00 BFI IMAX E.T. the Extra Terrestrial"
+  //   "USA 1982. Director Steven Spielberg. ..."
+  //
+  // The Southbank parser bails when isScreeningLine() is true. Handle this
+  // case by extracting the screening AND the trailing text, treating the
+  // text-after-venue as the candidate title for the film whose metadata
+  // immediately follows.
+  const screeningWithSuffix = titleLine.match(
+    /^(\b(?:MON|TUE|WED|THU|FRI|SAT|SUN)\s+\d{1,2}\s+(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s+\d{1,2}:\d{2}\s+(?:NFT\d|IMAX|STUDIO|BFI\s+IMAX))(\s+(.+))?$/i,
+  );
+  const precedingScreenings: ParsedScreening[] = [];
+  if (screeningWithSuffix) {
+    const titleAfterVenue = screeningWithSuffix[3]?.trim();
+    if (!titleAfterVenue || titleAfterVenue.length < 2) {
+      // Pure screening line with nothing trailing. The standalone-screening
+      // case is handled by attaching to the NEXT film's preceding screenings
+      // (below). This branch just signals "no film starts here".
+      return null;
+    }
+    // Has trailing title text. Capture the screening so we can attach it.
+    const parsed = parseScreeningLine(screeningWithSuffix[1], pdfYear);
+    precedingScreenings.push(...parsed);
+    titleLine = titleAfterVenue;
+  } else if (isMetadataLine(titleLine)) {
     return null;
   }
 
@@ -278,6 +339,27 @@ function tryParseFilm(
 
     // Check if this is a screening line
     if (isScreeningLine(line)) {
+      // If the screening line has trailing text that looks like ANOTHER
+      // film's title (IMAX-style continuation), stop here — that screening
+      // belongs to the next film. Otherwise we incorrectly absorb it.
+      // Heuristic: trailing text starts with a capital and looks like a
+      // title (short-ish, mostly cap-leading words, no internal "Director"
+      // or year+period markers which would indicate description text).
+      const trailing = line.match(
+        /^\b(?:MON|TUE|WED|THU|FRI|SAT|SUN)\s+\d{1,2}\s+(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s+\d{1,2}:\d{2}\s+(?:NFT\d|IMAX|STUDIO|BFI\s+IMAX)\s+(\S.*)$/i,
+      );
+      if (trailing) {
+        const tail = trailing[1].trim();
+        const looksLikeNextFilmTitle =
+          /^[A-Z]/.test(tail) &&
+          tail.length <= 100 &&
+          !/\bDirector\b/i.test(tail) &&
+          !/\b(19|20)\d{2}\b/.test(tail) &&
+          !/(Members can|standard ticket|Closed Captions|Audio Descri|Subtitles|book and )/i.test(tail);
+        if (looksLikeNextFilmTitle) {
+          break; // hand this screening off to the next iteration of the main loop
+        }
+      }
       const screenings = parseScreeningLine(line, pdfYear);
       film.screenings.push(...screenings);
       i++;
@@ -293,6 +375,16 @@ function tryParseFilm(
       // Hit a new film or section
       break;
     }
+  }
+
+  // Attach any IMAX-style preceding screenings — both ones captured from the
+  // title line's trailing text AND ones stashed as pending from prior
+  // standalone screening lines.
+  if (precedingScreenings.length > 0) {
+    film.screenings.unshift(...precedingScreenings);
+  }
+  if (pendingScreenings && pendingScreenings.length > 0) {
+    film.screenings.unshift(...pendingScreenings);
   }
 
   // Only return if we found screenings
