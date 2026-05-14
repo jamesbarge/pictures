@@ -10,7 +10,7 @@ import { createPersistentPage, waitForCloudflare } from "../utils/browser";
 import type { BrowserContext, Page } from "rebrowser-playwright";
 import { parseFilmMetadata } from "../utils/metadata-parser";
 import { FestivalDetector } from "../festivals/festival-detector";
-import { runBFIImport } from "../bfi-pdf";
+import { loadBFIScreenings, getBFIVenueKey } from "../bfi-pdf";
 
 interface BFIVenueConfig {
   id: "bfi-southbank" | "bfi-imax";
@@ -53,30 +53,28 @@ export class BFIScraper {
     // every internal navigation triggers a fresh challenge that doesn't clear
     // locally. Verified 2026-05-14: it produces 0 screenings for both venues.
     //
-    // Route to the PDF importer instead, which is the playbook-preferred path
-    // anyway. runBFIImport handles BOTH bfi-southbank and bfi-imax in one pass:
-    // - Fetches the monthly PDF guide (via persistent Playwright context to
-    //   bypass Cloudflare on the discovery page)
-    // - Parses screenings for both venues
-    // - Saves directly via the standard `saveScreenings` pipeline
+    // Route through the PDF importer's loader instead. `loadBFIScreenings()`
+    // fetches the monthly PDF (using the persistent Playwright context as a
+    // Cloudflare fallback for the discovery page) and parses screenings for
+    // BOTH venues at once. We cache the promise so both venue instances share
+    // one fetch + parse; the second invocation just filters the cached array.
     //
-    // We dedupe across the two venue instances with `bfiImportRunPromise`
-    // so the PDF is fetched + parsed once per /scrape session. The second
-    // venue instance shares the cached promise and the importer's per-venue
-    // save side-effects are already complete.
-    //
-    // Returning [] is correct here: runBFIImport has already persisted both
-    // venues' screenings. The unified pipeline will report "0 added, 0 updated"
-    // for each BFI venue in its per-cinema summary, but the DB state is right.
+    // Returning the venue-filtered screenings lets the unified pipeline save
+    // them through its standard path AND record the correct `screening_count`
+    // per cinema in `scraper_runs` — without that, the silent-breaker detector
+    // quarantines BFI as a Prowlarr-pattern zero-yield cinema.
     console.log(`[${this.config.cinemaId}] Routing to PDF importer (Playwright click-flow is Cloudflare-blocked)...`);
     try {
-      await getOrRunBFIImport();
+      const allScreenings = await getOrLoadBFIScreenings();
+      const venueScreenings = allScreenings.filter(s => getBFIVenueKey(s) === this.config.cinemaId);
+      console.log(`[${this.config.cinemaId}] PDF returned ${venueScreenings.length} screenings (${allScreenings.length} total across both BFI venues)`);
+      return venueScreenings;
     } catch (error) {
-      console.error(`[${this.config.cinemaId}] PDF importer failed:`, error);
+      console.error(`[${this.config.cinemaId}] PDF loader failed:`, error);
       // Fall through with [] — better to underreport than to throw and abort
       // the rest of the /scrape wave.
+      return [];
     }
-    return [];
   }
 
   /**
@@ -537,24 +535,24 @@ export function createBFIScraper(venueId: "bfi-southbank" | "bfi-imax"): BFIScra
 // ────────────────────────────────────────────────────────────────────────────
 
 /**
- * Module-scope cache so the PDF import runs ONCE per process even when the
- * unified scrape calls `createBFIScraper("bfi-southbank").scrape()` and
- * `createBFIScraper("bfi-imax").scrape()` in succession (or in parallel).
+ * Module-scope cache so the PDF fetch + parse runs ONCE per process even when
+ * the unified scrape calls `createBFIScraper("bfi-southbank").scrape()` and
+ * `createBFIScraper("bfi-imax").scrape()` in succession.
  *
- * runBFIImport saves screenings for BOTH venues in a single call, so the
- * second invocation would just re-fetch and re-save the same data. Caching
- * the promise lets the second caller await the first one's result.
+ * `loadBFIScreenings` returns screenings for BOTH venues (each tagged with
+ * its `cinemaId`). The second invocation reuses the cached promise and
+ * filters for its own venue.
  *
- * Reset each session by re-importing the module; the cache lives in memory
- * only for one Node process.
+ * Cache lives in memory only for one Node process.
  */
-let bfiImportRunPromise: Promise<void> | null = null;
+let bfiLoadPromise: Promise<RawScreening[]> | null = null;
 
-async function getOrRunBFIImport(): Promise<void> {
-  if (!bfiImportRunPromise) {
-    bfiImportRunPromise = (async () => {
-      await runBFIImport();
+async function getOrLoadBFIScreenings(): Promise<RawScreening[]> {
+  if (!bfiLoadPromise) {
+    bfiLoadPromise = (async () => {
+      const { screenings } = await loadBFIScreenings();
+      return screenings;
     })();
   }
-  return bfiImportRunPromise;
+  return bfiLoadPromise;
 }
