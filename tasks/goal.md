@@ -56,7 +56,9 @@ Each condition declares the script that measures it. `/goal` runs every script e
 ### 7. Data quality floor
 - **Measure:** `npx tsx --env-file=.env.local -r tsconfig-paths/register scripts/goal-check-dqs.ts`
 - **Passes when:** the two most recent DQS scores recorded in `.claude/data-check-learnings.json` are both ≥ 85 composite. Single high score is not enough — the floor must hold across two consecutive `/data-check` runs.
+- **Verification-signal deferral:** when `verificationPassRate ≤ 0.1` on both runs (structural breakage of the cinema verifiers, not real DB quality issues), the composite is recomputed excluding the 15% verification weight. If the adjusted composite clears the floor, the condition is deferred-passing (`pass: true, deferred: true`) — it does NOT count toward goal achievement. The verifiers must be fixed before #7 truly passes. The 85 floor is unchanged.
 - **Sub-tasks:**
+  - [ ] Investigate why `verificationPassRate` is at zero. The static HTML cinema verifiers (`verifyRioScreening`, `verifyIcaScreening`, `verifyBarbicanScreening`, `verifyCloseUpScreening`, `verifyGenesisScreening`, `verifyRichMixScreening` in `scripts/data-check.ts`) appear to be returning non-`confirmed` statuses across the board. Likely cause: cinema booking pages changed their HTML/title schemas. Identify which verifier(s) broke and patch the parsing.
 
 ## Cursor
 
