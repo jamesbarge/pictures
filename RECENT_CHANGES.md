@@ -1,3 +1,13 @@
+## 2026-05-15: /scrape detection — migrate detectSilentBreakers to windowed SQL
+**PR**: TBD | **Files**: `src/lib/scrape-quarantine.ts`, `src/lib/scrape-quarantine.test.ts`
+- Replaced the per-cinema `SELECT … LIMIT N` N+1 in `detectSilentBreakers` with a single `ROW_NUMBER() OVER (PARTITION BY cinema_id ORDER BY started_at DESC)` query — same pattern already used by `detectFlakyCinemas` and `detectYieldDrop`. Live replay post-warmup: 59 ms (was ~700 ms / ~60 round-trips). 12× faster.
+- Extracted a pure analyzer `analyzeRunsForSilentBreaker(runs, threshold)` for DB-free testing; sorts inputs internally by `startedAt` DESC so callers may pass any order.
+- 6 new unit tests covering below-threshold, default-threshold fire, "stops at last good" semantics, failed-run interrupts, ASC/DESC input parity, custom thresholds.
+- Now also filters by `cinemas.is_active = true` (matched the other two detectors' behaviour — was previously walking inactive cinemas too).
+- Dropped unused `desc`/`eq`/`scraperRuns`/`cinemas` schema imports.
+
+---
+
 ## 2026-05-15: /scrape detection — yield-drop detector (closes third detection gap)
 **PR**: TBD | **Files**: `src/lib/scrape-quarantine.ts`, `src/lib/scrape-quarantine.test.ts`, `src/scripts/run-scrape-and-enrich.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`, `.claude/commands/scrape.md`, `src/scrapers/chains/curzon.ts`
 - New `detectYieldDrop` + `analyzeYieldDrop` + `formatYieldDropReport`. Compares recent avg `screening_count` (last 5 successful runs) against a trailing baseline (next 20). Flags when `recentAvg / baselineAvg ≤ 0.5` (warn) or `≤ 0.3` (critical). Closes the third detection gap (silent breakers + flaky catch `success+0` / `failed`; yield-drop catches `success+low-but-non-zero` — e.g. PDF parser silently dropping one venue from a multi-venue scrape).

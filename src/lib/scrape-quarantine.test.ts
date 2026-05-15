@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   analyzeRunsForFlakiness,
+  analyzeRunsForSilentBreaker,
   analyzeYieldDrop,
   DEFAULT_FLAKY_THRESHOLDS,
   DEFAULT_YIELD_DROP_THRESHOLDS,
@@ -299,5 +300,72 @@ describe("formatYieldDropReport", () => {
     expect(out).toContain("yield down 85%");
     expect(out).toContain("recent avg 30 (last 5)");
     expect(out).toContain("baseline avg 200 (prior 20)");
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// Silent-breaker analyzer (pure)
+// ─────────────────────────────────────────────────────────────────────────
+
+describe("analyzeRunsForSilentBreaker", () => {
+  it("returns null when below threshold", () => {
+    const runs = [makeRun("success", 0, 0)];
+    expect(analyzeRunsForSilentBreaker(runs, 2)).toBeNull();
+  });
+
+  it("flags 2 consecutive success+0 runs at default threshold", () => {
+    const runs = [
+      makeRun("success", 0, 0),
+      makeRun("success", 0, 1),
+      makeRun("success", 200, 2),
+    ];
+    const verdict = analyzeRunsForSilentBreaker(runs);
+    expect(verdict).not.toBeNull();
+    expect(verdict!.consecutiveZeroRuns).toBe(2);
+    expect(verdict!.lastSuccessfulRunAt?.toISOString()).toBe(runs[2].startedAt.toISOString());
+  });
+
+  it("stops counting at the first non-zero success (lastGood)", () => {
+    const runs = [
+      makeRun("success", 0, 0),
+      makeRun("success", 0, 1),
+      makeRun("success", 0, 2),
+      makeRun("success", 100, 3),
+      makeRun("success", 0, 4),
+    ];
+    const verdict = analyzeRunsForSilentBreaker(runs);
+    expect(verdict!.consecutiveZeroRuns).toBe(3);
+    expect(verdict!.lastSuccessfulRunAt?.toISOString()).toBe(runs[3].startedAt.toISOString());
+  });
+
+  it("does NOT flag when most recent run is failed (different signal — out of scope)", () => {
+    const runs = [
+      makeRun("failed", null, 0),
+      makeRun("success", 0, 1),
+      makeRun("success", 0, 2),
+    ];
+    expect(analyzeRunsForSilentBreaker(runs)).toBeNull();
+  });
+
+  it("sorts inputs internally so ASC and DESC produce identical verdicts", () => {
+    const desc = [
+      makeRun("success", 0, 0),
+      makeRun("success", 0, 1),
+      makeRun("success", 100, 2),
+    ];
+    const asc = [...desc].reverse();
+
+    const vDesc = analyzeRunsForSilentBreaker(desc);
+    const vAsc = analyzeRunsForSilentBreaker(asc);
+    expect(vDesc).toEqual(vAsc);
+  });
+
+  it("respects custom threshold", () => {
+    const runs = [
+      makeRun("success", 0, 0),
+      makeRun("success", 0, 1),
+    ];
+    expect(analyzeRunsForSilentBreaker(runs, 3)).toBeNull();
+    expect(analyzeRunsForSilentBreaker(runs, 2)).not.toBeNull();
   });
 });
