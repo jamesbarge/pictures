@@ -21,7 +21,14 @@
 
 import { spawn } from "node:child_process";
 import { runScrapeAll } from "@/lib/jobs/scrape-all";
-import { detectSilentBreakers, formatQuarantineReport } from "@/lib/scrape-quarantine";
+import {
+  detectSilentBreakers,
+  formatQuarantineReport,
+  detectStaleCinemas,
+  formatStaleCinemaReport,
+  readRecentDqs,
+  formatDqsSnapshot,
+} from "@/lib/scrape-quarantine";
 
 const SKIP_SCRAPE = process.argv.includes("--skip-scrape");
 const SKIP_ENRICH = process.argv.includes("--skip-enrich");
@@ -155,6 +162,21 @@ async function main(): Promise<void> {
     const flag = phase.ok ? "✓" : "✗";
     const detail = phase.detail ? ` — ${phase.detail}` : "";
     console.log(`  ${flag} ${phase.label} (${phase.durationMin.toFixed(1)}min)${detail}`);
+  }
+
+  // Post-run observability: stale cinemas + recent patrol DQS. Both are
+  // read-only and cheap — surface them in the summary so the next /data-check
+  // doesn't have to be the first time the user notices a stalled cinema.
+  try {
+    const [stale, dqs] = await Promise.all([
+      detectStaleCinemas(),
+      Promise.resolve(readRecentDqs()),
+    ]);
+    console.log(`\n${formatStaleCinemaReport(stale)}`);
+    console.log(formatDqsSnapshot(dqs));
+  } catch (err) {
+    // Never let observability break the pipeline exit code.
+    console.warn("[scrape-and-enrich] post-run report skipped:", err);
   }
 
   if (failedPhases.length > 0) {

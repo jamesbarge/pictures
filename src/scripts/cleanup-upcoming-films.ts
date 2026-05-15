@@ -22,6 +22,7 @@ import { extractFilmTitle } from "@/lib/title-extraction";
 import { cleanFilmTitle } from "@/scrapers/pipeline";
 import { decodeHtmlEntities } from "@/scripts/enrich-upcoming-films";
 import { enrichLetterboxdRatings } from "@/db/enrich-letterboxd";
+import { sanitizeDirectors, sanitizeYear } from "@/scrapers/utils/film-write-guards";
 
 // ---------------------------------------------------------------------------
 // CLI flags
@@ -254,9 +255,12 @@ async function phase2TMDBMatching(upcomingFilms: FilmRow[]): Promise<{ matched: 
           imdbId: details.details.imdb_id || null,
           title: details.details.title,
           originalTitle: details.details.original_title,
-          year: tmdbMatch.year,
+          year: sanitizeYear(tmdbMatch.year),
           runtime: details.details.runtime || null,
-          directors: details.directors.length > 0 ? details.directors : film.directors,
+          directors: sanitizeDirectors(
+            details.directors.length > 0 ? details.directors : film.directors,
+            `cleanup-upcoming film=${film.id} title="${details.details.title}"`
+          ),
           cast: details.cast.length > 0 ? details.cast : [],
           genres: details.details.genres.map((g) => g.name.toLowerCase()),
           countries: details.details.production_countries.map((c) => c.iso_3166_1),

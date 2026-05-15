@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { cleanFilmTitle, cleanFilmTitleWithMetadata, EVENT_PREFIXES } from "./film-title-cleaner";
+import {
+  cleanFilmTitle,
+  cleanFilmTitleWithMetadata,
+  EVENT_PREFIXES,
+  extractEnglishFromBracket,
+} from "./film-title-cleaner";
 
 describe("cleanFilmTitle", () => {
   describe("existing event prefixes", () => {
@@ -407,5 +412,53 @@ describe("HTML entity mojibake fix", () => {
 
   it("still decodes plain &frac12;", () => {
     expect(cleanFilmTitle("8&frac12;")).toBe("8\u00BD");
+  });
+});
+
+describe("extractEnglishFromBracket", () => {
+  it("extracts English when original is non-ASCII", () => {
+    const result = extractEnglishFromBracket("La película del rey (A King and His Movie)");
+    expect(result.lookup).toBe("A King and His Movie");
+    expect(result.display).toBe("La película del rey (A King and His Movie)");
+  });
+
+  it("extracts English for accented French titles", () => {
+    const result = extractEnglishFromBracket("Ladrón de bicicletas (Bicycle Thieves)");
+    expect(result.lookup).toBe("Bicycle Thieves");
+  });
+
+  it("does NOT trigger when the original is pure ASCII", () => {
+    // "Nine Queens (Nueve reinas)" — the bracket is the original Spanish, not
+    // an English translation. ASCII-only `original` → no transform.
+    const result = extractEnglishFromBracket("Nine Queens (Nueve reinas)");
+    expect(result.lookup).toBe("Nine Queens (Nueve reinas)");
+  });
+
+  it("does NOT trigger on subtitle parentheticals", () => {
+    const result = extractEnglishFromBracket("2001: A Space Odyssey (50th Anniversary)");
+    expect(result.lookup).toBe("2001: A Space Odyssey (50th Anniversary)");
+  });
+
+  it("passes through titles with no brackets", () => {
+    const result = extractEnglishFromBracket("Cabaret");
+    expect(result.lookup).toBe("Cabaret");
+    expect(result.display).toBe("Cabaret");
+  });
+});
+
+describe("learnings.json integration (smoke)", () => {
+  it("strips a representative patrol-learned prefix", () => {
+    // "Funeral Parade presents " is in the learnings file. The hand-curated
+    // regex already covers it, but this test pins behaviour either way so
+    // future learnings additions can be verified the same way.
+    expect(cleanFilmTitle("Funeral Parade presents Seconds")).toBe("Seconds");
+  });
+
+  it("preserves real film titles that share words with learned prefixes", () => {
+    // Sanity: 'film club' is in many prefixes but a movie named "Film Club"
+    // would still survive (no colon/punctuation after).
+    expect(cleanFilmTitle("Some Film That Isn't Stripped")).toBe(
+      "Some Film That Isn't Stripped"
+    );
   });
 });

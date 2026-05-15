@@ -9,7 +9,86 @@
  * The lib module's patterns are used by the AI title extractor for heuristic checks;
  * these patterns are used by the pipeline's own regex-based fallback cleaner.
  * Both serve the same goal (stripping event wrappers) but operate in different contexts.
+ *
+ * Two of the strip lists are extended at module init from `.claude/data-check-learnings.json`
+ * (gitignored — only present in dev). `/data-check` writes recurring patrol fixes there;
+ * loading them here closes the feedback loop so scrapes apply the same patterns at
+ * write time instead of letting bad titles enter the DB and rely on patrol to fix.
  */
+
+import { readFileSync, existsSync } from "node:fs";
+import { resolve } from "node:path";
+
+// ---------- Learnings loader (declared FIRST so it's available at the module
+// init of EVENT_PREFIXES below) -------------------------------------------------
+
+interface KnownNonFilm {
+  title: string;
+  type?: "event" | "live_broadcast" | string;
+  exact?: boolean;
+}
+
+interface Learnings {
+  prefixesToStrip?: string[];
+  suffixesToStrip?: string[];
+  knownNonFilmTitles?: KnownNonFilm[];
+}
+
+let learningsCache: Learnings | null | undefined = undefined;
+
+function loadLearnings(): Learnings | null {
+  if (learningsCache !== undefined) return learningsCache;
+  try {
+    // Use cwd-relative resolution so this works under both raw tsx (`/scrape`)
+    // AND the Next.js server bundle path (the route at /api/admin/scrape/all
+    // transitively imports this module). `__dirname` would point at the
+    // compiled output dir under `.next/server/...` and the file wouldn't be
+    // found — silent fallback to "no learnings" was masking a real prod
+    // failure mode. See code-review feedback.
+    const path = resolve(process.cwd(), ".claude/data-check-learnings.json");
+    if (!existsSync(path)) {
+      learningsCache = null;
+      return null;
+    }
+    const raw = readFileSync(path, "utf-8");
+    learningsCache = JSON.parse(raw) as Learnings;
+    return learningsCache;
+  } catch {
+    learningsCache = null;
+    return null;
+  }
+}
+
+/**
+ * Escape a literal prefix string for use as the body of a regex.
+ *
+ * The patrol's `prefixesToStrip` entries are literal substrings like
+ * "Funeral Parade presents " or "Film Club: " — they end in either whitespace
+ * or a colon-and-space. We anchor at start (`^`) and accept any trailing
+ * combination of `:|\s` after the literal body to match the existing
+ * EVENT_PREFIXES contract.
+ */
+function escapeRegexLiteral(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function loadLearnedPrefixRegexes(): RegExp[] {
+  const data = loadLearnings();
+  if (!data?.prefixesToStrip?.length) return [];
+  return data.prefixesToStrip.map((raw) => {
+    const body = raw.replace(/[\s:]+$/u, "");
+    return new RegExp(`^${escapeRegexLiteral(body)}\\s*[:|]?\\s+`, "i");
+  });
+}
+
+function loadLearnedSuffixRegexes(): RegExp[] {
+  const data = loadLearnings();
+  if (!data?.suffixesToStrip?.length) return [];
+  return data.suffixesToStrip.map((raw) => {
+    const body = raw.replace(/^\s+/u, "");
+    return new RegExp(`\\s*${escapeRegexLiteral(body)}\\s*$`, "i");
+  });
+}
 
 /**
  * Known event prefixes that should be stripped to find the actual film title.
@@ -192,7 +271,66 @@ export const EVENT_PREFIXES = [
   //   colon handler instead, which is the correct path for venues like
   //   Coldharbour where the colon form is just venue branding, not a strand.
   /^[\w&''\u2019-][\w\s&''\u2019-]*?\s+films\s+presents[:\s]+/i,
+
+  // Patrol-learned prefixes from `.claude/data-check-learnings.json`. Compiled
+  // and appended at module init so re-running /data-check naturally adds new
+  // patterns to the scraper at next restart. Empty in CI / fresh checkouts
+  // where the learnings file isn't present.
+  ...loadLearnedPrefixRegexes(),
 ];
+
+/** Compiled at module init from learnings.json — appended in the suffix-strip block. */
+const LEARNED_SUFFIX_REGEXES = loadLearnedSuffixRegexes();
+
+/**
+ * Look up a known non-film title in the data-check learnings file. Returns
+ * the recorded `content_type` (e.g. "event", "live_broadcast") when the title
+ * matches exactly (case-insensitive), or `null` when it doesn't.
+ *
+ * Used by the pipeline to set the correct content_type BEFORE attempting film
+ * resolution — avoids creating film rows for quiz nights, placeholders, and
+ * recurring music events.
+ */
+export function getKnownNonFilmType(title: string): string | null {
+  const data = loadLearnings();
+  if (!data?.knownNonFilmTitles?.length) return null;
+  const norm = title.trim().toLowerCase();
+  for (const entry of data.knownNonFilmTitles) {
+    if (!entry?.title) continue;
+    if (entry.title.trim().toLowerCase() === norm) {
+      return entry.type ?? "event";
+    }
+  }
+  return null;
+}
+
+/** Boolean convenience wrapper around getKnownNonFilmType. */
+export function isKnownNonFilmTitle(title: string): boolean {
+  return getKnownNonFilmType(title) !== null;
+}
+
+/**
+ * Foreign-title-bracket: detects `Original (English Translation)` pattern
+ * used at Garden Cinema, Cine Lumi\u00e8re, and BFI for foreign-language repertory.
+ * Returns the bracketed English form as the `lookup` (for TMDB matching) and
+ * keeps the original `display` value for storage.
+ *
+ * Triggers only when the part before the bracket contains a non-ASCII
+ * character \u2014 without that guard "Cabaret (1972 Restoration)" would match,
+ * and the user's "Nine Queens (Nueve reinas)" English-first case wouldn't
+ * trigger (good \u2014 that's already the form we want).
+ */
+export function extractEnglishFromBracket(title: string): { display: string; lookup: string } {
+  const display = title;
+  const match = title.match(/^([^()]+?)\s+\(([A-Za-z][A-Za-z\s,:'!?.\-&]+)\)\s*$/u);
+  if (!match) return { display, lookup: title };
+  const original = match[1];
+  const english = match[2];
+  // Require a non-ASCII character in the `original` part \u2014 that's the
+  // signal that the bracket holds an English translation, not a subtitle.
+  if (!/[^\x00-\x7f]/u.test(original)) return { display, lookup: title };
+  return { display, lookup: english.trim() };
+}
 
 /** Result of cleaning a film title with metadata about what was stripped */
 interface CleanTitleResult {
@@ -343,6 +481,12 @@ export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
     // Remove "- Weird Wednesdays" and similar event series suffixes
     .replace(/\s*-\s*weird\s+wednesdays?\s*$/i, "")
     .trim();
+
+  // Apply patrol-learned suffixes after the hand-curated list, since the
+  // hand-curated patterns are tighter and should win on collision.
+  for (const re of LEARNED_SUFFIX_REGEXES) {
+    cleaned = cleaned.replace(re, "").trim();
+  }
 
   const strippedSuffix = beforeSuffixStrip !== cleaned
     ? beforeSuffixStrip.slice(cleaned.length).trim()
