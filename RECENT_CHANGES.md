@@ -1,3 +1,13 @@
+## 2026-05-15: Push recurring data-check fixes into /scrape (prefix/suffix sync + foreign-bracket + write guards + stale surfacing)
+**PR**: TBD | **Files**: `src/scrapers/utils/film-title-cleaner.ts`, `src/scrapers/utils/film-write-guards.ts` (new), `src/scrapers/pipeline.ts`, `src/scrapers/utils/film-matching.ts`, `src/scripts/cleanup-upcoming-films.ts`, `src/lib/scrape-quarantine.ts`, `src/scripts/run-scrape-and-enrich.ts`, plus tests
+- **Patrol-learned prefixes/suffixes feed the scraper**: `film-title-cleaner` now loads `.claude/data-check-learnings.json` at module init and appends `prefixesToStrip` (79) + `suffixesToStrip` (25) to its existing hand-curated lists. Gracefully degrades to empty arrays when the file isn't present (CI / fresh checkouts). Same patterns the patrol fixes after-the-fact now apply at scrape time.
+- **Foreign-title-bracket normalizer**: new `extractEnglishFromBracket` detects `Original (English)` titles (Garden Cinema, Cine Lumière, BFI repertory) and routes the LOOKUP through the English form for TMDB matching while keeping the original on the films row for display. Wired into `pipeline.ts::getOrCreateFilm`.
+- **Write-site guards** (`film-write-guards.ts`): `sanitizeYear` rejects `0` / `Number("") = 0` / pre-1900 / future-noise values. `sanitizeDirectors` refuses arrays containing `% Starring %` and warns. Applied at `film-matching.ts:212` (TMDB-matched insert) and `cleanup-upcoming-films.ts:257` (enrichment update).
+- **Known non-film titles**: new `getKnownNonFilmType` / `isKnownNonFilmTitle` helpers expose `learnings.json::knownNonFilmTitles` (34 entries) for callers to set content_type before film resolution (full wiring deferred to follow-up).
+- **/scrape report observability**: post-run summary now lists cinemas with no scrape in the last 24h + recent patrol DQS stats (count, avg, min) from learnings.json. Both read-only, fail open if the file isn't present.
+
+---
+
 ## 2026-05-15: Dedup screenings + prevent recurrence in /scrape (BST shifts, film-id flips, BFI cluster bug)
 **PR**: TBD | **Files**: `src/scrapers/utils/screening-classification.ts`, `src/scrapers/pipeline.ts`, `src/scrapers/bfi-pdf/programme-changes-parser.ts`, `src/db/migrations/0011_screenings_cinema_source_unique.sql`, plus cleanup scripts + tests
 - Removed **1,065 bogus screening rows** in three classes:

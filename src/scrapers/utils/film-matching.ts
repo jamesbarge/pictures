@@ -16,6 +16,7 @@ import {
   isSimilarityConfigured,
 } from "@/lib/film-similarity";
 import { v4 as uuidv4 } from "uuid";
+import { sanitizeDirectors, sanitizeYear } from "./film-write-guards";
 
 type FilmRecord = typeof films.$inferSelect;
 
@@ -209,15 +210,21 @@ export async function matchAndCreateFromTMDB(
 
   const filmId = uuidv4();
 
+  const guardedYear = sanitizeYear(match.year);
+  const guardedDirectors = sanitizeDirectors(
+    details.directors,
+    `film-matching tmdb=${match.tmdbId} title="${details.details.title}"`
+  );
+
   await db.insert(films).values({
     id: filmId,
     tmdbId: match.tmdbId,
     imdbId: details.details.imdb_id,
     title: details.details.title,
     originalTitle: details.details.original_title,
-    year: match.year,
+    year: guardedYear,
     runtime: details.details.runtime,
-    directors: details.directors,
+    directors: guardedDirectors,
     cast: details.cast,
     genres: details.details.genres.map((g) => g.name.toLowerCase()),
     countries: details.details.production_countries.map((c) => c.iso_3166_1),
@@ -230,7 +237,7 @@ export async function matchAndCreateFromTMDB(
       ? `https://image.tmdb.org/t/p/w1280${details.details.backdrop_path}`
       : null,
     isRepertory: isRepertoryFilm(details.details.release_date),
-    decade: match.year ? getDecade(match.year) : null,
+    decade: guardedYear ? getDecade(guardedYear) : null,
     tmdbRating: details.details.vote_average,
     tmdbPopularity: details.details.popularity,
   });

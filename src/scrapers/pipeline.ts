@@ -32,7 +32,7 @@ import {
 } from "./utils/screening-classification";
 
 // Import for local use + re-export for external consumers
-import { cleanFilmTitle } from "./utils/film-title-cleaner";
+import { cleanFilmTitle, extractEnglishFromBracket } from "./utils/film-title-cleaner";
 export { cleanFilmTitle } from "./utils/film-title-cleaner";
 
 // Agent imports - conditionally used when ENABLE_AGENTS=true
@@ -433,9 +433,20 @@ async function getOrCreateFilm(
   // This ensures "Apocalypse Now" and "Apocalypse Now : Final Cut" match to the
   // same film. The canonical title also gets passed through cleanFilmTitle —
   // AI can return canonicals that still carry prefix cruft.
-  const matchingTitle = extraction.canonicalTitle
+  let matchingTitle = extraction.canonicalTitle
     ? cleanFilmTitle(extraction.canonicalTitle)
     : cleanedTitle;
+
+  // Foreign-title-bracket: when the title is `Original (English Translation)`
+  // and `Original` contains non-ASCII chars (Garden Cinema / Cine Lumière /
+  // BFI repertory), route the LOOKUP through the English form so TMDB can
+  // find it. The display title (`cleanedTitle`) stays in its original form for
+  // storage on the films row — preserves source-of-truth for the user UI.
+  const bracket = extractEnglishFromBracket(matchingTitle);
+  if (bracket.lookup !== matchingTitle) {
+    console.log(`[Pipeline] Foreign-bracket lookup: "${matchingTitle}" → search "${bracket.lookup}"`);
+    matchingTitle = bracket.lookup;
+  }
 
   if (cleanedTitle !== title) {
     const versionNote = extraction.version ? ` [version: ${extraction.version}]` : "";
