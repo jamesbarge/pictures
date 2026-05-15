@@ -35,6 +35,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error(JSON.stringify({ condition: "silent-breakers", pass: false, error: String(err) }));
+  console.log(JSON.stringify({ condition: "silent-breakers", pass: false, error: String(err) }));
   process.exit(1);
 });

@@ -67,12 +67,14 @@ async function main() {
     .from(cinemas)
     .where(eq(cinemas.isActive, true));
 
-  // HogQL: count distinct days the event fired per cinema_id property, last 30d.
-  // We use `properties.cinema_id` which is what trackBookingClick attaches.
+  // HogQL: count events per cinema_id over the last 30d. Event name and
+  // property name must match the frontend tracker — see
+  // frontend/src/lib/analytics/posthog.ts:128 (`booking_link_clicked` with
+  // `cinema_id`). If those change, this query must change too.
   const query = `
     SELECT properties.cinema_id AS cinema_id, count() AS n
     FROM events
-    WHERE event = 'booking_click'
+    WHERE event = 'booking_link_clicked'
       AND timestamp >= now() - INTERVAL 30 DAY
       AND properties.cinema_id IS NOT NULL
     GROUP BY properties.cinema_id
@@ -121,6 +123,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error(JSON.stringify({ condition: "posthog-funnel", pass: false, error: String(err).slice(0, 500) }));
+  console.log(JSON.stringify({ condition: "posthog-funnel", pass: false, error: String(err).slice(0, 500) }));
   process.exit(1);
 });

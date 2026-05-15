@@ -38,32 +38,43 @@ interface Probe {
   cinemaId: string;
 }
 
-async function probeOne(url: string, cinemaId: string): Promise<Probe> {
+async function fetchWithTimeout(
+  url: string,
+  method: "HEAD" | "GET",
+): Promise<{ status: number } | { timeout: true } | { error: string }> {
+  // Fresh AbortController per request — sharing one across HEAD and a GET
+  // retry causes the retry to inherit an already-expired (or already-fired)
+  // signal whenever HEAD ran close to the deadline.
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
-    let resp = await fetch(url, {
-      method: "HEAD",
+    const resp = await fetch(url, {
+      method,
       redirect: "follow",
       signal: controller.signal,
       headers: { "User-Agent": "pictures.london goal-check/1.0" },
     });
-    // Some sites reject HEAD; retry with GET.
-    if (resp.status === 405 || resp.status === 501) {
-      resp = await fetch(url, {
-        method: "GET",
-        redirect: "follow",
-        signal: controller.signal,
-        headers: { "User-Agent": "pictures.london goal-check/1.0" },
-      });
-    }
-    return { url, status: resp.status, cinemaId };
+    return { status: resp.status };
   } catch (err) {
     const msg = String(err);
-    return { url, status: msg.includes("aborted") ? "timeout" : "error", cinemaId };
+    return msg.includes("aborted") ? { timeout: true } : { error: msg };
   } finally {
     clearTimeout(timer);
   }
+}
+
+async function probeOne(url: string, cinemaId: string): Promise<Probe> {
+  const first = await fetchWithTimeout(url, "HEAD");
+  // Some sites reject HEAD; retry with GET on its own fresh timeout budget.
+  if ("status" in first && (first.status === 405 || first.status === 501)) {
+    const second = await fetchWithTimeout(url, "GET");
+    if ("status" in second) return { url, status: second.status, cinemaId };
+    if ("timeout" in second) return { url, status: "timeout", cinemaId };
+    return { url, status: "error", cinemaId };
+  }
+  if ("status" in first) return { url, status: first.status, cinemaId };
+  if ("timeout" in first) return { url, status: "timeout", cinemaId };
+  return { url, status: "error", cinemaId };
 }
 
 async function runWithConcurrency<T, R>(
@@ -174,6 +185,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error(JSON.stringify({ condition: "booking-links", pass: false, error: String(err) }));
+  console.log(JSON.stringify({ condition: "booking-links", pass: false, error: String(err) }));
   process.exit(1);
 });

@@ -42,16 +42,25 @@ function runOne(scriptPath: string): { pass: boolean; raw: unknown; durationMs: 
     { encoding: "utf-8", maxBuffer: 32 * 1024 * 1024 },
   );
   const durationMs = Date.now() - started;
-  // Each script prints JSON to stdout. Some prefix with progress so find the
-  // first '{' that opens valid JSON.
-  const out = (result.stdout ?? "") + (result.stderr ?? "");
-  const firstBrace = out.indexOf("{");
-  let raw: unknown = { pass: false, error: "no JSON output" };
+  // Contract: every measurement script emits its result JSON to stdout (even
+  // on failure — main().catch logs via console.log). Stderr is reserved for
+  // unstructured diagnostic noise (e.g. npx install banners, child-process
+  // stack traces) which can contain its own `{` characters and would
+  // otherwise corrupt the parse. Parse stdout only.
+  const stdout = result.stdout ?? "";
+  const stderr = result.stderr ?? "";
+  const firstBrace = stdout.indexOf("{");
+  let raw: unknown = { pass: false, error: "no JSON on stdout", stderrTail: stderr.slice(-500) };
   if (firstBrace >= 0) {
     try {
-      raw = JSON.parse(out.slice(firstBrace));
+      raw = JSON.parse(stdout.slice(firstBrace));
     } catch (err) {
-      raw = { pass: false, error: `Could not parse JSON from script: ${String(err).slice(0, 200)}`, rawOutput: out.slice(0, 500) };
+      raw = {
+        pass: false,
+        error: `Could not parse JSON from script stdout: ${String(err).slice(0, 200)}`,
+        stdoutHead: stdout.slice(0, 500),
+        stderrTail: stderr.slice(-500),
+      };
     }
   }
   const pass = (raw as { pass?: boolean }).pass === true;

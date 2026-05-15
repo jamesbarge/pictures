@@ -29,8 +29,12 @@ function parseTargetsFromGoalFile(): string[] {
   const text = readFileSync(path, "utf-8");
   // Section starts at "### 1. London independents covered" and we read the
   // bullets under "**Coverage targets**" until the next blank line / sub-tasks.
+  // Match coverage-targets bullets until either the Sub-tasks line (the
+  // canonical terminator) or the next H3 heading (fallback if someone removes
+  // the Sub-tasks bullet). Either terminator keeps the parser non-greedy and
+  // localised to section 1.
   const sectionMatch = text.match(
-    /### 1\. London independents covered[\s\S]*?\*\*Coverage targets\*\*[^\n]*\n([\s\S]*?)\n\s*- \*\*Sub-tasks:\*\*/,
+    /### 1\. London independents covered[\s\S]*?\*\*Coverage targets\*\*[^\n]*\n([\s\S]*?)(?:\n\s*- \*\*Sub-tasks:\*\*|\n###\s)/,
   );
   if (!sectionMatch) {
     throw new Error("Could not locate coverage-targets block in tasks/goal.md");
@@ -108,6 +112,8 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error(JSON.stringify({ condition: "coverage", pass: false, error: String(err) }));
+  // Emit result on stdout (success or failure) — stderr is reserved for
+  // unstructured diagnostic noise so the orchestrator can parse stdout cleanly.
+  console.log(JSON.stringify({ condition: "coverage", pass: false, error: String(err) }));
   process.exit(1);
 });

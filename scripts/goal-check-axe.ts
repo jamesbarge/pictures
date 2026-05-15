@@ -107,6 +107,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error(JSON.stringify({ condition: "axe", pass: false, error: String(err).slice(0, 500) }));
+  console.log(JSON.stringify({ condition: "axe", pass: false, error: String(err).slice(0, 500) }));
   process.exit(1);
 });
