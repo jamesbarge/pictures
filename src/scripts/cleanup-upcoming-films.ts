@@ -18,6 +18,7 @@ import { db } from "@/db";
 import { films, screenings } from "@/db/schema";
 import { eq, isNull, gte, and } from "drizzle-orm";
 import { matchFilmToTMDB, getTMDBClient } from "@/lib/tmdb";
+import { isRepertoryFilm } from "@/lib/tmdb/match";
 import { extractFilmTitle } from "@/lib/title-extraction";
 import { cleanFilmTitle } from "@/scrapers/pipeline";
 import { decodeHtmlEntities } from "@/scripts/enrich-upcoming-films";
@@ -256,6 +257,10 @@ async function phase2TMDBMatching(upcomingFilms: FilmRow[]): Promise<{ matched: 
           title: details.details.title,
           originalTitle: details.details.original_title,
           year: sanitizeYear(tmdbMatch.year),
+          // Compute is_repertory at write time so the cycle-N+1 patrol fix
+          // (5+ patrols in a row caught films left at the default false here)
+          // becomes unnecessary. Same predicate as film-matching.ts:239.
+          isRepertory: isRepertoryFilm(details.details.release_date),
           runtime: details.details.runtime || null,
           directors: sanitizeDirectors(
             details.directors.length > 0 ? details.directors : film.directors,

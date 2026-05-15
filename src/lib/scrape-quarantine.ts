@@ -117,14 +117,20 @@ export interface StaleCinema {
  *
  * Used in the /scrape post-run report to surface cinemas the user should
  * investigate. Read-only.
+ *
+ * Inactive cinemas (`is_active = false`) are excluded — they have no scraper
+ * by design (e.g. permanently-closed Everyman Walthamstow, orphan `nickel`
+ * row superseded by `the-nickel`, defunct Curzon Camden/Richmond/Wimbledon).
+ * Including them would mean every /scrape run reports the same 5 "never
+ * scraped" zombies indefinitely.
  */
 export async function detectStaleCinemas(options?: {
   thresholdHours?: number;
 }): Promise<StaleCinema[]> {
   const thresholdHours = options?.thresholdHours ?? 24;
 
-  // For each cinema, get the most recent run's startedAt and compute hours
-  // since. Done in a single query rather than N+1.
+  // For each ACTIVE cinema, get the most recent run's startedAt and compute
+  // hours since. Done in a single query rather than N+1.
   const rows = await db.execute(sql`
     SELECT
       c.id AS cinema_id,
@@ -132,6 +138,7 @@ export async function detectStaleCinemas(options?: {
       EXTRACT(EPOCH FROM (NOW() - MAX(r.started_at))) / 3600.0 AS hours_since
     FROM cinemas c
     LEFT JOIN scraper_runs r ON r.cinema_id = c.id
+    WHERE c.is_active = true
     GROUP BY c.id, c.name
     HAVING (MAX(r.started_at) IS NULL OR EXTRACT(EPOCH FROM (NOW() - MAX(r.started_at))) / 3600.0 > ${thresholdHours})
     -- NULLS FIRST: never-scraped cinemas are the most urgent case and must

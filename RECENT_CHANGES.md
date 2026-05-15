@@ -1,3 +1,10 @@
+## 2026-05-15: /scrape follow-ups — is_repertory at write time + stale-cinema is_active filter
+**PR**: TBD | **Files**: `src/scripts/cleanup-upcoming-films.ts`, `src/lib/scrape-quarantine.ts`
+- Closes the cycle-N+1 patrol dependency for `is_repertory`: the TMDB-match UPDATE path in `cleanup-upcoming-films.ts` now sets `isRepertory: isRepertoryFilm(release_date)` alongside `year`. The patrol caught 5 misflagged films in 5 consecutive cycles before this; now repertory films are tagged at write time using the same helper `film-matching.ts` already uses.
+- `detectStaleCinemas` now filters `WHERE c.is_active = true`, excluding 5 zombie cinemas (curzon-camden / curzon-richmond / curzon-wimbledon / everyman-walthamstow / nickel) that would otherwise appear as "never scraped" in every `/scrape` post-run report indefinitely.
+
+---
+
 ## 2026-05-15: Push recurring data-check fixes into /scrape (prefix/suffix sync + foreign-bracket + write guards + stale surfacing)
 **PR**: TBD | **Files**: `src/scrapers/utils/film-title-cleaner.ts`, `src/scrapers/utils/film-write-guards.ts` (new), `src/scrapers/pipeline.ts`, `src/scrapers/utils/film-matching.ts`, `src/scripts/cleanup-upcoming-films.ts`, `src/lib/scrape-quarantine.ts`, `src/scripts/run-scrape-and-enrich.ts`, plus tests
 - **Patrol-learned prefixes/suffixes feed the scraper**: `film-title-cleaner` now loads `.claude/data-check-learnings.json` at module init and appends `prefixesToStrip` (79) + `suffixesToStrip` (25) to its existing hand-curated lists. Gracefully degrades to empty arrays when the file isn't present (CI / fresh checkouts). Same patterns the patrol fixes after-the-fact now apply at scrape time.
