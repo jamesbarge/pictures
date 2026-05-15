@@ -1,3 +1,15 @@
+## 2026-05-15: Dedup screenings + prevent recurrence in /scrape (BST shifts, film-id flips, BFI cluster bug)
+**PR**: TBD | **Files**: `src/scrapers/utils/screening-classification.ts`, `src/scrapers/pipeline.ts`, `src/scrapers/bfi-pdf/programme-changes-parser.ts`, `src/db/migrations/0011_screenings_cinema_source_unique.sql`, plus cleanup scripts + tests
+- Removed **1,065 bogus screening rows** in three classes:
+  - **710 (cinema_id, source_id) duplicates** in upcoming screenings — same source resolved to different films (e.g. Hard Boiled @ The Nickel, 135 same-datetime) OR BST off-by-one regressions producing datetime+1h dupes (e.g. Wake in Fright @ The Gate, Shrek @ Everyman Maida Vale — 409 of these). For same-datetime: latest scrape wins. For BST-shift: earlier datetime always wins (the +1h variant is always the bug).
+  - **254 (cinema_id, source_id) duplicates** across past dates (so the unique-index migration could be applied).
+  - **351 BFI Southbank "many films at same datetime" rows** — the programme-changes-parser's `getFollowingText` was grabbing the full parent paragraph's text, so 6+ films sharing one `<p>` each got matched against every sibling's screening times.
+- **Pipeline prevention**: `processScreenings` now uses `(cinema_id, source_id)` as conflict target when sourceId is set, so a re-scrape with a corrected datetime UPDATEs the existing row in place. `checkForDuplicate` Layer 0 dropped the datetime filter to match.
+- **DB enforcement**: new partial unique index `idx_screenings_cinema_source ON screenings (cinema_id, source_id) WHERE source_id IS NOT NULL` makes the invariant non-negotiable.
+- **BFI parser fix**: `getFollowingText` now walks DOM siblings and stops at the next `<b>`/`<strong>`, with a fallback that slices parent text correctly when only text nodes follow. Regression test added in `programme-changes-parser.test.ts`.
+
+---
+
 ## 2026-05-14: Multi-day rolling calendar — always show upcoming films
 **PR**: TBD | **Files**: `frontend/src/lib/calendar-filter.ts`, `frontend/src/routes/+page.svelte`, `frontend/src/lib/components/calendar/DayMasthead.svelte`, `frontend/test-all.spec.ts`, `frontend/tests/mobile.spec.ts`
 - Homepage no longer goes blank late at night when today's screenings are all past. The default view now shows a rolling window: today + as many upcoming days as needed to fill at least ~24 films (capped at 7 days).
