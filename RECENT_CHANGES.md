@@ -1,3 +1,12 @@
+## 2026-05-15: Add Bertha DocHouse scraper — first new London independent
+**PR**: TBD | **Files**: `src/scrapers/cinemas/bertha-dochouse.ts`, `src/scrapers/cinemas/bertha-dochouse.test.ts`, `src/scrapers/registry.ts`, `src/config/cinema-registry.ts`
+- New Cheerio-based scraper for **Bertha DocHouse** (dochouse.org) — the UK's only year-round documentary cinema, inside Curzon Bloomsbury but programmed independently. Identified as Priority 1 in the 2026-05-15 London coverage audit.
+- 2-step list-then-detail pattern: `/whats-on/` paginates events; each `/event/<slug>/` carries screening times + Curzon `BLO1-XXXXXX` ticket IDs (used as `sourceId`).
+- 9 unit tests covering title, time parsing, sourceId derivation, non-Bertha ticket filtering, defensive empty handling, and the today-edge-case where `parseScreeningDate` would otherwise +1 year a same-day screening.
+- Live verification: returns 43 valid screenings across 21 events in ~20 s; covers the programme through early June.
+
+---
+
 ## 2026-05-15: /goal command — terminal goal-driven loop with measurable end conditions
 **PR**: TBD | **Files**: `tasks/goal.md`, `scripts/goal-check-{coverage,silent-breakers,booking-links,lighthouse,axe,posthog-funnel,dqs}.ts`, `scripts/goal-status.ts`, `changelogs/2026-05-15-goal-command.md`
 - New `/goal` slash command (local in `.claude/commands/`): unlike `/kaizen` and `/posthog-optimize` (perpetual), this one declares an explicit finish line and exits when crossed. Reads `tasks/goal.md`, runs all measurement scripts, picks the highest-leverage failing condition, fixes one sub-task per invocation, holds merge behind the existing `ship it` deployment gate.
