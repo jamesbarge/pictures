@@ -25,6 +25,8 @@
  * Output: JSON to stdout. Exit code 0 if pass (incl. deferred), 1 if fail.
  * Usage:  npx tsx --env-file=.env.local -r tsconfig-paths/register scripts/goal-check-posthog-funnel.ts
  */
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { cinemas } from "@/db/schema/cinemas";
@@ -32,6 +34,46 @@ import { cinemas } from "@/db/schema/cinemas";
 const POSTHOG_API_HOST = process.env.POSTHOG_API_HOST ?? "https://eu.posthog.com";
 const MIN_CLICKS_FLOOR = 500;
 const WINDOW_DAYS = 30;
+// Regression guard: if the current window has < 50% of the previously-recorded
+// total AND the previous total was above the floor, treat that as a likely
+// analytics breakage (PostHog key rotated, frontend tracker removed, ad-blocker
+// surge, etc.) and fail loudly rather than silently flipping to deferred-pass.
+const REGRESSION_RATIO = 0.5;
+const LAST_RUN_PATH = resolve(process.cwd(), ".claude/goal-posthog-funnel-last.json");
+
+interface LastRunState {
+  timestamp: string;
+  totalClicks: number;
+  windowDays: number;
+}
+
+function readLastRun(): LastRunState | null {
+  try {
+    if (!existsSync(LAST_RUN_PATH)) return null;
+    const raw = JSON.parse(readFileSync(LAST_RUN_PATH, "utf-8")) as LastRunState;
+    if (typeof raw.totalClicks !== "number") return null;
+    return raw;
+  } catch {
+    return null;
+  }
+}
+
+function writeLastRun(totalClicks: number): void {
+  try {
+    mkdirSync(dirname(LAST_RUN_PATH), { recursive: true });
+    writeFileSync(
+      LAST_RUN_PATH,
+      JSON.stringify(
+        { timestamp: new Date().toISOString(), totalClicks, windowDays: WINDOW_DAYS },
+        null,
+        2,
+      ),
+    );
+  } catch {
+    // Non-fatal — the regression guard degrades to "no prior baseline" on
+    // the next run if the write fails.
+  }
+}
 
 interface HogQLResponse {
   results: unknown[][];
@@ -101,6 +143,40 @@ async function main() {
     );
   }
 
+  // Step 1b — regression guard. A floor-only check would silently mask a
+  // collapse from real-traffic to no-traffic (e.g. analytics breaks). If we
+  // have a prior baseline that was above the floor, require that the current
+  // total stays within REGRESSION_RATIO of it before we trust either branch.
+  const lastRun = readLastRun();
+  if (
+    lastRun !== null &&
+    lastRun.totalClicks >= MIN_CLICKS_FLOOR &&
+    totalClicks < lastRun.totalClicks * REGRESSION_RATIO
+  ) {
+    // Persist the new value so subsequent runs use the lowered baseline.
+    // Without this, a sustained drop would keep failing forever, which is
+    // worse than letting the user see the drop, investigate, and move on.
+    writeLastRun(totalClicks);
+    emit(
+      {
+        condition: "posthog-funnel",
+        pass: false,
+        reason: `Volume regression: total ${WINDOW_DAYS}d clicks dropped from ${lastRun.totalClicks} (previous run on ${lastRun.timestamp.slice(0, 10)}) to ${totalClicks} — below ${Math.round(REGRESSION_RATIO * 100)}% of prior. Likely cause: analytics break (PostHog key rotated, frontend tracker removed, ad-blocker surge). Investigate before re-running.`,
+        totalClicks,
+        previousTotal: lastRun.totalClicks,
+        previousAt: lastRun.timestamp,
+        regressionRatio: REGRESSION_RATIO,
+        floor: MIN_CLICKS_FLOOR,
+        windowDays: WINDOW_DAYS,
+      },
+      1,
+    );
+  }
+
+  // Update the baseline before any further short-circuit so the next run sees
+  // the current state regardless of whether this one passes/defers/fails.
+  writeLastRun(totalClicks);
+
   if (totalClicks < MIN_CLICKS_FLOOR) {
     // Defer: no measurable signal at this traffic level. Treat as pass so
     // /goal moves on to a condition it can actually act on.
@@ -111,6 +187,7 @@ async function main() {
         deferred: true,
         reason: `Total ${WINDOW_DAYS}d clicks (${totalClicks}) below ${MIN_CLICKS_FLOOR}-event floor — condition can't produce a quality signal until traffic grows. The Stagehand-based booking-URL verifier (see tasks/goal.md sub-tasks) is the path to a traffic-independent check.`,
         totalClicks,
+        previousTotal: lastRun?.totalClicks ?? null,
         floor: MIN_CLICKS_FLOOR,
         windowDays: WINDOW_DAYS,
       },
