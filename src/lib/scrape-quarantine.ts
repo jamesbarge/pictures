@@ -103,6 +103,239 @@ export function formatQuarantineReport(quarantined: QuarantinedCinema[]): string
   return `Silent breakers (${quarantined.length}):\n${lines.join("\n")}`;
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// Flaky-cinema detector
+// ─────────────────────────────────────────────────────────────────────────
+// Complements detectSilentBreakers. Silent-breaker detection only fires when
+// recent runs are all `success && screening_count=0` CONSECUTIVELY. That
+// misses a real failure mode: a scraper that returns 0 screenings on ~half
+// its runs and full data on the other half (e.g. BFI IMAX in May 2026 had
+// 14/21 success+0 over 7 days, but never 2 in a row, so quarantine never
+// flagged it). This detector evaluates the ratio across a wider window.
+
+export type FlakySeverity = "warn" | "critical";
+
+export interface FlakyCinema {
+  cinemaId: string;
+  cinemaName: string;
+  totalRuns: number;
+  emptySuccessCount: number;
+  failedCount: number;
+  emptyRatio: number;          // 0..1 — share of runs that returned success+0
+  failedRatio: number;         // 0..1 — share of runs that errored outright
+  lastGoodRunAt: Date | null;  // most recent success with screening_count > 0
+  lastRunAt: Date;
+  reasons: string[];           // human-readable signals that fired
+  severity: FlakySeverity;
+}
+
+/** Minimal shape used by the pure analyzer — DB-free for easy testing. */
+export interface RunRecord {
+  status: string;
+  screeningCount: number | null;
+  startedAt: Date;
+}
+
+/**
+ * Flaky-detection thresholds. Exposed as a type so call-sites (slash command,
+ * scheduled jobs, tests) can tune them centrally rather than copying defaults.
+ *
+ * Defaults are calibrated against May 2026 ground truth:
+ *   - BFI Southbank (50% empty success) → warn
+ *   - BFI IMAX (67% empty success)      → critical
+ *   - Close-Up (33% failed)             → warn
+ */
+export interface FlakyThresholds {
+  /** Minimum runs in the window before evaluating (avoids false positives on brand-new cinemas). */
+  minRuns: number;
+  /** lookback: how many of the most recent runs to inspect. */
+  lookback: number;
+  /** Empty-success ratio that triggers a `warn` severity. */
+  emptyRatioWarn: number;
+  /** Empty-success ratio that triggers a `critical` severity. */
+  emptyRatioCritical: number;
+  /** Failed-status ratio that triggers a `warn` severity. */
+  failedRatioWarn: number;
+  /** Failed-status ratio that triggers a `critical` severity. */
+  failedRatioCritical: number;
+}
+
+export const DEFAULT_FLAKY_THRESHOLDS: FlakyThresholds = {
+  minRuns: 4,
+  lookback: 10,
+  emptyRatioWarn: 0.3,
+  emptyRatioCritical: 0.5,
+  failedRatioWarn: 0.3,
+  failedRatioCritical: 0.5,
+};
+
+/**
+ * Pure analyzer — given a window of recent runs, returns a flakiness verdict.
+ * Decoupled from the DB so the policy logic is unit-testable in isolation.
+ *
+ * `runs` may be passed in any order — the function sorts internally by
+ * `startedAt` descending, so `runs[0]` after sort is the most recent. This
+ * removes a footgun where callers could otherwise silently produce wrong
+ * `lastRunAt` / `lastGoodRunAt` by passing ASC-sorted data.
+ *
+ * Returns `null` if the cinema isn't flaky (or doesn't have enough runs yet).
+ */
+export function analyzeRunsForFlakiness(
+  rawRuns: RunRecord[],
+  thresholds: FlakyThresholds = DEFAULT_FLAKY_THRESHOLDS,
+): Omit<FlakyCinema, "cinemaId" | "cinemaName"> | null {
+  if (rawRuns.length < thresholds.minRuns) return null;
+
+  // Sort by startedAt descending so runs[0] is the most recent regardless of
+  // how the caller ordered them. Cheap (≤ lookback elements).
+  const runs = [...rawRuns].sort(
+    (a, b) => b.startedAt.getTime() - a.startedAt.getTime(),
+  );
+
+  const emptySuccessCount = runs.filter(
+    (r) => r.status === "success" && (r.screeningCount ?? 0) === 0,
+  ).length;
+  const failedCount = runs.filter((r) => r.status === "failed").length;
+  const emptyRatio = emptySuccessCount / runs.length;
+  const failedRatio = failedCount / runs.length;
+  const lastGoodRunAt =
+    runs.find((r) => r.status === "success" && (r.screeningCount ?? 0) > 0)?.startedAt ?? null;
+
+  const reasons: string[] = [];
+  let severity: FlakySeverity | null = null;
+
+  const bump = (next: FlakySeverity) => {
+    if (severity === null) severity = next;
+    else if (severity === "warn" && next === "critical") severity = "critical";
+  };
+
+  if (emptyRatio >= thresholds.emptyRatioCritical) {
+    reasons.push(`${Math.round(emptyRatio * 100)}% of recent runs returned success+0`);
+    bump("critical");
+  } else if (emptyRatio >= thresholds.emptyRatioWarn) {
+    reasons.push(`${Math.round(emptyRatio * 100)}% of recent runs returned success+0`);
+    bump("warn");
+  }
+
+  if (failedRatio >= thresholds.failedRatioCritical) {
+    reasons.push(`${Math.round(failedRatio * 100)}% of recent runs failed outright`);
+    bump("critical");
+  } else if (failedRatio >= thresholds.failedRatioWarn) {
+    reasons.push(`${Math.round(failedRatio * 100)}% of recent runs failed outright`);
+    bump("warn");
+  }
+
+  if (severity === null) return null;
+
+  return {
+    totalRuns: runs.length,
+    emptySuccessCount,
+    failedCount,
+    emptyRatio,
+    failedRatio,
+    lastGoodRunAt,
+    lastRunAt: runs[0].startedAt,
+    reasons,
+    severity,
+  };
+}
+
+/**
+ * Walk every active cinema, fetch its most recent runs, and return those whose
+ * outcome distribution looks unhealthy by the configured thresholds.
+ *
+ * Read-only — safe to call before, during, or after a scrape run.
+ *
+ * Performance: collapses the per-cinema fetch into a single windowed query
+ * (ROW_NUMBER() OVER (PARTITION BY cinema_id ORDER BY started_at DESC) <=
+ * lookback). Going from 60 round-trips to 1 cuts pre-flight from ~2s to <100ms.
+ */
+export async function detectFlakyCinemas(
+  thresholds: FlakyThresholds = DEFAULT_FLAKY_THRESHOLDS,
+): Promise<FlakyCinema[]> {
+  const rows = (await db.execute(sql`
+    WITH ranked AS (
+      SELECT
+        r.cinema_id,
+        r.status,
+        r.screening_count,
+        r.started_at,
+        ROW_NUMBER() OVER (PARTITION BY r.cinema_id ORDER BY r.started_at DESC) AS rn
+      FROM scraper_runs r
+      JOIN cinemas c ON c.id = r.cinema_id
+      WHERE c.is_active = true
+    )
+    SELECT
+      ranked.cinema_id,
+      cinemas.name AS cinema_name,
+      ranked.status,
+      ranked.screening_count,
+      ranked.started_at
+    FROM ranked
+    JOIN cinemas ON cinemas.id = ranked.cinema_id
+    WHERE ranked.rn <= ${thresholds.lookback}
+    ORDER BY ranked.cinema_id, ranked.started_at DESC
+  `)) as unknown as Array<{
+    cinema_id: string;
+    cinema_name: string;
+    status: string;
+    screening_count: number | null;
+    started_at: Date;
+  }>;
+
+  // Group by cinema, then run the pure analyzer over each window.
+  const byCinema = new Map<
+    string,
+    { name: string; runs: RunRecord[] }
+  >();
+  for (const row of rows) {
+    const startedAt =
+      row.started_at instanceof Date
+        ? row.started_at
+        : new Date(row.started_at);
+    let entry = byCinema.get(row.cinema_id);
+    if (!entry) {
+      entry = { name: row.cinema_name, runs: [] };
+      byCinema.set(row.cinema_id, entry);
+    }
+    entry.runs.push({
+      status: row.status,
+      screeningCount: row.screening_count,
+      startedAt,
+    });
+  }
+
+  const flaky: FlakyCinema[] = [];
+  for (const [cinemaId, { name, runs }] of byCinema) {
+    const verdict = analyzeRunsForFlakiness(runs, thresholds);
+    if (verdict !== null) {
+      flaky.push({ cinemaId, cinemaName: name, ...verdict });
+    }
+  }
+
+  // critical first, then by emptyRatio desc — most-broken-first
+  return flaky.sort((a, b) => {
+    if (a.severity !== b.severity) return a.severity === "critical" ? -1 : 1;
+    return b.emptyRatio - a.emptyRatio;
+  });
+}
+
+/** Format the flaky list for slash-command output. */
+export function formatFlakyReport(flaky: FlakyCinema[]): string {
+  if (flaky.length === 0) {
+    return "No flaky cinemas detected.";
+  }
+  const lines = flaky.map((f) => {
+    const tag = f.severity === "critical" ? "🔴 critical" : "🟡 warn";
+    const lastGood = f.lastGoodRunAt
+      ? f.lastGoodRunAt.toISOString().slice(0, 10)
+      : "never";
+    const reasonText = f.reasons.join(", ");
+    return `  • ${tag} ${f.cinemaName} (${f.totalRuns} runs): ${reasonText} — last good ${lastGood}`;
+  });
+  return `Flaky cinemas (${flaky.length}):\n${lines.join("\n")}`;
+}
+
 export interface StaleCinema {
   cinemaId: string;
   cinemaName: string;
