@@ -16,6 +16,13 @@ Update this playbook whenever you:
 - Use `src/scrapers/utils/date-parser.ts` for shared parsing behavior.
 - **Never use `new Date(year, month, day, hours, minutes)` to construct screening datetimes.** That ctor interprets numeric args as the runtime's local timezone, which silently produces +1h offsets during BST when the scraper runs under `TZ=UTC` (cron, CI, container). Always call `ukLocalToUTC(...)` from `utils/date-parser.ts` — it builds UTC explicitly and applies BST. Same goes for `parseUKLocalDateTime()` for ISO-like strings without a timezone suffix.
 - After fixing time parsing bugs, verify and clean bad historical screenings (`00:00-09:59`) only when confirmed wrong.
+- **`BaseScraper.healthCheck()` retries** (2026-05-15): 3 attempts, 10s timeout each, 4s backoff between attempts. Fast-fails on 4xx (contract issue), retries on 5xx + network errors. Subclasses can override for cheaper/different checks (e.g. Curzon HEADs the API endpoint with a 401-is-healthy contract). Background: Close-Up was failing 33% of runs at 03:17-03:21 UTC because of brief nightly-maintenance windows.
+
+## Health & Flakiness Detection
+The `/scrape` slash command runs two read-only detectors against `scraper_runs`:
+- **`detectSilentBreakers`** (`src/lib/scrape-quarantine.ts`) — Prowlarr-pattern: flags cinemas with ≥N *consecutive* `success+0` runs.
+- **`detectFlakyCinemas`** (same file, added 2026-05-15) — ratio-based: flags cinemas whose last `lookback` runs have ≥X% `success+0` or `failed`. Catches alternating empty/non-empty patterns that the consecutive detector misses. Default thresholds: `emptyRatioWarn=0.3, emptyRatioCritical=0.5, failedRatioWarn=0.3, failedRatioCritical=0.5, minRuns=4, lookback=10`. Implemented as a single windowed SQL (ROW_NUMBER OVER PARTITION) rather than per-cinema queries.
+- Pure analyzer: `analyzeRunsForFlakiness(runs, thresholds)` — DB-free, unit-testable, internally sorts by `startedAt` DESC so callers may pass any order.
 
 ## Primary Entrypoints
 - Unified CLI: `src/scrapers/cli.ts` (`npm run scrape -- <slug>`)
@@ -55,6 +62,11 @@ Use this format when recording cinema-specific quirks:
 - Scrapers: `src/scrapers/cinemas/bfi.ts` (Playwright; currently broken locally — see below), `src/scrapers/bfi-pdf/` (PDF importer; **preferred**)
 - Manual run: `npm run scrape:bfi-pdf` — imports both BFI Southbank and BFI IMAX from the monthly PDF guide
 - Notes: Prefer PDF importer path for resilience; monitor `bfi_import_runs` health.
+- **`getOrLoadBFIScreenings()` (canonical entry, 2026-05-15)** in `cinemas/bfi.ts` is the *only* path through which `BFIScraper.scrape()` reaches the PDF importer. It:
+  - Calls `loadBFIScreenings()` from `bfi-pdf/` and inspects `sourceStatus`.
+  - **Throws** when `pdf !== "success" && programmeChanges !== "success"` (yield gate). Throwing — rather than returning `[]` — is intentional: it lets the runner-factory record `status=failed` rather than masking a Cloudflare block behind `success+0`. This was the root cause of the May 2026 BFI flakiness (14/21 IMAX runs success+0, 10/20 Southbank).
+  - **Busts the in-process promise cache on failure** so a failed call by the Southbank venue doesn't poison IMAX with the same empty rejection (or vice-versa). Successful loads ARE cached for the lifetime of the Node process.
+  - For tests: `_resetBFIScreeningsCacheForTests()` clears the cache between tests.
 - **Cloudflare bypass (2026-05-14)**: `whatson.bfi.org.uk` is Cloudflare-protected. Locally, only `createPersistentPage()` (`launchPersistentContext` + minimal config) bypasses the challenge — the shared `getBrowser()` singleton in `utils/browser.ts` triggers the challenge cold every run and times out. The PDF importer's `proxyFetch()` falls back to a persistent Playwright context for the discovery page HTML when direct fetch returns 403/503.
 - **PDF binaries are NOT Cloudflare-protected**: `core-cms.bfi.org.uk/media/*/download` serves directly via plain `fetch()`. Only the discovery page (which lists the PDF URLs) needs the bypass.
 - **The Playwright click-based scraper (`cinemas/bfi.ts`) is structurally broken locally**: BFI's Vista Online .asp form submits trigger a fresh Cloudflare challenge per click that does not clear, so it produces 0 screenings. The PDF importer is the workaround.

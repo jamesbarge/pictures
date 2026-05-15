@@ -1,3 +1,12 @@
+## 2026-05-15: /scrape reliability — flaky-cinema detector, BFI yield gate, healthCheck retry
+**PR**: TBD | **Files**: `src/lib/scrape-quarantine.ts`, `src/scrapers/base.ts`, `src/scrapers/cinemas/bfi.ts`, `src/scripts/run-scrape-and-enrich.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`, plus tests
+- **New `detectFlakyCinemas`** in `src/lib/scrape-quarantine.ts`: ratio-based detector that surfaces cinemas with ≥30% empty-success or ≥30% failed runs across the last 10 attempts. Catches *alternating* failure patterns the consecutive-zero detector missed (BFI IMAX 60% empty success → critical, BFI Southbank 30% → warn, Close-Up 30% failed → warn). Pure analyzer (`analyzeRunsForFlakiness`) sorts inputs internally so callers can pass any order. Single windowed SQL (ROW_NUMBER OVER PARTITION) replaces 60 per-cinema queries; pre-flight dropped from ~2s to ~340ms.
+- **BFI yield gate** in `getOrLoadBFIScreenings`: throws when both PDF *and* programme-changes sources fail, instead of silently returning `[]`. The runner-factory records `status=failed` truthfully rather than masking Cloudflare blocks behind `success+0`. Cache now busts on rejection so a failure on one venue doesn't poison the other.
+- **`BaseScraper.healthCheck` retry-with-backoff**: 3 attempts, 10s timeout, 4s gap; fast-fails on 4xx, retries on 5xx + network errors. Rescues the Close-Up 03:17-03:21 UTC nightly-maintenance pattern (3 of 9 runs failed in past 7 days).
+- 21 new tests; live replay confirms BFI IMAX (critical), BFI Southbank (warn), Close-Up (warn) all surface correctly.
+
+---
+
 ## 2026-05-15: /scrape follow-ups — is_repertory at write time + stale-cinema is_active filter
 **PR**: TBD | **Files**: `src/scripts/cleanup-upcoming-films.ts`, `src/lib/scrape-quarantine.ts`
 - Closes the cycle-N+1 patrol dependency for `is_repertory`: the TMDB-match UPDATE path in `cleanup-upcoming-films.ts` now sets `isRepertory: isRepertoryFilm(release_date)` alongside `year`. The patrol caught 5 misflagged films in 5 consecutive cycles before this; now repertory films are tagged at write time using the same helper `film-matching.ts` already uses.
