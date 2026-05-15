@@ -528,6 +528,11 @@ async function insertScreening(
         .update(screeningsTable)
         .set({
           filmId,
+          // Always update datetime — a re-scrape may correct a BST-shift bug
+          // (Layer 0 of checkForDuplicate now matches on cinemaId+sourceId only,
+          // so we can land here with a different `duplicate.datetime`). Setting
+          // it unconditionally heals the row instead of leaving the old value.
+          datetime: screening.datetime,
           format: metadata.format,
           screen: screening.screen,
           isSpecialEvent: metadata.isSpecialEvent,
@@ -570,9 +575,16 @@ async function insertScreening(
     return false; // Updated, not added
   }
 
-  // Insert new screening with conflict handling for race conditions
+  // Insert new screening with conflict handling for race conditions.
+  //
+  // Conflict target depends on whether sourceId is present:
+  //   - With sourceId: use the (cinema_id, source_id) partial unique index.
+  //     This catches BST-shift dupes — a concurrent scrape inserting the same
+  //     source at a different datetime updates the existing row in place.
+  //   - Without sourceId: fall back to the legacy (film_id, cinema_id, datetime)
+  //     unique index for the handful of scrapers that don't emit source_ids.
   const now = new Date();
-  await db.insert(screeningsTable).values({
+  const baseValues = {
     id: uuidv4(),
     filmId,
     cinemaId,
@@ -591,19 +603,32 @@ async function insertScreening(
     bookingUrl: screening.bookingUrl,
     sourceId: screening.sourceId,
     scrapedAt: now,
-    // Set festival flag
     isFestivalScreening: !!screening.festivalSlug,
-    // Availability status from scraper
     availabilityStatus: screening.availabilityStatus ?? null,
     availabilityCheckedAt: screening.availabilityStatus ? now : null,
-  }).onConflictDoUpdate({
-    target: [screeningsTable.filmId, screeningsTable.cinemaId, screeningsTable.datetime],
-    set: {
-      scrapedAt: now,
-      bookingUrl: screening.bookingUrl,
-      updatedAt: now,
-    },
-  });
+  };
+
+  if (screening.sourceId) {
+    await db.insert(screeningsTable).values(baseValues).onConflictDoUpdate({
+      target: [screeningsTable.cinemaId, screeningsTable.sourceId],
+      set: {
+        filmId,
+        datetime: screening.datetime,
+        scrapedAt: now,
+        bookingUrl: screening.bookingUrl,
+        updatedAt: now,
+      },
+    });
+  } else {
+    await db.insert(screeningsTable).values(baseValues).onConflictDoUpdate({
+      target: [screeningsTable.filmId, screeningsTable.cinemaId, screeningsTable.datetime],
+      set: {
+        scrapedAt: now,
+        bookingUrl: screening.bookingUrl,
+        updatedAt: now,
+      },
+    });
+  }
 
   // Handle festival linking
   if (screening.festivalSlug) {

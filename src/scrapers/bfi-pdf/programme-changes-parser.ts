@@ -18,7 +18,7 @@
 
 import * as cheerio from "cheerio";
 import type { RawScreening } from "../types";
-import type { CheerioSelection } from "../utils/cheerio-types";
+import type { CheerioAPI, CheerioSelection } from "../utils/cheerio-types";
 import { fetchWithRetry } from "../utils/fetch-with-retry";
 import { CHROME_USER_AGENT_FULL } from "../constants";
 import { buildBFISearchUrl } from "./url-builder";
@@ -177,7 +177,7 @@ export function parseChangesPage(html: string): ProgrammeChangesResult {
 
     // Get the following text for screening info and notes
     const parentText = $el.parent().text();
-    const nextText = getFollowingText($el);
+    const nextText = getFollowingText($, $el);
 
     // Determine change type
     let changeType: ProgrammeChange["changeType"] = "other";
@@ -229,29 +229,93 @@ export function parseChangesPage(html: string): ProgrammeChangesResult {
 }
 
 /**
- * Get text following a bold element
+ * Get text following a bold element — bounded by the NEXT bold element so
+ * each film entry only sees its own screening times.
+ *
+ * The previous implementation called `$el.parent().text()` which returned the
+ * full parent text including every sibling `<b>` and its screening lines.
+ * Result: every film in a multi-film paragraph was matched against the SAME
+ * pool of times, producing rows like "Rose of Nevada / Surviving Earth /
+ * The Christophers all at 2026-05-15 11:50" — one real screening propagated
+ * to six unrelated films. See `programme-changes-parser.test.ts` for the
+ * fixture that reproduces the bug.
+ *
+ * The fixed walk:
+ *   1. Collect text from the current `<b>`'s sibling nodes until the next
+ *      `<b>`/`<strong>` at the same DOM level is reached.
+ *   2. If the paragraph ends without exhausting siblings, continue into
+ *      subsequent block-level siblings (paragraphs, divs) up to a small
+ *      cap, stopping at any element that contains a bold tag.
  */
-function getFollowingText($el: CheerioSelection): string {
+function getFollowingText($: CheerioAPI, $el: CheerioSelection): string {
   const parts: string[] = [];
 
-  // Get text from same parent
-  const parentText = $el.parent().text();
-  parts.push(parentText);
+  // 1. Walk through sibling nodes AFTER this <b> within its parent. Stop the
+  //    moment we hit another <b>/<strong> — that's the next film entry.
+  let hitNextBold = false;
+  let $sib = $el.next();
+  while ($sib.length) {
+    const tag = ($sib.get(0) as { tagName?: string }).tagName?.toLowerCase();
+    if (tag === "b" || tag === "strong") {
+      hitNextBold = true;
+      break;
+    }
+    parts.push($sib.text());
+    $sib = $sib.next();
+  }
 
-  // Get next siblings' text
-  let $next = $el.parent().next();
-  let count = 0;
-  while ($next.length && count < 10) {
-    const text = $next.text().trim();
-    if (text) {
-      // Stop if we hit another film title (bold text at start)
-      if ($next.find("b, strong").length && $next.find("b, strong").first().text().trim() === $next.text().trim()) {
+  // Cheerio's `nextAll()`/`.next()` skips raw text nodes. If our scan returned
+  // nothing, the parent likely has the screening times as direct text content.
+  // Fall back to slicing the parent's text between THIS <b>'s text and the
+  // next sibling <b>'s text.
+  if (parts.length === 0) {
+    const parentText = $el.parent().text();
+    const ownText = $el.text();
+    const startIdx = parentText.indexOf(ownText);
+    if (startIdx >= 0) {
+      let slice = parentText.slice(startIdx + ownText.length);
+      // Truncate at the next bold sibling's text, if any.
+      $el
+        .parent()
+        .find("b, strong")
+        .each((_: number, b: unknown) => {
+          if (b === $el.get(0)) return;
+          const bText = $(b as Parameters<typeof $>[0]).text();
+          const pos = slice.indexOf(bText);
+          if (pos > 0) {
+            slice = slice.slice(0, pos);
+            return false;
+          }
+          return undefined;
+        });
+      parts.push(slice);
+    }
+  }
+
+  // 2. If we didn't hit a bold sibling in this parent, continue into the
+  //    next block-level siblings (paragraphs/divs). Stop at the first one
+  //    whose first bold element marks the next film.
+  if (!hitNextBold) {
+    let $nextBlock = $el.parent().next();
+    let walked = 0;
+    while ($nextBlock.length && walked < 6) {
+      const $firstBold = $nextBlock.find("b, strong").first();
+      if ($firstBold.length) {
+        const blockText = $nextBlock.text();
+        const boldText = $firstBold.text().trim();
+        if (boldText === blockText.trim()) {
+          // Whole block is the next film title — stop entirely.
+          break;
+        }
+        // Bold appears mid-block. Take only text before it, then stop.
+        const idx = blockText.indexOf(boldText);
+        if (idx > 0) parts.push(blockText.slice(0, idx));
         break;
       }
-      parts.push(text);
+      parts.push($nextBlock.text());
+      $nextBlock = $nextBlock.next();
+      walked++;
     }
-    $next = $next.next();
-    count++;
   }
 
   return parts.join(" ");

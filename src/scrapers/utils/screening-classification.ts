@@ -136,7 +136,14 @@ export async function checkForDuplicate(
   normalizeTitle: (title: string) => string,
   sourceId?: string
 ): Promise<DuplicateCheckResult> {
-  // Layer 0: same (cinemaId, sourceId, datetime) regardless of filmId.
+  // Layer 0: same (cinemaId, sourceId) regardless of filmId or datetime.
+  //
+  // Datetime is intentionally NOT in the WHERE clause — if it were, a re-scrape
+  // with a corrected datetime (e.g. after a BST timezone-conversion regression
+  // is fixed) would miss the existing row and insert a fresh one, leaving the
+  // old (wrong-hour) row stranded. Without the datetime filter, the caller can
+  // UPDATE the existing row's datetime in place. The companion unique index
+  // `idx_screenings_cinema_source` enforces this invariant at the DB level.
   if (sourceId) {
     const [bySource] = await db
       .select()
@@ -144,8 +151,7 @@ export async function checkForDuplicate(
       .where(
         and(
           eq(screeningsTable.cinemaId, cinemaId),
-          eq(screeningsTable.sourceId, sourceId),
-          eq(screeningsTable.datetime, datetime)
+          eq(screeningsTable.sourceId, sourceId)
         )
       )
       .limit(1);
