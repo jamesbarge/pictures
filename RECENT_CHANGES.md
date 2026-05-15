@@ -1,3 +1,12 @@
+## 2026-05-15: /goal command — terminal goal-driven loop with measurable end conditions
+**PR**: TBD | **Files**: `tasks/goal.md`, `scripts/goal-check-{coverage,silent-breakers,booking-links,lighthouse,axe,posthog-funnel,dqs}.ts`, `scripts/goal-status.ts`, `changelogs/2026-05-15-goal-command.md`
+- New `/goal` slash command (local in `.claude/commands/`): unlike `/kaizen` and `/posthog-optimize` (perpetual), this one declares an explicit finish line and exits when crossed. Reads `tasks/goal.md`, runs all measurement scripts, picks the highest-leverage failing condition, fixes one sub-task per invocation, holds merge behind the existing `ship it` deployment gate.
+- Goal: "Pictures.london v1 — complete, fast, accessible, trustworthy". Seven end conditions: London independents covered, no silent breakers, zero broken booking links, Lighthouse mobile ≥90, axe-core clean, PostHog `booking_click` proof-of-life per cinema, DQS floor ≥85 across two consecutive `/data-check` runs.
+- Orchestrator (`scripts/goal-status.ts`) runs every check, prints status table, writes `.claude/goal-status.json` for the slash command to read. `--fast` skips lighthouse + axe for inner-loop iteration.
+- No new dependencies — lighthouse and axe-core invoked via `npx` on demand per CLAUDE.md dep-rule.
+
+---
+
 ## 2026-05-15: /scrape follow-ups — is_repertory at write time + stale-cinema is_active filter
 **PR**: TBD | **Files**: `src/scripts/cleanup-upcoming-films.ts`, `src/lib/scrape-quarantine.ts`
 - Closes the cycle-N+1 patrol dependency for `is_repertory`: the TMDB-match UPDATE path in `cleanup-upcoming-films.ts` now sets `isRepertory: isRepertoryFilm(release_date)` alongside `year`. The patrol caught 5 misflagged films in 5 consecutive cycles before this; now repertory films are tagged at write time using the same helper `film-matching.ts` already uses.
