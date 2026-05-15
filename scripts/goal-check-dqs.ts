@@ -78,7 +78,10 @@ function adjustedComposite(entry: DqsEntry, excludeKey: DqsKey | null): number {
     if (typeof value === "number") weightedSum += value * weight;
   }
   if (totalWeight === 0) return 0;
-  // Scale to 0-100 to match data-check.ts's compositeScore range.
+  // First ×100 scales the 0-1 weighted ratio up to a 0-100 score (the
+  // producer skips this step because its weights already sum to 100; ours
+  // re-normalises after exclusion so it doesn't). Second ×100/100 is
+  // two-decimal rounding to match the producer's output format.
   return Math.round((weightedSum / totalWeight) * 100 * 100) / 100;
 }
 
