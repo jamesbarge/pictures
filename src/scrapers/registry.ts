@@ -50,6 +50,7 @@ import { createPeckhamplexScraper } from "@/scrapers/cinemas/peckhamplex";
 import { createNickelScraper } from "@/scrapers/cinemas/the-nickel";
 import { createGardenCinemaScraper } from "@/scrapers/cinemas/garden";
 import { createCloseUpCinemaScraper } from "@/scrapers/cinemas/close-up";
+import { createCinemaMuseumScraper } from "@/scrapers/cinemas/cinema-museum";
 import { createCineLumiereScraper } from "@/scrapers/cinemas/cine-lumiere";
 import { createCastleSidcupScraper } from "@/scrapers/cinemas/castle-sidcup";
 import { createArtHouseCrouchEndScraper } from "@/scrapers/cinemas/arthouse-crouch-end";
@@ -265,6 +266,16 @@ const CHEERIO_ENTRIES: ScraperRegistryEntry[] = [
       type: "single",
       venue: getVenueFromRegistry("close-up-cinema"),
       createScraper: () => createCloseUpCinemaScraper(),
+    }),
+  },
+  {
+    taskId: "scraper-cinema-museum",
+    type: "single",
+    wave: "cheerio",
+    buildConfig: (): SingleVenueConfig => ({
+      type: "single",
+      venue: getVenueFromRegistry("cinema-museum"),
+      createScraper: () => createCinemaMuseumScraper(),
     }),
   },
   {
