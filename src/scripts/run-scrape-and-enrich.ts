@@ -26,6 +26,8 @@ import {
   formatQuarantineReport,
   detectFlakyCinemas,
   formatFlakyReport,
+  detectYieldDrop,
+  formatYieldDropReport,
   detectStaleCinemas,
   formatStaleCinemaReport,
   readRecentDqs,
@@ -95,23 +97,28 @@ async function main(): Promise<void> {
 
   // Phase 0: Pre-flight quarantine — read-only, ~1s. Tells the user which
   // cinemas have been silently broken BEFORE they sit through a 30-60 min
-  // /scrape that just re-runs them. Two signals:
+  // /scrape that just re-runs them. Three signals, fully orthogonal:
   //   1. Silent breakers — N consecutive `success+0` runs (Prowlarr pattern)
   //   2. Flaky cinemas   — high empty-success or failed ratio over wider window
-  // Both always run. Flaky catches alternating empty/non-empty patterns that
-  // evade the consecutive-zero detector (BFI IMAX, BFI Southbank in May 2026).
+  //   3. Yield drops     — recent avg yield << baseline avg (silent partial regressions)
+  // All always run. Flaky catches alternating empty/non-empty patterns that
+  // evade the consecutive-zero detector. Yield-drop catches "success+low" cases
+  // (e.g. PDF parser regression that returns 20 instead of 200 screenings)
+  // that look healthy to the other two detectors.
   phases.push(
-    await runPhase("Pre-flight (silent-breaker + flaky check)", async () => {
-      const [breakers, flaky] = await Promise.all([
+    await runPhase("Pre-flight (silent-breaker + flaky + yield-drop check)", async () => {
+      const [breakers, flaky, yieldDrops] = await Promise.all([
         detectSilentBreakers(),
         detectFlakyCinemas(),
+        detectYieldDrop(),
       ]);
-      if (breakers.length === 0 && flaky.length === 0) {
-        console.log("[pre-flight] No broken or flaky cinemas detected — proceeding.");
+      const total = breakers.length + flaky.length + yieldDrops.length;
+      if (total === 0) {
+        console.log("[pre-flight] No broken, flaky, or yield-dropping cinemas detected — proceeding.");
       } else {
         if (breakers.length > 0) console.log(formatQuarantineReport(breakers));
         if (flaky.length > 0) console.log(formatFlakyReport(flaky));
-        const total = breakers.length + flaky.length;
+        if (yieldDrops.length > 0) console.log(formatYieldDropReport(yieldDrops));
         console.log(
           `[pre-flight] ${total} cinema signal(s) above. Consider \`/scrape-one <slug>\` ` +
             "to investigate before starting a full run.",
@@ -119,7 +126,7 @@ async function main(): Promise<void> {
       }
       return {
         ok: true,
-        detail: `${breakers.length} broken, ${flaky.length} flaky`,
+        detail: `${breakers.length} broken, ${flaky.length} flaky, ${yieldDrops.length} yield-drop`,
       };
     }),
   );
@@ -155,19 +162,21 @@ async function main(): Promise<void> {
     console.log("[scrape-and-enrich] --skip-enrich: skipping enrichment phases");
   }
 
-  // Phase 4: Quarantine detection (always runs — read-only). Reports both
-  // silent breakers and flaky cinemas so post-run state is visible.
+  // Phase 4: Quarantine detection (always runs — read-only). Reports all
+  // three detectors so post-run state is fully visible.
   phases.push(
-    await runPhase("Health check (silent-breaker + flaky)", async () => {
-      const [breakers, flaky] = await Promise.all([
+    await runPhase("Health check (silent-breaker + flaky + yield-drop)", async () => {
+      const [breakers, flaky, yieldDrops] = await Promise.all([
         detectSilentBreakers(),
         detectFlakyCinemas(),
+        detectYieldDrop(),
       ]);
       console.log(formatQuarantineReport(breakers));
       console.log(formatFlakyReport(flaky));
+      console.log(formatYieldDropReport(yieldDrops));
       return {
         ok: true,
-        detail: `${breakers.length} broken, ${flaky.length} flaky`,
+        detail: `${breakers.length} broken, ${flaky.length} flaky, ${yieldDrops.length} yield-drop`,
       };
     }),
   );

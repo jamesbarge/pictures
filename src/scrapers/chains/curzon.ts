@@ -122,7 +122,7 @@ export const CURZON_VENUES: VenueConfig[] = [
     postcode: "TW9 1NE",
     address: "3 Water Lane",
     chainVenueId: "RIC1",
-    active: false, // Venue closed — no listings since Feb 2026
+    active: false, // Marked inactive Feb 2026 — no listings via Vista API. 2026-05-15 web search shows live programmes on www.curzon.com/venues/<slug>/ but API still 401s without prod-side auth token, so left inactive pending verification with a fresh JWT from a prod-environment probe.
   },
   {
     id: "curzon-wimbledon",
@@ -133,7 +133,7 @@ export const CURZON_VENUES: VenueConfig[] = [
     postcode: "SW19 8YA",
     address: "23 The Broadway",
     chainVenueId: "WIM01",
-    active: false, // Venue closed — no listings since Feb 2026
+    active: false, // Marked inactive Feb 2026 — no listings via Vista API. 2026-05-15 web search shows live programmes on www.curzon.com/venues/<slug>/ but API still 401s without prod-side auth token, so left inactive pending verification with a fresh JWT from a prod-environment probe.
   },
   {
     id: "curzon-camden",
@@ -144,7 +144,7 @@ export const CURZON_VENUES: VenueConfig[] = [
     postcode: "NW1 8QP",
     address: "Hawley Wharf",
     chainVenueId: "CAM1",
-    active: false, // Venue closed — no listings since Feb 2026
+    active: false, // Marked inactive Feb 2026 — no listings via Vista API. 2026-05-15 web search shows live programmes on www.curzon.com/venues/<slug>/ but API still 401s without prod-side auth token, so left inactive pending verification with a fresh JWT from a prod-environment probe.
   },
 ];
 
