@@ -47,9 +47,11 @@ Each condition declares the script that measures it. `/goal` runs every script e
 
 ### 6. PostHog booking funnel proof-of-life
 - **Measure:** `npx tsx --env-file=.env.local -r tsconfig-paths/register scripts/goal-check-posthog-funnel.ts`
-- **Passes when:** in the trailing 30 days, every cinema with `is_active = true` has ≥ 1 PostHog `booking_click` event recorded. Cinemas with zero clicks indicate a structurally broken booking URL even if HTTP returns 200.
+- **Passes when:** EITHER (a) every cinema with `is_active = true` has ≥ 1 PostHog `booking_link_clicked` event in the trailing 30 days, OR (b) total site-wide clicks in that window are below the 500-event volume floor (the condition is deferred — see below).
+- **Volume floor rationale:** at low traffic, per-cinema zero-click counts are a growth signal not a quality one. Confirmed empirically on 2026-05-15: 52 total events / 30d across 56 cinemas means the long tail will have zeros regardless of whether booking links work. The condition defers until the site has enough volume to make the metric meaningful.
 - **Requires:** `POSTHOG_PERSONAL_API_KEY` and `POSTHOG_PROJECT_ID` in `.env.local`.
 - **Sub-tasks:**
+  - [ ] Replace the deferral path with a Stagehand-based verifier: load each cinema's most-recent future booking URL with a headless browser, assert the page contains the film title or cinema name. Traffic-independent. Tracked here so when /goal targets condition #6 above the floor we have the upgrade path queued.
 
 ### 7. Data quality floor
 - **Measure:** `npx tsx --env-file=.env.local -r tsconfig-paths/register scripts/goal-check-dqs.ts`

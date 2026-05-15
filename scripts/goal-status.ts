@@ -68,9 +68,14 @@ function runOne(scriptPath: string): { pass: boolean; raw: unknown; durationMs: 
 }
 
 function fmtRow(r: ConditionResult): string {
-  const tick = r.skipped ? "⏭ " : r.pass ? "✅" : "❌";
+  // A "deferred" condition passes the rollup but isn't producing a real
+  // quality signal — surface it distinctly so users don't read the ✅ as
+  // proof the underlying thing works. See goal-check-posthog-funnel.ts.
+  const deferred = (r.rawJson as { deferred?: boolean })?.deferred === true;
+  const tick = r.skipped ? "⏭ " : deferred ? "ℹ️ " : r.pass ? "✅" : "❌";
   const dur = `${(r.durationMs / 1000).toFixed(1)}s`;
-  return `${tick}  ${r.label.padEnd(40)} (${dur})`;
+  const suffix = deferred ? " — deferred" : "";
+  return `${tick}  ${r.label.padEnd(40)} (${dur})${suffix}`;
 }
 
 function main() {
