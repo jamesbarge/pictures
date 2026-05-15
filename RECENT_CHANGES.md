@@ -1,3 +1,13 @@
+## 2026-05-15: /scrape detection — yield-drop detector (closes third detection gap)
+**PR**: TBD | **Files**: `src/lib/scrape-quarantine.ts`, `src/lib/scrape-quarantine.test.ts`, `src/scripts/run-scrape-and-enrich.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`, `.claude/commands/scrape.md`, `src/scrapers/chains/curzon.ts`
+- New `detectYieldDrop` + `analyzeYieldDrop` + `formatYieldDropReport`. Compares recent avg `screening_count` (last 5 successful runs) against a trailing baseline (next 20). Flags when `recentAvg / baselineAvg ≤ 0.5` (warn) or `≤ 0.3` (critical). Closes the third detection gap (silent breakers + flaky catch `success+0` / `failed`; yield-drop catches `success+low-but-non-zero` — e.g. PDF parser silently dropping one venue from a multi-venue scrape).
+- Single windowed SQL (ROW_NUMBER OVER PARTITION), filters to `status='success'` so failed/empty rows don't pollute the math. Live replay against production: 0 false positives in 461ms.
+- 10 new unit tests covering: window-size gate, healthy ratio, critical, warn, baseline-floor, BFI-style 200→30 regression, ASC input ordering, custom thresholds, formatter output.
+- Wired into both pre-flight and post-run health phases of `/scrape`.
+- Bonus: updated `curzon-camden`/`curzon-richmond`/`curzon-wimbledon` venue comments to note 2026-05-15 web search shows live public listings — left `active: false` pending verification with a prod-side JWT probe (API still 401s locally without Cloudflare bypass).
+
+---
+
 ## 2026-05-15: /scrape reliability — flaky-cinema detector, BFI yield gate, healthCheck retry
 **PR**: TBD | **Files**: `src/lib/scrape-quarantine.ts`, `src/scrapers/base.ts`, `src/scrapers/cinemas/bfi.ts`, `src/scripts/run-scrape-and-enrich.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`, plus tests
 - **New `detectFlakyCinemas`** in `src/lib/scrape-quarantine.ts`: ratio-based detector that surfaces cinemas with ≥30% empty-success or ≥30% failed runs across the last 10 attempts. Catches *alternating* failure patterns the consecutive-zero detector missed (BFI IMAX 60% empty success → critical, BFI Southbank 30% → warn, Close-Up 30% failed → warn). Pure analyzer (`analyzeRunsForFlakiness`) sorts inputs internally so callers can pass any order. Single windowed SQL (ROW_NUMBER OVER PARTITION) replaces 60 per-cinema queries; pre-flight dropped from ~2s to ~340ms.
