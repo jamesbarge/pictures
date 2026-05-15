@@ -1,3 +1,15 @@
+## 2026-05-15: Add Cinema Museum scraper via iCal feed
+**PR**: TBD | **Files**: `src/scrapers/cinemas/cinema-museum.ts`, `src/scrapers/cinemas/cinema-museum.test.ts`, `src/scrapers/registry.ts`, `src/config/cinema-registry.ts`
+- New scraper for **The Cinema Museum** (Kennington, SE11) — independent venue in the former Lambeth workhouse, programmes 35mm + silent + Kennington Bioscope evenings. Priority 2 in the 2026-05-15 London coverage audit. Active cinema count 57 → 58.
+- Uses the WordPress Events Calendar plugin's public **iCal feed** (`/schedule/?ical=1`) rather than HTML scraping — single request, structured data (DTSTART, SUMMARY, URL, UID, CATEGORIES), no DOM parsing.
+- Minimal in-tree iCal parser (`parseVEvents`) — RFC 5545 line folding + TEXT escapes (`\,`, `\;`, `\\`, `\n`). No new npm dependency.
+- Filters out `Tours` and `Bazaars` categories (museum tours, bric-a-brac sales) — keeps film screenings, talks, Kennington Bioscope, and the 35mm classics series.
+- **WAF workaround**: cinemamuseum.org.uk's Pressidium host returns 403 for browser-like User-Agents on the iCal endpoint but allows generic calendar-client UAs. The scraper overrides both `fetchPages` and `healthCheck` with a `pictures-cinema-museum-scraper/1.0` UA. Documented inline.
+- 11 unit tests (3 parser, 8 scraper) against a 3-event iCal fixture covering filtering, BST→UTC conversion, UID prefixing, URL preservation, escape unescape, line folding, empty feed.
+- Live verification: 23 valid screenings in ~725 ms; programme through May/June 2026.
+
+---
+
 ## 2026-05-15: /goal command — terminal goal-driven loop with measurable end conditions
 **PR**: TBD | **Files**: `tasks/goal.md`, `scripts/goal-check-{coverage,silent-breakers,booking-links,lighthouse,axe,posthog-funnel,dqs}.ts`, `scripts/goal-status.ts`, `changelogs/2026-05-15-goal-command.md`
 - New `/goal` slash command (local in `.claude/commands/`): unlike `/kaizen` and `/posthog-optimize` (perpetual), this one declares an explicit finish line and exits when crossed. Reads `tasks/goal.md`, runs all measurement scripts, picks the highest-leverage failing condition, fixes one sub-task per invocation, holds merge behind the existing `ship it` deployment gate.
