@@ -68,9 +68,14 @@ function runOne(scriptPath: string): { pass: boolean; raw: unknown; durationMs: 
 }
 
 function fmtRow(r: ConditionResult): string {
-  const tick = r.skipped ? "⏭ " : r.pass ? "✅" : "❌";
+  // A "deferred" condition passes the rollup but isn't producing a real
+  // quality signal — surface it distinctly so users don't read the ✅ as
+  // proof the underlying thing works. See goal-check-posthog-funnel.ts.
+  const deferred = (r.rawJson as { deferred?: boolean })?.deferred === true;
+  const tick = r.skipped ? "⏭ " : deferred ? "ℹ️ " : r.pass ? "✅" : "❌";
   const dur = `${(r.durationMs / 1000).toFixed(1)}s`;
-  return `${tick}  ${r.label.padEnd(40)} (${dur})`;
+  const suffix = deferred ? " — deferred" : "";
+  return `${tick}  ${r.label.padEnd(40)} (${dur})${suffix}`;
 }
 
 function main() {
@@ -93,20 +98,38 @@ function main() {
     results.push({ id: c.id, label: c.label, pass, rawJson: raw, durationMs });
   }
 
-  const nonSkipped = results.filter((r) => !r.skipped);
+  const isDeferred = (r: ConditionResult): boolean =>
+    (r.rawJson as { deferred?: boolean })?.deferred === true;
+
+  // Annotate each result with its deferred state so the JSON payload reflects
+  // it for the /goal slash command's consumption.
+  const annotated = results.map((r) => ({ ...r, deferred: isDeferred(r) }));
+
+  const nonSkipped = annotated.filter((r) => !r.skipped);
   const allPass = nonSkipped.length > 0 && nonSkipped.every((r) => r.pass);
+  const deferredCount = nonSkipped.filter((r) => r.deferred).length;
+  const anyDeferred = deferredCount > 0;
+  // A deferred condition is not producing a quality signal — even if every
+  // condition technically passes, we MUST NOT print "goal is ACHIEVED" while
+  // any deferral is in effect. That would be a dishonest rollup.
+  const trulyAchieved = allPass && !anyDeferred && !FAST;
 
   // Print human-readable table
   console.log("\n──────────────────────────────────────────────────────────");
   console.log("  Goal status — pictures.london v1");
   console.log("──────────────────────────────────────────────────────────");
-  for (const r of results) console.log(fmtRow(r));
+  for (const r of annotated) console.log(fmtRow(r));
   console.log("──────────────────────────────────────────────────────────");
+  const passing = nonSkipped.filter((r) => r.pass && !r.deferred).length;
   const verdict = FAST
-    ? `${nonSkipped.filter((r) => r.pass).length}/${nonSkipped.length} measured (lighthouse + axe skipped via --fast)`
-    : allPass
+    ? `${nonSkipped.filter((r) => r.pass).length}/${nonSkipped.length} measured (lighthouse + axe skipped via --fast)` +
+      (anyDeferred ? `, ${deferredCount} deferred` : "")
+    : trulyAchieved
       ? "🎯 ALL CONDITIONS PASS — goal is ACHIEVED"
-      : `${nonSkipped.filter((r) => r.pass).length}/${nonSkipped.length} conditions passing`;
+      : allPass && anyDeferred
+        ? `${passing}/${nonSkipped.length} passing, ${deferredCount} deferred — not yet achieved (deferred conditions don't count toward achievement)`
+        : `${nonSkipped.filter((r) => r.pass).length}/${nonSkipped.length} conditions passing` +
+          (anyDeferred ? ` (${deferredCount} of those deferred)` : "");
   console.log(`  ${verdict}\n`);
 
   // Write summary file for /goal slash command to read
@@ -117,8 +140,10 @@ function main() {
       {
         timestamp: new Date().toISOString(),
         fastMode: FAST,
-        allPass: !FAST && allPass,
-        results,
+        allPass: trulyAchieved,
+        anyDeferred,
+        deferredCount,
+        results: annotated,
       },
       null,
       2,
@@ -126,7 +151,7 @@ function main() {
   );
   console.log(`  Summary → ${out}\n`);
 
-  process.exit(allPass && !FAST ? 0 : 1);
+  process.exit(trulyAchieved ? 0 : 1);
 }
 
 main();

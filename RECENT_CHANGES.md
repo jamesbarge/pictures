@@ -1,3 +1,12 @@
+## 2026-05-15: /goal condition #6 — defer below 500-event traffic floor
+**PR**: TBD | **Files**: `scripts/goal-check-posthog-funnel.ts`, `scripts/goal-status.ts`, `tasks/goal.md`, `changelogs/2026-05-15-goal-condition-6-traffic-floor.md`
+- Empirical probe found pictures.london emits 52 `booking_link_clicked` events / 30d across 56 active cinemas, all properly tagged with `cinema_id`. The "31 zero-click cinemas" surfaced in the first /goal run is a traffic-distribution artefact, not a tracking bug or product defect.
+- Condition #6 now defers when total monthly clicks < 500 (returns `pass: true, deferred: true`). Above the floor, the existing per-cinema check engages. This stops /goal from endlessly targeting an impossible-at-this-traffic condition while the goal file pins the upgrade path (Stagehand-based booking-URL verifier as a sub-task).
+- Orchestrator status table now shows `ℹ️ — deferred` instead of `✅` for deferred conditions so users don't misread the rollup as proof the underlying thing works. The headline verdict ("🎯 ALL CONDITIONS PASS — goal is ACHIEVED") is now gated on `!anyDeferred` so the goal can't be falsely declared achieved while a condition is in deferred state.
+- Regression guard: persists prior `totalClicks` to `.claude/goal-posthog-funnel-last.json`. If the current window's total drops below 50% of a prior baseline that was above the floor, the condition fails loudly with a "volume regression" reason rather than silently flipping to deferred-pass. Catches analytics breakage (PostHog key rotated, frontend tracker removed, ad-blocker surge) instead of masking it.
+
+---
+
 ## 2026-05-15: /goal command — terminal goal-driven loop with measurable end conditions
 **PR**: TBD | **Files**: `tasks/goal.md`, `scripts/goal-check-{coverage,silent-breakers,booking-links,lighthouse,axe,posthog-funnel,dqs}.ts`, `scripts/goal-status.ts`, `changelogs/2026-05-15-goal-command.md`
 - New `/goal` slash command (local in `.claude/commands/`): unlike `/kaizen` and `/posthog-optimize` (perpetual), this one declares an explicit finish line and exits when crossed. Reads `tasks/goal.md`, runs all measurement scripts, picks the highest-leverage failing condition, fixes one sub-task per invocation, holds merge behind the existing `ship it` deployment gate.
