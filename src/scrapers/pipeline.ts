@@ -723,7 +723,14 @@ export async function ensureCinemaExists(cinema: CinemaInput): Promise<void> {
     .limit(1);
 
   if (existing.length > 0) {
-    // Update existing cinema
+    // Update existing cinema. Re-asserts `isActive=true` because the
+    // scraper running for this cinema is the source-of-truth signal for
+    // its activeness — disabling should be done by removing the venue
+    // from the chain config / registry, not by flipping the DB flag.
+    // Background: 2026-05-17 reactivation of Curzon Camden/Richmond/Wimbledon
+    // showed that DB `is_active=false` rows can become stale after a code
+    // change re-enables the venue (the chain scraper config and the DB
+    // flag fell out of sync).
     await db
       .update(cinemas)
       .set({
@@ -734,6 +741,7 @@ export async function ensureCinemaExists(cinema: CinemaInput): Promise<void> {
         // Cast address to schema type - scrapers provide partial data
         address: cinema.address as typeof cinemas.$inferInsert["address"],
         features: cinema.features || [],
+        isActive: true,
         updatedAt: new Date(),
       })
       .where(eq(cinemas.id, cinema.id));

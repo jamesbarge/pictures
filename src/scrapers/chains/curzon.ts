@@ -122,7 +122,7 @@ export const CURZON_VENUES: VenueConfig[] = [
     postcode: "TW9 1NE",
     address: "3 Water Lane",
     chainVenueId: "RIC1",
-    active: false, // Marked inactive Feb 2026 — no listings via Vista API. 2026-05-15 web search shows live programmes on www.curzon.com/venues/<slug>/ but API still 401s without prod-side auth token, so left inactive pending verification with a fresh JWT from a prod-environment probe.
+    active: true, // Re-activated 2026-05-17: live API probe via Bearer-prefixed JWT returns 15 future-dated screenings. Earlier "inactive Feb 2026" mark was a misread (the auth-header format had drifted; not a venue closure).
   },
   {
     id: "curzon-wimbledon",
@@ -132,8 +132,8 @@ export const CURZON_VENUES: VenueConfig[] = [
     area: "Wimbledon",
     postcode: "SW19 8YA",
     address: "23 The Broadway",
-    chainVenueId: "WIM01",
-    active: false, // Marked inactive Feb 2026 — no listings via Vista API. 2026-05-15 web search shows live programmes on www.curzon.com/venues/<slug>/ but API still 401s without prod-side auth token, so left inactive pending verification with a fresh JWT from a prod-environment probe.
+    chainVenueId: "WIM1", // Corrected 2026-05-17: was WIM01 (typo) which returned HTTP 400; WIM1 is the actual Vista API site code.
+    active: true, // Re-activated 2026-05-17: live API probe returns programming. Venue was never closed; previous mark was based on the wrong chainVenueId returning errors.
   },
   {
     id: "curzon-camden",
@@ -144,7 +144,7 @@ export const CURZON_VENUES: VenueConfig[] = [
     postcode: "NW1 8QP",
     address: "Hawley Wharf",
     chainVenueId: "CAM1",
-    active: false, // Marked inactive Feb 2026 — no listings via Vista API. 2026-05-15 web search shows live programmes on www.curzon.com/venues/<slug>/ but API still 401s without prod-side auth token, so left inactive pending verification with a fresh JWT from a prod-environment probe.
+    active: true, // Re-activated 2026-05-17: live API probe returns 25 future-dated screenings. Earlier "inactive Feb 2026" mark was a misread (the auth-header format had drifted; not a venue closure).
   },
 ];
 

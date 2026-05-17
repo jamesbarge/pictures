@@ -1,3 +1,15 @@
+## 2026-05-17: Reactivate Curzon Camden + Richmond + Wimbledon (also fix Wimbledon siteId typo)
+**PR**: TBD | **Files**: `src/scrapers/chains/curzon.ts`, `src/scrapers/pipeline.ts`
+- All 3 Curzon venues previously marked `active: false` are actually **live and programming**. The "no listings since Feb 2026" comment was wrong — verified via live API probe with Bearer-prefixed JWT:
+  - **Curzon Camden** (CAM1): 25 future-dated screenings
+  - **Curzon Richmond** (RIC1): 15 future-dated screenings
+  - **Curzon Wimbledon**: live programming — but the recorded `chainVenueId` `WIM01` was a TYPO. Correct site code is **WIM1** (HTTP 400 vs HTTP 200 — confirmed against the live API). Fixed.
+- Active cinema count: **60 → 63**.
+- Bonus: `ensureCinemaExists` in `pipeline.ts` now re-asserts `isActive: true` on existing-cinema UPDATE path (was only setting it on INSERT). Background: the 3 Curzon DB rows have lingering `is_active=false` from a prior code state; the chain config and DB flag had fallen out of sync. The new behaviour treats the chain config as source-of-truth for cinema activeness, since that's where scrapers are actually controlled.
+- 993/993 tests pass; type-clean.
+
+---
+
 ## 2026-05-17: Flaky detector — small-venue exclusion
 **PR**: TBD | **Files**: `src/lib/scrape-quarantine.ts`, `src/lib/scrape-quarantine.test.ts`
 - New `smallVenueMaxNonEmptyMean: 5` threshold in `FlakyThresholds`. When a cinema's mean screening-count across non-empty successful runs is ≤ threshold, the empty-success-ratio signal is suppressed (failed-ratio still fires normally).
