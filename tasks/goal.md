@@ -53,6 +53,20 @@ Each condition declares the script that measures it. `/goal` runs every script e
 - **Sub-tasks:**
   - [ ] Replace the deferral path with a Stagehand-based verifier: load each cinema's most-recent future booking URL with a headless browser, assert the page contains the film title or cinema name. Traffic-independent. Tracked here so when /goal targets condition #6 above the floor we have the upgrade path queued.
 
+### 8. No flaky-critical cinemas (ratio-based detection)
+- **Measure:** `npx tsx --env-file=.env.local -r tsconfig-paths/register scripts/goal-check-flaky-cinemas.ts`
+- **Passes when:** `detectFlakyCinemas()` returns zero entries at severity `critical` (≥50% empty-success or ≥50% failed across last 10 runs). Catches the BFI-IMAX-pattern alternating-failure mode the consecutive-zero detector misses.
+- **Defaults:** `minRuns=4, lookback=10, emptyRatioWarn=0.3, emptyRatioCritical=0.5, failedRatioWarn=0.3, failedRatioCritical=0.5`. Tunable in `src/lib/scrape-quarantine.ts::DEFAULT_FLAKY_THRESHOLDS`.
+- **Sub-tasks:**
+  - [ ] Investigate any cinema that lands in the `warn` bucket — they're at risk of becoming critical, worth a per-cinema look.
+
+### 9. Zero BST-pattern screenings on active cinemas
+- **Measure:** `npx tsx --env-file=.env.local -r tsconfig-paths/register scripts/goal-check-bst-sentinel.ts`
+- **Passes when:** zero screenings exist with `datetime` in the **02:00-09:59 UK-local** window across any active cinema for the next 30 days. Standing guardrail for the recurring BST off-by-one bug class. The 00:00-01:59 zone is excluded because Everyman, PCC, and Genesis legitimately programme midnight and 00:15 cult screenings (Mulholland Drive, Obsession, Hokum); the 02:00+ zone is the unambiguous bug signature — no UK cinema sells a 3am ticket.
+- **Allowlist:** per-cinema overrides for legitimate late-night programming live in `scripts/goal-check-bst-sentinel.ts::LEGITIMATE_LATE_NIGHT_CINEMAS`. Add a slug only when a real cinema-confirmed late-night screening trips the sentinel.
+- **Sub-tasks:**
+  - [ ] When the sentinel flags a cinema, root-cause the scraper rather than reflexively allowlisting. The guardrail's value is catching the bug class at the source.
+
 ### 7. Data quality floor
 - **Measure:** `npx tsx --env-file=.env.local -r tsconfig-paths/register scripts/goal-check-dqs.ts`
 - **Passes when:** the two most recent DQS scores recorded in `.claude/data-check-learnings.json` are both ≥ 85 composite. Single high score is not enough — the floor must hold across two consecutive `/data-check` runs.

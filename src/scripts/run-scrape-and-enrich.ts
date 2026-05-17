@@ -24,6 +24,8 @@ import { runScrapeAll } from "@/lib/jobs/scrape-all";
 import {
   detectSilentBreakers,
   formatQuarantineReport,
+  detectFlakyCinemas,
+  formatFlakyReport,
   detectStaleCinemas,
   formatStaleCinemaReport,
   readRecentDqs,
@@ -95,18 +97,40 @@ async function main(): Promise<void> {
   // cinemas have been silently broken for ≥2 runs BEFORE they sit through
   // a 30-60 min /scrape that just re-runs them. Always runs.
   phases.push(
-    await runPhase("Pre-flight (silent-breaker check)", async () => {
-      const breakers = await detectSilentBreakers();
-      if (breakers.length === 0) {
-        console.log("[pre-flight] No silently-broken cinemas detected — proceeding.");
+    await runPhase("Pre-flight (silent-breaker + flaky check)", async () => {
+      // Run both detectors in parallel — they walk the same scraper_runs
+      // table but ask different questions. Silent breakers fire on
+      // consecutive zeros; flaky fires on ratio-based patterns (e.g.
+      // success+0 every other run).
+      const [breakers, flaky] = await Promise.all([
+        detectSilentBreakers(),
+        detectFlakyCinemas(),
+      ]);
+      const criticalFlaky = flaky.filter((f) => f.severity === "critical");
+      if (breakers.length === 0 && criticalFlaky.length === 0) {
+        console.log("[pre-flight] No silently-broken or critical-flaky cinemas — proceeding.");
+        if (flaky.length > 0) {
+          // Warn-level flakies still get surfaced so the user can preemptively
+          // investigate before they escalate.
+          console.log(formatFlakyReport(flaky));
+        }
       } else {
-        console.log(formatQuarantineReport(breakers));
+        if (breakers.length > 0) {
+          console.log(formatQuarantineReport(breakers));
+        }
+        if (flaky.length > 0) {
+          console.log(formatFlakyReport(flaky));
+        }
         console.log(
-          `[pre-flight] ${breakers.length} cinema(s) above. Consider \`/scrape-one <slug>\` ` +
+          `[pre-flight] ${breakers.length} silent, ${criticalFlaky.length} critical-flaky, ` +
+            `${flaky.length - criticalFlaky.length} warn-flaky. Consider \`/scrape-one <slug>\` ` +
             "to investigate before starting a full run.",
         );
       }
-      return { ok: true, detail: `${breakers.length} flagged` };
+      return {
+        ok: true,
+        detail: `${breakers.length} silent / ${criticalFlaky.length} critical / ${flaky.length - criticalFlaky.length} warn`,
+      };
     }),
   );
 

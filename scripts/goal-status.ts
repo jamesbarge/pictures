@@ -32,6 +32,8 @@ const CONDITIONS: { id: string; label: string; script: string; slow?: boolean }[
   { id: "axe", label: "5. axe-core clean", script: "scripts/goal-check-axe.ts", slow: true },
   { id: "posthog-funnel", label: "6. PostHog booking proof-of-life", script: "scripts/goal-check-posthog-funnel.ts" },
   { id: "dqs", label: "7. DQS floor ≥ 85 × 2 runs", script: "scripts/goal-check-dqs.ts" },
+  { id: "flaky-cinemas", label: "8. No flaky-critical cinemas", script: "scripts/goal-check-flaky-cinemas.ts" },
+  { id: "bst-sentinel", label: "9. Zero BST-pattern screenings", script: "scripts/goal-check-bst-sentinel.ts" },
 ];
 
 function runOne(scriptPath: string): { pass: boolean; raw: unknown; durationMs: number } {

@@ -1,3 +1,12 @@
+## 2026-05-17: /goal conditions #8 & #9 — flaky detector + BST sentinel (Phase 1 of scraper-perfection plan)
+**PR**: TBD | **Files**: `src/lib/scrape-quarantine.ts`, `src/lib/scrape-quarantine.test.ts` (new), `src/scripts/run-scrape-and-enrich.ts`, `scripts/goal-check-flaky-cinemas.ts` (new), `scripts/goal-check-bst-sentinel.ts` (new), `scripts/goal-status.ts`, `tasks/goal.md`, `changelogs/2026-05-17-goal-ws-a-flaky-and-bst.md`
+- Phase 1 of the "make scrapers perfect" plan (WS-A: measurement substrate). Two new end conditions added to `tasks/goal.md`, taking the goal from 7 conditions to 9.
+- **Condition #8 — No flaky-critical cinemas**: resurrected `detectFlakyCinemas` (a ratio-based detector that catches alternating-failure cinemas like BFI IMAX in May 2026 — 14/21 success+0 runs but never two consecutive, so the silent-breaker detector missed it). New unit test covers 9 fixture scenarios including the BFI IMAX ground truth, Close-Up failed-runs pattern, threshold-bumping logic, and lastGoodRunAt accuracy. Wired into `/scrape` pre-flight so flakies are surfaced before a 30-60min run wastes time on broken cinemas.
+- **Condition #9 — Zero BST-pattern screenings**: standing guardrail for the recurring BST off-by-one bug class that has bitten Curzon, Everyman, and Picturehouse in the last 4 weeks. Queries the 02:00-09:59 UK-local window for upcoming screenings. The 00:00-01:59 zone is deliberately excluded because Everyman, PCC, and Genesis legitimately programme midnight cult screenings (Mulholland Drive, Obsession, Hokum at Everyman Broadgate were flagged during smoke-testing — false positives the wider window would have produced).
+- Smoke run confirms both conditions PASS on current data — 2 cinemas at warn-level flakiness (BFI IMAX, Close-Up) but 0 critical; 0 BST offenders in the tightened 02:00+ window.
+
+---
+
 ## 2026-05-17: DQS verifier repair — Barbican selector, Rio fallback, Picturehouse API
 **PR**: TBD | **Files**: `scripts/data-check.ts`, `tasks/goal.md`, `changelogs/2026-05-17-dqs-verifier-repair.md`
 - Diagnostic probe (now deleted) ran each `cinemaVerifications` verifier against one current production screening per cinema. Three verifiers were broken in different ways:
