@@ -30,6 +30,7 @@ const THEATER_IDS: Record<string, string> = {
   "barnet": "X06SI",
   "belsize-park": "X077P",
   "borough-yards": "G011I",
+  "brentford": "G049A",
   "broadgate": "X11NT",
   "canary-wharf": "X0VPB",
   "chelsea": "X078X",
@@ -40,6 +41,7 @@ const THEATER_IDS: Record<string, string> = {
   "muswell-hill": "X06SN",
   "screen-on-the-green": "X077O",
   "stratford-international": "G029X",
+  "the-whiteley": "G05D7",
   "walthamstow": "X0WT1",
 };
 
@@ -208,6 +210,28 @@ export const EVERYMAN_VENUES: VenueConfig[] = [
     address: "186 Hoe Street",
     features: ["bar"],
     active: false, // Venue no longer in Everyman's system
+  },
+  {
+    id: "everyman-brentford",
+    name: "Everyman Brentford",
+    shortName: "Everyman Brentford",
+    slug: "brentford",
+    area: "Brentford",
+    postcode: "TW8 8GR",
+    address: "Brentford Project, Catherine Wheel Road",
+    features: ["bar", "food", "accessible"],
+    active: true,
+  },
+  {
+    id: "everyman-the-whiteley",
+    name: "Everyman at The Whiteley",
+    shortName: "Everyman Whiteley",
+    slug: "the-whiteley",
+    area: "Bayswater",
+    postcode: "W2 4YN",
+    address: "The Whiteley, Porchester Gardens",
+    features: ["bar", "food", "accessible"],
+    active: true,
   },
 ];
 

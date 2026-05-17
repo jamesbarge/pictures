@@ -7,6 +7,14 @@
 
 ---
 
+## 2026-05-17: Add Everyman Brentford + Whiteley to chain config
+**PR**: TBD | **Files**: `src/scrapers/chains/everyman.ts`, `src/config/cinema-registry.ts`
+- Adds two newly-opened Everyman venues identified in the 2026-05-15 London coverage audit research: **Everyman Brentford** (TW8 8GR, theater ID `G049A`, 3 screens) and **Everyman at The Whiteley** (W2 4YN, theater ID `G05D7`, 5 screens, Bayswater).
+- Live API probe against `everymancinema.com/api/gatsby-source-boxofficeapi/scheduledMovies?theaterId=<ID>` returned HTTP 200 with screenings data for both. The existing Everyman chain scraper fans out via `THEATER_IDS` map — no new scraper code needed.
+- Active cinema count: 58 → 60.
+
+---
+
 ## 2026-05-17: /scrape detection — tests for analyzeRunsForSilentBreaker
 **PR**: TBD | **Files**: `src/lib/scrape-quarantine.test.ts`
 - Adds 6 unit tests for the pure `analyzeRunsForSilentBreaker` analyzer that landed unannotated via the #506 merge. Covers: below-threshold null, default-threshold fire + lastGood semantics, "stops at last good", failed-status doesn't fire silent-breaker (that's flaky's job), ASC/DESC input parity, custom threshold. 988/988 tests pass.
