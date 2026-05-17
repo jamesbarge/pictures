@@ -107,26 +107,35 @@ async function main(): Promise<void> {
   // that look healthy to the other two detectors.
   phases.push(
     await runPhase("Pre-flight (silent-breaker + flaky + yield-drop check)", async () => {
+      // Three orthogonal detectors run in parallel.
       const [breakers, flaky, yieldDrops] = await Promise.all([
         detectSilentBreakers(),
         detectFlakyCinemas(),
         detectYieldDrop(),
       ]);
+      const criticalFlaky = flaky.filter((f) => f.severity === "critical");
       const total = breakers.length + flaky.length + yieldDrops.length;
-      if (total === 0) {
-        console.log("[pre-flight] No broken, flaky, or yield-dropping cinemas detected — proceeding.");
+      if (breakers.length === 0 && criticalFlaky.length === 0 && yieldDrops.length === 0) {
+        console.log("[pre-flight] No silently-broken, critical-flaky, or yield-dropping cinemas — proceeding.");
+        if (flaky.length > 0) {
+          // Warn-level flakies still get surfaced so the user can preemptively
+          // investigate before they escalate.
+          console.log(formatFlakyReport(flaky));
+        }
       } else {
         if (breakers.length > 0) console.log(formatQuarantineReport(breakers));
         if (flaky.length > 0) console.log(formatFlakyReport(flaky));
         if (yieldDrops.length > 0) console.log(formatYieldDropReport(yieldDrops));
         console.log(
-          `[pre-flight] ${total} cinema signal(s) above. Consider \`/scrape-one <slug>\` ` +
-            "to investigate before starting a full run.",
+          `[pre-flight] ${breakers.length} silent, ${criticalFlaky.length} critical-flaky, ` +
+            `${flaky.length - criticalFlaky.length} warn-flaky, ${yieldDrops.length} yield-drop. ` +
+            "Consider `/scrape-one <slug>` to investigate before starting a full run.",
         );
+        void total;
       }
       return {
         ok: true,
-        detail: `${breakers.length} broken, ${flaky.length} flaky, ${yieldDrops.length} yield-drop`,
+        detail: `${breakers.length} silent / ${criticalFlaky.length} critical / ${flaky.length - criticalFlaky.length} warn / ${yieldDrops.length} yield-drop`,
       };
     }),
   );

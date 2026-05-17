@@ -8,12 +8,70 @@
 
 ---
 
-## 2026-05-15: /scrape reliability — flaky-cinema detector, BFI yield gate, healthCheck retry
-**PR**: TBD | **Files**: `src/lib/scrape-quarantine.ts`, `src/scrapers/base.ts`, `src/scrapers/cinemas/bfi.ts`, `src/scripts/run-scrape-and-enrich.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`, plus tests
-- **New `detectFlakyCinemas`** in `src/lib/scrape-quarantine.ts`: ratio-based detector that surfaces cinemas with ≥30% empty-success or ≥30% failed runs across the last 10 attempts. Catches *alternating* failure patterns the consecutive-zero detector missed (BFI IMAX 60% empty success → critical, BFI Southbank 30% → warn, Close-Up 30% failed → warn). Pure analyzer (`analyzeRunsForFlakiness`) sorts inputs internally so callers can pass any order. Single windowed SQL (ROW_NUMBER OVER PARTITION) replaces 60 per-cinema queries; pre-flight dropped from ~2s to ~340ms.
-- **BFI yield gate** in `getOrLoadBFIScreenings`: throws when both PDF *and* programme-changes sources fail, instead of silently returning `[]`. The runner-factory records `status=failed` truthfully rather than masking Cloudflare blocks behind `success+0`. Cache now busts on rejection so a failure on one venue doesn't poison the other.
-- **`BaseScraper.healthCheck` retry-with-backoff**: 3 attempts, 10s timeout, 4s gap; fast-fails on 4xx, retries on 5xx + network errors. Rescues the Close-Up 03:17-03:21 UTC nightly-maintenance pattern (3 of 9 runs failed in past 7 days).
-- 21 new tests; live replay confirms BFI IMAX (critical), BFI Southbank (warn), Close-Up (warn) all surface correctly.
+## 2026-05-17: /goal conditions #8 & #9 — flaky detector + BST sentinel (Phase 1 of scraper-perfection plan)
+**PR**: TBD | **Files**: `src/lib/scrape-quarantine.ts`, `src/lib/scrape-quarantine.test.ts` (new), `src/scripts/run-scrape-and-enrich.ts`, `scripts/goal-check-flaky-cinemas.ts` (new), `scripts/goal-check-bst-sentinel.ts` (new), `scripts/goal-status.ts`, `tasks/goal.md`, `changelogs/2026-05-17-goal-ws-a-flaky-and-bst.md`
+- Phase 1 of the "make scrapers perfect" plan (WS-A: measurement substrate). Two new end conditions added to `tasks/goal.md`, taking the goal from 7 conditions to 9.
+- **Condition #8 — No flaky-critical cinemas**: resurrected `detectFlakyCinemas` (a ratio-based detector that catches alternating-failure cinemas like BFI IMAX in May 2026 — 14/21 success+0 runs but never two consecutive, so the silent-breaker detector missed it). New unit test covers 9 fixture scenarios including the BFI IMAX ground truth, Close-Up failed-runs pattern, threshold-bumping logic, and lastGoodRunAt accuracy. Wired into `/scrape` pre-flight so flakies are surfaced before a 30-60min run wastes time on broken cinemas.
+- **Condition #9 — Zero BST-pattern screenings**: standing guardrail for the recurring BST off-by-one bug class that has bitten Curzon, Everyman, and Picturehouse in the last 4 weeks. Queries the 02:00-09:59 UK-local window for upcoming screenings. The 00:00-01:59 zone is deliberately excluded because Everyman, PCC, and Genesis legitimately programme midnight cult screenings (Mulholland Drive, Obsession, Hokum at Everyman Broadgate were flagged during smoke-testing — false positives the wider window would have produced).
+- Smoke run confirms both conditions PASS on current data — 2 cinemas at warn-level flakiness (BFI IMAX, Close-Up) but 0 critical; 0 BST offenders in the tightened 02:00+ window.
+
+---
+
+## 2026-05-17: DQS verifier repair — Barbican selector, Rio fallback, Picturehouse API
+**PR**: TBD | **Files**: `scripts/data-check.ts`, `tasks/goal.md`, `changelogs/2026-05-17-dqs-verifier-repair.md`
+- Diagnostic probe (now deleted) ran each `cinemaVerifications` verifier against one current production screening per cinema. Three verifiers were broken in different ways:
+  - **Barbican** — selector `a[href*="/whats-on/"]` was matching site-wide nav menu items (`"Cinema"`, `"Theatre & dance"`) instead of film cards. Switched to body-text contains-prefix search (the Genesis/Rich Mix pattern that already works). Probed `"The Devil Wears Prada 2"` against the Barbican listing — body contains the title, body-text fallback matches.
+  - **Rio** — the `var Events = {...}` regex no longer matches the embedded JSON. Verifier was returning `fetch_error` on every call, which excluded Rio from the denominator but added zero confirmed. Added a body-text fallback so the page-fetched-but-JSON-missing case still produces a `confirmed` when the title is present.
+  - **Picturehouse** — `https://www.picturehouses.com/cinema/<slug>` URL 301-redirects to the homepage, so the verifier was scanning the homepage for film titles. Switched to the same POST API the existing scraper uses (`/api/scheduled-movies-ajax` with `cinema_id` form field, mapped via `PICTUREHOUSE_VENUES.chainVenueId`). Smoke-tested against Clapham — API returned 200 with 24 movie titles.
+- ICA, Genesis, Rich Mix were already healthy. Curzon + Everyman correctly return `fetch_error` when their fetches fail (Cloudflare / wrong URL) — excluded from denominator, not dragging the rate.
+- After the next two `/data-check` runs, condition #7 should transition from `deferred-passing` back to genuinely-passing on the recorded `compositeScore` (the verification signal should rise above the 0.1 threshold).
+
+---
+
+## 2026-05-16: /goal condition #7 — defer when verification signal is structurally zero
+**PR**: TBD | **Files**: `scripts/goal-check-dqs.ts`, `tasks/goal.md`, `changelogs/2026-05-16-goal-condition-7-dqs-verification-deferral.md`
+- Full `/goal status` (no `--fast`) ran today and revealed condition #7 (DQS floor ≥ 85) failing at 76.62/77.42. Drilling into the composite: every dimension above 85 except `verificationPassRate` at 0. Verification is computed from `cinemaVerifications` (static HTML verifiers for Rio, ICA, Barbican, Close-Up, Genesis, Rich Mix in `scripts/data-check.ts`) — they're all returning non-`confirmed` status, likely from cinema booking-page schema drift.
+- `goal-check-dqs.ts` now mirrors the condition #6 deferral pattern: when verification is structurally broken (≤ 0.1 for two consecutive runs), the composite is recomputed excluding the 15% verification weight (remaining weights proportionally rescaled). If the adjusted composite clears 85 on both runs, the condition is `pass: true, deferred: true`. The `anyDeferred` rollup gate (shipped in PR #502) prevents the goal from being falsely declared achieved while #7 is deferred. The fix for the underlying verifiers is queued as a sub-task in `tasks/goal.md`.
+- Adjusted composites for the current state: latest 90.15, previous 91.1 — both well above the 85 floor. Confirms the non-verification dimensions are healthy.
+
+---
+
+## 2026-05-15: /goal condition #6 — defer below 500-event traffic floor
+**PR**: TBD | **Files**: `scripts/goal-check-posthog-funnel.ts`, `scripts/goal-status.ts`, `tasks/goal.md`, `changelogs/2026-05-15-goal-condition-6-traffic-floor.md`
+- Empirical probe found pictures.london emits 52 `booking_link_clicked` events / 30d across 56 active cinemas, all properly tagged with `cinema_id`. The "31 zero-click cinemas" surfaced in the first /goal run is a traffic-distribution artefact, not a tracking bug or product defect.
+- Condition #6 now defers when total monthly clicks < 500 (returns `pass: true, deferred: true`). Above the floor, the existing per-cinema check engages. This stops /goal from endlessly targeting an impossible-at-this-traffic condition while the goal file pins the upgrade path (Stagehand-based booking-URL verifier as a sub-task).
+- Orchestrator status table now shows `ℹ️ — deferred` instead of `✅` for deferred conditions so users don't misread the rollup as proof the underlying thing works. The headline verdict ("🎯 ALL CONDITIONS PASS — goal is ACHIEVED") is now gated on `!anyDeferred` so the goal can't be falsely declared achieved while a condition is in deferred state.
+- Regression guard: persists prior `totalClicks` to `.claude/goal-posthog-funnel-last.json`. If the current window's total drops below 50% of a prior baseline that was above the floor, the condition fails loudly with a "volume regression" reason rather than silently flipping to deferred-pass. Catches analytics breakage (PostHog key rotated, frontend tracker removed, ad-blocker surge) instead of masking it.
+
+---
+
+## 2026-05-15: Add Cinema Museum scraper via iCal feed
+**PR**: TBD | **Files**: `src/scrapers/cinemas/cinema-museum.ts`, `src/scrapers/cinemas/cinema-museum.test.ts`, `src/scrapers/registry.ts`, `src/config/cinema-registry.ts`
+- New scraper for **The Cinema Museum** (Kennington, SE11) — independent venue in the former Lambeth workhouse, programmes 35mm + silent + Kennington Bioscope evenings. Priority 2 in the 2026-05-15 London coverage audit. Active cinema count 57 → 58.
+- Uses the WordPress Events Calendar plugin's public **iCal feed** (`/schedule/?ical=1`) rather than HTML scraping — single request, structured data (DTSTART, SUMMARY, URL, UID, CATEGORIES), no DOM parsing.
+- Minimal in-tree iCal parser (`parseVEvents`) — RFC 5545 line folding + TEXT escapes (`\,`, `\;`, `\\`, `\n`). No new npm dependency.
+- Filters out `Tours` and `Bazaars` categories (museum tours, bric-a-brac sales) — keeps film screenings, talks, Kennington Bioscope, and the 35mm classics series.
+- **WAF workaround**: cinemamuseum.org.uk's Pressidium host returns 403 for browser-like User-Agents on the iCal endpoint but allows generic calendar-client UAs. The scraper overrides both `fetchPages` and `healthCheck` with a `pictures-cinema-museum-scraper/1.0` UA. Documented inline.
+- 11 unit tests (3 parser, 8 scraper) against a 3-event iCal fixture covering filtering, BST→UTC conversion, UID prefixing, URL preservation, escape unescape, line folding, empty feed.
+- Live verification: 23 valid screenings in ~725 ms; programme through May/June 2026.
+
+---
+
+## 2026-05-15: Add Bertha DocHouse scraper — first new London independent
+**PR**: TBD | **Files**: `src/scrapers/cinemas/bertha-dochouse.ts`, `src/scrapers/cinemas/bertha-dochouse.test.ts`, `src/scrapers/registry.ts`, `src/config/cinema-registry.ts`
+- New Cheerio-based scraper for **Bertha DocHouse** (dochouse.org) — the UK's only year-round documentary cinema, inside Curzon Bloomsbury but programmed independently. Identified as Priority 1 in the 2026-05-15 London coverage audit.
+- 2-step list-then-detail pattern: `/whats-on/` paginates events; each `/event/<slug>/` carries screening times + Curzon `BLO1-XXXXXX` ticket IDs (used as `sourceId`).
+- 9 unit tests covering title, time parsing, sourceId derivation, non-Bertha ticket filtering, defensive empty handling, and the today-edge-case where `parseScreeningDate` would otherwise +1 year a same-day screening.
+- Live verification: returns 43 valid screenings across 21 events in ~20 s; covers the programme through early June.
+
+---
+
+## 2026-05-15: /goal command — terminal goal-driven loop with measurable end conditions
+**PR**: TBD | **Files**: `tasks/goal.md`, `scripts/goal-check-{coverage,silent-breakers,booking-links,lighthouse,axe,posthog-funnel,dqs}.ts`, `scripts/goal-status.ts`, `changelogs/2026-05-15-goal-command.md`
+- New `/goal` slash command (local in `.claude/commands/`): unlike `/kaizen` and `/posthog-optimize` (perpetual), this one declares an explicit finish line and exits when crossed. Reads `tasks/goal.md`, runs all measurement scripts, picks the highest-leverage failing condition, fixes one sub-task per invocation, holds merge behind the existing `ship it` deployment gate.
+- Goal: "Pictures.london v1 — complete, fast, accessible, trustworthy". Seven end conditions: London independents covered, no silent breakers, zero broken booking links, Lighthouse mobile ≥90, axe-core clean, PostHog `booking_click` proof-of-life per cinema, DQS floor ≥85 across two consecutive `/data-check` runs.
+- Orchestrator (`scripts/goal-status.ts`) runs every check, prints status table, writes `.claude/goal-status.json` for the slash command to read. `--fast` skips lighthouse + axe for inner-loop iteration.
+- No new dependencies — lighthouse and axe-core invoked via `npx` on demand per CLAUDE.md dep-rule.
 
 ---
 

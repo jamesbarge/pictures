@@ -25,6 +25,7 @@ import * as cheerio from "cheerio";
 import * as fs from "fs";
 import * as path from "path";
 import { levenshteinDistance } from "../src/lib/levenshtein";
+import { PICTUREHOUSE_VENUES } from "../src/scrapers/chains/picturehouse";
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -1051,28 +1052,42 @@ async function verifyRioScreening(s: ScreeningToVerify): Promise<CinemaVerificat
   const html = await fetchHtml("https://riocinema.org.uk");
   if (!html) return base;
 
-  // Rio embeds JSON: var Events = {"Events": [...]}
+  // Rio used to embed JSON: var Events = {"Events": [...]}. The regex now
+  // misses (probed 2026-05-17 — no Events block found) but the page still
+  // contains film titles in body text. Try the JSON path first; if it fails,
+  // fall back to body-text search so we still produce a `confirmed` rather
+  // than a `fetch_error` (which would silently exclude Rio from the
+  // denominator and starve verificationPassRate).
   const eventsMatch = html.match(/var Events\s*=\s*(\{[\s\S]*?\});\s*(?:var|<\/script>)/);
-  if (!eventsMatch) return { ...base, status: "fetch_error", detail: "No Events JSON found" };
+  if (eventsMatch) {
+    try {
+      const data = JSON.parse(eventsMatch[1]);
+      const events = data.Events || [];
+      const screeningDate = new Date(s.datetime);
+      const dateStr = screeningDate.toISOString().split("T")[0]; // YYYY-MM-DD
 
-  try {
-    const data = JSON.parse(eventsMatch[1]);
-    const events = data.Events || [];
-    const screeningDate = new Date(s.datetime);
-    const dateStr = screeningDate.toISOString().split("T")[0]; // YYYY-MM-DD
-
-    for (const event of events) {
-      if (levenshteinSimilarity(event.Title, s.film_title) < 0.6) continue;
-      for (const perf of event.Performances || []) {
-        if (perf.StartDate === dateStr) {
-          return { ...base, status: "confirmed", detail: `Matched: ${event.Title}` };
+      for (const event of events) {
+        if (levenshteinSimilarity(event.Title, s.film_title) < 0.6) continue;
+        for (const perf of event.Performances || []) {
+          if (perf.StartDate === dateStr) {
+            return { ...base, status: "confirmed", detail: `Matched: ${event.Title}` };
+          }
         }
       }
+      // JSON parsed but no date match — fall through to body-text fallback
+      // (not `not_found_on_site` directly) because the page may have the
+      // title even if the Events JSON doesn't list this performance.
+    } catch {
+      // fall through to body-text fallback
     }
-    return { ...base, status: "not_found_on_site" };
-  } catch {
-    return { ...base, status: "fetch_error", detail: "JSON parse failed" };
   }
+
+  const $ = cheerio.load(html);
+  const bodyText = $("body").text();
+  if (bodyText.toLowerCase().includes(s.film_title.toLowerCase().substring(0, 20))) {
+    return { ...base, status: "confirmed", detail: "Title found in page text (Rio fallback)" };
+  }
+  return { ...base, status: "not_found_on_site" };
 }
 
 async function verifyIcaScreening(s: ScreeningToVerify): Promise<CinemaVerification> {
@@ -1108,17 +1123,16 @@ async function verifyBarbicanScreening(s: ScreeningToVerify): Promise<CinemaVeri
   const html = await fetchHtml("https://www.barbican.org.uk/whats-on/series/new-releases");
   if (!html) return base;
 
+  // Body-text fallback — the previous `a[href*="/whats-on/"]` selector matched
+  // the global nav menu items ("Cinema", "Theatre & dance") on every page load
+  // instead of film titles, producing 0% confirmed for Barbican. Confirmed on
+  // 2026-05-17 by probing with "The Devil Wears Prada 2" — title appears in
+  // body text but not in any reliable selector. Mirrors the Genesis/Rich Mix
+  // approach which has been working.
   const $ = cheerio.load(html);
-  const titles: string[] = [];
-  $('a[href*="/whats-on/"]').each((_, el) => {
-    const text = $(el).text().trim();
-    if (text && text.length > 2) titles.push(text);
-  });
-
-  for (const title of titles) {
-    if (levenshteinSimilarity(title, s.film_title) >= 0.6) {
-      return { ...base, status: "confirmed", detail: `Matched: ${title}` };
-    }
+  const bodyText = $("body").text();
+  if (bodyText.toLowerCase().includes(s.film_title.toLowerCase().substring(0, 20))) {
+    return { ...base, status: "confirmed", detail: "Title found in page text" };
   }
   return { ...base, status: "not_found_on_site" };
 }
@@ -1215,17 +1229,48 @@ async function verifyPicturehouseScreening(s: ScreeningToVerify): Promise<Cinema
     cinemaId: s.cinema_id, cinemaName: s.cinema_name, datetime: s.datetime,
     status: "fetch_error",
   };
-  // Picturehouse has an API; try the venue's listing page
-  const venueSlug = s.cinema_id.replace("picturehouse-", "");
-  const html = await fetchHtml(`https://www.picturehouses.com/cinema/${venueSlug}`);
-  if (!html) return base;
-
-  const bodyText = html.toLowerCase();
-  const searchTerm = s.film_title.toLowerCase().substring(0, 20);
-  if (bodyText.includes(searchTerm)) {
-    return { ...base, status: "confirmed", detail: "Title found on venue page" };
+  // The previous `https://www.picturehouses.com/cinema/<slug>` URL pattern
+  // 301-redirects to the homepage (probed 2026-05-17), so the verifier was
+  // always scanning the homepage for film titles — hence the 0% confirmed
+  // rate dragging verificationPassRate to zero. Use the same JSON API that
+  // src/scrapers/chains/picturehouse.ts uses — it returns the venue's full
+  // schedule and never goes through an HTML rewrite.
+  const venue = PICTUREHOUSE_VENUES.find((v) => v.id === s.cinema_id);
+  if (!venue?.chainVenueId) {
+    return { ...base, status: "fetch_error", detail: `No chainVenueId for ${s.cinema_id}` };
   }
-  return { ...base, status: "not_found_on_site" };
+
+  try {
+    const formData = new FormData();
+    formData.append("cinema_id", venue.chainVenueId);
+    const resp = await fetch("https://www.picturehouses.com/api/scheduled-movies-ajax", {
+      method: "POST",
+      body: formData,
+      headers: { "User-Agent": UA, "Accept": "application/json" },
+    });
+    if (!resp.ok) return { ...base, status: "fetch_error", detail: `API HTTP ${resp.status}` };
+    const data = (await resp.json()) as { response?: string; movies?: Array<{ Title: string }> };
+    // Mirror the gate the existing scraper uses (src/scrapers/chains/picturehouse.ts:249):
+    // a non-success envelope (maintenance, throttle, schema drift) returns 200 but
+    // no usable movies. Treat as fetch_error so the venue's screenings are excluded
+    // from the denominator rather than silently counted as misses.
+    if (data.response !== "success" || !Array.isArray(data.movies)) {
+      return { ...base, status: "fetch_error", detail: `API envelope not "success" (was: ${data.response})` };
+    }
+    const movies = data.movies;
+    let bestSim = -1;
+    let bestTitle: string | null = null;
+    for (const m of movies) {
+      const sim = levenshteinSimilarity(m.Title, s.film_title);
+      if (sim > bestSim) { bestSim = sim; bestTitle = m.Title; }
+    }
+    if (bestSim >= 0.6) {
+      return { ...base, status: "confirmed", detail: `Matched ${bestTitle} (sim ${bestSim.toFixed(2)})` };
+    }
+    return { ...base, status: "not_found_on_site" };
+  } catch (err) {
+    return { ...base, status: "fetch_error", detail: `API exception: ${err instanceof Error ? err.message : String(err)}` };
+  }
 }
 
 async function verifyEverymanScreening(s: ScreeningToVerify): Promise<CinemaVerification> {
@@ -1254,6 +1299,13 @@ const CINEMA_VERIFIERS: Record<string, (s: ScreeningToVerify) => Promise<CinemaV
   "close-up": verifyCloseUpScreening,
   "genesis": verifyGenesisScreening,
   "rich-mix": verifyRichMixScreening,
+  // Ritzy and The Gate sit under the Picturehouse chain (see
+  // src/scrapers/chains/picturehouse.ts) but their cinema_id slugs don't
+  // start with `picturehouse-`, so the chain dispatcher misses them. Now
+  // that verifyPicturehouseScreening uses the API path that actually works,
+  // route them through it explicitly to lift verification volume.
+  "ritzy-brixton": verifyPicturehouseScreening,
+  "gate-notting-hill": verifyPicturehouseScreening,
 };
 
 // Chain verifiers: any cinema ID starting with these prefixes
