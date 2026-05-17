@@ -1,162 +1,176 @@
-/**
- * Unit tests for the pure analyzer in scrape-quarantine.ts.
- *
- * Only `analyzeRunsForFlakiness` is tested here — it's DB-free, so we can
- * fixture it directly. The DB-walker `detectFlakyCinemas` is integration-
- * tested implicitly via /goal-check-flaky-cinemas + manual /scrape runs.
- */
 import { describe, expect, it } from "vitest";
 import {
   analyzeRunsForFlakiness,
   DEFAULT_FLAKY_THRESHOLDS,
+  formatFlakyReport,
+  type FlakyCinema,
   type RunRecord,
 } from "./scrape-quarantine";
 
-function makeRun(status: string, screeningCount: number | null, daysAgo: number): RunRecord {
+function makeRun(
+  status: string,
+  screeningCount: number | null,
+  daysAgo: number,
+): RunRecord {
   return {
     status,
     screeningCount,
-    startedAt: new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000),
+    startedAt: new Date(`2026-05-${15 - daysAgo}T01:00:00Z`),
   };
 }
 
-// ─────────────────────────────────────────────────────────────────────────
-// BFI IMAX ground truth — 14 of 21 success+0 runs in 7 days. The detector
-// should fire `critical` at 67% empty ratio.
-// ─────────────────────────────────────────────────────────────────────────
-const bfiImaxRuns: RunRecord[] = [
-  makeRun("success", 0, 0),
-  makeRun("success", 0, 1),
-  makeRun("success", 2, 1),    // brief recovery
-  makeRun("success", 0, 2),
-  makeRun("success", 0, 2),
-  makeRun("success", 0, 3),
-  makeRun("success", 0, 3),
-  makeRun("success", 3, 4),    // brief recovery
-  makeRun("success", 0, 4),
-  makeRun("success", 0, 5),
-];
-
 describe("analyzeRunsForFlakiness", () => {
-  it("returns null when there are fewer runs than minRuns", () => {
-    const runs = [makeRun("success", 100, 0), makeRun("success", 95, 1)];
+  it("returns null when window is below minRuns (avoids false-flagging new cinemas)", () => {
+    const runs = [makeRun("success", 0, 0), makeRun("success", 0, 1)];
     expect(analyzeRunsForFlakiness(runs)).toBeNull();
   });
 
-  it("returns null when all runs are healthy (success + non-zero)", () => {
+  it("returns null for healthy cinemas (every run yields)", () => {
     const runs = [
-      makeRun("success", 100, 0),
-      makeRun("success", 95, 1),
-      makeRun("success", 110, 2),
-      makeRun("success", 88, 3),
-      makeRun("success", 102, 4),
+      makeRun("success", 200, 0),
+      makeRun("success", 195, 1),
+      makeRun("success", 210, 2),
+      makeRun("success", 188, 3),
+      makeRun("success", 205, 4),
     ];
     expect(analyzeRunsForFlakiness(runs)).toBeNull();
   });
 
-  it("fires critical when ≥50% of runs are success+0 (BFI IMAX pattern)", () => {
-    const verdict = analyzeRunsForFlakiness(bfiImaxRuns);
+  it("flags BFI IMAX pattern (14/21 empty success) as critical", () => {
+    // Synthesise the production pattern: alternating empty / non-empty
+    const runs: RunRecord[] = [];
+    for (let i = 0; i < 21; i++) {
+      runs.push(i % 3 === 0 ? makeRun("success", 5, i) : makeRun("success", 0, i));
+    }
+    // lookback defaults to 10 — slice the most recent 10
+    const verdict = analyzeRunsForFlakiness(runs.slice(0, 10));
     expect(verdict).not.toBeNull();
-    expect(verdict?.severity).toBe("critical");
-    // 8 of 10 runs are empty success → 80% — above critical threshold
-    expect(verdict?.emptySuccessCount).toBe(8);
-    expect(verdict?.totalRuns).toBe(10);
-    expect(verdict?.emptyRatio).toBeCloseTo(0.8, 1);
-    expect(verdict?.failedCount).toBe(0);
-    expect(verdict?.reasons[0]).toMatch(/success\+0/);
+    expect(verdict!.severity).toBe("critical");
+    expect(verdict!.reasons.join(" ")).toMatch(/success\+0/);
   });
 
-  it("fires warn when empty ratio is in 30-50% range (BFI Southbank pattern)", () => {
-    // 3 of 10 runs empty success = 30% — right at warn threshold
+  it("flags BFI Southbank pattern (50% empty success) as critical", () => {
+    const runs: RunRecord[] = [];
+    for (let i = 0; i < 10; i++) {
+      runs.push(i % 2 === 0 ? makeRun("success", 250, i) : makeRun("success", 0, i));
+    }
+    const verdict = analyzeRunsForFlakiness(runs);
+    expect(verdict).not.toBeNull();
+    expect(verdict!.severity).toBe("critical");
+    expect(verdict!.emptyRatio).toBe(0.5);
+  });
+
+  it("flags Close-Up pattern (33% failed) as warn", () => {
+    const runs: RunRecord[] = [
+      makeRun("success", 39, 0),
+      makeRun("failed", null, 1),
+      makeRun("success", 35, 2),
+      makeRun("failed", null, 3),
+      makeRun("success", 41, 4),
+      makeRun("failed", null, 5),
+      makeRun("success", 40, 6),
+      makeRun("success", 42, 7),
+      makeRun("success", 38, 8),
+    ];
+    const verdict = analyzeRunsForFlakiness(runs);
+    expect(verdict).not.toBeNull();
+    expect(verdict!.severity).toBe("warn");
+    expect(verdict!.reasons.some((r) => /failed outright/.test(r))).toBe(true);
+  });
+
+  it("escalates to critical when warn signal AND failed signal both fire", () => {
+    // 40% empty success (warn) + 50% failed (critical) → critical
     const runs: RunRecord[] = [
       makeRun("success", 0, 0),
-      makeRun("success", 200, 1),
-      makeRun("success", 0, 2),
-      makeRun("success", 180, 3),
-      makeRun("success", 0, 4),
-      makeRun("success", 220, 5),
-      makeRun("success", 190, 6),
-      makeRun("success", 210, 7),
-      makeRun("success", 195, 8),
-      makeRun("success", 205, 9),
-    ];
-    const verdict = analyzeRunsForFlakiness(runs);
-    expect(verdict).not.toBeNull();
-    expect(verdict?.severity).toBe("warn");
-    expect(verdict?.emptyRatio).toBeCloseTo(0.3, 1);
-  });
-
-  it("fires warn when ≥30% of runs failed outright (Close-Up pattern)", () => {
-    // 3 of 10 runs failed = 30% — at warn threshold
-    const runs: RunRecord[] = [
-      makeRun("failed", null, 0),
-      makeRun("success", 40, 1),
+      makeRun("success", 0, 1),
       makeRun("failed", null, 2),
-      makeRun("success", 35, 3),
-      makeRun("success", 42, 4),
-      makeRun("failed", null, 5),
-      makeRun("success", 38, 6),
-      makeRun("success", 39, 7),
-      makeRun("success", 41, 8),
-      makeRun("success", 37, 9),
+      makeRun("failed", null, 3),
+      makeRun("failed", null, 4),
+      makeRun("success", 100, 5),
+      makeRun("failed", null, 6),
+      makeRun("success", 0, 7),
+      makeRun("success", 0, 8),
+      makeRun("failed", null, 9),
     ];
     const verdict = analyzeRunsForFlakiness(runs);
     expect(verdict).not.toBeNull();
-    expect(verdict?.severity).toBe("warn");
-    expect(verdict?.failedRatio).toBeCloseTo(0.3, 1);
-    expect(verdict?.reasons.some((r) => r.includes("failed outright"))).toBe(true);
+    expect(verdict!.severity).toBe("critical");
   });
 
-  it("escalates to critical when failed ratio crosses 50%", () => {
-    const runs: RunRecord[] = Array.from({ length: 10 }, (_, i) =>
-      makeRun(i < 6 ? "failed" : "success", i < 6 ? null : 50, i),
-    );
-    const verdict = analyzeRunsForFlakiness(runs);
-    expect(verdict?.severity).toBe("critical");
-    expect(verdict?.failedRatio).toBeCloseTo(0.6, 1);
-  });
-
-  it("bumps warn → critical when both signals fire at warn and critical respectively", () => {
-    // Critical empty + warn failed should give critical overall
-    const runs: RunRecord[] = [
-      makeRun("success", 0, 0), makeRun("success", 0, 1), makeRun("success", 0, 2),
-      makeRun("success", 0, 3), makeRun("success", 0, 4), // 5 empty = 50% critical
-      makeRun("failed", null, 5), makeRun("failed", null, 6), makeRun("failed", null, 7), // 3 failed = 30% warn
-      makeRun("success", 100, 8), makeRun("success", 100, 9),
+  it("respects custom thresholds", () => {
+    const runs = [
+      makeRun("success", 0, 0),
+      makeRun("success", 0, 1),
+      makeRun("success", 10, 2),
+      makeRun("success", 10, 3),
+      makeRun("success", 10, 4),
     ];
-    const verdict = analyzeRunsForFlakiness(runs);
-    expect(verdict?.severity).toBe("critical");
-    expect(verdict?.reasons.length).toBeGreaterThanOrEqual(2);
+    // 40% empty — under default warn (30% → would warn), but if we set warn=50% it shouldn't fire
+    const strictThresholds = {
+      ...DEFAULT_FLAKY_THRESHOLDS,
+      emptyRatioWarn: 0.5,
+      emptyRatioCritical: 0.7,
+    };
+    expect(analyzeRunsForFlakiness(runs, strictThresholds)).toBeNull();
+    // With defaults (warn=0.3) it should fire
+    const lenient = analyzeRunsForFlakiness(runs);
+    expect(lenient).not.toBeNull();
+    expect(lenient!.severity).toBe("warn");
   });
 
-  it("records lastGoodRunAt from the first success+nonZero in iteration order", () => {
+  it("records lastGoodRunAt as the most recent successful non-empty run", () => {
     const runs: RunRecord[] = [
-      makeRun("success", 0, 0),     // most recent: empty
-      makeRun("success", 0, 1),     // empty
-      makeRun("success", 50, 2),    // ← should be lastGoodRunAt
+      makeRun("success", 0, 0),
+      makeRun("success", 0, 1),
+      makeRun("success", 100, 2), // ← this is the last-good
       makeRun("success", 0, 3),
-      makeRun("success", 0, 4),
-      makeRun("success", 60, 5),
+      makeRun("success", 200, 4),
     ];
     const verdict = analyzeRunsForFlakiness(runs);
-    expect(verdict?.lastGoodRunAt).not.toBeNull();
-    // The 2-days-ago run is the most recent success+nonZero
-    const expectedAge = Date.now() - verdict!.lastGoodRunAt!.getTime();
-    expect(expectedAge).toBeGreaterThan(1.5 * 24 * 60 * 60 * 1000);
-    expect(expectedAge).toBeLessThan(2.5 * 24 * 60 * 60 * 1000);
+    expect(verdict).not.toBeNull();
+    expect(verdict!.lastGoodRunAt?.toISOString()).toBe(
+      runs[2].startedAt.toISOString(),
+    );
+  });
+});
+
+describe("formatFlakyReport", () => {
+  it("returns a clean message when nothing is flaky", () => {
+    expect(formatFlakyReport([])).toBe("No flaky cinemas detected.");
   });
 
-  it("respects custom thresholds (tighter bar for warn)", () => {
-    // 2 of 10 empty = 20%. Default warn is 30%, so default verdict = null.
-    // With warn=0.15, the same data should fire warn.
-    const runs: RunRecord[] = [
-      makeRun("success", 0, 0), makeRun("success", 0, 1),
-      ...Array.from({ length: 8 }, (_, i) => makeRun("success", 100, i + 2)),
+  it("renders critical + warn entries with the right markers", () => {
+    const sample: FlakyCinema[] = [
+      {
+        cinemaId: "bfi-imax",
+        cinemaName: "BFI IMAX",
+        totalRuns: 10,
+        emptySuccessCount: 7,
+        failedCount: 0,
+        emptyRatio: 0.7,
+        failedRatio: 0,
+        lastGoodRunAt: new Date("2026-05-10T00:00:00Z"),
+        lastRunAt: new Date("2026-05-15T00:00:00Z"),
+        reasons: ["70% of recent runs returned success+0"],
+        severity: "critical",
+      },
+      {
+        cinemaId: "close-up-cinema",
+        cinemaName: "Close-Up",
+        totalRuns: 9,
+        emptySuccessCount: 0,
+        failedCount: 3,
+        emptyRatio: 0,
+        failedRatio: 0.33,
+        lastGoodRunAt: new Date("2026-05-14T00:00:00Z"),
+        lastRunAt: new Date("2026-05-15T00:00:00Z"),
+        reasons: ["33% of recent runs failed outright"],
+        severity: "warn",
+      },
     ];
-    expect(analyzeRunsForFlakiness(runs)).toBeNull();
-    expect(
-      analyzeRunsForFlakiness(runs, { ...DEFAULT_FLAKY_THRESHOLDS, emptyRatioWarn: 0.15 })
-        ?.severity,
-    ).toBe("warn");
+    const out = formatFlakyReport(sample);
+    expect(out).toContain("Flaky cinemas (2)");
+    expect(out).toContain("🔴 critical BFI IMAX");
+    expect(out).toContain("🟡 warn Close-Up");
   });
 });

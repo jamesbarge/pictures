@@ -64,17 +64,17 @@ export class BFIScraper {
     // per cinema in `scraper_runs` — without that, the silent-breaker detector
     // quarantines BFI as a Prowlarr-pattern zero-yield cinema.
     console.log(`[${this.config.cinemaId}] Routing to PDF importer (Playwright click-flow is Cloudflare-blocked)...`);
-    try {
-      const allScreenings = await getOrLoadBFIScreenings();
-      const venueScreenings = allScreenings.filter(s => getBFIVenueKey(s) === this.config.cinemaId);
-      console.log(`[${this.config.cinemaId}] PDF returned ${venueScreenings.length} screenings (${allScreenings.length} total across both BFI venues)`);
-      return venueScreenings;
-    } catch (error) {
-      console.error(`[${this.config.cinemaId}] PDF loader failed:`, error);
-      // Fall through with [] — better to underreport than to throw and abort
-      // the rest of the /scrape wave.
-      return [];
-    }
+
+    // Note: we intentionally do NOT catch errors from getOrLoadBFIScreenings()
+    // and return []. Doing so silently records `success+0` in scraper_runs,
+    // which masks Cloudflare blocks behind a healthy-looking yield. The
+    // runner-factory wraps every scraper in its own try/catch and isolates
+    // failures per cinema — throwing here records `status=failed`, which is
+    // the truth, and lets the silent-breaker / flaky detectors do their job.
+    const allScreenings = await getOrLoadBFIScreenings();
+    const venueScreenings = allScreenings.filter(s => getBFIVenueKey(s) === this.config.cinemaId);
+    console.log(`[${this.config.cinemaId}] PDF returned ${venueScreenings.length} screenings (${allScreenings.length} total across both BFI venues)`);
+    return venueScreenings;
   }
 
   /**
@@ -544,15 +544,50 @@ export function createBFIScraper(venueId: "bfi-southbank" | "bfi-imax"): BFIScra
  * filters for its own venue.
  *
  * Cache lives in memory only for one Node process.
+ *
+ * IMPORTANT: We deliberately DO NOT cache failures. If `loadBFIScreenings()`
+ * fails (Cloudflare blocked the discovery page, both PDF + programme-changes
+ * sources returned empty), the promise must be discarded so the next venue
+ * call gets a fresh attempt — and so a transient failure on Southbank doesn't
+ * silently poison IMAX with the same empty result. Without this guard, a
+ * single failed network call records `success+0` on BOTH BFI cinemas, which
+ * is the root cause of the May 2026 correlated flakiness pattern (BFI
+ * Southbank 50% empty / IMAX 60% empty).
  */
 let bfiLoadPromise: Promise<RawScreening[]> | null = null;
 
-async function getOrLoadBFIScreenings(): Promise<RawScreening[]> {
+/** Test-only: clear the in-process cache so a fresh test starts from a clean slate. */
+export function _resetBFIScreeningsCacheForTests(): void {
+  bfiLoadPromise = null;
+}
+
+export async function getOrLoadBFIScreenings(): Promise<RawScreening[]> {
   if (!bfiLoadPromise) {
     bfiLoadPromise = (async () => {
-      const { screenings } = await loadBFIScreenings();
+      const { screenings, sourceStatus } = await loadBFIScreenings();
+
+      // Yield gate: if BOTH the PDF and the programme-changes page failed to
+      // produce data, treat it as an upstream load failure rather than a
+      // "successful" empty result. Throwing here lets the scraper runner
+      // record `status=failed` for both BFI cinemas (instead of `success+0`),
+      // which surfaces in the silent-breaker + flaky detectors properly
+      // instead of hiding behind alternating zero-runs.
+      const bothFailed =
+        sourceStatus.pdf !== "success" && sourceStatus.programmeChanges !== "success";
+      if (bothFailed) {
+        throw new Error(
+          `BFI upstream load failed — pdf=${sourceStatus.pdf}, programmeChanges=${sourceStatus.programmeChanges}. ` +
+            `No screenings recovered; failing loudly rather than recording success+0.`,
+        );
+      }
+
       return screenings;
-    })();
+    })().catch((err) => {
+      // Bust the cache on failure so the next caller (the OTHER BFI venue)
+      // gets a fresh attempt instead of being poisoned by the same rejection.
+      bfiLoadPromise = null;
+      throw err;
+    });
   }
   return bfiLoadPromise;
 }

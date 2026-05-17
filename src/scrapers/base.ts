@@ -222,21 +222,42 @@ export abstract class BaseScraper implements CinemaScraper {
   }
 
   /**
-   * Health check - verify the website is accessible
+   * Health check — verify the website is accessible.
+   *
+   * Retries with a short backoff: a single failing GET turned out to be the
+   * root cause of the May 2026 Close-Up "33% failure rate" pattern. All 3
+   * failures fell in the 03:17-03:21 UTC window and the site recovered within
+   * seconds — every other run that day succeeded. A brief retry rescues those
+   * cases without masking genuine outages: 3 attempts × 10s timeout × 4s gap
+   * caps total cost at ~38s per cinema, only on the unhealthy path.
+   *
+   * Subclasses may still override to provide cheaper or different checks
+   * (e.g. Curzon HEADs the API endpoint with a 401-is-healthy contract).
    */
   async healthCheck(): Promise<boolean> {
-    try {
-      const response = await fetch(this.config.baseUrl, {
-        method: "GET",
-        headers: {
-          "User-Agent": CHROME_USER_AGENT_FULL,
-        },
-        redirect: "follow",
-        signal: AbortSignal.timeout(10_000),
-      });
-      return response.ok;
-    } catch {
-      return false;
+    const MAX_ATTEMPTS = 3;
+    const BACKOFF_MS = 4_000;
+
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      try {
+        const response = await fetch(this.config.baseUrl, {
+          method: "GET",
+          headers: {
+            "User-Agent": CHROME_USER_AGENT_FULL,
+          },
+          redirect: "follow",
+          signal: AbortSignal.timeout(10_000),
+        });
+        if (response.ok) return true;
+        // 4xx/5xx — only worth retrying transient 5xx; bail fast on 4xx
+        if (response.status < 500) return false;
+      } catch {
+        // Network error / timeout — fall through to retry
+      }
+      if (attempt < MAX_ATTEMPTS) {
+        await new Promise((r) => setTimeout(r, BACKOFF_MS));
+      }
     }
+    return false;
   }
 }

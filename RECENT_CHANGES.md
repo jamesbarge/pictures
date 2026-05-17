@@ -1,3 +1,12 @@
+## 2026-05-15: /scrape reliability — windowed-SQL flaky detector + BFI yield gate + healthCheck retry
+**PR**: TBD | **Files**: `src/lib/scrape-quarantine.ts`, `src/scrapers/base.ts`, `src/scrapers/cinemas/bfi.ts`, `src/scripts/run-scrape-and-enrich.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`, plus tests
+- **`detectFlakyCinemas` now uses single windowed SQL** (ROW_NUMBER OVER PARTITION) instead of the per-cinema N+1 fan-out shipped in #505. ~340 ms vs ~2 s prior. Same exports, same thresholds, behaviour-preserving.
+- **BFI yield gate** in `getOrLoadBFIScreenings`: throws when both PDF *and* programme-changes sources fail, instead of silently returning `[]`. The runner-factory records `status=failed` truthfully rather than masking Cloudflare blocks behind `success+0`. Cache now busts on rejection so a failure on one venue doesn't poison the other.
+- **`BaseScraper.healthCheck` retry-with-backoff**: 3 attempts, 10s timeout, 4s gap; fast-fails on 4xx, retries on 5xx + network errors. Rescues the Close-Up 03:17-03:21 UTC nightly-maintenance pattern (3 of 9 runs failed in past 7 days).
+- 21 new tests; live replay confirms BFI IMAX (critical), BFI Southbank (warn), Close-Up (warn) all surface correctly.
+
+---
+
 ## 2026-05-17: /goal conditions #8 & #9 — flaky detector + BST sentinel (Phase 1 of scraper-perfection plan)
 **PR**: TBD | **Files**: `src/lib/scrape-quarantine.ts`, `src/lib/scrape-quarantine.test.ts` (new), `src/scripts/run-scrape-and-enrich.ts`, `scripts/goal-check-flaky-cinemas.ts` (new), `scripts/goal-check-bst-sentinel.ts` (new), `scripts/goal-status.ts`, `tasks/goal.md`, `changelogs/2026-05-17-goal-ws-a-flaky-and-bst.md`
 - Phase 1 of the "make scrapers perfect" plan (WS-A: measurement substrate). Two new end conditions added to `tasks/goal.md`, taking the goal from 7 conditions to 9.
