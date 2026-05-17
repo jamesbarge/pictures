@@ -225,6 +225,18 @@ export interface FlakyThresholds {
   failedRatioWarn: number;
   /** Failed-status ratio that triggers a `critical` severity. */
   failedRatioCritical: number;
+  /**
+   * If the mean screening_count of NON-EMPTY successful runs is at or below
+   * this threshold, the cinema is treated as a "small venue" and the empty-
+   * success-ratio signal is suppressed (failed-ratio still fires normally).
+   *
+   * Background: BFI IMAX legitimately programs ~2 screenings per scrape
+   * window most days (real-world venue size, not a bug). Without this floor
+   * it would forever show as 🟡 flaky because half its windows naturally
+   * land on a zero. A cinema whose non-empty runs are themselves near-zero
+   * isn't "alternating between healthy and broken" — it's just small.
+   */
+  smallVenueMaxNonEmptyMean: number;
 }
 
 export const DEFAULT_FLAKY_THRESHOLDS: FlakyThresholds = {
@@ -234,6 +246,7 @@ export const DEFAULT_FLAKY_THRESHOLDS: FlakyThresholds = {
   emptyRatioCritical: 0.5,
   failedRatioWarn: 0.3,
   failedRatioCritical: 0.5,
+  smallVenueMaxNonEmptyMean: 5,
 };
 
 /**
@@ -268,6 +281,21 @@ export function analyzeRunsForFlakiness(
   const lastGoodRunAt =
     runs.find((r) => r.status === "success" && (r.screeningCount ?? 0) > 0)?.startedAt ?? null;
 
+  // Compute the mean of NON-EMPTY successful runs. If this is ≤ smallVenueMaxNonEmptyMean,
+  // the cinema legitimately programs very few screenings and shouldn't be empty-ratio-flagged.
+  // (Failed-ratio still fires — those are real fetch errors regardless of venue size.)
+  const nonEmptySuccessRuns = runs.filter(
+    (r) => r.status === "success" && (r.screeningCount ?? 0) > 0,
+  );
+  const nonEmptyMean =
+    nonEmptySuccessRuns.length > 0
+      ? nonEmptySuccessRuns.reduce((s, r) => s + (r.screeningCount ?? 0), 0) /
+        nonEmptySuccessRuns.length
+      : 0;
+  const isSmallVenue =
+    nonEmptySuccessRuns.length > 0 &&
+    nonEmptyMean <= thresholds.smallVenueMaxNonEmptyMean;
+
   const reasons: string[] = [];
   let severity: FlakySeverity | null = null;
 
@@ -276,7 +304,9 @@ export function analyzeRunsForFlakiness(
     else if (severity === "warn" && next === "critical") severity = "critical";
   };
 
-  if (emptyRatio >= thresholds.emptyRatioCritical) {
+  if (isSmallVenue) {
+    // Skip empty-ratio signal — the venue's nature, not a bug.
+  } else if (emptyRatio >= thresholds.emptyRatioCritical) {
     reasons.push(`${Math.round(emptyRatio * 100)}% of recent runs returned success+0`);
     bump("critical");
   } else if (emptyRatio >= thresholds.emptyRatioWarn) {

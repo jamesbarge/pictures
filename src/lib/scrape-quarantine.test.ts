@@ -44,11 +44,14 @@ describe("analyzeRunsForFlakiness", () => {
     expect(analyzeRunsForFlakiness(runs)).toBeNull();
   });
 
-  it("flags BFI IMAX pattern (14/21 empty success) as critical", () => {
-    // Synthesise the production pattern: alternating empty / non-empty
+  it("flags a high-volume cinema with high empty-success ratio as critical", () => {
+    // Synthesise an alternating-failure pattern at a high-volume venue (mean
+    // non-empty count = 50, well above the small-venue threshold of 5).
+    // This is the genuine "broken on half its runs" pattern, distinct from
+    // BFI IMAX's "small venue with natural zeros" pattern.
     const runs: RunRecord[] = [];
     for (let i = 0; i < 21; i++) {
-      runs.push(i % 3 === 0 ? makeRun("success", 5, i) : makeRun("success", 0, i));
+      runs.push(i % 3 === 0 ? makeRun("success", 50, i) : makeRun("success", 0, i));
     }
     // lookback defaults to 10 — slice the most recent 10
     const verdict = analyzeRunsForFlakiness(runs.slice(0, 10));
@@ -139,6 +142,53 @@ describe("analyzeRunsForFlakiness", () => {
     expect(verdict!.lastGoodRunAt?.toISOString()).toBe(
       runs[2].startedAt.toISOString(),
     );
+  });
+
+  it("treats BFI IMAX pattern (non-empty mean ≤ 5) as a small venue and skips empty-ratio signal", () => {
+    // Real BFI IMAX pattern from production: 2, 2, 0, 0, 2, 2, 0, 0
+    const runs: RunRecord[] = [
+      makeRun("success", 2, 0),
+      makeRun("success", 0, 1),
+      makeRun("success", 2, 2),
+      makeRun("success", 0, 3),
+      makeRun("success", 2, 4),
+      makeRun("success", 2, 5),
+      makeRun("success", 0, 6),
+      makeRun("success", 0, 7),
+    ];
+    // 50% empty ratio — would have been 🔴 critical previously.
+    // Mean of non-empty runs = 2, which is ≤ smallVenueMaxNonEmptyMean (5).
+    // The empty-ratio signal is suppressed; verdict is null.
+    const verdict = analyzeRunsForFlakiness(runs);
+    expect(verdict).toBeNull();
+  });
+
+  it("still fires for genuinely-flaky cinemas with high non-empty means", () => {
+    // BFI Southbank-style: 250, 0, 250, 0, 250, 0 (real failures, not venue size)
+    const runs: RunRecord[] = [];
+    for (let i = 0; i < 10; i++) {
+      runs.push(i % 2 === 0 ? makeRun("success", 250, i) : makeRun("success", 0, i));
+    }
+    const verdict = analyzeRunsForFlakiness(runs);
+    expect(verdict).not.toBeNull();
+    expect(verdict!.severity).toBe("critical");
+  });
+
+  it("still fires failed-ratio signal for small venues (failures are independent of venue size)", () => {
+    // Small venue (non-empty mean = 2) but also 50% failed runs — fail signal still fires.
+    const runs: RunRecord[] = [
+      makeRun("success", 2, 0),
+      makeRun("failed", null, 1),
+      makeRun("success", 2, 2),
+      makeRun("failed", null, 3),
+      makeRun("failed", null, 4),
+      makeRun("failed", null, 5),
+      makeRun("failed", null, 6),
+      makeRun("success", 2, 7),
+    ];
+    const verdict = analyzeRunsForFlakiness(runs);
+    expect(verdict).not.toBeNull();
+    expect(verdict!.reasons.some((r) => /failed outright/.test(r))).toBe(true);
   });
 });
 
