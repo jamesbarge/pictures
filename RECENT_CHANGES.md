@@ -1,3 +1,12 @@
+## 2026-05-17: Parallelize DQS verifier loop by cinema (preserves per-host rate-limit)
+**PR**: TBD | **Files**: `scripts/data-check.ts`
+- `verifyCinemaScreenings()` previously ran one verifier at a time with a 500ms sleep between EACH call regardless of cinema — wasteful since each verifier hits a different host. Now groups screenings by `cinema_id` and runs one sequential worker PER cinema, with the 500ms rate-limit preserved within each cinema's worker. With ~6 distinct cinemas in the queue this collapses wall-clock from ~10s to ~2s, freeing up the 3-min phase budget for extra coverage or retries.
+- Adds a `perCinemaCap = ceil(CINEMA_VERIFICATION_CAP / cinemaCount)` to stop a single busy host crowding out coverage of the others. Final result capped at the original `CINEMA_VERIFICATION_CAP` so the overall budget is unchanged.
+- Behaviour-preserving for the rate-limit contract: each cinema host still sees one request per 500ms; nothing parallelizes within a single host.
+- 990/990 tests pass; type-clean.
+
+---
+
 ## 2026-05-17: Extract iCal parser to src/scrapers/utils/ical-parser.ts
 **PR**: TBD | **Files**: `src/scrapers/utils/ical-parser.ts` (new), `src/scrapers/cinemas/cinema-museum.ts`
 - Moves `parseVEvents` + supporting types from `cinemas/cinema-museum.ts` to `utils/ical-parser.ts`. Re-exported from the original location so the existing test file's import continues to work. No behaviour change.
