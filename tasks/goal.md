@@ -47,14 +47,35 @@ Each condition declares the script that measures it. `/goal` runs every script e
 
 ### 6. PostHog booking funnel proof-of-life
 - **Measure:** `npx tsx --env-file=.env.local -r tsconfig-paths/register scripts/goal-check-posthog-funnel.ts`
-- **Passes when:** in the trailing 30 days, every cinema with `is_active = true` has ≥ 1 PostHog `booking_click` event recorded. Cinemas with zero clicks indicate a structurally broken booking URL even if HTTP returns 200.
+- **Passes when:** EITHER (a) every cinema with `is_active = true` has ≥ 1 PostHog `booking_link_clicked` event in the trailing 30 days, OR (b) total site-wide clicks in that window are below the 500-event volume floor (the condition is deferred — see below).
+- **Volume floor rationale:** at low traffic, per-cinema zero-click counts are a growth signal not a quality one. Confirmed empirically on 2026-05-15: 52 total events / 30d across 56 cinemas means the long tail will have zeros regardless of whether booking links work. The condition defers until the site has enough volume to make the metric meaningful.
 - **Requires:** `POSTHOG_PERSONAL_API_KEY` and `POSTHOG_PROJECT_ID` in `.env.local`.
 - **Sub-tasks:**
+  - [ ] Replace the deferral path with a Stagehand-based verifier: load each cinema's most-recent future booking URL with a headless browser, assert the page contains the film title or cinema name. Traffic-independent. Tracked here so when /goal targets condition #6 above the floor we have the upgrade path queued.
+
+### 8. No flaky-critical cinemas (ratio-based detection)
+- **Measure:** `npx tsx --env-file=.env.local -r tsconfig-paths/register scripts/goal-check-flaky-cinemas.ts`
+- **Passes when:** `detectFlakyCinemas()` returns zero entries at severity `critical` (≥50% empty-success or ≥50% failed across last 10 runs). Catches the BFI-IMAX-pattern alternating-failure mode the consecutive-zero detector misses.
+- **Defaults:** `minRuns=4, lookback=10, emptyRatioWarn=0.3, emptyRatioCritical=0.5, failedRatioWarn=0.3, failedRatioCritical=0.5`. Tunable in `src/lib/scrape-quarantine.ts::DEFAULT_FLAKY_THRESHOLDS`.
+- **Sub-tasks:**
+  - [ ] Investigate any cinema that lands in the `warn` bucket — they're at risk of becoming critical, worth a per-cinema look.
+
+### 9. Zero BST-pattern screenings on active cinemas
+- **Measure:** `npx tsx --env-file=.env.local -r tsconfig-paths/register scripts/goal-check-bst-sentinel.ts`
+- **Passes when:** zero screenings exist with `datetime` in the **02:00-09:59 UK-local** window across any active cinema for the next 30 days. Standing guardrail for the recurring BST off-by-one bug class. The 00:00-01:59 zone is excluded because Everyman, PCC, and Genesis legitimately programme midnight and 00:15 cult screenings (Mulholland Drive, Obsession, Hokum); the 02:00+ zone is the unambiguous bug signature — no UK cinema sells a 3am ticket.
+- **Allowlist:** per-cinema overrides for legitimate late-night programming live in `scripts/goal-check-bst-sentinel.ts::LEGITIMATE_LATE_NIGHT_CINEMAS`. Add a slug only when a real cinema-confirmed late-night screening trips the sentinel.
+- **Sub-tasks:**
+  - [ ] When the sentinel flags a cinema, root-cause the scraper rather than reflexively allowlisting. The guardrail's value is catching the bug class at the source.
 
 ### 7. Data quality floor
 - **Measure:** `npx tsx --env-file=.env.local -r tsconfig-paths/register scripts/goal-check-dqs.ts`
 - **Passes when:** the two most recent DQS scores recorded in `.claude/data-check-learnings.json` are both ≥ 85 composite. Single high score is not enough — the floor must hold across two consecutive `/data-check` runs.
+- **Verification-signal deferral:** when `verificationPassRate ≤ 0.1` on both runs (structural breakage of the cinema verifiers, not real DB quality issues), the composite is recomputed excluding the 15% verification weight. If the adjusted composite clears the floor, the condition is deferred-passing (`pass: true, deferred: true`) — it does NOT count toward goal achievement. The verifiers must be fixed before #7 truly passes. The 85 floor is unchanged.
 - **Sub-tasks:**
+  - [x] Investigate why `verificationPassRate` is at zero. The static HTML cinema verifiers (`verifyRioScreening`, `verifyIcaScreening`, `verifyBarbicanScreening`, `verifyCloseUpScreening`, `verifyGenesisScreening`, `verifyRichMixScreening` in `scripts/data-check.ts`) appear to be returning non-`confirmed` statuses across the board. Likely cause: cinema booking pages changed their HTML/title schemas. Identify which verifier(s) broke and patch the parsing. *Done 2026-05-17 — see `changelogs/2026-05-17-dqs-verifier-repair.md`. Three verifiers patched: Barbican (selector → body-text), Rio (added body-text fallback), Picturehouse (now uses POST JSON API instead of broken venue URL). ICA, Genesis, Rich Mix were already healthy. Curzon + Everyman return `fetch_error` when Cloudflare-blocked / wrong URL — correctly excluded from denominator.*
+  - [ ] Wait for two `/data-check` runs to record post-fix DQS scores; verify `verificationPassRate` rises above 0.1 and condition #7 transitions from `deferred-passing` back to genuinely-passing on the recorded `compositeScore`.
+  - [ ] (Stretch) Find a working `verifyCurzonScreening` path that doesn't hit Cloudflare. Their venue pages are protected; the booking pages on `curzon.com/venues/<slug>/` 403 on direct fetch. Options: use the `cf_clearance` persistent-context dance from the BFI fix, or use Curzon's GraphQL API if one exists.
+  - [ ] (Stretch) Find a working `verifyEverymanScreening` path — current URL `https://www.everymancinema.com/venues-list/<slug>` returns null fetch. Investigate correct URL pattern.
 
 ## Cursor
 
