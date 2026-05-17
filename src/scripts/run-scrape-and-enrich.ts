@@ -28,6 +28,8 @@ import {
   formatFlakyReport,
   detectYieldDrop,
   formatYieldDropReport,
+  detectYieldDeltaSinceBaseline,
+  formatYieldDeltaReport,
   detectStaleCinemas,
   formatStaleCinemaReport,
   readRecentDqs,
@@ -187,6 +189,17 @@ async function main(): Promise<void> {
         ok: true,
         detail: `${breakers.length} broken, ${flaky.length} flaky, ${yieldDrops.length} yield-drop`,
       };
+    }),
+  );
+
+  // Phase 5: Per-run delta-vs-baseline report. Quick-win UX surfacer for
+  // "this run vs the 7-day mean" — fires after a single below-baseline run,
+  // unlike yield-drop which needs a 25-run window. Read-only.
+  phases.push(
+    await runPhase("Per-run delta vs 7-day baseline", async () => {
+      const deltas = await detectYieldDeltaSinceBaseline();
+      console.log(formatYieldDeltaReport(deltas));
+      return { ok: true, detail: `${deltas.length} below baseline` };
     }),
   );
 

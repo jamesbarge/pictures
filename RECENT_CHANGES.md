@@ -1,3 +1,12 @@
+## 2026-05-17: /scrape post-run — delta-vs-baseline report (per-run yield UX surfacer)
+**PR**: TBD | **Files**: `src/lib/scrape-quarantine.ts`, `src/lib/scrape-quarantine.test.ts`, `src/scripts/run-scrape-and-enrich.ts`
+- New `detectYieldDeltaSinceBaseline(options?)` + `formatYieldDeltaReport(deltas)` in `src/lib/scrape-quarantine.ts`. Compares the most recent successful run per cinema to the mean of all successful runs from the prior 7 days (excluding the latest). Flags cinemas whose current count is ≤ 70% of baseline AND whose baseline mean is ≥ 10 (to filter small-cinema noise). Complements the existing yield-drop detector — yield-drop needs a 25-run window to fire; this fires after a single below-baseline run.
+- Wired into `/scrape` as a new post-run phase (Phase 5). Single windowed SQL, ~400ms.
+- 2 new formatter tests. SQL function integration-verified against production: surfaces 3 Everyman venues with current run yield 30-35% below 7-day baseline.
+- 990/990 tests pass.
+
+---
+
 ## 2026-05-17: Add Everyman Brentford + Whiteley to chain config
 **PR**: TBD | **Files**: `src/scrapers/chains/everyman.ts`, `src/config/cinema-registry.ts`
 - Adds two newly-opened Everyman venues identified in the 2026-05-15 London coverage audit research: **Everyman Brentford** (TW8 8GR, theater ID `G049A`, 3 screens) and **Everyman at The Whiteley** (W2 4YN, theater ID `G05D7`, 5 screens, Bayswater).

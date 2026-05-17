@@ -593,6 +593,131 @@ export function formatYieldDropReport(drops: YieldDropCinema[]): string {
   return `Yield drops (${drops.length}):\n${lines.join("\n")}`;
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// Per-run delta-vs-baseline report
+// ─────────────────────────────────────────────────────────────────────────
+// Surfaces "this run's screening_count vs the prior 7-day mean for that
+// cinema" as a post-run UX signal in `/scrape`. Complements the yield-drop
+// detector (which needs 25 successful runs to fire); this fires after the
+// CURRENT run if its yield is materially below the recent mean — useful
+// even for cinemas with only a few historical runs.
+//
+// Designed to be called as part of the /scrape post-run summary so the user
+// sees "BFI Southbank: 30 (down 85% from 7d mean 200)" without having to
+// wait for the slower yield-drop window to fill.
+
+export interface YieldDelta {
+  cinemaId: string;
+  cinemaName: string;
+  currentCount: number;
+  baselineMean: number;
+  baselineSamples: number;
+  /** currentCount / baselineMean — 1.0 == matches baseline; < 1 == drop */
+  ratio: number;
+  /** Human-readable percent change ("-85%", "+12%"). */
+  pctChange: string;
+}
+
+/**
+ * Look at the most recent `success` run per active cinema and compare its
+ * screening_count to the mean of prior successful runs over `baselineDays`.
+ *
+ * Returns only cinemas whose ratio is ≤ `dropThreshold` (default 0.7) AND
+ * whose baseline mean is ≥ `minBaseline` (default 10). This is a UX surfacer,
+ * not a quarantine detector — every flagged row is a "FYI" not a verdict.
+ *
+ * Pure SQL — single query, no per-cinema fan-out.
+ */
+export async function detectYieldDeltaSinceBaseline(options?: {
+  baselineDays?: number;
+  dropThreshold?: number;
+  minBaseline?: number;
+}): Promise<YieldDelta[]> {
+  const baselineDays = options?.baselineDays ?? 7;
+  const dropThreshold = options?.dropThreshold ?? 0.7;
+  const minBaseline = options?.minBaseline ?? 10;
+
+  // For each active cinema:
+  //   - latest = most recent successful run (any age)
+  //   - baseline = AVG(screening_count) over successful runs older than `latest`
+  //     but within `baselineDays` of it (older than latest, newer than
+  //     latest - baselineDays). Excluding `latest` itself prevents the
+  //     baseline from being polluted by the current run.
+  const rows = (await db.execute(sql`
+    WITH ranked AS (
+      SELECT
+        r.cinema_id,
+        r.screening_count,
+        r.started_at,
+        ROW_NUMBER() OVER (PARTITION BY r.cinema_id ORDER BY r.started_at DESC) AS rn
+      FROM scraper_runs r
+      JOIN cinemas c ON c.id = r.cinema_id
+      WHERE c.is_active = true
+        AND r.status = 'success'
+    ),
+    latest AS (
+      SELECT cinema_id, screening_count AS current_count, started_at AS latest_at
+      FROM ranked
+      WHERE rn = 1
+    ),
+    baseline AS (
+      SELECT
+        ranked.cinema_id,
+        AVG(ranked.screening_count)::float AS baseline_mean,
+        COUNT(*)::int AS baseline_samples
+      FROM ranked
+      JOIN latest ON latest.cinema_id = ranked.cinema_id
+      WHERE ranked.rn > 1
+        AND ranked.started_at > latest.latest_at - (${baselineDays} || ' days')::interval
+      GROUP BY ranked.cinema_id
+    )
+    SELECT
+      latest.cinema_id,
+      cinemas.name AS cinema_name,
+      latest.current_count,
+      baseline.baseline_mean,
+      baseline.baseline_samples
+    FROM latest
+    JOIN baseline ON baseline.cinema_id = latest.cinema_id
+    JOIN cinemas ON cinemas.id = latest.cinema_id
+    WHERE baseline.baseline_mean >= ${minBaseline}
+      AND latest.current_count < baseline.baseline_mean * ${dropThreshold}
+    ORDER BY (latest.current_count::float / baseline.baseline_mean) ASC
+  `)) as unknown as Array<{
+    cinema_id: string;
+    cinema_name: string;
+    current_count: number;
+    baseline_mean: number;
+    baseline_samples: number;
+  }>;
+
+  return rows.map((r) => {
+    const ratio = r.current_count / r.baseline_mean;
+    const pct = Math.round((ratio - 1) * 100);
+    return {
+      cinemaId: r.cinema_id,
+      cinemaName: r.cinema_name,
+      currentCount: r.current_count,
+      baselineMean: r.baseline_mean,
+      baselineSamples: r.baseline_samples,
+      ratio,
+      pctChange: `${pct >= 0 ? "+" : ""}${pct}%`,
+    };
+  });
+}
+
+/** Format the delta list for slash-command output. */
+export function formatYieldDeltaReport(deltas: YieldDelta[]): string {
+  if (deltas.length === 0) {
+    return "No materially-below-baseline cinemas detected in the latest run.";
+  }
+  const lines = deltas.map(
+    (d) =>
+      `  • ${d.cinemaName}: ${d.currentCount} (${d.pctChange} vs ${d.baselineSamples}-run baseline mean ${d.baselineMean.toFixed(0)})`,
+  );
+  return `Below-baseline in latest run (${deltas.length}):\n${lines.join("\n")}`;
+}
+
 export interface StaleCinema {
   cinemaId: string;
   cinemaName: string;

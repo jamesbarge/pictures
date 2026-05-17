@@ -6,10 +6,12 @@ import {
   DEFAULT_FLAKY_THRESHOLDS,
   DEFAULT_YIELD_DROP_THRESHOLDS,
   formatFlakyReport,
+  formatYieldDeltaReport,
   formatYieldDropReport,
   type FlakyCinema,
   type RunRecord,
   type SuccessRunRecord,
+  type YieldDelta,
   type YieldDropCinema,
 } from "./scrape-quarantine";
 
@@ -367,5 +369,34 @@ describe("analyzeRunsForSilentBreaker", () => {
     ];
     expect(analyzeRunsForSilentBreaker(runs, 3)).toBeNull();
     expect(analyzeRunsForSilentBreaker(runs, 2)).not.toBeNull();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// formatYieldDeltaReport (formatter only — SQL is integration-tested live)
+// ─────────────────────────────────────────────────────────────────────────
+
+describe("formatYieldDeltaReport", () => {
+  it("returns a clean message when nothing is below baseline", () => {
+    expect(formatYieldDeltaReport([])).toBe(
+      "No materially-below-baseline cinemas detected in the latest run.",
+    );
+  });
+
+  it("renders entries with pct change + sample counts", () => {
+    const sample: YieldDelta[] = [
+      {
+        cinemaId: "bfi-southbank",
+        cinemaName: "BFI Southbank",
+        currentCount: 30,
+        baselineMean: 200,
+        baselineSamples: 6,
+        ratio: 0.15,
+        pctChange: "-85%",
+      },
+    ];
+    const out = formatYieldDeltaReport(sample);
+    expect(out).toContain("Below-baseline in latest run (1)");
+    expect(out).toContain("BFI Southbank: 30 (-85% vs 6-run baseline mean 200)");
   });
 });
