@@ -94,32 +94,42 @@ async function main(): Promise<void> {
   const phases: PhaseResult[] = [];
 
   // Phase 0: Pre-flight quarantine — read-only, ~1s. Tells the user which
-  // cinemas have been silently broken BEFORE they sit through a 30-60 min
-  // /scrape that just re-runs them. Two signals:
-  //   1. Silent breakers — N consecutive `success+0` runs (Prowlarr pattern)
-  //   2. Flaky cinemas   — high empty-success or failed ratio over wider window
-  // Both always run. Flaky catches alternating empty/non-empty patterns that
-  // evade the consecutive-zero detector (BFI IMAX, BFI Southbank in May 2026).
+  // cinemas have been silently broken for ≥2 runs BEFORE they sit through
+  // a 30-60 min /scrape that just re-runs them. Always runs.
   phases.push(
     await runPhase("Pre-flight (silent-breaker + flaky check)", async () => {
+      // Run both detectors in parallel — they walk the same scraper_runs
+      // table but ask different questions. Silent breakers fire on
+      // consecutive zeros; flaky fires on ratio-based patterns (e.g.
+      // success+0 every other run).
       const [breakers, flaky] = await Promise.all([
         detectSilentBreakers(),
         detectFlakyCinemas(),
       ]);
-      if (breakers.length === 0 && flaky.length === 0) {
-        console.log("[pre-flight] No broken or flaky cinemas detected — proceeding.");
+      const criticalFlaky = flaky.filter((f) => f.severity === "critical");
+      if (breakers.length === 0 && criticalFlaky.length === 0) {
+        console.log("[pre-flight] No silently-broken or critical-flaky cinemas — proceeding.");
+        if (flaky.length > 0) {
+          // Warn-level flakies still get surfaced so the user can preemptively
+          // investigate before they escalate.
+          console.log(formatFlakyReport(flaky));
+        }
       } else {
-        if (breakers.length > 0) console.log(formatQuarantineReport(breakers));
-        if (flaky.length > 0) console.log(formatFlakyReport(flaky));
-        const total = breakers.length + flaky.length;
+        if (breakers.length > 0) {
+          console.log(formatQuarantineReport(breakers));
+        }
+        if (flaky.length > 0) {
+          console.log(formatFlakyReport(flaky));
+        }
         console.log(
-          `[pre-flight] ${total} cinema signal(s) above. Consider \`/scrape-one <slug>\` ` +
+          `[pre-flight] ${breakers.length} silent, ${criticalFlaky.length} critical-flaky, ` +
+            `${flaky.length - criticalFlaky.length} warn-flaky. Consider \`/scrape-one <slug>\` ` +
             "to investigate before starting a full run.",
         );
       }
       return {
         ok: true,
-        detail: `${breakers.length} broken, ${flaky.length} flaky`,
+        detail: `${breakers.length} silent / ${criticalFlaky.length} critical / ${flaky.length - criticalFlaky.length} warn`,
       };
     }),
   );
@@ -155,20 +165,13 @@ async function main(): Promise<void> {
     console.log("[scrape-and-enrich] --skip-enrich: skipping enrichment phases");
   }
 
-  // Phase 4: Quarantine detection (always runs — read-only). Reports both
-  // silent breakers and flaky cinemas so post-run state is visible.
+  // Phase 4: Quarantine detection (always runs — read-only)
   phases.push(
-    await runPhase("Health check (silent-breaker + flaky)", async () => {
-      const [breakers, flaky] = await Promise.all([
-        detectSilentBreakers(),
-        detectFlakyCinemas(),
-      ]);
-      console.log(formatQuarantineReport(breakers));
-      console.log(formatFlakyReport(flaky));
-      return {
-        ok: true,
-        detail: `${breakers.length} broken, ${flaky.length} flaky`,
-      };
+    await runPhase("Health check (silent-breaker detection)", async () => {
+      const breakers = await detectSilentBreakers();
+      const report = formatQuarantineReport(breakers);
+      console.log(report);
+      return { ok: true, detail: `${breakers.length} cinemas flagged` };
     }),
   );
 
