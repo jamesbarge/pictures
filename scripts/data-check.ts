@@ -1355,33 +1355,65 @@ async function verifyCinemaScreenings(
     LIMIT ${CINEMA_VERIFICATION_CAP * 2}
   `;
 
-  const results: CinemaVerification[] = [];
   const phaseDeadline = Date.now() + 180_000; // 3 min hard timeout
+  const perCinemaDelayMs = 500; // rate limit per-cinema (each cinema = one host)
 
+  // Group eligible screenings by cinema_id so each cinema's verifications run
+  // SEQUENTIALLY (respecting the 500ms per-host rate-limit), while DIFFERENT
+  // cinemas run IN PARALLEL. With ~6 distinct cinemas in the queue this
+  // collapses wall-clock from ~10s to ~2s, freeing up the 3-min phase budget
+  // for retries or extra coverage.
+  const byCinema = new Map<string, ScreeningToVerify[]>();
   for (const screening of screenings) {
-    if (results.length >= CINEMA_VERIFICATION_CAP) break;
-    if (Date.now() > phaseDeadline) break;
-
-    const verifier = getVerifier(screening.cinema_id);
-    if (!verifier) continue;
-
-    try {
-      const result = await verifier(screening);
-      results.push(result);
-      await new Promise((r) => setTimeout(r, 500)); // rate limit
-    } catch {
-      results.push({
-        screeningId: screening.id,
-        filmId: screening.film_id,
-        filmTitle: screening.film_title,
-        cinemaId: screening.cinema_id,
-        cinemaName: screening.cinema_name,
-        datetime: screening.datetime,
-        status: "fetch_error",
-        detail: "Verifier threw exception",
-      });
+    if (!getVerifier(screening.cinema_id)) continue;
+    let bucket = byCinema.get(screening.cinema_id);
+    if (!bucket) {
+      bucket = [];
+      byCinema.set(screening.cinema_id, bucket);
     }
+    bucket.push(screening);
   }
+
+  // Soft cap per cinema so one busy host doesn't crowd out coverage of the
+  // others. Total work bounded by CINEMA_VERIFICATION_CAP regardless.
+  const perCinemaCap = Math.max(
+    1,
+    Math.ceil(CINEMA_VERIFICATION_CAP / Math.max(byCinema.size, 1)),
+  );
+
+  const errorResult = (screening: ScreeningToVerify): CinemaVerification => ({
+    screeningId: screening.id,
+    filmId: screening.film_id,
+    filmTitle: screening.film_title,
+    cinemaId: screening.cinema_id,
+    cinemaName: screening.cinema_name,
+    datetime: screening.datetime,
+    status: "fetch_error",
+    detail: "Verifier threw exception",
+  });
+
+  // Run one worker per cinema; each worker is sequential internally.
+  const workerResults = await Promise.all(
+    Array.from(byCinema.values()).map(async (cinemaScreenings) => {
+      const out: CinemaVerification[] = [];
+      for (const screening of cinemaScreenings) {
+        if (out.length >= perCinemaCap) break;
+        if (Date.now() > phaseDeadline) break;
+        const verifier = getVerifier(screening.cinema_id);
+        if (!verifier) continue;
+        try {
+          out.push(await verifier(screening));
+        } catch {
+          out.push(errorResult(screening));
+        }
+        await new Promise((r) => setTimeout(r, perCinemaDelayMs));
+      }
+      return out;
+    }),
+  );
+
+  // Flatten; cap at the overall budget so older logic stays in force.
+  const results = workerResults.flat().slice(0, CINEMA_VERIFICATION_CAP);
 
   return results;
 }
