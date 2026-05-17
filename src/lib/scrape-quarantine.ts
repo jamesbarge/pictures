@@ -173,6 +173,11 @@ export const DEFAULT_FLAKY_THRESHOLDS: FlakyThresholds = {
  * Pure analyzer — given a window of recent runs, returns a flakiness verdict.
  * Decoupled from the DB so the policy logic is unit-testable in isolation.
  *
+ * **Input contract:** `runs` must be ordered DESC by `startedAt` (most recent
+ * first). `lastGoodRunAt` is computed via `runs.find(...)` and returns "most
+ * recent success+nonzero" only if this ordering holds. The DB walker
+ * `detectFlakyCinemas` honours this contract; bespoke callers should too.
+ *
  * Returns `null` if the cinema isn't flaky (or doesn't have enough runs yet).
  */
 export function analyzeRunsForFlakiness(

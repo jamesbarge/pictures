@@ -19,7 +19,7 @@
  * Output: JSON to stdout. Exit code 0 if pass, 1 if fail.
  * Usage:  npx tsx --env-file=.env.local -r tsconfig-paths/register scripts/goal-check-bst-sentinel.ts
  */
-import { and, eq, gte, lt, sql } from "drizzle-orm";
+import { and, eq, gte, lt } from "drizzle-orm";
 import { db } from "@/db";
 import { cinemas } from "@/db/schema/cinemas";
 import { screenings } from "@/db/schema/screenings";
@@ -104,9 +104,6 @@ async function main() {
   offenders.sort((a, b) => b.count - a.count);
   const totalOffenders = offenders.reduce((s, o) => s + o.count, 0);
   const pass = totalOffenders === 0;
-
-  // Use sql tag to silence unused-import warning if not otherwise referenced
-  void sql;
 
   console.log(
     JSON.stringify(
