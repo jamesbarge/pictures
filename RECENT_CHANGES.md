@@ -1,3 +1,14 @@
+## 2026-05-17: DQS verifier repair — Barbican selector, Rio fallback, Picturehouse API
+**PR**: TBD | **Files**: `scripts/data-check.ts`, `tasks/goal.md`, `changelogs/2026-05-17-dqs-verifier-repair.md`
+- Diagnostic probe (now deleted) ran each `cinemaVerifications` verifier against one current production screening per cinema. Three verifiers were broken in different ways:
+  - **Barbican** — selector `a[href*="/whats-on/"]` was matching site-wide nav menu items (`"Cinema"`, `"Theatre & dance"`) instead of film cards. Switched to body-text contains-prefix search (the Genesis/Rich Mix pattern that already works). Probed `"The Devil Wears Prada 2"` against the Barbican listing — body contains the title, body-text fallback matches.
+  - **Rio** — the `var Events = {...}` regex no longer matches the embedded JSON. Verifier was returning `fetch_error` on every call, which excluded Rio from the denominator but added zero confirmed. Added a body-text fallback so the page-fetched-but-JSON-missing case still produces a `confirmed` when the title is present.
+  - **Picturehouse** — `https://www.picturehouses.com/cinema/<slug>` URL 301-redirects to the homepage, so the verifier was scanning the homepage for film titles. Switched to the same POST API the existing scraper uses (`/api/scheduled-movies-ajax` with `cinema_id` form field, mapped via `PICTUREHOUSE_VENUES.chainVenueId`). Smoke-tested against Clapham — API returned 200 with 24 movie titles.
+- ICA, Genesis, Rich Mix were already healthy. Curzon + Everyman correctly return `fetch_error` when their fetches fail (Cloudflare / wrong URL) — excluded from denominator, not dragging the rate.
+- After the next two `/data-check` runs, condition #7 should transition from `deferred-passing` back to genuinely-passing on the recorded `compositeScore` (the verification signal should rise above the 0.1 threshold).
+
+---
+
 ## 2026-05-16: /goal condition #7 — defer when verification signal is structurally zero
 **PR**: TBD | **Files**: `scripts/goal-check-dqs.ts`, `tasks/goal.md`, `changelogs/2026-05-16-goal-condition-7-dqs-verification-deferral.md`
 - Full `/goal status` (no `--fast`) ran today and revealed condition #7 (DQS floor ≥ 85) failing at 76.62/77.42. Drilling into the composite: every dimension above 85 except `verificationPassRate` at 0. Verification is computed from `cinemaVerifications` (static HTML verifiers for Rio, ICA, Barbican, Close-Up, Genesis, Rich Mix in `scripts/data-check.ts`) — they're all returning non-`confirmed` status, likely from cinema booking-page schema drift.
