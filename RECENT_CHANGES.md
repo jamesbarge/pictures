@@ -1,3 +1,11 @@
+## 2026-05-17: Add Curzon Camden + Richmond + Wimbledon to cinema-registry (consistency)
+**PR**: TBD | **Files**: `src/config/cinema-registry.ts`
+- Adds the 3 reactivated Curzon venues (from #513) to the canonical cinema-registry so they match the chain scraper config. Without this, the DB seed pipeline wouldn't know about them and the frontend's `CinemaDefinition` map would have gaps.
+- Coordinates, addresses, screen counts, and chain metadata pulled from Curzon's public venue pages. All marked `active: true` consistent with their chain-config state.
+- Pure data addition. No code changes; 993 tests still pass.
+
+---
+
 ## 2026-05-17: Reactivate Curzon Camden + Richmond + Wimbledon (also fix Wimbledon siteId typo)
 **PR**: TBD | **Files**: `src/scrapers/chains/curzon.ts`, `src/scrapers/pipeline.ts`
 - All 3 Curzon venues previously marked `active: false` are actually **live and programming**. The "no listings since Feb 2026" comment was wrong — verified via live API probe with Bearer-prefixed JWT:
