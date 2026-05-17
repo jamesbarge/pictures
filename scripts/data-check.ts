@@ -1249,8 +1249,15 @@ async function verifyPicturehouseScreening(s: ScreeningToVerify): Promise<Cinema
       headers: { "User-Agent": UA, "Accept": "application/json" },
     });
     if (!resp.ok) return { ...base, status: "fetch_error", detail: `API HTTP ${resp.status}` };
-    const data = (await resp.json()) as { movies?: Array<{ Title: string }> };
-    const movies = data.movies ?? [];
+    const data = (await resp.json()) as { response?: string; movies?: Array<{ Title: string }> };
+    // Mirror the gate the existing scraper uses (src/scrapers/chains/picturehouse.ts:249):
+    // a non-success envelope (maintenance, throttle, schema drift) returns 200 but
+    // no usable movies. Treat as fetch_error so the venue's screenings are excluded
+    // from the denominator rather than silently counted as misses.
+    if (data.response !== "success" || !Array.isArray(data.movies)) {
+      return { ...base, status: "fetch_error", detail: `API envelope not "success" (was: ${data.response})` };
+    }
+    const movies = data.movies;
     let bestSim = -1;
     let bestTitle: string | null = null;
     for (const m of movies) {
@@ -1292,6 +1299,13 @@ const CINEMA_VERIFIERS: Record<string, (s: ScreeningToVerify) => Promise<CinemaV
   "close-up": verifyCloseUpScreening,
   "genesis": verifyGenesisScreening,
   "rich-mix": verifyRichMixScreening,
+  // Ritzy and The Gate sit under the Picturehouse chain (see
+  // src/scrapers/chains/picturehouse.ts) but their cinema_id slugs don't
+  // start with `picturehouse-`, so the chain dispatcher misses them. Now
+  // that verifyPicturehouseScreening uses the API path that actually works,
+  // route them through it explicitly to lift verification volume.
+  "ritzy-brixton": verifyPicturehouseScreening,
+  "gate-notting-hill": verifyPicturehouseScreening,
 };
 
 // Chain verifiers: any cinema ID starting with these prefixes
