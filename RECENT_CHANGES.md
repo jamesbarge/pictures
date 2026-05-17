@@ -1,3 +1,12 @@
+## 2026-05-17: Flaky detector — small-venue exclusion
+**PR**: TBD | **Files**: `src/lib/scrape-quarantine.ts`, `src/lib/scrape-quarantine.test.ts`
+- New `smallVenueMaxNonEmptyMean: 5` threshold in `FlakyThresholds`. When a cinema's mean screening-count across non-empty successful runs is ≤ threshold, the empty-success-ratio signal is suppressed (failed-ratio still fires normally).
+- Background: a cinema whose non-empty runs are themselves near-zero isn't "alternating between healthy and broken" — it's just a small venue. The previous detector would flag it forever as flaky because its natural rhythm includes legitimate zero-yield scrape windows.
+- Behavior-preserving for genuinely-flaky cinemas: those with non-empty mean > 5 (e.g. BFI Southbank with 250+ in healthy runs) still fire normally. Confirmed via production replay: BFI IMAX with non-empty mean 7.75 (outlier 25-count run) still flagged; a hypothetical IMAX-pure-small-venue (mean 2) would now be suppressed.
+- 3 new unit tests covering the small-venue case + 2 still-fires regression cases. 993/993 tests pass; type-clean.
+
+---
+
 ## 2026-05-17: Parallelize DQS verifier loop by cinema (preserves per-host rate-limit)
 **PR**: TBD | **Files**: `scripts/data-check.ts`
 - `verifyCinemaScreenings()` previously ran one verifier at a time with a 500ms sleep between EACH call regardless of cinema — wasteful since each verifier hits a different host. Now groups screenings by `cinema_id` and runs one sequential worker PER cinema, with the 500ms rate-limit preserved within each cinema's worker. With ~6 distinct cinemas in the queue this collapses wall-clock from ~10s to ~2s, freeing up the 3-min phase budget for extra coverage or retries.
