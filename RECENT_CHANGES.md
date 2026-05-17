@@ -1,3 +1,12 @@
+## 2026-05-17: /scrape post-run — delta-vs-baseline report (per-run yield UX surfacer)
+**PR**: TBD | **Files**: `src/lib/scrape-quarantine.ts`, `src/lib/scrape-quarantine.test.ts`, `src/scripts/run-scrape-and-enrich.ts`
+- New `detectYieldDeltaSinceBaseline(options?)` + `formatYieldDeltaReport(deltas)` in `src/lib/scrape-quarantine.ts`. Compares the most recent successful run per cinema to the mean of all successful runs from the prior 7 days (excluding the latest). Flags cinemas whose current count is ≤ 70% of baseline AND whose baseline mean is ≥ 10 (to filter small-cinema noise). Complements the existing yield-drop detector — yield-drop needs a 25-run window to fire; this fires after a single below-baseline run.
+- Wired into `/scrape` as a new post-run phase (Phase 5). Single windowed SQL, ~400ms.
+- 2 new formatter tests. SQL function integration-verified against production: surfaces 3 Everyman venues with current run yield 30-35% below 7-day baseline.
+- 990/990 tests pass.
+
+---
+
 ## 2026-05-17: /scrape detection — tests for analyzeRunsForSilentBreaker
 **PR**: TBD | **Files**: `src/lib/scrape-quarantine.test.ts`
 - Adds 6 unit tests for the pure `analyzeRunsForSilentBreaker` analyzer that landed unannotated via the #506 merge. Covers: below-threshold null, default-threshold fire + lastGood semantics, "stops at last good", failed-status doesn't fire silent-breaker (that's flaky's job), ASC/DESC input parity, custom threshold. 988/988 tests pass.
