@@ -28,6 +28,11 @@ import { BaseScraper } from "../base";
 import type { RawScreening, ScraperConfig } from "../types";
 import { FestivalDetector } from "../festivals/festival-detector";
 import { ukLocalToUTC } from "../utils/date-parser";
+import { parseVEvents } from "../utils/ical-parser";
+
+// Re-export so existing tests / imports of `parseVEvents` from this module
+// keep working. New code should import directly from `../utils/ical-parser`.
+export { parseVEvents } from "../utils/ical-parser";
 
 const ICAL_URL = "https://cinemamuseum.org.uk/schedule/?ical=1";
 const BASE_URL = "https://cinemamuseum.org.uk";
@@ -38,99 +43,6 @@ const EXCLUDED_CATEGORIES = new Set([
   "Bazaar",
   "Bazaars",
 ]);
-
-interface ParsedVEvent {
-  uid: string;
-  summary: string;
-  dtStartUKLocal: { year: number; month: number; day: number; hour: number; minute: number };
-  url?: string;
-  categories: string[];
-}
-
-/**
- * Minimal iCal VEVENT parser — only what we need from a 30-event feed.
- * Handles RFC 5545 line folding (continuation lines that start with " " or "\t")
- * and the `\,`, `\;`, `\\`, `\n` escape sequences in TEXT properties.
- *
- * Exported for unit testing.
- */
-export function parseVEvents(icalText: string): ParsedVEvent[] {
-  // Unfold line continuations (a leading space/tab continues the previous line)
-  const lines = icalText.replace(/\r\n[ \t]/g, "").replace(/\n[ \t]/g, "").split(/\r?\n/);
-
-  const events: ParsedVEvent[] = [];
-  let current: Partial<ParsedVEvent> & { _open?: boolean } | null = null;
-
-  for (const line of lines) {
-    if (line === "BEGIN:VEVENT") {
-      current = { _open: true, categories: [] };
-      continue;
-    }
-    if (line === "END:VEVENT") {
-      if (current && current.uid && current.summary && current.dtStartUKLocal) {
-        events.push({
-          uid: current.uid,
-          summary: current.summary,
-          dtStartUKLocal: current.dtStartUKLocal,
-          url: current.url,
-          categories: current.categories ?? [],
-        });
-      }
-      current = null;
-      continue;
-    }
-    if (!current?._open) continue;
-
-    // Split into "PROPERTY[;params]" and "value"
-    const colon = line.indexOf(":");
-    if (colon < 0) continue;
-    const propWithParams = line.slice(0, colon);
-    const rawValue = line.slice(colon + 1);
-    const semi = propWithParams.indexOf(";");
-    const prop = semi < 0 ? propWithParams : propWithParams.slice(0, semi);
-
-    switch (prop) {
-      case "UID":
-        current.uid = rawValue;
-        break;
-      case "SUMMARY":
-        current.summary = unescapeIcalText(rawValue);
-        break;
-      case "URL":
-        current.url = rawValue;
-        break;
-      case "CATEGORIES":
-        current.categories = rawValue.split(",").map((c) => c.trim()).filter(Boolean);
-        break;
-      case "DTSTART": {
-        // Format: 20260516T193000 (no tz, paired with TZID=Europe/London in params)
-        // or rare floating-time. Only handle the local-time UK form because that's
-        // what the feed always emits (TZID=Europe/London).
-        const m = rawValue.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})\d{2}/);
-        if (!m) break;
-        const [, year, month, day, hour, minute] = m;
-        current.dtStartUKLocal = {
-          year: parseInt(year, 10),
-          month: parseInt(month, 10) - 1, // 0-indexed
-          day: parseInt(day, 10),
-          hour: parseInt(hour, 10),
-          minute: parseInt(minute, 10),
-        };
-        break;
-      }
-    }
-  }
-
-  return events;
-}
-
-function unescapeIcalText(s: string): string {
-  return s
-    .replace(/\\n/gi, " ")
-    .replace(/\\,/g, ",")
-    .replace(/\\;/g, ";")
-    .replace(/\\\\/g, "\\");
-}
 
 export class CinemaMuseumScraper extends BaseScraper {
   config: ScraperConfig = {

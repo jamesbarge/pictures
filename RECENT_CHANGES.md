@@ -1,3 +1,11 @@
+## 2026-05-17: Extract iCal parser to src/scrapers/utils/ical-parser.ts
+**PR**: TBD | **Files**: `src/scrapers/utils/ical-parser.ts` (new), `src/scrapers/cinemas/cinema-museum.ts`
+- Moves `parseVEvents` + supporting types from `cinemas/cinema-museum.ts` to `utils/ical-parser.ts`. Re-exported from the original location so the existing test file's import continues to work. No behaviour change.
+- Code-review follow-up flagged in #496's review: "Consider extracting the `parseVEvents` parser to `src/scrapers/utils/` if another iCal-feed venue surfaces in future audits." Pre-extracting now so the next iCal-feed venue (e.g. Bertha DocHouse's WordPress Events Calendar, or any other Pressidium-hosted London cinema) drops in with a single import.
+- 990/990 tests pass; type-clean; no test changes required.
+
+---
+
 ## 2026-05-17: /scrape post-run — delta-vs-baseline report (per-run yield UX surfacer)
 **PR**: TBD | **Files**: `src/lib/scrape-quarantine.ts`, `src/lib/scrape-quarantine.test.ts`, `src/scripts/run-scrape-and-enrich.ts`
 - New `detectYieldDeltaSinceBaseline(options?)` + `formatYieldDeltaReport(deltas)` in `src/lib/scrape-quarantine.ts`. Compares the most recent successful run per cinema to the mean of all successful runs from the prior 7 days (excluding the latest). Flags cinemas whose current count is ≤ 70% of baseline AND whose baseline mean is ≥ 10 (to filter small-cinema noise). Complements the existing yield-drop detector — yield-drop needs a 25-run window to fire; this fires after a single below-baseline run.
