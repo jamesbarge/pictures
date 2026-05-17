@@ -336,6 +336,196 @@ export function formatFlakyReport(flaky: FlakyCinema[]): string {
   return `Flaky cinemas (${flaky.length}):\n${lines.join("\n")}`;
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// Yield-drop detector
+// ─────────────────────────────────────────────────────────────────────────
+// Closes the third gap in detection alongside silent-breaker (success+0
+// repeating) and flaky (success+0 + failed ratio). Yield-drop catches the
+// silent "success+low-but-non-zero" case — a scraper that normally yields
+// ~200 screenings and now consistently yields ~20. The previous detectors
+// see this as healthy `status=success` with a non-zero count, but the data
+// is functionally broken. Example: a BFI PDF parser regression that only
+// extracts one venue's screenings instead of both.
+
+export type YieldDropSeverity = "warn" | "critical";
+
+export interface YieldDropCinema {
+  cinemaId: string;
+  cinemaName: string;
+  recentAvg: number;     // avg screening_count over the most recent successful runs
+  baselineAvg: number;   // avg over the trailing baseline window
+  dropRatio: number;     // recentAvg / baselineAvg (0..1; lower = worse)
+  recentSamples: number; // how many runs went into recentAvg
+  baselineSamples: number;
+  lastRunAt: Date;
+  severity: YieldDropSeverity;
+}
+
+export interface YieldDropThresholds {
+  /** Most recent N successful runs to compute recentAvg from. */
+  recentWindow: number;
+  /** Previous M successful runs (after the recent window) to compute baselineAvg from. */
+  baselineWindow: number;
+  /**
+   * Floor on baselineAvg below which we don't flag. Small cinemas
+   * (Coldharbour ≈ 9/run, BFI IMAX ≈ 2/run when broken) generate too much
+   * noise otherwise.
+   */
+  minBaselineAvg: number;
+  /** recentAvg / baselineAvg ≤ this → warn. */
+  dropRatioWarn: number;
+  /** recentAvg / baselineAvg ≤ this → critical. */
+  dropRatioCritical: number;
+}
+
+export const DEFAULT_YIELD_DROP_THRESHOLDS: YieldDropThresholds = {
+  recentWindow: 5,
+  baselineWindow: 20,
+  minBaselineAvg: 20,
+  dropRatioWarn: 0.5,
+  dropRatioCritical: 0.3,
+};
+
+/** Run shape consumed by the pure analyzer. */
+export interface SuccessRunRecord {
+  screeningCount: number | null;
+  startedAt: Date;
+}
+
+/**
+ * Pure analyzer for yield-drop detection. Takes only successful runs (the
+ * caller filters to `status=success`) so the math isn't polluted by failures
+ * or empty-success rows that already get caught by flaky/silent-breaker.
+ *
+ * Sorts the input internally by `startedAt` DESC so callers can pass any order.
+ * Returns `null` when there isn't enough data, when baseline is below the
+ * floor, or when the drop isn't large enough to fire.
+ */
+export function analyzeYieldDrop(
+  rawRuns: SuccessRunRecord[],
+  thresholds: YieldDropThresholds = DEFAULT_YIELD_DROP_THRESHOLDS,
+): Omit<YieldDropCinema, "cinemaId" | "cinemaName"> | null {
+  const needed = thresholds.recentWindow + thresholds.baselineWindow;
+  if (rawRuns.length < needed) return null;
+
+  const sorted = [...rawRuns].sort(
+    (a, b) => b.startedAt.getTime() - a.startedAt.getTime(),
+  );
+
+  const recent = sorted.slice(0, thresholds.recentWindow);
+  const baseline = sorted.slice(
+    thresholds.recentWindow,
+    thresholds.recentWindow + thresholds.baselineWindow,
+  );
+
+  const avg = (xs: SuccessRunRecord[]): number =>
+    xs.reduce((s, r) => s + (r.screeningCount ?? 0), 0) / xs.length;
+
+  const recentAvg = avg(recent);
+  const baselineAvg = avg(baseline);
+
+  if (baselineAvg < thresholds.minBaselineAvg) return null;
+
+  const dropRatio = recentAvg / baselineAvg;
+  let severity: YieldDropSeverity | null = null;
+  if (dropRatio <= thresholds.dropRatioCritical) severity = "critical";
+  else if (dropRatio <= thresholds.dropRatioWarn) severity = "warn";
+  if (severity === null) return null;
+
+  return {
+    recentAvg,
+    baselineAvg,
+    dropRatio,
+    recentSamples: recent.length,
+    baselineSamples: baseline.length,
+    lastRunAt: sorted[0].startedAt,
+    severity,
+  };
+}
+
+/**
+ * Walk every active cinema, pull its recent successful runs, and surface those
+ * whose recent yield has dropped significantly below baseline.
+ *
+ * Single windowed SQL — same shape as `detectFlakyCinemas`.
+ */
+export async function detectYieldDrop(
+  thresholds: YieldDropThresholds = DEFAULT_YIELD_DROP_THRESHOLDS,
+): Promise<YieldDropCinema[]> {
+  const totalNeeded = thresholds.recentWindow + thresholds.baselineWindow;
+
+  const rows = (await db.execute(sql`
+    WITH ranked AS (
+      SELECT
+        r.cinema_id,
+        r.screening_count,
+        r.started_at,
+        ROW_NUMBER() OVER (PARTITION BY r.cinema_id ORDER BY r.started_at DESC) AS rn
+      FROM scraper_runs r
+      JOIN cinemas c ON c.id = r.cinema_id
+      WHERE c.is_active = true
+        AND r.status = 'success'
+    )
+    SELECT
+      ranked.cinema_id,
+      cinemas.name AS cinema_name,
+      ranked.screening_count,
+      ranked.started_at
+    FROM ranked
+    JOIN cinemas ON cinemas.id = ranked.cinema_id
+    WHERE ranked.rn <= ${totalNeeded}
+    ORDER BY ranked.cinema_id, ranked.started_at DESC
+  `)) as unknown as Array<{
+    cinema_id: string;
+    cinema_name: string;
+    screening_count: number | null;
+    started_at: Date;
+  }>;
+
+  const byCinema = new Map<string, { name: string; runs: SuccessRunRecord[] }>();
+  for (const row of rows) {
+    const startedAt =
+      row.started_at instanceof Date ? row.started_at : new Date(row.started_at);
+    let entry = byCinema.get(row.cinema_id);
+    if (!entry) {
+      entry = { name: row.cinema_name, runs: [] };
+      byCinema.set(row.cinema_id, entry);
+    }
+    entry.runs.push({ screeningCount: row.screening_count, startedAt });
+  }
+
+  const yieldDrops: YieldDropCinema[] = [];
+  for (const [cinemaId, { name, runs }] of byCinema) {
+    const verdict = analyzeYieldDrop(runs, thresholds);
+    if (verdict !== null) {
+      yieldDrops.push({ cinemaId, cinemaName: name, ...verdict });
+    }
+  }
+
+  // critical first, then biggest drops first
+  return yieldDrops.sort((a, b) => {
+    if (a.severity !== b.severity) return a.severity === "critical" ? -1 : 1;
+    return a.dropRatio - b.dropRatio;
+  });
+}
+
+/** Format the yield-drop list for slash-command output. */
+export function formatYieldDropReport(drops: YieldDropCinema[]): string {
+  if (drops.length === 0) {
+    return "No yield drops detected.";
+  }
+  const lines = drops.map((d) => {
+    const tag = d.severity === "critical" ? "🔴 critical" : "🟡 warn";
+    const pct = Math.round((1 - d.dropRatio) * 100);
+    return (
+      `  • ${tag} ${d.cinemaName}: yield down ${pct}% — ` +
+      `recent avg ${d.recentAvg.toFixed(0)} (last ${d.recentSamples}) vs ` +
+      `baseline avg ${d.baselineAvg.toFixed(0)} (prior ${d.baselineSamples})`
+    );
+  });
+  return `Yield drops (${drops.length}):\n${lines.join("\n")}`;
+}
+
 export interface StaleCinema {
   cinemaId: string;
   cinemaName: string;

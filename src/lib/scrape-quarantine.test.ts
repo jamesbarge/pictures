@@ -1,10 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
   analyzeRunsForFlakiness,
+  analyzeYieldDrop,
   DEFAULT_FLAKY_THRESHOLDS,
+  DEFAULT_YIELD_DROP_THRESHOLDS,
   formatFlakyReport,
+  formatYieldDropReport,
   type FlakyCinema,
   type RunRecord,
+  type SuccessRunRecord,
+  type YieldDropCinema,
 } from "./scrape-quarantine";
 
 function makeRun(
@@ -172,5 +177,127 @@ describe("formatFlakyReport", () => {
     expect(out).toContain("Flaky cinemas (2)");
     expect(out).toContain("🔴 critical BFI IMAX");
     expect(out).toContain("🟡 warn Close-Up");
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// Yield-drop detector
+// ─────────────────────────────────────────────────────────────────────────
+
+function makeSuccessRun(screeningCount: number, daysAgo: number): SuccessRunRecord {
+  // Compute via Date arithmetic so daysAgo > 14 doesn't produce "2026-05-(-9)"
+  const t = new Date("2026-05-15T01:00:00Z");
+  t.setUTCDate(t.getUTCDate() - daysAgo);
+  return { screeningCount, startedAt: t };
+}
+
+describe("analyzeYieldDrop", () => {
+  it("returns null when below the required window size", () => {
+    const runs = [makeSuccessRun(50, 0), makeSuccessRun(50, 1)];
+    expect(analyzeYieldDrop(runs)).toBeNull();
+  });
+
+  it("returns null when recent and baseline are similar (healthy)", () => {
+    const runs: SuccessRunRecord[] = [];
+    for (let i = 0; i < 25; i++) runs.push(makeSuccessRun(200 + (i % 10), i));
+    expect(analyzeYieldDrop(runs)).toBeNull();
+  });
+
+  it("flags critical when recent yield is <= 30% of baseline", () => {
+    const runs: SuccessRunRecord[] = [];
+    // 5 recent runs at 50 (~25% of baseline)
+    for (let i = 0; i < 5; i++) runs.push(makeSuccessRun(50, i));
+    // 20 baseline runs at 200
+    for (let i = 5; i < 25; i++) runs.push(makeSuccessRun(200, i));
+
+    const verdict = analyzeYieldDrop(runs);
+    expect(verdict).not.toBeNull();
+    expect(verdict!.severity).toBe("critical");
+    expect(verdict!.recentAvg).toBe(50);
+    expect(verdict!.baselineAvg).toBe(200);
+    expect(verdict!.dropRatio).toBeCloseTo(0.25, 2);
+  });
+
+  it("flags warn when recent yield is between 30% and 50% of baseline", () => {
+    const runs: SuccessRunRecord[] = [];
+    // recent 100, baseline 250 → ratio 0.4 → warn
+    for (let i = 0; i < 5; i++) runs.push(makeSuccessRun(100, i));
+    for (let i = 5; i < 25; i++) runs.push(makeSuccessRun(250, i));
+
+    const verdict = analyzeYieldDrop(runs);
+    expect(verdict).not.toBeNull();
+    expect(verdict!.severity).toBe("warn");
+  });
+
+  it("does NOT flag when baseline avg is below the floor (tiny cinemas excluded)", () => {
+    const runs: SuccessRunRecord[] = [];
+    // baseline avg = 10 (below minBaselineAvg=20), even a 90% drop must not fire
+    for (let i = 0; i < 5; i++) runs.push(makeSuccessRun(1, i));
+    for (let i = 5; i < 25; i++) runs.push(makeSuccessRun(10, i));
+
+    expect(analyzeYieldDrop(runs)).toBeNull();
+  });
+
+  it("simulates the BFI 'PDF parser regression' pattern (200 → 30 screenings)", () => {
+    // The exact failure mode the detector is built for: silent success+low
+    const runs: SuccessRunRecord[] = [];
+    for (let i = 0; i < 5; i++) runs.push(makeSuccessRun(30, i));
+    for (let i = 5; i < 25; i++) runs.push(makeSuccessRun(195 + (i % 10), i));
+
+    const verdict = analyzeYieldDrop(runs);
+    expect(verdict).not.toBeNull();
+    expect(verdict!.severity).toBe("critical"); // 30/199 ≈ 15% — well under critical
+  });
+
+  it("uses startedAt order from input (sorts internally) — pass ASC to verify", () => {
+    const ascending: SuccessRunRecord[] = [];
+    for (let i = 24; i >= 0; i--) ascending.push(makeSuccessRun(i < 5 ? 50 : 200, i));
+    const verdict = analyzeYieldDrop(ascending);
+    expect(verdict).not.toBeNull();
+    expect(verdict!.recentAvg).toBe(50);
+    expect(verdict!.baselineAvg).toBe(200);
+  });
+
+  it("respects custom thresholds", () => {
+    const runs: SuccessRunRecord[] = [];
+    // ratio 0.6 — under default warn (0.5), but if we set warn=0.7 it should fire
+    for (let i = 0; i < 5; i++) runs.push(makeSuccessRun(120, i));
+    for (let i = 5; i < 25; i++) runs.push(makeSuccessRun(200, i));
+
+    expect(analyzeYieldDrop(runs)).toBeNull();
+    const verdict = analyzeYieldDrop(runs, {
+      ...DEFAULT_YIELD_DROP_THRESHOLDS,
+      dropRatioWarn: 0.7,
+      dropRatioCritical: 0.4,
+    });
+    expect(verdict?.severity).toBe("warn");
+  });
+});
+
+describe("formatYieldDropReport", () => {
+  it("returns a clean message when nothing dropped", () => {
+    expect(formatYieldDropReport([])).toBe("No yield drops detected.");
+  });
+
+  it("renders entries with percentage drop + sample counts", () => {
+    const sample: YieldDropCinema[] = [
+      {
+        cinemaId: "bfi-southbank",
+        cinemaName: "BFI Southbank",
+        recentAvg: 30,
+        baselineAvg: 200,
+        dropRatio: 0.15,
+        recentSamples: 5,
+        baselineSamples: 20,
+        lastRunAt: new Date("2026-05-15T00:00:00Z"),
+        severity: "critical",
+      },
+    ];
+    const out = formatYieldDropReport(sample);
+    expect(out).toContain("Yield drops (1)");
+    expect(out).toContain("🔴 critical BFI Southbank");
+    expect(out).toContain("yield down 85%");
+    expect(out).toContain("recent avg 30 (last 5)");
+    expect(out).toContain("baseline avg 200 (prior 20)");
   });
 });

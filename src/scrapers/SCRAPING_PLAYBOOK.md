@@ -19,10 +19,11 @@ Update this playbook whenever you:
 - **`BaseScraper.healthCheck()` retries** (2026-05-15): 3 attempts, 10s timeout each, 4s backoff between attempts. Fast-fails on 4xx (contract issue), retries on 5xx + network errors. Subclasses can override for cheaper/different checks (e.g. Curzon HEADs the API endpoint with a 401-is-healthy contract). Background: Close-Up was failing 33% of runs at 03:17-03:21 UTC because of brief nightly-maintenance windows.
 
 ## Health & Flakiness Detection
-The `/scrape` slash command runs two read-only detectors against `scraper_runs`:
+The `/scrape` slash command runs three read-only detectors against `scraper_runs`:
 - **`detectSilentBreakers`** (`src/lib/scrape-quarantine.ts`) — Prowlarr-pattern: flags cinemas with ≥N *consecutive* `success+0` runs.
-- **`detectFlakyCinemas`** (same file, added 2026-05-15) — ratio-based: flags cinemas whose last `lookback` runs have ≥X% `success+0` or `failed`. Catches alternating empty/non-empty patterns that the consecutive detector misses. Default thresholds: `emptyRatioWarn=0.3, emptyRatioCritical=0.5, failedRatioWarn=0.3, failedRatioCritical=0.5, minRuns=4, lookback=10`. Implemented as a single windowed SQL (ROW_NUMBER OVER PARTITION) rather than per-cinema queries.
-- Pure analyzer: `analyzeRunsForFlakiness(runs, thresholds)` — DB-free, unit-testable, internally sorts by `startedAt` DESC so callers may pass any order.
+- **`detectFlakyCinemas`** (same file, added 2026-05-15) — ratio-based: flags cinemas whose last `lookback` runs have ≥X% `success+0` or `failed`. Catches alternating empty/non-empty patterns that the consecutive detector misses. Default thresholds: `emptyRatioWarn=0.3, emptyRatioCritical=0.5, failedRatioWarn=0.3, failedRatioCritical=0.5, minRuns=4, lookback=10`. Implemented as a single windowed SQL (ROW_NUMBER OVER PARTITION).
+- **`detectYieldDrop`** (same file, added 2026-05-15) — compares recent avg `screening_count` against a trailing baseline. Catches "success+low-but-non-zero" regressions that look healthy to the other two detectors (e.g. BFI PDF parser silently dropping one venue's screenings — 200 → 30). Default thresholds: `recentWindow=5, baselineWindow=20, minBaselineAvg=20, dropRatioWarn=0.5, dropRatioCritical=0.3`. Only considers `status='success'` rows so failures/empties don't pollute the math.
+- Pure analyzers: `analyzeRunsForFlakiness(runs, thresholds)` and `analyzeYieldDrop(successRuns, thresholds)` — DB-free, unit-testable, internally sort by `startedAt` DESC so callers may pass any order.
 
 ## Primary Entrypoints
 - Unified CLI: `src/scrapers/cli.ts` (`npm run scrape -- <slug>`)
