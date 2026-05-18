@@ -1,3 +1,11 @@
+## 2026-05-18: Add unit tests for src/scrapers/utils/url.ts
+**PR**: TBD | **Files**: `src/scrapers/utils/url.test.ts` (new)
+- Adds 17 vitest cases covering `normalizeUrl` (all 3 branches: absolute http/https, root-relative, bare path) and `slugify` (lowercase, hyphenation, character stripping, hyphen preservation, underscore preservation, multi-space collapse, 50-char truncation, empty input, all-stripped input, all-whitespace input).
+- No behaviour change. Pins the current contract — including two non-obvious behaviours: (a) the absolute-URL check uses `startsWith("http")` so any `httpd-cache/x` string is treated as absolute, and (b) accented characters like `é` are stripped because JavaScript's `\w` is ASCII-only.
+- Both functions are used across many scrapers (URL normalization in run-* scripts; `slugify` for `sourceId` stable-ID generation). A regression silently corrupts identifiers in screening rows.
+
+---
+
 ## 2026-05-18: Remove stale `scripts/check-screen-green.ts` from tsconfig exclude
 **PR**: TBD | **Files**: `tsconfig.json`
 - Removes the per-file exclude `"scripts/check-screen-green.ts"` from `tsconfig.json`. The file does not exist (and has no git history — it was never committed). The exclude was added defensively but never had a corresponding file to protect.
