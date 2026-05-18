@@ -47,7 +47,6 @@
     "**/* 4.tsx",
     "**/* 4.d.ts",
     "**/* 4.mts",
-    "scripts/lib/booking-verifier.ts",
-    "scripts/check-screen-green.ts"
+    "scripts/lib/booking-verifier.ts"
   ]
 }
