@@ -1,3 +1,11 @@
+## 2026-05-18: gitignore Finder-duplicate pattern (root cause fix)
+**PR**: TBD | **Files**: `.gitignore`
+- Adds `* [2-9].{ts,tsx,d.ts,mts,cjs,mjs,svelte,js,jsx,json,css,md,example}` patterns so macOS Finder duplicates (`vite.config 2.ts`, `+page 2.svelte`, `ecosystem.config 2.cjs`, etc.) can never be staged or committed again.
+- The root tsconfig.json already excludes `**/* 2.*`, `**/* 3.*`, `**/* 4.*` defensively because these duplicates have leaked into commits four separate times. This PR removes the recurrence at source so future PRs can collapse the tsconfig bandages.
+- Verified the new patterns match Finder-style paths at any depth (`frontend/src/lib/utils 2.ts`, `src/lib/data-quality/index 2.ts`) and do NOT false-match legitimate files (`foo2.ts`, `config.json`).
+
+---
+
 ## 2026-05-17: Add Curzon Camden + Richmond + Wimbledon to cinema-registry (consistency)
 **PR**: TBD | **Files**: `src/config/cinema-registry.ts`
 - Adds the 3 reactivated Curzon venues (from #513) to the canonical cinema-registry so they match the chain scraper config. Without this, the DB seed pipeline wouldn't know about them and the frontend's `CinemaDefinition` map would have gaps.

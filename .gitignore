@@ -28,6 +28,24 @@
 .DS_Store
 *.pem
 
+# macOS Finder duplicates (created by Cmd-D or Save-As-rename collisions).
+# The tsconfig excludes `**/* 2.*`, `**/* 3.*`, `**/* 4.*` patterns
+# defensively because these have leaked into commits four separate times.
+# Gitignoring them at the source prevents recurrence without further bandages.
+* [2-9].ts
+* [2-9].tsx
+* [2-9].d.ts
+* [2-9].mts
+* [2-9].svelte
+* [2-9].js
+* [2-9].jsx
+* [2-9].mjs
+* [2-9].cjs
+* [2-9].json
+* [2-9].css
+* [2-9].md
+* [2-9].example
+
 # debug
 npm-debug.log*
 yarn-debug.log*
