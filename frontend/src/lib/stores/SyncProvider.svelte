@@ -14,8 +14,10 @@
 		const userId = ctx.auth.userId;
 
 		if (userId && userId !== lastUserId) {
-			// User signed in — start sync and identify for analytics
-			initSync(() => ctx.session.getToken());
+			// User signed in — start sync and identify for analytics. Clerk
+			// emits `userId` before `session` settles in edge cases, so the
+			// callback null-guards instead of dereferencing at attach time.
+			initSync(async () => (await ctx.session?.getToken()) ?? null);
 			identifyUser(userId, {
 				email: ctx.user?.primaryEmailAddress?.emailAddress,
 				name: ctx.user?.fullName,

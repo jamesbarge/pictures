@@ -1,28 +1,33 @@
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
+// Cached Intl formatters — these helpers run inside hot derived-state loops
+// (sort comparators, calendar grouping, per-screening rendering) where
+// instantiating a new Intl.DateTimeFormat per call dominates CPU. Allocating
+// once at module scope cuts the cost to a single C++ call per format.
+const TIME_LONDON_HHMM = new Intl.DateTimeFormat('en-GB', {
+	hour: '2-digit',
+	minute: '2-digit',
+	hour12: false,
+	timeZone: 'Europe/London'
+});
 
-export function cn(...inputs: ClassValue[]) {
-	return twMerge(clsx(inputs));
-}
+const DATE_LONDON_SHORT = new Intl.DateTimeFormat('en-GB', {
+	weekday: 'short',
+	day: 'numeric',
+	month: 'short',
+	timeZone: 'Europe/London'
+});
+
+const DATE_LONDON_ISO = new Intl.DateTimeFormat('en-CA', {
+	timeZone: 'Europe/London'
+});
 
 export function formatTime(date: Date | string): string {
 	const d = typeof date === 'string' ? new Date(date) : date;
-	return d.toLocaleTimeString('en-GB', {
-		hour: '2-digit',
-		minute: '2-digit',
-		hour12: false,
-		timeZone: 'Europe/London'
-	});
+	return TIME_LONDON_HHMM.format(d);
 }
 
 export function formatDate(date: Date | string): string {
 	const d = typeof date === 'string' ? new Date(date) : date;
-	return d.toLocaleDateString('en-GB', {
-		weekday: 'short',
-		day: 'numeric',
-		month: 'short',
-		timeZone: 'Europe/London'
-	}).toUpperCase();
+	return DATE_LONDON_SHORT.format(d).toUpperCase();
 }
 
 const invalidDateWarned = new Set<string>();
@@ -40,7 +45,7 @@ export function toLondonDateStr(date: Date | string): string {
 			console.warn('toLondonDateStr received invalid date:', date);
 		}
 	}
-	return d.toLocaleDateString('en-CA', { timeZone: 'Europe/London' }); // YYYY-MM-DD
+	return DATE_LONDON_ISO.format(d); // YYYY-MM-DD
 }
 
 export function formatScreeningDate(date: Date | string): string {
@@ -85,23 +90,21 @@ type CalendarSortableFilm = {
 		letterboxdRating: number | null | undefined;
 		tmdbPopularity?: number | null | undefined;
 	};
-	screenings: Array<{ datetime: string }>;
+	/**
+	 * Earliest upcoming screening as ms-since-epoch, pre-computed by the caller.
+	 * Avoids `new Date()` allocations inside the sort comparator (O(n log n)
+	 * invocations for hundreds of films). Use `Number.POSITIVE_INFINITY` for
+	 * films with no remaining screenings — they sort to the end.
+	 */
+	earliestMs: number;
 };
-
-function getEarliestScreeningTime(screenings: Array<{ datetime: string }>): number {
-	const first = screenings[0]?.datetime;
-	if (!first) return Number.POSITIVE_INFINITY;
-
-	const time = new Date(first).getTime();
-	return Number.isNaN(time) ? Number.POSITIVE_INFINITY : time;
-}
 
 /**
  * Live calendar ordering:
  * 1. Films with a Letterboxd rating first
  * 2. Higher Letterboxd rating
  * 3. Higher TMDB popularity
- * 4. Earlier upcoming screening
+ * 4. Earlier upcoming screening (uses caller-supplied `earliestMs`)
  */
 export function compareFilmsByCalendarPriority<T extends CalendarSortableFilm>(a: T, b: T): number {
 	const aHasRating = a.film.letterboxdRating != null;
@@ -116,7 +119,122 @@ export function compareFilmsByCalendarPriority<T extends CalendarSortableFilm>(a
 	const bPopularity = b.film.tmdbPopularity ?? -1;
 	if (aPopularity !== bPopularity) return bPopularity - aPopularity;
 
-	return getEarliestScreeningTime(a.screenings) - getEarliestScreeningTime(b.screenings);
+	return a.earliestMs - b.earliestMs;
+}
+
+/**
+ * Build the editorial byline shown under a film title: `"<director(s)>, <year>"`.
+ *
+ * Handles both the card view-model shape (`director: string`) and the detail-page
+ * canonical shape (`directors: string[]`). Empty/missing fields collapse cleanly
+ * — no trailing commas, no `"undefined"` strings.
+ */
+export function filmByline(film: {
+	director?: string | null;
+	directors?: string[] | null;
+	year?: number | null;
+}): string {
+	const parts: string[] = [];
+	const dirs = film.directors?.length
+		? film.directors
+		: film.director
+			? [film.director]
+			: [];
+	if (dirs.length) parts.push(dirs.join(', '));
+	if (film.year) parts.push(String(film.year));
+	return parts.join(', ');
+}
+
+/**
+ * Build the meta line shown under the byline on calendar cards:
+ * `"<runtime>m"`, country, certification — joined with " · " by the caller.
+ *
+ * The film detail page uses a longer-form variant (`"<runtime> min"`, genres,
+ * full country list) so it deliberately doesn't share this helper.
+ */
+export function cardFilmMetaParts(film: {
+	runtime?: number | null;
+	country?: string | null;
+	certification?: string | null;
+}): string[] {
+	const parts: string[] = [];
+	if (film.runtime) parts.push(`${film.runtime}m`);
+	if (film.country) parts.push(film.country);
+	if (film.certification) parts.push(film.certification);
+	return parts;
+}
+
+/**
+ * Normalise a backend screening-format token into a display label.
+ *
+ * Tokens like `dcp` and `unknown` collapse to "DCP" (the default 2K digital
+ * projection) because they're not worth surfacing as distinct labels; every
+ * other token is uppercased and underscores become spaces (`dolby_cinema`
+ * → `DOLBY CINEMA`).
+ */
+export function formatScreeningFormat(fmt: string | null | undefined): string {
+	if (!fmt || fmt === 'unknown' || fmt === 'dcp') return 'DCP';
+	return fmt.toUpperCase().replace('_', ' ');
+}
+
+const ORDINAL_DAYS = [
+	'',
+	'first', 'second', 'third', 'fourth', 'fifth',
+	'sixth', 'seventh', 'eighth', 'ninth', 'tenth',
+	'eleventh', 'twelfth', 'thirteenth', 'fourteenth', 'fifteenth',
+	'sixteenth', 'seventeenth', 'eighteenth', 'nineteenth', 'twentieth',
+	'twenty-first', 'twenty-second', 'twenty-third', 'twenty-fourth', 'twenty-fifth',
+	'twenty-sixth', 'twenty-seventh', 'twenty-eighth', 'twenty-ninth', 'thirtieth',
+	'thirty-first'
+];
+
+/**
+ * Spell out a day number (1-31) as an editorial ordinal: `1` → "first",
+ * `21` → "twenty-first". Falls back to numeric `${n}th` for invalid inputs.
+ */
+export function formatOrdinalDay(dayNum: number): string {
+	return ORDINAL_DAYS[dayNum] ?? `${dayNum}th`;
+}
+
+/** Two-digit zero-pad for date-component formatting. */
+export function padTwo(n: number): string {
+	return n < 10 ? '0' + n : String(n);
+}
+
+/**
+ * Build a YYYY-MM-DD string from numeric Y / 0-indexed M / D triplet.
+ * Calendar grid builders use this hot — kept allocation-free (no Date object).
+ */
+export function toISODate(year: number, monthZeroIndexed: number, day: number): string {
+	return `${year}-${padTwo(monthZeroIndexed + 1)}-${padTwo(day)}`;
+}
+
+/**
+ * Run the standard mobile-modal a11y wiring while `open` is true:
+ *   - Escape closes the modal.
+ *   - Body scroll is locked (with the previous overflow restored on close).
+ *
+ * Returns a cleanup callback suitable for use inside a `$effect`. Designed to
+ * de-duplicate the identical setup previously inlined in `MobileFilterSheet`
+ * and `MobileDatePicker`.
+ *
+ * @example
+ *   $effect(() => {
+ *     if (!open) return;
+ *     return useModalKeyboardTrap(onClose);
+ *   });
+ */
+export function useModalKeyboardTrap(onClose: () => void): () => void {
+	const handler = (e: KeyboardEvent) => {
+		if (e.key === 'Escape') onClose();
+	};
+	document.addEventListener('keydown', handler);
+	const prevOverflow = document.body.style.overflow;
+	document.body.style.overflow = 'hidden';
+	return () => {
+		document.removeEventListener('keydown', handler);
+		document.body.style.overflow = prevOverflow;
+	};
 }
 
 type TmdbPosterSize = 'w92' | 'w154' | 'w185' | 'w342' | 'w500' | 'w780';

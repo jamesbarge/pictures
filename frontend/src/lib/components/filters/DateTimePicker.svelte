@@ -3,14 +3,17 @@
 	import { filters } from '$lib/stores/filters.svelte';
 	import { TIME_PRESETS, formatHour } from '$lib/constants/filters';
 	import { toLondonDateStr } from '$lib/utils';
+	import { today as todayStore } from '$lib/stores/today.svelte';
 	import { trackFilterChange } from '$lib/analytics/posthog';
 
 	let open = $state(false);
 	let showCustomTime = $state(false);
 
-	// Calendar state
-	let calendarMonth = $state(new Date().getMonth());
-	let calendarYear = $state(new Date().getFullYear());
+	// Calendar state — single `new Date()` so the month and year can't disagree
+	// if the picker is mounted across a midnight boundary.
+	const _initialNow = new Date();
+	let calendarMonth = $state(_initialNow.getMonth());
+	let calendarYear = $state(_initialNow.getFullYear());
 
 	const label = $derived.by(() => {
 		if (!filters.dateFrom && !filters.dateTo && filters.timeFrom === null) return 'WHEN';
@@ -19,8 +22,10 @@
 
 		if (filters.dateFrom) {
 			const d = new Date(filters.dateFrom + 'T00:00:00');
-			const now = new Date();
-			const today = now.toISOString().split('T')[0];
+			// Read from the shared `today` store rather than `new Date()` so the
+			// "Today" label advances at the next London midnight even if the
+			// picker stays mounted across the boundary.
+			const today = todayStore.value;
 			if (filters.dateFrom === today && filters.dateTo === today) {
 				parts.push('Today');
 			} else if (filters.dateFrom === filters.dateTo) {

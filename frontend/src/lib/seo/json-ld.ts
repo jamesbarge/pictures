@@ -9,6 +9,11 @@ import type { Cinema } from '$lib/types/cinema';
 const BASE_URL = 'https://pictures.london';
 const BRAND_NAME = 'pictures · london';
 
+/** Prefix a path with BASE_URL unless it's already absolute. */
+function absoluteUrl(url: string): string {
+	return url.startsWith('http') ? url : `${BASE_URL}${url}`;
+}
+
 // ── Organization (root layout) ──────────────────────────────────
 
 export function organizationSchema() {
@@ -70,12 +75,16 @@ export function movieSchema(film: Film) {
 	if (film.certification) data.contentRating = film.certification;
 
 	if (film.tmdbRating) {
+		// `ratingCount` is omitted intentionally: we don't have the underlying
+		// vote count on the Film shape. The Schema.org spec allows AggregateRating
+		// without it (`reviewCount`/`ratingCount` are recommended, not required).
+		// Hard-coding `1000` previously was factually wrong and a Google
+		// structured-data validation flag if the bot cross-checks vs TMDB.
 		data.aggregateRating = {
 			'@type': 'AggregateRating',
 			ratingValue: film.tmdbRating.toFixed(1),
 			bestRating: '10',
-			worstRating: '0',
-			ratingCount: 1000
+			worstRating: '0'
 		};
 	}
 
@@ -148,7 +157,7 @@ export function breadcrumbSchema(items: { name: string; url: string }[]) {
 			'@type': 'ListItem',
 			position: index + 1,
 			name: item.name,
-			item: item.url.startsWith('http') ? item.url : `${BASE_URL}${item.url}`
+			item: absoluteUrl(item.url)
 		}))
 	};
 }
@@ -184,7 +193,7 @@ export function itemListSchema(
 			'@type': 'ListItem',
 			position: item.position,
 			name: item.name,
-			url: item.url.startsWith('http') ? item.url : `${BASE_URL}${item.url}`
+			url: absoluteUrl(item.url)
 		}))
 	};
 }

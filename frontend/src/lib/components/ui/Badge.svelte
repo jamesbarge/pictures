@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { cn } from '$lib/utils';
+	import { clsx } from 'clsx';
 
 	let {
 		variant = 'default',
@@ -12,7 +12,7 @@
 	} = $props();
 </script>
 
-<span class={cn('badge', `badge-${variant}`, className)}>
+<span class={clsx('badge', `badge-${variant}`, className)}>
 	{@render children()}
 </span>
 

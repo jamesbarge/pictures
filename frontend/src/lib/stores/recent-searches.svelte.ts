@@ -18,13 +18,21 @@ function load(): string[] {
 
 let entries = $state<string[]>(load());
 
-function persist() {
-	if (!browser) return;
-	try {
-		localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
-	} catch {
-		/* ignore quota / private mode */
-	}
+// Auto-persist on any change to `entries`. Matches the pattern used by every
+// other store (`filters`, `film-status`, `cookie-consent`, `preferences`) —
+// previously this module used an imperative `persist()` call after each
+// mutation, which silently broke if a future caller mutated `entries` outside
+// the public `add`/`remove`/`clear` methods.
+if (browser) {
+	$effect.root(() => {
+		$effect(() => {
+			try {
+				localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+			} catch {
+				/* ignore quota / private mode */
+			}
+		});
+	});
 }
 
 export const recentSearches = {
@@ -37,16 +45,13 @@ export const recentSearches = {
 		if (trimmed.length < 2) return;
 		const next = [trimmed, ...entries.filter((q) => q.toLowerCase() !== trimmed.toLowerCase())];
 		entries = next.slice(0, MAX_ENTRIES);
-		persist();
 	},
 
 	remove(query: string) {
 		entries = entries.filter((q) => q !== query);
-		persist();
 	},
 
 	clear() {
 		entries = [];
-		persist();
 	}
 };

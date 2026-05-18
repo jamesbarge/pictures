@@ -2,25 +2,7 @@
 	import { formatTime, getPosterImageAttributes } from '$lib/utils';
 	import FittedTitleCanvas from '$lib/components/pretext/FittedTitleCanvas.svelte';
 	import { trackScreeningClick } from '$lib/analytics/posthog';
-
-	interface Screening {
-		id: string;
-		datetime: string;
-		cinemaName: string;
-		cinemaSlug?: string;
-		bookingUrl?: string;
-	}
-
-	interface Film {
-		id: string | number;
-		title: string;
-		year?: number | null;
-		director?: string | null;
-		runtime?: number | null;
-		genres?: string[] | null;
-		posterUrl?: string | null;
-		tmdbId?: number | null;
-	}
+	import type { CardFilm, CardScreening } from './card-shapes';
 
 	let {
 		film,
@@ -28,25 +10,23 @@
 		activeCinemaIds = [],
 		maxScreenings = 3
 	}: {
-		film: Film;
-		screenings: Screening[];
+		film: CardFilm;
+		screenings: CardScreening[];
 		activeCinemaIds?: string[];
 		maxScreenings?: number;
 	} = $props();
 
 	let isHovered = $state(false);
 
-	const filteredScreenings = $derived.by(() => {
-		let s = screenings
-			.filter((sc) => new Date(sc.datetime) > new Date())
-			.sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime());
-
-		if (activeCinemaIds.length > 0) {
-			s = s.filter((sc) => activeCinemaIds.includes(sc.cinemaSlug ?? ''));
-		}
-
-		return s;
-	});
+	// Past-screening exclusion and chronological ordering are now both done
+	// upstream (tonight/+page.svelte and this-weekend/+page.svelte both filter
+	// past datetimes and sort ASC before passing in), so we only need to apply
+	// the local cinema-id filter when one is active.
+	const filteredScreenings = $derived(
+		activeCinemaIds.length === 0
+			? screenings
+			: screenings.filter((sc) => activeCinemaIds.includes(sc.cinemaSlug ?? ''))
+	);
 
 	const visibleScreenings = $derived(filteredScreenings.slice(0, maxScreenings));
 	const overflowCount = $derived(Math.max(0, filteredScreenings.length - maxScreenings));

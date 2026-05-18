@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { toISODate } from '$lib/utils';
+
 	let {
 		selected,
 		today,
@@ -24,12 +26,15 @@
 
 	const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
-	// Parse initial selected month/year. Reading `selected` once at mount time
-	// is fine here — users navigate months independently via prev/next after that.
+	// `$effect` re-syncs `viewMonth`/`viewYear` from `selected` whenever the
+	// parent prop changes — intentional: if the parent jumps the selected
+	// date (e.g. via a preset chip), the visible month follows along rather
+	// than leaving a stale grid behind. The original code's "initialise
+	// exactly once" comment was factually wrong about the $effect lifecycle.
+	// The first run handles initial mount.
 	let viewMonth = $state(0);
-	let viewYear = $state(2026);
+	let viewYear = $state(0);
 	$effect(() => {
-		// Initialise exactly once from the first render
 		const d = new Date(selected + 'T12:00:00Z');
 		viewMonth = d.getUTCMonth();
 		viewYear = d.getUTCFullYear();
@@ -41,9 +46,6 @@
 	function next() {
 		if (viewMonth === 11) { viewMonth = 0; viewYear++; } else { viewMonth++; }
 	}
-
-	function pad(n: number) { return n < 10 ? '0' + n : String(n); }
-	function toISO(y: number, m: number, d: number) { return `${y}-${pad(m + 1)}-${pad(d)}`; }
 
 	interface Cell { date: string; day: number; isCurrent: boolean; isPast: boolean; isToday: boolean; isSelected: boolean; }
 
@@ -57,18 +59,18 @@
 		// Pad previous month
 		for (let i = startDow - 1; i >= 0; i--) {
 			const d = new Date(Date.UTC(viewYear, viewMonth, -i));
-			const iso = toISO(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+			const iso = toISODate(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
 			out.push({ date: iso, day: d.getUTCDate(), isCurrent: false, isPast: iso < today, isToday: iso === today, isSelected: iso === selected });
 		}
 		for (let d = 1; d <= last.getUTCDate(); d++) {
-			const iso = toISO(viewYear, viewMonth, d);
+			const iso = toISODate(viewYear, viewMonth, d);
 			out.push({ date: iso, day: d, isCurrent: true, isPast: iso < today, isToday: iso === today, isSelected: iso === selected });
 		}
 		// Pad next month up to a complete week row
 		while (out.length % 7 !== 0) {
 			const d = out.length - startDow - last.getUTCDate() + 1;
 			const nd = new Date(Date.UTC(viewYear, viewMonth + 1, d));
-			const iso = toISO(nd.getUTCFullYear(), nd.getUTCMonth(), nd.getUTCDate());
+			const iso = toISODate(nd.getUTCFullYear(), nd.getUTCMonth(), nd.getUTCDate());
 			out.push({ date: iso, day: nd.getUTCDate(), isCurrent: false, isPast: iso < today, isToday: iso === today, isSelected: iso === selected });
 		}
 		return out;

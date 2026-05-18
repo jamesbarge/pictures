@@ -70,27 +70,35 @@
 		return el;
 	}
 
-	onMount(async () => {
+	onMount(() => {
 		if (!browser || !mapContainer) return;
 
-		const maplibregl = await import('maplibre-gl');
-		await import('maplibre-gl/dist/maplibre-gl.css');
+		// Async onMount can't return a cleanup function — Svelte sees the
+		// returned `Promise<() => void>` instead of the inner cleanup, so
+		// `map.remove()` was never called and every navigation leaked a
+		// MapLibre WebGL context. Build the map in a non-async setup() and
+		// keep the reference in an outer-scope binding the cleanup can close
+		// over once the dynamic import resolves.
+		let map: import('maplibre-gl').Map | null = null;
+		let cancelled = false;
 
-		const map = new maplibregl.Map({
-			container: mapContainer,
-			style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
-			center: [-0.118, 51.509],
-			zoom: 11
-		});
+		(async () => {
+			const maplibregl = await import('maplibre-gl');
+			await import('maplibre-gl/dist/maplibre-gl.css');
+			if (cancelled || !mapContainer) return;
 
-		// Filter cinemas directly
-		const cinemasWithCoords = cinemas.filter(
-			(c): c is Cinema & { coordinates: { lat: number; lng: number } } =>
-				!!c.coordinates?.lat && !!c.coordinates?.lng
-		);
+			map = new maplibregl.Map({
+				container: mapContainer,
+				style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
+				center: [-0.118, 51.509],
+				zoom: 11
+			});
 
-		// Add markers — try immediately, retry on load if map not ready
-		function addMarkers() {
+			const cinemasWithCoords = cinemas.filter(
+				(c): c is Cinema & { coordinates: { lat: number; lng: number } } =>
+					!!c.coordinates?.lat && !!c.coordinates?.lng
+			);
+
 			for (const cinema of cinemasWithCoords) {
 				const popup = new maplibregl.Popup({ offset: 25 })
 					.setDOMContent(createPopupContent(cinema));
@@ -100,12 +108,13 @@
 					.setPopup(popup)
 					.addTo(map);
 			}
-		}
+		})();
 
-		// Add markers immediately — they work before tiles finish loading
-		addMarkers();
-
-		return () => map.remove();
+		return () => {
+			cancelled = true;
+			map?.remove();
+			map = null;
+		};
 	});
 </script>
 

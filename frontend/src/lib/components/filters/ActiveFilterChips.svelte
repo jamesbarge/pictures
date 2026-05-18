@@ -8,7 +8,12 @@
 		onRemove: () => void;
 	}
 
-	const chips = $derived((): Chip[] => {
+	// `$derived.by(fn)` caches the *return value* and re-evaluates only when
+	// reactive inputs change. Using `$derived(fn)` previously stored the
+	// function itself, so every reader had to invoke it — the template called
+	// `chips()` twice per render (once for the `{#if}` guard, once for the
+	// `{#each}`), redoing the work each time.
+	const chips = $derived.by((): Chip[] => {
 		const c: Chip[] = [];
 
 		if (filters.dateFrom || filters.dateTo) {
@@ -42,9 +47,9 @@
 	});
 </script>
 
-{#if chips().length > 0}
+{#if chips.length > 0}
 	<div class="chip-row">
-		{#each chips() as chip (chip.key)}
+		{#each chips as chip (chip.key)}
 			<button class="chip" onclick={chip.onRemove} aria-label="Remove {chip.label} filter">
 				{chip.label}
 				<svg aria-hidden="true" width="8" height="8" viewBox="0 0 8 8" fill="none">
