@@ -2,27 +2,40 @@
 	import FilmCard from '$lib/components/calendar/FilmCard.svelte';
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
 	import { formatScreeningDate, toLondonDateStr, groupBy, compareFilmsByCalendarPriority } from '$lib/utils';
+	import { toCardScreening } from '$lib/components/calendar/card-shapes';
 
 	let { data } = $props();
 	type LoadedScreening = (typeof data.screenings)[number];
 
 	const dayGroups = $derived.by(() => {
 		// Drop past screenings — ISR caches this page, so filter at render time.
+		// Decorate each kept screening with its parsed timestamp so subsequent
+		// sorts compare numbers instead of re-parsing the datetime string.
 		const now = Date.now();
-		const allScreenings: LoadedScreening[] = data.screenings.filter(
-			(s) => new Date(s.datetime).getTime() > now
-		);
-		const grouped = groupBy(allScreenings.filter((s) => s.film), (s) => toLondonDateStr(s.datetime));
+		type DecoratedScreening = LoadedScreening & { _ms: number };
+		const kept: DecoratedScreening[] = [];
+		for (const s of data.screenings) {
+			if (!s.film) continue;
+			const ms = new Date(s.datetime).getTime();
+			if (ms <= now) continue;
+			(s as DecoratedScreening)._ms = ms;
+			kept.push(s as DecoratedScreening);
+		}
+		const grouped = groupBy(kept, (s) => toLondonDateStr(s.datetime));
 
 		return Object.entries(grouped)
 			.sort(([a], [b]) => a.localeCompare(b))
 			.map(([date, screenings]) => {
 				const filmGroups = groupBy(screenings, (s) => s.film.id);
 				const films = Object.values(filmGroups)
-					.map((filmScreenings) => ({
-						film: filmScreenings[0].film,
-						screenings: filmScreenings.sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime())
-					}))
+					.map((filmScreenings) => {
+						filmScreenings.sort((a, b) => a._ms - b._ms);
+						return {
+							film: filmScreenings[0].film,
+							screenings: filmScreenings,
+							earliestMs: filmScreenings[0]._ms
+						};
+					})
 					.sort(compareFilmsByCalendarPriority);
 				return { date, films };
 			});
@@ -63,13 +76,7 @@
 									posterUrl: film.posterUrl,
 									tmdbId: null
 								}}
-								screenings={screenings.map((s) => ({
-									id: s.id,
-									datetime: s.datetime,
-									cinemaName: s.cinema?.name ?? 'Unknown',
-									cinemaSlug: s.cinema?.id ?? '',
-									bookingUrl: s.bookingUrl
-								}))}
+								screenings={screenings.map(toCardScreening)}
 							/>
 						{/each}
 					</div>

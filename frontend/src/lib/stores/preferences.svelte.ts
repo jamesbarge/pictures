@@ -10,13 +10,18 @@ interface Preferences {
 	viewMode: ViewMode;
 }
 
+const DEFAULTS: Preferences = { theme: 'system', viewMode: 'poster' };
+
 function loadPreferences(): Preferences {
-	if (!browser) return { theme: 'system', viewMode: 'poster' };
+	if (!browser) return { ...DEFAULTS };
 	try {
 		const raw = localStorage.getItem(STORAGE_KEY);
-		return raw ? { theme: 'system', viewMode: 'poster', ...JSON.parse(raw) } : { theme: 'system', viewMode: 'poster' };
+		// Spread DEFAULTS first so any missing field in the persisted value falls
+		// back without a separate else branch — `JSON.parse(null)` is impossible
+		// because the `raw ?` guard short-circuits.
+		return raw ? { ...DEFAULTS, ...JSON.parse(raw) } : { ...DEFAULTS };
 	} catch {
-		return { theme: 'system', viewMode: 'poster' };
+		return { ...DEFAULTS };
 	}
 }
 

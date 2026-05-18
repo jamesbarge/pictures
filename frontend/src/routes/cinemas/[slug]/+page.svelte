@@ -13,11 +13,20 @@
 		trackCinemaViewed(cinema.id, cinema.name, 'cinema_page');
 	});
 
-	const futureScreenings = $derived(
-		screenings
-			.filter((s) => new Date(s.datetime) > new Date())
-			.sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime())
-	);
+	const futureScreenings = $derived.by(() => {
+		// Anchor `now` once per re-derivation — the previous `new Date()` inside
+		// the filter ran per element and the per-element `new Date(s.datetime)`
+		// inside `.sort` ran 2N–N log N times. Pre-parse to ms-since-epoch and
+		// compare numbers.
+		const now = Date.now();
+		const decorated: Array<{ s: typeof screenings[number]; ms: number }> = [];
+		for (const s of screenings) {
+			const ms = new Date(s.datetime).getTime();
+			if (ms > now) decorated.push({ s, ms });
+		}
+		decorated.sort((a, b) => a.ms - b.ms);
+		return decorated.map((d) => d.s);
+	});
 
 	const groupedByDate = $derived.by(() => {
 		const grouped = groupBy(futureScreenings, (s) => toLondonDateStr(s.datetime));

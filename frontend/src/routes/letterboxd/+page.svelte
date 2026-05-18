@@ -31,7 +31,7 @@
 
 	type PageState = 'idle' | 'loading' | 'results' | 'error';
 
-	let state = $state<PageState>('idle');
+	let pageState = $state<PageState>('idle');
 	let username = $state('');
 	let results = $state<PreviewResponse | null>(null);
 	let errorMessage = $state('');
@@ -41,13 +41,13 @@
 		const trimmed = username.trim();
 		if (!trimmed) return;
 
-		state = 'loading';
+		pageState = 'loading';
 		errorMessage = '';
 
 		try {
 			const res = await apiPost<PreviewResponse>('/api/letterboxd/preview', { username: trimmed });
 			results = res;
-			state = 'results';
+			pageState = 'results';
 		} catch (e) {
 			if (e instanceof Error && e.message.includes('{')) {
 				try {
@@ -59,7 +59,7 @@
 			} else {
 				errorMessage = e instanceof Error ? e.message : 'Something went wrong. Try again.';
 			}
-			state = 'error';
+			pageState = 'error';
 		}
 	}
 
@@ -77,7 +77,7 @@
 	}
 
 	function reset() {
-		state = 'idle';
+		pageState = 'idle';
 		results = null;
 		username = '';
 		addedIds = new Set();
@@ -107,7 +107,7 @@
 			LETTERBOXD IMPORT
 		</h1>
 
-		{#if state === 'idle' || state === 'loading'}
+		{#if pageState === 'idle' || pageState === 'loading'}
 			<div class="max-w-lg">
 				<p class="text-sm text-[var(--color-muted)] mb-4">
 					Enter your Letterboxd username to find which films on your watchlist are showing in London
@@ -119,26 +119,26 @@
 						type="text"
 						bind:value={username}
 						placeholder="your-username"
-						disabled={state === 'loading'}
+						disabled={pageState === 'loading'}
 						class="flex-1 px-3 py-2 text-sm font-mono bg-[var(--color-surface)] border-2 border-[var(--color-border)] text-[var(--color-foreground)] placeholder:text-[var(--color-muted)] focus:outline-none focus:border-[var(--color-foreground)] transition-colors"
 					/>
 					<button
 						type="submit"
-						disabled={state === 'loading' || !username.trim()}
+						disabled={pageState === 'loading' || !username.trim()}
 						class="px-5 py-2 text-xs font-bold tracking-wide-swiss uppercase bg-[var(--color-foreground)] text-[var(--color-background)] border-2 border-[var(--color-foreground)] hover:bg-transparent hover:text-[var(--color-foreground)] transition-colors disabled:opacity-40 disabled:pointer-events-none"
 					>
-						{state === 'loading' ? 'SCANNING...' : 'IMPORT'}
+						{pageState === 'loading' ? 'SCANNING...' : 'IMPORT'}
 					</button>
 				</form>
 
-				{#if state === 'loading'}
+				{#if pageState === 'loading'}
 					<div class="mt-6 flex items-center gap-3 text-sm text-[var(--color-muted)]">
 						<div class="w-4 h-4 border-2 border-[var(--color-muted)] border-t-transparent animate-spin"></div>
 						Scraping your Letterboxd watchlist...
 					</div>
 				{/if}
 			</div>
-		{:else if state === 'error'}
+		{:else if pageState === 'error'}
 			<div class="max-w-lg">
 				<div class="p-4 border-2 border-red-400 bg-red-50 dark:bg-red-950/20 mb-4">
 					<p class="text-sm font-mono">{errorMessage}</p>
@@ -150,7 +150,7 @@
 					TRY AGAIN
 				</button>
 			</div>
-		{:else if state === 'results' && results}
+		{:else if pageState === 'results' && results}
 			<div class="mb-6 flex items-baseline justify-between flex-wrap gap-4">
 				<div class="text-sm text-[var(--color-muted)]">
 					<span class="font-bold text-[var(--color-foreground)]">{results.matched.length}</span>

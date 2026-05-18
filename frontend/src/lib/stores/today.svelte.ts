@@ -38,7 +38,17 @@ function msUntilNextLondonMidnight(): number {
 	return dayMs - elapsedMs + 1000;
 }
 
-if (browser) {
+// HMR can re-evaluate this module, which would stack a fresh `visibilitychange`
+// listener and a fresh midnight-tick timer on top of the previous boot. The
+// listener is never removed at runtime (the store lives for the full document
+// lifetime), so the simplest fix is a global de-dupe key — module-level
+// `let _bootstrapped` would itself reset on HMR.
+const BOOTSTRAP_KEY = '__picturesTodayStoreBootstrapped';
+type WindowWithBootstrap = Window & { [BOOTSTRAP_KEY]?: boolean };
+
+if (browser && !(window as WindowWithBootstrap)[BOOTSTRAP_KEY]) {
+	(window as WindowWithBootstrap)[BOOTSTRAP_KEY] = true;
+
 	const tick = () => {
 		todayValue = toLondonDateStr(new Date());
 		setTimeout(tick, msUntilNextLondonMidnight());

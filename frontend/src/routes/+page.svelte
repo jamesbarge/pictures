@@ -11,7 +11,8 @@
 	import { filters } from '$lib/stores/filters.svelte';
 	import { today as todayStore } from '$lib/stores/today.svelte';
 	import { buildFilmMap } from '$lib/calendar-filter';
-	import { toLondonDateStr, groupBy, compareFilmsByCalendarPriority } from '$lib/utils';
+	import { toLondonDateStr, compareFilmsByCalendarPriority, getPosterImageAttributes, formatOrdinalDay } from '$lib/utils';
+	import { toCardScreening } from '$lib/components/calendar/card-shapes';
 	import { trackFilterNoResults } from '$lib/analytics/posthog';
 	import { browser } from '$app/environment';
 	import { page } from '$app/state';
@@ -61,21 +62,54 @@
 		)
 	);
 
+	// Build day-grouped films in a single pass over `filmMap`. The previous
+	// implementation flatMapped every screening into a flat list, groupBy'd
+	// twice (date → films), then sorted screenings inside each film using
+	// `new Date()` in the comparator — N log N allocations per filter change.
+	// This version:
+	//   • Buckets directly into `Map<date, Map<filmId, entry>>` in one pass.
+	//   • Parses each datetime exactly once and stashes the ms onto the
+	//     screening for the per-film sort and the calendar-priority sort.
+	//   • Lets `compareFilmsByCalendarPriority` consume the pre-computed
+	//     `earliestMs` field instead of re-parsing.
 	const dayGroups = $derived.by(() => {
-		const all = [...filmMap.values()].flatMap((f) => f.screenings.map((s) => ({ ...s, film: f.film })));
-		const grouped = groupBy(all, (s) => toLondonDateStr(s.datetime));
-		return Object.entries(grouped)
-			.sort(([a], [b]) => a.localeCompare(b))
-			.map(([date, screenings]) => {
-				const filmGroups = groupBy(screenings, (s) => s.film.id);
-				const films = Object.values(filmGroups)
-					.map((filmScreenings) => ({
-						film: filmScreenings[0].film,
-						screenings: filmScreenings.sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime())
-					}))
-					.sort(compareFilmsByCalendarPriority);
-				return { date, films };
-			});
+		type Screening = (typeof data.screenings)[number];
+		type Film = NonNullable<Screening['film']>;
+		type Decorated = Screening & { _ms: number };
+		type Entry = { film: Film; screenings: Decorated[]; earliestMs: number };
+
+		const dateMap = new Map<string, Map<string, Entry>>();
+
+		for (const { film, screenings } of filmMap.values()) {
+			for (const s of screenings) {
+				const dt = new Date(s.datetime);
+				const ms = dt.getTime();
+				const date = toLondonDateStr(dt);
+
+				let day = dateMap.get(date);
+				if (!day) {
+					day = new Map();
+					dateMap.set(date, day);
+				}
+				let entry = day.get(film.id);
+				if (!entry) {
+					entry = { film: film as Film, screenings: [], earliestMs: ms };
+					day.set(film.id, entry);
+				}
+				const decorated = s as Decorated;
+				decorated._ms = ms;
+				entry.screenings.push(decorated);
+				if (ms < entry.earliestMs) entry.earliestMs = ms;
+			}
+		}
+
+		const sortedDates = [...dateMap.keys()].sort();
+		return sortedDates.map((date) => {
+			const dayEntries = [...dateMap.get(date)!.values()];
+			for (const e of dayEntries) e.screenings.sort((a, b) => a._ms - b._ms);
+			dayEntries.sort(compareFilmsByCalendarPriority);
+			return { date, films: dayEntries };
+		});
 	});
 
 	// Rolling-window slice: take days from the start of `dayGroups` until we've
@@ -135,6 +169,26 @@
 	});
 
 	const activeFilterCount = $derived(filters.activeFilterCount);
+
+	// Preload the LCP-candidate poster (first film of the first visible day).
+	// Each layout requests a different rendition size, so we emit two preload
+	// hints scoped by media query — the browser fetches only the matching one,
+	// kicking off the LCP image download before the JS bundle parses.
+	const lcpPosterUrl = $derived(visibleDayGroups[0]?.films[0]?.film.posterUrl ?? null);
+	const lcpPosterDesktop = $derived(
+		getPosterImageAttributes(lcpPosterUrl, {
+			baseSize: 'w342',
+			srcSetSizes: ['w185', 'w342', 'w500'],
+			sizes: '(min-width: 1280px) 220px, (min-width: 1024px) 240px, 50vw'
+		})
+	);
+	const lcpPosterMobile = $derived(
+		getPosterImageAttributes(lcpPosterUrl, {
+			baseSize: 'w185',
+			srcSetSizes: ['w92', 'w185', 'w342'],
+			sizes: '116px'
+		})
+	);
 </script>
 
 <div class="sr-only" aria-live="polite" role="status">
@@ -145,14 +199,31 @@
 	{@const d = new Date(iso + 'T12:00:00Z')}
 	{@const weekday = new Intl.DateTimeFormat('en-GB', { weekday: 'long', timeZone: 'Europe/London' }).format(d)}
 	{@const dayNum = Number(new Intl.DateTimeFormat('en-GB', { day: 'numeric', timeZone: 'Europe/London' }).format(d))}
-	{@const ordinals = {1:'first',2:'second',3:'third',4:'fourth',5:'fifth',6:'sixth',7:'seventh',8:'eighth',9:'ninth',10:'tenth',11:'eleventh',12:'twelfth',13:'thirteenth',14:'fourteenth',15:'fifteenth',16:'sixteenth',17:'seventeenth',18:'eighteenth',19:'nineteenth',20:'twentieth',21:'twenty-first',22:'twenty-second',23:'twenty-third',24:'twenty-fourth',25:'twenty-fifth',26:'twenty-sixth',27:'twenty-seventh',28:'twenty-eighth',29:'twenty-ninth',30:'thirtieth',31:'thirty-first'} as Record<number, string>}
 	{@const todayIso = todayStore.value}
 	{@const tomorrowIso = (() => { const t = new Date(todayIso + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() + 1); return t.toISOString().split('T')[0]; })()}
 	{@const relative = iso === todayIso ? 'Today' : iso === tomorrowIso ? 'Tomorrow' : null}
 	<h2 class="day-header">
-		{#if relative}<span class="day-header-relative">{relative}</span><span class="day-header-sep"> · </span>{/if}<span class="day-header-weekday">{weekday}</span><span class="italic-comma">,</span> <span class="day-header-ordinal">the {ordinals[dayNum] ?? `${dayNum}th`}</span>
+		{#if relative}<span class="day-header-relative">{relative}</span><span class="day-header-sep"> · </span>{/if}<span class="day-header-weekday">{weekday}</span><span class="italic-comma">,</span> <span class="day-header-ordinal">the {formatOrdinalDay(dayNum)}</span>
 	</h2>
 {/snippet}
+
+<svelte:head>
+	{#if lcpPosterDesktop?.srcset}
+		<link
+			rel="preload"
+			as="image"
+			fetchpriority="high"
+			media="(min-width: 1024px)"
+			imagesrcset={lcpPosterDesktop.srcset}
+			imagesizes={lcpPosterDesktop.sizes ?? ''}
+		/>
+	{:else if lcpPosterDesktop?.src}
+		<link rel="preload" as="image" fetchpriority="high" media="(min-width: 1024px)" href={lcpPosterDesktop.src} />
+	{/if}
+	{#if lcpPosterMobile?.src}
+		<link rel="preload" as="image" fetchpriority="high" media="(max-width: 1023px)" href={lcpPosterMobile.src} imagesrcset={lcpPosterMobile.srcset ?? ''} imagesizes={lcpPosterMobile.sizes ?? ''} />
+	{/if}
+</svelte:head>
 
 <JsonLd data={webSiteSchema()} />
 <JsonLd data={faqSchema([
@@ -224,14 +295,7 @@
 										runtime: film.runtime,
 										posterUrl: film.posterUrl
 									}}
-									screenings={screenings.map((s) => ({
-										id: s.id,
-										datetime: s.datetime,
-										cinemaName: s.cinema?.name ?? 'Unknown',
-										cinemaSlug: s.cinema?.id ?? '',
-										format: s.format,
-										bookingUrl: s.bookingUrl
-									}))}
+									screenings={screenings.map(toCardScreening)}
 									priority={di === 0 && fi < 4}
 								/>
 							{/each}
@@ -289,12 +353,7 @@
 								runtime: film.runtime,
 								posterUrl: film.posterUrl
 							}}
-							screenings={screenings.map((s) => ({
-								id: s.id,
-								datetime: s.datetime,
-								cinemaName: s.cinema?.name ?? 'Unknown',
-								bookingUrl: s.bookingUrl
-							}))}
+							screenings={screenings.map(toCardScreening)}
 							priority={di === 0 && fi === 0}
 						/>
 					{/each}

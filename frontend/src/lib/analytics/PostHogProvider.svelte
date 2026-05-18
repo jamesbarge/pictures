@@ -19,7 +19,10 @@
 				import('posthog-js'),
 				import('./web-vitals')
 			]).then(([mod, ph, webVitals]) => {
-				mod.initPostHog();
+				// Pass the dynamically-loaded posthog instance into the module so
+				// it can flush any track-call buffer accumulated during the idle
+				// deferral. The module itself never statically imports posthog-js.
+				mod.initPostHog(ph.default);
 				posthogModule = mod;
 				posthogLib = ph.default;
 				// Track initial pageview (deferred)

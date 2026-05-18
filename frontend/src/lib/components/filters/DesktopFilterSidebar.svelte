@@ -2,6 +2,11 @@
 	import { filters } from '$lib/stores/filters.svelte';
 	import { userLocation } from '$lib/stores/user-location.svelte';
 	import { haversineMiles } from '$lib/utils';
+	import {
+		AREA_CLUSTERS,
+		isAreaActive as _isAreaActive,
+		toggleArea as _toggleArea
+	} from './area-clusters';
 
 	interface SidebarCinema {
 		id: string;
@@ -23,39 +28,15 @@
 		onHide?: () => void;
 	} = $props();
 
-	// Where — area chips. Implemented as a cinemaId filter over the cinemas whose `address.area`
-	// matches each cluster. "Within 2mi" is stubbed (geolocation not wired yet).
-	const AREA_CLUSTERS: Array<{ label: string; areas: string[] }> = [
-		{ label: 'Soho & West End', areas: ['Soho', 'West End', 'Leicester Square', 'Covent Garden', 'Mayfair', 'Bloomsbury'] },
-		{ label: 'East', areas: ['Shoreditch', 'Hackney', 'Dalston', 'Hoxton', 'Bethnal Green', 'Mile End', 'Stratford', 'Whitechapel'] },
-		{ label: 'South', areas: ['Peckham', 'Brixton', 'Clapham', 'Waterloo', 'Southbank', 'South Bank', 'Elephant', 'Bermondsey', 'Camberwell'] },
-		{ label: 'North', areas: ['Camden', 'Islington', 'Angel', 'Kings Cross', 'Crouch End', 'Highgate', 'Archway'] }
-	];
-
-	function cinemasInCluster(label: string) {
-		const cluster = AREA_CLUSTERS.find(c => c.label === label);
-		if (!cluster) return [];
-		return cinemas.filter(c => {
-			const area = (c.address?.area ?? '').toLowerCase();
-			return cluster.areas.some(a => area.includes(a.toLowerCase()));
-		}).map(c => c.id);
+	// Where — area chips. Cluster definitions + helpers live in `area-clusters.ts`
+	// so this surface and `MobileFilterSheet` can't drift apart. The local
+	// wrappers below close over the current `cinemas` and `filters.cinemaIds`.
+	function isAreaActive(label: string) {
+		return _isAreaActive(label, cinemas, filters.cinemaIds);
 	}
 
 	function toggleArea(label: string) {
-		const ids = cinemasInCluster(label);
-		if (ids.length === 0) return;
-		const allActive = ids.every(id => filters.cinemaIds.includes(id));
-		if (allActive) {
-			filters.cinemaIds = filters.cinemaIds.filter(id => !ids.includes(id));
-		} else {
-			const set = new Set([...filters.cinemaIds, ...ids]);
-			filters.cinemaIds = Array.from(set);
-		}
-	}
-
-	function isAreaActive(label: string) {
-		const ids = cinemasInCluster(label);
-		return ids.length > 0 && ids.every(id => filters.cinemaIds.includes(id));
+		filters.cinemaIds = _toggleArea(label, cinemas, filters.cinemaIds);
 	}
 
 	// "Within 2 miles" — requires browser geolocation. Once granted, we take the

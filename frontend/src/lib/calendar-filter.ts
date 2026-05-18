@@ -58,6 +58,32 @@ export interface FilmGroup<S extends CalendarScreening = CalendarScreening> {
 // surfaced regardless of which Svelte component happened to invoke us.
 let lastOneSidedRangeWarnKey = '';
 
+// Cached London-time hour formatter. The time-of-day filter compares each
+// screening's London hour against a slider range; without caching, every
+// `dt.toLocaleString('en-GB', { …, timeZone: 'Europe/London' })` allocates a
+// fresh Intl.DateTimeFormat — dominant cost when the time filter is active
+// across a 14-day payload.
+const LONDON_HOUR_FORMATTER = new Intl.DateTimeFormat('en-GB', {
+	hour: 'numeric',
+	hour12: false,
+	timeZone: 'Europe/London'
+});
+
+function getLondonHour(d: Date): number {
+	// `formatToParts` avoids a string→int parse and is marginally faster than
+	// `format()` + `parseInt()` for the same value.
+	const parts = LONDON_HOUR_FORMATTER.formatToParts(d);
+	for (const p of parts) {
+		if (p.type === 'hour') {
+			const h = Number(p.value);
+			// `en-GB` with `hour12: false` returns `24` at midnight on some
+			// engines — normalise to `0` so the range check is consistent.
+			return h === 24 ? 0 : h;
+		}
+	}
+	return 0;
+}
+
 /**
  * Group upcoming screenings by film, applying the active filters.
  *
@@ -127,14 +153,7 @@ export function buildFilmMap<S extends CalendarScreening>(
 		if (filters.formats.length > 0 && (!s.format || !filters.formats.includes(s.format))) continue;
 
 		if (filters.timeFrom !== null && filters.timeTo !== null) {
-			const hour = parseInt(
-				dt.toLocaleString('en-GB', {
-					hour: 'numeric',
-					hour12: false,
-					timeZone: 'Europe/London'
-				}),
-				10
-			);
+			const hour = getLondonHour(dt);
 			if (hour < filters.timeFrom || hour > filters.timeTo) continue;
 		}
 

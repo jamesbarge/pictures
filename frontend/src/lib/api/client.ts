@@ -13,88 +13,69 @@ export class ApiError extends Error {
 	}
 }
 
-export async function apiGet<T>(
-	path: string,
-	opts?: { fetch?: typeof fetch; token?: string; signal?: AbortSignal }
-): Promise<T> {
-	const f = opts?.fetch ?? fetch;
-	const headers: Record<string, string> = {
-		'Content-Type': 'application/json'
-	};
-	if (opts?.token) {
-		headers['Authorization'] = `Bearer ${opts.token}`;
-	}
+interface RequestOpts {
+	fetch?: typeof fetch;
+	token?: string;
+	signal?: AbortSignal;
+}
 
-	const res = await f(`${API_BASE}${path}`, { headers, signal: opts?.signal });
-	if (!res.ok) {
-		throw new ApiError(res.status, await res.text());
-	}
+/**
+ * Shared header construction for every verb. JSON bodies get `Content-Type:
+ * application/json`; DELETE skips it because it has no body. A bearer token is
+ * attached only when present — public endpoints stay unauthenticated.
+ */
+function buildHeaders(token: string | undefined, jsonBody: boolean): Record<string, string> {
+	const headers: Record<string, string> = {};
+	if (jsonBody) headers['Content-Type'] = 'application/json';
+	if (token) headers['Authorization'] = `Bearer ${token}`;
+	return headers;
+}
+
+/** Throws `ApiError` on non-2xx, with the body as the message payload. */
+async function ensureOk(res: Response): Promise<void> {
+	if (!res.ok) throw new ApiError(res.status, await res.text());
+}
+
+export async function apiGet<T>(path: string, opts?: RequestOpts): Promise<T> {
+	const f = opts?.fetch ?? fetch;
+	const res = await f(`${API_BASE}${path}`, {
+		headers: buildHeaders(opts?.token, true),
+		signal: opts?.signal
+	});
+	await ensureOk(res);
 	return res.json();
 }
 
-export async function apiPost<T>(
-	path: string,
-	body: unknown,
-	opts?: { fetch?: typeof fetch; token?: string }
-): Promise<T> {
+export async function apiPost<T>(path: string, body: unknown, opts?: RequestOpts): Promise<T> {
 	const f = opts?.fetch ?? fetch;
-	const headers: Record<string, string> = {
-		'Content-Type': 'application/json'
-	};
-	if (opts?.token) {
-		headers['Authorization'] = `Bearer ${opts.token}`;
-	}
-
 	const res = await f(`${API_BASE}${path}`, {
 		method: 'POST',
-		headers,
-		body: JSON.stringify(body)
+		headers: buildHeaders(opts?.token, true),
+		body: JSON.stringify(body),
+		signal: opts?.signal
 	});
-	if (!res.ok) {
-		throw new ApiError(res.status, await res.text());
-	}
+	await ensureOk(res);
 	return res.json();
 }
 
-export async function apiPut<T>(
-	path: string,
-	body: unknown,
-	opts?: { fetch?: typeof fetch; token?: string }
-): Promise<T> {
+export async function apiPut<T>(path: string, body: unknown, opts?: RequestOpts): Promise<T> {
 	const f = opts?.fetch ?? fetch;
-	const headers: Record<string, string> = {
-		'Content-Type': 'application/json'
-	};
-	if (opts?.token) {
-		headers['Authorization'] = `Bearer ${opts.token}`;
-	}
-
 	const res = await f(`${API_BASE}${path}`, {
 		method: 'PUT',
-		headers,
-		body: JSON.stringify(body)
+		headers: buildHeaders(opts?.token, true),
+		body: JSON.stringify(body),
+		signal: opts?.signal
 	});
-	if (!res.ok) {
-		throw new ApiError(res.status, await res.text());
-	}
+	await ensureOk(res);
 	return res.json();
 }
 
-export async function apiDelete(
-	path: string,
-	opts?: { fetch?: typeof fetch; token?: string }
-): Promise<void> {
+export async function apiDelete(path: string, opts?: RequestOpts): Promise<void> {
 	const f = opts?.fetch ?? fetch;
-	const headers: Record<string, string> = {};
-	if (opts?.token) {
-		headers['Authorization'] = `Bearer ${opts.token}`;
-	}
-
 	const res = await f(`${API_BASE}${path}`, {
 		method: 'DELETE',
-		headers
+		headers: buildHeaders(opts?.token, false),
+		signal: opts?.signal
 	});
-	if (!res.ok) {
-		throw new ApiError(res.status, await res.text());
-	}
+	await ensureOk(res);
 }

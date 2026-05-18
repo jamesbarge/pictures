@@ -22,6 +22,22 @@ function loadStatuses(): Record<string, FilmStatusEntry> {
 
 let statuses = $state<Record<string, FilmStatusEntry>>(loadStatuses());
 
+// Shared write path for `setStatus` (with server push) and `setStatusLocal`
+// (pull-from-server, no push). Both must preserve `addedAt` on existing rows
+// and stamp a fresh `updatedAt` — keeping it in one helper means future schema
+// changes only touch one place.
+function writeStatusLocally(filmId: string, status: FilmStatus) {
+	const now = new Date().toISOString();
+	statuses = {
+		...statuses,
+		[filmId]: {
+			status,
+			addedAt: statuses[filmId]?.addedAt ?? now,
+			updatedAt: now
+		}
+	};
+}
+
 if (browser) {
 	$effect.root(() => {
 		$effect(() => {
@@ -38,29 +54,13 @@ export const filmStatuses = {
 	},
 
 	setStatus(filmId: string, status: FilmStatus) {
-		const now = new Date().toISOString();
-		statuses = {
-			...statuses,
-			[filmId]: {
-				status,
-				addedAt: statuses[filmId]?.addedAt ?? now,
-				updatedAt: now
-			}
-		};
+		writeStatusLocally(filmId, status);
 		pushFilmStatus(filmId, status);
 	},
 
 	/** Update localStorage only — no server push. Used during pull-from-server to avoid feedback loops. */
 	setStatusLocal(filmId: string, status: FilmStatus) {
-		const now = new Date().toISOString();
-		statuses = {
-			...statuses,
-			[filmId]: {
-				status,
-				addedAt: statuses[filmId]?.addedAt ?? now,
-				updatedAt: now
-			}
-		};
+		writeStatusLocally(filmId, status);
 	},
 
 	toggleStatus(filmId: string, status: FilmStatus) {
