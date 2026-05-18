@@ -1,21 +1,28 @@
-## 2026-05-18: Add unit tests for src/scrapers/utils/url.ts
-**PR**: TBD | **Files**: `src/scrapers/utils/url.test.ts` (new)
+## 2026-05-18: Fix "the the" typo in data-quality warning message
+**PR**: TBD | **Files**: `src/lib/data-quality/index.ts`
+- Single-character comment-only fix in the learnings-file-not-found warning. No code logic affected.
+- Surfaced while reviewing the file for the gitignore-Finder-duplicates PR; the canonical `index.ts` had a leftover duplicated "the" from the earlier Trigger.dev → cloud-orchestrator rename.
+
+---
+
+## 2026-05-18: Add unit tests for src/scrapers/utils/url.ts (#522)
+**PR**: #522 | **Files**: `src/scrapers/utils/url.test.ts` (new)
 - Adds 17 vitest cases covering `normalizeUrl` (all 3 branches: absolute http/https, root-relative, bare path) and `slugify` (lowercase, hyphenation, character stripping, hyphen preservation, underscore preservation, multi-space collapse, 50-char truncation, empty input, all-stripped input, all-whitespace input).
 - No behaviour change. Pins the current contract — including two non-obvious behaviours: (a) the absolute-URL check uses `startsWith("http")` so any `httpd-cache/x` string is treated as absolute, and (b) accented characters like `é` are stripped because JavaScript's `\w` is ASCII-only.
 - Both functions are used across many scrapers (URL normalization in run-* scripts; `slugify` for `sourceId` stable-ID generation). A regression silently corrupts identifiers in screening rows.
 
 ---
 
-## 2026-05-18: Remove stale `scripts/check-screen-green.ts` from tsconfig exclude
-**PR**: TBD | **Files**: `tsconfig.json`
+## 2026-05-18: Remove stale `scripts/check-screen-green.ts` from tsconfig exclude (#520)
+**PR**: #520 | **Files**: `tsconfig.json`
 - Removes the per-file exclude `"scripts/check-screen-green.ts"` from `tsconfig.json`. The file does not exist (and has no git history — it was never committed). The exclude was added defensively but never had a corresponding file to protect.
 - Verified: `git log -- scripts/check-screen-green.ts` returns zero commits, and the file is absent from the working tree.
 - Single-line removal. No behavioural impact (excluding a non-existent file is a no-op).
 
 ---
 
-## 2026-05-18: gitignore Finder-duplicate pattern (root cause fix)
-**PR**: TBD | **Files**: `.gitignore`
+## 2026-05-18: gitignore Finder-duplicate pattern (root cause fix) (#518)
+**PR**: #518 | **Files**: `.gitignore`
 - Adds `* [2-9].{ts,tsx,d.ts,mts,cjs,mjs,svelte,js,jsx,json,css,md,example}` patterns so macOS Finder duplicates (`vite.config 2.ts`, `+page 2.svelte`, `ecosystem.config 2.cjs`, etc.) can never be staged or committed again.
 - The root tsconfig.json already excludes `**/* 2.*`, `**/* 3.*`, `**/* 4.*` defensively because these duplicates have leaked into commits four separate times. This PR removes the recurrence at source so future PRs can collapse the tsconfig bandages.
 - Verified the new patterns match Finder-style paths at any depth (`frontend/src/lib/utils 2.ts`, `src/lib/data-quality/index 2.ts`) and do NOT false-match legitimate files (`foo2.ts`, `config.json`).
