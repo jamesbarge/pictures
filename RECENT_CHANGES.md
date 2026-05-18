@@ -1,3 +1,11 @@
+## 2026-05-18: Remove stale `scripts/check-screen-green.ts` from tsconfig exclude
+**PR**: TBD | **Files**: `tsconfig.json`
+- Removes the per-file exclude `"scripts/check-screen-green.ts"` from `tsconfig.json`. The file does not exist (and has no git history — it was never committed). The exclude was added defensively but never had a corresponding file to protect.
+- Verified: `git log -- scripts/check-screen-green.ts` returns zero commits, and the file is absent from the working tree.
+- Single-line removal. No behavioural impact (excluding a non-existent file is a no-op).
+
+---
+
 ## 2026-05-18: gitignore Finder-duplicate pattern (root cause fix)
 **PR**: TBD | **Files**: `.gitignore`
 - Adds `* [2-9].{ts,tsx,d.ts,mts,cjs,mjs,svelte,js,jsx,json,css,md,example}` patterns so macOS Finder duplicates (`vite.config 2.ts`, `+page 2.svelte`, `ecosystem.config 2.cjs`, etc.) can never be staged or committed again.
