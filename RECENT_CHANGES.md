@@ -100,6 +100,14 @@
 
 ---
 
+## 2026-05-19: data-check.ts — 5 new dirty-title + scraper-health detectors
+**PR**: #568 | **Files**: `scripts/data-check.ts`
+- Adds 5 new issue types to the patrol's `crossReferenceDb` pass: `dirty_title_html_entity` (score 50), `dirty_title_event_prefix` (40), `dirty_title_all_caps` (35), `dirty_title_format_suffix` (35), `suspicious_orphan_film` (22).
+- Adds 1 global cycle-start detector: `cinema_screening_drop` (score 65) — flags cinemas whose 14-day upcoming count is <50% of 14-day rolling average (degraded scrapers).
+- All six surface issues the patrol's existing auto-fix loop can act on (decode entities, smart-title-case, strip prefix, reclassify event, investigate scraper). Pre-existing rows previously missed by the at-scrape `cleanFilmTitle` pipeline now surface within one patrol cycle.
+
+---
+
 ## 2026-05-18: Catch-up batch — RECENT_CHANGES entries for session test-coverage PRs
 **PR**: TBD | **Files**: `RECENT_CHANGES.md`
 - Adds canonical RECENT_CHANGES entries for the 6 test-coverage PRs (#521, #523, #524, #525, #526, #528) shipped earlier in the session that deliberately omitted the top-of-file entry to avoid the rebase-conflict cascade caused by multiple open PRs editing line 1.
