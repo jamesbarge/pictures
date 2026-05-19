@@ -18,9 +18,11 @@ describe("cinemaToVenue", () => {
     expect(venue.name).toBe(bfi.name);
     expect(venue.shortName).toBe(bfi.shortName);
     expect(venue.website).toBe(bfi.website);
-    expect(venue.address.street).toBe(bfi.address.street);
-    expect(venue.address.area).toBe(bfi.address.area);
-    expect(venue.address.postcode).toBe(bfi.address.postcode);
+    // VenueDefinition has `address` as optional; assert presence before drilling in.
+    expect(venue.address).toBeDefined();
+    expect(venue.address?.street).toBe(bfi.address.street);
+    expect(venue.address?.area).toBe(bfi.address.area);
+    expect(venue.address?.postcode).toBe(bfi.address.postcode);
   });
 
   it("does NOT include the borough field on the venue address (CinemaDefinition has it, VenueDefinition does not)", () => {
@@ -31,7 +33,7 @@ describe("cinemaToVenue", () => {
     // The transformer explicitly picks {street, area, postcode} — borough is
     // omitted. Pinning this so a refactor doesn't accidentally widen the
     // VenueDefinition shape and leak borough into scraper output.
-    expect((venue.address as Record<string, unknown>).borough).toBeUndefined();
+    expect((venue.address as Record<string, unknown> | undefined)?.borough).toBeUndefined();
   });
 
   it("converts null chain to undefined (explicit chain ?? undefined transform)", () => {
