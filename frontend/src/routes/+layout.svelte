@@ -10,6 +10,7 @@
 	import { PUBLIC_CLERK_PUBLISHABLE_KEY } from '$env/static/public';
 	import { page } from '$app/state';
 	import GlobalCmdkBinding from '$lib/components/search/GlobalCmdkBinding.svelte';
+	import CommandPalette from '$lib/components/search/CommandPalette.svelte';
 
 	let { data, children } = $props();
 
@@ -38,6 +39,7 @@
 		<PostHogProvider />
 		<SyncProvider />
 		<GlobalCmdkBinding />
+		<CommandPalette />
 		<a href="#main-content" class="skip-link">Skip to content</a>
 
 		<div class="min-h-dvh flex flex-col">
