@@ -28,6 +28,7 @@
 	},
 	"dependencies": {
 		"@sveltejs/adapter-vercel": "^6.3.3",
+		"bits-ui": "^2.18.1",
 		"clsx": "^2.1.0",
 		"maplibre-gl": "^5.21.1",
 		"posthog-js": "^1.0.0",
