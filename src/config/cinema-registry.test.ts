@@ -133,14 +133,14 @@ describe("active vs inactive", () => {
 
 describe("chain getters", () => {
   it("getCinemasByChain('CURZON') returns only Curzon cinemas (across active+inactive)", () => {
-    for (const c of getCinemasByChain("CURZON")) {
-      expect(c.chain).toBe("CURZON");
+    for (const c of getCinemasByChain("curzon")) {
+      expect(c.chain).toBe("curzon");
     }
   });
 
   it("getActiveCinemasByChain('CURZON') is a subset of getCinemasByChain('CURZON')", () => {
-    const all = new Set(getCinemasByChain("CURZON").map((c) => c.id));
-    for (const c of getActiveCinemasByChain("CURZON")) {
+    const all = new Set(getCinemasByChain("curzon").map((c) => c.id));
+    for (const c of getActiveCinemasByChain("curzon")) {
       expect(all.has(c.id)).toBe(true);
       expect(c.active).toBe(true);
     }
