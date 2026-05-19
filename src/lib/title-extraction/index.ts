@@ -15,7 +15,7 @@ export { extractFilmTitleSync, type PatternExtractionResult } from "./pattern-ex
 export { extractFilmTitleAI, hasWordOverlap, type AIExtractionResult } from "./ai-extractor";
 export { generateSearchVariations } from "./search-variants";
 
-import { extractFilmTitleAI, isLikelyCleanTitle, type AIExtractionResult } from "./ai-extractor";
+import { extractFilmTitleAI, type AIExtractionResult } from "./ai-extractor";
 
 /**
  * Async pattern-based title extraction. Wraps the sync extractor for callers
@@ -50,11 +50,7 @@ export async function batchExtractTitles(
   const uniqueTitles = [...new Set(rawTitles)];
 
   for (const title of uniqueTitles) {
-    if (isLikelyCleanTitle(title)) {
-      results.set(title, await extractFilmTitle(title));
-    } else {
-      results.set(title, await extractFilmTitle(title));
-    }
+    results.set(title, await extractFilmTitle(title));
   }
 
   return results;
