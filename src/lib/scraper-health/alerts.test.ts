@@ -50,7 +50,7 @@ describe("generateHealthSummary", () => {
           {
             cinemaId: "bfi-southbank",
             cinemaName: "BFI Southbank",
-            alertType: "warn_stale",
+            alertType: "warning_stale",
             message: "BFI Southbank: last scrape 13h ago",
             hoursSinceLastScrape: 13,
             screeningsCount: 100,
@@ -68,7 +68,7 @@ describe("generateHealthSummary", () => {
           {
             cinemaId: "rio-dalston",
             cinemaName: "Rio Dalston",
-            alertType: "critical_no_screenings",
+            alertType: "critical_volume",
             message: "Rio Dalston has no screenings",
             hoursSinceLastScrape: null,
             screeningsCount: 0,
@@ -86,7 +86,7 @@ describe("generateHealthSummary", () => {
           {
             cinemaId: "a",
             cinemaName: "A",
-            alertType: "warn_stale",
+            alertType: "warning_stale",
             message: "msg1",
             hoursSinceLastScrape: 13,
             screeningsCount: 5,
@@ -94,7 +94,7 @@ describe("generateHealthSummary", () => {
           {
             cinemaId: "b",
             cinemaName: "B",
-            alertType: "warn_stale",
+            alertType: "warning_stale",
             message: "msg2",
             hoursSinceLastScrape: 14,
             screeningsCount: 5,
