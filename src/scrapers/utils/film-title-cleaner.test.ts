@@ -4,6 +4,7 @@ import {
   cleanFilmTitleWithMetadata,
   EVENT_PREFIXES,
   extractEnglishFromBracket,
+  getKnownNonFilmTypeFromEntries,
 } from "./film-title-cleaner";
 
 describe("cleanFilmTitle", () => {
@@ -460,5 +461,76 @@ describe("learnings.json integration (smoke)", () => {
     expect(cleanFilmTitle("Some Film That Isn't Stripped")).toBe(
       "Some Film That Isn't Stripped"
     );
+  });
+});
+
+describe("getKnownNonFilmTypeFromEntries", () => {
+  it("returns null when entries is empty or undefined", () => {
+    expect(getKnownNonFilmTypeFromEntries("Anything", undefined)).toBeNull();
+    expect(getKnownNonFilmTypeFromEntries("Anything", null)).toBeNull();
+    expect(getKnownNonFilmTypeFromEntries("Anything", [])).toBeNull();
+  });
+
+  it("matches exact title case-insensitively", () => {
+    const entries = [{ title: "The Big Ritzy Quiz", type: "event", exact: true }];
+    expect(getKnownNonFilmTypeFromEntries("The Big Ritzy Quiz", entries)).toBe("event");
+    expect(getKnownNonFilmTypeFromEntries("the big ritzy quiz", entries)).toBe("event");
+    expect(getKnownNonFilmTypeFromEntries("THE BIG RITZY QUIZ", entries)).toBe("event");
+    expect(getKnownNonFilmTypeFromEntries("The Big Ritzy", entries)).toBeNull();
+  });
+
+  it("matches regex pattern entries (mirrors data-check buildNonFilmMatchers)", () => {
+    const entries = [
+      { regex: true, pattern: "^caf[eé]s? philo", type: "event" },
+      { regex: true, pattern: "^baby comptines\\b", type: "event" },
+      { regex: true, pattern: "^nickelfest #\\d+", type: "event" },
+    ];
+    expect(getKnownNonFilmTypeFromEntries("Cafés philo anglais", entries)).toBe("event");
+    expect(getKnownNonFilmTypeFromEntries("Cafe philo en français", entries)).toBe("event");
+    expect(getKnownNonFilmTypeFromEntries("Baby Comptines 10/06/2026", entries)).toBe("event");
+    expect(getKnownNonFilmTypeFromEntries("NICKELFEST #1 - DAY ONE", entries)).toBe("event");
+    expect(getKnownNonFilmTypeFromEntries("Nickelfest #2 - Three Day Pass!", entries)).toBe("event");
+    expect(getKnownNonFilmTypeFromEntries("Something Else Entirely", entries)).toBeNull();
+  });
+
+  it("returns 'event' as default type when type field is missing", () => {
+    expect(getKnownNonFilmTypeFromEntries("X", [{ title: "X" }])).toBe("event");
+    expect(getKnownNonFilmTypeFromEntries("y", [{ regex: true, pattern: "^y$" }])).toBe("event");
+  });
+
+  it("preserves live_broadcast and other custom types", () => {
+    const entries = [
+      { title: "The Playboy of the Western World", type: "live_broadcast", exact: true },
+      { regex: true, pattern: "^andre rieu", type: "live_broadcast" },
+    ];
+    expect(getKnownNonFilmTypeFromEntries("The Playboy of the Western World", entries)).toBe("live_broadcast");
+    expect(getKnownNonFilmTypeFromEntries("Andre Rieu's 2026 Summer Concert", entries)).toBe("live_broadcast");
+  });
+
+  it("checks exact entries before regex entries", () => {
+    // If both an exact and a regex entry would match, exact wins.
+    const entries = [
+      { title: "Cafés philo anglais", type: "event", exact: true },
+      { regex: true, pattern: "^cafés? philo", type: "live_broadcast" },
+    ];
+    // Exact entry comes first in iteration, returns 'event' — regex never runs.
+    expect(getKnownNonFilmTypeFromEntries("Cafés philo anglais", entries)).toBe("event");
+  });
+
+  it("silently skips entries with malformed regex without breaking subsequent matches", () => {
+    const entries = [
+      { regex: true, pattern: "[invalid(regex", type: "event" }, // malformed
+      { regex: true, pattern: "^valid pattern$", type: "live_broadcast" },
+    ];
+    expect(getKnownNonFilmTypeFromEntries("valid pattern", entries)).toBe("live_broadcast");
+  });
+
+  it("ignores entries lacking both title and pattern", () => {
+    const entries = [
+      { type: "event" }, // neither title nor pattern
+      { exact: true, type: "event" }, // exact without title
+      { regex: true, type: "event" }, // regex without pattern
+    ];
+    expect(getKnownNonFilmTypeFromEntries("anything", entries)).toBeNull();
   });
 });
