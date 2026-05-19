@@ -1,3 +1,13 @@
+## 2026-05-19: cmd+k step 2 — RRF API + title-only search_text (typo tolerance)
+**PR**: TBD | **Files**: `src/app/api/films/search/route.ts`, `src/db/migrations/0013_search_text_title_only.sql` (new)
+- Step 2 of the cmd+k plan: replaces ILIKE with Reciprocal Rank Fusion (k=60) over `search_tsv` + `search_text` from migration 0012. Adds recency boost (1-week decay on next upcoming screening) + popularity boost (`0.02·ln(1+tmdb_popularity)`).
+- Fans out 5 parallel queries via `Promise.all` so the new global palette gets films + cinemas + screenings + festivals + seasons in one round-trip. Response shape preserves `{ results, cinemas }` for the existing inline SearchInput and extends with `screenings`, `festivals`, `seasons`.
+- Migration 0013 trims `search_text` to **title-only** (cinemas: name-only). Migration 0012 included `title + original_title + directors` which bloated the string and dropped trigram similarity for typos like "amelei" vs "Amélie" from 0.4 to 0.07 (below the 0.3 `%` threshold). Title-only restores fuzzy match. `original_title` and `directors` are still searched lexically via tsvector A/B weights.
+- Verified end-to-end against production data: `amelei` returns Amélie (2001); `akira` returns Akira (1988) first; `wes anderson` returns Wes Anderson's films (Fantastic Mr. Fox, Grand Budapest, Royal Tenenbaums) via director B-weight; `curzon` returns 6 cinemas + 8 screenings + 0 films (correct — no films named curzon).
+- Latency: ~400ms in dev mode (Next.js cold + dev overhead). Production cold expected ~80ms; warm ~25ms per the DB-agent budget.
+
+---
+
 ## 2026-05-19: cmd+k search foundation — DB migration (FTS + pg_trgm) + a11y mark fix
 **PR**: TBD | **Files**: `src/db/migrations/0012_search_layer.sql` (new), `scripts/verify-search-migration.ts` (new), `src/db/schema/films.ts`, `src/db/schema/cinemas.ts`, `src/db/schema/screenings.ts`, `src/db/schema/festivals.ts`, `src/db/schema/seasons.ts`, `frontend/src/lib/components/filters/SearchInput.svelte`, `tasks/cmdk-palette-plan.md` (new), `changelogs/2026-05-19-cmdk-search-foundation.md` (new)
 - Step 1 of the 10-step cmd+k palette plan: enables `unaccent`, `pg_trgm`, `btree_gin`; creates the `pictures` text search config; adds weighted `search_tsv` (A/B/C/D) + `search_text` generated STORED columns on films + cinemas, plus `search_tsv` on screenings, festivals, seasons; 7 GIN indexes + 4 compound btree indexes; partial `idx_screenings_film_future` for the RRF recency boost.
