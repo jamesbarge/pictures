@@ -1,5 +1,17 @@
+## 2026-05-19: cmd+k step 8 — intent-to-actions + filters.applyIntent
+**PR**: TBD | **Files**: `frontend/src/lib/search/intent-to-actions.ts` (new), `frontend/src/lib/search/intent-to-actions.test.ts` (new), `frontend/src/lib/stores/filters.svelte.ts`, `frontend/src/lib/stores/palette.svelte.ts`
+- Step 8: the palette can now mutate the calendar. Typing "horror 70mm tonight" surfaces a "JUMP TO" composite action row; pressing Enter (or Alt+Enter, or clicking) applies all parsed slices to the filters store and closes the palette. The calendar narrows behind the (intentionally non-blurred) backdrop — the 5-second magic.
+- `intentToActions(parsed)` returns at most ONE composite filter-action row. Adding more keywords narrows the same row rather than multiplying choices — matches user mental model better than per-slice rows. 9 Vitest cases cover empty intent, single slice, multi-slice composition, stable id keyed on slice values, decade rendering, and a "cinema tokens deferred" guard so we don't silently surface no-op actions.
+- `filters.applyIntent(parsed)` is a batch mutator covering formats, genres, decades, dates (DST-aware via `Intl.DateTimeFormat` round-trip), times, and the `repertory` programming type. Existing filter state for other slices survives so users can build filters across multiple queries.
+- Cinemas/chains are deliberately deferred: the parser yields slug tokens like "pcc" that would need UUID resolution. Cleaner solution shipping today: Alt+Enter on a CinemaResult row sets `filters.cinemaIds = [cinema.id]` directly.
+- Added `filters.snapshotForUndo()` + `filters.restoreFromSnapshot()` so step 10 can hang an Undo toast off them without re-architecting.
+- Palette `mergedResults` injects synthesised actions into `PaletteResults.actions`, so the flat selectedIndex walks across them correctly and `selectedRow` returns the right thing for Enter activation.
+- 59/59 Vitest, svelte-check 0 errors, build 9.86s. Verified live: typing → chips render, Enter → format=70mm pressed + genre=horror pressed + "Show 0" in calendar sidebar.
+
+---
+
 ## 2026-05-19: cmd+k step 7 — server-fetch wiring + row activation
-**PR**: TBD | **Files**: `frontend/src/lib/stores/palette.svelte.ts`, `frontend/src/lib/components/search/CommandPalette.svelte`
+**PR**: #577 | **Files**: `frontend/src/lib/stores/palette.svelte.ts`, `frontend/src/lib/components/search/CommandPalette.svelte`
 - Step 7 of the cmd+k plan: the palette is now wired to the server. Each keystroke debounces 80ms, aborts any in-flight request via AbortController, calls `/api/films/search?q=…`, and maps the response into the `PaletteResults` shape ResultsList renders.
 - Adds the `kind` discriminator the server omits in the mapping function so row components stay type-safe. The legacy field name `results` (= films) is preserved in the response and renamed locally.
 - Activation modes: Enter (default — close palette, navigate via `goto`), Cmd/Ctrl+Enter (new tab — palette stays open), Alt+Enter (filter — falls through to open for entities until step 8 wires real `filters.applyIntent`). Click-on-row equivalents: plain click, Cmd/Ctrl-click, Alt-click. Screenings always open their bookingUrl externally regardless of mode (external destination).
