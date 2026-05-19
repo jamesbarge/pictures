@@ -38,13 +38,12 @@ function getClient(): OpenAI {
  * Strip markdown code fences. DeepSeek with `response_format: json_object`
  * returns clean JSON, but we keep this for parity with the Gemini client
  * and to handle non-JSON responses that may still arrive fenced.
+ *
+ * Re-exported from the shared helper for backwards compatibility with
+ * existing imports (`@/lib/deepseek`); the canonical implementation lives
+ * in `@/lib/strip-code-fences`.
  */
-export function stripCodeFences(text: string): string {
-  return text
-    .replace(/^```(?:json)?\s*\n?/, "")
-    .replace(/\n?```\s*$/, "")
-    .trim();
-}
+export { stripCodeFences } from "./strip-code-fences";
 
 interface GenerateOptions {
   systemPrompt?: string;
