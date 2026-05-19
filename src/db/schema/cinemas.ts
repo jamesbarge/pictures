@@ -8,6 +8,10 @@ import {
 } from "drizzle-orm/pg-core";
 import type { CinemaAddress, CinemaCoordinates } from "@/types/cinema";
 
+// NOTE: Migration 0012_search_layer.sql adds GENERATED STORED `search_tsv`
+// and `search_text` columns. Queried via raw SQL in the cmd+k endpoint; not
+// declared here to avoid Drizzle 0.45's generated-column insert-type leak.
+
 /**
  * Cinemas table - stores venue information
  */
@@ -44,6 +48,7 @@ export const cinemas = pgTable("cinemas", {
   description: text("description"),
   imageUrl: text("image_url"),
   isActive: boolean("is_active").notNull().default(true),
+
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

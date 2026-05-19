@@ -644,9 +644,17 @@
 	}
 
 	.result-row mark {
+		/*
+		 * WCAG 1.4.1 Use of Color: weight alone is not a sufficient
+		 * differentiator for users who can't perceive bold. Add
+		 * underline as a redundant cue so the match is detectable.
+		 */
 		background: transparent;
 		color: var(--color-text);
 		font-weight: 600;
+		text-decoration: underline;
+		text-decoration-thickness: 1px;
+		text-underline-offset: 2px;
 	}
 
 	.recent-row {

@@ -10,6 +10,9 @@ import { films } from "./films";
 import { cinemas } from "./cinemas";
 import type { ScreeningFormat, EventType } from "@/types/screening";
 
+// NOTE: Migration 0012_search_layer.sql adds a GENERATED STORED `search_tsv`
+// column. Queried via raw SQL in the cmd+k endpoint.
+
 /**
  * Screenings table - individual film showings at cinemas
  */
