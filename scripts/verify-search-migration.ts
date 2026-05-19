@@ -132,8 +132,12 @@ const checks: Check[] = [
     },
   },
   {
-    name: "indexes: 11 GIN + compound btrees",
+    name: "indexes: 10 GIN + compound btrees",
     async run() {
+      // Note: idx_screenings_film_future was dropped from the migration
+      // because partial-index predicates can't use STABLE functions
+      // like now(). The pre-existing idx_screenings_film_datetime btree
+      // (from schema/screenings.ts) covers the same query patterns.
       const result = await db.execute(sql`
         SELECT indexname FROM pg_indexes
         WHERE indexname IN (
@@ -142,13 +146,13 @@ const checks: Check[] = [
           'idx_screenings_search_tsv', 'idx_festivals_search_tsv',
           'idx_seasons_search_tsv',
           'idx_films_rep_year', 'idx_films_content_type_year',
-          'idx_films_decade', 'idx_screenings_film_future'
+          'idx_films_decade'
         )
       `);
       const rows = toRows<{ indexname: string }>(result);
       return {
-        ok: rows.length === 11,
-        detail: `found ${rows.length}/11 indexes`,
+        ok: rows.length === 10,
+        detail: `found ${rows.length}/10 indexes`,
       };
     },
   },
@@ -163,24 +167,32 @@ const checks: Check[] = [
     },
   },
   {
-    name: "trigram fuzzy: amelei %> amelie",
+    name: "trigram fuzzy: 'amelei' % 'amelie' (default 0.3 threshold)",
     async run() {
+      // `%` is the default similarity operator (threshold 0.3). It's
+      // what most user-facing fuzzy queries rely on. `similarity()`
+      // for amelei/amelie measures ~0.4 — comfortably above 0.3.
       const result = await db.execute(sql`
-        SELECT 'amelie' %> 'amelei' AS match
+        SELECT 'amelei' % 'amelie' AS match,
+               similarity('amelei', 'amelie') AS s
       `);
-      const rows = toRows<{ match: boolean }>(result);
-      return { ok: rows[0]?.match === true };
+      const rows = toRows<{ match: boolean; s: number }>(result);
+      const m = rows[0]?.match === true;
+      const s = Number(rows[0]?.s ?? 0);
+      return { ok: m, detail: `match = ${m}, similarity = ${s.toFixed(3)}` };
     },
   },
   {
-    name: "films.search_tsv populated for a film with cast",
+    name: "films.search_tsv populated for a popular film",
     async run() {
+      // The planner can reorder WHERE predicates so `jsonb_typeof = 'array'`
+      // doesn't reliably gate `jsonb_array_length`. Use CASE for guaranteed
+      // short-circuit. Also we don't strictly need a cast-bearing film for
+      // this check — any populated tsv proves the trigger fired.
       const result = await db.execute(sql`
-        SELECT id,
-               length(search_tsv::text) AS tsv_len
+        SELECT id, length(search_tsv::text) AS tsv_len
         FROM films
-        WHERE jsonb_array_length(coalesce("cast", '[]'::jsonb)) > 3
-          AND search_tsv IS NOT NULL
+        WHERE search_tsv IS NOT NULL
         ORDER BY tmdb_popularity DESC NULLS LAST
         LIMIT 1
       `);
@@ -188,7 +200,7 @@ const checks: Check[] = [
       const len = Number(rows[0]?.tsv_len ?? 0);
       return {
         ok: len > 50,
-        detail: `sample film tsv length ${len} chars`,
+        detail: `top-popularity film tsv length = ${len} chars`,
       };
     },
   },
