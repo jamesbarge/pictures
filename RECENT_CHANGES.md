@@ -1,3 +1,12 @@
+## 2026-05-20: cmd+k step 10 — E2E spec + production alias promotion + step-9 deferred
+**PR**: TBD | **Files**: `frontend/tests/command-palette.spec.ts` (new), `changelogs/2026-05-19-cmdk-step9-deferred.md` (new)
+- Step 10: 5-case Playwright spec locks in the cmd+k contract — ⌘K opens / Esc closes, fuzzy query renders Amélie via trigram, Enter on a film row navigates to `/film/[id]`, composite filter-action surfaces for multi-slice queries, Enter on it mutates the calendar (`70mm` + `Horror` pressed in sidebar). All 5 pass cleanly in 15.3s on chromium.
+- `openPalette()` helper auto-retries up to 3 times around a bits-ui Dialog mount race in headless: the first synthetic keydown can land before the document-level listener wires up. Worth it — eliminates flakes entirely.
+- Production alias promoted: `api.pictures.london` was pinned to a 23-day-old deployment (April 26). `vercel promote` pointed it at the latest production build (step 7), unblocking the new RRF API for the live frontend. Confirmed: pictures.london ⌘K now returns 8 Amélie screenings + film row from a trigram-fuzzy "amelei" query.
+- Step 9 (client Orama index) DEFERRED to v2. Server-only p95 ≈100ms already feels snappy; the ~50ms cold→warm gain isn't worth ~88KB bundle + Web Worker + IDB + brotli-wasm build complexity. Documented in `changelogs/2026-05-19-cmdk-step9-deferred.md` with reopen conditions.
+
+---
+
 ## 2026-05-19: cmd+k step 8 — intent-to-actions + filters.applyIntent
 **PR**: TBD | **Files**: `frontend/src/lib/search/intent-to-actions.ts` (new), `frontend/src/lib/search/intent-to-actions.test.ts` (new), `frontend/src/lib/stores/filters.svelte.ts`, `frontend/src/lib/stores/palette.svelte.ts`
 - Step 8: the palette can now mutate the calendar. Typing "horror 70mm tonight" surfaces a "JUMP TO" composite action row; pressing Enter (or Alt+Enter, or clicking) applies all parsed slices to the filters store and closes the palette. The calendar narrows behind the (intentionally non-blurred) backdrop — the 5-second magic.
