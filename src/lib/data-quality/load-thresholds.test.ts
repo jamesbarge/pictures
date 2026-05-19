@@ -37,7 +37,7 @@ describe("loadThresholds", () => {
   it("strips the `$comment` field from the JSON-loaded object", () => {
     // The implementation explicitly does `delete copy.$comment` so callers
     // don't see the JSON metadata field as a Thresholds property.
-    const t = loadThresholds() as Record<string, unknown>;
+    const t = loadThresholds() as unknown as Record<string, unknown>;
     expect(t.$comment).toBeUndefined();
   });
 
