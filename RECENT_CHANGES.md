@@ -1,3 +1,34 @@
+## 2026-05-19: cmd+k step 7 — server-fetch wiring + row activation
+**PR**: TBD | **Files**: `frontend/src/lib/stores/palette.svelte.ts`, `frontend/src/lib/components/search/CommandPalette.svelte`
+- Step 7 of the cmd+k plan: the palette is now wired to the server. Each keystroke debounces 80ms, aborts any in-flight request via AbortController, calls `/api/films/search?q=…`, and maps the response into the `PaletteResults` shape ResultsList renders.
+- Adds the `kind` discriminator the server omits in the mapping function so row components stay type-safe. The legacy field name `results` (= films) is preserved in the response and renamed locally.
+- Activation modes: Enter (default — close palette, navigate via `goto`), Cmd/Ctrl+Enter (new tab — palette stays open), Alt+Enter (filter — falls through to open for entities until step 8 wires real `filters.applyIntent`). Click-on-row equivalents: plain click, Cmd/Ctrl-click, Alt-click. Screenings always open their bookingUrl externally regardless of mode (external destination).
+- Listbox click delegation walks up from `e.target` to find the row's `[role="option"]` button, parses its `cmdk-opt-N` id, and looks up the row in `palette.flatRows[N]`. Avoids modifying all 8 row components for a single click handler.
+- Mouse hover drives `selectedIndex` so keyboard Enter operates on the row the cursor highlights.
+- Stale responses are dropped silently: after `await apiGet(...)`, if `query` has moved on we ignore the response. AbortError from DOMException or generic Error is treated as cancellation, not failure.
+- `closePalette()` now clears query + results + serverError + isLoading state, so re-opening doesn't briefly show stale data from the last session.
+- Vitest 50/50 green; svelte-check 0 errors / 0 new warnings; production build 3.12s.
+
+---
+
+## 2026-05-19: cmd+k step 6 — ResultsList + 8 row variants + flat arrow nav
+**PR**: #576 | **Files**: `frontend/src/lib/components/search/ResultsList.svelte` (new), `frontend/src/lib/components/search/rows/*.svelte` (8 new), `frontend/src/lib/search/result-types.ts` (new), `frontend/src/lib/components/search/CommandPalette.svelte`, `frontend/src/lib/stores/palette.svelte.ts`
+- Step 6: the palette renders real result rows once data lands. 8 row variants matching the property catalog (film, cinema, screening, festival, season, filter-action, recent, user-status).
+- `result-types.ts` exposes a discriminated `ResultRow` union, `PaletteResults` sectioned shape, `SECTION_ORDER` and `SECTION_LABELS` for header rendering, and `flattenResults()` so arrow nav walks a flat array indexed by `selectedIndex`.
+- Listbox structure follows the inline SearchInput pattern: flat `<div role="listbox">` with direct `<button role="option">` children. Section headers are `<div role="presentation">` between groups — avoids invalid `<li>` nesting + `<div onclick>` a11y warnings.
+- 49 + 1 Vitest cases pass; svelte-check clean; E2E green.
+
+---
+
+## 2026-05-19: cmd+k step 5 — visible modal shell (bits-ui Dialog)
+**PR**: #575 | **Files**: `frontend/src/lib/components/search/CommandPalette.svelte` (new), `frontend/src/lib/components/search/CommandPaletteInput.svelte` (new), `frontend/src/lib/components/search/ActiveFiltersRow.svelte` (new), `frontend/src/lib/components/search/Chip.svelte` (new), `frontend/src/routes/+layout.svelte`, `frontend/package.json` (+ bits-ui)
+- Step 5: pressing ⌘K renders a real modal (desktop) or full-screen sheet (mobile). bits-ui Dialog handles focus trap, scroll lock, portal mount.
+- Modal at top: 12vh, 640px wide; max-height: min(560px, calc(100vh - 24vh)). Backdrop is FLAT 0.45 opacity, NOT blurred — intentional for the step 8 live-filter-mutation feature where the user sees the calendar change behind the palette.
+- ActiveFiltersRow renders chips BELOW the input (NOT inside) — chosen for a11y + ARIA 1.2 compliance. Chips reflect `palette.parsed.chipDescriptors`.
+- Result region is still a placeholder until step 6 lands the real ResultsList.
+
+---
+
 ## 2026-05-19: cmd+k step 4 — palette + media stores + global cmd+k binding
 **PR**: TBD | **Files**: `frontend/src/lib/stores/palette.svelte.ts` (new), `frontend/src/lib/stores/media.svelte.ts` (new), `frontend/src/lib/components/search/GlobalCmdkBinding.svelte` (new), `frontend/src/routes/+layout.svelte`, `frontend/src/lib/stores/palette.test.ts` (new)
 - Step 4: the runes-based store + global keyboard binding for cmd+k. The store owns `open`, `query`, derived `parsed = parseQuery(query, new Date(nowTick))`, `selectedIndex`, `triggerSource`. Imperative state (AbortController, debounce timer) stays as plain module variables — making them `$state` would create effect loops on identity changes.

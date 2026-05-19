@@ -24,15 +24,44 @@
  */
 
 import { browser } from "$app/environment";
+import { goto } from "$app/navigation";
+import { apiGet, ApiError } from "$lib/api/client";
 import { parseQuery, type ParsedIntent } from "$lib/search/parse-query";
 import {
   EMPTY_RESULTS,
   flattenResults,
+  type CinemaResult,
+  type FestivalResult,
+  type FilmResult,
   type PaletteResults,
   type ResultRow,
+  type ScreeningResult,
+  type SeasonResult,
 } from "$lib/search/result-types";
 
 export type TriggerSource = "cmdk" | "click" | "route" | null;
+
+/** How the user activated a row. */
+export type ActivationMode = "open" | "newTab" | "filter";
+
+const SERVER_DEBOUNCE_MS = 80;
+const MIN_QUERY_LEN = 2;
+
+/**
+ * Server response shape — the `/api/films/search` route returns rows
+ * without the `kind` discriminator; we add it in the mapping function
+ * below so downstream code (rows, flattenResults) can be type-safe.
+ *
+ * The legacy field name `results` (= films) is preserved for backward
+ * compat with the existing inline SearchInput; we rename it locally.
+ */
+interface ServerSearchResponse {
+  results: Omit<FilmResult, "kind">[];
+  cinemas: Omit<CinemaResult, "kind">[];
+  screenings: Omit<ScreeningResult, "kind">[];
+  festivals: Omit<FestivalResult, "kind">[];
+  seasons: Omit<SeasonResult, "kind">[];
+}
 
 let open = $state(false);
 let query = $state("");
@@ -40,6 +69,8 @@ let selectedIndex = $state(0);
 let triggerSource = $state<TriggerSource>(null);
 let nowTick = $state(Date.now());
 let results = $state<PaletteResults>(EMPTY_RESULTS);
+let isLoading = $state(false);
+let serverError = $state<string | null>(null);
 
 // Plain (non-reactive) imperative state.
 let triggerEl: HTMLElement | null = null;
@@ -88,6 +119,179 @@ function cancelInFlight() {
   }
 }
 
+/** Inject the `kind` discriminator the server omits so row components stay type-safe. */
+function mapResponse(res: ServerSearchResponse): PaletteResults {
+  return {
+    films: res.results.map((f) => ({ kind: "film" as const, ...f })),
+    cinemas: res.cinemas.map((c) => ({ kind: "cinema" as const, ...c })),
+    screenings: res.screenings.map((s) => ({ kind: "screening" as const, ...s })),
+    festivals: res.festivals.map((f) => ({ kind: "festival" as const, ...f })),
+    seasons: res.seasons.map((s) => ({ kind: "season" as const, ...s })),
+  };
+}
+
+async function fetchServer(q: string, signal: AbortSignal): Promise<void> {
+  isLoading = true;
+  serverError = null;
+  try {
+    const res = await apiGet<ServerSearchResponse>(
+      `/api/films/search?q=${encodeURIComponent(q)}`,
+      { signal }
+    );
+    // Stale response — query has moved on. Drop silently.
+    if (q !== query.trim()) return;
+    results = mapResponse(res);
+    selectedIndex = 0;
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") return;
+    if (err instanceof ApiError) {
+      serverError = `HTTP ${err.status}`;
+    } else if (err instanceof Error && err.name === "AbortError") {
+      // Some environments throw a generic Error with name=AbortError.
+      return;
+    } else {
+      serverError = err instanceof Error ? err.message : "Search failed";
+    }
+  } finally {
+    // Don't flip the loading flag if we were aborted (a newer fetch
+    // owns the current state).
+    if (!signal.aborted) isLoading = false;
+  }
+}
+
+/**
+ * Schedule a debounced server query. Always cancels any pending fetch.
+ * No-op below MIN_QUERY_LEN — empty/short queries clear results
+ * synchronously so the UI doesn't show stale data.
+ */
+function scheduleServerSearch() {
+  cancelInFlight();
+  const q = query.trim();
+  if (q.length < MIN_QUERY_LEN) {
+    results = EMPTY_RESULTS;
+    selectedIndex = 0;
+    isLoading = false;
+    serverError = null;
+    return;
+  }
+  debounceTimer = setTimeout(() => {
+    debounceTimer = null;
+    inFlight = new AbortController();
+    void fetchServer(q, inFlight.signal);
+  }, SERVER_DEBOUNCE_MS);
+}
+
+function openInNewTab(path: string) {
+  if (!browser) return;
+  window.open(path, "_blank", "noopener,noreferrer");
+}
+
+/**
+ * Activate a result row. Modes:
+ *  - `open`   (default — Enter / click): navigate / book / re-query
+ *  - `newTab` (Cmd+Enter / Ctrl+Enter):  open in new tab; palette stays
+ *  - `filter` (Alt+Enter):               step 8 wires real filter apply.
+ *                                        For step 7, falls through to `open`
+ *                                        so the row is still actionable.
+ */
+async function activate(row: ResultRow, mode: ActivationMode = "open"): Promise<void> {
+  if (!browser) return;
+
+  // Step 8 will turn `filter` into a real `filters.applyIntent` call.
+  // Until then, Alt+Enter behaves like Enter so the row remains useful.
+  const effectiveMode: "open" | "newTab" = mode === "newTab" ? "newTab" : "open";
+
+  switch (row.kind) {
+    case "film": {
+      const path = `/film/${row.id}`;
+      if (effectiveMode === "newTab") {
+        openInNewTab(path);
+      } else {
+        closePalette();
+        await goto(path);
+      }
+      return;
+    }
+    case "cinema": {
+      const path = `/cinemas/${row.id}`;
+      if (effectiveMode === "newTab") {
+        openInNewTab(path);
+      } else {
+        closePalette();
+        await goto(path);
+      }
+      return;
+    }
+    case "screening": {
+      // Booking URLs are external; always open new tab regardless of mode.
+      openInNewTab(row.bookingUrl);
+      if (effectiveMode !== "newTab") closePalette();
+      return;
+    }
+    case "festival": {
+      const path = `/festivals/${row.slug}`;
+      if (effectiveMode === "newTab") {
+        openInNewTab(path);
+      } else {
+        closePalette();
+        await goto(path);
+      }
+      return;
+    }
+    case "season": {
+      // No /seasons/[slug] route yet; navigate to the index page.
+      const path = `/seasons`;
+      if (effectiveMode === "newTab") {
+        openInNewTab(path);
+      } else {
+        closePalette();
+        await goto(path);
+      }
+      return;
+    }
+    case "user-status": {
+      const path = `/film/${row.filmId}`;
+      if (effectiveMode === "newTab") {
+        openInNewTab(path);
+      } else {
+        closePalette();
+        await goto(path);
+      }
+      return;
+    }
+    case "recent": {
+      // Don't navigate — re-run the saved query in place.
+      setQueryInternal(row.query);
+      return;
+    }
+    case "filter-action": {
+      // Step 8 implements applyIntent. Today: keep palette open, no-op.
+      return;
+    }
+  }
+}
+
+/** Internal mutator used by activate() to avoid `this` binding gymnastics. */
+function setQueryInternal(v: string) {
+  query = v;
+  selectedIndex = 0;
+  if (open) scheduleServerSearch();
+}
+
+function closePalette() {
+  if (!open) return;
+  open = false;
+  cancelInFlight();
+  triggerSource = null;
+  // Clear results so re-opening doesn't briefly show stale data.
+  results = EMPTY_RESULTS;
+  query = "";
+  selectedIndex = 0;
+  isLoading = false;
+  serverError = null;
+  restoreTrigger();
+}
+
 export const palette = {
   // --- reactive getters ---
   get open() {
@@ -114,11 +318,16 @@ export const palette = {
   get selectedRow(): ResultRow | null {
     return flatRows[selectedIndex] ?? null;
   },
+  get isLoading() {
+    return isLoading;
+  },
+  get serverError() {
+    return serverError;
+  },
 
   // --- mutators ---
   setQuery(v: string) {
-    query = v;
-    selectedIndex = 0;
+    setQueryInternal(v);
   },
   setSelectedIndex(i: number) {
     // Clamp to valid range; empty list → 0
@@ -148,6 +357,13 @@ export const palette = {
     this.setSelectedIndex(flatRows.length - 1);
   },
 
+  activate,
+  activateSelected(mode: ActivationMode = "open") {
+    const row = flatRows[selectedIndex];
+    if (!row) return Promise.resolve();
+    return activate(row, mode);
+  },
+
   openPalette(source: TriggerSource = "click") {
     if (open) return;
     captureTrigger();
@@ -155,19 +371,10 @@ export const palette = {
     open = true;
   },
 
-  closePalette() {
-    if (!open) return;
-    open = false;
-    cancelInFlight();
-    triggerSource = null;
-    // Clear results so re-opening doesn't briefly show stale data.
-    results = EMPTY_RESULTS;
-    selectedIndex = 0;
-    restoreTrigger();
-  },
+  closePalette,
 
   toggle(source: TriggerSource = "cmdk") {
-    if (open) this.closePalette();
+    if (open) closePalette();
     else this.openPalette(source);
   },
 

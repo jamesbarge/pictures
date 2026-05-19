@@ -2,9 +2,17 @@
 	/**
 	 * Global cmd+k command palette — refined brutalist shell.
 	 *
-	 * Step 5: visible UI shell (modal + input + chip row + empty result
-	 * region). Step 6 wires the result list; step 7 hooks the server
-	 * fetch; step 8 adds filter-as-result rows.
+	 * Step 7: server-fetch wiring + row activation. Each keystroke calls
+	 * `palette.setQuery`, which (in the palette store) debounces 80ms,
+	 * aborts any in-flight request, fires `/api/films/search`, and maps
+	 * the response into the `PaletteResults` shape ResultsList renders.
+	 *
+	 * Activation:
+	 *   - Enter         → open default (close palette, navigate)
+	 *   - Cmd/Ctrl+Enter → open in new tab (palette stays open)
+	 *   - Alt+Enter     → apply as filter (step 8 — currently no-ops for
+	 *                     filter rows, falls through to open for entities)
+	 *   - Click on row  → same as Enter
 	 *
 	 * Presentation switches on `media.isDesktop`:
 	 *  - Desktop (≥ 768px): centered modal at top: 12vh, 640px wide
@@ -16,7 +24,7 @@
 	 */
 	import { onMount, tick } from 'svelte';
 	import { Dialog } from 'bits-ui';
-	import { palette } from '$lib/stores/palette.svelte';
+	import { palette, type ActivationMode } from '$lib/stores/palette.svelte';
 	import { media } from '$lib/stores/media.svelte';
 	import CommandPaletteInput from './CommandPaletteInput.svelte';
 	import ActiveFiltersRow from './ActiveFiltersRow.svelte';
@@ -24,6 +32,7 @@
 
 	const LISTBOX_ID = 'cmdk-listbox';
 	const ROW_ID_PREFIX = 'cmdk-opt';
+	const ROW_ID_RE = /^cmdk-opt-(\d+)$/;
 
 	let inputRef = $state<HTMLInputElement | null>(null);
 	let navMode = $state<'keyboard' | 'mouse'>('keyboard');
@@ -35,6 +44,7 @@
 		rowCount > 0 ? `${ROW_ID_PREFIX}-${palette.selectedIndex}` : undefined
 	);
 	const hasQuery = $derived(palette.query.length > 0);
+	const isLoading = $derived(palette.isLoading);
 
 	function handleOpenChange(next: boolean) {
 		if (next) palette.openPalette('click');
@@ -57,6 +67,42 @@
 		}
 	});
 
+	function rowIndexFromTarget(target: EventTarget | null): number | null {
+		if (!(target instanceof Element)) return null;
+		const button = target.closest('[role="option"]');
+		if (!(button instanceof HTMLElement) || !button.id) return null;
+		const match = button.id.match(ROW_ID_RE);
+		if (!match) return null;
+		const idx = Number(match[1]);
+		return Number.isFinite(idx) ? idx : null;
+	}
+
+	function handleListboxClick(e: MouseEvent) {
+		const idx = rowIndexFromTarget(e.target);
+		if (idx === null) return;
+		const row = palette.flatRows[idx];
+		if (!row) return;
+		// Sync selectedIndex before activation so analytics/UI agree.
+		palette.setSelectedIndex(idx);
+		// Cmd/Ctrl-click opens in a new tab without closing the palette,
+		// matching the keyboard Cmd+Enter behaviour. Alt-click maps to
+		// the (step-8) filter mode. Default click opens.
+		let mode: ActivationMode = 'open';
+		if (e.metaKey || e.ctrlKey) mode = 'newTab';
+		else if (e.altKey) mode = 'filter';
+		// Prevent default so any wrapping <a> doesn't double-navigate.
+		e.preventDefault();
+		void palette.activate(row, mode);
+	}
+
+	function handleListboxPointerMove(e: PointerEvent) {
+		// Mouse hover should drive selection so keyboard Enter operates on
+		// the same row the user sees highlighted under the cursor.
+		const idx = rowIndexFromTarget(e.target);
+		if (idx === null) return;
+		if (idx !== palette.selectedIndex) palette.setSelectedIndex(idx);
+	}
+
 	function handlePaletteKeydown(e: KeyboardEvent) {
 		if (!palette.open) return;
 
@@ -69,16 +115,6 @@
 			palette.closePalette();
 			return;
 		}
-		if (e.key === 'ArrowDown') {
-			e.preventDefault();
-			palette.selectNext();
-			return;
-		}
-		if (e.key === 'ArrowUp') {
-			e.preventDefault();
-			palette.selectPrevious();
-			return;
-		}
 		if ((e.metaKey || e.ctrlKey) && e.key === 'ArrowDown') {
 			e.preventDefault();
 			palette.selectLast();
@@ -89,8 +125,27 @@
 			palette.selectFirst();
 			return;
 		}
-		// Enter / Cmd+Enter / Alt+Enter activation handled in step 7
-		// once the actual result actions are wired.
+		if (e.key === 'ArrowDown') {
+			e.preventDefault();
+			palette.selectNext();
+			return;
+		}
+		if (e.key === 'ArrowUp') {
+			e.preventDefault();
+			palette.selectPrevious();
+			return;
+		}
+		if (e.key === 'Enter') {
+			// Only activate when a row is actually available; otherwise
+			// let Enter behave naturally (no submit form is present).
+			if (palette.flatRows.length === 0) return;
+			e.preventDefault();
+			let mode: ActivationMode = 'open';
+			if (e.metaKey || e.ctrlKey) mode = 'newTab';
+			else if (e.altKey) mode = 'filter';
+			void palette.activateSelected(mode);
+			return;
+		}
 	}
 
 	function handlePointerMove() {
@@ -125,14 +180,35 @@
 
 			<ActiveFiltersRow {chips} onRemove={removeChip} />
 
-			<div id={LISTBOX_ID} role="listbox" aria-label="Search results" class="cmdk-listbox">
+			<!--
+				The listbox handles clicks as event delegation for its
+				button children. Keyboard activation lives on the
+				document-level handler (handlePaletteKeydown) which
+				dispatches based on `palette.selectedRow`, so a separate
+				listbox keydown handler would be redundant. Tabindex -1
+				keeps the listbox focusable-but-not-tabbable per ARIA.
+			-->
+			<!-- svelte-ignore a11y_click_events_have_key_events -->
+			<div
+				id={LISTBOX_ID}
+				role="listbox"
+				aria-label="Search results"
+				class="cmdk-listbox"
+				tabindex={-1}
+				onclick={handleListboxClick}
+				onpointermove={handleListboxPointerMove}
+			>
 				{#if rowCount === 0 && !hasQuery}
 					<div class="empty">
 						<span>Start typing — try <em>tonight</em>, <em>70mm</em>, or <em>curzon</em></span>
 					</div>
-				{:else if rowCount === 0 && hasQuery}
+				{:else if rowCount === 0 && hasQuery && !isLoading}
 					<div class="empty">
 						<span>No results for "<em>{palette.query}</em>"</span>
+					</div>
+				{:else if rowCount === 0 && hasQuery && isLoading}
+					<div class="empty" aria-busy="true">
+						<span>Searching…</span>
 					</div>
 				{:else}
 					<ResultsList idPrefix={ROW_ID_PREFIX} />
