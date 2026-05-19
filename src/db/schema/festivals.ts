@@ -12,6 +12,9 @@ import {
 import { screenings } from "./screenings";
 import { users } from "./users";
 
+// NOTE: Migration 0012_search_layer.sql adds a GENERATED STORED `search_tsv`
+// column on the festivals table. Queried via raw SQL.
+
 /**
  * Festival interest levels for user preferences
  */

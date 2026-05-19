@@ -1,3 +1,13 @@
+## 2026-05-19: cmd+k search foundation — DB migration (FTS + pg_trgm) + a11y mark fix
+**PR**: TBD | **Files**: `src/db/migrations/0012_search_layer.sql` (new), `scripts/verify-search-migration.ts` (new), `src/db/schema/films.ts`, `src/db/schema/cinemas.ts`, `src/db/schema/screenings.ts`, `src/db/schema/festivals.ts`, `src/db/schema/seasons.ts`, `frontend/src/lib/components/filters/SearchInput.svelte`, `tasks/cmdk-palette-plan.md` (new), `changelogs/2026-05-19-cmdk-search-foundation.md` (new)
+- Step 1 of the 10-step cmd+k palette plan: enables `unaccent`, `pg_trgm`, `btree_gin`; creates the `pictures` text search config; adds weighted `search_tsv` (A/B/C/D) + `search_text` generated STORED columns on films + cinemas, plus `search_tsv` on screenings, festivals, seasons; 7 GIN indexes + 4 compound btree indexes; partial `idx_screenings_film_future` for the RRF recency boost.
+- Adds `scripts/verify-search-migration.ts` (14 checks: extensions present, config exists, columns generated, indexes built, unaccent works "Amélie"→"amelie", trigram works "amelei"→"amelie", cast jsonb extraction populated). Migration is **not yet applied** to Supabase — pending explicit ship approval.
+- Fixes WCAG 1.4.1 violation in `SearchInput.svelte` `<mark>` styling: bold-alone wasn't a redundant differentiator for users who can't perceive weight; adds `text-decoration: underline` + offset. Affects every existing search highlight, not just the new palette.
+- Schema files explicitly do NOT declare the generated columns (Drizzle 0.45's generated-column type exclusion leaks them into FilmInsert and breaks 2 callsites in `src/scrapers/utils/film-matching.ts`). Migration SQL is source of truth; search columns are queried via raw `sql\`...\`` in step 2.
+- Migration uses `ARRAY(SELECT jsonb_array_elements_text(jsonb_path_query_array(cast, '$[*].name')))` to extract cast names for the films tsvector B-weight — the only IMMUTABLE-safe pattern that PG ≤16 accepts in a generated column expression.
+
+---
+
 ## 2026-05-18: Catch-up batch — RECENT_CHANGES entries for session test-coverage PRs
 **PR**: TBD | **Files**: `RECENT_CHANGES.md`
 - Adds canonical RECENT_CHANGES entries for the 6 test-coverage PRs (#521, #523, #524, #525, #526, #528) shipped earlier in the session that deliberately omitted the top-of-file entry to avoid the rebase-conflict cascade caused by multiple open PRs editing line 1.

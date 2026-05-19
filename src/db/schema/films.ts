@@ -12,6 +12,13 @@ import {
 import type { CastMember, ReleaseStatus, ContentType } from "@/types/film";
 import type { EnrichmentStatus } from "@/types/enrichment";
 
+// NOTE: Migration 0012_search_layer.sql adds two GENERATED STORED columns
+// on this table: `search_tsv` (weighted tsvector A/B/C/D) and `search_text`
+// (lower+unaccent flat string for trigram). They are intentionally NOT
+// declared in the Drizzle schema because Drizzle 0.45's generated-column
+// type exclusion isn't tight enough to keep them out of FilmInsert. They
+// are queried via raw `sql\`...\`` in the cmd+k search endpoint.
+
 // OpenAI text-embedding-3-small produces 1536-dimensional vectors
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const EMBEDDING_DIMENSIONS = 1536;
