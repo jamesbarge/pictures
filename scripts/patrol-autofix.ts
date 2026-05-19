@@ -25,8 +25,26 @@
 import * as dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
 
+import * as fs from "fs";
 import postgres from "postgres";
 import { cleanFilmTitleWithMetadata, getKnownNonFilmType } from "../src/scrapers/utils/film-title-cleaner";
+
+// Warn early when learnings file is missing — Pass 4 silently becomes a no-op
+// on fresh checkouts / CI without this signal.
+(function warnIfNoLearnings() {
+  const p = ".claude/data-check-learnings.json";
+  if (!fs.existsSync(p)) {
+    console.warn(`⚠️  ${p} not found — non-film reclassification (Pass 4) will be a no-op`);
+    return;
+  }
+  try {
+    const data = JSON.parse(fs.readFileSync(p, "utf-8")) as { knownNonFilmTitles?: unknown[] };
+    const n = data.knownNonFilmTitles?.length ?? 0;
+    if (n === 0) console.warn(`⚠️  ${p} has 0 knownNonFilmTitles — Pass 4 will be a no-op`);
+  } catch {
+    console.warn(`⚠️  ${p} could not be parsed — Pass 4 will be a no-op`);
+  }
+})();
 
 const DRY_RUN = process.argv.includes("--dry-run");
 const ONLY_FLAG = process.argv.find(a => a.startsWith("--only="));
@@ -172,11 +190,21 @@ async function main() {
       if (f.matched_at && Date.now() - new Date(f.matched_at).getTime() < 24 * 60 * 60_000) continue;
       const result = cleanFilmTitleWithMetadata(f.title);
       if (result.cleanedTitle === f.title) continue;
-      const fixType: keyof Stats = result.strippedPrefix ? "prefixStripped" : "suffixStripped";
-      if (ONLY && fixType === "prefixStripped" && !ONLY.has("event_prefix")) continue;
-      if (ONLY && fixType === "suffixStripped" && !ONLY.has("format_suffix")) continue;
-      const updated = await tryUpdateTitle(f.id, f.title, result.cleanedTitle, fixType);
-      if (updated) f.title = result.cleanedTitle;
+      // When both prefix AND suffix stripped, we still issue one UPDATE but
+      // count both stats so the summary reflects what actually happened.
+      const willTouchPrefix = !!result.strippedPrefix;
+      const willTouchSuffix = !!result.strippedSuffix;
+      if (ONLY && willTouchPrefix && !willTouchSuffix && !ONLY.has("event_prefix")) continue;
+      if (ONLY && willTouchSuffix && !willTouchPrefix && !ONLY.has("format_suffix")) continue;
+      const primary: keyof Stats = willTouchPrefix ? "prefixStripped" : "suffixStripped";
+      const updated = await tryUpdateTitle(f.id, f.title, result.cleanedTitle, primary);
+      if (updated) {
+        f.title = result.cleanedTitle;
+        // If both kinds of strip happened, count the secondary one too.
+        if (willTouchPrefix && willTouchSuffix) {
+          stats.suffixStripped++;
+        }
+      }
     }
   }
 
