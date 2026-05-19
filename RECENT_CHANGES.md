@@ -1,5 +1,16 @@
+## 2026-05-19: cmd+k step 3 — Pure query parser + 49 Vitest fixtures
+**PR**: TBD | **Files**: `frontend/src/lib/search/parse-query.ts` (new, 610 LOC), `frontend/src/lib/search/parse-query.test.ts` (new, 49 cases), `frontend/src/lib/search/vocab/*.ts` (8 dictionaries), `frontend/vitest.config.ts` (new), `frontend/package.json` (+ vitest)
+- Step 3 of the cmd+k plan: pure, dependency-free query parser tokenises `"horror tonight at curzon"` etc. into a structured `ParsedIntent` for the upcoming palette UI to feed back into `filters.applyIntent()`.
+- Vocab dictionaries: formats, genres, decades, countries, languages, chains + cinema aliases (PCC, ICA, BFI), certifications (U/PG/12/12A/15/18), specials (rep, subs, relaxed, premiere, watchlist, nearby), time presets + literals.
+- Multi-word phrase scan runs before single-token lookups: "this weekend", "next saturday", "70mm imax", "uk premiere", "want to see", "prince charles".
+- Date math is London-tz aware via `Intl.DateTimeFormat('en-GB', {timeZone: 'Europe/London'})` — matches the existing `filters.setDatePreset` pattern. `now` is injected (not read from `Date.now()`) so Vitest snapshots are deterministic.
+- Added `vitest` (4.1.6) as frontend devDep — first unit-test runner in `frontend/` (Playwright remains for E2E). `npm test` runs the suite.
+- 49 cases cover: empty/whitespace, plain freeText, all 10 date phrases, time presets + literals + after/before, all format aliases, sci-fi genre mappings, decades + countries + language priority, cinema chains + slug aliases, all special flags, composite queries ("subtitled french noir 80s"), chip ordering, dedup.
+
+---
+
 ## 2026-05-19: cmd+k step 2 — RRF API + title-only search_text (typo tolerance)
-**PR**: TBD | **Files**: `src/app/api/films/search/route.ts`, `src/db/migrations/0013_search_text_title_only.sql` (new)
+**PR**: #572 | **Files**: `src/app/api/films/search/route.ts`, `src/db/migrations/0013_search_text_title_only.sql` (new)
 - Step 2 of the cmd+k plan: replaces ILIKE with Reciprocal Rank Fusion (k=60) over `search_tsv` + `search_text` from migration 0012. Adds recency boost (1-week decay on next upcoming screening) + popularity boost (`0.02·ln(1+tmdb_popularity)`).
 - Fans out 5 parallel queries via `Promise.all` so the new global palette gets films + cinemas + screenings + festivals + seasons in one round-trip. Response shape preserves `{ results, cinemas }` for the existing inline SearchInput and extends with `screenings`, `festivals`, `seasons`.
 - Migration 0013 trims `search_text` to **title-only** (cinemas: name-only). Migration 0012 included `title + original_title + directors` which bloated the string and dropped trigram similarity for typos like "amelei" vs "Amélie" from 0.4 to 0.07 (below the 0.3 `%` threshold). Title-only restores fuzzy match. `original_title` and `directors` are still searched lexically via tsvector A/B weights.

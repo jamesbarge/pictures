@@ -9,7 +9,9 @@
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
+		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+		"test": "vitest run",
+		"test:watch": "vitest"
 	},
 	"devDependencies": {
 		"@playwright/test": "^1.58.2",
@@ -21,7 +23,8 @@
 		"svelte-check": "^4.4.2",
 		"tailwindcss": "^4.0.0",
 		"typescript": "^6.0.3",
-		"vite": "^8.0.10"
+		"vite": "^8.0.10",
+		"vitest": "^4.1.6"
 	},
 	"dependencies": {
 		"@sveltejs/adapter-vercel": "^6.3.3",
