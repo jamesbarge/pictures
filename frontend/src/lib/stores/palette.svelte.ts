@@ -25,6 +25,12 @@
 
 import { browser } from "$app/environment";
 import { parseQuery, type ParsedIntent } from "$lib/search/parse-query";
+import {
+  EMPTY_RESULTS,
+  flattenResults,
+  type PaletteResults,
+  type ResultRow,
+} from "$lib/search/result-types";
 
 export type TriggerSource = "cmdk" | "click" | "route" | null;
 
@@ -33,6 +39,7 @@ let query = $state("");
 let selectedIndex = $state(0);
 let triggerSource = $state<TriggerSource>(null);
 let nowTick = $state(Date.now());
+let results = $state<PaletteResults>(EMPTY_RESULTS);
 
 // Plain (non-reactive) imperative state.
 let triggerEl: HTMLElement | null = null;
@@ -42,6 +49,9 @@ let tickInterval: ReturnType<typeof setInterval> | null = null;
 
 // Derived: parse the query into structured intent every time it changes.
 const parsed = $derived<ParsedIntent>(parseQuery(query, new Date(nowTick)));
+
+// Derived: flattened result rows in display order — what arrow nav walks over.
+const flatRows = $derived<ResultRow[]>(flattenResults(results));
 
 // Start the per-minute tick when the module loads in the browser. Stop
 // it explicitly — though in practice modules live for the whole page.
@@ -95,6 +105,15 @@ export const palette = {
   get triggerSource() {
     return triggerSource;
   },
+  get results() {
+    return results;
+  },
+  get flatRows() {
+    return flatRows;
+  },
+  get selectedRow(): ResultRow | null {
+    return flatRows[selectedIndex] ?? null;
+  },
 
   // --- mutators ---
   setQuery(v: string) {
@@ -102,7 +121,31 @@ export const palette = {
     selectedIndex = 0;
   },
   setSelectedIndex(i: number) {
-    selectedIndex = i;
+    // Clamp to valid range; empty list → 0
+    const len = flatRows.length;
+    if (len === 0) {
+      selectedIndex = 0;
+      return;
+    }
+    selectedIndex = Math.max(0, Math.min(i, len - 1));
+  },
+  setResults(next: PaletteResults) {
+    results = next;
+    // Reset selection when the result set changes to avoid pointing
+    // at a row that no longer exists.
+    selectedIndex = 0;
+  },
+  selectNext() {
+    this.setSelectedIndex(selectedIndex + 1);
+  },
+  selectPrevious() {
+    this.setSelectedIndex(selectedIndex - 1);
+  },
+  selectFirst() {
+    this.setSelectedIndex(0);
+  },
+  selectLast() {
+    this.setSelectedIndex(flatRows.length - 1);
   },
 
   openPalette(source: TriggerSource = "click") {
@@ -117,6 +160,9 @@ export const palette = {
     open = false;
     cancelInFlight();
     triggerSource = null;
+    // Clear results so re-opening doesn't briefly show stale data.
+    results = EMPTY_RESULTS;
+    selectedIndex = 0;
     restoreTrigger();
   },
 

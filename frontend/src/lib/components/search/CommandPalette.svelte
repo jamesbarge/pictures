@@ -20,14 +20,21 @@
 	import { media } from '$lib/stores/media.svelte';
 	import CommandPaletteInput from './CommandPaletteInput.svelte';
 	import ActiveFiltersRow from './ActiveFiltersRow.svelte';
+	import ResultsList from './ResultsList.svelte';
 
 	const LISTBOX_ID = 'cmdk-listbox';
+	const ROW_ID_PREFIX = 'cmdk-opt';
 
 	let inputRef = $state<HTMLInputElement | null>(null);
-	let activeDescendant = $state<string | undefined>(undefined);
+	let navMode = $state<'keyboard' | 'mouse'>('keyboard');
 
 	const chips = $derived(palette.parsed.chipDescriptors);
 	const isDesktop = $derived(media.isDesktop);
+	const rowCount = $derived(palette.flatRows.length);
+	const activeDescendant = $derived<string | undefined>(
+		rowCount > 0 ? `${ROW_ID_PREFIX}-${palette.selectedIndex}` : undefined
+	);
+	const hasQuery = $derived(palette.query.length > 0);
 
 	function handleOpenChange(next: boolean) {
 		if (next) palette.openPalette('click');
@@ -50,16 +57,53 @@
 		}
 	});
 
-	onMount(() => {
-		function handleKeydown(e: KeyboardEvent) {
-			if (!palette.open) return;
-			if (e.key === 'Escape') {
-				e.preventDefault();
-				palette.closePalette();
-			}
+	function handlePaletteKeydown(e: KeyboardEvent) {
+		if (!palette.open) return;
+
+		// Track keyboard vs mouse mode so hover styles defer to keyboard
+		// nav per the Raycast pattern (see refined-brutalist UI spec).
+		navMode = 'keyboard';
+
+		if (e.key === 'Escape') {
+			e.preventDefault();
+			palette.closePalette();
+			return;
 		}
-		document.addEventListener('keydown', handleKeydown);
-		return () => document.removeEventListener('keydown', handleKeydown);
+		if (e.key === 'ArrowDown') {
+			e.preventDefault();
+			palette.selectNext();
+			return;
+		}
+		if (e.key === 'ArrowUp') {
+			e.preventDefault();
+			palette.selectPrevious();
+			return;
+		}
+		if ((e.metaKey || e.ctrlKey) && e.key === 'ArrowDown') {
+			e.preventDefault();
+			palette.selectLast();
+			return;
+		}
+		if ((e.metaKey || e.ctrlKey) && e.key === 'ArrowUp') {
+			e.preventDefault();
+			palette.selectFirst();
+			return;
+		}
+		// Enter / Cmd+Enter / Alt+Enter activation handled in step 7
+		// once the actual result actions are wired.
+	}
+
+	function handlePointerMove() {
+		if (navMode !== 'mouse') navMode = 'mouse';
+	}
+
+	onMount(() => {
+		document.addEventListener('keydown', handlePaletteKeydown);
+		document.addEventListener('pointermove', handlePointerMove, { passive: true });
+		return () => {
+			document.removeEventListener('keydown', handlePaletteKeydown);
+			document.removeEventListener('pointermove', handlePointerMove);
+		};
 	});
 </script>
 
@@ -69,6 +113,7 @@
 		<Dialog.Content
 			class={isDesktop ? 'cmdk-content cmdk-desktop' : 'cmdk-content cmdk-mobile'}
 			aria-describedby={undefined}
+			data-nav-mode={navMode}
 		>
 			<Dialog.Title class="sr-only">Search pictures.london</Dialog.Title>
 
@@ -80,17 +125,19 @@
 
 			<ActiveFiltersRow {chips} onRemove={removeChip} />
 
-			<ul id={LISTBOX_ID} role="listbox" aria-label="Search results" class="cmdk-listbox">
-				{#if palette.query.length === 0}
-					<li class="empty">
+			<div id={LISTBOX_ID} role="listbox" aria-label="Search results" class="cmdk-listbox">
+				{#if rowCount === 0 && !hasQuery}
+					<div class="empty">
 						<span>Start typing — try <em>tonight</em>, <em>70mm</em>, or <em>curzon</em></span>
-					</li>
+					</div>
+				{:else if rowCount === 0 && hasQuery}
+					<div class="empty">
+						<span>No results for "<em>{palette.query}</em>"</span>
+					</div>
 				{:else}
-					<li class="empty">
-						<span>Results coming in the next step…</span>
-					</li>
+					<ResultsList idPrefix={ROW_ID_PREFIX} />
 				{/if}
-			</ul>
+			</div>
 
 			{#if isDesktop}
 				<div class="footer" aria-hidden="true">
