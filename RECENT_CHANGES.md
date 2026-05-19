@@ -1,3 +1,13 @@
+## 2026-05-19: cmd+k step 4 — palette + media stores + global cmd+k binding
+**PR**: TBD | **Files**: `frontend/src/lib/stores/palette.svelte.ts` (new), `frontend/src/lib/stores/media.svelte.ts` (new), `frontend/src/lib/components/search/GlobalCmdkBinding.svelte` (new), `frontend/src/routes/+layout.svelte`, `frontend/src/lib/stores/palette.test.ts` (new)
+- Step 4: the runes-based store + global keyboard binding for cmd+k. The store owns `open`, `query`, derived `parsed = parseQuery(query, new Date(nowTick))`, `selectedIndex`, `triggerSource`. Imperative state (AbortController, debounce timer) stays as plain module variables — making them `$state` would create effect loops on identity changes.
+- `nowTick` ticks every 60s so date phrases like "tonight" stay accurate during long idle sessions without re-parsing on every keystroke for no reason.
+- `media.svelte.ts` wraps `matchMedia('(min-width: 768px)')` — palette UI reads `media.isDesktop` in step 5 to pick modal-vs-sheet variant. SSR-safe default true so server markup matches first-paint for the majority case.
+- `GlobalCmdkBinding.svelte` mounts in `+layout.svelte` next to PostHogProvider / SyncProvider. It listens for ⌘K/Ctrl+K globally but yields when the existing inline `SearchInput` combobox already has focus (avoid stealing keystrokes from an active search). When the palette UI lands in step 5, this binding becomes the entry point; for now it toggles `palette.open` with no visible side-effect — useful for verifying the binding wiring before committing to UI shell.
+- 50/50 Vitest cases pass (49 parser + 1 store sanity).
+
+---
+
 ## 2026-05-19: cmd+k step 3 — Pure query parser + 49 Vitest fixtures
 **PR**: TBD | **Files**: `frontend/src/lib/search/parse-query.ts` (new, 610 LOC), `frontend/src/lib/search/parse-query.test.ts` (new, 49 cases), `frontend/src/lib/search/vocab/*.ts` (8 dictionaries), `frontend/vitest.config.ts` (new), `frontend/package.json` (+ vitest)
 - Step 3 of the cmd+k plan: pure, dependency-free query parser tokenises `"horror tonight at curzon"` etc. into a structured `ParsedIntent` for the upcoming palette UI to feed back into `filters.applyIntent()`.

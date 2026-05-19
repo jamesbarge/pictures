@@ -9,6 +9,7 @@
 	import { ClerkProvider } from 'svelte-clerk/client';
 	import { PUBLIC_CLERK_PUBLISHABLE_KEY } from '$env/static/public';
 	import { page } from '$app/state';
+	import GlobalCmdkBinding from '$lib/components/search/GlobalCmdkBinding.svelte';
 
 	let { data, children } = $props();
 
@@ -36,6 +37,7 @@
 	<ClerkProvider publishableKey={PUBLIC_CLERK_PUBLISHABLE_KEY}>
 		<PostHogProvider />
 		<SyncProvider />
+		<GlobalCmdkBinding />
 		<a href="#main-content" class="skip-link">Skip to content</a>
 
 		<div class="min-h-dvh flex flex-col">
@@ -48,6 +50,7 @@
 	</ClerkProvider>
 {:else}
 	<PostHogProvider />
+	<GlobalCmdkBinding />
 	<a href="#main-content" class="skip-link">Skip to content</a>
 
 	<div class="min-h-dvh flex flex-col">
