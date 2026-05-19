@@ -26,6 +26,8 @@
 import { browser } from "$app/environment";
 import { goto } from "$app/navigation";
 import { apiGet, ApiError } from "$lib/api/client";
+import { filters } from "$lib/stores/filters.svelte";
+import { intentToActions } from "$lib/search/intent-to-actions";
 import { parseQuery, type ParsedIntent } from "$lib/search/parse-query";
 import {
   EMPTY_RESULTS,
@@ -81,8 +83,20 @@ let tickInterval: ReturnType<typeof setInterval> | null = null;
 // Derived: parse the query into structured intent every time it changes.
 const parsed = $derived<ParsedIntent>(parseQuery(query, new Date(nowTick)));
 
+// Derived: filter-action rows synthesised from the parsed intent. These
+// land at the top of the result list (per SECTION_ORDER) so the user sees
+// the "Apply: …" composite action immediately, before any server data.
+const actions = $derived(intentToActions(parsed));
+
+// Derived: results with the synthesised actions injected. Keeping the
+// merge in the store (rather than a component) means `flatRows` and
+// `selectedRow` operate on the correct flat list everywhere.
+const mergedResults = $derived<PaletteResults>(
+  actions.length > 0 ? { ...results, actions } : results
+);
+
 // Derived: flattened result rows in display order — what arrow nav walks over.
-const flatRows = $derived<ResultRow[]>(flattenResults(results));
+const flatRows = $derived<ResultRow[]>(flattenResults(mergedResults));
 
 // Start the per-minute tick when the module loads in the browser. Stop
 // it explicitly — though in practice modules live for the whole page.
@@ -197,14 +211,19 @@ function openInNewTab(path: string) {
 async function activate(row: ResultRow, mode: ActivationMode = "open"): Promise<void> {
   if (!browser) return;
 
-  // Step 8 will turn `filter` into a real `filters.applyIntent` call.
-  // Until then, Alt+Enter behaves like Enter so the row remains useful.
-  const effectiveMode: "open" | "newTab" = mode === "newTab" ? "newTab" : "open";
-
+  // `filter` mode is intent-driven: filter-action rows always apply the
+  // current intent. For entity rows (cinema/film), Alt+Enter narrows the
+  // filter set to that single entity where it makes sense (cinema = "only
+  // show screenings at this cinema").
   switch (row.kind) {
+    case "filter-action": {
+      filters.applyIntent(parsed);
+      closePalette();
+      return;
+    }
     case "film": {
       const path = `/film/${row.id}`;
-      if (effectiveMode === "newTab") {
+      if (mode === "newTab") {
         openInNewTab(path);
       } else {
         closePalette();
@@ -213,8 +232,14 @@ async function activate(row: ResultRow, mode: ActivationMode = "open"): Promise<
       return;
     }
     case "cinema": {
+      if (mode === "filter") {
+        // Narrow the calendar filter to just this cinema and close.
+        filters.cinemaIds = [row.id];
+        closePalette();
+        return;
+      }
       const path = `/cinemas/${row.id}`;
-      if (effectiveMode === "newTab") {
+      if (mode === "newTab") {
         openInNewTab(path);
       } else {
         closePalette();
@@ -225,12 +250,12 @@ async function activate(row: ResultRow, mode: ActivationMode = "open"): Promise<
     case "screening": {
       // Booking URLs are external; always open new tab regardless of mode.
       openInNewTab(row.bookingUrl);
-      if (effectiveMode !== "newTab") closePalette();
+      if (mode !== "newTab") closePalette();
       return;
     }
     case "festival": {
       const path = `/festivals/${row.slug}`;
-      if (effectiveMode === "newTab") {
+      if (mode === "newTab") {
         openInNewTab(path);
       } else {
         closePalette();
@@ -241,7 +266,7 @@ async function activate(row: ResultRow, mode: ActivationMode = "open"): Promise<
     case "season": {
       // No /seasons/[slug] route yet; navigate to the index page.
       const path = `/seasons`;
-      if (effectiveMode === "newTab") {
+      if (mode === "newTab") {
         openInNewTab(path);
       } else {
         closePalette();
@@ -251,7 +276,7 @@ async function activate(row: ResultRow, mode: ActivationMode = "open"): Promise<
     }
     case "user-status": {
       const path = `/film/${row.filmId}`;
-      if (effectiveMode === "newTab") {
+      if (mode === "newTab") {
         openInNewTab(path);
       } else {
         closePalette();
@@ -262,10 +287,6 @@ async function activate(row: ResultRow, mode: ActivationMode = "open"): Promise<
     case "recent": {
       // Don't navigate — re-run the saved query in place.
       setQueryInternal(row.query);
-      return;
-    }
-    case "filter-action": {
-      // Step 8 implements applyIntent. Today: keep palette open, no-op.
       return;
     }
   }
@@ -309,8 +330,9 @@ export const palette = {
   get triggerSource() {
     return triggerSource;
   },
+  /** Server results merged with synthesised filter-action rows. */
   get results() {
-    return results;
+    return mergedResults;
   },
   get flatRows() {
     return flatRows;

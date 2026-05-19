@@ -1,5 +1,6 @@
 import { browser } from '$app/environment';
 import type { FilterProgrammingType } from '$lib/constants/filters';
+import type { ParsedIntent } from '$lib/search/parse-query';
 
 const STORAGE_KEY = 'pictures-filters';
 
@@ -207,5 +208,101 @@ export const filters = {
 	clearTimeRange() {
 		timeFrom = null;
 		timeTo = null;
+	},
+
+	/**
+	 * Snapshot the slices the palette mutates. Lets the caller restore
+	 * state for Undo. We don't snapshot `filmSearch` / `hideSeen` /
+	 * `showSoldOut` because `applyIntent` never touches them.
+	 */
+	snapshotForUndo(): FilterSnapshot {
+		return {
+			cinemaIds: [...cinemaIds],
+			dateFrom,
+			dateTo,
+			timeFrom,
+			timeTo,
+			formats: [...formats],
+			programmingTypes: [...programmingTypes],
+			genres: [...genres],
+			decades: [...decades]
+		};
+	},
+
+	restoreFromSnapshot(s: FilterSnapshot) {
+		cinemaIds = [...s.cinemaIds];
+		dateFrom = s.dateFrom;
+		dateTo = s.dateTo;
+		timeFrom = s.timeFrom;
+		timeTo = s.timeTo;
+		formats = [...s.formats];
+		programmingTypes = [...s.programmingTypes];
+		genres = [...s.genres];
+		decades = [...s.decades];
+	},
+
+	/**
+	 * Batch-mutate filter state from a parsed query intent. Only slices
+	 * the parser fills in get touched; existing state for other slices
+	 * survives so a user can build up filters across multiple queries.
+	 *
+	 * Slices intentionally not applied yet (step 8 v1):
+	 *  - cinemas: the parser yields slug-style tokens (e.g. "pcc") that
+	 *    would need a lookup to canonical UUIDs. Alt+Enter on a
+	 *    CinemaResult row solves the common case cleanly.
+	 *  - countries / languages / certification: no UI surface yet.
+	 *  - reachable: lives in a sibling store (reachable.svelte.ts).
+	 *  - watchlist: routes to /watchlist instead of filtering inline.
+	 */
+	applyIntent(parsed: ParsedIntent) {
+		if (parsed.formats.length > 0) {
+			formats = [...new Set([...formats, ...parsed.formats])];
+		}
+		if (parsed.genres.length > 0) {
+			genres = [...new Set([...genres, ...parsed.genres])];
+		}
+		if (parsed.decades.length > 0) {
+			decades = [...new Set([...decades, ...parsed.decades])];
+		}
+		if (parsed.dateFrom || parsed.dateTo) {
+			// ParsedIntent.dateFrom/dateTo are JS Dates representing the
+			// London-midnight instant; the filters store uses YYYY-MM-DD
+			// strings in London tz. Round-trip via Intl so DST stays sane.
+			dateFrom = parsed.dateFrom
+				? new Intl.DateTimeFormat('en-CA', {
+						timeZone: 'Europe/London',
+						year: 'numeric',
+						month: '2-digit',
+						day: '2-digit'
+					}).format(parsed.dateFrom)
+				: null;
+			dateTo = parsed.dateTo
+				? new Intl.DateTimeFormat('en-CA', {
+						timeZone: 'Europe/London',
+						year: 'numeric',
+						month: '2-digit',
+						day: '2-digit'
+					}).format(parsed.dateTo)
+				: null;
+		}
+		if (parsed.timeFrom !== undefined) timeFrom = parsed.timeFrom;
+		if (parsed.timeTo !== undefined) timeTo = parsed.timeTo;
+		if (parsed.isRepertory === true) {
+			if (!programmingTypes.includes('repertory' as FilterProgrammingType)) {
+				programmingTypes = [...programmingTypes, 'repertory' as FilterProgrammingType];
+			}
+		}
 	}
 };
+
+export interface FilterSnapshot {
+	cinemaIds: string[];
+	dateFrom: string | null;
+	dateTo: string | null;
+	timeFrom: number | null;
+	timeTo: number | null;
+	formats: string[];
+	programmingTypes: FilterProgrammingType[];
+	genres: string[];
+	decades: string[];
+}
