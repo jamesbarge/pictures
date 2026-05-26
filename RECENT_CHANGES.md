@@ -1,3 +1,12 @@
+## 2026-05-26: BST timezone fix — bfi.ts, rich-mix.ts, rich-mix-v2.ts off by +1h
+**PR**: TBD | **Files**: `src/scrapers/cinemas/bfi.ts`, `src/scrapers/cinemas/rich-mix.ts`, `src/scrapers/cinemas/rich-mix-v2.ts`, `src/scrapers/cinemas/bst-regression.test.ts` (new), `scripts/verify-bst-fix.ts` (new), `scripts/diagnose-bst-bug.ts` (new)
+- Customer-reported bug: site displayed showtimes 1 hour ahead of reality during BST. Three scrapers were using `new Date(y, m, d, h, mi)` (local-TZ constructor); on the UTC server this stored BST clock-face times as UTC, and the frontend's UTC→Europe/London render added +1h on top. Verified end-to-end against Rich Mix's Spektrix API.
+- Fix: route all three through `ukLocalToUTC()` — the project's existing BST-safe helper that Curzon/Picturehouse/Everyman already use.
+- Data backfill: 5 BFI duplicates deleted (rows where a correct PDF-source twin existed at -1h) + 210 BFI rows shifted -1h + 79 Rich Mix rows shifted -1h. 294 rows total. Scoped strictly by `source_id` prefix; bfi-pdf and bfi-changes data left untouched.
+- Regression test added at `src/scrapers/cinemas/bst-regression.test.ts` (vitest worker hangs in this checkout — pre-existing infra issue, not from this change; manual verify via `TZ=UTC npx tsx scripts/verify-bst-fix.ts` passes 7/7).
+
+---
+
 ## 2026-05-20: cmd+k step 10 — E2E spec + production alias promotion + step-9 deferred
 **PR**: TBD | **Files**: `frontend/tests/command-palette.spec.ts` (new), `changelogs/2026-05-19-cmdk-step9-deferred.md` (new)
 - Step 10: 5-case Playwright spec locks in the cmd+k contract — ⌘K opens / Esc closes, fuzzy query renders Amélie via trigram, Enter on a film row navigates to `/film/[id]`, composite filter-action surfaces for multi-slice queries, Enter on it mutates the calendar (`70mm` + `Horror` pressed in sidebar). All 5 pass cleanly in 15.3s on chromium.
