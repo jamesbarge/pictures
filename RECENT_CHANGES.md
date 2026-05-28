@@ -108,6 +108,15 @@
 
 ---
 
+## 2026-05-19: scripts/patrol-autofix.ts — closes detect→fix loop
+**PR**: #569 | **Files**: `scripts/patrol-autofix.ts` (new), `scripts/patrol-autofix.test.ts` (new), `vitest.config.ts`
+- Auto-applies fixes for the 5 new dirty-title issue types data-check surfaces (PR #568): decode HTML entities, smart-title-case ALL CAPS (acronym-preserving), strip event prefixes + format suffixes via existing `cleanFilmTitleWithMetadata`, reclassify orphans matching learned non-film patterns.
+- Idempotent (second run produces 0 changes), cron-safe, with collision guards, recent-match (matched_at < 24h) guards, TMDB-ID protection, and `--dry-run` / `--only=` selectors.
+- 11 vitest cases pin the pure helpers (`decodeHtmlEntities`, `smartTitleCase`, `shouldFlagAllCaps`). `vitest.config.ts` extended to include `scripts/**/*.test.ts` so script-level tests run in `npm run test:run`.
+- First live run: 3 ALL CAPS fixed, 6 non-films reclassified. Second run: 0 changes.
+
+---
+
 ## 2026-05-18: Catch-up batch — RECENT_CHANGES entries for session test-coverage PRs
 **PR**: TBD | **Files**: `RECENT_CHANGES.md`
 - Adds canonical RECENT_CHANGES entries for the 6 test-coverage PRs (#521, #523, #524, #525, #526, #528) shipped earlier in the session that deliberately omitted the top-of-file entry to avoid the rebase-conflict cascade caused by multiple open PRs editing line 1.
