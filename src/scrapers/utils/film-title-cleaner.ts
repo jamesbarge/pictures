@@ -23,9 +23,16 @@ import { resolve } from "node:path";
 // init of EVENT_PREFIXES below) -------------------------------------------------
 
 interface KnownNonFilm {
-  title: string;
-  type?: "event" | "live_broadcast" | string;
+  /** Literal title to match (case-insensitive when `exact: true`). */
+  title?: string;
+  /** Discriminator: when true, treat `pattern` as a regex source string. */
+  regex?: boolean;
+  /** Regex source string (used when `regex: true`). Compiled with case-insensitive flag. */
+  pattern?: string;
+  /** When true, match `title` exactly (case-insensitive). */
   exact?: boolean;
+  /** Content type to assign on match. Defaults to "event". */
+  type?: "event" | "live_broadcast" | string;
 }
 
 interface Learnings {
@@ -283,25 +290,58 @@ export const EVENT_PREFIXES = [
 const LEARNED_SUFFIX_REGEXES = loadLearnedSuffixRegexes();
 
 /**
- * Look up a known non-film title in the data-check learnings file. Returns
- * the recorded `content_type` (e.g. "event", "live_broadcast") when the title
- * matches exactly (case-insensitive), or `null` when it doesn't.
+ * Pure matching function — public for testability.
  *
- * Used by the pipeline to set the correct content_type BEFORE attempting film
- * resolution — avoids creating film rows for quiz nights, placeholders, and
- * recurring music events.
+ * Mirrors data-check's `buildNonFilmMatchers` so the scraper-time
+ * classification and patrol-time detection use the same rules.
+ *
+ *   - Exact (case-insensitive) literal match when entry has `title` and not `regex`.
+ *   - Regex match when entry has `regex: true` and `pattern: "<re-source>"`.
  */
-export function getKnownNonFilmType(title: string): string | null {
-  const data = loadLearnings();
-  if (!data?.knownNonFilmTitles?.length) return null;
+export function getKnownNonFilmTypeFromEntries(
+  title: string,
+  entries: KnownNonFilm[] | undefined | null,
+): string | null {
+  if (!entries?.length) return null;
   const norm = title.trim().toLowerCase();
-  for (const entry of data.knownNonFilmTitles) {
+  // Exact-match pass first (faster, deterministic).
+  for (const entry of entries) {
     if (!entry?.title) continue;
+    if (entry.regex) continue; // regex entries are handled below
     if (entry.title.trim().toLowerCase() === norm) {
       return entry.type ?? "event";
     }
   }
+  // Regex-match pass. Compile inline — caller is expected to be either the
+  // test path (small entry counts) or the cached scraper path below.
+  for (const entry of entries) {
+    if (!entry?.regex || !entry.pattern) continue;
+    try {
+      const re = new RegExp(entry.pattern, "i");
+      if (re.test(title)) return entry.type ?? "event";
+    } catch {
+      // Bad regex in learnings — skip silently rather than break all scrapes.
+    }
+  }
   return null;
+}
+
+/**
+ * Look up a known non-film title in the data-check learnings file. Returns
+ * the recorded `content_type` (e.g. "event", "live_broadcast") when the title
+ * matches, or `null` when it doesn't.
+ *
+ * Used by the pipeline to set the correct content_type BEFORE attempting film
+ * resolution — avoids creating film rows for quiz nights, placeholders, and
+ * recurring music events.
+ *
+ * Now supports BOTH exact-match and regex entries — see
+ * `getKnownNonFilmTypeFromEntries` for the matching contract. The previous
+ * implementation only handled exact-match, which left a gap vs. data-check.
+ */
+export function getKnownNonFilmType(title: string): string | null {
+  const data = loadLearnings();
+  return getKnownNonFilmTypeFromEntries(title, data?.knownNonFilmTitles);
 }
 
 /** Boolean convenience wrapper around getKnownNonFilmType. */

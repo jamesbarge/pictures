@@ -117,6 +117,14 @@
 
 ---
 
+## 2026-05-19: film-title-cleaner — regex non-film entries (parity with data-check)
+**PR**: #570 | **Files**: `src/scrapers/utils/film-title-cleaner.ts`, `src/scrapers/utils/film-title-cleaner.test.ts`
+- Extends `getKnownNonFilmType` to support `{ regex: true, pattern: "<re>" }` entries in `knownNonFilmTitles`. Previously only exact-match worked, even though data-check's `buildNonFilmMatchers` already accepted both shapes — closing the gap so scraper-time classification matches patrol-time detection.
+- New exported helper `getKnownNonFilmTypeFromEntries(title, entries)` is the pure matching function (testable without the learnings file); `getKnownNonFilmType` is now a thin wrapper that loads + delegates.
+- 8 new vitest cases pin: empty entries, exact-match insensitivity, regex patterns, default `"event"` fallback, custom `live_broadcast` types, exact-wins-over-regex ordering, malformed-regex silent skip, and entries lacking both title and pattern.
+
+---
+
 ## 2026-05-18: Catch-up batch — RECENT_CHANGES entries for session test-coverage PRs
 **PR**: TBD | **Files**: `RECENT_CHANGES.md`
 - Adds canonical RECENT_CHANGES entries for the 6 test-coverage PRs (#521, #523, #524, #525, #526, #528) shipped earlier in the session that deliberately omitted the top-of-file entry to avoid the rebase-conflict cascade caused by multiple open PRs editing line 1.
