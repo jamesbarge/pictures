@@ -11,6 +11,7 @@ import type { BrowserContext, Page } from "rebrowser-playwright";
 import { parseFilmMetadata } from "../utils/metadata-parser";
 import { FestivalDetector } from "../festivals/festival-detector";
 import { loadBFIScreenings, getBFIVenueKey } from "../bfi-pdf";
+import { ukLocalToUTC } from "../utils/date-parser";
 
 interface BFIVenueConfig {
   id: "bfi-southbank" | "bfi-imax";
@@ -418,7 +419,7 @@ export class BFIScraper {
   }
 
   private parseBFIDateTime(text: string): Date | null {
-    // Format: "Friday 19 December 2025 14:30"
+    // Format: "Friday 19 December 2025 14:30" — UK local time on the cinema page.
     const match = text.match(/(\d{1,2})\s+(\w+)\s+(\d{4})\s+(\d{1,2}):(\d{2})/);
     if (!match) return null;
 
@@ -433,12 +434,15 @@ export class BFIScraper {
     const month = months[monthName];
     if (month === undefined) return null;
 
-    return new Date(
+    // Use ukLocalToUTC to apply BST explicitly — `new Date(y,m,d,h,mi)`
+    // depends on the runtime's local TZ and silently stored BST clock-face
+    // times as UTC on the UTC server (rendering 1h ahead of reality).
+    return ukLocalToUTC(
       parseInt(year),
       month,
       parseInt(day),
       parseInt(hours),
-      parseInt(minutes)
+      parseInt(minutes),
     );
   }
 
