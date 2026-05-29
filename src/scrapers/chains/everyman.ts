@@ -367,10 +367,16 @@ export class EverymanScraper implements ChainScraper {
       // Step 2: Fetch movie details
       await this.fetchMovieDetails(movieIds);
 
-      // Step 3: Fetch schedule for the next 30 days
+      // Step 3: Fetch schedule for the rolling window.
+      // Window must comfortably exceed Everyman's publication horizon so that
+      // end-of-month dates aren't clipped: a 30-day window run late in a month
+      // (e.g. 2026-05-28) stops at ~2026-06-27 and silently misses the final
+      // days of June. 45 days clears any month boundary with margin while still
+      // being a single schedule API call (range width adds no extra requests).
+      const SCHEDULE_WINDOW_DAYS = 45;
       const now = new Date();
       const fromDate = format(now, "yyyy-MM-dd'T'HH:mm:ss");
-      const toDate = format(addDays(now, 30), "yyyy-MM-dd'T'23:59:59");
+      const toDate = format(addDays(now, SCHEDULE_WINDOW_DAYS), "yyyy-MM-dd'T'23:59:59");
 
       const schedule = await this.fetchSchedule(theaterId, fromDate, toDate);
       if (!schedule || !schedule[theaterId]) {
