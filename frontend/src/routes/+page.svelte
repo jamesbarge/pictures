@@ -3,7 +3,6 @@
 	import MobileFilmRow from '$lib/components/calendar/MobileFilmRow.svelte';
 	import DayMasthead from '$lib/components/calendar/DayMasthead.svelte';
 	import DesktopFilterSidebar from '$lib/components/filters/DesktopFilterSidebar.svelte';
-	import MobileFilterSheet from '$lib/components/filters/MobileFilterSheet.svelte';
 	import FilmTypeFilter from '$lib/components/filters/FilmTypeFilter.svelte';
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
 	import JsonLd from '$lib/seo/JsonLd.svelte';
@@ -18,6 +17,13 @@
 	import { page } from '$app/state';
 
 	let { data } = $props();
+
+	// Constant Intl formatters hoisted out of the {#snippet dayHeader} so the
+	// (locale/timezone-loading) DateTimeFormat constructor runs once at module
+	// load instead of twice per visible day header on every filter-change
+	// re-render. Configs are constant so formatted output is identical.
+	const dayHeaderWeekdayFmt = new Intl.DateTimeFormat('en-GB', { weekday: 'long', timeZone: 'Europe/London' });
+	const dayHeaderDayNumFmt = new Intl.DateTimeFormat('en-GB', { day: 'numeric', timeZone: 'Europe/London' });
 
 	// Sidebar collapsed state — persist across sessions.
 	const SIDEBAR_STORAGE_KEY = 'pictures-sidebar-collapsed';
@@ -39,6 +45,13 @@
 	}>);
 
 	let mobileFilterOpen = $state(false);
+
+	// Lazy-load the mobile filter sheet on first open. The sheet (plus its
+	// MobileDatePicker subtree) is mobile-only UI that never renders on the
+	// desktop default shell, so keep it out of the home route's client chunk
+	// until the user taps Filter. Mirrors the FilmSimilarRail lazy pattern.
+	let MobileFilterSheet =
+		$state<typeof import('$lib/components/filters/MobileFilterSheet.svelte').default | null>(null);
 
 	// Group screenings by film + apply filters via the pure helper in
 	// `$lib/calendar-filter`. The helper owns the one-sided-range invariant
@@ -197,8 +210,8 @@
 
 {#snippet dayHeader(iso: string)}
 	{@const d = new Date(iso + 'T12:00:00Z')}
-	{@const weekday = new Intl.DateTimeFormat('en-GB', { weekday: 'long', timeZone: 'Europe/London' }).format(d)}
-	{@const dayNum = Number(new Intl.DateTimeFormat('en-GB', { day: 'numeric', timeZone: 'Europe/London' }).format(d))}
+	{@const weekday = dayHeaderWeekdayFmt.format(d)}
+	{@const dayNum = Number(dayHeaderDayNumFmt.format(d))}
 	{@const todayIso = todayStore.value}
 	{@const tomorrowIso = (() => { const t = new Date(todayIso + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() + 1); return t.toISOString().split('T')[0]; })()}
 	{@const relative = iso === todayIso ? 'Today' : iso === tomorrowIso ? 'Tomorrow' : null}
@@ -323,7 +336,14 @@
 					aria-label="Search films, cinemas, directors"
 				/>
 			</div>
-			<button class="mobile-filter-btn" onclick={() => (mobileFilterOpen = true)} aria-expanded={mobileFilterOpen}>
+			<button class="mobile-filter-btn" onclick={() => {
+				if (!MobileFilterSheet) {
+					import('$lib/components/filters/MobileFilterSheet.svelte').then((m) => {
+						MobileFilterSheet = m.default;
+					});
+				}
+				mobileFilterOpen = true;
+			}} aria-expanded={mobileFilterOpen}>
 				Filter
 				{#if activeFilterCount > 0}
 					<span class="count">·{activeFilterCount}</span>
@@ -363,12 +383,14 @@
 	{/if}
 </div>
 
-<MobileFilterSheet
-	cinemas={cinemas}
-	filmCount={filmMap.size}
-	open={mobileFilterOpen}
-	onClose={() => (mobileFilterOpen = false)}
-/>
+{#if MobileFilterSheet}
+	<MobileFilterSheet
+		cinemas={cinemas}
+		filmCount={filmMap.size}
+		open={mobileFilterOpen}
+		onClose={() => (mobileFilterOpen = false)}
+	/>
+{/if}
 
 <style>
 	/* ---------- Desktop ---------- */
