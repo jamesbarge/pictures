@@ -10,6 +10,8 @@
 	}
 
 	let { film, selected, id }: Props = $props();
+
+	const rating = $derived(film.tmdbRating != null ? film.tmdbRating.toFixed(1) : null);
 </script>
 
 <button
@@ -49,9 +51,9 @@
 			{#if film.directors.length}{film.directors[0]}{/if}
 		</span>
 	</div>
-	{#if film.tmdbRating != null && film.tmdbRating >= 7}
-		<span class="rating" aria-label="TMDB rating {film.tmdbRating.toFixed(1)}">
-			★ {film.tmdbRating.toFixed(1)}
+	{#if rating != null && film.tmdbRating != null && film.tmdbRating >= 7}
+		<span class="rating" aria-label="TMDB rating {rating}">
+			★ {rating}
 		</span>
 	{/if}
 </button>
