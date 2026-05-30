@@ -12,5 +12,16 @@
 			"source": "/ingest/(.*)",
 			"destination": "https://eu.i.posthog.com/$1"
 		}
+	],
+	"headers": [
+		{
+			"source": "/fonts/(.*)",
+			"headers": [
+				{
+					"key": "Cache-Control",
+					"value": "public, max-age=2592000, stale-while-revalidate=86400"
+				}
+			]
+		}
 	]
 }
