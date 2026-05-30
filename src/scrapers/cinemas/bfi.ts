@@ -1,10 +1,41 @@
 /**
  * BFI Southbank & BFI IMAX Scraper
- * Uses Playwright with stealth plugin to bypass Cloudflare protection
- * Iterates through dates to fetch complete listings
+ *
+ * Strategy (2026-05-30 rewrite — single-wide-search stealth method):
+ * `whatson.bfi.org.uk` is an AudienceView "Online" (Vista Classic) `.asp`
+ * deployment. There is NO JSON/XHR API — instead every listing page embeds
+ * the full result set inline as two JS globals:
+ *   - `searchNames`   — array of ~97 column NAMES
+ *   - `searchResults` — array of rows, each row an array indexed by searchNames
+ *
+ * We fire exactly ONE wide date-range search per venue (today → ~end of July),
+ * which returns the entire window in a single response. Minimising navigations
+ * is the whole game: Cloudflare's managed challenge degrades the
+ * fingerprint/IP reputation after the first 1-2 navigations in a session, so
+ * the previous weekly-chunked approach (6+ searches per venue) got 403'd after
+ * the first hit. One cold navigation per venue, via a FRESH persistent context,
+ * is what passes.
+ *
+ * Authoritative column indices (from `searchNames`):
+ *   [2]  type        — venue ("BFI Southbank" / "IMAX")  ← filter on this
+ *   [5]/[6] title    — film title
+ *   [7]  start_date  — "Saturday 30 May 2026 14:50" (UK local)
+ *   [8]  start_time  — "14:50"
+ *   [9]  day
+ *   [10] month       — 0-INDEXED (Jan=0)
+ *   [11] year
+ *   [15] availability
+ *   [18] additional_info — booking / article URL
+ *   [63] venue_name  — "Southbank - NFT3" (screen)
+ *   [64] venue_desc  — "Screen NFT3"
+ * Feed [11]/[10]/[9]/[8] straight into ukLocalToUTC — clean 24h times, no
+ * AM/PM ambiguity, structured date parts.
+ *
+ * PDF importer is kept as a fallback: if all Playwright attempts fail (e.g. the
+ * machine's IP is transiently Cloudflare-flagged), we route through
+ * `getOrLoadBFIScreenings()` so the run still yields data rather than throwing.
  */
 
-import * as cheerio from "cheerio";
 import type { RawScreening, ScraperConfig } from "../types";
 import { createPersistentPage, waitForCloudflare } from "../utils/browser";
 import type { BrowserContext, Page } from "rebrowser-playwright";
@@ -12,30 +43,63 @@ import { parseFilmMetadata } from "../utils/metadata-parser";
 import { FestivalDetector } from "../festivals/festival-detector";
 import { loadBFIScreenings, getBFIVenueKey } from "../bfi-pdf";
 import { ukLocalToUTC } from "../utils/date-parser";
+import * as os from "os";
+import * as path from "path";
+import * as fs from "fs/promises";
 
 interface BFIVenueConfig {
   id: "bfi-southbank" | "bfi-imax";
   name: string;
+  /** Column [2] value used to filter searchResults rows for this venue. */
+  searchVenueName: string;
   baseUrl: string;
+  /** article_search_id GUID for the date-range search. */
+  searchId: string;
 }
 
 const VENUES: Record<string, BFIVenueConfig> = {
   "bfi-southbank": {
     id: "bfi-southbank",
     name: "BFI Southbank",
+    searchVenueName: "BFI Southbank",
     baseUrl: "https://whatson.bfi.org.uk/Online",
+    searchId: "25E7EA2E-291F-44F9-8EBC-E560154FDAEB",
   },
   "bfi-imax": {
     id: "bfi-imax",
     name: "BFI IMAX",
+    // Column [2] for IMAX rows is the bare string "IMAX" (NOT "BFI IMAX").
+    // Verified against live searchResults 2026-05-30.
+    searchVenueName: "IMAX",
     baseUrl: "https://whatson.bfi.org.uk/imax/Online",
+    searchId: "49C49C83-6BA0-420C-A784-9B485E36E2E0",
   },
 };
 
+/** How far ahead the single wide date-range search reaches (days). */
+const SEARCH_WINDOW_DAYS = 70; // ~10 weeks → comfortably past end of July
+
+/**
+ * Page size for the single search request. AudienceView defaults to 50/page
+ * (12 pages for the wide window). Paginating = 12 navigations = guaranteed
+ * Cloudflare fingerprint degradation after nav 1-2. Setting a large page_size
+ * returns the WHOLE window in page 1 (totalPages=1), so we navigate ONCE.
+ * Verified 2026-05-30: page_size=2000 → Southbank 556 rows / IMAX 95 rows,
+ * totalPages=1, both passing cold on the first navigation.
+ */
+const PAGE_SIZE = 2000;
+
+/** Cloudflare-pass budget for the single navigation (seconds). */
+const CLOUDFLARE_WAIT_SECONDS = 60;
+
+/** Backoff (ms) before retry attempts 2 and 3 after a blocked attempt. */
+const RETRY_BACKOFF_MS = [10_000, 30_000, 60_000];
+
+/** A row from the embedded `searchResults` global. */
+type SearchRow = (string | number | null)[];
+
 export class BFIScraper {
   private venue: BFIVenueConfig;
-  private page: Page | null = null;
-  private context: BrowserContext | null = null;
 
   config: ScraperConfig;
 
@@ -45,364 +109,270 @@ export class BFIScraper {
       cinemaId: venueId,
       baseUrl: this.venue.baseUrl,
       requestsPerMinute: 10,
-      delayBetweenRequests: 3000, // Increased for Cloudflare
+      delayBetweenRequests: 3000,
     };
   }
 
   async scrape(): Promise<RawScreening[]> {
-    // The Playwright click-flow below is structurally broken under Cloudflare:
-    // every internal navigation triggers a fresh challenge that doesn't clear
-    // locally. Verified 2026-05-14: it produces 0 screenings for both venues.
-    //
-    // Route through the PDF importer's loader instead. `loadBFIScreenings()`
-    // fetches the monthly PDF (using the persistent Playwright context as a
-    // Cloudflare fallback for the discovery page) and parses screenings for
-    // BOTH venues at once. We cache the promise so both venue instances share
-    // one fetch + parse; the second invocation just filters the cached array.
-    //
-    // Returning the venue-filtered screenings lets the unified pipeline save
-    // them through its standard path AND record the correct `screening_count`
-    // per cinema in `scraper_runs` — without that, the silent-breaker detector
-    // quarantines BFI as a Prowlarr-pattern zero-yield cinema.
-    console.log(`[${this.config.cinemaId}] Routing to PDF importer (Playwright click-flow is Cloudflare-blocked)...`);
+    console.log(`[${this.config.cinemaId}] Starting Playwright stealth scrape (single wide date-range search)...`);
+    await FestivalDetector.preload();
 
-    // Note: we intentionally do NOT catch errors from getOrLoadBFIScreenings()
-    // and return []. Doing so silently records `success+0` in scraper_runs,
-    // which masks Cloudflare blocks behind a healthy-looking yield. The
-    // runner-factory wraps every scraper in its own try/catch and isolates
-    // failures per cinema — throwing here records `status=failed`, which is
-    // the truth, and lets the silent-breaker / flaky detectors do their job.
+    // ── Primary path: single-wide-search via fresh persistent context ──
+    try {
+      const screenings = await this.scrapeViaPlaywright();
+      const validated = this.validate(screenings);
+      if (validated.length > 0) {
+        console.log(`[${this.config.cinemaId}] Playwright path yielded ${validated.length} valid screenings`);
+        return validated;
+      }
+      console.warn(`[${this.config.cinemaId}] Playwright path returned 0 valid screenings — falling back to PDF importer`);
+    } catch (err) {
+      console.error(`[${this.config.cinemaId}] Playwright path failed:`, err instanceof Error ? err.message : err);
+      console.warn(`[${this.config.cinemaId}] Falling back to PDF importer`);
+    }
+
+    // ── Fallback path: PDF importer (still throws loudly if BOTH PDF sources fail) ──
     const allScreenings = await getOrLoadBFIScreenings();
-    const venueScreenings = allScreenings.filter(s => getBFIVenueKey(s) === this.config.cinemaId);
-    console.log(`[${this.config.cinemaId}] PDF returned ${venueScreenings.length} screenings (${allScreenings.length} total across both BFI venues)`);
+    const venueScreenings = allScreenings.filter((s) => getBFIVenueKey(s) === this.config.cinemaId);
+    console.log(`[${this.config.cinemaId}] PDF fallback returned ${venueScreenings.length} screenings (${allScreenings.length} total across both BFI venues)`);
     return venueScreenings;
   }
 
   /**
-   * @deprecated Kept for reference / future use if the Playwright path becomes
-   * viable again (e.g. Cloudflare relaxes, or we add a paid proxy). Currently
-   * unreachable — `scrape()` always routes to the PDF importer.
+   * Run the single wide date-range search through a fresh persistent context,
+   * retrying up to 3 times with exponential backoff. Each retry uses a brand
+   * new (cold) userDataDir so it doesn't inherit a degraded fingerprint.
    */
-  async _legacyPlaywrightScrape(): Promise<RawScreening[]> {
-    console.log(`[${this.config.cinemaId}] Starting scrape with Playwright stealth mode...`);
-    await FestivalDetector.preload();
+  private async scrapeViaPlaywright(): Promise<RawScreening[]> {
+    const url = this.buildWideSearchUrl();
+    console.log(`[${this.config.cinemaId}] Wide search URL: ${url}`);
 
-    try {
-      await this.initialize();
-      const screenings = await this.fetchAllDates();
-      await this.cleanup();
+    let lastError: Error | null = null;
 
-      const validated = this.validate(screenings);
-      console.log(`[${this.config.cinemaId}] Found ${validated.length} valid screenings`);
-      return validated;
-    } catch (error) {
-      console.error(`[${this.config.cinemaId}] Scrape failed:`, error);
-      await this.cleanup();
-      throw error;
+    for (let attempt = 0; attempt < RETRY_BACKOFF_MS.length; attempt++) {
+      if (attempt > 0) {
+        const backoff = RETRY_BACKOFF_MS[attempt - 1];
+        console.log(`[${this.config.cinemaId}] Retry ${attempt} after ${backoff / 1000}s backoff...`);
+        await new Promise((r) => setTimeout(r, backoff));
+      }
+
+      // Fresh, unique profile per attempt so each starts COLD. Timestamp +
+      // attempt index guarantees no overlap with the prior attempt's flagged
+      // fingerprint or with the other venue running in the same wave.
+      const profileKey = `bfi-search-${this.config.cinemaId}-${Date.now()}-${attempt}`;
+      const userDataDir = path.join(os.tmpdir(), `pictures-scraper-${profileKey}`);
+      let context: BrowserContext | null = null;
+
+      try {
+        const persistent = await createPersistentPage(profileKey);
+        context = persistent.context;
+        const page = persistent.page;
+
+        console.log(`[${this.config.cinemaId}] Attempt ${attempt + 1}: navigating (cold profile ${profileKey})...`);
+        await page.goto(url, { waitUntil: "domcontentloaded", timeout: 90_000 });
+
+        const passed = await waitForCloudflare(page, CLOUDFLARE_WAIT_SECONDS);
+        if (!passed) {
+          // Title still shows a challenge — this attempt is blocked.
+          const title = await page.title().catch(() => "");
+          throw new BlockedByCloudflareError(`Cloudflare challenge not cleared (title="${title}")`);
+        }
+
+        // Give the .asp page a beat to finish writing the inline globals.
+        await page.waitForTimeout(1500);
+
+        const rows = await this.extractSearchResults(page);
+        if (rows === null) {
+          throw new BlockedByCloudflareError("searchResults global/regex not found in page (likely challenge or empty body)");
+        }
+
+        console.log(`[${this.config.cinemaId}] Attempt ${attempt + 1}: extracted ${rows.length} raw rows`);
+        const screenings = this.mapRows(rows);
+        console.log(`[${this.config.cinemaId}] Mapped ${screenings.length} ${this.venue.searchVenueName} screenings from ${rows.length} rows`);
+        return screenings;
+      } catch (err) {
+        lastError = err instanceof Error ? err : new Error(String(err));
+        const transient = err instanceof BlockedByCloudflareError;
+        console.warn(
+          `[${this.config.cinemaId}] Attempt ${attempt + 1} ${transient ? "BLOCKED (transient)" : "errored"}: ${lastError.message}`,
+        );
+      } finally {
+        if (context) await context.close().catch(() => { /* may be closed */ });
+        // Clean the cold profile dir so /tmp doesn't accumulate per-run dirs.
+        await fs.rm(userDataDir, { recursive: true, force: true }).catch(() => { /* best effort */ });
+      }
     }
-  }
 
-  private async initialize(): Promise<void> {
-    // BFI requires a persistent browser context to bypass Cloudflare. The shared
-    // browser singleton (used by Curzon, Phoenix, etc.) launches cold every run
-    // and re-issues the challenge — verified to time out in the 2026-05-12
-    // /scrape run. The persistent context preserves the cf_clearance cookie and
-    // browser fingerprint across runs, so the challenge passes on subsequent
-    // visits. Profile key keeps BFI Southbank and BFI IMAX isolated so their
-    // cookies don't interfere.
-    console.log(`[${this.config.cinemaId}] Launching persistent browser context...`);
-    const { context, page } = await createPersistentPage(this.config.cinemaId);
-    this.context = context;
-    this.page = page;
-
-    // Warm up the session directly on the CALENDAR URL we'll actually scrape.
-    // Previously this warmed up on `baseUrl` (e.g. /Online), which cleared the
-    // challenge for that URL but then re-triggered a fresh challenge when
-    // fetchAllDates() navigated to `/Online/default.asp` — burning the cf_clearance
-    // budget on a URL we never use. Warming on the target URL lets a single
-    // challenge pass cover the whole scrape session.
-    const calendarUrl = `${this.venue.baseUrl}/default.asp`;
-    console.log(`[${this.config.cinemaId}] Warming up session on calendar URL: ${calendarUrl}`);
-    await this.page.goto(calendarUrl, {
-      waitUntil: "domcontentloaded",
-      timeout: 90000,
-    });
-
-    // Cloudflare can take 30-60s to clear; 90s gives headroom under load.
-    // (Standalone diagnostic cleared in ~38s; the scraper context runs slower
-    // alongside other Playwright tasks in the same wave.)
-    const passed = await waitForCloudflare(this.page, 90);
-    if (!passed) {
-      console.log(`[${this.config.cinemaId}] Cloudflare challenge timeout, continuing anyway...`);
-    }
-
-    // Wait for the calendar grid to render after Cloudflare passes
-    await this.page.waitForTimeout(3000);
-    console.log(`[${this.config.cinemaId}] Session established`);
-  }
-
-  private async cleanup(): Promise<void> {
-    if (this.page) {
-      await this.page.close().catch(() => { /* page may already be closed */ });
-      this.page = null;
-    }
-    if (this.context) {
-      await this.context.close().catch(() => { /* context may already be closed */ });
-      this.context = null;
-    }
-    // NOTE: do NOT call closeBrowser() — this scraper owns its own persistent
-    // context, not the shared singleton. Closing the singleton would tear down
-    // a browser other scrapers in the same wave may still be using.
-    console.log(`[${this.config.cinemaId}] Browser context closed`);
+    throw lastError ?? new Error("All Playwright attempts failed");
   }
 
   /**
-   * Advance the calendar to a month with enough active programming dates.
-   * Skips past months that have fewer than the threshold of clickable dates.
+   * Build the single wide date-range search URL.
+   * search_from = today, search_to = today + SEARCH_WINDOW_DAYS, both DD/MM/YYYY.
    */
-  private async navigateToActiveMonth(): Promise<void> {
-    if (!this.page) return;
+  private buildWideSearchUrl(): string {
+    const from = new Date();
+    const to = new Date();
+    to.setDate(to.getDate() + SEARCH_WINDOW_DAYS);
 
-    const minActiveDatesThreshold = 5;
-    const maxMonthsToAdvance = 3;
-    for (let monthOffset = 0; monthOffset < maxMonthsToAdvance; monthOffset++) {
-      const activeCells = await this.page.$$('[role="gridcell"]:not([aria-disabled="true"])');
+    const fmt = (d: Date) => {
+      const dd = String(d.getDate()).padStart(2, "0");
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const yyyy = d.getFullYear();
+      return `${dd}/${mm}/${yyyy}`;
+    };
 
-      if (activeCells.length >= minActiveDatesThreshold) {
-        console.log(`[${this.config.cinemaId}] Found ${activeCells.length} active dates in current month view`);
-        return;
-      }
-
-      console.log(`[${this.config.cinemaId}] Only ${activeCells.length} active dates (need ${minActiveDatesThreshold}+), advancing...`);
-
-      const nextMonthBtn = this.page.getByRole('button', { name: 'Next month' });
-      if (await nextMonthBtn.count() > 0) {
-        console.log(`[${this.config.cinemaId}] Clicking Next month...`);
-        await nextMonthBtn.click();
-        await this.page.waitForTimeout(1500);
-      } else {
-        console.log(`[${this.config.cinemaId}] Next month button not found`);
-        return;
-      }
-    }
+    return (
+      `${this.venue.baseUrl}/default.asp?doWork::WScontent::search=1` +
+      `&BOparam::WScontent::search::article_search_id=${this.venue.searchId}` +
+      `&BOset::WScontent::SearchCriteria::search_from=${fmt(from)}` +
+      `&BOset::WScontent::SearchCriteria::search_to=${fmt(to)}` +
+      `&BOset::WScontent::SearchResultsInfo::page_size=${PAGE_SIZE}`
+    );
   }
 
   /**
-   * Scrape screenings for a single date cell, then navigate back to the calendar.
-   * Returns null when the date index exceeds available cells (signals loop to stop).
+   * Pull the embedded `searchResults` array out of the loaded page.
+   *
+   * NOTE: `searchResults`/`searchNames` are NOT window globals — they are
+   * properties of an object literal passed to AudienceView's results widget,
+   * written into an inline <script> as `searchResults : [ [..], [..] ]`
+   * (whitespace + COLON, no `=`, no terminating `;`). So we read the raw HTML
+   * and bracket-match the array. (A `page.evaluate(() => window.searchResults)`
+   * primary path was tried and confirmed `undefined` on 2026-05-30.)
+   *
+   * Returns null when no array is found (challenge interstitial / empty body).
    */
-  private async scrapeDateCell(dateIndex: number, monthNum: number): Promise<RawScreening[] | null> {
-    if (!this.page) return null;
-    const currentCells = await this.page.$$('[role="gridcell"]:not([aria-disabled="true"])');
-    if (dateIndex >= currentCells.length) return null;
-
-    const cell = currentCells[dateIndex];
-    const dateLabel = await cell.getAttribute("aria-label") || await cell.textContent() || "";
-    console.log(`[${this.config.cinemaId}] Clicking: ${dateLabel.trim()}...`);
-
-    await cell.click();
-    await this.page.waitForTimeout(2000);
-    // Cloudflare re-challenges on every internal navigation. 60s matches what
-    // we see clear in the wild — the 10s previously used was the proximate
-    // cause of the 0-screenings runs (challenge still active when parsed).
-    await waitForCloudflare(this.page, 60);
-
-    const html = await this.page.content();
-    const dayScreenings = this.parseSearchResults(html);
-    if (dayScreenings.length > 0) {
-      console.log(`[${this.config.cinemaId}] ${dateLabel.trim()}: ${dayScreenings.length} screenings`);
-    }
-
-    // Return to calendar
-    await this.page.goto(`${this.venue.baseUrl}/default.asp`, {
-      waitUntil: "domcontentloaded",
-      timeout: 30000,
-    });
-    await waitForCloudflare(this.page, 60);
-    await this.page.waitForTimeout(1500);
-
-    // Navigate back to the same month we were scraping
-    for (let m = 0; m <= monthNum; m++) {
-      const nextBtn = this.page.getByRole('button', { name: 'Next month' });
-      if (await nextBtn.count() > 0) {
-        await nextBtn.click();
-        await this.page.waitForTimeout(1000);
-      }
-    }
-
-    return dayScreenings;
-  }
-
-
-  private async fetchAllDates(): Promise<RawScreening[]> {
-    if (!this.page) throw new Error("Browser not initialized");
-
-    const screenings: RawScreening[] = [];
-
+  private async extractSearchResults(page: Page): Promise<SearchRow[] | null> {
+    let html = "";
     try {
-      // initialize() has already navigated to the calendar URL and waited for
-      // Cloudflare to clear, so we're on the right page already. Re-navigating
-      // here would trigger a fresh Cloudflare challenge and burn another 60s+
-      // (and in practice, our 45s window often wasn't long enough to pass it).
-      console.log(`[${this.config.cinemaId}] Reusing session from initialize()...`);
-
-      // Navigate to a month with active programming
-      await this.navigateToActiveMonth();
-
-      // Now scrape up to 2 months of calendar data
-      for (let monthNum = 0; monthNum < 2; monthNum++) {
-        console.log(`[${this.config.cinemaId}] Scraping month ${monthNum + 1}...`);
-
-        // Get all clickable date cells
-        const dateCells = await this.page.$$('[role="gridcell"]:not([aria-disabled="true"])');
-        console.log(`[${this.config.cinemaId}] Found ${dateCells.length} active dates`);
-
-        // Click each date to get screenings
-        for (let i = 0; i < dateCells.length; i++) {
-          try {
-            const dayScreenings = await this.scrapeDateCell(i, monthNum);
-            if (!dayScreenings) break;
-            screenings.push(...dayScreenings);
-          } catch (error) {
-            console.error(`[${this.config.cinemaId}] Error on date ${i}:`, error);
-            // Try to recover
-            await this.page!.goto(`${this.venue.baseUrl}/default.asp`, {
-              waitUntil: "domcontentloaded",
-              timeout: 30000,
-            }).catch(() => {});
-            await this.page!.waitForTimeout(2000);
-          }
-        }
-
-        // Move to next month for next iteration
-        const nextMonthButton = this.page.getByRole('button', { name: 'Next month' });
-        if (await nextMonthButton.count() > 0) {
-          await nextMonthButton.click();
-          await this.page.waitForTimeout(1500);
-        }
-      }
-    } catch (error) {
-      console.error(`[${this.config.cinemaId}] Calendar navigation failed:`, error);
+      html = await page.content();
+    } catch {
+      return null;
     }
 
-    return screenings;
+    // Active challenge interstitial — distinct from the benign "challenge-platform"
+    // string Cloudflare leaves in embedded scripts on fully-loaded pages.
+    if (html.includes("cf_chl") || /just a moment/i.test(html.slice(0, 2000))) {
+      return null;
+    }
+
+    return parseSearchResultsArray(html);
   }
 
-  private parseSearchResults(html: string): RawScreening[] {
-    const $ = cheerio.load(html);
+  /** Map raw searchResults rows for THIS venue into RawScreening[]. */
+  private mapRows(rows: SearchRow[]): RawScreening[] {
     const screenings: RawScreening[] = [];
     const now = new Date();
 
-    // Check if we hit Cloudflare
-    if (html.includes("challenge-platform") || html.includes("Checking your browser")) {
-      return [];
-    }
+    for (const row of rows) {
+      if (!Array.isArray(row)) continue;
 
-    // BFI search results structure:
-    // Links with loadArticle in href point to film/event pages
-    // The datetime and screen info is in sibling/parent elements
-    // Note: Page may not have <main> element - search for loadArticle links directly
-
-    // Find all links that point to articles (film/event pages)
-    const loadArticleLinks = $('a[href*="loadArticle"]');
-    console.log(`[${this.config.cinemaId}] Found ${loadArticleLinks.length} loadArticle links`);
-
-    let processedCount = 0;
-    loadArticleLinks.each((idx, el) => {
-      const $link = $(el);
-      const title = $link.text().trim();
-      const href = $link.attr("href") || "";
-
-      // Debug: log first few links
-      if (idx < 3) {
-        console.log(`[${this.config.cinemaId}] Link ${idx}: title="${title.substring(0, 50)}", href contains loadArticle`);
+      const venueName = str(row[2]);
+      // Filter to this venue. The search GUID is venue-scoped, but a search can
+      // surface both venues' rows; column [2] is authoritative.
+      if (venueName && this.venue.searchVenueName.toLowerCase() !== venueName.toLowerCase()) {
+        continue;
       }
 
-      // Skip empty, short titles, and navigation links
-      if (!title || title.length < 3) return;
-      if (href.includes("javascript:")) return;
+      const rawTitle = str(row[6]) || str(row[5]);
+      if (!rawTitle || rawTitle.length < 3) continue;
+      if (this.isNonFilmEvent(rawTitle)) continue;
 
-      // Skip non-film items
-      if (this.isNonFilmEvent(title)) return;
+      // Structured date parts → ukLocalToUTC. month is 0-indexed already.
+      const day = num(row[9]);
+      const month = num(row[10]);
+      const year = num(row[11]);
+      const timeStr = str(row[8]); // "14:50"
 
-      processedCount++;
-
-      // Get the parent container to find datetime and screen
-      // Structure: generic > generic > [link, datetime div, screen div]
-      const $container = $link.parent();
-      const $grandparent = $container.parent();
-
-      // Try to find datetime in container text or grandparent
-      const containerText = $container.text();
-      const grandparentText = $grandparent.text();
-
-      // Debug: log structure for first few
-      if (processedCount <= 3) {
-        console.log(`[${this.config.cinemaId}] Processing "${title.substring(0, 30)}...": container="${containerText.substring(0, 100)}..."`);
+      let datetime: Date | null = null;
+      const tm = timeStr.match(/^(\d{1,2}):(\d{2})/);
+      if (year && tm && Number.isFinite(day) && Number.isFinite(month)) {
+        datetime = ukLocalToUTC(year, month, day, parseInt(tm[1], 10), parseInt(tm[2], 10));
+      } else {
+        // Fallback: parse the full start_date string [7] "Saturday 30 May 2026 14:50"
+        datetime = this.parseBFIDateTime(str(row[7]));
       }
 
-      // Find datetime from sibling elements
-      let datetimeStr = "";
-      let screen = "";
+      if (!datetime || isNaN(datetime.getTime()) || datetime < now) continue;
 
-      // First try to match from the grandparent text (which includes siblings)
-      const datetimePattern = /(\w+)\s+(\d{1,2})\s+(\w+)\s+(\d{4})\s+(\d{1,2}:\d{2})/;
-      const dtMatch = grandparentText.match(datetimePattern);
-      if (dtMatch) {
-        datetimeStr = dtMatch[0];
-      }
+      const screen = str(row[64]) || str(row[63]) || undefined;
 
-      // Also look for screen info
-      const screenMatch = grandparentText.match(/(NFT[1-4]|IMAX|Studio|BFI Reuben Library)/i);
-      if (screenMatch) {
-        screen = screenMatch[1];
-      }
+      // Booking / article URL from [18].
+      const rawUrl = str(row[18]);
+      const bookingUrl = rawUrl
+        ? rawUrl.startsWith("http")
+          ? rawUrl
+          : `${this.venue.baseUrl}/${rawUrl.replace(/^\//, "")}`
+        : this.venue.baseUrl;
 
-      if (!datetimeStr) {
-        if (processedCount <= 3) {
-          console.log(`[${this.config.cinemaId}] No datetime found in: "${grandparentText.substring(0, 200)}..."`);
-        }
-        return;
-      }
+      const availabilityStatus = this.mapAvailability(str(row[15]));
 
-      const datetime = this.parseBFIDateTime(datetimeStr);
-      if (!datetime || datetime < now) return;
-
-      // Build booking URL
-      const bookingUrl = href.startsWith("http")
-        ? href
-        : `${this.venue.baseUrl}/${href}`;
-
-      // Detect special event types from title
+      // Event type from title.
       let eventType: string | undefined;
-      const cleanTitle = this.cleanTitle(title);
+      if (/\+\s*Q\s*&?\s*A/i.test(rawTitle)) eventType = "q_and_a";
+      else if (/\+\s*intro/i.test(rawTitle)) eventType = "intro";
+      else if (/\+\s*discussion/i.test(rawTitle)) eventType = "discussion";
+      else if (/preview/i.test(rawTitle)) eventType = "preview";
+      else if (/premiere/i.test(rawTitle)) eventType = "premiere";
 
-      if (/\+\s*Q\s*&?\s*A/i.test(title)) eventType = "q_and_a";
-      else if (/\+\s*intro/i.test(title)) eventType = "intro";
-      else if (/\+\s*discussion/i.test(title)) eventType = "discussion";
-      else if (/preview/i.test(title)) eventType = "preview";
-      else if (/premiere/i.test(title)) eventType = "premiere";
+      const cleanTitle = this.cleanTitle(rawTitle);
+      const metadata = parseFilmMetadata(rawTitle);
 
-      // Extract director/year from the listing text
-      // BFI often includes "Dir. Name" and year in the description
-      const metadata = parseFilmMetadata(grandparentText);
+      // Stable sourceId: prefer the article id from the URL, else a
+      // date-time-title composite (collision-free within a venue).
+      const articleId = this.extractArticleId(rawUrl);
+      const sourceId = articleId
+        ? `bfi-${this.config.cinemaId}-${articleId}-${datetime.toISOString()}`
+        : `bfi-${this.config.cinemaId}-${cleanTitle.toLowerCase().replace(/\s+/g, "-")}-${datetime.toISOString()}`;
 
       screenings.push({
         filmTitle: cleanTitle,
         datetime,
-        screen: screen || undefined,
+        screen,
         bookingUrl,
         eventType,
-        sourceId: `${this.config.cinemaId}-${cleanTitle.toLowerCase().replace(/\s+/g, "-")}-${datetime.toISOString()}`,
-        // Pass extracted metadata for better TMDB matching
+        availabilityStatus,
+        sourceId,
         year: metadata.year,
         director: metadata.director,
-        // Detect festival based on title/date
         ...FestivalDetector.detect(this.config.cinemaId, cleanTitle, datetime, bookingUrl),
       });
-    });
+    }
 
     return screenings;
+  }
+
+  private mapAvailability(raw: string): RawScreening["availabilityStatus"] {
+    const v = raw.toLowerCase();
+    if (!v) return undefined;
+    if (/sold\s*out|unavailable|no\s*tickets/.test(v)) return "sold_out";
+    if (/low|limited|few/.test(v)) return "low";
+    if (/return/.test(v)) return "returns";
+    if (/available|on\s*sale|book/.test(v)) return "available";
+    return "unknown";
+  }
+
+  /**
+   * Extract a stable article identifier from a booking/article URL.
+   *
+   * Real BFI URL (col [18]):
+   *   default.asp?doWork::WScontent::loadArticle=Load
+   *     &BOparam::WScontent::loadArticle::article_id=B56C859B-...
+   *     &BOparam::WScontent::loadArticle::context_id=2D2A49DF-...
+   * The `loadArticle=Load` token is the work ACTION ("Load"), not an id — must
+   * match `article_id=` / `context_id=` (the GUIDs) specifically. Verified
+   * 2026-05-30.
+   */
+  private extractArticleId(url: string): string | null {
+    if (!url) return null;
+    const permalink = url.match(/loadArticle::permalink=([^&]+)/i);
+    if (permalink) return permalink[1];
+    const articleId = url.match(/loadArticle::article_id=([^&]+)/i);
+    if (articleId) return articleId[1];
+    const contextId = url.match(/loadArticle::context_id=([^&]+)/i);
+    if (contextId) return contextId[1];
+    return null;
   }
 
   private isNonFilmEvent(title: string): boolean {
@@ -414,43 +384,33 @@ export class BFIScraper {
       /workshop/i,
       /^talk\s*$/i,
       /lecture/i,
+      /gift\s*(card|voucher)/i,
+      /membership/i,
+      // Building/venue tours are listed in the same feed (e.g. "BFI Southbank
+      // and BFI IMAX Tour" @ 09:45) — not film screenings.
+      /\btour\b/i,
     ];
     return skipPatterns.some((p) => p.test(title));
   }
 
+  /** Parse "Friday 19 December 2025 14:30" (UK local) → UTC Date. */
   private parseBFIDateTime(text: string): Date | null {
-    // Format: "Friday 19 December 2025 14:30" — UK local time on the cinema page.
     const match = text.match(/(\d{1,2})\s+(\w+)\s+(\d{4})\s+(\d{1,2}):(\d{2})/);
     if (!match) return null;
-
     const [, day, monthName, year, hours, minutes] = match;
-
     const months: Record<string, number> = {
       January: 0, February: 1, March: 2, April: 3,
       May: 4, June: 5, July: 6, August: 7,
       September: 8, October: 9, November: 10, December: 11,
     };
-
     const month = months[monthName];
     if (month === undefined) return null;
-
-    // Use ukLocalToUTC to apply BST explicitly — `new Date(y,m,d,h,mi)`
-    // depends on the runtime's local TZ and silently stored BST clock-face
-    // times as UTC on the UTC server (rendering 1h ahead of reality).
-    return ukLocalToUTC(
-      parseInt(year),
-      month,
-      parseInt(day),
-      parseInt(hours),
-      parseInt(minutes),
-    );
+    return ukLocalToUTC(parseInt(year), month, parseInt(day), parseInt(hours), parseInt(minutes));
   }
 
   private cleanTitle(title: string): string {
     return title
       .replace(/\s*\+\s*(Q\s*&?\s*A|intro|discussion|panel).*$/i, "")
-      // Only strip prefix when followed by colon (e.g. "Preview: Film Title")
-      // NOT "UK Premiere of 4K Restoration: The Razor's Edge" (would leave "of 4K...")
       .replace(/^(Preview|UK Premiere|Premiere):\s*/i, "")
       .trim();
   }
@@ -464,69 +424,122 @@ export class BFIScraper {
       if (!s.datetime || isNaN(s.datetime.getTime())) return false;
       if (s.datetime < now) return false;
       if (!s.bookingUrl || s.bookingUrl.trim() === "") return false;
-
-      // Reject titles that look garbled (common scraping artifacts)
       if (this.isSuspiciousTitle(s.filmTitle)) {
         console.warn(`[${this.config.cinemaId}] Rejecting suspicious title: "${s.filmTitle}"`);
         return false;
       }
-
-      // Deduplicate by sourceId
       if (s.sourceId && seen.has(s.sourceId)) return false;
       if (s.sourceId) seen.add(s.sourceId);
-
       return true;
     });
   }
 
-  /**
-   * Detect garbled or suspicious titles from scraping errors.
-   * Returns true if the title looks wrong and should be rejected.
-   */
   private isSuspiciousTitle(title: string): boolean {
-    // Starts with lowercase word (likely a fragment — "of 4K Restoration...")
     if (/^[a-z]/.test(title) && !title.startsWith("de ") && !title.startsWith("la ") && !title.startsWith("el ")) {
       return true;
     }
-    // Note: pagination artifacts like "Hamnet p12" are now cleaned by cleanFilmTitle()
-    // in the pipeline, so we no longer reject them here
-    // Extremely short single-word titles are suspicious
     if (title.length < 3) return true;
     return false;
   }
 
+  /**
+   * Health check. Lenient by design: a UA-only fetch or a single navigation
+   * gets WAF-403'd while the real (cold-profile, retrying) scrape passes. We
+   * must NOT block the scrape on a false-negative precheck, so this only
+   * fails on a hard error and otherwise returns true.
+   */
   async healthCheck(): Promise<boolean> {
     let context: BrowserContext | null = null;
+    const profileKey = `bfi-healthcheck-${this.config.cinemaId}-${Date.now()}`;
+    const userDataDir = path.join(os.tmpdir(), `pictures-scraper-${profileKey}`);
     try {
-      console.log(`[${this.config.cinemaId}] Running health check...`);
-      // Same persistent-context fix as initialize() — the shared browser
-      // singleton can't pass Cloudflare cold, and the previous implementation
-      // failed in the wild with: "page.content: Unable to retrieve content
-      // because the page is navigating and changing the content" on BFI IMAX.
-      const persistent = await createPersistentPage(`${this.config.cinemaId}-healthcheck`);
+      const persistent = await createPersistentPage(profileKey);
       context = persistent.context;
       const page = persistent.page;
-
-      await page.goto(this.venue.baseUrl, {
-        waitUntil: "domcontentloaded",
-        timeout: 30000,
-      });
-
-      // Wait for potential Cloudflare challenge — use the shared helper which
-      // already handles "page is navigating" by polling instead of single-shot
-      // content() reads.
+      await page.goto(this.venue.baseUrl, { waitUntil: "domcontentloaded", timeout: 30_000 });
       await waitForCloudflare(page, 15);
-
       const title = await page.title().catch(() => "");
-      return title.toLowerCase().includes("bfi");
+      // If the title clearly shows the BFI site, great. If it's a challenge or
+      // empty, do NOT fail — the real scrape retries cold and the PDF fallback
+      // covers a hard block. Returning true here lets scrape() decide.
+      if (title.toLowerCase().includes("bfi")) return true;
+      console.warn(`[${this.config.cinemaId}] Health check inconclusive (title="${title}") — proceeding to scrape anyway`);
+      return true;
     } catch (error) {
-      console.error(`[${this.config.cinemaId}] Health check failed:`, error);
-      return false;
+      console.error(`[${this.config.cinemaId}] Health check hard error:`, error);
+      // Even on a hard error, allow the scrape to attempt + fall back to PDF.
+      return true;
     } finally {
       if (context) await context.close().catch(() => { /* may be closed */ });
+      await fs.rm(userDataDir, { recursive: true, force: true }).catch(() => { /* best effort */ });
     }
   }
+}
 
+/** Marker error: a Cloudflare-managed-challenge block (transient, retryable). */
+class BlockedByCloudflareError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "BlockedByCloudflareError";
+  }
+}
+
+/**
+ * Bracket-match and JSON.parse the embedded `searchResults : [ ... ]` array
+ * out of a BFI Online HTML page. Exported for unit testing against fixtures.
+ *
+ * The array is written as `searchResults : [ [..], [..] ]` — colon-assigned
+ * object property, contains nested arrays, no terminating `;`. A non-greedy
+ * regex can't handle the nested brackets, so we find the opening `[` after the
+ * `searchResults :` token and walk to its matching close bracket.
+ */
+export function parseSearchResultsArray(html: string): SearchRow[] | null {
+  const keyMatch = html.match(/searchResults\s*:\s*\[/);
+  if (!keyMatch || keyMatch.index === undefined) return null;
+
+  const start = html.indexOf("[", keyMatch.index);
+  if (start === -1) return null;
+
+  let depth = 0;
+  let end = -1;
+  let inString = false;
+  let escaped = false;
+  for (let i = start; i < html.length; i++) {
+    const c = html[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (c === "\\") escaped = true;
+      else if (c === '"') inString = false;
+      continue;
+    }
+    if (c === '"') inString = true;
+    else if (c === "[") depth++;
+    else if (c === "]") {
+      depth--;
+      if (depth === 0) { end = i; break; }
+    }
+  }
+  if (end === -1) return null;
+
+  try {
+    const parsed = JSON.parse(html.slice(start, end + 1));
+    return Array.isArray(parsed) ? (parsed as SearchRow[]) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Coerce a searchResults cell to a trimmed string. */
+function str(v: string | number | null | undefined): string {
+  if (v === null || v === undefined) return "";
+  return String(v).trim();
+}
+
+/** Coerce a searchResults cell to a number (NaN if not parseable). */
+function num(v: string | number | null | undefined): number {
+  if (typeof v === "number") return v;
+  if (v === null || v === undefined) return NaN;
+  return parseInt(String(v), 10);
 }
 
 /** Creates a scraper for a BFI venue (Southbank or IMAX). */
@@ -535,29 +548,10 @@ export function createBFIScraper(venueId: "bfi-southbank" | "bfi-imax"): BFIScra
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// PDF importer dedupe
+// PDF importer fallback (unchanged — kept for resilience until Playwright path
+// is verified to reliably cover both venues from the production IP).
 // ────────────────────────────────────────────────────────────────────────────
 
-/**
- * Module-scope cache so the PDF fetch + parse runs ONCE per process even when
- * the unified scrape calls `createBFIScraper("bfi-southbank").scrape()` and
- * `createBFIScraper("bfi-imax").scrape()` in succession.
- *
- * `loadBFIScreenings` returns screenings for BOTH venues (each tagged with
- * its `cinemaId`). The second invocation reuses the cached promise and
- * filters for its own venue.
- *
- * Cache lives in memory only for one Node process.
- *
- * IMPORTANT: We deliberately DO NOT cache failures. If `loadBFIScreenings()`
- * fails (Cloudflare blocked the discovery page, both PDF + programme-changes
- * sources returned empty), the promise must be discarded so the next venue
- * call gets a fresh attempt — and so a transient failure on Southbank doesn't
- * silently poison IMAX with the same empty result. Without this guard, a
- * single failed network call records `success+0` on BOTH BFI cinemas, which
- * is the root cause of the May 2026 correlated flakiness pattern (BFI
- * Southbank 50% empty / IMAX 60% empty).
- */
 let bfiLoadPromise: Promise<RawScreening[]> | null = null;
 
 /** Test-only: clear the in-process cache so a fresh test starts from a clean slate. */
@@ -570,12 +564,6 @@ export async function getOrLoadBFIScreenings(): Promise<RawScreening[]> {
     bfiLoadPromise = (async () => {
       const { screenings, sourceStatus } = await loadBFIScreenings();
 
-      // Yield gate: if BOTH the PDF and the programme-changes page failed to
-      // produce data, treat it as an upstream load failure rather than a
-      // "successful" empty result. Throwing here lets the scraper runner
-      // record `status=failed` for both BFI cinemas (instead of `success+0`),
-      // which surfaces in the silent-breaker + flaky detectors properly
-      // instead of hiding behind alternating zero-runs.
       const bothFailed =
         sourceStatus.pdf !== "success" && sourceStatus.programmeChanges !== "success";
       if (bothFailed) {
@@ -587,8 +575,6 @@ export async function getOrLoadBFIScreenings(): Promise<RawScreening[]> {
 
       return screenings;
     })().catch((err) => {
-      // Bust the cache on failure so the next caller (the OTHER BFI venue)
-      // gets a fresh attempt instead of being poisoned by the same rejection.
       bfiLoadPromise = null;
       throw err;
     });
