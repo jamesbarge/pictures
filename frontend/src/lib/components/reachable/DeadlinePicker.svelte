@@ -1,3 +1,23 @@
+<script module lang="ts">
+	// Hoisted to module scope: built once per module load and shared across
+	// every DeadlinePicker instead of reconstructed on each formatSelectedTime
+	// call. The configs are constant so the formatted output is byte-identical
+	// to the per-call builders they replace.
+	const LONDON_DATE_FORMATTER = new Intl.DateTimeFormat('en-CA', {
+		timeZone: 'Europe/London'
+	});
+	const TIME_FORMATTER = new Intl.DateTimeFormat('en-GB', {
+		hour: '2-digit',
+		minute: '2-digit',
+		hour12: false
+	});
+	const DAY_MONTH_FORMATTER = new Intl.DateTimeFormat('en-GB', {
+		weekday: 'short',
+		day: 'numeric',
+		month: 'short'
+	});
+</script>
+
 <script lang="ts">
 	let {
 		value = null,
@@ -63,17 +83,17 @@
 
 	function formatSelectedTime(date: Date): string {
 		const now = new Date();
-		const todayStr = now.toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
+		const todayStr = LONDON_DATE_FORMATTER.format(now);
 		const tomorrowDate = new Date(now);
 		tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-		const tomorrowStr = tomorrowDate.toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
-		const targetStr = date.toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
+		const tomorrowStr = LONDON_DATE_FORMATTER.format(tomorrowDate);
+		const targetStr = LONDON_DATE_FORMATTER.format(date);
 
-		const timeStr = date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+		const timeStr = TIME_FORMATTER.format(date);
 
 		if (targetStr === todayStr) return `Today at ${timeStr}`;
 		if (targetStr === tomorrowStr) return `Tomorrow at ${timeStr}`;
-		return date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + ` at ${timeStr}`;
+		return DAY_MONTH_FORMATTER.format(date) + ` at ${timeStr}`;
 	}
 </script>
 
