@@ -123,21 +123,35 @@ function tokenize(input: string): Token[] {
   return tokens;
 }
 
-// London-timezone helpers
+// London-timezone helpers.
+// parseQuery() runs on every command-palette keystroke, so these formatters
+// are hoisted to module scope — the Intl.DateTimeFormat constructor (ICU
+// locale/timezone load) is the dominant cost; .format()/.formatToParts() are
+// cheap. Matches the cached-formatter pattern in $lib/utils.ts. Configs are
+// constant, so output is byte-identical to per-call construction.
+const LONDON_DATE_ISO = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Europe/London",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+const LONDON_WEEKDAY_SHORT = new Intl.DateTimeFormat("en-GB", {
+  weekday: "short",
+  timeZone: "Europe/London",
+});
+
+const LONDON_SHORT_OFFSET = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Europe/London",
+  timeZoneName: "shortOffset",
+});
+
 function londonDateString(d: Date): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/London",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(d);
+  return LONDON_DATE_ISO.format(d);
 }
 
 function londonDayOfWeek(d: Date): number {
-  const short = new Intl.DateTimeFormat("en-GB", {
-    weekday: "short",
-    timeZone: "Europe/London",
-  }).format(d);
+  const short = LONDON_WEEKDAY_SHORT.format(d);
   const map: Record<string, number> = {
     Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
   };
@@ -149,10 +163,7 @@ function londonMidnight(yyyyMmDd: string, hour = 0): Date {
   // given date. We compute the London offset for that specific instant
   // (DST-aware) and subtract it from UTC midnight.
   const utcMid = new Date(`${yyyyMmDd}T00:00:00Z`);
-  const offsetPart = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Europe/London",
-    timeZoneName: "shortOffset",
-  })
+  const offsetPart = LONDON_SHORT_OFFSET
     .formatToParts(utcMid)
     .find((p) => p.type === "timeZoneName")?.value;
   let offsetMin = 0;
