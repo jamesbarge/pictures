@@ -1,3 +1,31 @@
+<script module lang="ts">
+	// Hoisted to module scope: built once per module load and shared across
+	// every ScreeningRow instead of reconstructed per row. The configs are
+	// constant so the formatted output is byte-identical to per-call builders.
+	const TIME_FORMATTER = new Intl.DateTimeFormat('en-GB', {
+		hour: '2-digit',
+		minute: '2-digit',
+		timeZone: 'Europe/London'
+	});
+	const WEEKDAY_FORMATTER = new Intl.DateTimeFormat('en-GB', {
+		weekday: 'short',
+		timeZone: 'Europe/London'
+	});
+	const LONDON_DATE_FORMATTER = new Intl.DateTimeFormat('en-CA', {
+		timeZone: 'Europe/London'
+	});
+
+	function formatRelativeTime(iso: string): string {
+		const d = new Date(iso);
+		const time = TIME_FORMATTER.format(d);
+		const today = new Date();
+		const sameDay = LONDON_DATE_FORMATTER.format(d) === LONDON_DATE_FORMATTER.format(today);
+		if (sameDay) return `TONIGHT ${time}`;
+		const day = WEEKDAY_FORMATTER.format(d).toUpperCase();
+		return `${day} ${time}`;
+	}
+</script>
+
 <script lang="ts">
 	import type { ScreeningResult } from '$lib/search/result-types';
 
@@ -8,25 +36,6 @@
 	}
 
 	let { screening, selected, id }: Props = $props();
-
-	function formatRelativeTime(iso: string): string {
-		const d = new Date(iso);
-		const time = new Intl.DateTimeFormat('en-GB', {
-			hour: '2-digit',
-			minute: '2-digit',
-			timeZone: 'Europe/London'
-		}).format(d);
-		const today = new Date();
-		const sameDay =
-			d.toLocaleDateString('en-CA', { timeZone: 'Europe/London' }) ===
-			today.toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
-		if (sameDay) return `TONIGHT ${time}`;
-		const day = new Intl.DateTimeFormat('en-GB', {
-			weekday: 'short',
-			timeZone: 'Europe/London'
-		}).format(d).toUpperCase();
-		return `${day} ${time}`;
-	}
 
 	const timeLabel = $derived(formatRelativeTime(screening.datetime));
 </script>

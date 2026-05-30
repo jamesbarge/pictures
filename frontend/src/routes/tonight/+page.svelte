@@ -64,7 +64,7 @@
 			<EmptyState title="Nothing showing tonight" description="Check back later or browse all screenings." />
 		{:else}
 			<div class="film-grid">
-				{#each filmMap as { film, screenings } (film.id)}
+				{#each filmMap as { film, screenings }, i (film.id)}
 					<FilmCard
 						film={{
 							id: film.id,
@@ -77,6 +77,7 @@
 							tmdbId: null
 						}}
 						screenings={screenings.map(toCardScreening)}
+						priority={i === 0}
 					/>
 				{/each}
 			</div>
@@ -91,6 +92,8 @@
 		column-gap: 1rem;
 		row-gap: 0;
 		grid-auto-rows: auto;
+		content-visibility: auto;
+		contain-intrinsic-size: auto 900px;
 	}
 
 	@media (min-width: 768px) {
