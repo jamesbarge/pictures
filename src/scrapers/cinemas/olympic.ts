@@ -18,7 +18,11 @@ import { combineDateAndTime } from "../utils/date-parser";
 
 export class OlympicScraper extends BaseScraper {
   config: ScraperConfig = {
-    cinemaId: "olympic",
+    // Canonical registry id is "olympic-studios" ("olympic" is a legacyId).
+    // The registry path injects the canonical venue id, but the standalone
+    // run-olympic-v2.ts runner uses this config id directly — so it MUST be the
+    // canonical id or standalone runs create a duplicate `olympic` cinema row.
+    cinemaId: "olympic-studios",
     baseUrl: "https://www.olympiccinema.com",
     requestsPerMinute: 10,
     delayBetweenRequests: 1000,
