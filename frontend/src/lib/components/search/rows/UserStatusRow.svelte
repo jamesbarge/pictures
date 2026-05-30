@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { UserStatusResult } from '$lib/search/result-types';
+	import { getPosterImageAttributes } from '$lib/utils';
 
 	interface Props {
 		status: UserStatusResult;
@@ -28,8 +29,15 @@
 	data-result-row
 >
 	{#if status.filmPosterUrl}
+		{@const posterImage = getPosterImageAttributes(status.filmPosterUrl, {
+			baseSize: 'w92',
+			srcSetSizes: ['w92', 'w154'],
+			sizes: '32px'
+		})}
 		<img
-			src={status.filmPosterUrl}
+			src={posterImage?.src ?? status.filmPosterUrl}
+			srcset={posterImage?.srcset}
+			sizes={posterImage?.sizes}
 			alt=""
 			class="poster"
 			width="32"
