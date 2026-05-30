@@ -21,5 +21,14 @@ export const load: PageServerLoad = async ({ fetch, setHeaders }) => {
 
 	const data = await apiFetch<DirectorsResponse>('/api/directors?days=14', fetch);
 
-	return { directors: data.directors };
+	// Trim the serialized payload to what the page renders: the component shows
+	// films.slice(0, 3) plus a films.length > 3 ellipsis. Keeping 4 titles
+	// preserves the exact ellipsis trigger while dropping the 4th-plus strings.
+	const directors = data.directors.map((director) => ({
+		name: director.name,
+		filmCount: director.filmCount,
+		films: director.films.slice(0, 4)
+	}));
+
+	return { directors };
 };

@@ -36,7 +36,10 @@
 
 		// Defer PostHog until after first paint + idle time
 		if ('requestIdleCallback' in window) {
-			requestIdleCallback(loadPostHog);
+			// Idle-first on a quiet thread, but cap the deferral at 2000ms so the
+			// browser forces the callback even on thread-starved sessions —
+			// matching the setTimeout fallback ceiling below.
+			requestIdleCallback(loadPostHog, { timeout: 2000 });
 		} else {
 			setTimeout(loadPostHog, 2000);
 		}
