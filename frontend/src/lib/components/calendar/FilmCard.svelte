@@ -8,12 +8,15 @@
 		film,
 		screenings,
 		activeCinemaIds = [],
-		maxScreenings = 3
+		maxScreenings = 3,
+		priority = false
 	}: {
 		film: CardFilm;
 		screenings: CardScreening[];
 		activeCinemaIds?: string[];
 		maxScreenings?: number;
+		/** Mark this card's poster as the LCP candidate (above-fold). */
+		priority?: boolean;
 	} = $props();
 
 	let isHovered = $state(false);
@@ -70,7 +73,10 @@
 					sizes={posterImage?.sizes}
 					alt="{film.title} poster"
 					class="w-full h-full object-cover"
-					loading="lazy"
+					width="342"
+					height="513"
+					loading={priority ? 'eager' : 'lazy'}
+					fetchpriority={priority ? 'high' : 'auto'}
 					decoding="async"
 				/>
 			{:else}
