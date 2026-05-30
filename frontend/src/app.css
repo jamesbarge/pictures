@@ -17,27 +17,11 @@
 }
 
 @font-face {
-	font-family: 'Inter Variable';
-	font-style: italic;
-	font-weight: 100 900;
-	font-display: swap;
-	src: url('/fonts/InterVariable-Italic.woff2') format('woff2');
-}
-
-@font-face {
 	font-family: 'Inter';
 	font-style: normal;
 	font-weight: 100 900;
 	font-display: swap;
 	src: url('/fonts/InterVariable.woff2') format('woff2');
-}
-
-@font-face {
-	font-family: 'Inter';
-	font-style: italic;
-	font-weight: 100 900;
-	font-display: swap;
-	src: url('/fonts/InterVariable-Italic.woff2') format('woff2');
 }
 
 /* ── Self-hosted V2a display stack (was Google Fonts @import) ── */
@@ -200,10 +184,6 @@ body {
 }
 
 /* ── Typography Utilities ── */
-.font-display {
-	font-family: var(--font-display);
-}
-
 .font-serif {
 	font-family: var(--font-serif);
 }
@@ -228,14 +208,6 @@ body {
 .tracking-wide-swiss {
 	letter-spacing: 0.08em;
 }
-
-/* V2a variable-font axis helpers */
-.soft-display-144 { font-variation-settings: '"SOFT" 100', '"opsz" 144'; }
-.soft-display-96 { font-variation-settings: '"SOFT" 100', '"opsz" 96'; }
-.soft-display-72 { font-variation-settings: '"SOFT" 100', '"opsz" 72'; }
-.soft-display-48 { font-variation-settings: '"SOFT" 100', '"opsz" 48'; }
-.soft-display-36 { font-variation-settings: '"SOFT" 100', '"opsz" 36'; }
-.soft-display-24 { font-variation-settings: '"SOFT" 100', '"opsz" 24'; }
 
 /* ── Screening Pill ── */
 .screening-pill {
