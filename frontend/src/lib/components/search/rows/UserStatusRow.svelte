@@ -35,6 +35,7 @@
 			width="32"
 			height="48"
 			loading="lazy"
+			decoding="async"
 		/>
 	{:else}
 		<div class="poster poster-empty" aria-hidden="true"></div>

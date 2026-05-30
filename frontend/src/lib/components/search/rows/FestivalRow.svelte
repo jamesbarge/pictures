@@ -38,7 +38,7 @@
 	data-result-row
 >
 	{#if festival.logoUrl}
-		<img src={festival.logoUrl} alt="" class="logo" width="32" height="32" loading="lazy" />
+		<img src={festival.logoUrl} alt="" class="logo" width="32" height="32" loading="lazy" decoding="async" />
 	{:else}
 		<div class="monogram" aria-hidden="true">{initials}</div>
 	{/if}
