@@ -183,16 +183,40 @@ function addDaysToDateString(yyyyMmDd: string, days: number): string {
 
 // ===== Phrase scanning =====
 
+// `scanPhrases` runs ~9x per keystroke over constant module-level tables.
+// Memoize the derived `maxLen` and per-length `Set` lookups per table so the
+// constant data is only processed once, not rebuilt on every call.
+interface CompiledPhrases {
+  maxLen: number;
+  sets: Map<number, Set<string>>;
+}
+const COMPILED_PHRASES = new WeakMap<Record<number, string[]>, CompiledPhrases>();
+
+function compilePhrases(phrasesByLength: Record<number, string[]>): CompiledPhrases {
+  let compiled = COMPILED_PHRASES.get(phrasesByLength);
+  if (!compiled) {
+    const sets = new Map<number, Set<string>>();
+    let maxLen = 0;
+    for (const key of Object.keys(phrasesByLength)) {
+      const len = Number(key);
+      if (len > maxLen) maxLen = len;
+      sets.set(len, new Set(phrasesByLength[len]));
+    }
+    compiled = { maxLen, sets };
+    COMPILED_PHRASES.set(phrasesByLength, compiled);
+  }
+  return compiled;
+}
+
 function scanPhrases(
   tokens: Token[],
   phrasesByLength: Record<number, string[]>,
   onMatch: (matchedPhrase: string, startIdx: number, endIdx: number) => boolean,
 ) {
-  const maxLen = Math.max(0, ...Object.keys(phrasesByLength).map(Number));
+  const { maxLen, sets } = compilePhrases(phrasesByLength);
   for (let len = maxLen; len >= 2; len--) {
-    const phrases = phrasesByLength[len];
-    if (!phrases || phrases.length === 0) continue;
-    const phraseSet = new Set(phrases);
+    const phraseSet = sets.get(len);
+    if (!phraseSet || phraseSet.size === 0) continue;
     for (let i = 0; i <= tokens.length - len; i++) {
       if (tokens.slice(i, i + len).some((t) => t.consumed)) continue;
       const joined = tokens.slice(i, i + len).map((t) => t.lower).join(" ");
@@ -216,6 +240,15 @@ const DAY_NAMES: Record<string, number> = {
   thursday: 4, thu: 4, thur: 4, thurs: 4,
   friday: 5, fri: 5,
   saturday: 6, sat: 6,
+};
+
+// Short weekday labels indexed by day-of-week (Sun=0). Shared by the date
+// scanners so the literal is allocated once, not per call.
+const WEEKDAY_LABELS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+
+// "next <day>" phrases, precomputed once off the keystroke hot path.
+const NEXT_DAY_PHRASES_BY_LENGTH: Record<number, string[]> = {
+  2: Object.keys(DAY_NAMES).map((d) => `next ${d}`),
 };
 
 function applyTonight(intent: ParsedIntent, now: Date) {
@@ -273,7 +306,7 @@ function applyNextDay(intent: ParsedIntent, now: Date, dayIdx: number) {
   const target = addDaysToDateString(today, offset);
   intent.dateFrom = londonMidnight(target, 0);
   intent.dateTo = londonMidnight(addDaysToDateString(target, 1), 0);
-  const dayName = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"][dayIdx];
+  const dayName = WEEKDAY_LABELS[dayIdx];
   intent.chipDescriptors.push({
     id: `date:next-${dayIdx}`,
     kind: "date",
@@ -288,7 +321,7 @@ function applyDayThisWeek(intent: ParsedIntent, now: Date, dayIdx: number) {
   const target = addDaysToDateString(today, offset);
   intent.dateFrom = londonMidnight(target, 0);
   intent.dateTo = londonMidnight(addDaysToDateString(target, 1), 0);
-  const dayName = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"][dayIdx];
+  const dayName = WEEKDAY_LABELS[dayIdx];
   intent.chipDescriptors.push({ id: `date:${dayIdx}`, kind: "date", label: dayName });
 }
 
@@ -373,7 +406,7 @@ export function parseQuery(input: string, now: Date): ParsedIntent {
 
   scanPhrases(
     tokens,
-    { 2: Object.keys(DAY_NAMES).map((d) => `next ${d}`) },
+    NEXT_DAY_PHRASES_BY_LENGTH,
     (phrase) => {
       const dayPart = phrase.replace(/^next /, "");
       const idx = DAY_NAMES[dayPart];
