@@ -38,6 +38,7 @@ const CINEMAS_LIMIT = 6;
 const SCREENINGS_LIMIT = 8;
 const FESTIVALS_LIMIT = 5;
 const SEASONS_LIMIT = 5;
+const PEOPLE_LIMIT = 5;
 const SCREENING_WINDOW_DAYS = 30;
 
 function toRows<T>(result: unknown): T[] {
@@ -122,6 +123,7 @@ export async function GET(request: NextRequest) {
           screenings: [],
           festivals: [],
           seasons: [],
+          people: [],
         },
         { headers: CACHE_10MIN }
       );
@@ -134,6 +136,7 @@ export async function GET(request: NextRequest) {
         screenings: [],
         festivals: [],
         seasons: [],
+        people: [],
       });
     }
 
@@ -143,7 +146,7 @@ export async function GET(request: NextRequest) {
     // is findable; the recency boost keeps soon-showing films at the top.
     // The CTEs limit pre-fusion candidates to 200 each so the planner can
     // use the GIN indexes efficiently before the JOIN to films.
-    const [filmsRes, cinemasRes, screeningsRes, festivalsRes, seasonsRes] =
+    const [filmsRes, cinemasRes, screeningsRes, festivalsRes, seasonsRes, peopleRes] =
       await Promise.all([
         db.execute(sql`
           WITH params AS (
@@ -282,6 +285,27 @@ export async function GET(request: NextRequest) {
             ts_rank_cd(search_tsv, websearch_to_tsquery('pictures', ${query})) DESC
           LIMIT ${SEASONS_LIMIT}
         `),
+
+        db.execute(sql`
+          -- People (directors) with upcoming screenings whose name matches the query.
+          -- Mirrors the /api/directors unnest pattern; ILIKE substring OR trigram for
+          -- typo tolerance. Candidate set is the ~1k upcoming films, so unnest is cheap.
+          SELECT d.name AS name,
+                 count(DISTINCT f.id)::int AS "filmCount"
+          FROM films f
+          JOIN screenings s ON s.film_id = f.id
+          CROSS JOIN LATERAL unnest(f.directors) AS d(name)
+          WHERE s.datetime > now()
+            AND f.content_type = 'film'
+            AND (d.name ILIKE '%' || ${query} || '%' OR d.name % ${query})
+          GROUP BY d.name
+          ORDER BY
+            (lower(d.name) = lower(${query}))::int DESC,
+            (d.name ILIKE ${query} || '%')::int DESC,
+            count(DISTINCT f.id) DESC,
+            d.name ASC
+          LIMIT ${PEOPLE_LIMIT}
+        `),
       ]);
 
     type FilmRow = {
@@ -334,12 +358,21 @@ export async function GET(request: NextRequest) {
       endDate: string;
       posterUrl: string | null;
     };
+    type PersonRow = {
+      name: string;
+      filmCount: number;
+    };
 
     const filmRows = toRows<FilmRow>(filmsRes);
     const cinemaRows = toRows<CinemaRow>(cinemasRes);
     const screeningRows = toRows<ScreeningRow>(screeningsRes);
     const festivalRows = toRows<FestivalRow>(festivalsRes);
     const seasonRows = toRows<SeasonRow>(seasonsRes);
+    const peopleRows = toRows<PersonRow>(peopleRes).map((p) => ({
+      name: p.name,
+      filmCount: p.filmCount,
+      role: "director" as const,
+    }));
 
     return NextResponse.json(
       {
@@ -351,13 +384,14 @@ export async function GET(request: NextRequest) {
         screenings: screeningRows,
         festivals: festivalRows,
         seasons: seasonRows,
+        people: peopleRows,
       },
       { headers: CACHE_5MIN }
     );
   } catch (error) {
     console.error("Film search error:", error);
     return NextResponse.json(
-      { results: [], cinemas: [], screenings: [], festivals: [], seasons: [] },
+      { results: [], cinemas: [], screenings: [], festivals: [], seasons: [], people: [] },
       { status: 500 }
     );
   }

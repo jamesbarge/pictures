@@ -36,6 +36,7 @@ import {
   type FestivalResult,
   type FilmResult,
   type PaletteResults,
+  type PersonResult,
   type ResultRow,
   type ScreeningResult,
   type SeasonResult,
@@ -63,6 +64,7 @@ interface ServerSearchResponse {
   screenings: Omit<ScreeningResult, "kind">[];
   festivals: Omit<FestivalResult, "kind">[];
   seasons: Omit<SeasonResult, "kind">[];
+  people?: Omit<PersonResult, "kind">[];
 }
 
 let open = $state(false);
@@ -137,6 +139,7 @@ function cancelInFlight() {
 function mapResponse(res: ServerSearchResponse): PaletteResults {
   return {
     films: res.results.map((f) => ({ kind: "film" as const, ...f })),
+    people: (res.people ?? []).map((p) => ({ kind: "person" as const, ...p })),
     cinemas: res.cinemas.map((c) => ({ kind: "cinema" as const, ...c })),
     screenings: res.screenings.map((s) => ({ kind: "screening" as const, ...s })),
     festivals: res.festivals.map((f) => ({ kind: "festival" as const, ...f })),
@@ -223,6 +226,16 @@ async function activate(row: ResultRow, mode: ActivationMode = "open"): Promise<
     }
     case "film": {
       const path = `/film/${row.id}`;
+      if (mode === "newTab") {
+        openInNewTab(path);
+      } else {
+        closePalette();
+        await goto(path);
+      }
+      return;
+    }
+    case "person": {
+      const path = `/people/${encodeURIComponent(row.name)}`;
       if (mode === "newTab") {
         openInNewTab(path);
       } else {

@@ -93,6 +93,15 @@ export interface UserStatusResult {
   addedAt?: string;
 }
 
+export interface PersonResult {
+  kind: "person";
+  /** Person's name — also the route param for /people/[name]. */
+  name: string;
+  /** How many upcoming films they have showing. */
+  filmCount: number;
+  role: "director" | "actor";
+}
+
 export type ResultRow =
   | FilmResult
   | CinemaResult
@@ -101,7 +110,8 @@ export type ResultRow =
   | SeasonResult
   | FilterActionResult
   | RecentResult
-  | UserStatusResult;
+  | UserStatusResult
+  | PersonResult;
 
 /**
  * Sectioned results — order matters for display, and we flatten this
@@ -113,6 +123,7 @@ export interface PaletteResults {
   actions?: FilterActionResult[];
   screenings?: ScreeningResult[];
   films?: FilmResult[];
+  people?: PersonResult[];
   cinemas?: CinemaResult[];
   festivals?: FestivalResult[];
   seasons?: SeasonResult[];
@@ -131,6 +142,7 @@ export const SECTION_ORDER: Array<keyof PaletteResults> = [
   "actions",
   "screenings",
   "films",
+  "people",
   "cinemas",
   "festivals",
   "seasons",
@@ -146,6 +158,7 @@ export const SECTION_LABELS: Record<keyof PaletteResults, string> = {
   actions: "JUMP TO",
   screenings: "SCREENINGS",
   films: "FILMS",
+  people: "PEOPLE",
   cinemas: "CINEMAS",
   festivals: "FESTIVALS",
   seasons: "SEASONS",

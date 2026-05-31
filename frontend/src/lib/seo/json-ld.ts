@@ -176,6 +176,19 @@ export function faqSchema(items: { question: string; answer: string }[]) {
 	};
 }
 
+// ── Person (director / actor pages) ─────────────────────────────
+
+export function personSchema(name: string, roles: string[], filmTitles: string[]) {
+	return {
+		'@context': 'https://schema.org',
+		'@type': 'Person',
+		name,
+		...(roles.length ? { jobTitle: roles } : {}),
+		url: absoluteUrl(`/people/${encodeURIComponent(name)}`),
+		...(filmTitles.length ? { knowsAbout: filmTitles } : {})
+	};
+}
+
 // ── ItemList (directory pages) ──────────────────────────────────
 
 export function itemListSchema(

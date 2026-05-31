@@ -22,6 +22,7 @@
 		type PaletteResults
 	} from '$lib/search/result-types';
 	import FilmRow from './rows/FilmRow.svelte';
+	import PersonRow from './rows/PersonRow.svelte';
 	import CinemaRow from './rows/CinemaRow.svelte';
 	import ScreeningRow from './rows/ScreeningRow.svelte';
 	import FestivalRow from './rows/FestivalRow.svelte';
@@ -87,6 +88,12 @@
 		{#if item.section === 'films'}
 			<FilmRow
 				film={item.row as never}
+				selected={item.flatIndex === selectedIndex}
+				id={item.id}
+			/>
+		{:else if item.section === 'people'}
+			<PersonRow
+				person={item.row as never}
 				selected={item.flatIndex === selectedIndex}
 				id={item.id}
 			/>

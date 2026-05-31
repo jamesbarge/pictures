@@ -43,13 +43,13 @@
 		{:else}
 			<div class="director-grid">
 				{#each filtered as director (director.name)}
-					<div class="director-card">
+					<a class="director-card" href="/people/{encodeURIComponent(director.name)}">
 						<h2 class="director-name">{director.name}</h2>
 						<p class="director-films">
 							{director.filmCount} {director.filmCount === 1 ? 'film' : 'films'} showing
 						</p>
 						<p class="director-titles">{director.films.slice(0, 3).join(', ')}{director.films.length > 3 ? '...' : ''}</p>
-					</div>
+					</a>
 				{/each}
 			</div>
 		{/if}
@@ -82,8 +82,16 @@
 	@media (min-width: 1024px) { .director-grid { grid-template-columns: repeat(4, 1fr); } }
 
 	.director-card {
+		display: block;
 		padding: 0.75rem 0.75rem 0.75rem 0;
 		border-bottom: 1px solid var(--color-border-subtle);
+		text-decoration: none;
+		color: inherit;
+		transition: opacity 0.15s ease;
+	}
+	.director-card:hover .director-name {
+		text-decoration: underline;
+		text-underline-offset: 2px;
 	}
 
 	.director-name {
