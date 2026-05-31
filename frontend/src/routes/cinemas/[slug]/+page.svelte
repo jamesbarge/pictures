@@ -29,8 +29,13 @@
 	});
 
 	const groupedByDate = $derived.by(() => {
+		// `futureScreenings` is sorted strictly ascending by epoch-ms above and
+		// `toLondonDateStr` is monotonic non-decreasing in ms, so `groupBy`'s
+		// first-seen string-key insertion order (preserved by JS for these keys)
+		// is already chronological — the previous `.sort(localeCompare)` was a
+		// guaranteed no-op.
 		const grouped = groupBy(futureScreenings, (s) => toLondonDateStr(s.datetime));
-		return Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b));
+		return Object.entries(grouped);
 	});
 </script>
 
