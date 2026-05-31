@@ -1,3 +1,12 @@
+## 2026-05-31: Consolidate 30 CI-green refactor/perf PRs (#606–#636) into one batch
+**PR**: TBD | **Files**: 60 files across `frontend/src/{routes,lib}/…` (per-PR detail in #606–#636)
+- Merged all **30** file-disjoint refactor/perf branches (`rf/*`, created 2026-05-30) into a single integration branch so they ship in one CI cycle instead of 30 sequential "branch up-to-date" rebases (O(n²) → O(n)).
+- All 30 merged cleanly against current `origin/main` — **zero conflicts, zero skips, zero reverts**. None of the refactors' intents were obsoleted by newer main.
+- Content: delete unused exports/imports + dead code, hoist `Intl` formatters / constants / weekday arrays out of hot paths, dedupe rating formatting, simplify a `typeof` guard, trim SSR payload fields (cinema-slug / reachable / search / home / festival-slug), and per-frame `getBoundingClientRect` fix in BreathingGrid.
+- Behavior-preserving. Verified: `npm run check` → 0 errors (2 pre-existing unrelated warnings), `npm run build` → success. Supersedes individual PRs #606–#636 (excl. already-merged #619).
+
+---
+
 ## 2026-05-30: Scraper coverage + freshness pass — end of June 2026
 **PR**: TBD | **Files**: `src/scrapers/pipeline.ts`, `src/scrapers/chains/everyman.ts`, `src/scrapers/cinemas/bfi.ts`, `src/scrapers/cinemas/olympic.ts`, `src/scrapers/cinemas/david-lean.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`
 - **42P10 upsert keystone**: `(cinema_id, source_id)` upsert lacked `targetWhere source_id IS NOT NULL` for its partial index → Postgres silently dropped every fresh INSERT across all source_id scrapers (Everyman/Curzon/Picturehouse), freezing forward coverage. Re-applied the lost 2026-05-27 fix.
