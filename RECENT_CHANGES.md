@@ -1,5 +1,11 @@
+## 2026-05-31: Search — remove 30-day coverage cap + exact-match relevance boost
+**PR**: #638 | **Files**: `src/app/api/films/search/route.ts`, `scripts/verify-search-coverage.ts`
+- **Coverage fix**: the films search dropped its hard `ns.next_dt < now() + 30 days` upper bound. Verified against prod: **256 of 1,082 upcoming films (24%) had their earliest screening >30 days out and were unsearchable** — repertory titles, retrospectives announced early, festival films. They are now findable; the recency boost keeps soon-showing films at the top.
+- **Relevance**: added an exact-title boost (`0.20`, dominates the ~0.03 RRF ceiling so e.g. "amelie" → Amélie #1) and a prefix-title boost (`0.08`). Verified: `D.E.B.S.`, `Possession`, `Ghatak Was Here` now return rank #1 for an exact query (all returned 0 results before).
+- The `screenings` result sub-query keeps its near-term window (intentional: a film is findable forever-out and links to its detail page, which lists every screening; individual booking rows stay near-term). No response-contract change; code-reviewed clean.
+
 ## 2026-05-31: Consolidate 30 CI-green refactor/perf PRs (#606–#636) into one batch
-**PR**: TBD | **Files**: 60 files across `frontend/src/{routes,lib}/…` (per-PR detail in #606–#636)
+**PR**: #637 | **Files**: 60 files across `frontend/src/{routes,lib}/…` (per-PR detail in #606–#636)
 - Merged all **30** file-disjoint refactor/perf branches (`rf/*`, created 2026-05-30) into a single integration branch so they ship in one CI cycle instead of 30 sequential "branch up-to-date" rebases (O(n²) → O(n)).
 - All 30 merged cleanly against current `origin/main` — **zero conflicts, zero skips, zero reverts**. None of the refactors' intents were obsoleted by newer main.
 - Content: delete unused exports/imports + dead code, hoist `Intl` formatters / constants / weekday arrays out of hot paths, dedupe rating formatting, simplify a `typeof` guard, trim SSR payload fields (cinema-slug / reachable / search / home / festival-slug), and per-frame `getBoundingClientRect` fix in BreathingGrid.

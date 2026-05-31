@@ -137,8 +137,10 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // RRF k=60 over tsvector + trigram, with recency + popularity boosts.
-    // Filters to films with screenings in the next 30 days (existing UX promise).
+    // RRF k=60 over tsvector + trigram, with exact-match + recency + popularity boosts.
+    // Returns ALL films with ANY upcoming screening (no fixed window) so a
+    // repertory title screening weeks out — or a retrospective announced early —
+    // is findable; the recency boost keeps soon-showing films at the top.
     // The CTEs limit pre-fusion candidates to 200 each so the planner can
     // use the GIN indexes efficiently before the JOIN to films.
     const [filmsRes, cinemasRes, screeningsRes, festivalsRes, seasonsRes] =
@@ -190,18 +192,25 @@ export async function GET(request: NextRequest) {
             ns.next_dt AS "nextScreeningAt",
             (
               fused.rrf_score
+              -- Exact title match dominates RRF (~0.016 max) so "amelie" → Amélie #1.
+              + 0.20 * (lower(f.title) = lower(p.q))::int
+              -- Prefix title match is the next-strongest signal.
+              + 0.08 * (f.title ILIKE p.q || '%')::int
+              -- Recency: 1-week half-life keeps soon-showing films near the top.
               + 0.05 * coalesce(exp(-extract(epoch FROM (ns.next_dt - now()))/604800.0), 0)
               + 0.02 * ln(1 + coalesce(f.tmdb_popularity, 0))
             ) AS score
           FROM fused
           JOIN films f ON f.id = fused.id
+          CROSS JOIN params p
           LEFT JOIN LATERAL (
             SELECT min(s.datetime) AS next_dt
             FROM screenings s
             WHERE s.film_id = f.id AND s.datetime > now()
           ) ns ON true
+          -- Only require a FUTURE screening (no upper bound): every film a user
+          -- can actually still go and see is findable, not just the next 30 days.
           WHERE ns.next_dt IS NOT NULL
-            AND ns.next_dt < now() + interval '${sql.raw(String(SCREENING_WINDOW_DAYS))} days'
           ORDER BY score DESC
           LIMIT ${FILMS_LIMIT}
         `),
