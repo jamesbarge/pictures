@@ -105,6 +105,8 @@
 	const dayFmt = new Intl.DateTimeFormat('en-GB', { weekday: 'short', timeZone: 'Europe/London' });
 	const todayLabel = dayFmt.format(new Date(today + 'T12:00:00Z'));
 	const tomorrowLabel = dayFmt.format(new Date(tomorrow + 'T12:00:00Z'));
+	const todayDay = new Date(today + 'T12:00:00Z').getUTCDate();
+	const tomorrowDay = new Date(tomorrow + 'T12:00:00Z').getUTCDate();
 
 	function pick(preset: 'today' | 'tomorrow' | 'weekend' | null) {
 		if (preset === 'today') {
@@ -214,8 +216,8 @@
 					<span class="hint">today</span>
 				</div>
 				<div class="chips">
-					<button type="button" class="chip" class:active={whenState === 'today'} onclick={() => pick(whenState === 'today' ? null : 'today')}>Today<span class="sub">{todayLabel} {new Date(today + 'T12:00:00Z').getUTCDate()}</span></button>
-					<button type="button" class="chip" class:active={whenState === 'tomorrow'} onclick={() => pick(whenState === 'tomorrow' ? null : 'tomorrow')}>Tomorrow<span class="sub">{tomorrowLabel} {new Date(tomorrow + 'T12:00:00Z').getUTCDate()}</span></button>
+					<button type="button" class="chip" class:active={whenState === 'today'} onclick={() => pick(whenState === 'today' ? null : 'today')}>Today<span class="sub">{todayLabel} {todayDay}</span></button>
+					<button type="button" class="chip" class:active={whenState === 'tomorrow'} onclick={() => pick(whenState === 'tomorrow' ? null : 'tomorrow')}>Tomorrow<span class="sub">{tomorrowLabel} {tomorrowDay}</span></button>
 					<button type="button" class="chip" class:active={whenState === 'weekend'} onclick={() => pick(whenState === 'weekend' ? null : 'weekend')}>This weekend</button>
 					<button type="button" class="chip" onclick={() => (datePickerOpen = true)}>Pick a date</button>
 				</div>
