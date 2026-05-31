@@ -20,11 +20,6 @@ export const CHAIN_TOKENS: Record<string, string> = {
   odeon: "Odeon",
 };
 
-// Multi-word phrases for chains.
-export const CHAIN_PHRASES_BY_LENGTH: Record<number, string[]> = {
-  2: [],
-};
-
 // Specific cinema aliases → slug (cinemas.id).
 // IMPORTANT: these slugs must match real cinemas.id values in the
 // database. Verify with `SELECT id FROM cinemas` after any change.
