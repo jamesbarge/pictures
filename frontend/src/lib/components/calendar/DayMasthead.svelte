@@ -1,7 +1,14 @@
 <script lang="ts">
 	import { filters } from '$lib/stores/filters.svelte';
 	import { today as todayStore } from '$lib/stores/today.svelte';
+	import { formatOrdinalDay } from '$lib/utils';
 	import CalendarPopover from '$lib/components/filters/CalendarPopover.svelte';
+
+	// Cached Intl formatters — hoisted to module scope so they are allocated
+	// once rather than per recompute (and, for WEEKDAY_SHORT, per day-strip cell).
+	const WEEKDAY_LONG = new Intl.DateTimeFormat('en-GB', { weekday: 'long', timeZone: 'Europe/London' });
+	const DAY_NUM = new Intl.DateTimeFormat('en-GB', { day: 'numeric', timeZone: 'Europe/London' });
+	const WEEKDAY_SHORT = new Intl.DateTimeFormat('en-GB', { weekday: 'short', timeZone: 'Europe/London' });
 
 	// Effective date — filter if set, else today (London). Reads from the
 	// shared today store so a midnight rollover advances every consumer
@@ -13,24 +20,10 @@
 	// civil date regardless of the user's local timezone.
 	const activeDateObj = $derived(new Date(activeDate + 'T12:00:00Z'));
 
-	// Ordinal e.g. "nineteenth". Cover 1..31.
-	const ORDINALS: Record<number, string> = {
-		1: 'first', 2: 'second', 3: 'third', 4: 'fourth', 5: 'fifth', 6: 'sixth', 7: 'seventh',
-		8: 'eighth', 9: 'ninth', 10: 'tenth', 11: 'eleventh', 12: 'twelfth', 13: 'thirteenth',
-		14: 'fourteenth', 15: 'fifteenth', 16: 'sixteenth', 17: 'seventeenth', 18: 'eighteenth',
-		19: 'nineteenth', 20: 'twentieth', 21: 'twenty-first', 22: 'twenty-second',
-		23: 'twenty-third', 24: 'twenty-fourth', 25: 'twenty-fifth', 26: 'twenty-sixth',
-		27: 'twenty-seventh', 28: 'twenty-eighth', 29: 'twenty-ninth', 30: 'thirtieth',
-		31: 'thirty-first'
-	};
-
-	const weekday = $derived(
-		new Intl.DateTimeFormat('en-GB', { weekday: 'long', timeZone: 'Europe/London' }).format(activeDateObj)
-	);
-	const dayNum = $derived(Number(
-		new Intl.DateTimeFormat('en-GB', { day: 'numeric', timeZone: 'Europe/London' }).format(activeDateObj)
-	));
-	const ordinal = $derived(ORDINALS[dayNum] ?? `${dayNum}th`);
+	const weekday = $derived(WEEKDAY_LONG.format(activeDateObj));
+	const dayNum = $derived(Number(DAY_NUM.format(activeDateObj)));
+	// Ordinal e.g. "nineteenth". Cover 1..31 via the shared utils helper.
+	const ordinal = $derived(formatOrdinalDay(dayNum));
 
 	// Compose the day strip: prev arrow, Today, and next 4 days of the week.
 	interface StripItem { key: string; label: string; date: string; isActive: boolean; }
@@ -48,7 +41,7 @@
 		for (let i = 1; i <= 4; i++) {
 			const iso = addDays(todayISO, i);
 			const d = new Date(iso + 'T12:00:00Z');
-			const label = new Intl.DateTimeFormat('en-GB', { weekday: 'short', timeZone: 'Europe/London' }).format(d);
+			const label = WEEKDAY_SHORT.format(d);
 			items.push({ key: iso, label, date: iso, isActive: activeDate === iso });
 		}
 		return items;
