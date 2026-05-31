@@ -1,3 +1,9 @@
+## 2026-05-31: Search — remove 30-day coverage cap + exact-match relevance boost
+**PR**: TBD | **Files**: `src/app/api/films/search/route.ts`, `scripts/verify-search-coverage.ts`
+- **Coverage fix**: the films search dropped its hard `ns.next_dt < now() + 30 days` upper bound. Verified against prod: **256 of 1,082 upcoming films (24%) had their earliest screening >30 days out and were unsearchable** — repertory titles, retrospectives announced early, festival films. They are now findable; the recency boost keeps soon-showing films at the top.
+- **Relevance**: added an exact-title boost (`0.20`, dominates the ~0.03 RRF ceiling so e.g. "amelie" → Amélie #1) and a prefix-title boost (`0.08`). Verified: `D.E.B.S.`, `Possession`, `Ghatak Was Here` now return rank #1 for an exact query (all returned 0 results before).
+- The `screenings` result sub-query keeps its near-term window (intentional: a film is findable forever-out and links to its detail page, which lists every screening; individual booking rows stay near-term). No response-contract change; code-reviewed clean.
+
 ## 2026-05-30: Scraper coverage + freshness pass — end of June 2026
 **PR**: TBD | **Files**: `src/scrapers/pipeline.ts`, `src/scrapers/chains/everyman.ts`, `src/scrapers/cinemas/bfi.ts`, `src/scrapers/cinemas/olympic.ts`, `src/scrapers/cinemas/david-lean.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`
 - **42P10 upsert keystone**: `(cinema_id, source_id)` upsert lacked `targetWhere source_id IS NOT NULL` for its partial index → Postgres silently dropped every fresh INSERT across all source_id scrapers (Everyman/Curzon/Picturehouse), freezing forward coverage. Re-applied the lost 2026-05-27 fix.
