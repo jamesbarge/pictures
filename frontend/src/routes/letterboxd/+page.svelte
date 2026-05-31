@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { apiPost } from '$lib/api/client';
+	import { getPosterImageAttributes } from '$lib/utils';
 	import { filmStatuses } from '$lib/stores/film-status.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
@@ -192,10 +193,21 @@
 							class="border-2 border-[var(--color-border)] p-4 flex gap-4 hover:border-[var(--color-foreground)] transition-colors"
 						>
 							{#if film.posterUrl}
+								{@const posterImage = getPosterImageAttributes(film.posterUrl, {
+									baseSize: 'w154',
+									srcSetSizes: ['w92', 'w154'],
+									sizes: '64px'
+								})}
 								<img
-									src={film.posterUrl}
+									src={posterImage?.src ?? film.posterUrl}
+									srcset={posterImage?.srcset}
+									sizes={posterImage?.sizes}
 									alt={film.title}
 									class="w-16 h-24 object-cover flex-shrink-0"
+									width="64"
+									height="96"
+									loading="lazy"
+									decoding="async"
 								/>
 							{:else}
 								<div

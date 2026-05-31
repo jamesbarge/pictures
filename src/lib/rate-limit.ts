@@ -154,13 +154,29 @@ export async function checkRateLimit(
   }
 
   const rl = getOrCreateRatelimiter(config);
-  const { success, remaining, reset } = await rl.limit(identifier);
 
-  return {
-    success,
-    remaining,
-    resetIn: Math.max(0, Math.ceil((reset - Date.now()) / 1000)),
-  };
+  // Fail OPEN if the backing store is unavailable. A rate limiter must never
+  // take down the whole API: if Upstash is unreachable, rate-limited, or over
+  // quota, `rl.limit()` throws — without this catch that throw propagates to
+  // every route's handler as a 500. (Incident 2026-05-30: Upstash hit its
+  // 500k request quota and EVERY DB-backed route 500'd here, before the query
+  // even ran.) On error we fall back to the per-instance in-memory limiter so
+  // basic protection survives, and never crash the request path.
+  try {
+    const { success, remaining, reset } = await rl.limit(identifier);
+
+    return {
+      success,
+      remaining,
+      resetIn: Math.max(0, Math.ceil((reset - Date.now()) / 1000)),
+    };
+  } catch (err) {
+    console.warn(
+      "[rate-limit] backing store unavailable, failing open via in-memory:",
+      (err as Error)?.message
+    );
+    return checkRateLimitInMemory(identifier, config);
+  }
 }
 
 /**

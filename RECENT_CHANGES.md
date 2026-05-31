@@ -6,6 +6,23 @@
 - Data: full/targeted re-scrapes (no data loss), 8-pass enrichment (poster −54, TMDB −17, synopsis −17, runtime −36), orphan cinema cleanup (nickel/olympic). 0 suspicious times remain.
 - Coverage: chains + most independents now ≥ Jun 30; a handful (Peckhamplex, Electric, Barbican, ICA, etc.) sit below only because those venues haven't published end-of-June dates yet (venue-publication limit, confirmed by zero-add re-scrapes).
 
+## 2026-05-30: Frontend performance campaign — 20 PRs shipped (−388 KB fonts + more)
+**PRs**: #581, #585–#603 | **Files**: `frontend/src/app.html`, `frontend/src/app.css`, `frontend/vite.config.ts`, `frontend/static/fonts/`, multiple `frontend/src/{routes,lib}/…`, per-PR detail in `changelogs/2026-05-30-*.md`
+- **Fonts −388 KB (−42%)**: deleted never-requested `InterVariable-Italic.woff2`; repointed the misdirected 352 KB Inter preload → 38 KB Cormorant-Italic (the face actually painted above the fold).
+- **4 routes prerendered** (`/about`, `/privacy`, `/terms`, `/seasons`) → static edge assets (TTFB); `manualChunks` vendor split (bits-ui).
+- **Images**: `width`/`height`/`fetchpriority`/`decoding`/`loading`/`srcset` across FilmCard, FilmSimilarRail, letterboxd, palette rows (CLS + LCP + ~90% lighter palette posters).
+- **INP/runtime**: hoisted per-row/per-call `Intl.DateTimeFormat`; memoized filter cluster-membership + radius passes; `requestIdleCallback`-gated PostHog/web-vitals init.
+- **SSR payloads** trimmed on `/cinemas` + `/directors`; removed ~2,400 lines of dead components (orphaned FilterBar/SearchInput tree + 4 standalone unused).
+- All behavior-preserving, CI-gated, and live-smoke-checked after each merge (200/200, zero regressions). Open for review: #582/#583 (lazy-mount), #604 (font cache header). Full audit: `Obsidian/Pictures/Audits/2026-05-30-frontend-perf-campaign.md`.
+
+---
+
+## 2026-05-30: P0 — rate limiter fails open (prod outage fix)
+**PR**: TBD | **Files**: `src/lib/rate-limit.ts`, `changelogs/2026-05-30-rate-limit-fail-open.md` (new)
+- Production was fully down (every API route + SSR returning 500 / `FUNCTION_INVOCATION_FAILED`). Root cause: Upstash Redis hit its 500k-request quota; `checkRateLimit()` (the first call in every route) threw the `max requests limit exceeded` error instead of failing open, 500'ing all DB-backed endpoints before the query even ran.
+- Fix: `checkRateLimit` now catches backing-store errors and falls back to the existing in-memory limiter — a rate limiter can no longer take down the whole API.
+- Also corrected during triage: prod `DATABASE_URL` env var had a trailing literal `\n` (corrupted db name `postgres\n`, `3D000`) — a latent bug that would have broken queries once past the limiter.
+
 ---
 
 ## 2026-05-26: BST timezone fix — bfi.ts, rich-mix.ts, rich-mix-v2.ts off by +1h

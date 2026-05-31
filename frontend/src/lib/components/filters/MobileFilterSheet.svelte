@@ -5,8 +5,7 @@
 	import MobileDatePicker from './MobileDatePicker.svelte';
 	import {
 		AREA_CLUSTERS,
-		isAreaActive as _isAreaActive,
-		toggleArea as _toggleArea
+		cinemasInCluster
 	} from './area-clusters';
 
 	interface SheetCinema {
@@ -42,11 +41,29 @@
 	// Area cluster definitions + helpers live in `./area-clusters` and are
 	// shared with `DesktopFilterSidebar` so the two surfaces can't disagree
 	// about which neighbourhoods belong to which chip.
+	//
+	// Cluster-to-cinema-ID membership is a pure function of `cinemas`, so
+	// precompute it once per `cinemas` change instead of rescanning all cinemas
+	// (lowercasing each area) on every chip toggle. Only the active check below
+	// legitimately depends on the current `cinemaIds` selection.
+	const clusterMembership = $derived.by(() => {
+		const map = new Map<string, string[]>();
+		for (const cluster of AREA_CLUSTERS) {
+			map.set(cluster.label, cinemasInCluster(cluster.label, cinemas));
+		}
+		return map;
+	});
 	function isAreaActive(label: string) {
-		return _isAreaActive(label, cinemas, filters.cinemaIds);
+		const ids = clusterMembership.get(label) ?? [];
+		return ids.length > 0 && ids.every((id) => filters.cinemaIds.includes(id));
 	}
 	function toggleArea(label: string) {
-		filters.cinemaIds = _toggleArea(label, cinemas, filters.cinemaIds);
+		const ids = clusterMembership.get(label) ?? [];
+		if (ids.length === 0) return;
+		const allActive = ids.every((id) => filters.cinemaIds.includes(id));
+		filters.cinemaIds = allActive
+			? filters.cinemaIds.filter((id) => !ids.includes(id))
+			: Array.from(new Set([...filters.cinemaIds, ...ids]));
 	}
 
 	// "Within 2 miles" — browser geolocation required.

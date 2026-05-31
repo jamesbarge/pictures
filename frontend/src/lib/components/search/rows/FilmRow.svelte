@@ -1,6 +1,7 @@
 <script lang="ts">
 	/** A single film row in the palette result list. */
 	import type { FilmResult } from '$lib/search/result-types';
+	import { getPosterImageAttributes } from '$lib/utils';
 
 	interface Props {
 		film: FilmResult;
@@ -21,8 +22,15 @@
 	data-result-row
 >
 	{#if film.posterUrl}
+		{@const posterImage = getPosterImageAttributes(film.posterUrl, {
+			baseSize: 'w92',
+			srcSetSizes: ['w92', 'w154'],
+			sizes: '36px'
+		})}
 		<img
-			src={film.posterUrl}
+			src={posterImage?.src ?? film.posterUrl}
+			srcset={posterImage?.srcset}
+			sizes={posterImage?.sizes}
 			alt=""
 			class="poster"
 			width="36"

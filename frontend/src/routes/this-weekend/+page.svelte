@@ -52,7 +52,7 @@
 		{#if dayGroups.length === 0}
 			<EmptyState title="No weekend screenings yet" description="Check back closer to the weekend." />
 		{:else}
-			{#each dayGroups as { date, films } (date)}
+			{#each dayGroups as { date, films }, dayIndex (date)}
 				<div class="day-section mb-8">
 					<div class="flex items-baseline gap-3 mb-4 pb-1.5 border-b-2 border-[var(--color-border)]">
 						<h2 class="font-display text-sm font-bold tracking-wide-swiss uppercase">
@@ -64,7 +64,7 @@
 					</div>
 
 					<div class="film-grid">
-						{#each films as { film, screenings } (film.id)}
+						{#each films as { film, screenings }, i (film.id)}
 							<FilmCard
 								film={{
 									id: film.id,
@@ -77,6 +77,7 @@
 									tmdbId: null
 								}}
 								screenings={screenings.map(toCardScreening)}
+								priority={dayIndex === 0 && i === 0}
 							/>
 						{/each}
 					</div>
@@ -93,6 +94,8 @@
 		column-gap: 1rem;
 		row-gap: 0;
 		grid-auto-rows: auto;
+		content-visibility: auto;
+		contain-intrinsic-size: auto 900px;
 	}
 
 	@media (min-width: 768px) {
