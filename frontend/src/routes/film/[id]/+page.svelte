@@ -8,7 +8,6 @@
 	import { today as todayStore } from '$lib/stores/today.svelte';
 	import {
 		formatTime,
-		formatScreeningDate,
 		toLondonDateStr,
 		groupBy,
 		getPosterImageAttributes,
@@ -102,7 +101,11 @@
 	// Day groups for the day strip
 	const groupedByDate = $derived.by(() => {
 		const grouped = groupBy(futureScreenings, (s) => toLondonDateStr(s.datetime));
-		return Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b));
+		// `futureScreenings` is already sorted ascending by epoch-ms and
+		// `toLondonDateStr` is monotonic in ms, so `groupBy` inserts day keys in
+		// chronological order — which JS preserves for string keys. The previous
+		// `.sort(localeCompare)` was therefore a no-op over YYYY-MM-DD keys.
+		return Object.entries(grouped);
 	});
 
 	let selectedDay = $state<string | null>(null);

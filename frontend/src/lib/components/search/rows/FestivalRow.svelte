@@ -1,3 +1,14 @@
+<script module lang="ts">
+	// Hoisted to module scope: built once per module load and shared across
+	// every FestivalRow instead of reconstructed per recompute. The config is
+	// constant so the formatted output is byte-identical to the per-call builder.
+	const RANGE_FORMATTER = new Intl.DateTimeFormat('en-GB', {
+		month: 'short',
+		day: 'numeric',
+		timeZone: 'Europe/London'
+	});
+</script>
+
 <script lang="ts">
 	import type { FestivalResult } from '$lib/search/result-types';
 
@@ -19,12 +30,7 @@
 	);
 
 	const dateRange = $derived.by(() => {
-		const fmt = new Intl.DateTimeFormat('en-GB', {
-			month: 'short',
-			day: 'numeric',
-			timeZone: 'Europe/London'
-		});
-		return `${fmt.format(new Date(festival.startDate))} – ${fmt.format(new Date(festival.endDate))}`;
+		return `${RANGE_FORMATTER.format(new Date(festival.startDate))} – ${RANGE_FORMATTER.format(new Date(festival.endDate))}`;
 	});
 </script>
 

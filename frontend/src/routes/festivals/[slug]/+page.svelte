@@ -2,7 +2,6 @@
 	import FilmCard from '$lib/components/calendar/FilmCard.svelte';
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
 	import FollowButton from '$lib/components/festivals/FollowButton.svelte';
-	import type { ScreeningWithDetails } from '$lib/types';
 	import { groupBy } from '$lib/utils';
 
 	let { data } = $props();
@@ -10,10 +9,15 @@
 	const screenings = $derived(data.screenings ?? []);
 
 	const filmGroups = $derived.by(() => {
-		const grouped = groupBy(screenings, (s) => s.film?.id ?? 'unknown');
+		type DecoratedScreening = (typeof screenings)[number] & { _ms: number };
+		const decorated = screenings.map((s) => {
+			(s as DecoratedScreening)._ms = new Date(s.datetime).getTime();
+			return s as DecoratedScreening;
+		});
+		const grouped = groupBy(decorated, (s) => s.film?.id ?? 'unknown');
 		return Object.values(grouped).map((ss) => ({
 			film: ss[0].film,
-			screenings: ss.sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime())
+			screenings: ss.sort((a, b) => a._ms - b._ms)
 		}));
 	});
 </script>

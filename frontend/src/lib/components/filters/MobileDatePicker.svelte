@@ -16,6 +16,7 @@
 	let viewYear = $state(initial.getUTCFullYear());
 
 	const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+	const WEEKDAYS = ['Mo','Tu','We','Th','Fr','Sa','Su'];
 
 	function prev() { if (viewMonth === 0) { viewMonth = 11; viewYear--; } else viewMonth--; }
 	function next() { if (viewMonth === 11) { viewMonth = 0; viewYear++; } else viewMonth++; }
@@ -85,7 +86,7 @@
 		</div>
 
 		<div class="weekdays">
-			{#each ['Mo','Tu','We','Th','Fr','Sa','Su'] as d, i (d + i)}
+			{#each WEEKDAYS as d, i (d + i)}
 				<div class="wk" class:weekend={i >= 5}>{d}</div>
 			{/each}
 		</div>

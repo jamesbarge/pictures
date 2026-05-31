@@ -51,27 +51,7 @@
 
 <JsonLd data={organizationSchema()} />
 
-{#if clerkEnabled}
-	<ClerkProvider publishableKey={PUBLIC_CLERK_PUBLISHABLE_KEY}>
-		<PostHogProvider />
-		<SyncProvider />
-		<GlobalCmdkBinding />
-		{#if CommandPalette}
-			<CommandPalette />
-		{/if}
-		<a href="#main-content" class="skip-link">Skip to content</a>
-
-		<div class="min-h-dvh flex flex-col">
-			<Header cinemas={data?.cinemas ?? []} />
-			<main id="main-content" class="flex-1" tabindex="-1">
-				{@render children()}
-			</main>
-			<Footer />
-		</div>
-	</ClerkProvider>
-{:else}
-	<PostHogProvider />
-	<GlobalCmdkBinding />
+{#snippet shell()}
 	<a href="#main-content" class="skip-link">Skip to content</a>
 
 	<div class="min-h-dvh flex flex-col">
@@ -81,6 +61,22 @@
 		</main>
 		<Footer />
 	</div>
+{/snippet}
+
+{#if clerkEnabled}
+	<ClerkProvider publishableKey={PUBLIC_CLERK_PUBLISHABLE_KEY}>
+		<PostHogProvider />
+		<SyncProvider />
+		<GlobalCmdkBinding />
+		{#if CommandPalette}
+			<CommandPalette />
+		{/if}
+		{@render shell()}
+	</ClerkProvider>
+{:else}
+	<PostHogProvider />
+	<GlobalCmdkBinding />
+	{@render shell()}
 {/if}
 
 <style>

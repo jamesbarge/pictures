@@ -4,6 +4,17 @@ import type { ParsedIntent } from '$lib/search/parse-query';
 
 const STORAGE_KEY = 'pictures-filters';
 
+// Cached London-tz YYYY-MM-DD formatter reused across applyIntent calls.
+// Instantiating a fresh Intl.DateTimeFormat per call dominates the cost on
+// the cmd+k keystroke path; allocate once at module scope (mirrors the
+// DATE_LONDON_ISO hoist in utils.ts). Stateless — identical output across DST.
+const LONDON_YMD = new Intl.DateTimeFormat('en-CA', {
+	timeZone: 'Europe/London',
+	year: 'numeric',
+	month: '2-digit',
+	day: '2-digit'
+});
+
 interface PersistedFilters {
 	cinemaIds: string[];
 	formats: string[];
@@ -268,22 +279,8 @@ export const filters = {
 			// ParsedIntent.dateFrom/dateTo are JS Dates representing the
 			// London-midnight instant; the filters store uses YYYY-MM-DD
 			// strings in London tz. Round-trip via Intl so DST stays sane.
-			dateFrom = parsed.dateFrom
-				? new Intl.DateTimeFormat('en-CA', {
-						timeZone: 'Europe/London',
-						year: 'numeric',
-						month: '2-digit',
-						day: '2-digit'
-					}).format(parsed.dateFrom)
-				: null;
-			dateTo = parsed.dateTo
-				? new Intl.DateTimeFormat('en-CA', {
-						timeZone: 'Europe/London',
-						year: 'numeric',
-						month: '2-digit',
-						day: '2-digit'
-					}).format(parsed.dateTo)
-				: null;
+			dateFrom = parsed.dateFrom ? LONDON_YMD.format(parsed.dateFrom) : null;
+			dateTo = parsed.dateTo ? LONDON_YMD.format(parsed.dateTo) : null;
 		}
 		if (parsed.timeFrom !== undefined) timeFrom = parsed.timeFrom;
 		if (parsed.timeTo !== undefined) timeTo = parsed.timeTo;

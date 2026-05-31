@@ -59,10 +59,8 @@ export const load: PageServerLoad = async ({ fetch, setHeaders }) => {
 				id: s.film.id,
 				title: s.film.title,
 				year: s.film.year,
-				director: s.film.directors?.[0] ?? null,
 				runtime: s.film.runtime,
-				posterUrl: s.film.posterUrl,
-				isRepertory: s.film.isRepertory
+				posterUrl: s.film.posterUrl
 			},
 			cinema: {
 				id: s.cinema.id,

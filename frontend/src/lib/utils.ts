@@ -49,7 +49,7 @@ export function toLondonDateStr(date: Date | string): string {
 }
 
 export function formatScreeningDate(date: Date | string): string {
-	const d = typeof date === 'string' ? new Date(date + (typeof date === 'string' && !date.includes('T') ? 'T00:00:00' : '')) : date;
+	const d = typeof date === 'string' ? new Date(date + (!date.includes('T') ? 'T00:00:00' : '')) : date;
 	const todayStr = toLondonDateStr(new Date());
 	const targetStr = typeof date === 'string' && !date.includes('T') ? date : toLondonDateStr(d);
 
