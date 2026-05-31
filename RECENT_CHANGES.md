@@ -1,3 +1,11 @@
+## 2026-05-30: Scraper coverage + freshness pass — end of June 2026
+**PR**: TBD | **Files**: `src/scrapers/pipeline.ts`, `src/scrapers/chains/everyman.ts`, `src/scrapers/cinemas/bfi.ts`, `src/scrapers/cinemas/olympic.ts`, `src/scrapers/cinemas/david-lean.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`
+- **42P10 upsert keystone**: `(cinema_id, source_id)` upsert lacked `targetWhere source_id IS NOT NULL` for its partial index → Postgres silently dropped every fresh INSERT across all source_id scrapers (Everyman/Curzon/Picturehouse), freezing forward coverage. Re-applied the lost 2026-05-27 fix.
+- **BFI fixed with stealth Playwright, no paid proxy**: single wide date-range search per venue (`page_size=2000` → 1 navigation/venue) reading the inline AudienceView `searchResults` array. bfi-southbank → Jul 31, bfi-imax 2 → 94 → Jul 19. PDF importer kept as fallback.
+- **Everyman window 30→45 days** (end-of-month no longer clipped → chain reaches Jul 12); **olympic** canonical-id fix (dup cinema); **david-lean** year-rollover fix (phantom 2027 dates).
+- Data: full/targeted re-scrapes (no data loss), 8-pass enrichment (poster −54, TMDB −17, synopsis −17, runtime −36), orphan cinema cleanup (nickel/olympic). 0 suspicious times remain.
+- Coverage: chains + most independents now ≥ Jun 30; a handful (Peckhamplex, Electric, Barbican, ICA, etc.) sit below only because those venues haven't published end-of-June dates yet (venue-publication limit, confirmed by zero-add re-scrapes).
+
 ## 2026-05-30: Frontend performance campaign — 20 PRs shipped (−388 KB fonts + more)
 **PRs**: #581, #585–#603 | **Files**: `frontend/src/app.html`, `frontend/src/app.css`, `frontend/vite.config.ts`, `frontend/static/fonts/`, multiple `frontend/src/{routes,lib}/…`, per-PR detail in `changelogs/2026-05-30-*.md`
 - **Fonts −388 KB (−42%)**: deleted never-requested `InterVariable-Italic.woff2`; repointed the misdirected 352 KB Inter preload → 38 KB Cormorant-Italic (the face actually painted above the fold).

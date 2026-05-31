@@ -622,6 +622,14 @@ async function insertScreening(
   if (screening.sourceId) {
     await db.insert(screeningsTable).values(baseValues).onConflictDoUpdate({
       target: [screeningsTable.cinemaId, screeningsTable.sourceId],
+      // The (cinema_id, source_id) unique index is PARTIAL (WHERE source_id IS
+      // NOT NULL). Postgres can only infer it as an ON CONFLICT arbiter when the
+      // statement carries the matching predicate; without targetWhere it raises
+      // 42P10 ("no unique or exclusion constraint matching the ON CONFLICT
+      // specification") and every fresh INSERT is lost while existing rows still
+      // UPDATE via Layer 0 — silently capping forward coverage. See
+      // idx_screenings_cinema_source.
+      targetWhere: sql`${screeningsTable.sourceId} IS NOT NULL`,
       set: {
         filmId,
         datetime: screening.datetime,
