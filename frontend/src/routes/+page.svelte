@@ -25,6 +25,16 @@
 	const dayHeaderWeekdayFmt = new Intl.DateTimeFormat('en-GB', { weekday: 'long', timeZone: 'Europe/London' });
 	const dayHeaderDayNumFmt = new Intl.DateTimeFormat('en-GB', { day: 'numeric', timeZone: 'Europe/London' });
 
+	// `tomorrowIso` depends only on `todayStore.value`, so compute it once per
+	// `today` change instead of inside the {#snippet dayHeader} IIFE that re-ran
+	// for every visible day header on every filter-change re-render. Output is
+	// byte-identical — same UTC-noon anchor + ISO-date slice as before.
+	const tomorrowIso = $derived.by(() => {
+		const t = new Date(todayStore.value + 'T12:00:00Z');
+		t.setUTCDate(t.getUTCDate() + 1);
+		return t.toISOString().split('T')[0];
+	});
+
 	// Sidebar collapsed state — persist across sessions.
 	const SIDEBAR_STORAGE_KEY = 'pictures-sidebar-collapsed';
 	function loadCollapsed(): boolean {
@@ -42,6 +52,7 @@
 		name: string;
 		shortName: string | null;
 		address: { area: string } | null;
+		coordinates: { lat: number; lng: number } | null;
 	}>);
 
 	let mobileFilterOpen = $state(false);
@@ -213,7 +224,6 @@
 	{@const weekday = dayHeaderWeekdayFmt.format(d)}
 	{@const dayNum = Number(dayHeaderDayNumFmt.format(d))}
 	{@const todayIso = todayStore.value}
-	{@const tomorrowIso = (() => { const t = new Date(todayIso + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() + 1); return t.toISOString().split('T')[0]; })()}
 	{@const relative = iso === todayIso ? 'Today' : iso === tomorrowIso ? 'Tomorrow' : null}
 	<h2 class="day-header">
 		{#if relative}<span class="day-header-relative">{relative}</span><span class="day-header-sep"> · </span>{/if}<span class="day-header-weekday">{weekday}</span><span class="italic-comma">,</span> <span class="day-header-ordinal">the {formatOrdinalDay(dayNum)}</span>
