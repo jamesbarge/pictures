@@ -71,11 +71,12 @@
 
 		{#each urgencyOrder as urgency (urgency)}
 			{@const groupScreenings = groups[urgency]}
+			{@const urgencyCss = urgencyClass(urgency)}
 			{#if groupScreenings.length > 0}
 				<div class="urgency-group">
 					<!-- Group header -->
 					<div class="group-header">
-						<h2 class="group-label {urgencyClass(urgency)}">
+						<h2 class="group-label {urgencyCss}">
 							{getUrgencyLabel(urgency)}
 						</h2>
 						<span class="group-count">({groupScreenings.length})</span>
@@ -113,7 +114,7 @@
 								<!-- Content -->
 								<div class="card-content">
 									<!-- Leave-by badge -->
-									<div class="leave-badge {urgencyClass(urgency)}">
+									<div class="leave-badge {urgencyCss}">
 										<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
 											<circle cx="12" cy="12" r="10" />
 											<polyline points="12 6 12 12 16 14" />

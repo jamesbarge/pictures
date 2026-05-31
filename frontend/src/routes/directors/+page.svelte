@@ -10,11 +10,11 @@
 	let { data }: { data: { directors: DirectorEntry[] } } = $props();
 	let search = $state('');
 
-	const filtered = $derived(
-		search
-			? data.directors.filter((d) => d.name.toLowerCase().includes(search.toLowerCase()))
-			: data.directors
-	);
+	const filtered = $derived.by(() => {
+		if (!search) return data.directors;
+		const q = search.toLowerCase();
+		return data.directors.filter((d) => d.name.toLowerCase().includes(q));
+	});
 </script>
 
 <svelte:head>

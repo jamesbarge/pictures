@@ -40,6 +40,11 @@
 		{ href: '/directors', label: 'Directors', desktop: false, mobile: true }
 	];
 
+	// NAV_ITEMS is static and never mutated, so the per-surface filters are
+	// computed once here rather than re-run inline on every header re-render.
+	const DESKTOP_NAV = NAV_ITEMS.filter((n) => n.desktop);
+	const MOBILE_NAV = NAV_ITEMS.filter((n) => n.mobile);
+
 	function isActive(href: string, matchPrefix?: boolean): boolean {
 		return matchPrefix ? page.url.pathname.startsWith(href) : page.url.pathname === href;
 	}
@@ -82,7 +87,7 @@
 
 			<div class="brand-right">
 				<nav class="nav-links" aria-label="Main">
-					{#each NAV_ITEMS.filter((n) => n.desktop) as item (item.href)}
+					{#each DESKTOP_NAV as item (item.href)}
 						<a
 							href={item.href}
 							class="nav-link"
@@ -125,7 +130,7 @@
 		<!-- Mobile nav menu -->
 		{#if mobileMenuOpen}
 			<nav class="mobile-nav" aria-label="Mobile navigation">
-				{#each NAV_ITEMS.filter((n) => n.mobile) as item (item.href)}
+				{#each MOBILE_NAV as item (item.href)}
 					<a
 						href={item.href}
 						class="mobile-nav-link"
