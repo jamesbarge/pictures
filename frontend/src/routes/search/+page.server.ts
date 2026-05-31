@@ -40,7 +40,6 @@ export const load: PageServerLoad = async ({ url, fetch, setHeaders }) => {
 		cinemas: data.cinemas.map((c) => ({
 			id: c.id,
 			name: c.name,
-			shortName: c.shortName,
 			area: c.address
 		})),
 		query: q
