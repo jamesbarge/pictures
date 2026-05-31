@@ -168,7 +168,3 @@ export function flattenResults(results: PaletteResults): ResultRow[] {
   }
   return flat;
 }
-
-export function totalResults(results: PaletteResults): number {
-  return flattenResults(results).length;
-}
