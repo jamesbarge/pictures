@@ -25,6 +25,7 @@
 	});
 
 	const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+	const WEEKDAYS = ['Mo','Tu','We','Th','Fr','Sa','Su'];
 
 	// `$effect` re-syncs `viewMonth`/`viewYear` from `selected` whenever the
 	// parent prop changes — intentional: if the parent jumps the selected
@@ -93,7 +94,7 @@
 	</div>
 
 	<div class="cal-weekdays">
-		{#each ['Mo','Tu','We','Th','Fr','Sa','Su'] as d, i (d + i)}
+		{#each WEEKDAYS as d, i (d + i)}
 			<div class="cal-weekday" class:is-weekend={i >= 5}>{d}</div>
 		{/each}
 	</div>
