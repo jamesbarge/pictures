@@ -134,7 +134,11 @@ export class JW3Scraper implements CinemaScraper {
   }
 
   async healthCheck(): Promise<boolean> {
+    // The Spektrix API 405s on HEAD (verified), so the default HEAD probe
+    // would report a false negative. Force GET — `checkHealth` spreads these
+    // options after its own `method: "HEAD"`, so `method` here wins.
     return checkHealth(`${this.config.apiBase}/events`, {
+      method: "GET",
       headers: { "User-Agent": BOT_USER_AGENT },
     });
   }
