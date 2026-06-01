@@ -1,0 +1,464 @@
+[
+ {
+  "prNum": 100,
+  "slug": "home-dayheader-formatters-and-types",
+  "area": "perf",
+  "title": "Homepage day-header: hoist Intl formatters + tomorrowIso, type coordinates",
+  "files": [
+   "frontend/src/routes/+page.svelte"
+  ],
+  "itemIds": [
+   "home-dayheader-formatters-and-types"
+  ],
+  "isDelete": false,
+  "detail": "  [1] Homepage day-header: hoist Intl formatters + tomorrowIso, type coordinates\n      FILES: frontend/src/routes/+page.svelte\n      Three findings on this one file (cluster into one PR): (1) The `dayHeader` snippet (lines 200-201) constructs two `new Intl.DateTimeFormat('en-GB', {...timeZone:'Europe/London'})` inline on every invocation (rendered up to MAX_DAYS_VISIBLE=7 times per render and on every filter change). Hoist both to module-scope consts (WEEKDAY_FMT with {weekday:'long'}, DAY_NUM_FMT with {day:'numeric'}) and call `.format(d)`. (2) Line 203 runs an IIFE recomputing `tomorrowIso` per day-header render even though it depends only on the constant `todayStore.value`; replace with a single component-scope `const tomorrowIso = $derived(...)` keyed off todayStore.value and reference it in the snippet. (3) The `cinemas` $derived cast (lines 34-39) omits `coordinates`, but DesktopFilterSidebar (lines 50-51) and MobileFilterSheet (lines 58-59) read `c.coordinates`/`c.coordinates!` for haversine radius filtering; add `coordinates: { lat: number; lng: number } | null` to the cast type so the contract is checked at the boundary. All three are behavior-preserving; output byte-identical."
+ },
+ {
+  "prNum": 101,
+  "slug": "parse-query-hotpath-hoists",
+  "area": "perf",
+  "title": "parse-query: memoize phrase Sets/maxLen + hoist constant arrays off keystroke hot path",
+  "files": [
+   "frontend/src/lib/search/parse-query.ts"
+  ],
+  "itemIds": [
+   "parse-query-hotpath-hoists"
+  ],
+  "isDelete": false,
+  "detail": "  [1] parse-query: memoize phrase Sets/maxLen + hoist constant arrays off keystroke hot path\n      FILES: frontend/src/lib/search/parse-query.ts\n      Four findings on this one file (cluster into one PR). parseQuery runs via a $derived on every cmd+k keystroke (palette.svelte.ts:84), and calls scanPhrases ~9x per keystroke over constant module-level tables. (1) scanPhrases (line 196) does `new Set(phrases)` inside the len loop on every call \u2014 memoize per phrase-array (module-level WeakMap<string[],Set<string>> or precompute a Set alongside each *_BY_LENGTH table). (2) Same function line 192 recomputes `Math.max(0, ...Object.keys(phrasesByLength).map(Number))` per call over fixed data \u2014 fold maxLen into the same per-table memoization. (3) Line 377 builds `Object.keys(DAY_NAMES).map((d) => `next ${d}`)` (14-element array) inline on every parseQuery call \u2014 hoist to a module-level `const NEXT_DAY_PHRASES_BY_LENGTH = { 2: ... }`. (4) applyNextDay (line 277) and applyDayThisWeek (line 292) each allocate an identical `[\"SUN\",\"MON\",\"TUE\",\"WED\",\"THU\",\"FRI\",\"SAT\"]` literal \u2014 lift to a single module-level `const WEEKDAY_LABELS` and index in both. All produce byte-identical parse output (pure constant data)."
+ },
+ {
+  "prNum": 102,
+  "slug": "daymasthead-ordinals-and-formatters",
+  "area": "perf",
+  "title": "DayMasthead: reuse formatOrdinalDay helper + hoist three Intl formatters (one in a loop)",
+  "files": [
+   "frontend/src/lib/components/calendar/DayMasthead.svelte"
+  ],
+  "itemIds": [
+   "daymasthead-ordinals-and-formatters"
+  ],
+  "isDelete": false,
+  "detail": "  [1] DayMasthead: reuse formatOrdinalDay helper + hoist three Intl formatters (one in a loop)\n      FILES: frontend/src/lib/components/calendar/DayMasthead.svelte\n      Two findings on this one file (cluster into one PR). (1) Lines 17-25 declare a local 31-entry `const ORDINALS` and line 33 derives `ORDINALS[dayNum] ?? `${dayNum}th``. `$lib/utils` already exports `formatOrdinalDay(dayNum)` (utils.ts:195, backed by ORDINAL_DAYS with the identical `?? `${n}th`` fallback, already used by the homepage day-header). Import `formatOrdinalDay` and replace with `const ordinal = $derived(formatOrdinalDay(dayNum))`, deleting the local ORDINALS record. (2) Three Intl.DateTimeFormat are constructed on every recompute: `weekday` derived (line 28, {weekday:'long'}), `dayNum` derived (line 31, {day:'numeric'}), and one inside stripItems' $derived.by loop (line 51, {weekday:'short'}) which allocates 4 per recompute. Hoist all three to module-scope consts (WEEKDAY_LONG, DAY_NUM, WEEKDAY_SHORT) matching the utils.ts:5-21 cached-formatter pattern. Behavior-preserving; same locale/options."
+ },
+ {
+  "prNum": 103,
+  "slug": "breathinggrid-rect-per-frame",
+  "area": "perf",
+  "title": "BreathingGrid: read getBoundingClientRect once per frame instead of per cell",
+  "files": [
+   "frontend/src/lib/components/pretext/BreathingGrid.svelte"
+  ],
+  "itemIds": [
+   "breathinggrid-rect-per-frame"
+  ],
+  "isDelete": false,
+  "detail": "  [1] BreathingGrid: read getBoundingClientRect once per frame instead of per cell\n      FILES: frontend/src/lib/components/pretext/BreathingGrid.svelte\n      getCharScale is invoked once per character cell in `{#each chars as cell}` (line 106). When the pointer is over the header (`mx > -500`), each call performs `containerEl.getBoundingClientRect()` (line 41) \u2014 a layout-forcing read \u2014 so with ~14 cells at 60fps that is ~14 forced reflows per frame during hover, all returning the identical rect for the frame. Read the container rect once per frame when mouse-active (compute it before the loop / pass it into getCharScale) and reuse for all cells. All cells in a single synchronous render observe the same layout so scale values are byte-identical; cuts forced-reflow reads from O(cells) to O(1) per frame on the always-mounted header logo animation."
+ },
+ {
+  "prNum": 104,
+  "slug": "cinemas-index-deadimport-and-search-hoist",
+  "area": "perf",
+  "title": "Cinemas index: drop dead groupBy import + hoist search.toLowerCase out of filter",
+  "files": [
+   "frontend/src/routes/cinemas/+page.svelte"
+  ],
+  "itemIds": [
+   "cinemas-index-deadimport-and-search-hoist"
+  ],
+  "isDelete": false,
+  "detail": "  [1] Cinemas index: drop dead groupBy import + hoist search.toLowerCase out of filter\n      FILES: frontend/src/routes/cinemas/+page.svelte\n      Two findings on this one file (cluster into one PR). (1) `import { groupBy } from '$lib/utils'` (line 3) is dead \u2014 the `grouped` $derived (lines 17-28) reimplements the grouping inline and never calls groupBy; grep confirms the symbol appears only on the import line. Remove the import. (2) In the `filtered` $derived (lines 8-15) `search.toLowerCase()` is recomputed twice per cinema (~118 redundant lowercasings per keystroke across ~59 cinemas). Compute `const q = search.toLowerCase();` once before the `.filter` and use `q` in both `c.name.toLowerCase().includes(q)` and `(c.address?.area.toLowerCase().includes(q) ?? false)`. Identical results."
+ },
+ {
+  "prNum": 105,
+  "slug": "film-detail-deadimport-and-sort",
+  "area": "perf",
+  "title": "Film detail page: drop dead formatScreeningDate import + remove redundant re-sort",
+  "files": [
+   "frontend/src/routes/film/[id]/+page.svelte"
+  ],
+  "itemIds": [
+   "film-detail-deadimport-and-sort"
+  ],
+  "isDelete": false,
+  "detail": "  [1] Film detail page: drop dead formatScreeningDate import + remove redundant re-sort\n      FILES: frontend/src/routes/film/[id]/+page.svelte\n      Two findings on this one file (cluster into one PR). (1) The named import `formatScreeningDate,` (line 11, inside the `$lib/utils` import block) is never referenced \u2014 the page builds day labels via its own helpers; grep shows the token appears only on the import line. Remove just that entry, keeping the other imports. (2) `groupedByDate` (lines 103-106) does `Object.entries(groupBy(futureScreenings, toLondonDateStr)).sort(([a],[b]) => a.localeCompare(b))`, but futureScreenings (lines 69-80) is already sorted ascending by epoch-ms; since toLondonDateStr is monotonic in ms and JS preserves string-key insertion order, entries are already chronological and the localeCompare sort is a provable no-op. Replace with `return Object.entries(grouped);`. Both behavior-preserving."
+ },
+ {
+  "prNum": 106,
+  "slug": "cinema-slug-server-trim-payload",
+  "area": "ssr",
+  "title": "Cinema detail server load: trim unused screening fields from SSR payload",
+  "files": [
+   "frontend/src/routes/cinemas/[slug]/+page.server.ts"
+  ],
+  "itemIds": [
+   "cinema-slug-server-trim-payload"
+  ],
+  "isDelete": false,
+  "detail": "  [1] Cinema detail server load: trim unused screening fields from SSR payload\n      FILES: frontend/src/routes/cinemas/[slug]/+page.server.ts\n      The load (lines 60-75) maps each screening to `{ id, datetime, format, bookingUrl, screen, film: { id, title, year, directors, runtime, posterUrl } }`, but the [slug]/+page.svelte only reads datetime, format, bookingUrl, film.id, film.title, film.year (the `.screen-count` CSS renders the unrelated `cinema.screens`, not `screening.screen`; grep confirms zero refs to screening `screen`, `film.directors`, `film.runtime`, `film.posterUrl` in the component). Drop `screen` plus `directors`/`runtime`/`posterUrl` from the per-screening map. Cinema pages list dozens-to-hundreds of screenings, so this removes real dead weight (directors string[] + posterUrl per screening) from the serialized __data/hydration payload with no rendered-output change. Distinct from the already-shipped search_text/calendar trims."
+ },
+ {
+  "prNum": 107,
+  "slug": "reachable-server-trim-payload",
+  "area": "ssr",
+  "title": "Reachable server load: drop unused director + isRepertory from screening payload",
+  "files": [
+   "frontend/src/routes/reachable/+page.server.ts"
+  ],
+  "itemIds": [
+   "reachable-server-trim-payload"
+  ],
+  "isDelete": false,
+  "detail": "  [1] Reachable server load: drop unused director + isRepertory from screening payload\n      FILES: frontend/src/routes/reachable/+page.server.ts\n      The load maps each screening's film with `director: s.film.directors?.[0] ?? null` (line 62) and `isRepertory: s.film.isRepertory` (line 65), but reachable/+page.svelte re-maps data.screenings reading only film.{id,title,year,runtime,posterUrl} (grep confirms zero `director`/`isRepertory` consumers in the component). Remove both fields from the returned mapping. Trims two dead fields per screening (up to ~200 screenings) from the serialized page data; rendered output is byte-identical."
+ },
+ {
+  "prNum": 108,
+  "slug": "search-server-trim-shortname",
+  "area": "ssr",
+  "title": "Search server load: drop unused shortName from cinema payload",
+  "files": [
+   "frontend/src/routes/search/+page.server.ts"
+  ],
+  "itemIds": [
+   "search-server-trim-shortname"
+  ],
+  "isDelete": false,
+  "detail": "  [1] Search server load: drop unused shortName from cinema payload\n      FILES: frontend/src/routes/search/+page.server.ts\n      load returns each cinema with `shortName: c.shortName` (line 43), but search/+page.svelte renders only `cinema.name` (line 86) and `cinema.area` (line 88) \u2014 grep finds no shortName usage. Drop the `shortName` field from the returned cinema objects. Shrinks the SSR payload with no change to rendered output."
+ },
+ {
+  "prNum": 109,
+  "slug": "home-server-drop-meta",
+  "area": "deadcode",
+  "title": "Homepage server load: drop unused meta payload",
+  "files": [
+   "frontend/src/routes/+page.server.ts"
+  ],
+  "itemIds": [
+   "home-server-drop-meta"
+  ],
+  "isDelete": false,
+  "detail": "  [1] Homepage server load: drop unused meta payload\n      FILES: frontend/src/routes/+page.server.ts\n      load returns `meta: { total, startDate, endDate }` (lines 73-77), but a repo-wide grep shows the only references to `.meta.total/startDate/endDate` are the lines building it here \u2014 +page.svelte and client components never read `data.meta`. (Note: film/[id]/+page.server.ts has its own separate `meta: data.meta` return, which is a different file and out of scope here.) Remove the `meta` key from the homepage returned object (optionally drop the now-unused `meta` field from the ScreeningsResponse interface if not needed for fetch typing). Trims dead data from the SSR/ISR payload on the LCP path with zero consumer."
+ },
+ {
+  "prNum": 110,
+  "slug": "festival-slug-deadimport-and-sort-hoist",
+  "area": "perf",
+  "title": "Festival detail: drop dead type import + decorate-sort the per-group screenings",
+  "files": [
+   "frontend/src/routes/festivals/[slug]/+page.svelte"
+  ],
+  "itemIds": [
+   "festival-slug-deadimport-and-sort-hoist"
+  ],
+  "isDelete": false,
+  "detail": "  [1] Festival detail: drop dead type import + decorate-sort the per-group screenings\n      FILES: frontend/src/routes/festivals/[slug]/+page.svelte\n      Two findings on this one file (cluster into one PR). (1) `import type { ScreeningWithDetails } from '$lib/types'` (line 5) is never referenced (grep confirms single occurrence) \u2014 delete the line (type-only, erased at compile time). (2) In the `filmGroups` $derived.by (lines 12-18) each group sorts with `ss.sort((a,b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime())`, allocating two Date objects per comparator call (O(n log n) parses). Decorate each screening once with `_ms = new Date(s.datetime).getTime()` (mirroring the established pattern in cinemas/[slug] and film/[id]) and compare `a._ms - b._ms`. Identical sort order."
+ },
+ {
+  "prNum": 111,
+  "slug": "watchlist-deadimport-union-and-now-hoist",
+  "area": "perf",
+  "title": "Watchlist: drop dead Badge import, narrow sortBy union, hoist now out of filter",
+  "files": [
+   "frontend/src/routes/watchlist/+page.svelte"
+  ],
+  "itemIds": [
+   "watchlist-deadimport-union-and-now-hoist"
+  ],
+  "isDelete": false,
+  "detail": "  [1] Watchlist: drop dead Badge import, narrow sortBy union, hoist now out of filter\n      FILES: frontend/src/routes/watchlist/+page.svelte\n      Three findings on this one file (cluster into one PR). (1) `import Badge from '$lib/components/ui/Badge.svelte'` (line 5) is unused \u2014 grep confirms only the import line; remove it. (2) `let sortBy = $state<'next' | 'added' | 'title'>('next')` (line 22) \u2014 `'added'` is never assigned (only NEXT and A\u2013Z buttons set 'next'/'title' at lines 106-107) and sortedFilms (lines 69-82) has no 'added' branch; narrow the type to `'next' | 'title'`. (3) In loadFilms, `res.screenings.filter((s) => new Date(s.datetime) > new Date())` (line 43) allocates a fresh `new Date()` per screening; compute `const now = Date.now()` once before the filter and compare `new Date(s.datetime).getTime() > now`. All behavior-preserving."
+ },
+ {
+  "prNum": 112,
+  "slug": "cinema-slug-drop-redundant-sort",
+  "area": "simplify",
+  "title": "Cinema detail page: remove redundant re-sort of already-ascending date groups",
+  "files": [
+   "frontend/src/routes/cinemas/[slug]/+page.svelte"
+  ],
+  "itemIds": [
+   "cinema-slug-drop-redundant-sort"
+  ],
+  "isDelete": false,
+  "detail": "  [1] Cinema detail page: remove redundant re-sort of already-ascending date groups\n      FILES: frontend/src/routes/cinemas/[slug]/+page.svelte\n      `groupedByDate` (lines 31-34) does `Object.entries(groupBy(futureScreenings, ...)).sort(([a],[b]) => a.localeCompare(b))`, but futureScreenings is already sorted strictly ascending by epoch-ms just above (lines 16-29). toLondonDateStr is monotonic non-decreasing in ms and JS preserves string-key insertion order, so the groups are already chronological and the localeCompare sort is a guaranteed no-op. Replace with `return Object.entries(grouped);`. Removes an O(k log k) comparator + closure per re-derivation; output order identical. (Separate PR from the [slug] server-load trim \u2014 different file.)"
+ },
+ {
+  "prNum": 113,
+  "slug": "map-deadimport-and-any-cast",
+  "area": "types",
+  "title": "Map page: drop dead page import + remove any cast on venue-count filter",
+  "files": [
+   "frontend/src/routes/map/+page.svelte"
+  ],
+  "itemIds": [
+   "map-deadimport-and-any-cast"
+  ],
+  "isDelete": false,
+  "detail": "  [1] Map page: drop dead page import + remove any cast on venue-count filter\n      FILES: frontend/src/routes/map/+page.svelte\n      Two findings on this one file (cluster into one PR). (1) `import { page } from '$app/state'` (line 3) is unused \u2014 the only `page` matches are CSS class `.map-page` and `aria-labelledby`; remove the import to drop $app/state from the page graph. (2) Line 20: `cinemas.filter((c: any) => c.coordinates)` \u2014 `cinemas` is `$derived(data?.cinemas ?? [])` typed Cinema[] (Cinema has `coordinates: CinemaCoordinates | null`); remove `: any` so `c` infers as Cinema and the count expression stays type-checked. Zero runtime change."
+ },
+ {
+  "prNum": 114,
+  "slug": "cinemamap-deadcode-and-loop-constants",
+  "area": "perf",
+  "title": "CinemaMap: remove dead validCinemas + hoist marker/popup literal constants",
+  "files": [
+   "frontend/src/lib/components/map/CinemaMap.svelte"
+  ],
+  "itemIds": [
+   "cinemamap-deadcode-and-loop-constants"
+  ],
+  "isDelete": false,
+  "detail": "  [1] CinemaMap: remove dead validCinemas + hoist marker/popup literal constants\n      FILES: frontend/src/lib/components/map/CinemaMap.svelte\n      Three findings on this one file (cluster into one PR). (1) `const validCinemas = $derived(cinemas.filter(...))` (lines 10-14) is never read (the onMount recomputes the identical filter inline as `cinemasWithCoords`, lines 97-100); grep confirms validCinemas has no other reference in the component. Delete the dead $derived block. (2) createMarkerElement (lines 38-71) is called per cinema and rebuilds identical literal strings each call \u2014 SVG width/height/viewBox ('20'/'26'/'0 0 20 26'), path d ('M10 0C4.5 0...Z'), fills ('#1a1a1a'/'#fff'), circle cx/cy/r; hoist these to module-scope consts. (3) createPopupContent (lines 16-36) rebuilds constant cssText strings each call (link.style.cssText line 23, area.style.cssText line 31, div padding '4px'); promote to module-scope string consts. Identical DOM output."
+ },
+ {
+  "prNum": 115,
+  "slug": "reachable-results-group-urgency-const",
+  "area": "perf",
+  "title": "ReachableResults: compute urgencyClass once per group via {@const}",
+  "files": [
+   "frontend/src/lib/components/reachable/ReachableResults.svelte"
+  ],
+  "itemIds": [
+   "reachable-results-group-urgency-const"
+  ],
+  "isDelete": false,
+  "detail": "  [1] ReachableResults: compute urgencyClass once per group via {@const}\n      FILES: frontend/src/lib/components/reachable/ReachableResults.svelte\n      urgencyClass(urgency) is invoked at the group header (line 78) and again inside the per-card `{#each groupScreenings}` loop (line 116, `class=\"leave-badge {urgencyClass(urgency)}\"`). Since `urgency` is constant for the whole group, the switch runs once per card unnecessarily. Add a group-scoped const after the existing `{@const groupScreenings = groups[urgency]}` (line 73), e.g. `{@const urgencyCss = urgencyClass(urgency)}`, and reference `{urgencyCss}` at both line 78 and line 116. Output strings byte-identical."
+ },
+ {
+  "prNum": 116,
+  "slug": "deadlinepicker-cached-formatters",
+  "area": "perf",
+  "title": "DeadlinePicker: reuse cached Intl.DateTimeFormat instances in formatSelectedTime",
+  "files": [
+   "frontend/src/lib/components/reachable/DeadlinePicker.svelte"
+  ],
+  "itemIds": [
+   "deadlinepicker-cached-formatters"
+  ],
+  "isDelete": false,
+  "detail": "  [1] DeadlinePicker: reuse cached Intl.DateTimeFormat instances in formatSelectedTime\n      FILES: frontend/src/lib/components/reachable/DeadlinePicker.svelte\n      formatSelectedTime (lines 64-77) makes up to five toLocaleDateString/toLocaleTimeString calls per invocation, each constructing a fresh formatter from inline options: three `toLocaleDateString('en-CA', { timeZone:'Europe/London' })` (lines 66/69/70), one `toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', hour12:false })` (line 72), one `toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short' })` (line 76). Hoist three module-scope `Intl.DateTimeFormat` consts ('en-CA' London-tz YMD; 'en-GB' HH:mm; 'en-GB' 'Mon, 1 Jan') and call `.format(d)` on the reused instances. Matches the established hoist pattern (ScreeningRow). Same YYYY-MM-DD / HH:mm / 'Mon, 1 Jan' strings."
+ },
+ {
+  "prNum": 117,
+  "slug": "festivalrow-hoist-formatter",
+  "area": "perf",
+  "title": "FestivalRow: hoist date-range Intl.DateTimeFormat to script module scope",
+  "files": [
+   "frontend/src/lib/components/search/rows/FestivalRow.svelte"
+  ],
+  "itemIds": [
+   "festivalrow-hoist-formatter"
+  ],
+  "isDelete": false,
+  "detail": "  [1] FestivalRow: hoist date-range Intl.DateTimeFormat to script module scope\n      FILES: frontend/src/lib/components/search/rows/FestivalRow.svelte\n      The `dateRange` $derived.by (lines 21-28) constructs `new Intl.DateTimeFormat('en-GB', { month:'short', day:'numeric', timeZone:'Europe/London' })` on every recompute, once per festival row. The args are fully constant. Move it to a `<script module>` block as a shared `const RANGE_FORMATTER = new Intl.DateTimeFormat(...)` \u2014 exactly the pattern the sibling ScreeningRow.svelte already uses (`<script module>` with TIME_FORMATTER/WEEKDAY_FORMATTER/LONDON_DATE_FORMATTER, confirmed) \u2014 and have dateRange reference it. Byte-identical output."
+ },
+ {
+  "prNum": 118,
+  "slug": "header-hoist-nav-filters",
+  "area": "perf",
+  "title": "Header: precompute NAV_ITEMS desktop/mobile filters once",
+  "files": [
+   "frontend/src/lib/components/layout/Header.svelte"
+  ],
+  "itemIds": [
+   "header-hoist-nav-filters"
+  ],
+  "isDelete": false,
+  "detail": "  [1] Header: precompute NAV_ITEMS desktop/mobile filters once\n      FILES: frontend/src/lib/components/layout/Header.svelte\n      The desktop and mobile nav lists are filtered inline in markup: `{#each NAV_ITEMS.filter((n) => n.desktop) ...}` (line 85) and `{#each NAV_ITEMS.filter((n) => n.mobile) ...}` (line 128). NAV_ITEMS is a static const (lines 33-41) never mutated, yet both .filter() passes re-run on every re-render of the sticky header (every page.url.pathname change, every mobileMenuOpen toggle). Hoist to two script-scope consts computed once: `const DESKTOP_NAV = NAV_ITEMS.filter((n) => n.desktop);` and `const MOBILE_NAV = NAV_ITEMS.filter((n) => n.mobile);`, then iterate those (keys `(item.href)` unchanged). Byte-identical render."
+ },
+ {
+  "prNum": 119,
+  "slug": "mobilefiltersheet-hoist-day-numbers",
+  "area": "perf",
+  "title": "MobileFilterSheet: hoist inline Date getUTCDate() for Today/Tomorrow chips",
+  "files": [
+   "frontend/src/lib/components/filters/MobileFilterSheet.svelte"
+  ],
+  "itemIds": [
+   "mobilefiltersheet-hoist-day-numbers"
+  ],
+  "isDelete": false,
+  "detail": "  [1] MobileFilterSheet: hoist inline Date getUTCDate() for Today/Tomorrow chips\n      FILES: frontend/src/lib/components/filters/MobileFilterSheet.svelte\n      Lines 200-201 render `{new Date(today + 'T12:00:00Z').getUTCDate()}` and `{new Date(tomorrow + 'T12:00:00Z').getUTCDate()}` inline, allocating two Date objects on every re-render of the open sheet. `today`/`tomorrow` are already instance consts (lines 82-87) and todayLabel/tomorrowLabel are precomputed the same way (lines 89-90). Add `const todayDay = new Date(today + 'T12:00:00Z').getUTCDate();` and `const tomorrowDay = new Date(tomorrow + 'T12:00:00Z').getUTCDate();` next to the labels and reference `{todayDay}`/`{tomorrowDay}`. Day numbers are fixed for the component lifetime; byte-identical output."
+ },
+ {
+  "prNum": 120,
+  "slug": "filters-store-hoist-london-ymd",
+  "area": "perf",
+  "title": "filters store: hoist duplicated en-CA London Intl formatter out of applyIntent",
+  "files": [
+   "frontend/src/lib/stores/filters.svelte.ts"
+  ],
+  "itemIds": [
+   "filters-store-hoist-london-ymd"
+  ],
+  "isDelete": false,
+  "detail": "  [1] filters store: hoist duplicated en-CA London Intl formatter out of applyIntent\n      FILES: frontend/src/lib/stores/filters.svelte.ts\n      In applyIntent (lines 271-286) two byte-identical `new Intl.DateTimeFormat('en-CA', { timeZone:'Europe/London', year:'numeric', month:'2-digit', day:'2-digit' })` instances are constructed inline \u2014 one for dateFrom (lines 272-277), one for dateTo (lines 280-285) \u2014 on every call. Hoist a single module-level `const LONDON_YMD = new Intl.DateTimeFormat('en-CA', {...})` near the top and call `LONDON_YMD.format(parsed.dateFrom)` / `LONDON_YMD.format(parsed.dateTo)`. Reused formatter is stateless and yields identical YYYY-MM-DD across DST; removes 2 allocations per applyIntent call. Mirrors the established hoist pattern (DATE_LONDON_ISO in utils.ts)."
+ },
+ {
+  "prNum": 121,
+  "slug": "calendarpopover-hoist-weekdays",
+  "area": "perf",
+  "title": "CalendarPopover: hoist inline weekday-header array to a module const",
+  "files": [
+   "frontend/src/lib/components/filters/CalendarPopover.svelte"
+  ],
+  "itemIds": [
+   "calendarpopover-hoist-weekdays"
+  ],
+  "isDelete": false,
+  "detail": "  [1] CalendarPopover: hoist inline weekday-header array to a module const\n      FILES: frontend/src/lib/components/filters/CalendarPopover.svelte\n      Line 96 iterates `{#each ['Mo','Tu','We','Th','Fr','Sa','Su'] as d, i (d + i)}` with the array literal inlined, allocating a fresh 7-element array on every render (e.g. each month nav click). Hoist to a top-level `const WEEKDAYS = ['Mo','Tu','We','Th','Fr','Sa','Su'];` alongside the existing MONTH_NAMES const (line 27) and iterate `{#each WEEKDAYS as d, i (d + i)}`. Same data, identical keys/output; matches the file's own MONTH_NAMES convention."
+ },
+ {
+  "prNum": 122,
+  "slug": "mobiledatepicker-hoist-weekdays",
+  "area": "perf",
+  "title": "MobileDatePicker: hoist inline weekday-header array to a module const",
+  "files": [
+   "frontend/src/lib/components/filters/MobileDatePicker.svelte"
+  ],
+  "itemIds": [
+   "mobiledatepicker-hoist-weekdays"
+  ],
+  "isDelete": false,
+  "detail": "  [1] MobileDatePicker: hoist inline weekday-header array to a module const\n      FILES: frontend/src/lib/components/filters/MobileDatePicker.svelte\n      Line 88 iterates `{#each ['Mo','Tu','We','Th','Fr','Sa','Su'] as d, i (d + i)}` with the array literal inlined, re-allocating a 7-element array on every render (month nav). Hoist to a top-level `const WEEKDAYS = [...]` next to the existing MONTH_NAMES const (line 18) and iterate `{#each WEEKDAYS as d, i (d + i)}`. Constant data, identical keys/output; consistent with the file's MONTH_NAMES const."
+ },
+ {
+  "prNum": 123,
+  "slug": "directors-hoist-search-lowercase",
+  "area": "perf",
+  "title": "Directors page: hoist query lowercasing out of the filter loop",
+  "files": [
+   "frontend/src/routes/directors/+page.svelte"
+  ],
+  "itemIds": [
+   "directors-hoist-search-lowercase"
+  ],
+  "isDelete": false,
+  "detail": "  [1] Directors page: hoist query lowercasing out of the filter loop\n      FILES: frontend/src/routes/directors/+page.svelte\n      Line 15: `data.directors.filter((d) => d.name.toLowerCase().includes(search.toLowerCase()))` recomputes `search.toLowerCase()` once per director on every keystroke. The directors API has no LIMIT (returns every director across the next 14 days \u2014 realistically several hundred entries), so compute the lowercased query once inside the $derived: `const q = search.toLowerCase();` then `.filter((d) => d.name.toLowerCase().includes(q))`. Identical output."
+ },
+ {
+  "prNum": 124,
+  "slug": "filmrow-dedupe-rating-format",
+  "area": "simplify",
+  "title": "FilmRow: compute tmdbRating.toFixed(1) once",
+  "files": [
+   "frontend/src/lib/components/search/rows/FilmRow.svelte"
+  ],
+  "itemIds": [
+   "filmrow-dedupe-rating-format"
+  ],
+  "isDelete": false,
+  "detail": "  [1] FilmRow: compute tmdbRating.toFixed(1) once\n      FILES: frontend/src/lib/components/search/rows/FilmRow.svelte\n      `film.tmdbRating.toFixed(1)` is computed twice \u2014 in `aria-label=\"TMDB rating {film.tmdbRating.toFixed(1)}\"` (line 45) and the visible `\u2605 {film.tmdbRating.toFixed(1)}` (line 46). Compute once, e.g. `const rating = $derived(film.tmdbRating != null ? film.tmdbRating.toFixed(1) : null)`, gate the block on `rating != null && film.tmdbRating >= 7`, and reuse `rating` in both places. Rendered text/aria string identical; label and value can never drift."
+ },
+ {
+  "prNum": 125,
+  "slug": "letterboxd-drop-unused-each-index",
+  "area": "simplify",
+  "title": "LetterboxdRatingReveal: drop unused loop index in star #each blocks",
+  "files": [
+   "frontend/src/lib/components/film/LetterboxdRatingReveal.svelte"
+  ],
+  "itemIds": [
+   "letterboxd-drop-unused-each-index"
+  ],
+  "isDelete": false,
+  "detail": "  [1] LetterboxdRatingReveal: drop unused loop index in star #each blocks\n      FILES: frontend/src/lib/components/film/LetterboxdRatingReveal.svelte\n      Both star loops bind an index never used: `{#each Array(displayStars) as _, i}` (line 34) and `{#each Array(Math.max(0, emptyStars)) as _, i}` (line 50) \u2014 `i` appears nowhere in either block body. Remove the `, i` to leave `{#each Array(displayStars) as _}` and `{#each Array(Math.max(0, emptyStars)) as _}`. Identical rendered SVG stars; stops the compiler tracking a dead per-iteration binding."
+ },
+ {
+  "prNum": 126,
+  "slug": "layout-extract-shell-snippet",
+  "area": "simplify",
+  "title": "Root layout: extract duplicated app-shell into a {#snippet}",
+  "files": [
+   "frontend/src/routes/+layout.svelte"
+  ],
+  "itemIds": [
+   "layout-extract-shell-snippet"
+  ],
+  "isDelete": false,
+  "detail": "  [1] Root layout: extract duplicated app-shell into a {#snippet}\n      FILES: frontend/src/routes/+layout.svelte\n      The `{#if clerkEnabled}` / `{:else}` branches (lines 37-65) duplicate the shell verbatim: the `<a class=\"skip-link\">`, `<div class=\"min-h-dvh flex flex-col\">` with `<Header cinemas={data?.cinemas ?? []} />`, `<main id=\"main-content\">{@render children()}</main>`, and `<Footer />`. Only the wrapping ClerkProvider plus SyncProvider differ (note both branches already render PostHogProvider/GlobalCmdkBinding/CommandPalette except SyncProvider which is Clerk-only). Define `{#snippet shell()}...{/snippet}` for the shared skip-link + shell block and `{@render shell()}` in both branches, keeping the conditional ClerkProvider/SyncProvider logic. Rendered DOM identical; removes a real drift hazard. Verify the snippet covers exactly the byte-identical portion (skip-link + shell div) and that CommandPalette/GlobalCmdkBinding placement is preserved per-branch."
+ },
+ {
+  "prNum": 127,
+  "slug": "utils-simplify-typeof-guard",
+  "area": "simplify",
+  "title": "utils: drop redundant nested typeof guard in formatScreeningDate",
+  "files": [
+   "frontend/src/lib/utils.ts"
+  ],
+  "itemIds": [
+   "utils-simplify-typeof-guard"
+  ],
+  "isDelete": false,
+  "detail": "  [1] utils: drop redundant nested typeof guard in formatScreeningDate\n      FILES: frontend/src/lib/utils.ts\n      Line 52: `new Date(date + (typeof date === 'string' && !date.includes('T') ? 'T00:00:00' : ''))` sits inside the `typeof date === 'string' ? ... : date` branch where `date` is already narrowed to string, so the inner `typeof date === 'string' &&` is provably always true. Simplify to `new Date(date + (!date.includes('T') ? 'T00:00:00' : ''))`. Concatenation result byte-identical; clarifies control flow. (Single, low-risk edit on this widely-imported module \u2014 keep the PR scoped to just this line.)"
+ },
+ {
+  "prNum": 128,
+  "slug": "result-types-delete-totalresults",
+  "area": "deadcode",
+  "title": "result-types: delete unused totalResults export",
+  "files": [
+   "frontend/src/lib/search/result-types.ts"
+  ],
+  "itemIds": [
+   "result-types-delete-totalresults"
+  ],
+  "isDelete": true,
+  "detail": "  [1] result-types: delete unused totalResults export\n      FILES: frontend/src/lib/search/result-types.ts\n      `export function totalResults(results: PaletteResults): number` (lines 172-174) has zero importers \u2014 grep across src finds only its own definition; the only other `totalResults` matches are an unrelated LOCAL `const totalResults` inside SearchInput.svelte (a different symbol). The palette store uses `flattenResults(...).length`/`flatRows.length` directly. Delete the export. NOTE: the separately-proposed 'optimize totalResults to avoid array materialization' finding is intentionally DROPPED \u2014 it targets the same function this PR deletes, so it is moot."
+ },
+ {
+  "prNum": 129,
+  "slug": "chains-vocab-delete-empty-placeholder",
+  "area": "deadcode",
+  "title": "chains vocab: remove unused empty CHAIN_PHRASES_BY_LENGTH placeholder",
+  "files": [
+   "frontend/src/lib/search/vocab/chains.ts"
+  ],
+  "itemIds": [
+   "chains-vocab-delete-empty-placeholder"
+  ],
+  "isDelete": true,
+  "detail": "  [1] chains vocab: remove unused empty CHAIN_PHRASES_BY_LENGTH placeholder\n      FILES: frontend/src/lib/search/vocab/chains.ts\n      `export const CHAIN_PHRASES_BY_LENGTH: Record<number, string[]> = { 2: [] }` (lines 24-26) is an empty placeholder never imported \u2014 grep matches only its own definition. parse-query.ts imports CHAIN_TOKENS, CINEMA_ALIAS_TOKENS, CINEMA_ALIAS_PHRASES_BY_LENGTH from this file but NOT CHAIN_PHRASES_BY_LENGTH, and runs no chain-phrase scan. Delete the export. Removes a dead always-empty export implying a feature that does not exist."
+ },
+ {
+  "prNum": 130,
+  "slug": "postcode-delete-getlocationname",
+  "area": "deadcode",
+  "title": "postcode: remove dead getLocationName export",
+  "files": [
+   "frontend/src/lib/postcode.ts"
+  ],
+  "itemIds": [
+   "postcode-delete-getlocationname"
+  ],
+  "isDelete": true,
+  "detail": "  [1] postcode: remove dead getLocationName export\n      FILES: frontend/src/lib/postcode.ts\n      `export function getLocationName(result: PostcodeResult): string` (lines 104-109) has zero references repo-wide \u2014 grep confirms the symbol appears only at its own definition. The only postcode-coordinate consumer (PostcodeInput.svelte) inlines `result.admin_district || formatPostcode(...)` rather than calling this helper. Delete the ~6-line function. Public surface shrinks; behavior unchanged."
+ },
+ {
+  "prNum": 131,
+  "slug": "festivals-index-drop-badge-import",
+  "area": "deadcode",
+  "title": "Festivals index: remove unused Badge import",
+  "files": [
+   "frontend/src/routes/festivals/+page.svelte"
+  ],
+  "itemIds": [
+   "festivals-index-drop-badge-import"
+  ],
+  "isDelete": false,
+  "detail": "  [1] Festivals index: remove unused Badge import\n      FILES: frontend/src/routes/festivals/+page.svelte\n      Line 2 imports `Badge from '$lib/components/ui/Badge.svelte'` but a full-file grep finds zero references in template or script \u2014 only the import line. Delete the import. Svelte component imports are side-effect-free so runtime is unchanged; drops Badge from the page chunk."
+ },
+ {
+  "prNum": 132,
+  "slug": "tonight-server-drop-datelabel",
+  "area": "deadcode",
+  "title": "Tonight server load: drop unused dateLabel field",
+  "files": [
+   "frontend/src/routes/tonight/+page.server.ts"
+  ],
+  "itemIds": [
+   "tonight-server-drop-datelabel"
+  ],
+  "isDelete": false,
+  "detail": "  [1] Tonight server load: drop unused dateLabel field\n      FILES: frontend/src/routes/tonight/+page.server.ts\n      Line 83 returns `dateLabel: 'TONIGHT'`, but tonight/+page.svelte never reads data.dateLabel (it computes its own todayLabel via formatDate) and a repo-wide grep finds no consumer of this load's dateLabel (the only other dateLabel reference is an unrelated local derived in DaySection.svelte). Remove the field. Trims a dead value from the SSR/ISR payload; rendered output unchanged."
+ }
+]

@@ -1,0 +1,285 @@
+[
+ {
+  "prNum": 200,
+  "slug": "rm-duplicate-seasons-export",
+  "area": "db",
+  "title": "Remove duplicate export * from ./seasons in schema barrel",
+  "files": [
+   "src/db/schema/index.ts"
+  ],
+  "itemIds": [
+   "rm-duplicate-seasons-export"
+  ],
+  "isDelete": true,
+  "detail": "  [1] Remove duplicate export * from ./seasons in schema barrel\n      FILES: src/db/schema/index.ts\n      Line 22 (`export * from \"./seasons\";`) is a verbatim duplicate of line 11; delete the second occurrence and its redundant `// Season schemas` comment. Re-exporting the same module twice is a TS no-op. Verified: both lines 11 and 22 export ./seasons."
+ },
+ {
+  "prNum": 201,
+  "slug": "rm-unused-filmstatuspayload-export",
+  "area": "api-user",
+  "title": "Remove unused exported FilmStatusPayload type",
+  "files": [
+   "src/app/api/user/film-statuses/route.ts"
+  ],
+  "itemIds": [
+   "rm-unused-filmstatuspayload-export"
+  ],
+  "isDelete": true,
+  "detail": "  [1] Remove unused exported FilmStatusPayload type\n      FILES: src/app/api/user/film-statuses/route.ts\n      Delete `export type FilmStatusPayload = z.infer<typeof filmStatusSchema>;` (line 53) and its 'if needed' comment. Verified zero external importers: the identically-named type in sync/route.ts (line 28) is a separate local `z.infer<typeof filmStatusPayloadSchema>`. Route modules should only export handlers. tsc-covered."
+ },
+ {
+  "prNum": 202,
+  "slug": "rm-unused-lte-import",
+  "area": "lib-data-quality",
+  "title": "Remove unused lte import from drizzle-orm",
+  "files": [
+   "src/lib/data-quality/index.ts"
+  ],
+  "itemIds": [
+   "rm-unused-lte-import"
+  ],
+  "isDelete": true,
+  "detail": "  [1] Remove unused lte import from drizzle-orm\n      FILES: src/lib/data-quality/index.ts\n      Line 13 imports `{ eq, isNull, and, gte, lte, sql }` but grep confirms `lte` has zero call sites in the file. Drop `lte` from the import list. Touches no query or content-matching logic."
+ },
+ {
+  "prNum": 203,
+  "slug": "rm-unused-clearclassificationcache",
+  "area": "lib-classifier",
+  "title": "Delete unused clearClassificationCache() export",
+  "files": [
+   "src/lib/content-classifier.ts"
+  ],
+  "itemIds": [
+   "rm-unused-clearclassificationcache"
+  ],
+  "isDelete": true,
+  "detail": "  [1] Delete unused clearClassificationCache() export\n      FILES: src/lib/content-classifier.ts\n      `clearClassificationCache` (line 290) is exported with zero references across src/scripts/frontend (verified \u2014 only the definition). Removes a never-invoked test-helper that no test imports. The classificationCache Map is otherwise only touched by classifyContentCached. NOTE: this file also has a medium-risk regex-hoist finding (hoist-content-classifier-regexes) \u2014 both target content-classifier.ts; ship together in one PR, carry medium risk for the combined PR."
+ },
+ {
+  "prNum": 204,
+  "slug": "rm-unused-getallposters",
+  "area": "lib-posters",
+  "title": "Delete unused getAllPosters() method on FanartClient",
+  "files": [
+   "src/lib/posters/fanart.ts"
+  ],
+  "itemIds": [
+   "rm-unused-getallposters"
+  ],
+  "isDelete": true,
+  "detail": "  [1] Delete unused getAllPosters() method on FanartClient\n      FILES: src/lib/posters/fanart.ts\n      `getAllPosters(tmdbIdOrImdbId)` (lines 97-106) has zero callers repo-wide (verified). The fallback chain uses getBestPoster exclusively. Remove the method but KEEP the FanartImage import \u2014 still used by getBestPoster-adjacent typings (FanartMovieImages)."
+ },
+ {
+  "prNum": 205,
+  "slug": "rm-unused-omdb-getposterurl",
+  "area": "lib-posters",
+  "title": "Delete unused getPosterUrl() method on OMDBClient",
+  "files": [
+   "src/lib/posters/omdb.ts"
+  ],
+  "itemIds": [
+   "rm-unused-omdb-getposterurl"
+  ],
+  "isDelete": true,
+  "detail": "  [1] Delete unused getPosterUrl() method on OMDBClient\n      FILES: src/lib/posters/omdb.ts\n      OMDB instance `getPosterUrl(titleOrImdbId, year)` (lines 99-117) has zero callers \u2014 repo grep matches only the unrelated static TMDBClient.getPosterUrl. PosterService uses getByImdbId/searchByTitle. Remove the OMDB method; re-confirm dead-ness by filtering out the tmdb match."
+ },
+ {
+  "prNum": 206,
+  "slug": "rm-unused-witherrorboundary-hoc",
+  "area": "components",
+  "title": "Remove unused withErrorBoundary HOC export",
+  "files": [
+   "src/components/error-boundary.tsx"
+  ],
+  "itemIds": [
+   "rm-unused-witherrorboundary-hoc"
+  ],
+  "isDelete": true,
+  "detail": "  [1] Remove unused withErrorBoundary HOC export\n      FILES: src/components/error-boundary.tsx\n      Delete the exported `withErrorBoundary` HOC (lines 95-109). Verified zero references in src/ and frontend/ \u2014 only the ErrorBoundary class is imported (by calendar-view-loader.tsx). Leaves the actively-used class untouched."
+ },
+ {
+  "prNum": 207,
+  "slug": "rm-dead-posthog-admin-reexports",
+  "area": "components",
+  "title": "Remove dead ADMIN_EMAILS/isAdminEmail re-exports from posthog-provider",
+  "files": [
+   "src/components/posthog-provider.tsx"
+  ],
+  "itemIds": [
+   "rm-dead-posthog-admin-reexports"
+  ],
+  "isDelete": true,
+  "detail": "  [1] Remove dead ADMIN_EMAILS/isAdminEmail re-exports from posthog-provider\n      FILES: src/components/posthog-provider.tsx\n      Delete the bottom `export { isAdminEmail, ADMIN_EMAILS };` (lines 270-274) and its export-intent comment. Keep both symbols module-local (still used by useTrackingDecision). External consumers use the canonical src/lib/admin-emails.ts / src/lib/auth.ts, never this module. Do NOT touch the internal admin-email values or tracking-decision logic."
+ },
+ {
+  "prNum": 208,
+  "slug": "rm-dead-isfeatureenabled-analytics",
+  "area": "lib-analytics",
+  "title": "Remove unused isFeatureEnabled export from analytics lib",
+  "files": [
+   "src/lib/analytics.ts",
+   "src/test/setup.ts"
+  ],
+  "itemIds": [
+   "rm-dead-isfeatureenabled-analytics"
+  ],
+  "isDelete": true,
+  "detail": "  [1] Remove unused isFeatureEnabled export from analytics lib\n      FILES: src/lib/analytics.ts, src/test/setup.ts\n      Delete `isFeatureEnabled(flagKey)` (lines 206-214) which wraps posthog.isFeatureEnabled \u2014 a name-collision shadow of the real build-time @/lib/features.isFeatureEnabled (which is what every app import resolves to). Zero prod/test callers. Also remove the stale `isFeatureEnabled: vi.fn()` mock key from src/test/setup.ts line 46 in the same change (harmless either way, tests still pass)."
+ },
+ {
+  "prNum": 209,
+  "slug": "rm-dead-searchcontext-field",
+  "area": "agents",
+  "title": "Remove never-assigned searchContext field from ExtractedFilmData",
+  "files": [
+   "src/agents/fallback-enrichment/web-search.ts"
+  ],
+  "itemIds": [
+   "rm-dead-searchcontext-field"
+  ],
+  "isDelete": true,
+  "detail": "  [1] Remove never-assigned searchContext field from ExtractedFilmData\n      FILES: src/agents/fallback-enrichment/web-search.ts\n      Delete `searchContext?: string` (line 37) and its 'Raw search context for debugging' comment. Verified: `searchContext` appears ONLY at this declaration \u2014 never assigned (validateExtractedData omits it), never read. Misleads readers into thinking debug context is captured."
+ },
+ {
+  "prNum": 210,
+  "slug": "rm-dead-screenings-search-param",
+  "area": "admin",
+  "title": "Remove unused search field from screenings page SearchParams",
+  "files": [
+   "src/app/admin/screenings/page.tsx"
+  ],
+  "itemIds": [
+   "rm-dead-screenings-search-param"
+  ],
+  "isDelete": true,
+  "detail": "  [1] Remove unused search field from screenings page SearchParams\n      FILES: src/app/admin/screenings/page.tsx\n      Delete `search?: string;` from the SearchParams interface (line 23). Never read \u2014 the only `search` token in the body is the unrelated local searchParamsObj URLSearchParams in buildUrl. Advertises a query param the page does not honor. Type-only deletion."
+ },
+ {
+  "prNum": 211,
+  "slug": "collapse-noop-badgeclass-ternary",
+  "area": "admin",
+  "title": "Collapse no-op badgeClass ternary in FestivalCard statusConfig.ready (+1 more on same file)",
+  "files": [
+   "src/app/admin/festivals/page.tsx"
+  ],
+  "itemIds": [
+   "collapse-noop-badgeclass-ternary",
+   "defer-festival-announcement-date"
+  ],
+  "isDelete": false,
+  "detail": "Multiple safe refactors on src/app/admin/festivals/page.tsx (one PR, file-disjoint from others):\n  [1] Collapse no-op badgeClass ternary in FestivalCard statusConfig.ready\n            Lines 291-293: `badgeClass: festival.isCurrentlyRunning ? \"...green...\" : \"...green...\"` has identical strings on both branches \u2014 replace with the bare literal. Verified the dup is at lines 291-293; the sibling `badge` field (ON NOW vs Ready) legitimately differs, leave it. NOTE: festivals/page.tsx also has a low-risk perf finding (defer-festival-announcement-date) \u2014 ship both together in one PR for this file.\n  [2] Move FestivalCard announcement-date computation into the upcoming branch\n            Lines 312-313 compute expectedAnnouncementDate (addWeeks) and daysUntilAnnouncement (differenceInDays) for every card, but both are read only inside the `status === \"upcoming\"` JSX block (lines 352-354). Move the two declarations into that conditional. Server-rendered so runtime impact is tiny; value is co-locating computation with its sole consumer. Ship in the same PR as collapse-noop-badgeclass-ternary (same file)."
+ },
+ {
+  "prNum": 212,
+  "slug": "const-tokensused-link-validator",
+  "area": "agents",
+  "title": "Collapse dead =0 initializer in link-validator (let\u2192const tokensUsed)",
+  "files": [
+   "src/agents/link-validator/index.ts"
+  ],
+  "itemIds": [
+   "const-tokensused-link-validator"
+  ],
+  "isDelete": false,
+  "detail": "  [1] Collapse dead =0 initializer in link-validator (let\u2192const tokensUsed)\n      FILES: src/agents/link-validator/index.ts\n      Line 104 `let tokensUsed = 0;` is unconditionally overwritten at line 111 with no intervening read and no later reassignment; move to `const tokensUsed = response.tokensUsed;` at the assignment site. Leave the adjacent `let results` (line 105) as `let` \u2014 it IS reassigned in the parse block."
+ },
+ {
+  "prNum": 213,
+  "slug": "const-tokensused-scraper-health",
+  "area": "agents",
+  "title": "Collapse dead =0 initializer in scraper-health (let\u2192const tokensUsed)",
+  "files": [
+   "src/agents/scraper-health/index.ts"
+  ],
+  "itemIds": [
+   "const-tokensused-scraper-health"
+  ],
+  "isDelete": false,
+  "detail": "  [1] Collapse dead =0 initializer in scraper-health (let\u2192const tokensUsed)\n      FILES: src/agents/scraper-health/index.ts\n      Line 153 `let tokensUsed = 0;` is unconditionally overwritten at line 172 with no intervening read; move to `const tokensUsed = response.tokensUsed;`. Leave the adjacent `let report` (line 154) as `let` \u2014 reassigned at line 180 via spread merge. This file is under agents/, not scrapers/, so the scraper data-integrity rule does not apply."
+ },
+ {
+  "prNum": 214,
+  "slug": "collapse-getspecialformat-loop",
+  "area": "lib-constants",
+  "title": "Collapse redundant outer loop in getSpecialFormat",
+  "files": [
+   "src/lib/constants.ts"
+  ],
+  "itemIds": [
+   "collapse-getspecialformat-loop"
+  ],
+  "isDelete": false,
+  "detail": "  [1] Collapse redundant outer loop in getSpecialFormat\n      FILES: src/lib/constants.ts\n      The `for (const special of SPECIAL_FORMATS)` outer loop's inner block re-tests all four substrings (70mm>35mm>imax>4k) on any hit, so the loop is just an any-match guard already subsumed by the inner checks. Replace with the four ordered `if (lower.includes(...)) return ...` checks then `return null`. Remove SPECIAL_FORMATS only if it has no other reference. Fully covered by constants.test.ts."
+ },
+ {
+  "prNum": 215,
+  "slug": "hoist-postcode-regex",
+  "area": "lib-postcode",
+  "title": "Hoist UK postcode validation regex to module constant",
+  "files": [
+   "src/lib/postcode.ts"
+  ],
+  "itemIds": [
+   "hoist-postcode-regex"
+  ],
+  "isDelete": false,
+  "detail": "  [1] Hoist UK postcode validation regex to module constant\n      FILES: src/lib/postcode.ts\n      isValidPostcodeFormat() recompiles its postcode RegExp (lines 76-77) on every call \u2014 invoked per-keystroke during type-ahead in reachable/postcode-input.tsx. Lift to module-level `const UK_POSTCODE_PATTERN = /.../i` and call `.test(postcode.trim())`. No /g flag, so stateless and identical."
+ },
+ {
+  "prNum": 216,
+  "slug": "hoist-agent-config-prices",
+  "area": "agents",
+  "title": "Hoist static prices table out of calculateCost()",
+  "files": [
+   "src/agents/config.ts"
+  ],
+  "itemIds": [
+   "hoist-agent-config-prices"
+  ],
+  "isDelete": false,
+  "detail": "  [1] Hoist static prices table out of calculateCost()\n      FILES: src/agents/config.ts\n      The `prices` object literal (lines 82-86) is a pure constant keyed by model, reallocated per call. Move to module scope as `const MODEL_PRICES = {...} as const;` and index in. Invoked once per agent run per cinema (scraper-health batches dozens). Fully exercised by config.test.ts (8 cases)."
+ },
+ {
+  "prNum": 217,
+  "slug": "hoist-currentyear-completeness",
+  "area": "agents",
+  "title": "Hoist new Date().getFullYear() out of checkFilmCompleteness loop",
+  "files": [
+   "src/agents/data-quality/index.ts"
+  ],
+  "itemIds": [
+   "hoist-currentyear-completeness"
+  ],
+  "isDelete": false,
+  "detail": "  [1] Hoist new Date().getFullYear() out of checkFilmCompleteness loop\n      FILES: src/agents/data-quality/index.ts\n      Line 200 (`film.year < new Date().getFullYear()`) is inside the per-film loop (line 159), allocating a Date + recomputing the year per film. Hoist `const currentYear = new Date().getFullYear();` before the loop. Year is stable for the loop runtime."
+ },
+ {
+  "prNum": 218,
+  "slug": "hoist-statcard-colorstyles",
+  "area": "admin",
+  "title": "Hoist static StatCard colorStyles map to module scope",
+  "files": [
+   "src/app/admin/analytics/page.tsx"
+  ],
+  "itemIds": [
+   "hoist-statcard-colorstyles"
+  ],
+  "isDelete": false,
+  "detail": "  [1] Hoist static StatCard colorStyles map to module scope\n      FILES: src/app/admin/analytics/page.tsx\n      The `colorStyles` lookup map (lines 582-587) is declared inside StatCard's body \u2014 reallocated per render across 4 instances. References no props/closure. Move to module scope as `const STAT_CARD_COLOR_STYLES = {...} as const;`. NOTE: analytics/page.tsx also has a medium-risk render-mutation finding (no-mutate-engagement-sort) \u2014 both target this file; ship in one PR, carry medium risk for the combined PR."
+ },
+ {
+  "prNum": 219,
+  "slug": "hoist-summarycard-tonestyles",
+  "area": "admin",
+  "title": "Hoist static SummaryCard toneStyles map to module scope (+1 more on same file)",
+  "files": [
+   "src/app/admin/page.tsx"
+  ],
+  "itemIds": [
+   "hoist-summarycard-tonestyles",
+   "some-over-filter-zero-screening"
+  ],
+  "isDelete": false,
+  "detail": "Multiple safe refactors on src/app/admin/page.tsx (one PR, file-disjoint from others):\n  [1] Hoist static SummaryCard toneStyles map to module scope\n            The `toneStyles` className map (lines 331-336) is declared inside SummaryCard's body \u2014 reallocated per render across 5 cards, depends on no props/closure. Move to module scope as `const SUMMARY_CARD_TONE_STYLES = {...} as const;` and index with `tone`. NOTE: admin/page.tsx also has a low-risk perf finding (some-over-filter-zero-screening) \u2014 ship both together in one PR for this file.\n  [2] Replace allocating filter with .some() for zeroScreeningCinemas check\n            `zeroScreeningCinemas` (line 108) is a filtered array consumed only once at line 175 as `.length > 0`. Replace with `const hasZeroScreeningCinemas = result.metrics.some((m) => m.totalFutureScreenings === 0);`. Leave `staleCinemas` as-is (read twice via .length). Server-rendered once/request so perf delta is small \u2014 primarily clarity/allocation cleanup. Ship in the same PR as hoist-summarycard-tonestyles (same file)."
+ }
+]

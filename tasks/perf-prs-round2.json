@@ -1,0 +1,16 @@
+[
+  {
+    "prNum": 22,
+    "slug": "cmdk-row-poster-srcset",
+    "area": "img",
+    "title": "add srcset/sizes to command-palette FilmRow + UserStatusRow posters",
+    "impact": "medium",
+    "files": [
+      "frontend/src/lib/components/search/rows/FilmRow.svelte",
+      "frontend/src/lib/components/search/rows/UserStatusRow.svelte"
+    ],
+    "itemIds": ["cmdk-row-poster-srcset"],
+    "isDelete": false,
+    "detail": "  [1] Add srcset/sizes to command-palette FilmRow + UserStatusRow posters\n      FILES: frontend/src/lib/components/search/rows/FilmRow.svelte, frontend/src/lib/components/search/rows/UserStatusRow.svelte\n      PROBLEM: Both palette row posters render the persisted w500 TMDB image at a tiny size (FilmRow ~36px, UserStatusRow ~32px) with no srcset/sizes, over-fetching ~25-55KB per row. An 8-result palette query downloads ~300-450KB of poster bytes for thumbnails. Round-1 added width/height/loading/decoding to these rows but NOT srcset/sizes.\n      FIX: In each row's existing {#if posterUrl}/{#if ...} poster block, use the EXISTING util getPosterImageAttributes from '$lib/utils' (signature at frontend/src/lib/utils.ts:273; TmdbPosterSize includes w92/w154). Compute {@const posterImage = getPosterImageAttributes(url, { baseSize: 'w92', srcSetSizes: ['w92','w154'], sizes: '36px' })} for FilmRow (use sizes: '32px' for UserStatusRow), then set src={posterImage?.src ?? url} srcset={posterImage?.srcset} sizes={posterImage?.sizes}. Leave existing width/height/loading/decoding/alt UNTOUCHED. The util falls back to the raw URL for non-TMDB hosts, so non-TMDB posters render byte-identically. Verify the exact prop/variable names already used in each component before editing; match existing code style.\n      ACCEPTANCE: Playwright opens cmd+k, types a query; assert FilmRow/UserStatusRow <img> now carry srcset (w92 + w154) and sizes, the rendered poster is visually identical at the same CSS box, and non-TMDB posters still use the raw src. DevTools network shows the small (w92/w154) variant fetched, not w500. No layout shift (width/height unchanged).\n      IMPACT: medium - ~90% poster payload reduction on palette queries (~300-450KB -> ~30-40KB for an 8-result query); faster open-to-image on mobile/3G. Behavior-preserving: same rendered box, same fallback for non-TMDB."
+  }
+]

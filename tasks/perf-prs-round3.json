@@ -1,0 +1,24 @@
+[
+  {
+    "prNum": 23,
+    "slug": "filmsimilarrail-srcset",
+    "area": "img",
+    "title": "add srcset/sizes to FilmSimilarRail posters (srcset-only; round-1 already added width/height)",
+    "impact": "low",
+    "files": ["frontend/src/lib/components/film/FilmSimilarRail.svelte"],
+    "itemIds": ["filmsimilarrail-srcset"],
+    "isDelete": false,
+    "detail": "  [1] Add srcset/sizes to FilmSimilarRail posters (srcset-only)\n      FILES: frontend/src/lib/components/film/FilmSimilarRail.svelte\n      CONTEXT: PR #588 already merged width/height + loading=lazy + decoding=async + aspect-ratio for FilmSimilarRail posters. This PR adds ONLY srcset/sizes on top — do NOT change/duplicate the existing width/height/loading/decoding/aspect-ratio attributes.\n      PROBLEM: The similar-films rail (below the fold on /film/[id]) renders persisted w500 TMDB posters at ~132px CSS width with no srcset, over-fetching ~150-300KB across a ~12-card rail at idle time.\n      FIX: Read the CURRENT (post-#588) FilmSimilarRail.svelte first. Use the EXISTING util getPosterImageAttributes from '$lib/utils' (TmdbPosterSize includes w185/w342). For each poster compute {@const posterImage = getPosterImageAttributes(s.posterUrl, { baseSize: 'w342', srcSetSizes: ['w185','w342'], sizes: '132px' })} and add src={posterImage?.src ?? s.posterUrl} srcset={posterImage?.srcset} sizes={posterImage?.sizes}. Leave ALL other attributes exactly as #588 left them. Util falls back to raw URL for non-TMDB hosts. Match the existing variable/loop binding used in the merged component.\n      ACCEPTANCE: Playwright on /film/[id]: similar-rail <img> carry srcset (w185 + w342) + sizes, posters visually identical (aspect-ratio 2/3, no CLS), non-TMDB posters use raw src. Below-the-fold so zero LCP change.\n      IMPACT: low - ~150-300KB idle-time transfer saved; behavior-preserving."
+  },
+  {
+    "prNum": 24,
+    "slug": "font-cache-control-header",
+    "area": "hints",
+    "title": "add bounded Cache-Control header for self-hosted /fonts/*.woff2 (30-day, not immutable)",
+    "impact": "medium",
+    "files": ["frontend/vercel.json"],
+    "itemIds": ["font-cache-control-header"],
+    "isDelete": false,
+    "detail": "  [1] Add a bounded Cache-Control header for /fonts/*\n      FILES: frontend/vercel.json\n      PROBLEM: Live fonts are served `cache-control: public, max-age=0, must-revalidate` (verified on https://www.pictures.london/fonts/Fraunces.woff2), so every REPEAT visit does a conditional 304 revalidation on the three render-blocking PRELOADED fonts (InterVariable, Fraunces, IBMPlexMono per app.html). This adds a round-trip on the critical path for returning visitors.\n      FIX: frontend/vercel.json currently has ONLY a `rewrites` array (api + posthog ingest). Add a sibling top-level `headers` array (do NOT touch/remove the existing rewrites). Add ONE entry: { \"source\": \"/fonts/(.*)\", \"headers\": [ { \"key\": \"Cache-Control\", \"value\": \"public, max-age=2592000, stale-while-revalidate=86400\" } ] }. 30-day TTL, NOT immutable (so a same-name font swap still propagates within 30 days). Keep the file valid JSON, preserve existing tab indentation/style. Do NOT add immutable or a year-long max-age.\n      ACCEPTANCE: After merge+deploy, `curl -sD- -o/dev/null https://www.pictures.london/fonts/Fraunces.woff2` must show `cache-control: public, max-age=2592000, ...` (NOT max-age=0). The /api/* and /ingest/* rewrites must still work (proxy intact). No rendered output changes anywhere.\n      IMPACT: medium - removes a per-font 304 revalidation round-trip on every repeat visit for the 3 render-blocking preloaded fonts. Reversible 1-line revert. Caching-only; no behavior/visual change."
+  }
+]

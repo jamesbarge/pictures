@@ -1,0 +1,236 @@
+[
+  {
+    "itemIds": [
+      "repoint-inter-preload-to-cormorant",
+      "remove-crossorigin-tmdb-preconnect",
+      "remove-dead-api-preconnect",
+      "add-clerk-preconnect"
+    ],
+    "rank": 1,
+    "files": [
+      "frontend/src/app.html"
+    ],
+    "impact": "high"
+  },
+  {
+    "itemIds": [
+      "lazy-mount-command-palette"
+    ],
+    "rank": 5,
+    "files": [
+      "frontend/src/routes/+layout.svelte"
+    ],
+    "impact": "high"
+  },
+  {
+    "itemIds": [
+      "lazy-mount-mobile-filter-sheet",
+      "hoist-dayheader-intl-formatters"
+    ],
+    "rank": 6,
+    "files": [
+      "frontend/src/routes/+page.svelte"
+    ],
+    "impact": "medium"
+  },
+  {
+    "itemIds": [
+      "manualchunks-bits-ui"
+    ],
+    "rank": 7,
+    "files": [
+      "frontend/vite.config.ts"
+    ],
+    "impact": "low"
+  },
+  {
+    "itemIds": [
+      "drop-unused-inter-italic-font-faces",
+      "remove-soft-display-helpers",
+      "remove-duplicate-font-display"
+    ],
+    "rank": 8,
+    "files": [
+      "frontend/src/app.css",
+      "frontend/static/fonts/InterVariable-Italic.woff2"
+    ],
+    "impact": "low"
+  },
+  {
+    "itemIds": [
+      "add-letterboxd-poster-img-attrs"
+    ],
+    "rank": 9,
+    "files": [
+      "frontend/src/routes/letterboxd/+page.svelte"
+    ],
+    "impact": "medium"
+  },
+  {
+    "itemIds": [
+      "filmcard-img-dims-and-priority",
+      "content-visibility-filmcard-grids"
+    ],
+    "rank": 10,
+    "files": [
+      "frontend/src/lib/components/calendar/FilmCard.svelte",
+      "frontend/src/routes/festivals/[slug]/+page.svelte",
+      "frontend/src/routes/this-weekend/+page.svelte",
+      "frontend/src/routes/tonight/+page.svelte"
+    ],
+    "impact": "medium"
+  },
+  {
+    "itemIds": [
+      "filmsimilarrail-poster-attrs"
+    ],
+    "rank": 11,
+    "files": [
+      "frontend/src/lib/components/film/FilmSimilarRail.svelte"
+    ],
+    "impact": "low"
+  },
+  {
+    "itemIds": [
+      "trim-cinemas-ssr-payload"
+    ],
+    "rank": 13,
+    "files": [
+      "frontend/src/routes/cinemas/+page.server.ts"
+    ],
+    "impact": "medium"
+  },
+  {
+    "itemIds": [
+      "hoist-parse-query-intl-formatters"
+    ],
+    "rank": 14,
+    "files": [
+      "frontend/src/lib/search/parse-query.ts"
+    ],
+    "impact": "medium"
+  },
+  {
+    "itemIds": [
+      "hoist-screeningrow-intl-formatters"
+    ],
+    "rank": 15,
+    "files": [
+      "frontend/src/lib/components/search/rows/ScreeningRow.svelte"
+    ],
+    "impact": "medium"
+  },
+  {
+    "itemIds": [
+      "requestidlecallback-timeout-posthog"
+    ],
+    "rank": 16,
+    "files": [
+      "frontend/src/lib/analytics/PostHogProvider.svelte"
+    ],
+    "impact": "medium"
+  },
+  {
+    "itemIds": [
+      "prerender-about"
+    ],
+    "rank": 17,
+    "files": [
+      "frontend/src/routes/about/+page.ts"
+    ],
+    "impact": "low"
+  },
+  {
+    "itemIds": [
+      "prerender-privacy"
+    ],
+    "rank": 18,
+    "files": [
+      "frontend/src/routes/privacy/+page.ts"
+    ],
+    "impact": "low"
+  },
+  {
+    "itemIds": [
+      "prerender-terms"
+    ],
+    "rank": 19,
+    "files": [
+      "frontend/src/routes/terms/+page.ts"
+    ],
+    "impact": "low"
+  },
+  {
+    "itemIds": [
+      "prerender-seasons"
+    ],
+    "rank": 20,
+    "files": [
+      "frontend/src/routes/seasons/+page.ts"
+    ],
+    "impact": "low"
+  },
+  {
+    "itemIds": [
+      "memoize-cluster-membership-filters",
+      "hoist-within-radius-desktop-sidebar"
+    ],
+    "rank": 21,
+    "files": [
+      "frontend/src/lib/components/filters/DesktopFilterSidebar.svelte",
+      "frontend/src/lib/components/filters/MobileFilterSheet.svelte"
+    ],
+    "impact": "low"
+  },
+  {
+    "itemIds": [
+      "trim-directors-films-array"
+    ],
+    "rank": 24,
+    "files": [
+      "frontend/src/routes/directors/+page.server.ts"
+    ],
+    "impact": "low"
+  },
+  {
+    "itemIds": [
+      "add-decoding-async-palette-rows"
+    ],
+    "rank": 25,
+    "files": [
+      "frontend/src/lib/components/search/rows/FestivalRow.svelte",
+      "frontend/src/lib/components/search/rows/UserStatusRow.svelte"
+    ],
+    "impact": "low"
+  },
+  {
+    "itemIds": [
+      "delete-orphaned-filterbar-tree"
+    ],
+    "rank": 28,
+    "files": [
+      "frontend/src/lib/components/filters/ActiveFilterChips.svelte",
+      "frontend/src/lib/components/filters/CinemaPicker.svelte",
+      "frontend/src/lib/components/filters/ClearFiltersButton.svelte",
+      "frontend/src/lib/components/filters/DateTimePicker.svelte",
+      "frontend/src/lib/components/filters/FilterBar.svelte",
+      "frontend/src/lib/components/filters/FormatPicker.svelte",
+      "frontend/src/lib/components/filters/SearchInput.svelte",
+      "frontend/src/lib/components/filters/ViewToggle.svelte"
+    ],
+    "impact": "low"
+  },
+  {
+    "itemIds": [
+      "delete-unreferenced-standalone-components"
+    ],
+    "rank": 29,
+    "files": [
+      "frontend/src/lib/components/calendar/DaySection.svelte",
+      "frontend/src/lib/components/calendar/TableView.svelte",
+      "frontend/src/lib/components/ui/MobilePanel.svelte",
+      "frontend/src/lib/components/ui/Skeleton.svelte"
+    ],
+    "impact": "low"
+  }
+]

@@ -1,0 +1,553 @@
+{
+  "items": [
+    {
+      "id": "repoint-inter-preload-to-cormorant",
+      "rank": 1,
+      "title": "Repoint the misdirected InterVariable preload in app.html to Cormorant-Italic",
+      "dimension": "fonts-assets",
+      "files": [
+        "frontend/src/app.html"
+      ],
+      "problem": "app.html line 11 preloads InterVariable.woff2 (352,240 B) at highest priority, but Inter renders nowhere above the fold \u2014 its only consumers are Chip.svelte (only after a filter is applied) and the FittedTitleCanvas canvas fallback. Meanwhile Cormorant-Italic.woff2 (38,140 B, --font-serif-italic) IS painted on first load (Header watchlist link + homepage masthead/day headers) yet is not preloaded. The result is a 352KB high-priority fetch the user never sees on load, starving the visible Cormorant text (FOUT) and competing with Fraunces/Plex for early bandwidth.",
+      "fix": "In app.html, change the line 11 preload from /fonts/InterVariable.woff2 to /fonts/Cormorant-Italic.woff2 (keep as=font type=font/woff2 crossorigin). This swaps a 352KB non-visible preload for a 38KB above-the-fold one. Inter still loads on demand via its retained @font-face (font-display:swap) when a chip first renders. Fraunces and IBMPlexMono preloads on lines 12-13 are untouched. This item only edits app.html (the preload href); the Inter @font-face cleanup in app.css is a separate item.",
+      "expectedImpact": "high",
+      "impactMetric": "LCP / critical-path font bytes: -352KB off the high-priority preload queue, +38KB Cormorant promoted to kill above-the-fold FOUT on masthead+header",
+      "riskClass": "safe",
+      "acceptanceTest": "Playwright on / at 390x844 and 1280px: record performance.getEntriesByType('resource') and confirm Cormorant-Italic.woff2 is fetched high-priority early and InterVariable.woff2 is NOT fetched during initial load (no filter applied). Apply a filter to force a Chip and confirm InterVariable.woff2 then loads on demand. Pixel-diff masthead + Header watchlist link before/after must be identical after fonts settle. LCP across 5 runs must be neutral-or-better, never worse.",
+      "estLinesChanged": 1,
+      "conflictsWith": [
+        "drop-unused-inter-italic-font-faces"
+      ]
+    },
+    {
+      "id": "remove-crossorigin-tmdb-preconnect",
+      "rank": 2,
+      "title": "Drop crossorigin from the image.tmdb.org preconnect so the LCP poster socket is reusable",
+      "dimension": "resource-hints",
+      "files": [
+        "frontend/src/app.html"
+      ],
+      "problem": "app.html line 7 warms image.tmdb.org with crossorigin, but browsers key connections by (origin, CORS-mode). Every critical-path poster img (DesktopHybridCard eager/high, MobileFilmRow eager/high, FilmCard, the film-detail hero, and the home LCP link rel=preload as=image) loads in NON-CORS mode and sets no crossorigin, so the CORS-warmed socket cannot be reused \u2014 the LCP poster pays a fresh DNS+TLS handshake despite the preconnect. The only CORS-mode TMDB consumer is FittedTitleCanvas (hover-only, never first paint).",
+      "fix": "Change app.html line 7 to a preconnect to https://image.tmdb.org without the crossorigin token. Leave the dns-prefetch on line 8 as-is. The warmed socket now matches the non-CORS poster/LCP requests so the warm-up actually saves the handshake; the hover-only canvas opens its own connection on hover regardless.",
+      "expectedImpact": "high",
+      "impactMetric": "LCP: removes one DNS+TLS round-trip (~100-300ms on cold mobile) from the critical poster request, the LCP element on home + film detail",
+      "riskClass": "safe",
+      "acceptanceTest": "DevTools Network on / and /film/[id] cold load: confirm exactly one connection opens to image.tmdb.org and the LCP poster + home preload reuse it (same Connection ID, no separate Initial-connection/SSL timing on the poster). Hover a FilmCard and confirm FittedTitleCanvas still renders the masked title (CORS canvas read succeeds). Lighthouse: no Preconnect regression; LCP unchanged-or-improved. Pixel diff of home + film detail byte-identical.",
+      "estLinesChanged": 1,
+      "conflictsWith": [
+        "remove-dead-api-preconnect",
+        "add-clerk-preconnect",
+        "repoint-inter-preload-to-cormorant"
+      ]
+    },
+    {
+      "id": "remove-dead-api-preconnect",
+      "rank": 3,
+      "title": "Remove the dead api.pictures.london preconnect + dns-prefetch (browser never connects to it)",
+      "dimension": "resource-hints",
+      "files": [
+        "frontend/src/app.html"
+      ],
+      "problem": "app.html lines 9-10 preconnect + dns-prefetch https://api.pictures.london, but the browser never contacts that origin: the client API helper sets API_BASE='' and fetches relative /api/* paths, which vercel.json rewrites to api.pictures.london SERVER-SIDE (same-origin from the browser). The literal api.pictures.london only appears in src/lib/server/api.ts (SSR, runs on the server). So the preconnect opens a real TCP+TLS+CORS handshake to a host the page never uses, wasting one of the browser's ~6 concurrent connection slots and competing with the genuinely-needed tmdb/clerk connections on every page load.",
+      "fix": "Delete lines 9 and 10 of app.html (the api.pictures.london preconnect and dns-prefetch). Same-origin /api/* requests reuse the already-open connection to pictures.london; no hint is needed.",
+      "expectedImpact": "medium",
+      "impactMetric": "TTFB/contention: frees a concurrent-connection slot and avoids a wasted DNS+TLS handshake every page load, letting critical tmdb/clerk connections open sooner",
+      "riskClass": "safe",
+      "acceptanceTest": "DevTools Network on any page cold load: confirm NO connection is ever opened to api.pictures.london from the browser (all data calls are same-origin /api/* to pictures.london). Confirm home calendar, film detail, cinemas, and reachable all still load data (SSR via src/lib/server/api.ts is unaffected). Lighthouse 'Preconnect to required origins' must not flag api.pictures.london. Render byte-identical.",
+      "estLinesChanged": 2,
+      "conflictsWith": [
+        "remove-crossorigin-tmdb-preconnect",
+        "add-clerk-preconnect"
+      ]
+    },
+    {
+      "id": "add-clerk-preconnect",
+      "rank": 4,
+      "title": "Add preconnect + dns-prefetch for clerk.pictures.london (ClerkJS bootstraps on every production page)",
+      "dimension": "resource-hints",
+      "files": [
+        "frontend/src/app.html"
+      ],
+      "problem": "In production PUBLIC_CLERK_PUBLISHABLE_KEY decodes to clerk.pictures.london, and the root layout renders ClerkProvider unconditionally when clerkEnabled is true, so on EVERY production page ClerkJS fetches its bundle and hits /v1/client on clerk.pictures.london during early bootstrap. app.html has hints for image.tmdb.org but none for clerk.pictures.london, so the auth bootstrap eats a full cold DNS+TLS round-trip. This is a genuine third-party CDN origin (unlike same-origin api.pictures.london), so it benefits from a hint.",
+      "fix": "Add two lines to app.html head alongside the existing hints: a preconnect to https://clerk.pictures.london with crossorigin, and a dns-prefetch to https://clerk.pictures.london. Keep crossorigin because ClerkJS fetches its bundle/session with CORS credentials, so the warmed CORS socket is the correct match.",
+      "expectedImpact": "medium",
+      "impactMetric": "hydration ms / auth-ready time: saves one DNS+TLS round-trip (~100-300ms cold) on the Clerk frontend-API connection bootstrapped on every production page",
+      "riskClass": "safe",
+      "acceptanceTest": "DevTools Network in production (or against the live clerk key) cold load: confirm the clerk.pictures.london Initial-connection/SSL timing happens during HTML parse (earlier than today) and ClerkJS + /v1/client reuse it. Sign-in/out and the header Sign in link still work; page renders byte-identically signed-out and signed-in. In dev/non-clerk builds (ClerkProvider not rendered) confirm the hint is a harmless no-op with no console errors. Lighthouse: no 'preconnect not used' warning.",
+      "estLinesChanged": 2,
+      "conflictsWith": [
+        "remove-crossorigin-tmdb-preconnect",
+        "remove-dead-api-preconnect"
+      ]
+    },
+    {
+      "id": "lazy-mount-command-palette",
+      "rank": 5,
+      "title": "Lazy-mount CommandPalette in +layout.svelte instead of static import",
+      "dimension": "code-split",
+      "files": [
+        "frontend/src/routes/+layout.svelte"
+      ],
+      "problem": "+layout.svelte line 13 statically imports CommandPalette and renders it eagerly (line 42), pulling a large dependency subtree into the shared layout chunk that loads on EVERY route: bits-ui Dialog (the only bits-ui consumer in src), CommandPaletteInput, ActiveFiltersRow, Chip, and ResultsList which statically imports all 8 row components (~793 lines). None of it renders on first paint \u2014 palette.open starts false so the closed Dialog emits empty DOM. The lightweight cmd+k keybinding lives separately in GlobalCmdkBinding.svelte, so the trigger does not need the heavy UI eagerly loaded.",
+      "fix": "Replicate the existing FilmSimilarRail lazy pattern. Replace the static import with a $state holder set to null, add an $effect that, when palette.open first becomes true in the browser, dynamically imports CommandPalette and assigns its default export. Render the component behind an {#if} guard in place of the current eager mount. To preserve today's exact behavior, only change the clerkEnabled if-branch (line 42) \u2014 do NOT add it to the else-branch where it is currently absent. Keep GlobalCmdkBinding eager so cmd+k still flips palette.open; the store sets open=true synchronously and the effect mounts within a microtask before the Dialog paints.",
+      "expectedImpact": "high",
+      "impactMetric": "bundle KB: removes the bits-ui Dialog primitive + ~1500 lines of palette Svelte components from the shared layout chunk loaded on every route; defers to an on-open async chunk",
+      "riskClass": "safe",
+      "acceptanceTest": "Playwright: load home, /film/[id], /cinemas \u2014 assert no .cmdk-content and no #cmdk-listbox in initial DOM (identical to today). Press Cmd+K and Ctrl+K: assert .cmdk-content appears, input focuses, typing 'curzon' yields rows, Arrow/Enter/Esc behave identically to main. Network: a new async chunk loads only after first Cmd+K, not on initial load. Diff chunk graph to confirm bits-ui left the entry/layout chunk. Behavior byte-identical since palette.open=false renders nothing.",
+      "estLinesChanged": 12,
+      "conflictsWith": []
+    },
+    {
+      "id": "lazy-mount-mobile-filter-sheet",
+      "rank": 6,
+      "title": "Lazy-mount MobileFilterSheet on the home route instead of always instantiating it",
+      "dimension": "code-split",
+      "files": [
+        "frontend/src/routes/+page.svelte"
+      ],
+      "problem": "routes/+page.svelte line 6 statically imports MobileFilterSheet and line 366 instantiates it unconditionally (not behind an {#if}). MobileFilterSheet (448 lines) statically imports MobileDatePicker (277 lines) plus area-clusters and user-location store, so ~725 lines of mobile filter UI ship in the home route's client chunk even though the sheet only renders when the user taps the mobile Filter button (mobileFilterOpen starts false). On desktop (the >=1024px default shell) this code is never exercised yet is parsed/hydrated on first paint.",
+      "fix": "Wrap the instantiation in an {#if} and load on first open, mirroring the FilmSimilarRail pattern. Replace the static import with a $state holder set to null, and trigger the dynamic import inside the existing mobile Filter button onclick alongside setting mobileFilterOpen=true. Render the component behind the {#if} guard. The sheet's open/onClose props and its internal modal keyboard-trap effect are unchanged.",
+      "expectedImpact": "medium",
+      "impactMetric": "bundle KB / hydration ms: defers ~725 lines of mobile filter UI out of the home route chunk; eliminates its hydration cost on desktop first paint",
+      "riskClass": "safe",
+      "acceptanceTest": "Playwright iPhone 12 Pro (390x844): load home, assert no .mobile-filter sheet DOM present initially (same as today); tap Filter, assert the sheet opens with identical content (date presets, area clusters, Within 2 miles, film count) and Escape/scroll-lock work; close and reopen to confirm chunk caches. At desktop 1280px assert the sheet code path never loads (no chunk in Network). Diff rendered HTML of an opened sheet between main and branch \u2014 identical.",
+      "estLinesChanged": 10,
+      "conflictsWith": [
+        "hoist-dayheader-intl-formatters"
+      ]
+    },
+    {
+      "id": "manualchunks-bits-ui",
+      "rank": 7,
+      "title": "Add a narrow manualChunks vendor split for bits-ui in vite.config.ts",
+      "dimension": "code-split",
+      "files": [
+        "frontend/vite.config.ts"
+      ],
+      "problem": "vite.config.ts has no build.rollupOptions/manualChunks; vendor splitting is left to bundler defaults. bits-ui is currently consumed only by CommandPalette.svelte, so once the lazy-mount lands it naturally moves into the palette async chunk \u2014 but nothing pins it there. If any future component statically imports a bits-ui primitive, Rollup may hoist the shared bits-ui code back into a common/entry chunk, silently regressing the layout bundle.",
+      "fix": "Add a build.rollupOptions.output.manualChunks function to defineConfig that returns 'vendor-bits-ui' for ids containing node_modules/bits-ui. Keep it narrowly scoped to bits-ui only \u2014 do NOT add broad node_modules groupings which de-optimize SvelteKit's per-route splitting and the already-lazy maplibre/posthog chunks. Pure chunk-boundary/caching hint; changes no rendered output. Ship after the lazy-mount item as a guard-rail + caching win.",
+      "expectedImpact": "low",
+      "impactMetric": "bundle KB: stable long-term caching of the bits-ui vendor chunk; prevents future re-merge into the entry/layout chunk",
+      "riskClass": "safe",
+      "acceptanceTest": "Run npm run build on a branch where the build is green, inspect .svelte-kit/output/client/_app/immutable/chunks for a vendor-bits-ui-*.js chunk. Confirm app boots and Cmd+K palette renders identically. Diff rendered DOM of every route between main and branch \u2014 byte-identical (only moves code between files).",
+      "estLinesChanged": 7,
+      "conflictsWith": []
+    },
+    {
+      "id": "drop-unused-inter-italic-font-faces",
+      "rank": 8,
+      "title": "Delete the two unused Inter italic @font-face blocks and the 388KB InterVariable-Italic.woff2",
+      "dimension": "fonts-assets",
+      "files": [
+        "frontend/src/app.css",
+        "frontend/static/fonts/InterVariable-Italic.woff2"
+      ],
+      "problem": "app.css declares four Inter @font-face rules: 'Inter Variable' normal (11-17) and italic (19-25), 'Inter' normal (27-33) and italic (35-41). Both italic blocks point at InterVariable-Italic.woff2 (387,976 B \u2014 the single largest font asset). The Inter family is referenced in exactly two places (Chip.svelte var(--font-sans), weight 600 normal; FittedTitleCanvas.svelte canvas ctx.font weight 800 normal) and no --font-sans/Inter element ever receives font-style:italic \u2014 all 44 italic declarations sit on Cormorant/Fraunces elements. The browser can never match the italic Inter face, so the 388KB file is dead weight bloating deploy artifacts.",
+      "fix": "Delete the two italic Inter @font-face blocks in app.css (lines 19-25 and 35-41) and remove frontend/static/fonts/InterVariable-Italic.woff2 from the repo. Leave the two normal-weight Inter blocks untouched so --font-sans still resolves to the normal Inter face exactly as before. No markup, class names, or custom properties change.",
+      "expectedImpact": "low",
+      "impactMetric": "font bytes: -388KB removed from deployed static assets (zero change to bytes downloaded by users since the file was never requested)",
+      "riskClass": "safe",
+      "acceptanceTest": "1) grep -rn 'font-style: italic' frontend/src and confirm none of the 44 hits are on an Inter/--font-sans element. 2) npm run build then grep built CSS for InterVariable-Italic \u2014 confirm gone. 3) Playwright: load /, a filtered calendar (renders Chip), and a film detail page at 1280px and 390px; DOM-level computed-style assertion that no rendered element has both font-family resolving to Inter AND font-style:italic. 4) Pixel diff of /, filtered calendar, /film/[id] before vs after \u2014 identical. 5) Confirm network.requests never contained InterVariable-Italic.woff2 before the change.",
+      "estLinesChanged": 14,
+      "conflictsWith": [
+        "repoint-inter-preload-to-cormorant",
+        "remove-soft-display-helpers",
+        "remove-duplicate-font-display"
+      ]
+    },
+    {
+      "id": "add-letterboxd-poster-img-attrs",
+      "rank": 9,
+      "title": "Add width/height + loading/decoding + srcset to the Letterboxd matched-film poster img",
+      "dimension": "image-cls",
+      "files": [
+        "frontend/src/routes/letterboxd/+page.svelte"
+      ],
+      "problem": "The matched-film poster img (lines 195-199) is the only poster in the app with no loading hints at all: it uses raw film.posterUrl with class w-16 h-24 object-cover but no width/height attrs, no loading=lazy, no decoding=async, no srcset/sizes. Unlike every sibling it does not route through getPosterImageAttributes, so it downloads the full-resolution TMDB poster (often w500/w780/original) to display at 64x96 CSS px. This grid can render dozens of films after a Letterboxd import.",
+      "fix": "Mirror the watchlist pattern: import getPosterImageAttributes, then inside the {#if film.posterUrl} block add an @const calling getPosterImageAttributes(film.posterUrl, baseSize w154, srcSetSizes w92/w154, sizes 64px) and set src/srcset/sizes from it plus width=64 height=96 loading=lazy decoding=async on the img. The w-16 h-24 (64x96) classes already match these intrinsic dims so layout is byte-identical; object-cover keeps cropping identical.",
+      "expectedImpact": "medium",
+      "impactMetric": "image bytes (full-res poster to ~w154, ~10-30x smaller per poster across a multi-row grid), CLS, LCP on /letterboxd",
+      "riskClass": "safe",
+      "acceptanceTest": "Render /letterboxd with imported films at 390px and 1280px before/after; screenshot-diff byte-identical (poster box stays 64x96, object-cover crop unchanged). DevTools Network: confirm the poster request changes from w500/w780/original to w92/w154 and total image transfer drops. Confirm computed layout box unchanged and width/height attrs are 64/96 matching CSS.",
+      "estLinesChanged": 9,
+      "conflictsWith": []
+    },
+    {
+      "id": "filmcard-img-dims-and-priority",
+      "rank": 10,
+      "title": "Add width/height to FilmCard poster + plumb an optional priority prop for first-row LCP",
+      "dimension": "image-cls",
+      "files": [
+        "frontend/src/lib/components/calendar/FilmCard.svelte",
+        "frontend/src/routes/tonight/+page.svelte",
+        "frontend/src/routes/this-weekend/+page.svelte",
+        "frontend/src/routes/festivals/[slug]/+page.svelte"
+      ],
+      "problem": "FilmCard.svelte poster img (lines 67-75) hard-codes loading=lazy for ALL cards and has no width/height and no fetchpriority path \u2014 unlike siblings DesktopHybridCard (width=342 height=513, priority to eager+high) and MobileFilmRow. FilmCard is the poster on /tonight, /this-weekend and /festivals/[slug], and none of those routes emit an LCP preload, so the largest above-fold poster is lazy-loaded with no fetchpriority, delaying LCP. CLS is currently held only by the aspect-[2/3] container class; intrinsic width/height makes the reservation robust.",
+      "fix": "In FilmCard.svelte add width=342 height=513 to the img (matches the w342 baseSize and the 2/3 box), add an optional prop priority=false to $props(), and set loading and fetchpriority conditionally off priority (identical to DesktopHybridCard). Then in the first {#each} of each consuming route pass priority for index 0 only. Default false keeps every existing call site byte-identical. Note: DaySection is dead code and is excluded from the consumer list.",
+      "expectedImpact": "medium",
+      "impactMetric": "LCP on /tonight, /this-weekend, /festivals/[slug] (first poster no longer lazy/low-priority); CLS robustness via intrinsic width/height",
+      "riskClass": "safe",
+      "acceptanceTest": "Playwright desktop+mobile on /tonight and /this-weekend before/after: full-page screenshot diff byte-identical (342x513 attrs match the rendered 2/3 box). Confirm the first card's img has loading=eager + fetchpriority=high and all others stay lazy/auto. Compare LCP before vs after via web-vitals; expect improvement with no layout change.",
+      "estLinesChanged": 14,
+      "conflictsWith": [
+        "content-visibility-filmcard-grids"
+      ]
+    },
+    {
+      "id": "filmsimilarrail-poster-attrs",
+      "rank": 11,
+      "title": "Route FilmSimilarRail posters through getPosterImageAttributes + add width/height",
+      "dimension": "image-cls",
+      "files": [
+        "frontend/src/lib/components/film/FilmSimilarRail.svelte"
+      ],
+      "problem": "FilmSimilarRail.svelte renders posters with a raw full-resolution s.posterUrl src and loading=lazy decoding=async (line 22), with no srcset/sizes downscaling and no width/height. The rail cards are 132px wide (grid minmax(132px,1fr) / flex 0 0 132px) so a w92/w154/w185 source suffices, but the code downloads whatever full-size URL is in the data (commonly w500+). Wasted bytes on a below-fold component that can show many films.",
+      "fix": "Import getPosterImageAttributes from $lib/utils and inside {#if s.posterUrl} add an @const calling it (baseSize w185, srcSetSizes w92/w154/w185, sizes 132px), then set src/srcset/sizes from it plus width=132 height=198. Keep loading=lazy decoding=async and alt unchanged. 132x198 matches the rendered 2/3 box so layout is byte-identical.",
+      "expectedImpact": "low",
+      "impactMetric": "image bytes on /film/[id] similar rail (full-res to ~w185), CLS robustness",
+      "riskClass": "safe",
+      "acceptanceTest": "Open a /film/[id] page with >=2 similar films, scroll the rail into view at 390px and 1280px before/after; screenshot-diff byte-identical (132px 2/3 posters, same crop). Network: rail posters now request w92/w154/w185 instead of the full source. Confirm the rail still lazy-loads (dynamically imported on idle) so no change to load timing.",
+      "estLinesChanged": 7,
+      "conflictsWith": []
+    },
+    {
+      "id": "content-visibility-filmcard-grids",
+      "rank": 12,
+      "title": "Add content-visibility:auto to the off-screen .film-grid containers on tonight/this-weekend/festivals",
+      "dimension": "CSS containment & content-visibility",
+      "files": [
+        "frontend/src/routes/this-weekend/+page.svelte",
+        "frontend/src/routes/festivals/[slug]/+page.svelte",
+        "frontend/src/routes/tonight/+page.svelte"
+      ],
+      "problem": "These three pages render large poster grids of FilmCard (festival is a single flat grid of 50-150+ cards; this-weekend stacks per-day grids where later days are off-screen). loading=lazy defers the network fetch but NOT layout/paint of the card subtree. Unlike the sibling DesktopHybridCard/MobileFilmRow used on the main calendar (which already carry content-visibility:auto + contain-intrinsic-size), these FilmCard grids have no containment, so the browser does full layout+paint for every off-screen card up front.",
+      "fix": "On the .film-grid rule in each of the three +page.svelte style blocks add content-visibility: auto and contain-intrinsic-size: auto 900px. Do NOT touch FilmCard.svelte \u2014 content-visibility cannot go on .film-card because it is a subgrid item (grid-template-rows: subgrid; grid-row: span 4) and containing it severs the shared row tracks and misaligns neighbours (verified in a headless repro). The grid CONTAINER is a normal block in flow, so the inner subgrid resolves identically; off-screen layout/paint is skipped.",
+      "expectedImpact": "medium",
+      "impactMetric": "INP / main-thread layout+paint on initial render of festival and weekend grids; secondary LCP benefit by not competing for layout with above-the-fold rows",
+      "riskClass": "safe",
+      "acceptanceTest": "Playwright at 390px and 1440px on /this-weekend and a populated /festivals/[slug]: (1) full-page screenshot before/after, pixel-diff empty after full scroll-through; (2) for the first row of cards assert every card's .meta and .screenings-area getBoundingClientRect().top are equal to each other and to the pre-change baseline (the exact invariant that breaks if containment is placed on the card); (3) Cmd-F a film title in a later off-screen day still scrolls to and reveals it; (4) Performance trace: total Layout+Paint during load is lower than baseline.",
+      "estLinesChanged": 6,
+      "conflictsWith": [
+        "filmcard-img-dims-and-priority"
+      ]
+    },
+    {
+      "id": "trim-cinemas-ssr-payload",
+      "rank": 13,
+      "title": "Trim cinemas/+page.server.ts return to the 5 fields the list renders",
+      "dimension": "ssr-payload",
+      "files": [
+        "frontend/src/routes/cinemas/+page.server.ts"
+      ],
+      "problem": "cinemas/+page.server.ts returns the full Cinema[] verbatim for ~59 cinemas, but cinemas/+page.svelte consumes only id, name, address.area, chain, and features (sliced to first 3). The returned objects also carry coordinates, screens, programmingFocus, website, bookingUrl, imageUrl, description, isActive, plus address.street/postcode/borough \u2014 all devalue-serialized into the SSR HTML and never read. description and imageUrl are long strings, so across 59 cinemas this is meaningful dead bytes in the initial HTML.",
+      "fix": "Map the response to exactly what the component reads, mirroring the trimming already done in +layout.server.ts: return cinemas mapped to id, name, chain, an address object with only area (or null), and features. Keep features whole (the component slices client-side) to avoid chain-grouping edge cases. Update the local CinemasResponse typing accordingly.",
+      "expectedImpact": "medium",
+      "impactMetric": "SSR data-prop bytes in the cinemas-page HTML (drops description, imageUrl, coordinates, website, bookingUrl, screens, programmingFocus, isActive, address.street/postcode/borough across ~59 cinemas)",
+      "riskClass": "safe",
+      "acceptanceTest": "Snapshot rendered /cinemas HTML before/after \u2014 visible DOM (names, areas, chain group headers, first-3 feature badges, count) identical. Grep cinemas/+page.svelte to confirm no other Cinema field is referenced. Measure the serialized __sveltekit data script size before/after to confirm reduction. Run cinemas Playwright specs.",
+      "estLinesChanged": 12,
+      "conflictsWith": []
+    },
+    {
+      "id": "hoist-parse-query-intl-formatters",
+      "rank": 14,
+      "title": "Hoist the per-call Intl.DateTimeFormat builders in parse-query.ts to module scope",
+      "dimension": "hydration-js",
+      "files": [
+        "frontend/src/lib/search/parse-query.ts"
+      ],
+      "problem": "parseQuery() runs on every command-palette keystroke (palette.svelte.ts: parsed = $derived(parseQuery(query, new Date(nowTick)))). Three helpers each construct a brand-new Intl.DateTimeFormat per call: londonDateString (en-CA), londonDayOfWeek (en-GB weekday short), londonMidnight (en-GB shortOffset). The DateTimeFormat constructor (ICU locale/timezone load) is the dominant cost; .format() is cheap. A temporal query like 'this weekend tarkovsky' rebuilds ~4 fresh constructors per keystroke. The configs are 100% constant.",
+      "fix": "Hoist the three formatter configs to module-scope constants (matching $lib/utils.ts and calendar-filter.ts): an en-CA Europe/London 2-digit y/m/d formatter, an en-GB weekday-short Europe/London formatter, and an en-GB Europe/London shortOffset formatter. Then londonDateString/londonDayOfWeek/londonMidnight call .format()/.formatToParts() on the hoisted instances. Pure refactor \u2014 identical output strings/parts.",
+      "expectedImpact": "medium",
+      "impactMetric": "INP / palette keystroke latency: eliminates ~3-5 Intl.DateTimeFormat constructions per temporal-query parse, repeated per keystroke",
+      "riskClass": "safe",
+      "acceptanceTest": "cd frontend && npx vitest run src/lib/search/parse-query.test.ts \u2014 all snapshots/assertions stay green (proves byte-identical parse across tonight/tomorrow/this weekend/next friday/this week). Constant configs guarantee unchanged output; optionally microbenchmark parseQuery('this weekend kurosawa', now) 10k x before/after.",
+      "estLinesChanged": 18,
+      "conflictsWith": []
+    },
+    {
+      "id": "hoist-screeningrow-intl-formatters",
+      "rank": 15,
+      "title": "Hoist the per-row Intl formatters in search ScreeningRow.svelte to module scope",
+      "dimension": "hydration-js",
+      "files": [
+        "frontend/src/lib/components/search/rows/ScreeningRow.svelte"
+      ],
+      "problem": "formatRelativeTime (lines 12-29) runs once per ScreeningRow rendered in the palette (one per screening result). Each call constructs TWO fresh Intl.DateTimeFormat instances (time HH:MM, weekday short) plus TWO toLocaleDateString('en-CA') calls for the same-day comparison (each allocating a throwaway formatter internally). With N rows that is up to 4N formatter constructions on every result update. All four configs are constant.",
+      "fix": "Hoist module-scope formatters: an en-GB hour/minute 2-digit Europe/London formatter, an en-GB weekday-short Europe/London formatter, and an en-CA Europe/London date formatter. In formatRelativeTime use the hoisted time formatter, compare the hoisted date formatter's output for the same-day check, and uppercase the hoisted weekday formatter's output. Output strings unchanged.",
+      "expectedImpact": "medium",
+      "impactMetric": "INP on palette open/typing: removes up to 4 Intl.DateTimeFormat constructions per screening row per result update",
+      "riskClass": "safe",
+      "acceptanceTest": "Playwright: open cmd+k, type a query returning screening rows, assert rendered time labels (e.g. 'TONIGHT 19:30', 'SAT 14:00') are byte-identical to current production for the same fixture data, at desktop + iPhone 12 Pro. Configs are constant so labels cannot change; confirm via text/screenshot diff.",
+      "estLinesChanged": 14,
+      "conflictsWith": []
+    },
+    {
+      "id": "requestidlecallback-timeout-posthog",
+      "rank": 16,
+      "title": "Add a 2000ms timeout to the requestIdleCallback deferring PostHog/web-vitals boot",
+      "dimension": "third-party-defer",
+      "files": [
+        "frontend/src/lib/analytics/PostHogProvider.svelte"
+      ],
+      "problem": "PostHogProvider.svelte defers analytics with requestIdleCallback(loadPostHog) (line 39) and NO timeout option. rIC only fires on main-thread idle; on busy pages (long hydration, continuous scroll/animation, slow devices) idle can be starved for seconds or never arrive, so initPostHog, the initial trackPageview, and startWebVitals never run \u2014 pageviews and Core Web Vitals are silently dropped on exactly the slow sessions where the data matters. The non-rIC branch already uses setTimeout(loadPostHog, 2000) as a ceiling, so the two paths have inconsistent worst-case latency.",
+      "fix": "Change line 39 to pass a { timeout: 2000 } options object as the second argument to requestIdleCallback. Keeps idle-first behavior on a quiet thread (identical to today) but guarantees the browser forces it within 2000ms \u2014 matching the existing setTimeout fallback ceiling. Nothing else changes.",
+      "expectedImpact": "medium",
+      "impactMetric": "analytics-boot reliability: guarantees PostHog + web-vitals init within <=2s and prevents dropped pageview/web_vital captures on thread-starved sessions; no change to fast-path timing",
+      "riskClass": "safe",
+      "acceptanceTest": "1) Quiet thread: load app, confirm posthog-js still loads after first paint during idle (same timing as before). 2) Robustness: run a main-thread busy-loop immediately on load; with the fix posthog-js + web-vitals chunks appear in Network within ~2s, on main they are delayed the full busy period. 3) cd frontend && npx playwright test passes. 4) Confirm the initial pageview still POSTs to /ingest in both cases.",
+      "estLinesChanged": 1,
+      "conflictsWith": []
+    },
+    {
+      "id": "prerender-about",
+      "rank": 17,
+      "title": "Add prerender = true to the about page",
+      "dimension": "prerender",
+      "files": [
+        "frontend/src/routes/about/+page.ts"
+      ],
+      "problem": "/about is pure static prose (content-only +page.svelte: h1, paragraphs, mailto link, scoped style \u2014 no +page.ts/+page.server.ts, no FilterBar, no page.data read, no onMount/localStorage/browser code). Today it renders through the SSR/ISR pipeline, and on each render the inherited root +layout.server.ts does a per-request apiFetch('/api/cinemas') to feed the Header \u2014 even though the Header no longer uses that prop. So this static page pays an SSR invocation + an upstream API round-trip on cold ISR misses for output that never changes.",
+      "fix": "Create frontend/src/routes/about/+page.ts exporting const prerender = true. SvelteKit + adapter-vercel emit /about as static HTML at build. The root layout load still runs once during prerender (snapshotting the cinema list into the unused Header prop) but the rendered DOM is byte-identical. Do NOT touch the root layout's prerender setting (leave it unset so other routes stay ISR).",
+      "expectedImpact": "low",
+      "impactMetric": "TTFB: eliminates SSR cold-start + /api/cinemas round-trip on /about (served as a static edge asset)",
+      "riskClass": "safe",
+      "acceptanceTest": "1) cd frontend && npm run build succeeds and the log lists /about under prerendered routes (a .html appears in adapter output). 2) Diff rendered HTML: curl -s https://pictures.london/about vs the prerendered output \u2014 main inner HTML (h1, all p, mailto link, head title/meta) identical. 3) Playwright at 390px/1280px: assert h1 'ABOUT', the mailto:hello@pictures.london link, Header nav links, Footer render exactly as on main; no console errors; theme/dimmer still apply.",
+      "estLinesChanged": 1,
+      "conflictsWith": []
+    },
+    {
+      "id": "prerender-privacy",
+      "rank": 18,
+      "title": "Add prerender = true to the privacy page",
+      "dimension": "prerender",
+      "files": [
+        "frontend/src/routes/privacy/+page.ts"
+      ],
+      "problem": "/privacy is static legal copy (headings, paragraphs, mailto link, scoped styles; no +page.ts/+page.server.ts, no client state, no page.data reads, no browser-only code). Its output cannot vary per request, yet it goes through the dynamic render path and inherits the root layout's per-request /api/cinemas fetch that the Header no longer consumes.",
+      "fix": "Create frontend/src/routes/privacy/+page.ts exporting const prerender = true. The page becomes static HTML at build. The root layout load runs once at build (snapshotting cinemas), unused by both this page and the Header, so the DOM is unchanged.",
+      "expectedImpact": "low",
+      "impactMetric": "TTFB: static edge asset instead of SSR function + upstream fetch on cold misses",
+      "riskClass": "safe",
+      "acceptanceTest": "1) cd frontend && npm run build; log lists /privacy as prerendered. 2) Byte-diff curl -s https://pictures.london/privacy main + head title/meta vs prerendered output \u2014 identical. 3) Playwright at 390px/1280px: assert h1 'PRIVACY POLICY', the four h2 headings (DATA WE COLLECT / ANALYTICS / COOKIES / CONTACT), mailto link, Header + Footer identical; no console errors.",
+      "estLinesChanged": 1,
+      "conflictsWith": []
+    },
+    {
+      "id": "prerender-terms",
+      "rank": 19,
+      "title": "Add prerender = true to the terms page",
+      "dimension": "prerender",
+      "files": [
+        "frontend/src/routes/terms/+page.ts"
+      ],
+      "problem": "/terms is static legal copy identical in shape to /privacy (headings, paragraphs, mailto link, scoped styles, no data load, no client state). It renders dynamically and inherits the root layout's unused per-request /api/cinemas fetch.",
+      "fix": "Create frontend/src/routes/terms/+page.ts exporting const prerender = true. Page emitted as static HTML at build; behavior-identical because no per-request data is rendered and the Header ignores the layout's cinema prop.",
+      "expectedImpact": "low",
+      "impactMetric": "TTFB: static edge asset instead of SSR function + upstream fetch on cold misses",
+      "riskClass": "safe",
+      "acceptanceTest": "1) cd frontend && npm run build; log lists /terms as prerendered. 2) Byte-diff curl -s https://pictures.london/terms main + head vs prerendered output \u2014 identical. 3) Playwright at 390px/1280px: assert h1 'TERMS OF SERVICE', the h2 headings (USE OF SERVICE / BOOKING / ACCURACY / CONTACT), mailto link, Header + Footer; no console errors.",
+      "estLinesChanged": 1,
+      "conflictsWith": []
+    },
+    {
+      "id": "prerender-seasons",
+      "rank": 20,
+      "title": "Add prerender = true to the seasons placeholder page",
+      "dimension": "prerender",
+      "files": [
+        "frontend/src/routes/seasons/+page.ts"
+      ],
+      "problem": "/seasons renders only a static heading plus an EmptyState (title 'Seasons coming soon') \u2014 no data import, no +page.ts/+page.server.ts, no page.data read, no client state. It is a fixed coming-soon page yet still renders through the SSR/ISR path and inherits the root layout's unused per-request /api/cinemas fetch.",
+      "fix": "Create frontend/src/routes/seasons/+page.ts exporting const prerender = true. Emits /seasons as static HTML. EmptyState is presentational with no per-request input, so the DOM is byte-identical. Revert when the page gains real per-request data (it will then fail the prerender build \u2014 the desired guardrail).",
+      "expectedImpact": "low",
+      "impactMetric": "TTFB: static edge asset instead of SSR function + upstream fetch on cold misses",
+      "riskClass": "safe",
+      "acceptanceTest": "1) cd frontend && npm run build; log lists /seasons as prerendered. 2) Byte-diff curl -s https://pictures.london/seasons main vs prerendered output \u2014 identical (h1 'SEASONS' + EmptyState title/description). 3) Playwright at 390px/1280px: assert h1 'SEASONS' and EmptyState text 'Seasons coming soon'; Header + Footer render; no console errors.",
+      "estLinesChanged": 1,
+      "conflictsWith": []
+    },
+    {
+      "id": "memoize-cluster-membership-filters",
+      "rank": 21,
+      "title": "Memoize cluster membership in DesktopFilterSidebar/MobileFilterSheet so toggling a cinema chip doesn't rescan all cinemas x4",
+      "dimension": "reactivity",
+      "files": [
+        "frontend/src/lib/components/filters/DesktopFilterSidebar.svelte",
+        "frontend/src/lib/components/filters/MobileFilterSheet.svelte"
+      ],
+      "problem": "In both filter surfaces {#each AREA_CLUSTERS as cluster}{@const active = isAreaActive(cluster.label)} calls isAreaActive into cinemasInCluster for all 4 clusters. cinemasInCluster does AREA_CLUSTERS.find then a full scan of ~57 cinemas, lowercasing each address.area and running a nested cluster.areas.some(...) with a toLowerCase allocation per area. Cluster-to-cinema-ID membership is a pure function of the cinemas prop and never changes while filtering, yet it is recomputed in full every time filters.cinemaIds changes (every toggle), because cinemaIds is read in the same expression. Only the ids.every(...) check legitimately depends on cinemaIds.",
+      "fix": "Precompute membership once with a $derived keyed only on cinemas (mapping each cluster label to its cinemasInCluster ids), then make isAreaActive/toggleArea look up that cached list by label and test/mutate cinemaIds against the cached ids. The scan now runs once per cinemas change instead of 4x per cinemaIds mutation. Output byte-identical (same ids, same active state, same toggled set).",
+      "expectedImpact": "low",
+      "impactMetric": "INP (ms on filter-chip toggle): eliminates 4 full cinema-array scans + nested lowercasing per toggle",
+      "riskClass": "safe",
+      "acceptanceTest": "Playwright desktop (>=1024px) and mobile: load home, open filters, click each area chip (Soho & West End, East, South, North) and assert aria-pressed toggles exactly as on main and the rendered grid (visibleFilmCount/screeningCount text) matches the main screenshot for the same click sequence. Unit: assert isAreaActive/toggleArea return identical values for a fixed cinemas+cinemaIds fixture before/after.",
+      "estLinesChanged": 24,
+      "conflictsWith": [
+        "hoist-within-radius-desktop-sidebar"
+      ]
+    },
+    {
+      "id": "hoist-within-radius-desktop-sidebar",
+      "rank": 22,
+      "title": "Hoist cinemasWithinRadius out of DesktopFilterSidebar markup so the haversine scan isn't run inline every render",
+      "dimension": "reactivity",
+      "files": [
+        "frontend/src/lib/components/filters/DesktopFilterSidebar.svelte"
+      ],
+      "problem": "The loc-note block {:else if userLocation.status === 'granted' && cinemasWithinRadius(WITHIN_RADIUS).length === 0} calls cinemasWithinRadius directly in markup. That function filters all cinemas and runs haversineMiles (sin/cos/atan2) for every cinema with coords. The same computation already runs inside withinActive = $derived.by(...). When location is granted this trig scan executes twice per render and re-executes on every reactive change the block's deps touch, even though the result depends only on userLocation.coords + cinemas.",
+      "fix": "Add a $derived withinIds that runs cinemasWithinRadius(WITHIN_RADIUS) only when coords exist (else empty). Have withinActive consume withinIds, use withinIds inside toggleWithin, and replace the markup guard with a withinIds.length === 0 check. The haversine scan now runs once per coords/cinemas change rather than 2x per render. Identical output.",
+      "expectedImpact": "low",
+      "impactMetric": "INP / hydration ms: collapses duplicate haversine-over-all-cinemas passes to a single memoized pass when geolocation is granted",
+      "riskClass": "safe",
+      "acceptanceTest": "Playwright desktop with geolocation mocked to a London coord: grant location, assert the Within 2mi chip aria-pressed state, the loc-note ('No cinemas within 2 miles...') visibility, and the toggled cinemaIds set are byte-identical to main for the same interaction. With geolocation denied/unsupported, assert the same loc-note branches render as on main.",
+      "estLinesChanged": 8,
+      "conflictsWith": [
+        "memoize-cluster-membership-filters"
+      ]
+    },
+    {
+      "id": "hoist-dayheader-intl-formatters",
+      "rank": 23,
+      "title": "Hoist the two per-day Intl builders out of the dayHeader snippet in routes/+page.svelte",
+      "dimension": "hydration-js",
+      "files": [
+        "frontend/src/routes/+page.svelte"
+      ],
+      "problem": "The {#snippet dayHeader} (lines 198-208) constructs TWO new Intl.DateTimeFormat instances every render of a day header (weekday long + day numeric, both Europe/London) and recomputes a tomorrowIso IIFE per call. The snippet renders once per visible day (up to MAX_DAYS_VISIBLE=7) and re-renders whenever filters change. Bounded but real; the configs are constant. DayMasthead already pays the same two-formatter cost reactively.",
+      "fix": "Hoist two module/script-top constants in +page.svelte: an en-GB weekday-long Europe/London formatter and an en-GB day-numeric Europe/London formatter. In the snippet replace the two inline constructions with .format() calls on the hoisted instances. Leave the tomorrowIso/relative logic unchanged (or lift tomorrowIso to a single $derived in the same PR) \u2014 output identical either way.",
+      "expectedImpact": "low",
+      "impactMetric": "hydration ms / filter-change re-render cost: removes 2 Intl.DateTimeFormat constructions per visible day header (<=14/render across the up-to-7-day window)",
+      "riskClass": "safe",
+      "acceptanceTest": "Playwright on the homepage: assert each day header still reads e.g. 'Today \u00b7 Thursday, the twenty-ninth' identically before/after at desktop and mobile; the existing E2E homepage spec stays green. Constant configs guarantee identical formatted output.",
+      "estLinesChanged": 8,
+      "conflictsWith": [
+        "lazy-mount-mobile-filter-sheet"
+      ]
+    },
+    {
+      "id": "trim-directors-films-array",
+      "rank": 24,
+      "title": "Trim per-director films array to the titles the directors page displays",
+      "dimension": "ssr-payload",
+      "files": [
+        "frontend/src/routes/directors/+page.server.ts"
+      ],
+      "problem": "directors/+page.server.ts is a straight passthrough. Each DirectorEntry carries films: string[] (every showing title for that director), but directors/+page.svelte renders only director.films.slice(0,3).join(', ') plus a films.length > 3 boolean. For prolific directors the full films array is serialized into the HTML data prop and largely discarded.",
+      "fix": "Reshape in the load so the serialized payload matches what is rendered while preserving the length>3 ellipsis: map each director to name, filmCount, and films sliced to the first 4. Keep 4 (not 3) so the component's films.length > 3 ellipsis check still triggers exactly as before; only the first 3 are displayed. filmCount (the 'N films showing' label) is untouched.",
+      "expectedImpact": "low",
+      "impactMetric": "SSR data-prop bytes on the directors page (drops the 4th-plus title strings per director)",
+      "riskClass": "safe",
+      "acceptanceTest": "Snapshot /directors HTML before/after \u2014 every director name, 'N films showing' count, the 3 displayed titles, and the trailing '...' identical (slice(0,4) preserves the >3 ellipsis). Confirm in +page.svelte that films is only used via slice(0,3) and length>3. Run directors Playwright specs.",
+      "estLinesChanged": 4,
+      "conflictsWith": []
+    },
+    {
+      "id": "add-decoding-async-palette-rows",
+      "rank": 25,
+      "title": "Add decoding=async to UserStatusRow and FestivalRow palette img tags for consistency",
+      "dimension": "image-cls",
+      "files": [
+        "frontend/src/lib/components/search/rows/UserStatusRow.svelte",
+        "frontend/src/lib/components/search/rows/FestivalRow.svelte"
+      ],
+      "problem": "Among the palette result rows, FilmRow.svelte sets decoding=async on its poster but UserStatusRow.svelte and FestivalRow.svelte omit it. Both already have correct width/height and loading=lazy, so this is the one missing hint. Without decoding=async these small images can decode synchronously on the main thread when the result list updates, adding tiny INP/render jitter as the user types and rows swap.",
+      "fix": "Add decoding=async to the img in UserStatusRow.svelte (the poster) and to the img in FestivalRow.svelte. No other attributes change.",
+      "expectedImpact": "low",
+      "impactMetric": "main-thread decode time / INP during palette typing (off-thread image decode)",
+      "riskClass": "safe",
+      "acceptanceTest": "Render the command palette, type a query surfacing a watchlist/seen status row and a festival row; screenshot-diff before/after byte-identical (decoding=async has no visual effect). Confirm the img elements now carry decoding=async matching FilmRow.",
+      "estLinesChanged": 2,
+      "conflictsWith": []
+    },
+    {
+      "id": "remove-soft-display-helpers",
+      "rank": 26,
+      "title": "Remove 6 dead .soft-display-* helper rules from app.css",
+      "dimension": "css-delivery",
+      "files": [
+        "frontend/src/app.css"
+      ],
+      "problem": "app.css lines 233-238 define six global utility classes (.soft-display-144/-96/-72/-48/-36/-24) setting Fraunces SOFT/opsz axes. A repo-wide grep (static markup AND template-string class refs) finds ZERO usages outside app.css itself; components that need these axes apply inline font-variation-settings in their own scoped style blocks. These hand-authored plain-CSS rules are not in an @layer and not Tailwind utilities, so Tailwind cannot tree-shake them \u2014 they ship to every page unconditionally (~452 raw bytes, verified in a real Tailwind v4 compile).",
+      "fix": "Delete the six lines under the '/* V2a variable-font axis helpers */' comment (lines 233-238) plus the now-orphaned comment on line 232. No markup references them, so no call sites need updating.",
+      "expectedImpact": "low",
+      "impactMetric": "global CSS bytes: ~452 raw bytes removed from the always-shipped global stylesheet (~74 bytes gzip combined with the font-display dup removal)",
+      "riskClass": "safe",
+      "acceptanceTest": "1) grep -rn 'soft-display' frontend/src returns matches ONLY in app.css before and NOTHING after deletion. 2) Tailwind CLI compile before/after and diff: the only delta is the removed .soft-display-* rules; no other selector changes. 3) cd frontend && npx playwright test at mobile+desktop \u2014 date pickers / filter sheet headings (which use inline font-variation-settings, not these classes) render unchanged.",
+      "estLinesChanged": 7,
+      "conflictsWith": [
+        "drop-unused-inter-italic-font-faces",
+        "remove-duplicate-font-display"
+      ]
+    },
+    {
+      "id": "remove-duplicate-font-display",
+      "rank": 27,
+      "title": "Remove the duplicate hand-written .font-display rule (Tailwind already emits it from @theme)",
+      "dimension": "css-delivery",
+      "files": [
+        "frontend/src/app.css"
+      ],
+      "problem": "app.css lines 203-205 hand-write a .font-display rule setting font-family to var(--font-display). But --font-display is declared in the @theme block (line 127) and Tailwind v4 auto-generates a .font-display utility from that token. A real Tailwind v4 compile confirms BOTH are emitted (the auto-generated one in @layer utilities and the byte-identical hand-written copy outside any layer). The class is a real utility used in markup (EmptyState, DaySection, FilmCard, BreathingGrid \u2014 27 occurrences), so Tailwind keeps emitting it after the hand-written copy is deleted. The duplicate adds only bytes. (.font-serif, .font-serif-italic and .font-mono-plex at lines 207/211/216 are NOT auto-generated and MUST stay.)",
+      "fix": "Delete only the .font-display rule at app.css lines 203-205. Leave .font-serif, .font-serif-italic, and .font-mono-plex intact \u2014 they are the sole definitions of those classes.",
+      "expectedImpact": "low",
+      "impactMetric": "global CSS bytes: ~54 raw bytes removed (one duplicated declaration)",
+      "riskClass": "safe",
+      "acceptanceTest": "1) Tailwind CLI compile before/after: confirm the .font-display utility still appears exactly once (the auto-generated one in @layer utilities) and the duplicate outside @layer is gone. 2) grep -rn 'font-display' frontend/src confirms class usages in EmptyState/DaySection/FilmCard/BreathingGrid untouched. 3) Playwright: EmptyState heading, day-section labels, FilmCard titles still render in Fraunces at mobile+desktop \u2014 identical screenshots.",
+      "estLinesChanged": 3,
+      "conflictsWith": [
+        "drop-unused-inter-italic-font-faces",
+        "remove-soft-display-helpers"
+      ]
+    },
+    {
+      "id": "delete-orphaned-filterbar-tree",
+      "rank": 28,
+      "title": "Delete orphaned FilterBar.svelte and its 7 exclusively-used filter children",
+      "dimension": "dead-code",
+      "files": [
+        "frontend/src/lib/components/filters/FilterBar.svelte",
+        "frontend/src/lib/components/filters/SearchInput.svelte",
+        "frontend/src/lib/components/filters/DateTimePicker.svelte",
+        "frontend/src/lib/components/filters/CinemaPicker.svelte",
+        "frontend/src/lib/components/filters/FormatPicker.svelte",
+        "frontend/src/lib/components/filters/ViewToggle.svelte",
+        "frontend/src/lib/components/filters/ActiveFilterChips.svelte",
+        "frontend/src/lib/components/filters/ClearFiltersButton.svelte"
+      ],
+      "problem": "FilterBar.svelte is the old in-header filter bar, superseded by DesktopFilterSidebar.svelte in the V2a redesign. It is imported by ZERO files (verified in-session: grep for FilterBar imports in src returns nothing). FilterBar is the SOLE importer of 7 children: SearchInput (738 lines), DateTimePicker (505), CinemaPicker (203), FormatPicker (86), ViewToggle (77), ActiveFilterChips (89), ClearFiltersButton (28) \u2014 each verified FilterBar-only. The stray SearchInput hits in search/ are prose comments, not imports; no dynamic import targets these. FilmTypeFilter is EXCLUDED (live via routes/+page.svelte). ~1945 lines of dead Svelte parsed by tooling and discoverable to the bundler graph.",
+      "fix": "Delete the 8 listed files. Update the now-stale FilterBar comment block in layout/Header.svelte so it no longer names a deleted component (keep the cinemas/showFilters props untouched since call sites still pass them). Do NOT delete FilmTypeFilter.svelte. Run npm run check (svelte-check) and vite build to confirm clean resolution.",
+      "expectedImpact": "low",
+      "impactMetric": "bundle KB: removes ~1945 lines / 8 components from the route dependency graph and svelte-check parse cost (already tree-shaken from shipped chunks but still parsed/scanned)",
+      "riskClass": "safe",
+      "acceptanceTest": "Before: grep -rln for each of the 8 filters/<Name>.svelte paths in frontend/src returns nothing except FilterBar.svelte (proving children are FilterBar-only) and FilterBar itself returns nothing (proving unreferenced). After deletion: cd frontend && npm run check passes with no missing-import errors; vite build succeeds; npx playwright test (82 desktop + 19 mobile) passes unchanged. Rendered DOM on every route byte-identical because the deleted components were never mounted.",
+      "estLinesChanged": 1949,
+      "conflictsWith": []
+    },
+    {
+      "id": "delete-unreferenced-standalone-components",
+      "rank": 29,
+      "title": "Delete 4 unreferenced standalone components (DaySection, TableView, MobilePanel, Skeleton)",
+      "dimension": "dead-code",
+      "files": [
+        "frontend/src/lib/components/calendar/DaySection.svelte",
+        "frontend/src/lib/components/calendar/TableView.svelte",
+        "frontend/src/lib/components/ui/MobilePanel.svelte",
+        "frontend/src/lib/components/ui/Skeleton.svelte"
+      ],
+      "problem": "Four components have zero references anywhere in the repo (verified in-session via grep across frontend/src excluding self): DaySection (120 lines), TableView (305), MobilePanel (36), Skeleton (29). None are dynamically imported. The calendar route uses DesktopHybridCard/MobileFilmRow/DayMasthead directly. Their internal imports (FilmCard, formatScreeningDate, Badge, formatTime, trackBookingClick) stay live via other consumers, so no further cascade. ~490 lines of dead Svelte parsed by tooling.",
+      "fix": "Delete the 4 listed files. No other source edits required \u2014 there are no importers to update. Run npm run check and vite build to confirm clean resolution.",
+      "expectedImpact": "low",
+      "impactMetric": "bundle KB: removes ~490 lines / 4 components from svelte-check parse cost and the bundler dependency graph",
+      "riskClass": "safe",
+      "acceptanceTest": "Before: grep -rn for DaySection/TableView/MobilePanel/Skeleton across frontend/src + frontend/tests + frontend/test-all.spec.ts returns ZERO references to these components (only the files themselves). After deletion: cd frontend && npm run check and vite build succeed; npx playwright test passes unchanged. Since these were never mounted, rendered output of every page is byte-identical.",
+      "estLinesChanged": 490,
+      "conflictsWith": []
+    }
+  ],
+  "summary": "Triaged 31 raw findings down to 29 shippable, SAFE-only, behavior-preserving PRs, ranked by impact (font/asset + LCP/CLS first, then code-split, then SSR payload, then runtime reactivity, then micro/dead-code). Top wins: repoint the misdirected 352KB InterVariable preload to the 38KB above-the-fold Cormorant face (#1), drop the CORS-mode mismatch on the tmdb preconnect so the LCP poster socket is reusable (#2), and lazy-mount the bits-ui-laden CommandPalette out of the every-route layout chunk (#5). Verified against the live tree: app.html has the misdirected Inter preload (line 11) + dead api.pictures.london preconnect (lines 9-10) + crossorigin tmdb (line 7) + no Clerk hint; app.css declares all four Inter @font-face rules and the dead .soft-display-* / duplicate .font-display rules (lines 203-238); +layout.svelte statically imports CommandPalette (line 13) and only mounts it in the clerkEnabled branch (line 42, absent from the else-branch); vite.config.ts has no manualChunks; FilterBar + the 4 standalone components (DaySection/TableView/MobilePanel/Skeleton) confirmed orphaned/dead via grep. File-overlap clusters are serialized via conflictsWith so the merge controller never runs two app.html, app.css, +page.svelte, FilmCard-grid, or filter-sidebar edits in parallel. Dropped 4 findings (3 by rule, 1 no-op) \u2014 see droppedReasons.",
+  "droppedCount": 4,
+  "droppedReasons": "DROPPED (mandate is SAFE + behavior-preserving only this run): (1) 'Pass prefetchUI={false} to ClerkProvider' \u2014 riskClass=risky AND behaviorPreserving=false; the auditor itself flags it as a user-visible load-timing change (first open of a Clerk auth surface gains a perceptible fetch delay/flash that does not exist today). (2) 'Delete redundant film/[id]/+page.server.ts' \u2014 riskClass=medium; despite the byte-identical-DOM claim it alters SSR data-loading and ISR/cache-control plumbing (the proposed fix even debates reconstructing the config), a structural load-strategy change outside the SAFE-only scope. (3) 'Delete redundant festivals/[slug]/+page.server.ts' \u2014 riskClass=medium, same SSR/cache-control restructuring concern as the film/[id] item. (4) 'Verified NON-issue: BreathingGrid will-change' \u2014 explicitly a no-op (estLinesChanged=0, fix='No change'); it is a documentation note confirming will-change:transform is correctly used, not an actionable performance PR, so it has no place in a shippable backlog.",
+  "fileConflictClusters": "app.html (4 items, all mutually serialized): remove-crossorigin-tmdb-preconnect <-> remove-dead-api-preconnect <-> add-clerk-preconnect <-> repoint-inter-preload-to-cormorant. app.css (3 items, all mutually serialized): drop-unused-inter-italic-font-faces <-> remove-soft-display-helpers <-> remove-duplicate-font-display (repoint-inter-preload-to-cormorant also lists drop-unused-inter-italic-font-faces as a conflict because both PRs are part of the same Inter cleanup and should serialize, even though the repoint PR itself edits only app.html). routes/+page.svelte (2 items): lazy-mount-mobile-filter-sheet <-> hoist-dayheader-intl-formatters. FilmCard grid routes \u2014 tonight/this-weekend/festivals[slug] +page.svelte (2 items overlap on those 3 files): filmcard-img-dims-and-priority <-> content-visibility-filmcard-grids. DesktopFilterSidebar.svelte (2 items): memoize-cluster-membership-filters <-> hoist-within-radius-desktop-sidebar (MobileFilterSheet.svelte is touched only by the memoize item). Independent (no file overlap): lazy-mount-command-palette, manualchunks-bits-ui, add-letterboxd-poster-img-attrs, filmsimilarrail-poster-attrs, trim-cinemas-ssr-payload, hoist-parse-query-intl-formatters, hoist-screeningrow-intl-formatters, requestidlecallback-timeout-posthog, prerender-about, prerender-privacy, prerender-terms, prerender-seasons, trim-directors-films-array, add-decoding-async-palette-rows, delete-orphaned-filterbar-tree, delete-unreferenced-standalone-components."
+}

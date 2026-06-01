@@ -1,0 +1,158 @@
+[
+ {
+  "id": "defer-films-search-browse-dates",
+  "rank": 23,
+  "title": "Defer browse-only Date allocation into the browse branch in films search",
+  "area": "api-films",
+  "files": [
+   "src/app/api/films/search/route.ts"
+  ],
+  "risk": "medium",
+  "detail": "Lines 83-84 (`const startDate = new Date()` / `const endDate = addDays(startDate, SCREENING_WINDOW_DAYS)`) are consumed ONLY at line 100 inside the `browse && !query` branch. Verified: keyword/SQL-interval paths use `sql.raw(String(SCREENING_WINDOW_DAYS))` (lines 204/238) and never read these vars. Move the two declarations into the top of the `if (browse && !query)` block. Marginal perf; control-flow clarity. Medium because it's a query-handler edit.",
+  "isDelete": false
+ },
+ {
+  "id": "merge-festival-screening-passes",
+  "rank": 24,
+  "title": "Merge two passes over screeningResults into one in festival detail",
+  "area": "api-festivals",
+  "files": [
+   "src/app/api/festivals/[slug]/route.ts"
+  ],
+  "risk": "medium",
+  "detail": "`response.screenings` is built via `.map()` (lines 250-257), then a separate `for` loop (lines 263-270) re-traverses screeningResults to accumulate `sections` (Set) and `upcomingCount`. Collapse into the single map body (add to Set + increment counter while mapping). Verified output bindings unchanged (lines 273-277). Medium: reorders meta accumulation; reviewer must confirm Set/counter semantics carry over exactly.",
+  "isDelete": false
+ },
+ {
+  "id": "hoist-sync-status-lookup-map",
+  "rank": 25,
+  "title": "Hoist a Map for existing-status lookup in sync upsert loop",
+  "area": "api-user",
+  "files": [
+   "src/app/api/user/sync/route.ts"
+  ],
+  "risk": "medium",
+  "detail": "The upsert loop does `serverStatuses.find((s) => s.filmId === status.filmId)` at line 196 \u2014 O(statusesToUpsert * serverStatuses), serverStatuses capped at 5000. Build `const serverByFilmId = new Map(serverStatuses.map((s) => [s.filmId, s]));` before the loop (serverStatuses otherwise only read at lines 154/196) and use `.get(...)`. filmId unique per user so the chosen row and insert-vs-update decision are byte-identical. Medium: inside a DB-write decision loop.",
+  "isDelete": false
+ },
+ {
+  "id": "hoist-festivals-shared-columns",
+  "rank": 26,
+  "title": "Extract shared festival column projection in festivals list query",
+  "area": "api-festivals",
+  "files": [
+   "src/app/api/festivals/route.ts"
+  ],
+  "risk": "medium",
+  "detail": "Authed and anon branches (lines 107-167) build two db.select projections identical for 14 of 16 columns; only isFollowing/interestLevel differ. Hoist a `const baseColumns = {...}` and spread into both selects with the differing fields appended. Same emitted SQL and result shape. Prevents the drift bug where a column added to one branch silently changes the anon payload. Medium: touches query construction.",
+  "isDelete": false
+ },
+ {
+  "id": "hoist-event-classifier-regexes",
+  "rank": 27,
+  "title": "Hoist likelyNeedsClassification regex array to module scope",
+  "area": "lib-classifier",
+  "files": [
+   "src/lib/event-classifier.ts"
+  ],
+  "risk": "medium",
+  "detail": "likelyNeedsClassification() rebuilds a 22-element RegExp array (lines 242-265) on every call \u2014 invoked once per screening (screening-classification.ts:60) and once per film (classify-events.ts:35). Lift to module-level `const LIKELY_NEEDS_CLASSIFICATION_PATTERNS = [...]` next to the existing hoisted EVENT_TYPE_RULES/FORMAT_RULES. All patterns stateless (.test(), no /g). Medium: classification/extraction module.",
+  "isDelete": false
+ },
+ {
+  "id": "hoist-content-classifier-regexes",
+  "rank": 28,
+  "title": "Hoist quickClassify/isLikelyCleanFilmTitle regex arrays to module scope",
+  "area": "lib-classifier",
+  "files": [
+   "src/lib/content-classifier.ts"
+  ],
+  "risk": "medium",
+  "detail": "quickClassify() rebuilds nonFilmPatterns (13, lines 38-52), liveBroadcastPatterns (11, lines 67-79), concertPatterns (3, lines 101-105); isLikelyCleanFilmTitle() rebuilds eventPatterns (~30, lines 149-183) \u2014 ~57 RegExp allocs per classified title across posters/service.ts and fix-placeholders.ts callers. Lift each to module-level const preserving exact entries/order. All stateless (.test(), no /g). Medium: content-classification module. Ship in the SAME PR as rm-unused-clearclassificationcache (same file); combined PR risk = medium.",
+  "isDelete": false
+ },
+ {
+  "id": "hoist-metadata-country-regexes",
+  "rank": 29,
+  "title": "Hoist per-country RegExp construction out of extractCountry()",
+  "area": "scrapers-utils",
+  "files": [
+   "src/scrapers/utils/metadata-parser.ts"
+  ],
+  "risk": "medium",
+  "detail": "extractCountry() (lines 148-156) builds `new RegExp(\\b${country}\\b, \"i\")` for every entry in the 60+ COUNTRIES array on every call (~60 recompiles per parseFilmMetadata). Precompile once at module load into a parallel `{country, regex}[]` and iterate inside extractCountry, returning the same country on first .test() hit. Same patterns/boundaries/flag/first-match-wins. Pure constant hoist (allowed by scraper rule). Medium: extraction-adjacent.",
+  "isDelete": false
+ },
+ {
+  "id": "rm-redundant-getbrowser-curzon",
+  "rank": 30,
+  "title": "Remove redundant getBrowser() call in CurzonScraper.initialize()",
+  "area": "scrapers-chains",
+  "files": [
+   "src/scrapers/chains/curzon.ts"
+  ],
+  "risk": "medium",
+  "detail": "Line 530 `await getBrowser();` immediately precedes line 531 `this.page = await createPage();`. Verified createPage() (browser.ts:69) calls getBrowser() internally as its first statement, and getBrowser() is an idempotent singleton. Delete line 530; this leaves getBrowser unused in the line-23 import, so drop it (`import { closeBrowser, createPage } from \"../utils/browser\";`). Browser still created exactly once via createPage. Medium: touches browser lifecycle.",
+  "isDelete": true
+ },
+ {
+  "id": "hoist-garden-countries-array",
+  "rank": 31,
+  "title": "Hoist static country-list array out of GardenCinemaScraper.isCountry()",
+  "area": "scrapers-cinemas",
+  "files": [
+   "src/scrapers/cinemas/garden.ts"
+  ],
+  "risk": "medium",
+  "detail": "isCountry() (lines 184-193) allocates a fresh 32-element `countries` array per call \u2014 called once per film card from parseStats() (line 174) inside the filmCards.each loop (lines 72-129). Hoist to module-level `const COUNTRIES: readonly string[] = [...]` near the top. The `.some((c) => str.toLowerCase() === c.toLowerCase())` logic and contents stay byte-identical. Pure constant hoist (allowed by scraper rule). Medium: scraper file.",
+  "isDelete": false
+ },
+ {
+  "id": "rm-dead-ica-filminfo-url",
+  "rank": 32,
+  "title": "Remove dead url field from the ICA FilmInfo interface",
+  "area": "scrapers-cinemas",
+  "files": [
+   "src/scrapers/cinemas/ica.ts"
+  ],
+  "risk": "medium",
+  "detail": "FilmInfo (lines 12-19) declares `url: string`, set only to `\"\"` (line 121) and never read anywhere (verified zero reads). Remove `url: string` from the interface and `url: \"\"` from the literal \u2192 `const info: FilmInfo = { title };`. The booking URL actually used comes from bookingBase/fallbackUrl (lines 156-170). Leave `country`/`runtime` alone \u2014 removing them would mean deleting regex-extraction blocks (scraper rule forbids); only the constant-\"\" url field is in scope. Medium: scraper file.",
+  "isDelete": true
+ },
+ {
+  "id": "hoist-scopeclassifier-filter",
+  "rank": 33,
+  "title": "Hoist per-filmId Array.filter out of classifyScope tmdb_mismatch loop",
+  "area": "lib-qa",
+  "files": [
+   "src/lib/qa/utils/scope-classifier.ts"
+  ],
+  "risk": "medium",
+  "detail": "In the tmdb_mismatch branch, `tmdbMismatches.filter((i) => i.entityId === filmId)` runs inside the `for (const filmId of filmIds)` loop \u2014 O(n^2) over the same array. Pre-group once into a Map<entityId, ClassifiedIssue[]> before the loop, then look up by filmId. Each matched issue still gets scope='systemic' under the identical futureScreenings.length>0 condition. Medium: gates DB writes downstream; grouping must preserve the exact same set/order of mutated issues.",
+  "isDelete": false
+ },
+ {
+  "id": "parallelize-getuserproductdata-reads",
+  "rank": 34,
+  "title": "Parallelize 4 independent DB reads in getUserProductData",
+  "area": "lib-posthog-sync",
+  "files": [
+   "src/lib/posthog-supabase-sync.ts"
+  ],
+  "risk": "medium",
+  "detail": "getUserProductData() awaits 4 fully independent Drizzle queries sequentially (statusCounts groupBy, firstInteraction asc-limit-1, lastInteraction desc-limit-1, preferences select-limit-1). Wrap in a single Promise.all([...]) and destructure. Same queries/rows/downstream computation; latency drops sum\u2192max. Keep the surrounding try/catch so a rejection still returns null. Runs per-user in syncAllUsersToPostHog's loop so it compounds. Medium: touches DB execution (no result change).",
+  "isDelete": false
+ },
+ {
+  "id": "precompute-buildconfig-ids-scrape-all",
+  "rank": 35,
+  "title": "Avoid calling buildConfig() twice per entry during wave ranking",
+  "area": "lib-jobs",
+  "files": [
+   "src/lib/jobs/scrape-all.ts"
+  ],
+  "risk": "medium",
+  "detail": "In runWave's ranking .map, entryScreeningCount (line 251) and entryStaleness (line 235) each call getEntryCinemaIds(entry) \u2192 entry.buildConfig() (line 226), so buildConfig runs twice per entry per wave (some closures instantiate scraper objects, e.g. createCurzonScraper). Compute `const ids = getEntryCinemaIds(entry)` once in the .map, change both helpers to accept `ids: string[]`, pass ids to each. cinema-id list is deterministic so sort keys/ordering unchanged. Medium: scrape orchestrator ranking path \u2014 reviewer should confirm buildConfig has no side effects before merging.",
+  "isDelete": false
+ }
+]
