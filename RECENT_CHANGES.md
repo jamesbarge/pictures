@@ -1,3 +1,20 @@
+## 2026-06-01: SEO — dynamic sitemap.xml + robots Sitemap directive
+**PR**: TBD | **Files**: `frontend/src/routes/sitemap.xml/+server.ts` (new), `frontend/static/robots.txt`
+- **First sitemap the site has ever had.** New SvelteKit endpoint emits ~995 crawlable URLs: 13 static
+  routes + 64 cinemas + 17 festivals + 701 people (`/people/[name]`, 60-day window — verified the people
+  endpoint serves 200 across it) + films. Auth/user pages (sign-in, settings, watchlist) excluded.
+- **Forward-compatible film coverage**: prefers a backend enumerator (`/api/films/sitemap`, not yet
+  deployed → lands with the next backend promote to lift films from 200 → ~1,066) and gracefully falls
+  back to the top-200 `browse` payload until then. A single failing upstream can't 500 the sitemap
+  (every fetch degrades to an empty list).
+- Host uses the **apex** `https://pictures.london` to match the app's canonical tags (`json-ld.ts`,
+  `+layout.svelte`). Cached at the CDN (`s-maxage=86400` + SWR). Verified live: HTTP 200, well-formed
+  XML, all five URL classes resolve to 200; svelte-check clean.
+- **Follow-up flagged**: the site serves on `www` but declares canonical `apex` and redirects apex→www
+  (a circular signal). Recommend a `www→apex` 308 in Vercel domain config so canonical = served host.
+
+---
+
 ## 2026-06-01: JW3 cinema scraper — last uncovered London rep/indie venue (Spektrix)
 **PR**: TBD | **Files**: `src/scrapers/cinemas/jw3.ts` (new), `src/config/cinema-registry.ts`, `src/scrapers/registry.ts`, `src/scrapers/cli.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`
 - Adds **JW3** (341-351 Finchley Road) — the last London rep/indie venue with no coverage. Fetch-based (no browser): 2 calls to the Spektrix v3 read API (client `jw3`) — `GET /events` filtered to `attribute_Genre == "Cinema"` (excludes the centre's talks/languages/classes), `GET /instances?startFrom&startTo` joined by `event.id`.
