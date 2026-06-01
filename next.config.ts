@@ -24,6 +24,17 @@ const nextConfig: NextConfig = {
     "onnxruntime-node",
     "@huggingface/transformers",
   ],
+  // onnxruntime-node ships prebuilt binaries for 5 platforms (~213MB total:
+  // win32 125MB + darwin 35MB + linux 53MB). Vercel runs linux/x64 only, so
+  // trace ONLY that binary into functions importing it — dropping ~180MB keeps
+  // the function under Vercel's 250MB unzipped limit.
+  outputFileTracingExcludes: {
+    "/api/embed-spike": [
+      "node_modules/onnxruntime-node/bin/napi-v6/win32/**",
+      "node_modules/onnxruntime-node/bin/napi-v6/darwin/**",
+      "node_modules/onnxruntime-node/bin/napi-v6/linux/arm64/**",
+    ],
+  },
   experimental: {
     optimizePackageImports: ["lucide-react", "date-fns"],
   },
