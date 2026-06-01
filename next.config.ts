@@ -18,6 +18,11 @@ const nextConfig: NextConfig = {
     "playwright",
     "playwright-core",
     "rebrowser-playwright",
+    // Semantic-search embedding runtime — keep external so Next traces the
+    // onnxruntime-node native (.node) binary into the function instead of
+    // trying to bundle it. (Validated via the /api/_embed-spike route.)
+    "onnxruntime-node",
+    "@huggingface/transformers",
   ],
   experimental: {
     optimizePackageImports: ["lucide-react", "date-fns"],
