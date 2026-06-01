@@ -602,10 +602,11 @@ function convertToRawScreenings(films: ParsedFilm[]): RawScreening[] {
         eventType,
         // Canonical, path-agnostic sourceId — identical shape to the
         // Playwright + programme-changes paths so a path flip can't dupe.
-        // Key on the per-screening venue→cinemaId (not the file-level
-        // pdfLabel) so a Southbank+IMAX combined PDF keys each correctly.
+        // Key on the per-screening cinemaId (already validated against
+        // VENUE_MAP at parse time) so a Southbank+IMAX combined PDF keys each
+        // correctly — not the file-level pdfLabel.
         sourceId: buildBfiSourceId(
-          VENUE_MAP[(screening.venue || "").toUpperCase().trim()] || "bfi-southbank",
+          screening.cinemaId,
           cleanTitle,
           screening.venue,
           screening.datetime,

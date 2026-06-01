@@ -13,6 +13,14 @@
  * Two genuinely-simultaneous shows in different screens (NFT1 vs NFT2) live in
  * DIFFERENT partitions, so they are never collapsed.
  *
+ * SCOPE: the DB `screen` column stores the RAW per-path string ("Screen NFT3"
+ * from Playwright vs "NFT3" from PDF), so this partition collapses the
+ * SAME-PATH re-key churn this migration is for (old vs new sourceId for the
+ * SAME raw screen — the dominant Playwright→Playwright case). It deliberately
+ * does NOT merge historical cross-path drift across different raw screen
+ * strings; the unified sourceId prevents new cross-path dupes at the upsert
+ * layer, and the pre-migration dry-run showed 0 such rows anyway.
+ *
  * SEQUENCE: deploy the code → run the BFI Playwright scrape (so new-format rows
  * exist) → run this sweep. Running it before the new scrape would still be safe
  * (it only removes true dupes) but pointless.
