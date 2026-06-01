@@ -26,6 +26,7 @@ import { extractText as unpdfExtractText, getDocumentProxy } from "unpdf";
 import type { RawScreening } from "../types";
 import type { FetchedPDF } from "./fetcher";
 import { buildBFISearchUrl } from "./url-builder";
+import { buildBfiSourceId } from "./bfi-source-id";
 import { ukLocalToUTC } from "../utils/date-parser";
 
 // Venue mapping from PDF screen names to our cinema IDs
@@ -209,7 +210,7 @@ export async function parsePDF(fetchedPdf: FetchedPDF): Promise<ParseResult> {
   }
 
   // Convert parsed films to RawScreenings
-  const screenings = convertToRawScreenings(films, fetchedPdf.info.label);
+  const screenings = convertToRawScreenings(films);
 
   console.log(`[BFI-PDF] Parsed ${films.length} films with ${screenings.length} screenings`);
 
@@ -559,7 +560,7 @@ function isSuspiciousTitle(title: string): boolean {
 /**
  * Convert parsed films to RawScreening format for database import
  */
-function convertToRawScreenings(films: ParsedFilm[], pdfLabel: string): RawScreening[] {
+function convertToRawScreenings(films: ParsedFilm[]): RawScreening[] {
   const screenings: RawScreening[] = [];
   const now = new Date();
 
@@ -599,7 +600,16 @@ function convertToRawScreenings(films: ParsedFilm[], pdfLabel: string): RawScree
         format: film.format,
         bookingUrl,
         eventType,
-        sourceId: `bfi-pdf-${pdfLabel}-${cleanTitle.toLowerCase().replace(/\s+/g, "-")}-${screening.datetime.toISOString()}`,
+        // Canonical, path-agnostic sourceId — identical shape to the
+        // Playwright + programme-changes paths so a path flip can't dupe.
+        // Key on the per-screening venue→cinemaId (not the file-level
+        // pdfLabel) so a Southbank+IMAX combined PDF keys each correctly.
+        sourceId: buildBfiSourceId(
+          VENUE_MAP[(screening.venue || "").toUpperCase().trim()] || "bfi-southbank",
+          cleanTitle,
+          screening.venue,
+          screening.datetime,
+        ),
         year: film.year,
         director: film.director,
       };

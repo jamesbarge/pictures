@@ -42,6 +42,7 @@ import type { BrowserContext, Page } from "rebrowser-playwright";
 import { parseFilmMetadata } from "../utils/metadata-parser";
 import { FestivalDetector } from "../festivals/festival-detector";
 import { loadBFIScreenings, getBFIVenueKey } from "../bfi-pdf";
+import { buildBfiSourceId } from "../bfi-pdf/bfi-source-id";
 import { ukLocalToUTC } from "../utils/date-parser";
 import * as os from "os";
 import * as path from "path";
@@ -319,12 +320,10 @@ export class BFIScraper {
       const cleanTitle = this.cleanTitle(rawTitle);
       const metadata = parseFilmMetadata(rawTitle);
 
-      // Stable sourceId: prefer the article id from the URL, else a
-      // date-time-title composite (collision-free within a venue).
-      const articleId = this.extractArticleId(rawUrl);
-      const sourceId = articleId
-        ? `bfi-${this.config.cinemaId}-${articleId}-${datetime.toISOString()}`
-        : `bfi-${this.config.cinemaId}-${cleanTitle.toLowerCase().replace(/\s+/g, "-")}-${datetime.toISOString()}`;
+      // Canonical, path-agnostic sourceId (see buildBfiSourceId): identical
+      // shape across Playwright/PDF/changes so a path flip cannot duplicate,
+      // with the screen segment disambiguating simultaneous NFT1/NFT2 shows.
+      const sourceId = buildBfiSourceId(this.config.cinemaId, cleanTitle, screen, datetime);
 
       screenings.push({
         filmTitle: cleanTitle,
@@ -351,28 +350,6 @@ export class BFIScraper {
     if (/return/.test(v)) return "returns";
     if (/available|on\s*sale|book/.test(v)) return "available";
     return "unknown";
-  }
-
-  /**
-   * Extract a stable article identifier from a booking/article URL.
-   *
-   * Real BFI URL (col [18]):
-   *   default.asp?doWork::WScontent::loadArticle=Load
-   *     &BOparam::WScontent::loadArticle::article_id=B56C859B-...
-   *     &BOparam::WScontent::loadArticle::context_id=2D2A49DF-...
-   * The `loadArticle=Load` token is the work ACTION ("Load"), not an id — must
-   * match `article_id=` / `context_id=` (the GUIDs) specifically. Verified
-   * 2026-05-30.
-   */
-  private extractArticleId(url: string): string | null {
-    if (!url) return null;
-    const permalink = url.match(/loadArticle::permalink=([^&]+)/i);
-    if (permalink) return permalink[1];
-    const articleId = url.match(/loadArticle::article_id=([^&]+)/i);
-    if (articleId) return articleId[1];
-    const contextId = url.match(/loadArticle::context_id=([^&]+)/i);
-    if (contextId) return contextId[1];
-    return null;
   }
 
   private isNonFilmEvent(title: string): boolean {
