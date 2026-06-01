@@ -1,3 +1,9 @@
+## 2026-06-01: JW3 cinema scraper — last uncovered London rep/indie venue (Spektrix)
+**PR**: TBD | **Files**: `src/scrapers/cinemas/jw3.ts` (new), `src/config/cinema-registry.ts`, `src/scrapers/registry.ts`, `src/scrapers/cli.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`
+- Adds **JW3** (341-351 Finchley Road) — the last London rep/indie venue with no coverage. Fetch-based (no browser): 2 calls to the Spektrix v3 read API (client `jw3`) — `GET /events` filtered to `attribute_Genre == "Cinema"` (excludes the centre's talks/languages/classes), `GET /instances?startFrom&startTo` joined by `event.id`.
+- `startUtc` is already UTC (append `Z`), so the BST off-by-one that bit the HTML scrapers cannot occur. Booking via verified `…/spektrix/ChooseSeats?EventInstanceId=…`. Poster from `event.imageUrl`; availability from `isOnSale`.
+- Verified dry-run vs live API: **109 Cinema events → 81 screenings / 25 films**, Jun 2 → Aug 16, 0 past, all with booking URLs. tsc clean. Registered in cinema-registry + scraper registry + CLI; playbook documented.
+
 ## 2026-05-31: Search — people search + /people/[name] director & actor pages
 **PR**: TBD | **Files**: `src/app/api/films/search/route.ts`, `src/app/api/people/[name]/route.ts` (new), `frontend/src/lib/search/result-types.ts`, `frontend/src/lib/components/search/rows/PersonRow.svelte` (new), `frontend/src/lib/components/search/ResultsList.svelte`, `frontend/src/lib/stores/palette.svelte.ts`, `frontend/src/lib/seo/json-ld.ts`, `frontend/src/routes/people/[name]/+page.{server.ts,svelte}` (new), `frontend/src/routes/directors/+page.svelte`, `scripts/verify-people-search.ts` (new)
 - **New discovery axis: search by person.** The command palette now has a **PEOPLE** group — typing a director's name (e.g. "scorsese") surfaces them with their upcoming-film count; Enter → a new `/people/[name]` page. Trigram-matched so typos still hit ("scorses" → Scorsese).
