@@ -1,5 +1,10 @@
+## 2026-06-01: Temporarily remove sign-in from the site
+**PR**: TBD | **Files**: `frontend/src/lib/components/layout/Header.svelte`, `frontend/src/routes/sign-in/[...rest]/+page.ts` (new), `frontend/src/routes/sign-up/[...rest]/+page.ts` (new), `frontend/src/routes/sitemap.xml/+server.ts`
+- The prod **frontend** Clerk key is a dev `pk_test_` key, so the hosted SignIn widget renders blank. Until a `pk_live_` key is set, remove sign-in from the UI: dropped the desktop + mobile "Sign in" links from the header (+ their dead CSS), and `/sign-in` / `/sign-up` now `307`-redirect home so the broken widget isn't reachable. `ClerkProvider` stays mounted so watchlist (localStorage) + festival-follow degrade cleanly. Fully reversible (restore the links, delete the two redirect files).
+- Drive-by fix: `sitemap.xml` had a `svelte-check` type error (`'updatedAt' in f` narrowed the no-updatedAt union branch to `unknown`) — collapsed both film sources to one `FilmRef` type. `vite build` was lenient so it shipped + is live; svelte-check now clean (0 errors).
+
 ## 2026-06-01: SEO — dynamic sitemap.xml + robots Sitemap directive
-**PR**: TBD | **Files**: `frontend/src/routes/sitemap.xml/+server.ts` (new), `frontend/static/robots.txt`
+**PR**: #642 | **Files**: `frontend/src/routes/sitemap.xml/+server.ts` (new), `frontend/static/robots.txt`
 - **First sitemap the site has ever had.** New SvelteKit endpoint emits ~995 crawlable URLs: 13 static
   routes + 64 cinemas + 17 festivals + 701 people (`/people/[name]`, 60-day window — verified the people
   endpoint serves 200 across it) + films. Auth/user pages (sign-in, settings, watchlist) excluded.

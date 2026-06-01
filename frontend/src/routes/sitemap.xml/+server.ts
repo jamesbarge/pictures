@@ -120,36 +120,36 @@ async function peopleEntries(fetch: typeof globalThis.fetch): Promise<UrlEntry[]
 		}));
 }
 
+// One consistent shape for both film sources. The fallback's `results` items
+// just lack `updatedAt` at runtime — `toLastmod` already guards undefined.
+// (Keeping a single type avoids a union where `'updatedAt' in f` would narrow
+// the no-updatedAt branch to `unknown`.)
+interface FilmRef {
+	id: string;
+	updatedAt?: string;
+}
+
 async function filmEntries(fetch: typeof globalThis.fetch): Promise<UrlEntry[]> {
 	// Preferred: full enumerator (lands with the next backend promote).
 	const full = await safe(
-		() =>
-			apiFetch<{ films: Array<{ id: string; updatedAt?: string }> }>(
-				'/api/films/sitemap',
-				fetch
-			),
-		null as { films: Array<{ id: string; updatedAt?: string }> } | null
+		() => apiFetch<{ films: FilmRef[] }>('/api/films/sitemap', fetch),
+		null as { films: FilmRef[] } | null
 	);
-	const films =
-		full?.films?.length
-			? full.films
-			: // Fallback: top-200 from the unified browse payload (`results` key).
-				(
-					await safe(
-						() =>
-							apiFetch<{ results: Array<{ id: string }> }>(
-								'/api/films/search?browse=true',
-								fetch
-							),
-						{ results: [] }
-					)
-				).results;
+	const films: FilmRef[] = full?.films?.length
+		? full.films
+		: // Fallback: top-200 from the unified browse payload (`results` key).
+			(
+				await safe(
+					() => apiFetch<{ results: FilmRef[] }>('/api/films/search?browse=true', fetch),
+					{ results: [] as FilmRef[] }
+				)
+			).results;
 
 	return films
 		.filter((f) => f.id)
 		.map((f) => ({
 			loc: `/film/${encodeURIComponent(f.id)}`,
-			lastmod: toLastmod('updatedAt' in f ? f.updatedAt : undefined),
+			lastmod: toLastmod(f.updatedAt),
 			changefreq: 'weekly' as const,
 			priority: 0.6
 		}));
