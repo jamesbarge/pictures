@@ -291,6 +291,26 @@ const SCRAPERS: ScraperDefinition[] = [
       } satisfies SingleVenueConfig;
     },
   },
+  {
+    id: "jw3",
+    name: "JW3",
+    type: "independent",
+    createConfig: async () => {
+      const { createJW3Scraper } = await import("./cinemas/jw3");
+      return {
+        type: "single",
+        venue: {
+          id: "jw3",
+          name: "JW3",
+          shortName: "JW3",
+          website: "https://www.jw3.org.uk",
+          address: { street: "341-351 Finchley Road", area: "Finchley Road", postcode: "NW3 6ET" },
+          features: ["independent", "arts-centre", "community", "world-cinema"],
+        },
+        createScraper: () => createJW3Scraper(),
+      } satisfies SingleVenueConfig;
+    },
+  },
 ];
 
 // ============================================================================

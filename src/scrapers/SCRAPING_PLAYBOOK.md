@@ -149,3 +149,16 @@ Use this format when recording cinema-specific quirks:
 ### Everyman
 - Scraper: `src/scrapers/chains/everyman.ts`
 - Notes: Playwright-heavy; more sensitive to markup and client-side app changes.
+
+### JW3 (Finchley Road)
+- Scraper: `src/scrapers/cinemas/jw3.ts` (fetch-based, no browser — runnable under tsx).
+- Ticketing: Spektrix, client `jw3`. Public read API base: `https://ticket.jw3.org.uk/jw3/api/v3`.
+- Strategy (2 calls): `GET /events` → keep `attribute_Genre == "Cinema"` (excludes the centre's
+  talks/languages/classes/music/walks); `GET /instances?startFrom=YYYY-MM-DD&startTo=YYYY-MM-DD`
+  → join to Cinema events by `event.id`.
+- Dates: `instance.startUtc` is UTC **without** a trailing `Z` — append `Z` before `new Date(...)`.
+  No `ukLocalToUTC` needed (Spektrix already converts), so the BST off-by-one cannot occur here.
+- Booking URL: `https://www.jw3.org.uk/spektrix/ChooseSeats?EventInstanceId=<instance.id>` (verified 200).
+- `sourceId`: `jw3-<instance.id>`; poster from `event.imageUrl`; availability from `instance.isOnSale`.
+- Known: NT Live / live broadcasts also carry `attribute_Genre = "Cinema"` and flow through; the
+  data-quality pipeline classifies `content_type` downstream.
