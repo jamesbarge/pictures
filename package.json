@@ -13,6 +13,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build --webpack",
+    "postinstall": "node scripts/prune-onnx-binaries.mjs",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest",
