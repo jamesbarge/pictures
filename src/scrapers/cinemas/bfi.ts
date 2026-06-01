@@ -42,6 +42,8 @@ import type { BrowserContext, Page } from "rebrowser-playwright";
 import { parseFilmMetadata } from "../utils/metadata-parser";
 import { FestivalDetector } from "../festivals/festival-detector";
 import { loadBFIScreenings, getBFIVenueKey } from "../bfi-pdf";
+import { buildBfiSourceId } from "../bfi-pdf/bfi-source-id";
+import { type SearchRow, parseSearchResultsArray } from "./bfi-parse";
 import { ukLocalToUTC } from "../utils/date-parser";
 import * as os from "os";
 import * as path from "path";
@@ -92,11 +94,13 @@ const PAGE_SIZE = 2000;
 /** Cloudflare-pass budget for the single navigation (seconds). */
 const CLOUDFLARE_WAIT_SECONDS = 60;
 
-/** Backoff (ms) before retry attempts 2 and 3 after a blocked attempt. */
-const RETRY_BACKOFF_MS = [10_000, 30_000, 60_000];
+/** Total search attempts (1 initial + 2 retries). */
+const MAX_SEARCH_ATTEMPTS = 3;
+/** Backoff (ms) before each RETRY (attempt 2 uses [0], attempt 3 uses [1]).
+ *  Length is the retry count, not the attempt count — keep it = MAX-1. */
+const RETRY_BACKOFF_MS = [10_000, 30_000];
 
-/** A row from the embedded `searchResults` global. */
-type SearchRow = (string | number | null)[];
+// `SearchRow` + `parseSearchResultsArray` now live in ./bfi-parse (imported above).
 
 export class BFIScraper {
   private venue: BFIVenueConfig;
@@ -149,7 +153,7 @@ export class BFIScraper {
 
     let lastError: Error | null = null;
 
-    for (let attempt = 0; attempt < RETRY_BACKOFF_MS.length; attempt++) {
+    for (let attempt = 0; attempt < MAX_SEARCH_ATTEMPTS; attempt++) {
       if (attempt > 0) {
         const backoff = RETRY_BACKOFF_MS[attempt - 1];
         console.log(`[${this.config.cinemaId}] Retry ${attempt} after ${backoff / 1000}s backoff...`);
@@ -319,12 +323,10 @@ export class BFIScraper {
       const cleanTitle = this.cleanTitle(rawTitle);
       const metadata = parseFilmMetadata(rawTitle);
 
-      // Stable sourceId: prefer the article id from the URL, else a
-      // date-time-title composite (collision-free within a venue).
-      const articleId = this.extractArticleId(rawUrl);
-      const sourceId = articleId
-        ? `bfi-${this.config.cinemaId}-${articleId}-${datetime.toISOString()}`
-        : `bfi-${this.config.cinemaId}-${cleanTitle.toLowerCase().replace(/\s+/g, "-")}-${datetime.toISOString()}`;
+      // Canonical, path-agnostic sourceId (see buildBfiSourceId): identical
+      // shape across Playwright/PDF/changes so a path flip cannot duplicate,
+      // with the screen segment disambiguating simultaneous NFT1/NFT2 shows.
+      const sourceId = buildBfiSourceId(this.config.cinemaId, cleanTitle, screen, datetime);
 
       screenings.push({
         filmTitle: cleanTitle,
@@ -351,28 +353,6 @@ export class BFIScraper {
     if (/return/.test(v)) return "returns";
     if (/available|on\s*sale|book/.test(v)) return "available";
     return "unknown";
-  }
-
-  /**
-   * Extract a stable article identifier from a booking/article URL.
-   *
-   * Real BFI URL (col [18]):
-   *   default.asp?doWork::WScontent::loadArticle=Load
-   *     &BOparam::WScontent::loadArticle::article_id=B56C859B-...
-   *     &BOparam::WScontent::loadArticle::context_id=2D2A49DF-...
-   * The `loadArticle=Load` token is the work ACTION ("Load"), not an id — must
-   * match `article_id=` / `context_id=` (the GUIDs) specifically. Verified
-   * 2026-05-30.
-   */
-  private extractArticleId(url: string): string | null {
-    if (!url) return null;
-    const permalink = url.match(/loadArticle::permalink=([^&]+)/i);
-    if (permalink) return permalink[1];
-    const articleId = url.match(/loadArticle::article_id=([^&]+)/i);
-    if (articleId) return articleId[1];
-    const contextId = url.match(/loadArticle::context_id=([^&]+)/i);
-    if (contextId) return contextId[1];
-    return null;
   }
 
   private isNonFilmEvent(title: string): boolean {
@@ -481,51 +461,6 @@ class BlockedByCloudflareError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "BlockedByCloudflareError";
-  }
-}
-
-/**
- * Bracket-match and JSON.parse the embedded `searchResults : [ ... ]` array
- * out of a BFI Online HTML page. Exported for unit testing against fixtures.
- *
- * The array is written as `searchResults : [ [..], [..] ]` — colon-assigned
- * object property, contains nested arrays, no terminating `;`. A non-greedy
- * regex can't handle the nested brackets, so we find the opening `[` after the
- * `searchResults :` token and walk to its matching close bracket.
- */
-export function parseSearchResultsArray(html: string): SearchRow[] | null {
-  const keyMatch = html.match(/searchResults\s*:\s*\[/);
-  if (!keyMatch || keyMatch.index === undefined) return null;
-
-  const start = html.indexOf("[", keyMatch.index);
-  if (start === -1) return null;
-
-  let depth = 0;
-  let end = -1;
-  let inString = false;
-  let escaped = false;
-  for (let i = start; i < html.length; i++) {
-    const c = html[i];
-    if (inString) {
-      if (escaped) escaped = false;
-      else if (c === "\\") escaped = true;
-      else if (c === '"') inString = false;
-      continue;
-    }
-    if (c === '"') inString = true;
-    else if (c === "[") depth++;
-    else if (c === "]") {
-      depth--;
-      if (depth === 0) { end = i; break; }
-    }
-  }
-  if (end === -1) return null;
-
-  try {
-    const parsed = JSON.parse(html.slice(start, end + 1));
-    return Array.isArray(parsed) ? (parsed as SearchRow[]) : null;
-  } catch {
-    return null;
   }
 }
 
