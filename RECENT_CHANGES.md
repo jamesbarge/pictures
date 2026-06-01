@@ -1,3 +1,18 @@
+## 2026-06-01: SEO — dynamic sitemap.xml + robots Sitemap directive
+**PR**: TBD | **Files**: `frontend/src/routes/sitemap.xml/+server.ts` (new), `frontend/static/robots.txt`
+- **First sitemap the site has ever had.** New SvelteKit endpoint emits ~995 crawlable URLs: 13 static
+  routes + 64 cinemas + 17 festivals + 701 people (`/people/[name]`, 60-day window — verified the people
+  endpoint serves 200 across it) + films. Auth/user pages (sign-in, settings, watchlist) excluded.
+- **Forward-compatible film coverage**: prefers a backend enumerator (`/api/films/sitemap`, not yet
+  deployed → lands with the next backend promote to lift films from 200 → ~1,066) and gracefully falls
+  back to the top-200 `browse` payload until then. A single failing upstream can't 500 the sitemap
+  (every fetch degrades to an empty list).
+- Host uses the **apex** `https://pictures.london` to match the app's canonical tags (`json-ld.ts`,
+  `+layout.svelte`). Cached at the CDN (`s-maxage=86400` + SWR). Verified live: HTTP 200, well-formed
+  XML, all five URL classes resolve to 200; svelte-check clean.
+- **Follow-up flagged**: the site serves on `www` but declares canonical `apex` and redirects apex→www
+  (a circular signal). Recommend a `www→apex` 308 in Vercel domain config so canonical = served host.
+
 ## 2026-06-01: BFI scraper hardening — canonical sourceId + retry dead-code + parser tests
 **PR**: TBD (#640) | **Files**: `src/scrapers/bfi-pdf/bfi-source-id.ts` (new), `src/scrapers/bfi-pdf/bfi-source-id.test.ts` (new), `src/scrapers/cinemas/bfi.ts`, `src/scrapers/cinemas/bfi-parse.ts` (new), `src/scrapers/cinemas/bfi-parse.test.ts` (new), `src/scrapers/bfi-pdf/pdf-parser.ts`, `src/scrapers/bfi-pdf/programme-changes-parser.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`, `scripts/dedup-bfi-sourceid-migration.ts` (new)
 - **(Task 6) Retry dead-code + parser tests**: `RETRY_BACKOFF_MS[2]` (60s) was never read (`[attempt-1]` indexes −1/0/1) yet the array length set the attempt count — decoupled into `MAX_SEARCH_ATTEMPTS=3` + `[10s,30s]` so the dead value is gone without dropping a retry. Extracted `parseSearchResultsArray` + `SearchRow` into a pure `cinemas/bfi-parse.ts` and added 7 unit tests (nested arrays, bracket-in-string, escaped quotes, malformed→null). `mapRows`/0-indexed-month test deferred (needs a pure-extraction refactor of the instance-coupled mapper).
