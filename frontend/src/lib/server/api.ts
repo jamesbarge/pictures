@@ -1,4 +1,6 @@
-const API_BASE = 'https://api.pictures.london';
+import { env } from '$env/dynamic/private';
+
+const API_BASE = env.API_PROXY_TARGET ?? 'https://api.pictures.london';
 
 export async function apiFetch<T>(path: string, fetchFn: typeof globalThis.fetch): Promise<T> {
 	const res = await fetchFn(`${API_BASE}${path}`);

@@ -1,6 +1,4 @@
 <script lang="ts">
-	import BreathingGrid from '$lib/components/pretext/BreathingGrid.svelte';
-	import DimmerDial from '$lib/components/ui/DimmerDial.svelte';
 	import { page } from '$app/state';
 
 	// `cinemas` and `showFilters` were previously used to feed the in-header
@@ -49,23 +47,20 @@
 	<div class="header-inner">
 		<!-- ROW A: Brand bar -->
 		<div class="brand-bar">
+			<div class="brand-side brand-side-left"></div>
+
 			<a href="/" class="brand-link" aria-label="pictures london — home">
-				<BreathingGrid />
+				<img src="/pictures-logo.png" alt="pictures" class="brand-logo" width="80" height="42" />
 			</a>
 
-			<div class="brand-right">
+			<div class="brand-side brand-side-right">
 				<nav class="nav-links" aria-label="Main">
-					<a href="/watchlist" class="nav-link watchlist-link" aria-current={page.url.pathname === '/watchlist' ? 'page' : undefined}>Watchlist</a>
-					<a href="/about" class="nav-link" aria-current={page.url.pathname === '/about' ? 'page' : undefined}>About</a>
-					<a href="/map" class="nav-link" aria-current={page.url.pathname === '/map' ? 'page' : undefined}>Map</a>
-					<a href="/reachable" class="nav-link" aria-current={page.url.pathname.startsWith('/reachable') ? 'page' : undefined}>Reachable</a>
+					<a href="/watchlist" class="nav-link" aria-current={page.url.pathname === '/watchlist' ? 'page' : undefined}>watchlist</a>
+					<a href="/about" class="nav-link" aria-current={page.url.pathname === '/about' ? 'page' : undefined}>about</a>
+					<a href="/map" class="nav-link" aria-current={page.url.pathname === '/map' ? 'page' : undefined}>map</a>
+					<a href="/reachable" class="nav-link" aria-current={page.url.pathname.startsWith('/reachable') ? 'page' : undefined}>reachable</a>
+					<a href="/sign-in" class="nav-link sign-in-link">sign in</a>
 				</nav>
-
-				<div class="nav-divider"></div>
-
-					<a href="/sign-in" class="nav-link sign-in-link">Sign in</a>
-
-				<DimmerDial />
 
 				<button
 					class="mobile-menu-btn"
@@ -78,8 +73,10 @@
 							<path d="M4 4L14 14M14 4L4 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"/>
 						</svg>
 					{:else}
-						<svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
-							<path d="M2 5H16M2 9H16M2 13H16" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"/>
+						<svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+							<line x1="2" y1="4" x2="14" y2="4" stroke="currentColor" stroke-width="1.4" stroke-linecap="square"/>
+							<line x1="2" y1="8" x2="14" y2="8" stroke="currentColor" stroke-width="1.4" stroke-linecap="square"/>
+							<line x1="2" y1="12" x2="14" y2="12" stroke="currentColor" stroke-width="1.4" stroke-linecap="square"/>
 						</svg>
 					{/if}
 				</button>
@@ -116,23 +113,39 @@
 	}
 
 	.header-inner {
-		max-width: 1400px;
-		margin: 0 auto;
-		padding: 0 1rem;
+		max-width: none;
+		margin: 0;
+		padding: 24px 1rem 0;
 	}
 
 	@media (min-width: 768px) {
 		.header-inner {
-			padding: 0 2rem;
+			padding: 32px 2rem 0;
 		}
 	}
 
 	.brand-bar {
+		display: grid;
+		grid-template-columns: 1fr auto 1fr;
+		align-items: center;
+		min-height: 180px;
+		gap: 0.5rem;
+	}
+
+	.brand-side {
 		display: flex;
 		align-items: center;
-		justify-content: space-between;
-		height: 48px;
-		gap: 0.5rem;
+	}
+
+	.brand-side-left {
+		justify-content: flex-start;
+	}
+
+	.brand-side-right {
+		flex-direction: column;
+		justify-content: flex-start;
+		align-items: flex-end;
+		gap: 6px;
 	}
 
 	@media (max-width: 320px) {
@@ -144,10 +157,20 @@
 	}
 
 	.brand-link {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.brand-logo {
 		display: block;
-		flex-shrink: 1;
-		min-width: 0;
-		overflow: hidden;
+		height: 140px;
+		width: 140px;
+		object-fit: cover;
+		object-position: center 35%;
+		/* Multiply blends the logo's grey background into the page beige so only
+		   the hand-drawn marks read. */
+		mix-blend-mode: multiply;
 	}
 
 	.brand-right {
@@ -170,30 +193,26 @@
 	@media (min-width: 768px) {
 		.nav-links {
 			display: flex;
-			align-items: center;
-			gap: 0;
+			flex-direction: column;
+			align-items: flex-end;
+			gap: 4px;
 		}
 	}
 
 	.nav-link {
-		padding: 0.25rem 0.625rem;
-		font-family: var(--font-serif);
-		font-size: 13px;
+		padding: 2px 0;
+		font-family: var(--font-sans);
+		font-size: 14px;
 		font-weight: 400;
-		letter-spacing: -0.005em;
+		letter-spacing: -0.01em;
 		color: var(--color-text-secondary);
 		transition: color var(--duration-fast) var(--ease-sharp);
 		white-space: nowrap;
+		text-align: right;
 	}
 
 	.nav-link:hover {
 		color: var(--color-text);
-	}
-
-	.nav-link.watchlist-link {
-		font-family: var(--font-serif-italic);
-		font-style: italic;
-		font-size: 13px;
 	}
 
 	.nav-link.sign-in-link {

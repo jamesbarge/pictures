@@ -239,14 +239,14 @@
 	.watchlist-row {
 		display: flex;
 		align-items: center;
-		gap: 0.75rem;
-		padding: 0.625rem 0;
+		gap: 0.875rem;
+		padding: 0.875rem 0;
 		border-bottom: 1px solid var(--color-border-subtle);
 		transition: background-color var(--duration-fast) var(--ease-sharp);
 	}
 
 	.watchlist-row:hover {
-		background: var(--color-bg-subtle);
+		background: var(--color-cream);
 		margin: 0 -0.75rem;
 		padding-left: 0.75rem;
 		padding-right: 0.75rem;
@@ -257,15 +257,15 @@
 	}
 
 	.wl-poster {
-		width: 36px;
-		height: 54px;
+		width: 48px;
+		height: 72px;
 		object-fit: cover;
 		flex-shrink: 0;
 	}
 
 	.wl-poster-empty {
-		width: 36px;
-		height: 54px;
+		width: 48px;
+		height: 72px;
 		background: var(--color-bg-subtle);
 		flex-shrink: 0;
 	}
@@ -277,8 +277,9 @@
 
 	.wl-title {
 		display: block;
-		font-size: var(--font-size-sm);
-		font-weight: 500;
+		font-size: var(--font-size-base);
+		font-weight: 600;
+		line-height: 1.25;
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -286,7 +287,8 @@
 
 	.wl-meta {
 		display: block;
-		font-size: var(--font-size-xs);
+		margin-top: 0.125rem;
+		font-size: var(--font-size-sm);
 		color: var(--color-text-tertiary);
 	}
 
@@ -297,20 +299,21 @@
 
 	.wl-count {
 		display: block;
-		font-size: var(--font-size-xs);
+		font-size: var(--font-size-sm);
 		font-family: var(--font-mono);
 		color: var(--color-text-secondary);
 	}
 
 	.wl-next {
 		display: block;
-		font-size: var(--font-size-xs);
+		margin-top: 0.125rem;
+		font-size: var(--font-size-sm);
 		font-family: var(--font-mono);
 		color: var(--color-text-tertiary);
 	}
 
 	.wl-no-screenings {
-		font-size: var(--font-size-xs);
+		font-size: var(--font-size-sm);
 		font-family: var(--font-mono);
 		color: var(--color-text-tertiary);
 		flex-shrink: 0;

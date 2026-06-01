@@ -1,83 +1,50 @@
 @import "tailwindcss";
 
 /*
- * Pictures London — V2a Literary Antiqua
- * Bookish editorial system: Fraunces SOFT display, Cormorant italic deck,
- * IBM Plex Mono meta. Warm beige palette with oxblood accent.
- * Zero radii preserved. Typography does the heavy lifting.
+ * Pictures London — Spline neo-brutalist
+ * White card on warm beige chrome. Spline Sans across the system.
+ * 4px button radii, 16px day-section radii, 42px outer-card radius.
+ * Cream #eae5c2 reads on pure black. 4px hard-offset drop shadows.
  */
 
-/* ── Self-hosted Inter (retained for any sans fallback usage) ── */
+/* ── Spline Sans (variable, self-hosted; latin + latin-ext) ── */
 @font-face {
-	font-family: 'Inter Variable';
-	font-style: normal;
-	font-weight: 100 900;
-	font-display: swap;
-	src: url('/fonts/InterVariable.woff2') format('woff2');
-}
-
-@font-face {
-	font-family: 'Inter Variable';
-	font-style: italic;
-	font-weight: 100 900;
-	font-display: swap;
-	src: url('/fonts/InterVariable-Italic.woff2') format('woff2');
-}
-
-@font-face {
-	font-family: 'Inter';
-	font-style: normal;
-	font-weight: 100 900;
-	font-display: swap;
-	src: url('/fonts/InterVariable.woff2') format('woff2');
-}
-
-@font-face {
-	font-family: 'Inter';
-	font-style: italic;
-	font-weight: 100 900;
-	font-display: swap;
-	src: url('/fonts/InterVariable-Italic.woff2') format('woff2');
-}
-
-/* ── Self-hosted V2a display stack (was Google Fonts @import) ── */
-@font-face {
-	font-family: 'Fraunces';
+	font-family: 'Spline Sans';
 	font-style: normal;
 	font-weight: 300 700;
 	font-display: swap;
-	src: url('/fonts/Fraunces.woff2') format('woff2');
+	src: url('/fonts/SplineSans.woff2') format('woff2');
+	unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
 @font-face {
-	font-family: 'Cormorant';
-	font-style: italic;
-	font-weight: 400 600;
-	font-display: swap;
-	src: url('/fonts/Cormorant-Italic.woff2') format('woff2');
-}
-
-/* Plex Mono ships as static per-weight files — the two call sites at 500
-   (film-detail slot time, desktop hybrid card screening time) need a real
-   cut to avoid faux-bold synthesis. 400 covers everything else. */
-@font-face {
-	font-family: 'IBM Plex Mono';
+	font-family: 'Spline Sans';
 	font-style: normal;
-	font-weight: 400;
+	font-weight: 300 700;
 	font-display: swap;
-	src: url('/fonts/IBMPlexMono.woff2') format('woff2');
+	src: url('/fonts/SplineSans-ext.woff2') format('woff2');
+	unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* ── Legacy faces kept for pages that haven't been migrated yet ── */
+@font-face {
+	font-family: 'Inter Variable';
+	font-style: normal;
+	font-weight: 100 900;
+	font-display: swap;
+	src: url('/fonts/InterVariable.woff2') format('woff2');
 }
 
 @font-face {
-	font-family: 'IBM Plex Mono';
+	font-family: 'Inter';
 	font-style: normal;
-	font-weight: 500;
+	font-weight: 100 900;
 	font-display: swap;
-	src: url('/fonts/IBMPlexMono-500.woff2') format('woff2');
+	src: url('/fonts/InterVariable.woff2') format('woff2');
 }
 
 @theme {
-	/* ── Spacing (4px base, Swiss precision) ── */
+	/* ── Spacing (4px base) ── */
 	--spacing-0: 0;
 	--spacing-px: 1px;
 	--spacing-0\.5: 0.125rem;
@@ -94,37 +61,39 @@
 	--spacing-20: 5rem;
 	--spacing-24: 6rem;
 
-	/* ── Typography Scale (modular, Swiss poster proportions) ── */
-	--font-size-xs: 0.6875rem;
-	--font-size-sm: 0.8125rem;
-	--font-size-base: 1rem;
-	--font-size-lg: 1.125rem;
-	--font-size-xl: 1.375rem;
-	--font-size-2xl: 1.75rem;
-	--font-size-3xl: 2.25rem;
-	--font-size-4xl: 3rem;
-	--font-size-5xl: 4rem;
-	--font-size-6xl: 5.5rem;
-	--font-size-7xl: 7.5rem;
+	/* ── Typography Scale ── */
+	--font-size-xs: 0.625rem;   /* 10px — director micro */
+	--font-size-sm: 0.75rem;    /* 12px */
+	--font-size-base: 0.875rem; /* 14px — year/format chips */
+	--font-size-lg: 1rem;       /* 16px — body, screening row */
+	--font-size-xl: 1.25rem;    /* 20px — day header */
+	--font-size-2xl: 1.5rem;    /* 24px — film title */
+	--font-size-3xl: 2rem;      /* 32px — brand wordmark */
+	--font-size-4xl: 2.5rem;
+	--font-size-5xl: 3.5rem;
+	--font-size-6xl: 5rem;
+	--font-size-7xl: 6.5rem;
 
-	/* ── Border Radius (zero — brutalist) ── */
+	/* ── Border Radius (Figma neo-brutalist) ── */
 	--radius-none: 0;
-	--radius-sm: 0;
-	--radius-md: 0;
-	--radius-lg: 0;
-	--radius-xl: 0;
-	--radius-2xl: 0;
-	--radius-full: 0;
+	--radius-sm: 4px;
+	--radius-md: 4px;
+	--radius-lg: 16px;
+	--radius-xl: 16px;
+	--radius-2xl: 42px;
+	--radius-full: 9999px;
+
+	/* ── Drop shadow ── */
+	--shadow-brutalist: 4px 4px 0 0 #1f1f1f;
+	--shadow-brutalist-sm: 2px 2px 0 0 #1f1f1f;
 
 	/* ── Font Families ── */
-	/* V2a literary system: Fraunces display + Cormorant italic + IBM Plex Mono */
-	--font-serif: "Fraunces", Georgia, "Times New Roman", serif;
-	--font-serif-italic: "Cormorant", Georgia, "Times New Roman", serif;
-	--font-mono-plex: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
-	/* Retained aliases for any remaining sans usage */
-	--font-sans: "Inter Variable", "Inter", system-ui, -apple-system, sans-serif;
-	--font-mono: "IBM Plex Mono", "JetBrains Mono", ui-monospace, monospace;
-	--font-display: "Fraunces", Georgia, serif;
+	--font-sans: "Spline Sans", "Inter Variable", "Inter", system-ui, -apple-system, sans-serif;
+	--font-display: "Spline Sans", "Inter Variable", "Inter", system-ui, sans-serif;
+	--font-serif: "Spline Sans", "Inter Variable", "Inter", system-ui, sans-serif;
+	--font-serif-italic: "Spline Sans", "Inter Variable", "Inter", system-ui, sans-serif;
+	--font-mono: "Spline Sans", ui-monospace, SFMono-Regular, monospace;
+	--font-mono-plex: "Spline Sans", ui-monospace, SFMono-Regular, monospace;
 
 	/* ── Animation ── */
 	--duration-instant: 0ms;
@@ -137,43 +106,44 @@
 	--ease-snap: cubic-bezier(0.2, 0, 0, 1);
 }
 
-/* ── Color System (V2a literary antiqua — warm beige + oxblood) ── */
+/* ── Color System ── */
 :root {
 	--color-bg: #efe9dc;
 	--color-bg-subtle: #e5dfd0;
 	--color-surface: #ffffff;
-	--color-text: #1a1410;
-	--color-text-secondary: #4a3a2e;
-	--color-text-tertiary: #7a6a5c;
-	--color-border: #1a1410;
-	--color-border-subtle: rgba(26, 20, 16, 0.18);
-	--color-accent: #a83232;
-	--color-accent-hover: #8a2828;
-	--color-screening-bg: #1a1410;
-	--color-screening-text: #efe9dc;
+	--color-text: #1f1f1f;
+	--color-text-secondary: #2a2a2a;
+	--color-text-tertiary: #5a5a5a;
+	--color-border: #1f1f1f;
+	--color-border-subtle: rgba(31, 31, 31, 0.18);
+	--color-accent: #1f1f1f;
+	--color-accent-hover: #2f2f2f;
+	--color-cream: #eae5c2;
+	--color-screening-bg: #1f1f1f;
+	--color-screening-text: #eae5c2;
 }
 
 [data-theme="dark"] {
-	--color-bg: #1a1410;
-	--color-bg-subtle: #241c17;
-	--color-surface: #2a211b;
-	--color-text: #efe9dc;
-	--color-text-secondary: #c9bfae;
-	--color-text-tertiary: #8a7c6b;
-	--color-border: #efe9dc;
-	--color-border-subtle: rgba(239, 233, 220, 0.18);
-	--color-accent: #d0494a;
-	--color-accent-hover: #e45d5e;
-	--color-screening-bg: #efe9dc;
-	--color-screening-text: #1a1410;
+	--color-bg: #1a1a1a;
+	--color-bg-subtle: #2a2a2a;
+	--color-surface: #1a1a1a;
+	--color-text: #eae5c2;
+	--color-text-secondary: #d9d4b3;
+	--color-text-tertiary: #8a8676;
+	--color-border: #eae5c2;
+	--color-border-subtle: rgba(234, 229, 194, 0.22);
+	--color-accent: #eae5c2;
+	--color-accent-hover: #f5efcf;
+	--color-cream: #eae5c2;
+	--color-screening-bg: #eae5c2;
+	--color-screening-text: #000000;
 }
 
 /* ── Base Styles ── */
 html {
 	background-color: var(--color-bg);
 	color: var(--color-text);
-	font-family: var(--font-serif);
-	font-variation-settings: '"SOFT" 100', '"opsz" 24';
+	font-family: var(--font-sans);
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
 	overflow-x: hidden;
@@ -183,14 +153,6 @@ body {
 	min-height: 100dvh;
 }
 
-/* ── Mobile input zoom guard ──
-   iOS Safari auto-zooms the viewport when a focused form control's computed
-   font-size is below 16px. Applying 16px universally on mobile prevents that
-   for every input in the app — including page-level search bars that ship
-   with a smaller component-scoped class selector (which would otherwise win
-   on specificity over a bare tag rule). The `!important` is a known and
-   acceptable workaround for this browser-compatibility quirk; desktop (≥768px)
-   is unaffected and keeps whatever size each component declares. */
 @media (max-width: 767px) {
 	input,
 	textarea,
@@ -200,72 +162,60 @@ body {
 }
 
 /* ── Typography Utilities ── */
-.font-display {
-	font-family: var(--font-display);
+.font-display { font-family: var(--font-display); }
+.font-serif { font-family: var(--font-sans); }
+.font-serif-italic { font-family: var(--font-sans); font-style: normal; }
+.font-mono-plex { font-family: var(--font-sans); }
+
+.tracking-swiss { letter-spacing: -0.02em; }
+.tracking-tight-swiss { letter-spacing: -0.05em; }
+.tracking-wide-swiss { letter-spacing: 0.08em; }
+
+/* Legacy axis helpers — no-ops, Spline Sans has no SOFT/opsz axes */
+.soft-display-144,
+.soft-display-96,
+.soft-display-72,
+.soft-display-48,
+.soft-display-36,
+.soft-display-24 { font-variation-settings: normal; }
+
+/* ── Card primitives ── */
+.brutal-card {
+	background: var(--color-surface);
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-md);
+	box-shadow: var(--shadow-brutalist);
 }
 
-.font-serif {
-	font-family: var(--font-serif);
+.brutal-card-sm {
+	background: var(--color-surface);
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-md);
+	box-shadow: var(--shadow-brutalist-sm);
 }
-
-.font-serif-italic {
-	font-family: var(--font-serif-italic);
-	font-style: italic;
-}
-
-.font-mono-plex {
-	font-family: var(--font-mono-plex);
-}
-
-.tracking-swiss {
-	letter-spacing: -0.02em;
-}
-
-.tracking-tight-swiss {
-	letter-spacing: -0.04em;
-}
-
-.tracking-wide-swiss {
-	letter-spacing: 0.08em;
-}
-
-/* V2a variable-font axis helpers */
-.soft-display-144 { font-variation-settings: '"SOFT" 100', '"opsz" 144'; }
-.soft-display-96 { font-variation-settings: '"SOFT" 100', '"opsz" 96'; }
-.soft-display-72 { font-variation-settings: '"SOFT" 100', '"opsz" 72'; }
-.soft-display-48 { font-variation-settings: '"SOFT" 100', '"opsz" 48'; }
-.soft-display-36 { font-variation-settings: '"SOFT" 100', '"opsz" 36'; }
-.soft-display-24 { font-variation-settings: '"SOFT" 100', '"opsz" 24'; }
 
 /* ── Screening Pill ── */
 .screening-pill {
 	display: inline-flex;
 	align-items: center;
 	gap: 0.5rem;
-	padding: 0.25rem 0.5rem;
-	min-height: 28px;
+	padding: 0.375rem 0.625rem;
+	min-height: 30px;
 	background: var(--color-screening-bg);
 	color: var(--color-screening-text);
-	font-size: var(--font-size-xs);
-	font-family: var(--font-mono);
+	font-size: var(--font-size-sm);
+	font-family: var(--font-sans);
+	font-weight: 500;
 	font-variant-numeric: tabular-nums;
-	text-transform: uppercase;
-	letter-spacing: 0.04em;
+	letter-spacing: -0.01em;
 	transition: opacity var(--duration-fast) var(--ease-sharp);
 }
 
-@media (max-width: 767px) {
-	.screening-pill {
-		padding: 0.375rem 0.5rem;
-		min-height: 32px;
-	}
-}
-
 .screening-pill:hover {
-	opacity: 0.8;
+	opacity: 0.85;
 }
 
-/* ── Focus Styles (brutalist) ── */
+/* ── Focus Styles ── */
 :focus-visible {
 	outline: 2px solid var(--color-text);
 	outline-offset: 2px;
@@ -286,18 +236,19 @@ body {
 
 /* ── Selection ── */
 ::selection {
-	background-color: var(--color-accent);
-	color: white;
+	background-color: var(--color-text);
+	color: var(--color-cream);
 }
 
-/* ── Responsive Typography (scale down large display sizes on mobile) ── */
+/* ── Responsive Typography ── */
 @media (max-width: 767px) {
 	:root {
-		--font-size-3xl: 1.75rem;
-		--font-size-4xl: 2.25rem;
-		--font-size-5xl: 3rem;
-		--font-size-6xl: 4rem;
-		--font-size-7xl: 5rem;
+		--font-size-2xl: 1.25rem;
+		--font-size-3xl: 1.625rem;
+		--font-size-4xl: 2rem;
+		--font-size-5xl: 2.5rem;
+		--font-size-6xl: 3.5rem;
+		--font-size-7xl: 4.5rem;
 	}
 }
 

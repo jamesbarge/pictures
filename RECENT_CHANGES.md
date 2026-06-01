@@ -1,3 +1,26 @@
+## 2026-06-01: Frontend — Spline redesign polish + responsive fixes
+**PR**: TBD | **Files**: `frontend/src/routes/+page.svelte`, `frontend/src/routes/film/[id]/+page.svelte`, `frontend/src/routes/watchlist/+page.svelte`, `frontend/src/lib/components/calendar/FigmaFilmCard.svelte`, `frontend/src/lib/components/filters/FigmaToolbar.svelte`, `frontend/src/lib/components/layout/Header.svelte`, `frontend/src/lib/components/reachable/ReachableResults.svelte`, `changelogs/2026-06-01-spline-iteration.md`
+- **Film detail Showings**: WHERE/WHEN head row (left-aligned, page-bg band), dark date dividers in new "Show all" toggle, whole-row clickable screenings with unified cream hover, cinema column lightened to `--color-bg-subtle`, popover now styled with surface/border/brutalist shadow to match toolbar, last-row bottom corners rounded to match the panel.
+- **Homepage cards**: card stretches to full width under 400px (poster auto-sizes via `aspect-ratio: 2/3`), cinema text in screening rows now ellipsizes (display was `flex` which blocked `text-overflow`).
+- **Card grid breakpoints fixed**: 4-cards row was never appearing because `page-chrome` padding is 48px at ≥768 (not 32px the calc assumed). Bumped `.page-chrome` and `.day` breakpoints to 703 / 1030 / 1357px to reflect actual padding, so 4-across now actually fits on screens ≥1357.
+- **Toolbar responsive overhaul**: `col-narrow` regridded to `1fr 1fr 200px` with explicit child placement so segments (ALL/NEW/REP + POSTERS/TEXT) stay in their own 200px column on the right; `col-wide` min-width 240→316. Mobile breakpoint nudged 767→839 so filters collapse earlier. Mobile FILTERS button sits next to search via grid layout. POSTERS/TEXT toggle hidden under 480px.
+- **Icons**: header burger and FILTERS button now share the same line-stroke style as the search magnifying-glass (`stroke-width: 1.4–1.5`, `stroke-linecap: square`, matching viewBox). FILTERS uses a sliders/filter icon with knob dots — no longer a chevron-button.
+- **Reachable + Watchlist design language match**: cards/rows use `--color-bg-subtle` resting + `--color-cream` hover (same as Showings), reachable urgency group headers turned into dark bands with cream text (mirroring the date dividers). Watchlist title 12→14px, meta/screening text 10→12px, poster 36×54→48×72px.
+- **Page chrome smoothness**: dropped the `@media (min-width: 696px)` max-width drop that caused a ~327px jump at the 1024 boundary going down; chrome now shrinks continuously below 1024.
+- Why: tighten the spline redesign before merge — fix the silent 4-cards-never-renders bug and align secondary pages with the same design language so the system reads as cohesive.
+
+---
+
+## 2026-05-17: Frontend — Spline neo-brutalist redesign (Figma 2070:669)
+**PR**: TBD | **Files**: `frontend/src/app.css`, `frontend/src/routes/+page.svelte`, `frontend/src/lib/components/calendar/FigmaFilmCard.svelte` (new), `frontend/src/lib/components/filters/FigmaToolbar.svelte` (new), `frontend/static/fonts/SplineSans.woff2` (new), `frontend/static/fonts/SplineSans-ext.woff2` (new), `changelogs/2026-05-17-spline-redesign.md`
+- Full design-token swap to match Figma 2070:669: Spline Sans replaces Fraunces/Cormorant/IBM Plex Mono, black-on-cream (`#eae5c2`) replaces oxblood accent, 4px button radii + 16px day-section radii + 42px outer-card radius replace zero-radius. New `--shadow-brutalist: 4px 4px 0 0 #000` for chips. Spline Sans variable woff2 self-hosted (latin + latin-ext, ~78KB total).
+- Homepage rebuilt: white rounded-42 outer card houses PICTURES.LONDON wordmark, FigmaToolbar (ALL/NEW/REPERTORY + WHEN/SEARCH/WHERE/HOW chips with cream icon tiles + POSTERS/TEXT), day sections with black cream-text headers, and `FigmaFilmCard` rows (264px poster + 64px right rail for year/director/format chips, 88px title row, 30px screening rows, rotated MORE bar on overflow).
+- Mobile: full-width card with poster + right rail layout preserved, toolbar wraps to 2-up.
+- Other pages (`/tonight`, `/this-weekend`, `/about`, `/map`) inherit new tokens cleanly; existing `DesktopHybridCard`/`MobileFilmRow` left untouched (still used by those pages).
+- Why: design alignment with Figma direction picked by James — neo-brutalist literary calendar.
+
+---
+
 ## 2026-05-17: /goal conditions #8 & #9 — flaky detector + BST sentinel (Phase 1 of scraper-perfection plan)
 **PR**: TBD | **Files**: `src/lib/scrape-quarantine.ts`, `src/lib/scrape-quarantine.test.ts` (new), `src/scripts/run-scrape-and-enrich.ts`, `scripts/goal-check-flaky-cinemas.ts` (new), `scripts/goal-check-bst-sentinel.ts` (new), `scripts/goal-status.ts`, `tasks/goal.md`, `changelogs/2026-05-17-goal-ws-a-flaky-and-bst.md`
 - Phase 1 of the "make scrapers perfect" plan (WS-A: measurement substrate). Two new end conditions added to `tasks/goal.md`, taking the goal from 7 conditions to 9.

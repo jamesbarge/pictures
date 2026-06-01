@@ -1,10 +1,11 @@
 <script lang="ts">
-	import DesktopHybridCard from '$lib/components/calendar/DesktopHybridCard.svelte';
-	import MobileFilmRow from '$lib/components/calendar/MobileFilmRow.svelte';
-	import DayMasthead from '$lib/components/calendar/DayMasthead.svelte';
-	import DesktopFilterSidebar from '$lib/components/filters/DesktopFilterSidebar.svelte';
+	import FigmaFilmCard from '$lib/components/calendar/FigmaFilmCard.svelte';
+	import FigmaTextDay from '$lib/components/calendar/FigmaTextDay.svelte';
+	import FigmaToolbar from '$lib/components/filters/FigmaToolbar.svelte';
 	import MobileFilterSheet from '$lib/components/filters/MobileFilterSheet.svelte';
-	import FilmTypeFilter from '$lib/components/filters/FilmTypeFilter.svelte';
+	import DimmerDial from '$lib/components/ui/DimmerDial.svelte';
+
+	type DisplayMode = 'posters' | 'text';
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
 	import JsonLd from '$lib/seo/JsonLd.svelte';
 	import { webSiteSchema, faqSchema } from '$lib/seo/json-ld';
@@ -18,18 +19,6 @@
 
 	let { data } = $props();
 
-	// Sidebar collapsed state — persist across sessions.
-	const SIDEBAR_STORAGE_KEY = 'pictures-sidebar-collapsed';
-	function loadCollapsed(): boolean {
-		if (!browser) return false;
-		try { return localStorage.getItem(SIDEBAR_STORAGE_KEY) === 'true'; } catch { return false; }
-	}
-	let sidebarCollapsed = $state(loadCollapsed());
-	$effect(() => {
-		if (!browser) return;
-		try { localStorage.setItem(SIDEBAR_STORAGE_KEY, String(sidebarCollapsed)); } catch { /* ignore */ }
-	});
-
 	const cinemas = $derived((page.data?.cinemas ?? []) as Array<{
 		id: string;
 		name: string;
@@ -38,10 +27,8 @@
 	}>);
 
 	let mobileFilterOpen = $state(false);
+	let displayMode = $state<DisplayMode>('posters');
 
-	// Group screenings by film + apply filters via the pure helper in
-	// `$lib/calendar-filter`. The helper owns the one-sided-range invariant
-	// warning internally — see calendar-filter.ts.
 	const filmMap = $derived.by(() =>
 		buildFilmMap(
 			data.screenings,
@@ -78,10 +65,6 @@
 			});
 	});
 
-	// Rolling-window slice: take days from the start of `dayGroups` until we've
-	// accumulated enough films to fill the viewport. Late at night today is
-	// usually empty (all past), so the window naturally extends to tomorrow /
-	// the day after without the page going blank.
 	const MIN_FILMS_VISIBLE = 24;
 	const MAX_DAYS_VISIBLE = 7;
 	const visibleDayGroups = $derived.by(() => {
@@ -96,24 +79,16 @@
 		return out;
 	});
 
-	// Visible counts (across the rolling-window slice, not the full filter set).
-	// `filmMap.size` would count every unique film within the entire date range
-	// up to 14 days — much larger than what the user actually sees in the
-	// sliced view. Same film playing multiple days is counted once here.
-	const visibleFilmCount = $derived.by(() => {
-		const ids = new Set<string>();
-		for (const day of visibleDayGroups) {
-			for (const { film } of day.films) ids.add(film.id);
-		}
-		return ids.size;
-	});
-	const screeningCount = $derived.by(() => {
-		let n = 0;
-		for (const day of visibleDayGroups) {
-			for (const { screenings } of day.films) n += screenings.length;
-		}
-		return n;
-	});
+	const hasActiveFilters = $derived(
+		filters.filmSearch.length > 0 ||
+		filters.cinemaIds.length > 0 ||
+		!!filters.dateFrom ||
+		filters.formats.length > 0 ||
+		filters.programmingTypes.length > 0 ||
+		filters.genres.length > 0 ||
+		filters.decades.length > 0 ||
+		filters.timeFrom !== null
+	);
 
 	let lastTrackedEmpty = false;
 	$effect(() => {
@@ -134,25 +109,81 @@
 		}
 	});
 
-	const activeFilterCount = $derived(filters.activeFilterCount);
+	const ORDINALS: Record<number, string> = {
+		1:'first',2:'second',3:'third',4:'fourth',5:'fifth',6:'sixth',7:'seventh',8:'eighth',9:'ninth',10:'tenth',
+		11:'eleventh',12:'twelfth',13:'thirteenth',14:'fourteenth',15:'fifteenth',16:'sixteenth',17:'seventeenth',
+		18:'eighteenth',19:'nineteenth',20:'twentieth',21:'twenty-first',22:'twenty-second',23:'twenty-third',
+		24:'twenty-fourth',25:'twenty-fifth',26:'twenty-sixth',27:'twenty-seventh',28:'twenty-eighth',
+		29:'twenty-ninth',30:'thirtieth',31:'thirty-first'
+	};
+
+	const mastheadDate = $derived.by(() => {
+		const iso = todayStore.value;
+		const d = new Date(iso + 'T12:00:00Z');
+		const weekday = new Intl.DateTimeFormat('en-GB', { weekday: 'long', timeZone: 'Europe/London' }).format(d);
+		const dayNum = Number(new Intl.DateTimeFormat('en-GB', { day: 'numeric', timeZone: 'Europe/London' }).format(d));
+		const month = new Intl.DateTimeFormat('en-GB', { month: 'long', timeZone: 'Europe/London' }).format(d);
+		return { weekday, ordinal: ORDINALS[dayNum] ?? `${dayNum}th`, month };
+	});
+
+	// Tag cards in the last visual row of a film-row so their CSS can re-enable
+	// the bottom stroke (otherwise filled cards have no bottom border, which
+	// looks fine mid-grid because the row below closes them, but dangling at
+	// the bottom of the section).
+	function markLastRow(node: HTMLElement) {
+		function update() {
+			const cards = node.querySelectorAll<HTMLElement>(':scope > .card');
+			if (!cards.length) return;
+			let maxTop = -Infinity;
+			for (const c of cards) if (c.offsetTop > maxTop) maxTop = c.offsetTop;
+			for (const c of cards) c.classList.toggle('last-row', c.offsetTop === maxTop);
+		}
+		update();
+		const observer = new ResizeObserver(update);
+		observer.observe(node);
+		return { destroy() { observer.disconnect(); } };
+	}
+
+	// Shrink the day section to the actual width of its first row of cards, so
+	// the black day-header bar lines up with the card grid even when a day has
+	// fewer cards than fit per row.
+	function fitToFirstRow(node: HTMLElement) {
+		function update() {
+			const filmRow = node.querySelector<HTMLElement>('.film-row');
+			if (!filmRow) { node.style.width = ''; return; }
+			const cards = filmRow.querySelectorAll<HTMLElement>(':scope > .card');
+			if (!cards.length) { node.style.width = ''; return; }
+			let minTop = Infinity;
+			for (const c of cards) if (c.offsetTop < minTop) minTop = c.offsetTop;
+			const firstRow = [...cards].filter(c => c.offsetTop === minTop);
+			const lastInRow = firstRow[firstRow.length - 1];
+			const right = lastInRow.getBoundingClientRect().right;
+			const left = filmRow.getBoundingClientRect().left;
+			node.style.width = `${right - left}px`;
+		}
+		// Defer one frame so layout has settled (cards may not have measured yet).
+		requestAnimationFrame(update);
+		const observer = new ResizeObserver(update);
+		observer.observe(node);
+		return { destroy() { observer.disconnect(); } };
+	}
+
+	interface DayParts { isToday: boolean; weekday: string; ordinal: string; month: string; }
+	function dayParts(iso: string): DayParts {
+		if (iso === todayStore.value) return { isToday: true, weekday: 'Today', ordinal: '', month: '' };
+		const d = new Date(iso + 'T12:00:00Z');
+		// Intl returns weekday + month in title case ("Monday", "May") — keep as-is.
+		const weekday = new Intl.DateTimeFormat('en-GB', { weekday: 'long', timeZone: 'Europe/London' }).format(d).toUpperCase();
+		const dayNum = Number(new Intl.DateTimeFormat('en-GB', { day: 'numeric', timeZone: 'Europe/London' }).format(d));
+		const month = new Intl.DateTimeFormat('en-GB', { month: 'long', timeZone: 'Europe/London' }).format(d).toUpperCase();
+		const ordinal = (ORDINALS[dayNum] ?? `${dayNum}th`).toUpperCase();
+		return { isToday: false, weekday, ordinal, month };
+	}
 </script>
 
 <div class="sr-only" aria-live="polite" role="status">
 	{#if dayGroups.length === 0}No screenings found{:else}{filmMap.size} films showing{/if}
 </div>
-
-{#snippet dayHeader(iso: string)}
-	{@const d = new Date(iso + 'T12:00:00Z')}
-	{@const weekday = new Intl.DateTimeFormat('en-GB', { weekday: 'long', timeZone: 'Europe/London' }).format(d)}
-	{@const dayNum = Number(new Intl.DateTimeFormat('en-GB', { day: 'numeric', timeZone: 'Europe/London' }).format(d))}
-	{@const ordinals = {1:'first',2:'second',3:'third',4:'fourth',5:'fifth',6:'sixth',7:'seventh',8:'eighth',9:'ninth',10:'tenth',11:'eleventh',12:'twelfth',13:'thirteenth',14:'fourteenth',15:'fifteenth',16:'sixteenth',17:'seventeenth',18:'eighteenth',19:'nineteenth',20:'twentieth',21:'twenty-first',22:'twenty-second',23:'twenty-third',24:'twenty-fourth',25:'twenty-fifth',26:'twenty-sixth',27:'twenty-seventh',28:'twenty-eighth',29:'twenty-ninth',30:'thirtieth',31:'thirty-first'} as Record<number, string>}
-	{@const todayIso = todayStore.value}
-	{@const tomorrowIso = (() => { const t = new Date(todayIso + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() + 1); return t.toISOString().split('T')[0]; })()}
-	{@const relative = iso === todayIso ? 'Today' : iso === tomorrowIso ? 'Tomorrow' : null}
-	<h2 class="day-header">
-		{#if relative}<span class="day-header-relative">{relative}</span><span class="day-header-sep"> · </span>{/if}<span class="day-header-weekday">{weekday}</span><span class="italic-comma">,</span> <span class="day-header-ordinal">the {ordinals[dayNum] ?? `${dayNum}th`}</span>
-	</h2>
-{/snippet}
 
 <JsonLd data={webSiteSchema()} />
 <JsonLd data={faqSchema([
@@ -162,60 +193,60 @@
 	{ question: 'Can I import my Letterboxd watchlist?', answer: 'Yes! Visit the Letterboxd Import page, enter your username, and see which films on your watchlist are currently showing in London cinemas.' }
 ])} />
 
-<!-- ── DESKTOP LAYOUT (≥ 1024px) ── -->
-<div class="desktop-shell">
-	<div class="desktop-masthead-wrap">
-		<DayMasthead />
-	</div>
+<div class="page-chrome">
+	<FigmaToolbar
+		{cinemas}
+		{displayMode}
+		onDisplayModeChange={(m) => (displayMode = m)}
+		onOpenFilters={() => (mobileFilterOpen = true)}
+	/>
 
-	<div class="desktop-grid" class:sidebar-collapsed={sidebarCollapsed}>
-		{#if !sidebarCollapsed}
-			<div class="sidebar-wrap">
-				<DesktopFilterSidebar
-					cinemas={cinemas}
-					filmCount={filmMap.size}
-					screeningCount={screeningCount}
-					onHide={() => (sidebarCollapsed = true)}
-				/>
-			</div>
-		{:else}
-			<button
-				type="button"
-				class="sidebar-rail"
-				onclick={() => (sidebarCollapsed = false)}
-				aria-label="Expand filters"
-				title="Expand filters"
-			>
-				<svg width="11" height="11" viewBox="0 0 14 14" aria-hidden="true">
-					<circle cx="6" cy="6" r="4.5" stroke="currentColor" stroke-width="1.2" fill="none"/>
-					<path d="M9.5 9.5L13 13" stroke="currentColor" stroke-width="1.2"/>
-				</svg>
-				<span class="rail-label">Filters</span>
-				{#if activeFilterCount > 0}
-					<span class="rail-count">·{activeFilterCount}</span>
-				{/if}
-				<span class="rail-chevron">›</span>
-			</button>
-		{/if}
-
-		<main class="desktop-main">
-			<div class="desktop-toolbar">
-				<FilmTypeFilter />
-				<span class="count-line">
-					<span class="count-num">{visibleFilmCount}</span> films ·
-					<span class="count-num">{screeningCount}</span> screenings
-				</span>
-			</div>
-
-			{#if visibleDayGroups.length === 0}
-				<EmptyState title="No screenings found" description="Try adjusting your filters or check back later." />
-			{:else}
-				{#each visibleDayGroups as { date, films }, di (date)}
-					<section class="desktop-day">
-						{@render dayHeader(date)}
-						<div class="desktop-film-grid">
+	{#if visibleDayGroups.length === 0}
+		<EmptyState
+			title="No screenings found"
+			description={hasActiveFilters ? 'Your filters returned no upcoming screenings.' : 'Check back later — scrapers update daily.'}
+		>
+			{#if hasActiveFilters}
+				<button type="button" class="clear-filters-btn" onclick={() => filters.clearAll()}>
+					Clear filters
+				</button>
+			{/if}
+		</EmptyState>
+	{:else}
+		{#each visibleDayGroups as { date, films }, di (date)}
+				{@const parts = dayParts(date)}
+				<section class="day" class:day-wide={displayMode === 'text'} use:fitToFirstRow>
+					<header class="day-header">
+						<h2>
+							{#if parts.isToday}
+								TODAY
+							{:else}
+								{parts.weekday} THE <span class="day-ord">{parts.ordinal}</span> OF {parts.month}
+							{/if}
+						</h2>
+					</header>
+					{#if displayMode === 'text'}
+						<FigmaTextDay
+							films={films.map(({ film, screenings }) => ({
+								film: {
+									id: film.id,
+									title: film.title,
+									year: film.year,
+									director: film.director ?? null
+								},
+								screenings: screenings.map((s) => ({
+									id: s.id,
+									datetime: s.datetime,
+									cinemaName: s.cinema?.name ?? 'Unknown',
+									format: s.format,
+									bookingUrl: s.bookingUrl
+								}))
+							}))}
+						/>
+					{:else}
+						<div class="film-row" use:markLastRow>
 							{#each films as { film, screenings }, fi (film.id)}
-								<DesktopHybridCard
+								<FigmaFilmCard
 									film={{
 										id: film.id,
 										title: film.title,
@@ -236,72 +267,14 @@
 								/>
 							{/each}
 						</div>
-					</section>
-				{/each}
-			{/if}
-		</main>
-	</div>
+					{/if}
+			</section>
+		{/each}
+	{/if}
 </div>
 
-<!-- ── MOBILE LAYOUT (< 1024px) ── -->
-<div class="mobile-shell">
-	<div class="mobile-header">
-		<div class="mobile-search-row">
-			<div class="mobile-search">
-				<svg width="11" height="11" viewBox="0 0 14 14" aria-hidden="true">
-					<circle cx="6" cy="6" r="4.5" stroke="currentColor" stroke-width="1.2" fill="none"/>
-					<path d="M9.5 9.5L13 13" stroke="currentColor" stroke-width="1.2"/>
-				</svg>
-				<input
-					type="search"
-					placeholder="Search films, cinemas, directors…"
-					bind:value={filters.filmSearch}
-					aria-label="Search films, cinemas, directors"
-				/>
-			</div>
-			<button class="mobile-filter-btn" onclick={() => (mobileFilterOpen = true)} aria-expanded={mobileFilterOpen}>
-				Filter
-				{#if activeFilterCount > 0}
-					<span class="count">·{activeFilterCount}</span>
-				{/if}
-			</button>
-		</div>
-
-		<div class="mobile-type-tabs">
-			<FilmTypeFilter />
-		</div>
-	</div>
-
-	{#if visibleDayGroups.length === 0}
-		<EmptyState title="No screenings found" description="Try adjusting your filters or check back later." />
-	{:else}
-		<div class="mobile-list">
-			{#each visibleDayGroups as { date, films }, di (date)}
-				<section class="mobile-day">
-					{@render dayHeader(date)}
-					{#each films as { film, screenings }, fi (film.id)}
-						<MobileFilmRow
-							film={{
-								id: film.id,
-								title: film.title,
-								year: film.year,
-								director: film.director ?? null,
-								runtime: film.runtime,
-								posterUrl: film.posterUrl
-							}}
-							screenings={screenings.map((s) => ({
-								id: s.id,
-								datetime: s.datetime,
-								cinemaName: s.cinema?.name ?? 'Unknown',
-								bookingUrl: s.bookingUrl
-							}))}
-							priority={di === 0 && fi === 0}
-						/>
-					{/each}
-				</section>
-			{/each}
-		</div>
-	{/if}
+<div class="dimmer-anchor">
+	<DimmerDial />
 </div>
 
 <MobileFilterSheet
@@ -312,257 +285,171 @@
 />
 
 <style>
-	/* ---------- Desktop ---------- */
-	.desktop-shell {
-		display: none;
-	}
-
-	@media (min-width: 1024px) {
-		.desktop-shell {
-			display: block;
-			max-width: 1400px;
-			margin: 0 auto;
-			padding: 0 2rem 4rem;
-		}
-	}
-
-	.desktop-masthead-wrap {
-		padding: 1.5rem 0 0;
-	}
-
-	.desktop-grid {
-		display: grid;
-		grid-template-columns: 240px 1fr;
-		min-height: 600px;
-	}
-
-	.desktop-grid.sidebar-collapsed {
-		grid-template-columns: 44px 1fr;
-	}
-
-	.sidebar-wrap {
+	/* Page chrome hugs the cards row exactly so the toolbar above and the day
+	   section below share the same left/right edges. Width staircase mirrors
+	   the .day rule below. Each card is 328px and overlaps the previous by 1px
+	   via `margin-left: -1px`, so N cards = 328 + (N-1)*327. */
+	.page-chrome {
+		width: 100%;
+		margin: 0 auto;
+		padding: 24px 16px 60px;
 		display: flex;
 		flex-direction: column;
+		gap: 28px;
 	}
 
-	.sidebar-rail {
-		position: sticky;
-		top: var(--header-height, 56px);
-		align-self: start;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 10px;
-		padding: 18px 8px;
-		background: transparent;
-		border: none;
-		border-right: 1px solid var(--color-border);
-		color: var(--color-text-secondary);
-		cursor: pointer;
-		font-family: var(--font-serif);
-		font-size: 13px;
-		letter-spacing: -0.005em;
-		writing-mode: vertical-rl;
-		transition: background-color var(--duration-fast) var(--ease-sharp),
-			color var(--duration-fast) var(--ease-sharp);
-		min-height: 180px;
+	@media (min-width: 1030px) {
+		.page-chrome { max-width: calc(982px + 48px); }
 	}
 
-	.sidebar-rail:hover {
-		background: var(--color-bg-subtle);
-		color: var(--color-text);
+	@media (min-width: 1357px) {
+		.page-chrome { max-width: calc(1309px + 48px); }
 	}
 
-	.sidebar-rail svg {
-		writing-mode: horizontal-tb;
+	.dimmer-anchor {
+		position: fixed;
+		top: 32px;
+		right: 24px;
+		z-index: 60;
 	}
 
-	.sidebar-rail .rail-count {
-		font-family: var(--font-serif-italic);
-		font-style: italic;
-		color: var(--color-accent);
-	}
-
-	.sidebar-rail .rail-chevron {
-		color: var(--color-text-tertiary);
-		writing-mode: horizontal-tb;
-	}
-
-	.desktop-main {
-		padding: 18px 0 60px;
-		padding-left: 2.5rem;
-	}
-
-	.sidebar-collapsed .desktop-main {
-		padding-left: 1.5rem;
-	}
-
-	.desktop-toolbar {
-		display: flex;
-		justify-content: space-between;
-		align-items: baseline;
-		margin-bottom: 18px;
-	}
-
-	.count-line {
-		font-family: var(--font-serif-italic);
-		font-style: italic;
-		font-size: 14px;
-		color: var(--color-text-tertiary);
-	}
-	.count-line .count-num { color: var(--color-text-secondary); }
-
-	.desktop-day {
-		display: flex;
-		flex-direction: column;
-		margin-bottom: 48px;
-	}
-
-	.desktop-day:last-child {
-		margin-bottom: 0;
-	}
-
-	.desktop-film-grid {
-		display: grid;
-		grid-template-columns: repeat(4, minmax(0, 1fr));
-		gap: 32px 22px;
-	}
-
-	@media (min-width: 1024px) and (max-width: 1279px) {
-		.desktop-film-grid {
-			grid-template-columns: repeat(3, minmax(0, 1fr));
-		}
-		.sidebar-collapsed .desktop-film-grid {
-			grid-template-columns: repeat(4, minmax(0, 1fr));
+	@media (min-width: 768px) {
+		.page-chrome {
+			padding: 28px 24px 80px;
+			gap: 35px;
 		}
 	}
 
-	@media (min-width: 1280px) {
-		.sidebar-collapsed .desktop-film-grid {
-			grid-template-columns: repeat(5, minmax(0, 1fr));
-		}
-	}
-
-	/* ---------- Day headers (shared mobile + desktop) ---------- */
-	.day-header {
-		font-family: var(--font-serif-italic);
-		font-style: italic;
-		font-weight: 400;
-		letter-spacing: -0.01em;
-		color: var(--color-text);
+	.masthead {
 		margin: 0;
-	}
-
-	.day-header .italic-comma { color: var(--color-text-tertiary); }
-	.day-header .day-header-relative { font-style: normal; font-family: var(--font-serif); color: var(--color-text); }
-	.day-header .day-header-sep { color: var(--color-text-tertiary); font-style: normal; }
-	.day-header .day-header-ordinal { color: var(--color-text-secondary); }
-
-	@media (min-width: 1024px) {
-		.day-header {
-			font-size: 28px;
-			line-height: 1;
-			padding: 0 0 18px;
-			border-bottom: 1px solid var(--color-border);
-			margin-bottom: 22px;
-		}
-	}
-
-	@media (max-width: 1023px) {
-		.day-header {
-			font-size: 22px;
-			line-height: 1;
-			padding: 14px 0 12px;
-			border-bottom: 1px solid var(--color-border);
-		}
-	}
-
-	/* ---------- Mobile ---------- */
-	.mobile-shell {
-		display: block;
-		padding: 0.25rem 1.125rem 2rem;
-	}
-
-	@media (min-width: 1024px) {
-		.mobile-shell {
-			display: none;
-		}
-	}
-
-	.mobile-header {
-		padding: 12px 0 0;
-		border-bottom: 1px solid var(--color-border-subtle);
-	}
-
-	.mobile-search-row {
-		display: flex;
-		gap: 8px;
-		padding: 10px 0;
-	}
-
-	.mobile-search {
-		flex: 1;
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		padding: 9px 12px;
-		background: transparent;
-		border: 1px solid var(--color-border);
-		color: var(--color-text-tertiary);
-		min-width: 0;
-	}
-
-	.mobile-search input {
-		flex: 1;
-		background: transparent;
-		border: none;
-		outline: none;
-		font-family: var(--font-serif-italic);
-		font-style: italic;
-		/* 16px minimum to prevent iOS Safari auto-zoom on focus. */
-		font-size: 16px;
-		color: var(--color-text);
-		min-width: 0;
-	}
-
-	.mobile-search input::placeholder {
-		color: var(--color-text-tertiary);
-	}
-
-	.mobile-filter-btn {
-		padding: 0 16px;
-		border: 1px solid var(--color-border);
-		background: var(--color-text);
-		color: var(--color-bg);
-		font-family: var(--font-serif);
-		font-size: 13px;
-		font-weight: 500;
-		letter-spacing: -0.005em;
-		cursor: pointer;
-		font-variation-settings: '"SOFT" 100', '"opsz" 24';
-		display: inline-flex;
-		align-items: center;
-		gap: 4px;
-	}
-
-	.mobile-filter-btn .count {
-		font-family: var(--font-serif-italic);
-		font-style: italic;
+		font-family: var(--font-sans);
+		font-size: 28px;
 		font-weight: 400;
-		opacity: 0.7;
+		letter-spacing: -0.03em;
+		line-height: 1;
+		color: var(--color-text);
+		text-align: left;
 	}
 
-	.mobile-type-tabs {
-		padding: 0 0 12px;
-		border-bottom: 1px solid var(--color-border-subtle);
+	@media (min-width: 768px) {
+		.masthead {
+			font-size: 36px;
+		}
 	}
 
-	.mobile-list {
-		padding-top: 0;
-	}
+	.m-weekday { font-weight: 700; }
+	.m-comma   { color: var(--color-text-tertiary); }
+	.m-ordinal { font-weight: 300; color: var(--color-text-secondary); }
+	.m-month   { font-weight: 300; color: var(--color-text-tertiary); }
 
-	.mobile-day {
+	/* Day section caps at N cards wide for the viewport. The fitToFirstRow JS
+	   action overrides this with an explicit shrunken width when a day has
+	   fewer cards than the cap, so the black header bar lines up with the
+	   actual cards beneath it. */
+	.day {
 		display: flex;
 		flex-direction: column;
+		align-self: flex-start;
+		width: 100%;
+		max-width: 100%;
+	}
+
+	@media (min-width: 703px) {
+		.day { max-width: 655px; }     /* 2 cards (656 - 1) */
+	}
+
+	@media (min-width: 1030px) {
+		.day { max-width: 982px; }     /* 3 cards (984 - 2) */
+	}
+
+	@media (min-width: 1357px) {
+		.day { max-width: 1309px; }    /* 4 cards (1312 - 3) */
+	}
+
+	/* In TEXT mode, the day section ignores the card-row width ladder and uses
+	   the full page-chrome width — the table doesn't need to line up with poster
+	   cards underneath, and the row data benefits from breathing room. */
+	.day.day-wide { max-width: 100%; }
+
+	.clear-filters-btn {
+		padding: 10px 18px;
+		min-height: 40px;
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-sm);
+		box-shadow: var(--shadow-brutalist);
+		background: var(--color-surface);
+		color: var(--color-text);
+		font-family: var(--font-sans);
+		font-size: 13px;
+		font-weight: 700;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		cursor: pointer;
+		transition: background-color var(--duration-fast) var(--ease-sharp),
+			transform var(--duration-fast) var(--ease-sharp),
+			box-shadow var(--duration-fast) var(--ease-sharp);
+	}
+
+	.clear-filters-btn:hover { background: var(--color-cream); }
+
+	.clear-filters-btn:active {
+		transform: translate(4px, 4px);
+		box-shadow: 0 0 0 0 transparent;
+	}
+
+	.day-header {
+		/* Fixed colours so the bar stays readable when house lights are dimmed
+		   (without this, --color-text inverts to cream-on-cream). */
+		background: #1f1f1f;
+		color: #eae5c2;
+		padding: 6px 16px;
+		text-align: left;
+		border-top-left-radius: 16px;
+		border-top-right-radius: 16px;
+	}
+
+	.day-header h2 {
+		margin: 0;
+		font-family: var(--font-sans);
+		font-weight: 300;
+		font-size: 20px;
+		letter-spacing: -0.01em;
+		color: #eae5c2;
+		text-transform: none;
+		text-align: left;
+	}
+
+	.day-header .day-ord {
+		font-weight: 700;
+	}
+
+	@media (min-width: 768px) {
+		.day-header h2 {
+			font-size: 24px;
+		}
+	}
+
+	.film-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: flex-start;
+	}
+
+	/* Cards touch on desktop — borders overlap to read as 1px lines */
+	@media (min-width: 768px) {
+		.film-row :global(.card) + :global(.card) {
+			margin-left: -1px;
+		}
+	}
+
+	/* Mobile: stack cards one per row with a separator */
+	@media (max-width: 767px) {
+		.film-row {
+			flex-direction: column;
+		}
+
+		.film-row :global(.card) + :global(.card) {
+			margin-top: -1px;
+		}
 	}
 </style>

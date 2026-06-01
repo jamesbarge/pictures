@@ -18,7 +18,7 @@
 	let isDragging = $state(false);
 	let trackEl = $state<HTMLDivElement>();
 
-	const vignetteOpacity = $derived(dimmerValue * 0.5);
+	const vignetteOpacity = $derived(dimmerValue * 0.9);
 
 	function lerp(a: number, b: number, t: number): number {
 		return a + (b - a) * t;
@@ -52,18 +52,23 @@
 
 	function applyTheme(t: number) {
 		if (!browser) return;
-		const root = document.documentElement;
-		root.style.setProperty('--color-bg', warmLerp(L.bg, D.bg, t, 1.2));
-		root.style.setProperty('--color-bg-subtle', warmLerp(L.bgSubtle, D.bgSubtle, t, 1.0));
-		root.style.setProperty('--color-surface', warmLerp(L.surface, D.surface, t, 0.8));
-		root.style.setProperty('--color-text', lerpColor(L.text, D.text, t));
-		root.style.setProperty('--color-text-secondary', lerpColor(L.textSecondary, D.textSecondary, t));
-		root.style.setProperty('--color-text-tertiary', lerpColor(L.textTertiary, D.textTertiary, t));
-		root.style.setProperty('--color-border', lerpColor(L.border, D.border, t));
-		root.style.setProperty('--color-border-subtle', lerpColor(L.borderSubtle, D.borderSubtle, t));
-		root.style.setProperty('--color-accent', lerpColor(L.accent, D.accent, t));
-		root.style.setProperty('--color-screening-bg', lerpColor(L.screenBg, D.screenBg, t));
-		root.style.setProperty('--color-screening-text', lerpColor(L.screenText, D.screenText, t));
+		// Target <main> rather than the document root so only content below the
+		// header/menu is dimmed. The header keeps light-mode colors regardless
+		// of dimmer position.
+		const target = document.querySelector('main') as HTMLElement | null;
+		if (!target) return;
+		// No warmth bias — dim is purely a darkening lerp, no amber cast.
+		target.style.setProperty('--color-bg', lerpColor(L.bg, D.bg, t));
+		target.style.setProperty('--color-bg-subtle', lerpColor(L.bgSubtle, D.bgSubtle, t));
+		target.style.setProperty('--color-surface', lerpColor(L.surface, D.surface, t));
+		target.style.setProperty('--color-text', lerpColor(L.text, D.text, t));
+		target.style.setProperty('--color-text-secondary', lerpColor(L.textSecondary, D.textSecondary, t));
+		target.style.setProperty('--color-text-tertiary', lerpColor(L.textTertiary, D.textTertiary, t));
+		target.style.setProperty('--color-border', lerpColor(L.border, D.border, t));
+		target.style.setProperty('--color-border-subtle', lerpColor(L.borderSubtle, D.borderSubtle, t));
+		target.style.setProperty('--color-accent', lerpColor(L.accent, D.accent, t));
+		target.style.setProperty('--color-screening-bg', lerpColor(L.screenBg, D.screenBg, t));
+		target.style.setProperty('--color-screening-text', lerpColor(L.screenText, D.screenText, t));
 		localStorage.setItem(STORAGE_KEY, String(t));
 	}
 
@@ -109,7 +114,7 @@
 
 <!-- Inline horizontal fader — lives in the header -->
 <div class="house-lights" class:dragging={isDragging}>
-	<span class="hl-label">House lights</span>
+	<span class="hl-label">house lights</span>
 
 	<div
 		bind:this={trackEl}
@@ -141,7 +146,10 @@
 <style>
 	.vignette {
 		position: fixed;
-		inset: 0;
+		top: var(--header-height, 0);
+		left: 0;
+		right: 0;
+		bottom: 0;
 		z-index: 45;
 		pointer-events: none;
 		background: radial-gradient(
