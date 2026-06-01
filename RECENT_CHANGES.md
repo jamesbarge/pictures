@@ -13,7 +13,13 @@
 - **Follow-up flagged**: the site serves on `www` but declares canonical `apex` and redirects apex→www
   (a circular signal). Recommend a `www→apex` 308 in Vercel domain config so canonical = served host.
 
----
+## 2026-06-01: BFI scraper hardening — canonical sourceId + retry dead-code + parser tests
+**PR**: TBD (#640) | **Files**: `src/scrapers/bfi-pdf/bfi-source-id.ts` (new), `src/scrapers/bfi-pdf/bfi-source-id.test.ts` (new), `src/scrapers/cinemas/bfi.ts`, `src/scrapers/cinemas/bfi-parse.ts` (new), `src/scrapers/cinemas/bfi-parse.test.ts` (new), `src/scrapers/bfi-pdf/pdf-parser.ts`, `src/scrapers/bfi-pdf/programme-changes-parser.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`, `scripts/dedup-bfi-sourceid-migration.ts` (new)
+- **(Task 6) Retry dead-code + parser tests**: `RETRY_BACKOFF_MS[2]` (60s) was never read (`[attempt-1]` indexes −1/0/1) yet the array length set the attempt count — decoupled into `MAX_SEARCH_ATTEMPTS=3` + `[10s,30s]` so the dead value is gone without dropping a retry. Extracted `parseSearchResultsArray` + `SearchRow` into a pure `cinemas/bfi-parse.ts` and added 7 unit tests (nested arrays, bracket-in-string, escaped quotes, malformed→null). `mapRows`/0-indexed-month test deferred (needs a pure-extraction refactor of the instance-coupled mapper).
+- **Bug:** the three BFI ingest paths each built a different sourceId (`bfi-…`/articleId vs `bfi-pdf-…` vs `bfi-changes-…`), so a path flip (Playwright → PDF fallback) produced a different id for the same screening → the `(cinema_id, source_id)` upsert INSERTed a duplicate instead of updating. Same-time NFT1/NFT2 shows could also collapse.
+- **Fix:** shared `buildBfiSourceId(cinemaId, title, screen, datetime)` → `bfi-<cinemaId>-<titleSlug>-<screen>-<iso>`, used by all three paths. `screen` normalised to a canonical token (NFT1–4/STUDIO/IMAX/REUBEN) so "Southbank - NFT3" (Playwright) and "NFT3" (PDF) key identically; the screen segment also disambiguates simultaneous NFT1/NFT2 shows. Dropped the articleId variant + dead `extractArticleId`; PDF path now keys on per-screening venue→cinemaId (not the file-level pdfLabel).
+- Verified: cross-path equality + NFT disambiguation (unit test + tsx check); `tsc` clean. Dedup dry-run vs prod: 0 current dupes.
+- **Deploy sequence (one-time churn):** reformatting changes every BFI sourceId, so the next scrape inserts new-keyed rows alongside the old. After deploy → BFI scrape → run `scripts/dedup-bfi-sourceid-migration.ts --execute` (safe: only removes dupes within a (cinema,film,datetime,screen) partition; preserves legit multi-screen shows). PR held for review — not auto-merged.
 
 ## 2026-06-01: JW3 cinema scraper — last uncovered London rep/indie venue (Spektrix)
 **PR**: TBD | **Files**: `src/scrapers/cinemas/jw3.ts` (new), `src/config/cinema-registry.ts`, `src/scrapers/registry.ts`, `src/scrapers/cli.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`

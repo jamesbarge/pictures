@@ -22,6 +22,7 @@ import type { CheerioAPI, CheerioSelection } from "../utils/cheerio-types";
 import { fetchWithRetry } from "../utils/fetch-with-retry";
 import { CHROME_USER_AGENT_FULL } from "../constants";
 import { buildBFISearchUrl } from "./url-builder";
+import { buildBfiSourceId } from "./bfi-source-id";
 import { ukLocalToUTC } from "../utils/date-parser";
 
 /**
@@ -504,7 +505,14 @@ function convertChangesToRawScreenings(changes: ProgrammeChange[]): RawScreening
         format: change.metadata?.format,
         bookingUrl,
         eventType,
-        sourceId: `bfi-changes-${change.filmTitle.toLowerCase().replace(/\s+/g, "-")}-${screening.datetime.toISOString()}`,
+        // Canonical, path-agnostic sourceId — identical shape to the
+        // Playwright + PDF paths so a path flip can't duplicate.
+        sourceId: buildBfiSourceId(
+          screening.cinemaId,
+          change.filmTitle,
+          screening.venue,
+          screening.datetime,
+        ),
         year: change.metadata?.year,
         director: change.metadata?.director,
       };
