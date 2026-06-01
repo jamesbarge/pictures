@@ -39,6 +39,7 @@ import { createElectricScraperV2 } from "@/scrapers/cinemas/electric-v2";
 import { createLexiScraper } from "@/scrapers/cinemas/lexi";
 import { createRegentStreetScraper } from "@/scrapers/cinemas/regent-street";
 import { createRichMixScraper } from "@/scrapers/cinemas/rich-mix";
+import { createJW3Scraper } from "@/scrapers/cinemas/jw3";
 
 // Independent (Cheerio / API) factories
 import { createCastleScraper } from "@/scrapers/cinemas/castle";
@@ -173,6 +174,16 @@ const PLAYWRIGHT_ENTRIES: ScraperRegistryEntry[] = [
       type: "single",
       venue: getVenueFromRegistry("rich-mix"),
       createScraper: () => createRichMixScraper(),
+    }),
+  },
+  {
+    taskId: "scraper-jw3",
+    type: "single",
+    wave: "playwright",
+    buildConfig: (): SingleVenueConfig => ({
+      type: "single",
+      venue: getVenueFromRegistry("jw3"),
+      createScraper: () => createJW3Scraper(),
     }),
   },
 ];
