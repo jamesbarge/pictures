@@ -99,8 +99,6 @@
 
 				<div class="nav-divider"></div>
 
-					<a href="/sign-in" class="nav-link sign-in-link">Sign in</a>
-
 				<DimmerDial />
 
 				<button
@@ -137,7 +135,6 @@
 						aria-current={isActive(item.href, item.matchPrefix) ? 'page' : undefined}
 					>{item.label.toUpperCase()}</a>
 				{/each}
-				<a href="/sign-in" class="mobile-nav-link">SIGN IN</a>
 			</nav>
 		{/if}
 	</div>
@@ -231,21 +228,6 @@
 		font-family: var(--font-serif-italic);
 		font-style: italic;
 		font-size: 13px;
-	}
-
-	.nav-link.sign-in-link {
-		color: var(--color-text);
-	}
-
-	.sign-in-link {
-		display: none;
-	}
-
-	@media (min-width: 768px) {
-		.sign-in-link {
-			display: inline-flex;
-			align-items: center;
-		}
 	}
 
 	.nav-divider {
