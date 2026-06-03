@@ -1,6 +1,6 @@
 # Spline redesign — polish + responsive fixes
 
-**PR**: TBD
+**PR**: #646
 **Date**: 2026-06-01
 **Branch**: `feat/figma-spline-redesign`
 
