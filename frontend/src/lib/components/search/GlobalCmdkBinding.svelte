@@ -16,6 +16,21 @@
 	import { palette } from '$lib/stores/palette.svelte';
 
 	onMount(() => {
+		// Warm the in-browser search index during idle time so the first ⌘K is
+		// instant — no first-keystroke catalog fetch. Falls back to setTimeout.
+		// Dynamic import keeps MiniSearch + the index OFF the eager layout chunk
+		// (loads on idle, or when the lazy palette opens — whichever comes first).
+		const w = window as Window & {
+			requestIdleCallback?: (cb: () => void, opts?: { timeout?: number }) => number;
+			cancelIdleCallback?: (handle: number) => void;
+		};
+		const warm = () => {
+			void import('$lib/search/catalog-index.svelte').then((m) => m.catalogIndex.ensureLoaded());
+		};
+		const idleHandle = w.requestIdleCallback
+			? w.requestIdleCallback(warm, { timeout: 2000 })
+			: window.setTimeout(warm, 1200);
+
 		function handleKeydown(e: KeyboardEvent) {
 			const isCmdK = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k';
 			if (!isCmdK) return;
@@ -36,6 +51,8 @@
 		document.addEventListener('keydown', handleKeydown);
 		return () => {
 			document.removeEventListener('keydown', handleKeydown);
+			if (w.cancelIdleCallback) w.cancelIdleCallback(idleHandle);
+			else clearTimeout(idleHandle);
 		};
 	});
 </script>

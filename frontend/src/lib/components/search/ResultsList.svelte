@@ -24,7 +24,6 @@
 	import FilmRow from './rows/FilmRow.svelte';
 	import PersonRow from './rows/PersonRow.svelte';
 	import CinemaRow from './rows/CinemaRow.svelte';
-	import ScreeningRow from './rows/ScreeningRow.svelte';
 	import FestivalRow from './rows/FestivalRow.svelte';
 	import SeasonRow from './rows/SeasonRow.svelte';
 	import FilterActionRow from './rows/FilterActionRow.svelte';
@@ -100,12 +99,6 @@
 		{:else if item.section === 'cinemas'}
 			<CinemaRow
 				cinema={item.row as never}
-				selected={item.flatIndex === selectedIndex}
-				id={item.id}
-			/>
-		{:else if item.section === 'screenings'}
-			<ScreeningRow
-				screening={item.row as never}
 				selected={item.flatIndex === selectedIndex}
 				id={item.id}
 			/>
