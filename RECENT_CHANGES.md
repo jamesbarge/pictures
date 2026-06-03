@@ -11,6 +11,16 @@
 - MiniSearch stays in a **lazy chunk** (off the eager layout bundle). Verified: svelte-check 0 errors;
   66/66 unit tests (7 new — typo/accent/director/cinema); production build clean.
 
+## 2026-06-03: Search — read-only catalog endpoint (enables instant in-browser search)
+**PR**: TBD | **Files**: `src/app/api/search/catalog/route.ts` (new), `src/lib/cache-headers.ts`
+- New `GET /api/search/catalog` returns a lean snapshot — **films** (with a future screening) + active
+  **cinemas** + **directors** — so the frontend can build a MiniSearch index and serve instant,
+  typo-tolerant suggestions with zero per-keystroke server round-trips (frontend lands next).
+- Mirrors the live search's `screenings.datetime > now()` filter (every film result is actionable),
+  the `/api/directors` `unnest` pattern (no day cap), and `getActiveCinemas()`. Rate-limited like
+  `/api/cinemas`; cached **1h edge / 24h SWR** (catalog changes slowly). New `CACHE_1HOUR` constant.
+- Verified vs prod DB: 1090 films / 65 cinemas / 717 directors; tsc clean.
+
 ## 2026-06-01: Temporarily remove sign-in from the site
 **PR**: TBD | **Files**: `frontend/src/lib/components/layout/Header.svelte`, `frontend/src/routes/sign-in/[...rest]/+page.ts` (new), `frontend/src/routes/sign-up/[...rest]/+page.ts` (new), `frontend/src/routes/sitemap.xml/+server.ts`
 - The prod **frontend** Clerk key is a dev `pk_test_` key, so the hosted SignIn widget renders blank. Until a `pk_live_` key is set, remove sign-in from the UI: dropped the desktop + mobile "Sign in" links from the header (+ their dead CSS), and `/sign-in` / `/sign-up` now `307`-redirect home so the broken widget isn't reachable. `ClerkProvider` stays mounted so watchlist (localStorage) + festival-follow degrade cleanly. Fully reversible (restore the links, delete the two redirect files).
