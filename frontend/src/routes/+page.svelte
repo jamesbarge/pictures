@@ -179,6 +179,12 @@
 			if (!filmRow) { node.style.width = ''; return; }
 			const cards = filmRow.querySelectorAll<HTMLElement>(':scope > .card');
 			if (!cards.length) { node.style.width = ''; return; }
+			// Release the previous pin BEFORE measuring. The pinned inline width
+			// overrides the CSS `width: 100%`, so a section pinned narrow (e.g.
+			// after a mobile-width pass) would wrap its cards inside the stale
+			// pin and re-measure one card per row forever — the section could
+			// shrink but never grow back (resize ratchet).
+			node.style.width = '';
 			let minTop = Infinity;
 			for (const c of cards) if (c.offsetTop < minTop) minTop = c.offsetTop;
 			const firstRow = [...cards].filter(c => c.offsetTop === minTop);
@@ -190,7 +196,11 @@
 		// Defer one frame so layout has settled (cards may not have measured yet).
 		requestAnimationFrame(update);
 		const observer = new ResizeObserver(update);
+		// Observe the node for content-driven changes (rows collapsing changes
+		// its height), and the parent for viewport growth — the node's own box
+		// can't grow while pinned, so it would never report a wider viewport.
 		observer.observe(node);
+		if (node.parentElement) observer.observe(node.parentElement);
 		return { destroy() { observer.disconnect(); } };
 	}
 

@@ -1,3 +1,11 @@
+## 2026-06-04: Fix card-grid resize ratchet (stuck at 1-per-row after mobile round-trip)
+**PR**: #646 | **Files**: `frontend/src/routes/+page.svelte`
+- `fitToFirstRow` pinned each day section's width in px, then its ResizeObserver watched the *same pinned box* — which can shrink (parent squeeze) but never grow, so wide → mobile → wide left every day stuck at one card per row.
+- Fix: release the pin before each measurement (so cards reflow to the parent's real available width) and observe the parent as well (its width is viewport-driven, immune to the pin).
+- Verified round-trip 1440→390→1440 restores 4-across, and 390→1100 lands 3-across.
+
+---
+
 ## 2026-06-04: Frontend — scroll-compacting sticky header
 **PR**: #646 | **Files**: `frontend/src/lib/components/layout/Header.svelte`, `frontend/src/routes/+page.svelte`, `changelogs/2026-06-04-compact-header.md`
 - Header now compacts on scroll: 213px → 65px desktop (205 → 63 mobile). Brand bar 180 → 56px, logo 140 → 40px, nav links flip from vertical stack to horizontal row, padding tightens. Expands again at the top of the page.
