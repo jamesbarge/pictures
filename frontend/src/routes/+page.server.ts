@@ -69,11 +69,6 @@ export const load: PageServerLoad = async ({ fetch, setHeaders }) => {
 				name: s.cinema.name,
 				shortName: s.cinema.shortName
 			}
-		})),
-		meta: {
-			total: data.meta.total,
-			startDate: data.meta.startDate,
-			endDate: data.meta.endDate
-		}
+		}))
 	};
 };

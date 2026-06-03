@@ -1,20 +1,13 @@
 <script lang="ts">
 	import { filters } from '$lib/stores/filters.svelte';
-	import { toLondonDateStr } from '$lib/utils';
+	import { toLondonDateStr, toISODate, useModalKeyboardTrap } from '$lib/utils';
 
 	let { open, onClose }: { open: boolean; onClose: () => void } = $props();
 
 	// Modal a11y — Escape closes + body scroll locks while the picker is up.
 	$effect(() => {
 		if (!open) return;
-		const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-		document.addEventListener('keydown', handler);
-		const prevOverflow = document.body.style.overflow;
-		document.body.style.overflow = 'hidden';
-		return () => {
-			document.removeEventListener('keydown', handler);
-			document.body.style.overflow = prevOverflow;
-		};
+		return useModalKeyboardTrap(onClose);
 	});
 
 	const today = toLondonDateStr(new Date());
@@ -23,12 +16,10 @@
 	let viewYear = $state(initial.getUTCFullYear());
 
 	const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+	const WEEKDAYS = ['Mo','Tu','We','Th','Fr','Sa','Su'];
 
 	function prev() { if (viewMonth === 0) { viewMonth = 11; viewYear--; } else viewMonth--; }
 	function next() { if (viewMonth === 11) { viewMonth = 0; viewYear++; } else viewMonth++; }
-
-	function pad(n: number) { return n < 10 ? '0' + n : String(n); }
-	function toISO(y: number, m: number, d: number) { return `${y}-${pad(m + 1)}-${pad(d)}`; }
 
 	interface Cell { date: string; day: number; isCurrent: boolean; isPast: boolean; isToday: boolean; isSelected: boolean; dow: number; }
 
@@ -41,20 +32,20 @@
 		const out: Cell[] = [];
 		for (let i = startDow - 1; i >= 0; i--) {
 			const d = new Date(Date.UTC(viewYear, viewMonth, -i));
-			const iso = toISO(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+			const iso = toISODate(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
 			const dow = (d.getUTCDay() + 6) % 7;
 			out.push({ date: iso, day: d.getUTCDate(), isCurrent: false, isPast: iso < today, isToday: iso === today, isSelected: iso === filters.dateFrom, dow });
 		}
 		for (let d = 1; d <= last.getUTCDate(); d++) {
 			const dt = new Date(Date.UTC(viewYear, viewMonth, d));
-			const iso = toISO(viewYear, viewMonth, d);
+			const iso = toISODate(viewYear, viewMonth, d);
 			const dow = (dt.getUTCDay() + 6) % 7;
 			out.push({ date: iso, day: d, isCurrent: true, isPast: iso < today, isToday: iso === today, isSelected: iso === filters.dateFrom, dow });
 		}
 		while (out.length % 7 !== 0) {
 			const d = out.length - startDow - last.getUTCDate() + 1;
 			const dt = new Date(Date.UTC(viewYear, viewMonth + 1, d));
-			const iso = toISO(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate());
+			const iso = toISODate(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate());
 			const dow = (dt.getUTCDay() + 6) % 7;
 			out.push({ date: iso, day: dt.getUTCDate(), isCurrent: false, isPast: iso < today, isToday: iso === today, isSelected: iso === filters.dateFrom, dow });
 		}
@@ -95,7 +86,7 @@
 		</div>
 
 		<div class="weekdays">
-			{#each ['Mo','Tu','We','Th','Fr','Sa','Su'] as d, i (d + i)}
+			{#each WEEKDAYS as d, i (d + i)}
 				<div class="wk" class:weekend={i >= 5}>{d}</div>
 			{/each}
 		</div>

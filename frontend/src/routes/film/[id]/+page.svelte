@@ -6,7 +6,14 @@
 	import { movieSchema, breadcrumbSchema } from '$lib/seo/json-ld';
 	import { filmStatuses } from '$lib/stores/film-status.svelte';
 	import { today as todayStore } from '$lib/stores/today.svelte';
-	import { formatTime, formatScreeningDate, toLondonDateStr, groupBy, getPosterImageAttributes } from '$lib/utils';
+	import {
+		formatTime,
+		toLondonDateStr,
+		groupBy,
+		getPosterImageAttributes,
+		filmByline,
+		formatScreeningFormat
+	} from '$lib/utils';
 	import { trackFilmView, trackBookingClick, trackFilmStatusChange, trackCalendarExport } from '$lib/analytics/posthog';
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
@@ -58,11 +65,18 @@
 		);
 	}
 
-	const futureScreenings = $derived(
-		screenings
-			.filter((s) => new Date(s.datetime) > new Date())
-			.sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime())
-	);
+	const futureScreenings = $derived.by(() => {
+		// Decorate-sort-undecorate to avoid `new Date()` per element per
+		// comparator call — film pages routinely show 50+ screenings.
+		const now = Date.now();
+		const decorated: Array<{ s: typeof screenings[number]; ms: number }> = [];
+		for (const s of screenings) {
+			const ms = new Date(s.datetime).getTime();
+			if (ms > now) decorated.push({ s, ms });
+		}
+		decorated.sort((a, b) => a.ms - b.ms);
+		return decorated.map((d) => d.s);
+	});
 
 	const nextScreening = $derived(futureScreenings[0]);
 
@@ -87,7 +101,11 @@
 	// Day groups for the day strip
 	const groupedByDate = $derived.by(() => {
 		const grouped = groupBy(futureScreenings, (s) => toLondonDateStr(s.datetime));
-		return Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b));
+		// `futureScreenings` is already sorted ascending by epoch-ms and
+		// `toLondonDateStr` is monotonic in ms, so `groupBy` inserts day keys in
+		// chronological order — which JS preserves for string keys. The previous
+		// `.sort(localeCompare)` was therefore a no-op over YYYY-MM-DD keys.
+		return Object.entries(grouped);
 	});
 
 	let selectedDay = $state<string | null>(null);
@@ -139,12 +157,7 @@
 		})
 	);
 
-	const bylineText = $derived.by(() => {
-		const parts: string[] = [];
-		if (film.directors?.length) parts.push(film.directors.join(', '));
-		if (film.year) parts.push(String(film.year));
-		return parts.join(', ');
-	});
+	const bylineText = $derived(filmByline(film));
 
 	const metaParts = $derived.by(() => {
 		const parts: string[] = [];
@@ -163,10 +176,6 @@
 		return new Intl.DateTimeFormat('en-GB', { weekday: 'short', timeZone: 'Europe/London' }).format(new Date(date + 'T12:00:00Z'));
 	}
 
-	function normalisedFormat(fmt: string | null | undefined): string {
-		if (!fmt || fmt === 'unknown' || fmt === 'dcp') return 'DCP';
-		return fmt.toUpperCase().replace('_', ' ');
-	}
 </script>
 
 <svelte:head>
@@ -372,7 +381,7 @@
 				<div class="row-slot">
 					<time class="slot-time" datetime={s.datetime}>{formatTime(s.datetime)}</time>
 					{#if s.format && s.format !== 'unknown'}
-						<span class="slot-format">{normalisedFormat(s.format)}</span>
+						<span class="slot-format">{formatScreeningFormat(s.format)}</span>
 					{/if}
 				</div>
 			</a>

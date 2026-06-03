@@ -1,11 +1,20 @@
 /**
  * PostHog Analytics — SvelteKit port
- * Centralized analytics tracking for the cinema calendar app
+ *
+ * IMPORTANT: This module must NOT statically import `posthog-js`. Every
+ * component that calls a `track*` helper (homepage cards, filter inputs,
+ * sync store) would otherwise pull the ~70KB-gzip library into its chunk
+ * via the static-import graph, defeating the deliberate lazy load in
+ * `PostHogProvider.svelte`. We accept the posthog instance via
+ * `attachPostHog()` from the provider and buffer calls made before it
+ * arrives, so no events are lost during the idle-callback boot window.
  */
 
-import posthog from 'posthog-js';
+import type posthog from 'posthog-js';
 import { browser } from '$app/environment';
 import { PUBLIC_POSTHOG_KEY } from '$env/static/public';
+
+type PostHogClient = typeof posthog;
 
 // Admin emails excluded from all PostHog tracking
 const ADMIN_EMAILS = ['jdwbarge@gmail.com'];
@@ -15,19 +24,57 @@ export function isAdminEmail(email: string | undefined | null): boolean {
 	return ADMIN_EMAILS.includes(email.toLowerCase());
 }
 
-// ── Init ────────────────────────────────────────────────────────
+// ── Lazy client + pending-call buffer ───────────────────────────
 
+let client: PostHogClient | null = null;
 let initialized = false;
 let adminOptedOut = false;
+
+// Bounded buffer — pre-load track calls (idle-deferred posthog typically
+// arrives within 1-2s). 100 is generous; user can't meaningfully fire more
+// before first paint. Drops oldest if exceeded so we never leak memory.
+const MAX_BUFFER = 100;
+const pending: Array<(p: PostHogClient) => void> = [];
+
+function enqueue(fn: (p: PostHogClient) => void): void {
+	if (client) {
+		fn(client);
+		return;
+	}
+	if (pending.length >= MAX_BUFFER) pending.shift();
+	pending.push(fn);
+}
 
 export function isAdminOptedOut() {
 	return adminOptedOut;
 }
 
-export function initPostHog() {
+/**
+ * Called by `PostHogProvider.svelte` after it dynamically imports posthog-js
+ * and runs `client.init()`. Flushes any track calls that fired during the
+ * idle-deferred boot window.
+ */
+export function attachPostHog(instance: PostHogClient) {
+	client = instance;
+	initialized = true;
+	const buffered = pending.splice(0, pending.length);
+	for (const fn of buffered) {
+		try {
+			fn(instance);
+		} catch {
+			/* never throw from analytics */
+		}
+	}
+}
+
+/**
+ * Initialises posthog-js with our standard config. Called by the provider
+ * once the library has been dynamically imported.
+ */
+export function initPostHog(instance: PostHogClient) {
 	if (!browser || initialized || !PUBLIC_POSTHOG_KEY) return;
 
-	posthog.init(PUBLIC_POSTHOG_KEY, {
+	instance.init(PUBLIC_POSTHOG_KEY, {
 		api_host: '/ingest',
 		ui_host: 'https://eu.posthog.com',
 		capture_pageview: false, // we track manually on route change
@@ -51,18 +98,19 @@ export function initPostHog() {
 		capture_exceptions: true
 	});
 
-	initialized = true;
+	attachPostHog(instance);
 }
 
 export function trackPageview(url: string) {
-	if (!browser || !initialized) return;
-	posthog.capture('$pageview', { $current_url: url });
+	if (!browser) return;
+	enqueue((p) => p.capture('$pageview', { $current_url: url }));
 }
 
 // ── Shared Types ────────────────────────────────────────────────
 
 export type DiscoverySource =
 	| 'calendar'
+	| 'calendar-text' // text-mode (POSTERS/TEXT toggle) calendar rows
 	| 'search'
 	| 'tonight'
 	| 'map'
@@ -92,31 +140,35 @@ interface ScreeningContext extends FilmContext {
 
 export function trackFilmView(film: FilmContext, source?: DiscoverySource) {
 	if (!browser) return;
-	posthog.capture('film_viewed', {
-		film_id: film.filmId,
-		film_title: film.filmTitle,
-		film_year: film.filmYear,
-		is_repertory: film.isRepertory,
-		genres: film.genres,
-		directors: film.directors,
-		source
-	});
+	enqueue((p) =>
+		p.capture('film_viewed', {
+			film_id: film.filmId,
+			film_title: film.filmTitle,
+			film_year: film.filmYear,
+			is_repertory: film.isRepertory,
+			genres: film.genres,
+			directors: film.directors,
+			source
+		})
+	);
 }
 
 export function trackScreeningClick(screening: ScreeningContext, source?: DiscoverySource) {
 	if (!browser) return;
-	posthog.capture('screening_card_clicked', {
-		film_id: screening.filmId,
-		film_title: screening.filmTitle,
-		screening_id: screening.screeningId,
-		screening_time: screening.screeningTime,
-		cinema_id: screening.cinemaId,
-		cinema_name: screening.cinemaName,
-		format: screening.format,
-		event_type: screening.eventType,
-		is_repertory: screening.isRepertory,
-		source
-	});
+	enqueue((p) =>
+		p.capture('screening_card_clicked', {
+			film_id: screening.filmId,
+			film_title: screening.filmTitle,
+			screening_id: screening.screeningId,
+			screening_time: screening.screeningTime,
+			cinema_id: screening.cinemaId,
+			cinema_name: screening.cinemaName,
+			format: screening.format,
+			event_type: screening.eventType,
+			is_repertory: screening.isRepertory,
+			source
+		})
+	);
 }
 
 export function trackBookingClick(
@@ -125,19 +177,21 @@ export function trackBookingClick(
 	isWatchlisted?: boolean
 ) {
 	if (!browser) return;
-	posthog.capture('booking_link_clicked', {
-		film_id: screening.filmId,
-		film_title: screening.filmTitle,
-		screening_id: screening.screeningId,
-		screening_time: screening.screeningTime,
-		cinema_id: screening.cinemaId,
-		cinema_name: screening.cinemaName,
-		format: screening.format,
-		event_type: screening.eventType,
-		booking_url: screening.bookingUrl,
-		source,
-		is_watchlisted: isWatchlisted
-	});
+	enqueue((p) =>
+		p.capture('booking_link_clicked', {
+			film_id: screening.filmId,
+			film_title: screening.filmTitle,
+			screening_id: screening.screeningId,
+			screening_time: screening.screeningTime,
+			cinema_id: screening.cinemaId,
+			cinema_name: screening.cinemaName,
+			format: screening.format,
+			event_type: screening.eventType,
+			booking_url: screening.bookingUrl,
+			source,
+			is_watchlisted: isWatchlisted
+		})
+	);
 }
 
 // ── Watchlist & Status Events ───────────────────────────────────
@@ -150,14 +204,16 @@ export function trackFilmStatusChange(
 	newStatus: FilmStatus
 ) {
 	if (!browser) return;
-	posthog.capture('film_status_changed', {
-		film_id: film.filmId,
-		film_title: film.filmTitle,
-		film_year: film.filmYear,
-		is_repertory: film.isRepertory,
-		previous_status: previousStatus,
-		new_status: newStatus
-	});
+	enqueue((p) =>
+		p.capture('film_status_changed', {
+			film_id: film.filmId,
+			film_title: film.filmTitle,
+			film_year: film.filmYear,
+			is_repertory: film.isRepertory,
+			previous_status: previousStatus,
+			new_status: newStatus
+		})
+	);
 }
 
 // ── Search Events ───────────────────────────────────────────────
@@ -168,14 +224,16 @@ export function trackSearch(
 	options?: { latencyMs?: number; filmsCount?: number; cinemasCount?: number }
 ) {
 	if (!browser) return;
-	posthog.capture('search_performed', {
-		query,
-		query_length: query.length,
-		result_count: resultCount,
-		latency_ms: options?.latencyMs,
-		films_count: options?.filmsCount,
-		cinemas_count: options?.cinemasCount
-	});
+	enqueue((p) =>
+		p.capture('search_performed', {
+			query,
+			query_length: query.length,
+			result_count: resultCount,
+			latency_ms: options?.latencyMs,
+			films_count: options?.filmsCount,
+			cinemas_count: options?.cinemasCount
+		})
+	);
 }
 
 type SearchResultEntity = 'film' | 'cinema' | 'recent';
@@ -187,24 +245,28 @@ export function trackSearchResultClick(
 	entityType: SearchResultEntity = 'film'
 ) {
 	if (!browser) return;
-	posthog.capture('search_result_clicked', {
-		query,
-		film_id: film.filmId,
-		film_title: film.filmTitle,
-		result_position: resultPosition,
-		entity_type: entityType
-	});
+	enqueue((p) =>
+		p.capture('search_result_clicked', {
+			query,
+			film_id: film.filmId,
+			film_title: film.filmTitle,
+			result_position: resultPosition,
+			entity_type: entityType
+		})
+	);
 }
 
 export function trackSearchCinemaClick(query: string, cinemaId: string, cinemaName: string, resultPosition: number) {
 	if (!browser) return;
-	posthog.capture('search_result_clicked', {
-		query,
-		cinema_id: cinemaId,
-		cinema_name: cinemaName,
-		result_position: resultPosition,
-		entity_type: 'cinema' as SearchResultEntity
-	});
+	enqueue((p) =>
+		p.capture('search_result_clicked', {
+			query,
+			cinema_id: cinemaId,
+			cinema_name: cinemaName,
+			result_position: resultPosition,
+			entity_type: 'cinema' as SearchResultEntity
+		})
+	);
 }
 
 // ── Filter Events ───────────────────────────────────────────────
@@ -218,40 +280,44 @@ export function trackFilterChange(
 	context?: string
 ) {
 	if (!browser) return;
-	posthog.capture('filter_changed', {
-		filter_type: filterType,
-		value,
-		action,
-		...(context && { context })
-	});
+	enqueue((p) =>
+		p.capture('filter_changed', {
+			filter_type: filterType,
+			value,
+			action,
+			...(context && { context })
+		})
+	);
 }
 
 // ── Cinema Events ───────────────────────────────────────────────
 
 export function trackCinemaViewed(cinemaId: string, cinemaName: string, source?: string) {
 	if (!browser) return;
-	posthog.capture('cinema_viewed', {
-		cinema_id: cinemaId,
-		cinema_name: cinemaName,
-		source
-	});
+	enqueue((p) =>
+		p.capture('cinema_viewed', {
+			cinema_id: cinemaId,
+			cinema_name: cinemaName,
+			source
+		})
+	);
 }
 
 // ── Friction Events ─────────────────────────────────────────────
 
 export function trackSearchNoResults(query: string) {
 	if (!browser) return;
-	posthog.capture('search_no_results', { query, query_length: query.length });
+	enqueue((p) => p.capture('search_no_results', { query, query_length: query.length }));
 }
 
 export function trackFilterNoResults(activeFilters: Record<string, unknown>) {
 	if (!browser) return;
-	posthog.capture('filter_no_results', { ...activeFilters });
+	enqueue((p) => p.capture('filter_no_results', { ...activeFilters }));
 }
 
 export function trackTonightNoScreenings() {
 	if (!browser) return;
-	posthog.capture('tonight_no_screenings');
+	enqueue((p) => p.capture('tonight_no_screenings'));
 }
 
 // ── Sync Events ─────────────────────────────────────────────────
@@ -260,7 +326,7 @@ export type SyncSource = 'sign_in' | 'store_change' | 'manual';
 
 export function trackSyncInitiated(source: SyncSource, itemsToSync: number) {
 	if (!browser) return;
-	posthog.capture('sync_initiated', { source, items_to_sync: itemsToSync });
+	enqueue((p) => p.capture('sync_initiated', { source, items_to_sync: itemsToSync }));
 }
 
 export function trackSyncCompleted(stats: {
@@ -269,16 +335,18 @@ export function trackSyncCompleted(stats: {
 	conflictsResolved: number;
 }) {
 	if (!browser) return;
-	posthog.capture('sync_completed', {
-		duration_ms: stats.durationMs,
-		items_synced: stats.itemsSynced,
-		conflicts_resolved: stats.conflictsResolved
-	});
+	enqueue((p) =>
+		p.capture('sync_completed', {
+			duration_ms: stats.durationMs,
+			items_synced: stats.itemsSynced,
+			conflicts_resolved: stats.conflictsResolved
+		})
+	);
 }
 
 export function trackSyncFailed(error: string, phase: string) {
 	if (!browser) return;
-	posthog.capture('sync_failed', { error, phase });
+	enqueue((p) => p.capture('sync_failed', { error, phase }));
 }
 
 // ── User Lifecycle ──────────────────────────────────────────────
@@ -290,47 +358,53 @@ export function identifyUser(userId: string, properties?: Record<string, unknown
 	const email = properties?.email as string | undefined;
 	if (isAdminEmail(email)) {
 		adminOptedOut = true;
-		posthog.opt_out_capturing();
-		posthog.reset();
+		enqueue((p) => {
+			p.opt_out_capturing();
+			p.reset();
+		});
 		return;
 	}
 
-	posthog.identify(userId, properties);
+	enqueue((p) => p.identify(userId, properties));
 }
 
 export function resetUser() {
 	if (!browser) return;
 	adminOptedOut = false;
-	posthog.reset();
+	enqueue((p) => p.reset());
 }
 
 // ── Error Tracking ──────────────────────────────────────────────
 
 export function trackException(message: string, statusCode?: number) {
 	if (!browser) return;
-	posthog.capture('$exception', {
-		$exception_message: message,
-		$exception_type: 'SvelteKitError',
-		status_code: statusCode,
-		url: window.location.href
-	});
+	enqueue((p) =>
+		p.capture('$exception', {
+			$exception_message: message,
+			$exception_type: 'SvelteKitError',
+			status_code: statusCode,
+			url: window.location.href
+		})
+	);
 }
 
 // ── Calendar & Share Events ─────────────────────────────────────
 
 export function trackCalendarExport(screening: ScreeningContext) {
 	if (!browser) return;
-	posthog.capture('calendar_export_clicked', {
-		film_id: screening.filmId,
-		film_title: screening.filmTitle,
-		screening_id: screening.screeningId,
-		cinema_name: screening.cinemaName
-	});
+	enqueue((p) =>
+		p.capture('calendar_export_clicked', {
+			film_id: screening.filmId,
+			film_title: screening.filmTitle,
+			screening_id: screening.screeningId,
+			cinema_name: screening.cinemaName
+		})
+	);
 }
 
 // ── Feature Flags ───────────────────────────────────────────────
 
 export function isFeatureEnabled(flagKey: string): boolean {
-	if (!browser) return false;
-	return posthog.isFeatureEnabled(flagKey) ?? false;
+	if (!browser || !client) return false;
+	return client.isFeatureEnabled(flagKey) ?? false;
 }

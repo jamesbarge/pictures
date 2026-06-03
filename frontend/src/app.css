@@ -171,14 +171,6 @@ body {
 .tracking-tight-swiss { letter-spacing: -0.05em; }
 .tracking-wide-swiss { letter-spacing: 0.08em; }
 
-/* Legacy axis helpers — no-ops, Spline Sans has no SOFT/opsz axes */
-.soft-display-144,
-.soft-display-96,
-.soft-display-72,
-.soft-display-48,
-.soft-display-36,
-.soft-display-24 { font-variation-settings: normal; }
-
 /* ── Card primitives ── */
 .brutal-card {
 	background: var(--color-surface);

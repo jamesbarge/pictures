@@ -12,6 +12,7 @@
 
 import { BaseScraper } from "../base";
 import type { RawScreening, ScraperConfig } from "../types";
+import { ukLocalToUTC } from "../utils/date-parser";
 
 // API response types
 interface SpektrixInstance {
@@ -113,8 +114,12 @@ export class RichMixScraperV2 extends BaseScraper {
   }
 
   /**
-   * Parse datetime string in format "2025-12-30 14:30:00"
-   * The API returns local London time
+   * Parse datetime string in format "2025-12-30 14:30:00" (UK local time).
+   *
+   * Goes through `ukLocalToUTC` so BST is applied explicitly — the previous
+   * `new Date(y,m,d,h,mi)` constructor depended on the runtime's local TZ,
+   * which silently stored BST clock-face times as UTC on the UTC server
+   * (rendering 1h ahead of reality to users).
    */
   private parseDateTime(dateStr: string): Date | null {
     if (!dateStr) return null;
@@ -124,13 +129,12 @@ export class RichMixScraperV2 extends BaseScraper {
 
     const [, year, month, day, hour, minute] = match;
 
-    return new Date(
+    return ukLocalToUTC(
       parseInt(year, 10),
       parseInt(month, 10) - 1,
       parseInt(day, 10),
       parseInt(hour, 10),
       parseInt(minute, 10),
-      0
     );
   }
 

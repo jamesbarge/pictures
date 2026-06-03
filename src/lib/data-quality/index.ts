@@ -221,7 +221,7 @@ function loadLearnings(): LearningsFile {
   if (!existsSync(path)) {
     console.warn(
       `[data-quality] Learnings file not found at ${path}; TMDB corrections will no-op. ` +
-        "Verify the file is bundled with the the cloud orchestrator deployment.",
+        "Verify the file is bundled with the cloud orchestrator deployment.",
     );
     return {};
   }

@@ -2,6 +2,7 @@
 	import FilmCard from '$lib/components/calendar/FilmCard.svelte';
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
 	import { formatDate, compareFilmsByCalendarPriority } from '$lib/utils';
+	import { toCardScreening } from '$lib/components/calendar/card-shapes';
 	import { trackTonightNoScreenings } from '$lib/analytics/posthog';
 	import { onMount } from 'svelte';
 
@@ -11,23 +12,31 @@
 	const todayLabel = formatDate(new Date());
 
 	const filmMap = $derived.by(() => {
-		const map = new Map<string, { film: LoadedScreening['film']; screenings: LoadedScreening[] }>();
+		type Entry = {
+			film: LoadedScreening['film'];
+			screenings: Array<LoadedScreening & { _ms: number }>;
+			earliestMs: number;
+		};
+		const map = new Map<string, Entry>();
 		// Drop past screenings — ISR caches this page, so filter at render time.
 		const now = Date.now();
 		for (const s of data.screenings) {
 			if (!s.film) continue;
-			if (new Date(s.datetime).getTime() <= now) continue;
+			const ms = new Date(s.datetime).getTime();
+			if (ms <= now) continue;
+			const decorated = { ...s, _ms: ms };
 			const existing = map.get(s.film.id);
 			if (existing) {
-				existing.screenings.push(s);
+				existing.screenings.push(decorated);
+				if (ms < existing.earliestMs) existing.earliestMs = ms;
 			} else {
-				map.set(s.film.id, { film: s.film, screenings: [s] });
+				map.set(s.film.id, { film: s.film, screenings: [decorated], earliestMs: ms });
 			}
 		}
-		// Ensure each film's screenings are datetime ASC so the shared sort helper
-		// can use `screenings[0]` as the final earliest-time fallback.
+		// Sort each film's screenings ASC using the already-computed `_ms` — avoids
+		// re-parsing every datetime string inside the comparator.
 		for (const entry of map.values()) {
-			entry.screenings.sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime());
+			entry.screenings.sort((a, b) => a._ms - b._ms);
 		}
 		return [...map.values()].sort(compareFilmsByCalendarPriority);
 	});
@@ -55,7 +64,7 @@
 			<EmptyState title="Nothing showing tonight" description="Check back later or browse all screenings." />
 		{:else}
 			<div class="film-grid">
-				{#each filmMap as { film, screenings } (film.id)}
+				{#each filmMap as { film, screenings }, i (film.id)}
 					<FilmCard
 						film={{
 							id: film.id,
@@ -67,13 +76,8 @@
 							posterUrl: film.posterUrl,
 							tmdbId: null
 						}}
-						screenings={screenings.map((s) => ({
-							id: s.id,
-							datetime: s.datetime,
-							cinemaName: s.cinema?.name ?? 'Unknown',
-							cinemaSlug: s.cinema?.id ?? '',
-							bookingUrl: s.bookingUrl
-						}))}
+						screenings={screenings.map(toCardScreening)}
+						priority={i === 0}
 					/>
 				{/each}
 			</div>
@@ -88,6 +92,8 @@
 		column-gap: 1rem;
 		row-gap: 0;
 		grid-auto-rows: auto;
+		content-visibility: auto;
+		contain-intrinsic-size: auto 900px;
 	}
 
 	@media (min-width: 768px) {

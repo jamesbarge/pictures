@@ -15,6 +15,38 @@
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	let { cinemas: _cinemas = [], showFilters: _showFilters = true }: { cinemas?: HeaderCinema[]; showFilters?: boolean } = $props();
 
+	// Single source of truth for nav links. Desktop nav uses items flagged
+	// `desktop: true`; the burger menu uses `mobile: true`. The two surfaces
+	// historically diverged (desktop omitted Cinemas/Tonight/Directors, mobile
+	// omitted Watchlist) — keeping it explicit per-surface preserves that.
+	interface NavItem {
+		href: string;
+		label: string;
+		desktop: boolean;
+		mobile: boolean;
+		italic?: boolean;
+		/** Match by `startsWith` rather than exact equality (for /reachable/[...]). */
+		matchPrefix?: boolean;
+	}
+	const NAV_ITEMS: NavItem[] = [
+		{ href: '/watchlist', label: 'Watchlist', desktop: true,  mobile: false, italic: true },
+		{ href: '/about',     label: 'About',     desktop: true,  mobile: true },
+		{ href: '/map',       label: 'Map',       desktop: true,  mobile: true },
+		{ href: '/reachable', label: 'Reachable', desktop: true,  mobile: true,  matchPrefix: true },
+		{ href: '/cinemas',   label: 'Cinemas',   desktop: false, mobile: true },
+		{ href: '/tonight',   label: 'Tonight',   desktop: false, mobile: true },
+		{ href: '/directors', label: 'Directors', desktop: false, mobile: true }
+	];
+
+	// NAV_ITEMS is static and never mutated, so the per-surface filters are
+	// computed once here rather than re-run inline on every header re-render.
+	const DESKTOP_NAV = NAV_ITEMS.filter((n) => n.desktop);
+	const MOBILE_NAV = NAV_ITEMS.filter((n) => n.mobile);
+
+	function isActive(href: string, matchPrefix?: boolean): boolean {
+		return matchPrefix ? page.url.pathname.startsWith(href) : page.url.pathname === href;
+	}
+
 	let mobileMenuOpen = $state(false);
 	let headerEl = $state<HTMLElement>();
 	let compact = $state(false);
@@ -91,11 +123,14 @@
 
 			<div class="brand-side brand-side-right">
 				<nav class="nav-links" aria-label="Main">
-					<a href="/watchlist" class="nav-link" aria-current={page.url.pathname === '/watchlist' ? 'page' : undefined}>watchlist</a>
-					<a href="/about" class="nav-link" aria-current={page.url.pathname === '/about' ? 'page' : undefined}>about</a>
-					<a href="/map" class="nav-link" aria-current={page.url.pathname === '/map' ? 'page' : undefined}>map</a>
-					<a href="/reachable" class="nav-link" aria-current={page.url.pathname.startsWith('/reachable') ? 'page' : undefined}>reachable</a>
-					<a href="/sign-in" class="nav-link sign-in-link">sign in</a>
+					{#each DESKTOP_NAV as item (item.href)}
+						<a
+							href={item.href}
+							class="nav-link"
+							class:watchlist-link={item.italic}
+							aria-current={isActive(item.href, item.matchPrefix) ? 'page' : undefined}
+						>{item.label}</a>
+					{/each}
 				</nav>
 
 				<button
@@ -127,13 +162,13 @@
 		<!-- Mobile nav menu -->
 		{#if mobileMenuOpen}
 			<nav class="mobile-nav" aria-label="Mobile navigation">
-				<a href="/about" class="mobile-nav-link" aria-current={page.url.pathname === '/about' ? 'page' : undefined}>ABOUT</a>
-				<a href="/map" class="mobile-nav-link" aria-current={page.url.pathname === '/map' ? 'page' : undefined}>MAP</a>
-				<a href="/reachable" class="mobile-nav-link" aria-current={page.url.pathname.startsWith('/reachable') ? 'page' : undefined}>REACHABLE</a>
-				<a href="/cinemas" class="mobile-nav-link" aria-current={page.url.pathname === '/cinemas' ? 'page' : undefined}>CINEMAS</a>
-				<a href="/tonight" class="mobile-nav-link" aria-current={page.url.pathname === '/tonight' ? 'page' : undefined}>TONIGHT</a>
-				<a href="/directors" class="mobile-nav-link" aria-current={page.url.pathname === '/directors' ? 'page' : undefined}>DIRECTORS</a>
-				<a href="/sign-in" class="mobile-nav-link">SIGN IN</a>
+				{#each MOBILE_NAV as item (item.href)}
+					<a
+						href={item.href}
+						class="mobile-nav-link"
+						aria-current={isActive(item.href, item.matchPrefix) ? 'page' : undefined}
+					>{item.label.toUpperCase()}</a>
+				{/each}
 			</nav>
 		{/if}
 	</div>
@@ -290,32 +325,10 @@
 		color: var(--color-text);
 	}
 
-	.nav-link.sign-in-link {
-		color: var(--color-text);
-	}
-
-	.sign-in-link {
-		display: none;
-	}
-
-	@media (min-width: 768px) {
-		.sign-in-link {
-			display: inline-flex;
-			align-items: center;
-		}
-	}
-
-	.nav-divider {
-		display: none;
-		width: 1px;
-		height: 16px;
-		background: var(--color-border-subtle);
-	}
-
-	@media (min-width: 768px) {
-		.nav-divider {
-			display: block;
-		}
+	.nav-link.watchlist-link {
+		font-family: var(--font-serif-italic);
+		font-style: italic;
+		font-size: 13px;
 	}
 
 	.mobile-menu-btn {

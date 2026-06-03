@@ -205,7 +205,15 @@ export class DavidLeanScraper implements CinemaScraper {
       for (const time of times) {
         try {
           const datetime = this.parseDateTime(dayNum, monthName, time, currentYear);
-          const adjustedDatetime = datetime < now ? addYears(datetime, 1) : datetime;
+          // Only roll a parsed date forward a year for a genuine year-boundary
+          // case (e.g. a "5 Jan" listing seen in December). A date that is only
+          // RECENTLY past — this week's already-shown screenings, which a
+          // "what's on" page still lists — must NOT be bumped: doing so created
+          // phantom screenings ~360 days in the future that the validator then
+          // rejected (blocking the whole scrape). Recently-past dates stay in the
+          // current year and are dropped by the `>= now` guard below.
+          const daysFromNow = (datetime.getTime() - now.getTime()) / 86_400_000;
+          const adjustedDatetime = daysFromNow < -180 ? addYears(datetime, 1) : datetime;
 
           if (adjustedDatetime >= now) {
             screenings.push({

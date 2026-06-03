@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
 
 	const STORAGE_KEY = 'pictures-dimmer';
@@ -72,9 +71,17 @@
 		localStorage.setItem(STORAGE_KEY, String(t));
 	}
 
+	// Reactive — `applyTheme` runs on mount (initial value) and on every
+	// `dimmerValue` change. Previously the imperative `setDimmer` call site
+	// was the only path that re-applied the theme, so a programmatic state
+	// update (testing, future feature flag, another component) wouldn't
+	// propagate to the CSS custom properties.
+	$effect(() => {
+		applyTheme(dimmerValue);
+	});
+
 	function setDimmer(v: number) {
 		dimmerValue = v;
-		applyTheme(v);
 	}
 
 	function handlePointerDown(e: PointerEvent) {
@@ -101,10 +108,6 @@
 		isDragging = false;
 		trackEl?.releasePointerCapture(e.pointerId);
 	}
-
-	onMount(() => {
-		applyTheme(dimmerValue);
-	});
 </script>
 
 <!-- Vignette overlay -->
@@ -112,7 +115,7 @@
 	<div class="vignette" style="opacity: {vignetteOpacity};"></div>
 {/if}
 
-<!-- Inline horizontal fader — lives in the header -->
+<!-- Inline horizontal fader — mounted by the homepage's fixed .dimmer-anchor -->
 <div class="house-lights" class:dragging={isDragging}>
 	<span class="hl-label">house lights</span>
 

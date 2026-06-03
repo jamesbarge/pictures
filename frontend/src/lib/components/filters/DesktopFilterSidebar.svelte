@@ -2,6 +2,10 @@
 	import { filters } from '$lib/stores/filters.svelte';
 	import { userLocation } from '$lib/stores/user-location.svelte';
 	import { haversineMiles } from '$lib/utils';
+	import {
+		AREA_CLUSTERS,
+		cinemasInCluster
+	} from './area-clusters';
 
 	interface SidebarCinema {
 		id: string;
@@ -23,39 +27,34 @@
 		onHide?: () => void;
 	} = $props();
 
-	// Where — area chips. Implemented as a cinemaId filter over the cinemas whose `address.area`
-	// matches each cluster. "Within 2mi" is stubbed (geolocation not wired yet).
-	const AREA_CLUSTERS: Array<{ label: string; areas: string[] }> = [
-		{ label: 'Soho & West End', areas: ['Soho', 'West End', 'Leicester Square', 'Covent Garden', 'Mayfair', 'Bloomsbury'] },
-		{ label: 'East', areas: ['Shoreditch', 'Hackney', 'Dalston', 'Hoxton', 'Bethnal Green', 'Mile End', 'Stratford', 'Whitechapel'] },
-		{ label: 'South', areas: ['Peckham', 'Brixton', 'Clapham', 'Waterloo', 'Southbank', 'South Bank', 'Elephant', 'Bermondsey', 'Camberwell'] },
-		{ label: 'North', areas: ['Camden', 'Islington', 'Angel', 'Kings Cross', 'Crouch End', 'Highgate', 'Archway'] }
-	];
+	// Where — area chips. Cluster definitions + helpers live in `area-clusters.ts`
+	// so this surface and `MobileFilterSheet` can't drift apart.
+	//
+	// Cluster-to-cinema-ID membership is a pure function of `cinemas` and never
+	// changes while filtering, so precompute it once per `cinemas` change rather
+	// than rescanning all ~57 cinemas (lowercasing each area) on every chip
+	// toggle. Only the `cinemaIds.every(...)` active check legitimately depends
+	// on the current selection.
+	const clusterMembership = $derived.by(() => {
+		const map = new Map<string, string[]>();
+		for (const cluster of AREA_CLUSTERS) {
+			map.set(cluster.label, cinemasInCluster(cluster.label, cinemas));
+		}
+		return map;
+	});
 
-	function cinemasInCluster(label: string) {
-		const cluster = AREA_CLUSTERS.find(c => c.label === label);
-		if (!cluster) return [];
-		return cinemas.filter(c => {
-			const area = (c.address?.area ?? '').toLowerCase();
-			return cluster.areas.some(a => area.includes(a.toLowerCase()));
-		}).map(c => c.id);
+	function isAreaActive(label: string) {
+		const ids = clusterMembership.get(label) ?? [];
+		return ids.length > 0 && ids.every((id) => filters.cinemaIds.includes(id));
 	}
 
 	function toggleArea(label: string) {
-		const ids = cinemasInCluster(label);
+		const ids = clusterMembership.get(label) ?? [];
 		if (ids.length === 0) return;
-		const allActive = ids.every(id => filters.cinemaIds.includes(id));
-		if (allActive) {
-			filters.cinemaIds = filters.cinemaIds.filter(id => !ids.includes(id));
-		} else {
-			const set = new Set([...filters.cinemaIds, ...ids]);
-			filters.cinemaIds = Array.from(set);
-		}
-	}
-
-	function isAreaActive(label: string) {
-		const ids = cinemasInCluster(label);
-		return ids.length > 0 && ids.every(id => filters.cinemaIds.includes(id));
+		const allActive = ids.every((id) => filters.cinemaIds.includes(id));
+		filters.cinemaIds = allActive
+			? filters.cinemaIds.filter((id) => !ids.includes(id))
+			: Array.from(new Set([...filters.cinemaIds, ...ids]));
 	}
 
 	// "Within 2 miles" — requires browser geolocation. Once granted, we take the
@@ -71,10 +70,15 @@
 			.map(c => c.id);
 	}
 
+	// The haversine scan depends only on the user's coords + cinemas, so memoize
+	// it: previously it ran inside `withinActive` *and* inline in the markup
+	// guard, doubling the sin/cos/atan2 pass per render when location is granted.
+	// `cinemasWithinRadius` already short-circuits to `[]` when coords are absent.
+	const withinIds = $derived(cinemasWithinRadius(WITHIN_RADIUS));
+
 	const withinActive = $derived.by(() => {
 		if (userLocation.status !== 'granted') return false;
-		const ids = cinemasWithinRadius(WITHIN_RADIUS);
-		return ids.length > 0 && ids.every(id => filters.cinemaIds.includes(id));
+		return withinIds.length > 0 && withinIds.every(id => filters.cinemaIds.includes(id));
 	});
 
 	async function toggleWithin() {
@@ -83,7 +87,7 @@
 			const s: string = userLocation.status;
 			if (s !== 'granted') return;
 		}
-		const ids = cinemasWithinRadius(WITHIN_RADIUS);
+		const ids = withinIds;
 		if (ids.length === 0) return;
 		const allActive = ids.every(id => filters.cinemaIds.includes(id));
 		filters.cinemaIds = allActive
@@ -205,7 +209,7 @@
 			<p class="loc-note">Location denied — enable it in your browser to use this.</p>
 		{:else if userLocation.status === 'unsupported'}
 			<p class="loc-note">Your browser doesn't support location.</p>
-		{:else if userLocation.status === 'granted' && cinemasWithinRadius(WITHIN_RADIUS).length === 0}
+		{:else if userLocation.status === 'granted' && withinIds.length === 0}
 			<p class="loc-note">No cinemas within 2 miles of you.</p>
 		{/if}
 	</section>

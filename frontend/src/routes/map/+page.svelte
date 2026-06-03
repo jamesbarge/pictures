@@ -1,6 +1,5 @@
 <script lang="ts">
 	import CinemaMap from '$lib/components/map/CinemaMap.svelte';
-	import { page } from '$app/state';
 
 	// Cinemas are loaded in the root layout and available via parent data
 	let { data } = $props();
@@ -17,7 +16,7 @@
 		<h1 id="map-heading" class="font-display text-sm font-bold tracking-wide-swiss uppercase">
 			CINEMA MAP
 		</h1>
-		<span class="text-xs text-[var(--color-muted)] font-mono">{cinemas.filter((c: any) => c.coordinates).length} VENUES</span>
+		<span class="text-xs text-[var(--color-muted)] font-mono">{cinemas.filter((c) => c.coordinates).length} VENUES</span>
 	</div>
 	<div class="map-body">
 		<CinemaMap {cinemas} />

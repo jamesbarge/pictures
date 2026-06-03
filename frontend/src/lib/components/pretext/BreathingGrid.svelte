@@ -33,12 +33,17 @@
 	let animFrame: number;
 	let mounted = $state(false);
 
-	function getCharScale(cell: CharCell, time: number, mx: number, my: number): number {
+	function getCharScale(
+		cell: CharCell,
+		time: number,
+		mx: number,
+		my: number,
+		rect: DOMRect | null
+	): number {
 		const breathe = Math.sin((time / BREATHE_PERIOD) * Math.PI * 2 + cell.phase) * BREATHE_AMPLITUDE;
 		let scale = 1.0 + breathe;
 
-		if (mx > -500 && containerEl) {
-			const rect = containerEl.getBoundingClientRect();
+		if (mx > -500 && rect) {
 			const cx = rect.left + cell.col * CELL_SIZE + CELL_SIZE / 2;
 			const cy = rect.top + rect.height / 2;
 			const dist = Math.sqrt((mx - cx) ** 2 + (my - cy) ** 2);
@@ -51,6 +56,10 @@
 		}
 
 		return scale;
+	}
+
+	function getFrameRect(mx: number): DOMRect | null {
+		return mx > -500 && containerEl ? containerEl.getBoundingClientRect() : null;
 	}
 
 	function animate(timestamp: number) {
@@ -102,8 +111,9 @@
 	onmouseleave={handleMouseLeave}
 >
 	{#if mounted}
+		{@const frameRect = getFrameRect(mouseX)}
 		{#each chars as cell}
-			{@const scale = getCharScale(cell, animTime, mouseX, mouseY)}
+			{@const scale = getCharScale(cell, animTime, mouseX, mouseY, frameRect)}
 			<span class="grid-cell" class:separator={cell.isSeparator}>
 				<span class="grid-char font-display" style="transform: scale({scale});">
 					{cell.char}

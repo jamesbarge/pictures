@@ -11,6 +11,9 @@ import {
 } from "drizzle-orm/pg-core";
 import { films } from "./films";
 
+// NOTE: Migration 0012_search_layer.sql adds a GENERATED STORED `search_tsv`
+// column on the seasons table. Queried via raw SQL.
+
 /**
  * Seasons table - curated film collections organized by director or theme
  *

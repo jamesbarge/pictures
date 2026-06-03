@@ -13,7 +13,9 @@
 	async function toggle() {
 		if (!isSignedIn) return;
 
-		const token = await ctx.session.getToken();
+		// Clerk types `ctx.session` as nullable even when `userId` is set,
+		// because the session resource can settle slightly after auth state.
+		const token = await ctx.session?.getToken();
 		if (!token) return;
 
 		loading = true;

@@ -2,7 +2,6 @@
 	import FigmaFilmCard from '$lib/components/calendar/FigmaFilmCard.svelte';
 	import FigmaTextDay from '$lib/components/calendar/FigmaTextDay.svelte';
 	import FigmaToolbar from '$lib/components/filters/FigmaToolbar.svelte';
-	import MobileFilterSheet from '$lib/components/filters/MobileFilterSheet.svelte';
 	import DimmerDial from '$lib/components/ui/DimmerDial.svelte';
 
 	type DisplayMode = 'posters' | 'text';
@@ -12,7 +11,8 @@
 	import { filters } from '$lib/stores/filters.svelte';
 	import { today as todayStore } from '$lib/stores/today.svelte';
 	import { buildFilmMap } from '$lib/calendar-filter';
-	import { toLondonDateStr, groupBy, compareFilmsByCalendarPriority } from '$lib/utils';
+	import { toLondonDateStr, compareFilmsByCalendarPriority } from '$lib/utils';
+	import { toCardScreening } from '$lib/components/calendar/card-shapes';
 	import { trackFilterNoResults } from '$lib/analytics/posthog';
 	import { browser } from '$app/environment';
 	import { page } from '$app/state';
@@ -24,11 +24,22 @@
 		name: string;
 		shortName: string | null;
 		address: { area: string } | null;
+		coordinates: { lat: number; lng: number } | null;
 	}>);
 
 	let mobileFilterOpen = $state(false);
 	let displayMode = $state<DisplayMode>('posters');
 
+	// Lazy-load the mobile filter sheet on first open. The sheet (plus its
+	// MobileDatePicker subtree) is filter UI that never renders until the user
+	// taps Filter in the toolbar, so keep it out of the home route's client
+	// chunk until then. Mirrors the FilmSimilarRail lazy pattern.
+	let MobileFilterSheet =
+		$state<typeof import('$lib/components/filters/MobileFilterSheet.svelte').default | null>(null);
+
+	// Group screenings by film + apply filters via the pure helper in
+	// `$lib/calendar-filter`. The helper owns the one-sided-range invariant
+	// warning internally — see calendar-filter.ts.
 	const filmMap = $derived.by(() =>
 		buildFilmMap(
 			data.screenings,
@@ -48,21 +59,54 @@
 		)
 	);
 
+	// Build day-grouped films in a single pass over `filmMap`. The previous
+	// implementation flatMapped every screening into a flat list, groupBy'd
+	// twice (date → films), then sorted screenings inside each film using
+	// `new Date()` in the comparator — N log N allocations per filter change.
+	// This version:
+	//   • Buckets directly into `Map<date, Map<filmId, entry>>` in one pass.
+	//   • Parses each datetime exactly once and stashes the ms onto the
+	//     screening for the per-film sort and the calendar-priority sort.
+	//   • Lets `compareFilmsByCalendarPriority` consume the pre-computed
+	//     `earliestMs` field instead of re-parsing.
 	const dayGroups = $derived.by(() => {
-		const all = [...filmMap.values()].flatMap((f) => f.screenings.map((s) => ({ ...s, film: f.film })));
-		const grouped = groupBy(all, (s) => toLondonDateStr(s.datetime));
-		return Object.entries(grouped)
-			.sort(([a], [b]) => a.localeCompare(b))
-			.map(([date, screenings]) => {
-				const filmGroups = groupBy(screenings, (s) => s.film.id);
-				const films = Object.values(filmGroups)
-					.map((filmScreenings) => ({
-						film: filmScreenings[0].film,
-						screenings: filmScreenings.sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime())
-					}))
-					.sort(compareFilmsByCalendarPriority);
-				return { date, films };
-			});
+		type Screening = (typeof data.screenings)[number];
+		type Film = NonNullable<Screening['film']>;
+		type Decorated = Screening & { _ms: number };
+		type Entry = { film: Film; screenings: Decorated[]; earliestMs: number };
+
+		const dateMap = new Map<string, Map<string, Entry>>();
+
+		for (const { film, screenings } of filmMap.values()) {
+			for (const s of screenings) {
+				const dt = new Date(s.datetime);
+				const ms = dt.getTime();
+				const date = toLondonDateStr(dt);
+
+				let day = dateMap.get(date);
+				if (!day) {
+					day = new Map();
+					dateMap.set(date, day);
+				}
+				let entry = day.get(film.id);
+				if (!entry) {
+					entry = { film: film as Film, screenings: [], earliestMs: ms };
+					day.set(film.id, entry);
+				}
+				const decorated = s as Decorated;
+				decorated._ms = ms;
+				entry.screenings.push(decorated);
+				if (ms < entry.earliestMs) entry.earliestMs = ms;
+			}
+		}
+
+		const sortedDates = [...dateMap.keys()].sort();
+		return sortedDates.map((date) => {
+			const dayEntries = [...dateMap.get(date)!.values()];
+			for (const e of dayEntries) e.screenings.sort((a, b) => a._ms - b._ms);
+			dayEntries.sort(compareFilmsByCalendarPriority);
+			return { date, films: dayEntries };
+		});
 	});
 
 	const MIN_FILMS_VISIBLE = 24;
@@ -180,7 +224,14 @@
 		{cinemas}
 		{displayMode}
 		onDisplayModeChange={(m) => (displayMode = m)}
-		onOpenFilters={() => (mobileFilterOpen = true)}
+		onOpenFilters={() => {
+			if (!MobileFilterSheet) {
+				import('$lib/components/filters/MobileFilterSheet.svelte').then((m) => {
+					MobileFilterSheet = m.default;
+				});
+			}
+			mobileFilterOpen = true;
+		}}
 	/>
 
 	{#if visibleDayGroups.length === 0}
@@ -237,14 +288,7 @@
 										runtime: film.runtime,
 										posterUrl: film.posterUrl
 									}}
-									screenings={screenings.map((s) => ({
-										id: s.id,
-										datetime: s.datetime,
-										cinemaName: s.cinema?.name ?? 'Unknown',
-										cinemaSlug: s.cinema?.id ?? '',
-										format: s.format,
-										bookingUrl: s.bookingUrl
-									}))}
+									screenings={screenings.map(toCardScreening)}
 									priority={di === 0 && fi < 4}
 								/>
 							{/each}
@@ -259,12 +303,14 @@
 	<DimmerDial />
 </div>
 
-<MobileFilterSheet
-	cinemas={cinemas}
-	filmCount={filmMap.size}
-	open={mobileFilterOpen}
-	onClose={() => (mobileFilterOpen = false)}
-/>
+{#if MobileFilterSheet}
+	<MobileFilterSheet
+		cinemas={cinemas}
+		filmCount={filmMap.size}
+		open={mobileFilterOpen}
+		onClose={() => (mobileFilterOpen = false)}
+	/>
+{/if}
 
 <style>
 	/* Page chrome hugs the cards row exactly so the toolbar above and the day

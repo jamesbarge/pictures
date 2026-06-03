@@ -2,7 +2,6 @@
 	import FilmCard from '$lib/components/calendar/FilmCard.svelte';
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
 	import FollowButton from '$lib/components/festivals/FollowButton.svelte';
-	import type { ScreeningWithDetails } from '$lib/types';
 	import { groupBy } from '$lib/utils';
 
 	let { data } = $props();
@@ -10,10 +9,15 @@
 	const screenings = $derived(data.screenings ?? []);
 
 	const filmGroups = $derived.by(() => {
-		const grouped = groupBy(screenings, (s) => s.film?.id ?? 'unknown');
+		type DecoratedScreening = (typeof screenings)[number] & { _ms: number };
+		const decorated = screenings.map((s) => {
+			(s as DecoratedScreening)._ms = new Date(s.datetime).getTime();
+			return s as DecoratedScreening;
+		});
+		const grouped = groupBy(decorated, (s) => s.film?.id ?? 'unknown');
 		return Object.values(grouped).map((ss) => ({
 			film: ss[0].film,
-			screenings: ss.sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime())
+			screenings: ss.sort((a, b) => a._ms - b._ms)
 		}));
 	});
 </script>
@@ -41,11 +45,12 @@
 			<EmptyState title="No screenings" description="No programme available yet." />
 		{:else}
 			<div class="film-grid">
-				{#each filmGroups as { film, screenings } (film?.id)}
+				{#each filmGroups as { film, screenings }, i (film?.id)}
 					{#if film}
 						<FilmCard
 							film={{ id: film.id, title: film.title, year: film.year, director: film.directors?.[0] ?? null, runtime: film.runtime, genres: film.genres ?? [], posterUrl: film.posterUrl, tmdbId: null }}
 							screenings={screenings.map((s) => ({ id: s.id, datetime: s.datetime, cinemaName: s.cinema?.name ?? '', cinemaSlug: s.cinema?.id ?? '', bookingUrl: s.bookingUrl }))}
+							priority={i === 0}
 						/>
 					{/if}
 				{/each}
@@ -60,6 +65,8 @@
 		grid-template-columns: repeat(2, 1fr);
 		column-gap: 1rem;
 		grid-auto-rows: auto;
+		content-visibility: auto;
+		contain-intrinsic-size: auto 900px;
 	}
 	@media (min-width: 768px) { .film-grid { grid-template-columns: repeat(3, 1fr); column-gap: 1.25rem; } }
 	@media (min-width: 1024px) { .film-grid { grid-template-columns: repeat(4, 1fr); } }

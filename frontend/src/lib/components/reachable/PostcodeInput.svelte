@@ -77,7 +77,10 @@
 	function handleInput(e: Event) {
 		const target = e.target as HTMLInputElement;
 		const newValue = target.value.toUpperCase();
-		onchange(newValue, null);
+		// Only notify the parent when the upper-cased value actually changed.
+		// Pressing an already-uppercase character (or shift) still fires `input`,
+		// and the parent may have expensive `$derived` work keyed on this.
+		if (newValue !== value) onchange(newValue, null);
 		doLookup(newValue);
 	}
 

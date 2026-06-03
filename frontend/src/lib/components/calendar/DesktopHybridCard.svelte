@@ -1,26 +1,13 @@
 <script lang="ts">
-	import { formatTime, getPosterImageAttributes } from '$lib/utils';
+	import {
+		formatTime,
+		getPosterImageAttributes,
+		filmByline,
+		cardFilmMetaParts,
+		formatScreeningFormat
+	} from '$lib/utils';
 	import { trackScreeningClick } from '$lib/analytics/posthog';
-
-	interface Screening {
-		id: string;
-		datetime: string;
-		cinemaName: string;
-		cinemaSlug?: string;
-		format?: string | null;
-		bookingUrl?: string;
-	}
-
-	interface Film {
-		id: string | number;
-		title: string;
-		year?: number | null;
-		director?: string | null;
-		runtime?: number | null;
-		country?: string | null;
-		certification?: string | null;
-		posterUrl?: string | null;
-	}
+	import type { CardFilm, CardScreening } from './card-shapes';
 
 	let {
 		film,
@@ -28,36 +15,21 @@
 		maxScreenings = 3,
 		priority = false
 	}: {
-		film: Film;
-		screenings: Screening[];
+		film: CardFilm;
+		screenings: CardScreening[];
 		maxScreenings?: number;
 		/** Mark this card's poster as the LCP candidate (above-fold). */
 		priority?: boolean;
 	} = $props();
 
-	const upcoming = $derived.by(() =>
-		screenings
-			.filter((s) => new Date(s.datetime) > new Date())
-			.sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime())
-	);
+	// Parent (+page.svelte) already filters past screenings via buildFilmMap and
+	// sorts ascending in dayGroups, so we can avoid re-filtering and re-sorting
+	// per card — significant savings when hundreds of cards render.
+	const visible = $derived(screenings.slice(0, maxScreenings));
+	const overflow = $derived(Math.max(0, screenings.length - maxScreenings));
 
-	const visible = $derived(upcoming.slice(0, maxScreenings));
-	const overflow = $derived(Math.max(0, upcoming.length - maxScreenings));
-
-	const bylineText = $derived.by(() => {
-		const parts: string[] = [];
-		if (film.director) parts.push(film.director);
-		if (film.year) parts.push(String(film.year));
-		return parts.join(', ');
-	});
-
-	const metaParts = $derived.by(() => {
-		const parts: string[] = [];
-		if (film.runtime) parts.push(`${film.runtime}m`);
-		if (film.country) parts.push(film.country);
-		if (film.certification) parts.push(film.certification);
-		return parts;
-	});
+	const bylineText = $derived(filmByline(film));
+	const metaParts = $derived(cardFilmMetaParts(film));
 
 	const posterImage = $derived(
 		getPosterImageAttributes(film.posterUrl, {
@@ -67,12 +39,7 @@
 		})
 	);
 
-	function normalisedFormat(fmt: string | null | undefined): string {
-		if (!fmt || fmt === 'unknown' || fmt === 'dcp') return 'DCP';
-		return fmt.toUpperCase().replace('_', ' ');
-	}
-
-	function handleScreeningClick(s: Screening) {
+	function handleScreeningClick(s: CardScreening) {
 		trackScreeningClick({
 			filmId: String(film.id),
 			filmTitle: film.title,
@@ -93,6 +60,8 @@
 					srcset={posterImage?.srcset}
 					sizes={posterImage?.sizes}
 					alt=""
+					width="342"
+					height="513"
 					loading={priority ? 'eager' : 'lazy'}
 					fetchpriority={priority ? 'high' : 'auto'}
 					decoding="async"
@@ -128,7 +97,7 @@
 					<time class="screening-time" class:lead={i === 0} datetime={s.datetime}>{formatTime(s.datetime)}</time>
 					<span class="screening-cinema">{s.cinemaName}</span>
 					{#if s.format}
-						<span class="screening-format">{normalisedFormat(s.format)}</span>
+						<span class="screening-format">{formatScreeningFormat(s.format)}</span>
 					{/if}
 				</a>
 			{/each}

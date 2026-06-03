@@ -19,7 +19,10 @@
 				import('posthog-js'),
 				import('./web-vitals')
 			]).then(([mod, ph, webVitals]) => {
-				mod.initPostHog();
+				// Pass the dynamically-loaded posthog instance into the module so
+				// it can flush any track-call buffer accumulated during the idle
+				// deferral. The module itself never statically imports posthog-js.
+				mod.initPostHog(ph.default);
 				posthogModule = mod;
 				posthogLib = ph.default;
 				// Track initial pageview (deferred)
@@ -33,7 +36,10 @@
 
 		// Defer PostHog until after first paint + idle time
 		if ('requestIdleCallback' in window) {
-			requestIdleCallback(loadPostHog);
+			// Idle-first on a quiet thread, but cap the deferral at 2000ms so the
+			// browser forces the callback even on thread-starved sessions —
+			// matching the setTimeout fallback ceiling below.
+			requestIdleCallback(loadPostHog, { timeout: 2000 });
 		} else {
 			setTimeout(loadPostHog, 2000);
 		}

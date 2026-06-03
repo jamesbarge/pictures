@@ -292,21 +292,35 @@ const IMPACT_SCORES: Record<string, number> = {
   known_wrong_tmdb: 80,
   suspect_wrong_tmdb: 70,
   broken_booking_url: 60,
+  cinema_screening_drop: 65,
   screening_not_on_website: 65,
   screening_time_mismatch: 45,
   duplicate_screening: 50,
+  dirty_title_html_entity: 50,
   suspect_non_film: 45,
+  dirty_title_event_prefix: 40,
   missing_tmdb: 40,
   missing_poster: 35,
+  dirty_title_all_caps: 35,
+  dirty_title_format_suffix: 35,
   wrong_repertory_tag: 30,
   wrong_new_tag: 30,
   needs_tmdb_backfill: 25,
+  suspicious_orphan_film: 22,
   missing_synopsis: 20,
   missing_cast: 15,
   missing_year: 15,
   missing_letterboxd: 12,
   needs_letterboxd_rating: 10,
 };
+
+// ── New detection regexes for dirty-title detection ───────────────────
+// Format-suffix detection is on a deliberate allowlist — these are formats
+// that should be stored as `screening.format`, never appended to the film title.
+const DIRTY_FORMAT_SUFFIX_RE = /\((?:35mm|70mm|16mm|IMAX|Q&A|with intro|VHS SCREENING|preview|sing[- ]?along)\)\s*$/i;
+const DIRTY_HTML_ENTITY_RE = /&(?:amp|quot|nbsp|hellip|mdash|ndash|rsquo|lsquo|apos|#\d+);/;
+const DIRTY_ALL_CAPS_RE = /^[A-Z0-9\s\-:.,'!?&()'’–—\/#]+$/u;
+const DIRTY_EVENT_PREFIX_RE = /\s+presents\s*:/i;
 
 function severityFromScore(score: number): SeverityTier {
   if (score >= 70) return "critical";
@@ -888,6 +902,132 @@ async function crossReferenceDb(
         description: "Film has TMDB ID but no cast members",
       });
     }
+
+    // Dirty-title detection — surfaces issues for the patrol's auto-fix loop.
+    // Each check is *additional* to the existing at-scrape `cleanFilmTitle`
+    // pipeline; these catch pre-existing rows that pipeline missed.
+    if (DIRTY_HTML_ENTITY_RE.test(dbFilm.title)) {
+      rawIssues.push({
+        type: "dirty_title_html_entity",
+        filmId: dbFilm.id,
+        filmTitle: dbFilm.title,
+        description: "Title contains undecoded HTML entity (&amp;, &rsquo;, &#nnn;, etc.)",
+        metadata: { suggestedFix: "decode-html-entities" },
+      });
+    }
+    // ALL CAPS detection — only flag multi-word ALL CAPS titles >= 10 chars.
+    // Skips stylized single words (DUNE, BLADE, BOUND, WALL-E) and short
+    // multi-word titles (STAR WARS, MIB 3). Real dirty rows are virtually
+    // always 10+ chars with a space (e.g. "MY NAME IS MONDAY: A NIGHT...").
+    if (
+      DIRTY_ALL_CAPS_RE.test(dbFilm.title) &&
+      /[A-Z]{4,}/.test(dbFilm.title) &&
+      !/[a-z]/.test(dbFilm.title) &&
+      dbFilm.title.length >= 10 &&
+      /\s/.test(dbFilm.title)
+    ) {
+      rawIssues.push({
+        type: "dirty_title_all_caps",
+        filmId: dbFilm.id,
+        filmTitle: dbFilm.title,
+        description: "Title is ALL CAPS — should be smart-title-cased (preserving acronyms)",
+        metadata: { suggestedFix: "smart-title-case" },
+      });
+    }
+    if (DIRTY_EVENT_PREFIX_RE.test(dbFilm.title)) {
+      rawIssues.push({
+        type: "dirty_title_event_prefix",
+        filmId: dbFilm.id,
+        filmTitle: dbFilm.title,
+        description: "Title contains a 'X presents:' event prefix that should be stripped",
+        metadata: { suggestedFix: "strip-event-prefix" },
+      });
+    }
+    if (DIRTY_FORMAT_SUFFIX_RE.test(dbFilm.title)) {
+      rawIssues.push({
+        type: "dirty_title_format_suffix",
+        filmId: dbFilm.id,
+        filmTitle: dbFilm.title,
+        description: "Title ends in a format suffix that belongs on screening.format, not the title",
+        metadata: { suggestedFix: "strip-format-suffix" },
+      });
+    }
+  }
+
+  // ── Suspicious-orphan detection (single screening + no TMDB) ──────────
+  // Films with exactly one future screening AND no TMDB match are statistically
+  // likely to be scrape errors (one-off mistitled entries) rather than legitimate
+  // rare bookings. Flag for review — never auto-delete.
+  if (batchFilms.length > 0) {
+    const ids = batchFilms.map(f => f.id);
+    const orphans = await sql<Array<{ film_id: string; cnt: number }>>`
+      SELECT film_id, COUNT(*)::int AS cnt
+      FROM screenings
+      WHERE film_id = ANY(${ids}::text[]) AND datetime >= ${now}::timestamptz
+      GROUP BY film_id HAVING COUNT(*) = 1
+    `;
+    const orphanIds = new Set(orphans.map(o => o.film_id));
+    for (const dbFilm of batchFilms) {
+      if (!orphanIds.has(dbFilm.id)) continue;
+      if (dbFilm.tmdb_id) continue;
+      if (dbFilm.content_type !== "film") continue;
+      rawIssues.push({
+        type: "suspicious_orphan_film",
+        filmId: dbFilm.id,
+        filmTitle: dbFilm.title,
+        description: "Single future screening AND no TMDB ID — likely scrape error or event misclassified as film",
+        metadata: { screeningCount: 1, suggestedFix: "investigate-or-reclassify" },
+      });
+    }
+  }
+
+  // ── Cinema-screening-drop detection (global, once per run) ────────────
+  // Detect cinemas whose upcoming-screening count is < 50% of the 7-day rolling
+  // average (computed from screenings.scraped_at). Indicates a degraded scraper.
+  // Only runs on the first batch of each cycle to avoid duplicate reporting.
+  if (!cursor.cursorFilmTitle) {
+    try {
+      const drops = await sql<Array<{ cinema_id: string; cinema_name: string; current_cnt: number; avg_cnt: number; drop_pct: number }>>`
+        WITH current_count AS (
+          SELECT cinema_id, COUNT(*)::int AS cnt FROM screenings
+          WHERE datetime >= NOW() AND datetime < NOW() + INTERVAL '14 days'
+          GROUP BY cinema_id
+        ),
+        baseline_count AS (
+          SELECT cinema_id, AVG(daily_cnt) AS avg_cnt FROM (
+            SELECT cinema_id, DATE(scraped_at) AS day, COUNT(*)::int AS daily_cnt
+            FROM screenings
+            WHERE scraped_at >= NOW() - INTERVAL '14 days'
+              AND scraped_at < NOW() - INTERVAL '1 day'
+              AND datetime >= scraped_at AND datetime < scraped_at + INTERVAL '14 days'
+            GROUP BY cinema_id, DATE(scraped_at)
+          ) x
+          GROUP BY cinema_id HAVING COUNT(*) >= 3
+        )
+        SELECT c.id AS cinema_id, c.name AS cinema_name,
+               COALESCE(cc.cnt, 0) AS current_cnt,
+               ROUND(bc.avg_cnt)::int AS avg_cnt,
+               ROUND(100 * (1 - COALESCE(cc.cnt, 0)::numeric / bc.avg_cnt), 1)::float AS drop_pct
+        FROM cinemas c
+        JOIN baseline_count bc ON bc.cinema_id = c.id
+        LEFT JOIN current_count cc ON cc.cinema_id = c.id
+        WHERE c.is_active = TRUE
+          AND bc.avg_cnt >= 5
+          AND COALESCE(cc.cnt, 0) < bc.avg_cnt * 0.5
+        ORDER BY drop_pct DESC
+      `;
+      for (const d of drops) {
+        rawIssues.push({
+          type: "cinema_screening_drop",
+          filmId: "", // not film-scoped
+          filmTitle: `${d.cinema_name} (cinema-wide)`,
+          description: `${d.cinema_name}: ${d.current_cnt} upcoming screenings vs 7-day avg ${d.avg_cnt} (${d.drop_pct.toFixed(0)}% drop) — scraper likely degraded`,
+          metadata: { cinemaId: d.cinema_id, currentCount: d.current_cnt, avgCount: d.avg_cnt, dropPct: d.drop_pct, suggestedFix: "investigate-scraper" },
+        });
+      }
+    } catch (e) {
+      console.error("cinema_screening_drop detection failed:", e);
+    }
   }
 
   // Check for duplicate screenings in the batch
@@ -1355,33 +1495,65 @@ async function verifyCinemaScreenings(
     LIMIT ${CINEMA_VERIFICATION_CAP * 2}
   `;
 
-  const results: CinemaVerification[] = [];
   const phaseDeadline = Date.now() + 180_000; // 3 min hard timeout
+  const perCinemaDelayMs = 500; // rate limit per-cinema (each cinema = one host)
 
+  // Group eligible screenings by cinema_id so each cinema's verifications run
+  // SEQUENTIALLY (respecting the 500ms per-host rate-limit), while DIFFERENT
+  // cinemas run IN PARALLEL. With ~6 distinct cinemas in the queue this
+  // collapses wall-clock from ~10s to ~2s, freeing up the 3-min phase budget
+  // for retries or extra coverage.
+  const byCinema = new Map<string, ScreeningToVerify[]>();
   for (const screening of screenings) {
-    if (results.length >= CINEMA_VERIFICATION_CAP) break;
-    if (Date.now() > phaseDeadline) break;
-
-    const verifier = getVerifier(screening.cinema_id);
-    if (!verifier) continue;
-
-    try {
-      const result = await verifier(screening);
-      results.push(result);
-      await new Promise((r) => setTimeout(r, 500)); // rate limit
-    } catch {
-      results.push({
-        screeningId: screening.id,
-        filmId: screening.film_id,
-        filmTitle: screening.film_title,
-        cinemaId: screening.cinema_id,
-        cinemaName: screening.cinema_name,
-        datetime: screening.datetime,
-        status: "fetch_error",
-        detail: "Verifier threw exception",
-      });
+    if (!getVerifier(screening.cinema_id)) continue;
+    let bucket = byCinema.get(screening.cinema_id);
+    if (!bucket) {
+      bucket = [];
+      byCinema.set(screening.cinema_id, bucket);
     }
+    bucket.push(screening);
   }
+
+  // Soft cap per cinema so one busy host doesn't crowd out coverage of the
+  // others. Total work bounded by CINEMA_VERIFICATION_CAP regardless.
+  const perCinemaCap = Math.max(
+    1,
+    Math.ceil(CINEMA_VERIFICATION_CAP / Math.max(byCinema.size, 1)),
+  );
+
+  const errorResult = (screening: ScreeningToVerify): CinemaVerification => ({
+    screeningId: screening.id,
+    filmId: screening.film_id,
+    filmTitle: screening.film_title,
+    cinemaId: screening.cinema_id,
+    cinemaName: screening.cinema_name,
+    datetime: screening.datetime,
+    status: "fetch_error",
+    detail: "Verifier threw exception",
+  });
+
+  // Run one worker per cinema; each worker is sequential internally.
+  const workerResults = await Promise.all(
+    Array.from(byCinema.values()).map(async (cinemaScreenings) => {
+      const out: CinemaVerification[] = [];
+      for (const screening of cinemaScreenings) {
+        if (out.length >= perCinemaCap) break;
+        if (Date.now() > phaseDeadline) break;
+        const verifier = getVerifier(screening.cinema_id);
+        if (!verifier) continue;
+        try {
+          out.push(await verifier(screening));
+        } catch {
+          out.push(errorResult(screening));
+        }
+        await new Promise((r) => setTimeout(r, perCinemaDelayMs));
+      }
+      return out;
+    }),
+  );
+
+  // Flatten; cap at the overall budget so older logic stays in force.
+  const results = workerResults.flat().slice(0, CINEMA_VERIFICATION_CAP);
 
   return results;
 }

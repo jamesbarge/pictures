@@ -62,14 +62,10 @@ export const load: PageServerLoad = async ({ params, fetch, setHeaders }) => {
 			datetime: s.datetime,
 			format: s.format,
 			bookingUrl: s.bookingUrl,
-			screen: s.screen,
 			film: {
 				id: s.film.id,
 				title: s.film.title,
-				year: s.film.year,
-				directors: s.film.directors,
-				runtime: s.film.runtime,
-				posterUrl: s.film.posterUrl
+				year: s.film.year
 			}
 		}))
 	};

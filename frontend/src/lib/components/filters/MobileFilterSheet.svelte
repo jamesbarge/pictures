@@ -1,8 +1,12 @@
 <script lang="ts">
 	import { filters } from '$lib/stores/filters.svelte';
 	import { userLocation } from '$lib/stores/user-location.svelte';
-	import { haversineMiles, toLondonDateStr } from '$lib/utils';
+	import { haversineMiles, toLondonDateStr, useModalKeyboardTrap } from '$lib/utils';
 	import CalendarPopover from './CalendarPopover.svelte';
+	import {
+		AREA_CLUSTERS,
+		cinemasInCluster
+	} from './area-clusters';
 
 	interface SheetCinema {
 		id: string;
@@ -26,47 +30,39 @@
 
 	let datePickerOpen = $state(false);
 
-	// Modal a11y — Escape closes the sheet and the page body stops scrolling
-	// behind it. We read $props in the effect (via the outer `open` binding)
-	// and attach/clean up the keydown listener on each open transition.
+	// Modal a11y — Escape closes the sheet and body scroll is locked while
+	// it's open. The shared helper handles both concerns and restores prior
+	// `body.style.overflow` on close.
 	$effect(() => {
 		if (!open) return;
-		const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-		document.addEventListener('keydown', handler);
-		const prevOverflow = document.body.style.overflow;
-		document.body.style.overflow = 'hidden';
-		return () => {
-			document.removeEventListener('keydown', handler);
-			document.body.style.overflow = prevOverflow;
-		};
+		return useModalKeyboardTrap(onClose);
 	});
 
-	// Re-use the same area clusters
-	const AREA_CLUSTERS: Array<{ label: string; areas: string[] }> = [
-		{ label: 'Soho & West End', areas: ['Soho', 'West End', 'Leicester Square', 'Covent Garden', 'Mayfair', 'Bloomsbury'] },
-		{ label: 'East', areas: ['Shoreditch', 'Hackney', 'Dalston', 'Hoxton', 'Bethnal Green', 'Mile End', 'Stratford', 'Whitechapel'] },
-		{ label: 'South', areas: ['Peckham', 'Brixton', 'Clapham', 'Waterloo', 'Southbank', 'South Bank', 'Elephant', 'Bermondsey', 'Camberwell'] },
-		{ label: 'North', areas: ['Camden', 'Islington', 'Angel', 'Kings Cross', 'Crouch End', 'Highgate', 'Archway'] }
-	];
-
-	function cinemasInCluster(label: string) {
-		const cluster = AREA_CLUSTERS.find(c => c.label === label);
-		if (!cluster) return [];
-		return cinemas.filter(c => {
-			const area = (c.address?.area ?? '').toLowerCase();
-			return cluster.areas.some(a => area.includes(a.toLowerCase()));
-		}).map(c => c.id);
-	}
+	// Area cluster definitions + helpers live in `./area-clusters` and are
+	// shared with `DesktopFilterSidebar` so the two surfaces can't disagree
+	// about which neighbourhoods belong to which chip.
+	//
+	// Cluster-to-cinema-ID membership is a pure function of `cinemas`, so
+	// precompute it once per `cinemas` change instead of rescanning all cinemas
+	// (lowercasing each area) on every chip toggle. Only the active check below
+	// legitimately depends on the current `cinemaIds` selection.
+	const clusterMembership = $derived.by(() => {
+		const map = new Map<string, string[]>();
+		for (const cluster of AREA_CLUSTERS) {
+			map.set(cluster.label, cinemasInCluster(cluster.label, cinemas));
+		}
+		return map;
+	});
 	function isAreaActive(label: string) {
-		const ids = cinemasInCluster(label);
-		return ids.length > 0 && ids.every(id => filters.cinemaIds.includes(id));
+		const ids = clusterMembership.get(label) ?? [];
+		return ids.length > 0 && ids.every((id) => filters.cinemaIds.includes(id));
 	}
 	function toggleArea(label: string) {
-		const ids = cinemasInCluster(label);
+		const ids = clusterMembership.get(label) ?? [];
 		if (ids.length === 0) return;
-		const allActive = ids.every(id => filters.cinemaIds.includes(id));
+		const allActive = ids.every((id) => filters.cinemaIds.includes(id));
 		filters.cinemaIds = allActive
-			? filters.cinemaIds.filter(id => !ids.includes(id))
+			? filters.cinemaIds.filter((id) => !ids.includes(id))
 			: Array.from(new Set([...filters.cinemaIds, ...ids]));
 	}
 
@@ -109,6 +105,8 @@
 	const dayFmt = new Intl.DateTimeFormat('en-GB', { weekday: 'short', timeZone: 'Europe/London' });
 	const todayLabel = dayFmt.format(new Date(today + 'T12:00:00Z'));
 	const tomorrowLabel = dayFmt.format(new Date(tomorrow + 'T12:00:00Z'));
+	const todayDay = new Date(today + 'T12:00:00Z').getUTCDate();
+	const tomorrowDay = new Date(tomorrow + 'T12:00:00Z').getUTCDate();
 
 	function pick(preset: 'today' | 'tomorrow' | 'weekend' | null) {
 		if (preset === 'today') {
@@ -218,8 +216,8 @@
 					<span class="hint">today</span>
 				</div>
 				<div class="chips">
-					<button type="button" class="chip" class:active={whenState === 'today'} onclick={() => pick(whenState === 'today' ? null : 'today')}>Today<span class="sub">{todayLabel} {new Date(today + 'T12:00:00Z').getUTCDate()}</span></button>
-					<button type="button" class="chip" class:active={whenState === 'tomorrow'} onclick={() => pick(whenState === 'tomorrow' ? null : 'tomorrow')}>Tomorrow<span class="sub">{tomorrowLabel} {new Date(tomorrow + 'T12:00:00Z').getUTCDate()}</span></button>
+					<button type="button" class="chip" class:active={whenState === 'today'} onclick={() => pick(whenState === 'today' ? null : 'today')}>Today<span class="sub">{todayLabel} {todayDay}</span></button>
+					<button type="button" class="chip" class:active={whenState === 'tomorrow'} onclick={() => pick(whenState === 'tomorrow' ? null : 'tomorrow')}>Tomorrow<span class="sub">{tomorrowLabel} {tomorrowDay}</span></button>
 					<button type="button" class="chip" class:active={whenState === 'weekend'} onclick={() => pick(whenState === 'weekend' ? null : 'weekend')}>This weekend</button>
 					<button type="button" class="chip" onclick={() => (datePickerOpen = true)}>Pick a date</button>
 				</div>

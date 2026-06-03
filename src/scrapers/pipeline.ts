@@ -622,6 +622,14 @@ async function insertScreening(
   if (screening.sourceId) {
     await db.insert(screeningsTable).values(baseValues).onConflictDoUpdate({
       target: [screeningsTable.cinemaId, screeningsTable.sourceId],
+      // The (cinema_id, source_id) unique index is PARTIAL (WHERE source_id IS
+      // NOT NULL). Postgres can only infer it as an ON CONFLICT arbiter when the
+      // statement carries the matching predicate; without targetWhere it raises
+      // 42P10 ("no unique or exclusion constraint matching the ON CONFLICT
+      // specification") and every fresh INSERT is lost while existing rows still
+      // UPDATE via Layer 0 — silently capping forward coverage. See
+      // idx_screenings_cinema_source.
+      targetWhere: sql`${screeningsTable.sourceId} IS NOT NULL`,
       set: {
         filmId,
         datetime: screening.datetime,
@@ -723,7 +731,14 @@ export async function ensureCinemaExists(cinema: CinemaInput): Promise<void> {
     .limit(1);
 
   if (existing.length > 0) {
-    // Update existing cinema
+    // Update existing cinema. Re-asserts `isActive=true` because the
+    // scraper running for this cinema is the source-of-truth signal for
+    // its activeness — disabling should be done by removing the venue
+    // from the chain config / registry, not by flipping the DB flag.
+    // Background: 2026-05-17 reactivation of Curzon Camden/Richmond/Wimbledon
+    // showed that DB `is_active=false` rows can become stale after a code
+    // change re-enables the venue (the chain scraper config and the DB
+    // flag fell out of sync).
     await db
       .update(cinemas)
       .set({
@@ -734,6 +749,7 @@ export async function ensureCinemaExists(cinema: CinemaInput): Promise<void> {
         // Cast address to schema type - scrapers provide partial data
         address: cinema.address as typeof cinemas.$inferInsert["address"],
         features: cinema.features || [],
+        isActive: true,
         updatedAt: new Date(),
       })
       .where(eq(cinemas.id, cinema.id));

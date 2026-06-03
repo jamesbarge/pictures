@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount, tick } from 'svelte';
+	import { tick } from 'svelte';
 
 	let {
 		open = false,
@@ -48,7 +48,13 @@
 		}
 	});
 
-	onMount(() => {
+	// Scope the document-level click listener to when the panel is open.
+	// Previously `onMount` registered a permanent capture-phase listener per
+	// Dropdown instance — with four filter dropdowns the homepage had four
+	// always-active global listeners firing on every click. `<svelte:document>`
+	// can't be conditional in markup, so we wire/unwire via `$effect`.
+	$effect(() => {
+		if (!open) return;
 		document.addEventListener('click', handleClickOutside, true);
 		return () => document.removeEventListener('click', handleClickOutside, true);
 	});

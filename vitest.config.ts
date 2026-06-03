@@ -7,7 +7,7 @@ export default defineConfig({
     // Use jsdom for component tests, node for pure logic
     environment: "jsdom",
     // Include both .ts and .tsx test files
-    include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
+    include: ["src/**/*.test.ts", "src/**/*.test.tsx", "scripts/**/*.test.ts"],
     // Exclude E2E tests (those are run by Playwright)
     exclude: ["e2e/**", "node_modules/**"],
     // Setup files run before each test file

@@ -1,18 +1,17 @@
 <script lang="ts">
 	import Badge from '$lib/components/ui/Badge.svelte';
-	import { groupBy } from '$lib/utils';
 
 	let { data } = $props();
 	let search = $state('');
 
-	const filtered = $derived(
-		search
-			? data.cinemas.filter((c) =>
-				c.name.toLowerCase().includes(search.toLowerCase()) ||
-				(c.address?.area.toLowerCase().includes(search.toLowerCase()) ?? false)
-			)
-			: data.cinemas
-	);
+	const filtered = $derived.by(() => {
+		if (!search) return data.cinemas;
+		const q = search.toLowerCase();
+		return data.cinemas.filter((c) =>
+			c.name.toLowerCase().includes(q) ||
+			(c.address?.area.toLowerCase().includes(q) ?? false)
+		);
+	});
 
 	const grouped = $derived.by(() => {
 		const groups: Record<string, typeof data.cinemas> = {};

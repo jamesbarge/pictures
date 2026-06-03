@@ -48,6 +48,7 @@ export async function GET(request: NextRequest) {
     WHERE s.datetime >= NOW()
       AND s.datetime < NOW() + make_interval(days => ${days})
       AND f.content_type = 'film'
+      AND d.director <> ''
     GROUP BY d.director
     ORDER BY film_count DESC, d.director ASC
   `);

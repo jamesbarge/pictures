@@ -26,6 +26,10 @@ import {
   formatQuarantineReport,
   detectFlakyCinemas,
   formatFlakyReport,
+  detectYieldDrop,
+  formatYieldDropReport,
+  detectYieldDeltaSinceBaseline,
+  formatYieldDeltaReport,
   detectStaleCinemas,
   formatStaleCinemaReport,
   readRecentDqs,
@@ -94,42 +98,46 @@ async function main(): Promise<void> {
   const phases: PhaseResult[] = [];
 
   // Phase 0: Pre-flight quarantine — read-only, ~1s. Tells the user which
-  // cinemas have been silently broken for ≥2 runs BEFORE they sit through
-  // a 30-60 min /scrape that just re-runs them. Always runs.
+  // cinemas have been silently broken BEFORE they sit through a 30-60 min
+  // /scrape that just re-runs them. Three signals, fully orthogonal:
+  //   1. Silent breakers — N consecutive `success+0` runs (Prowlarr pattern)
+  //   2. Flaky cinemas   — high empty-success or failed ratio over wider window
+  //   3. Yield drops     — recent avg yield << baseline avg (silent partial regressions)
+  // All always run. Flaky catches alternating empty/non-empty patterns that
+  // evade the consecutive-zero detector. Yield-drop catches "success+low" cases
+  // (e.g. PDF parser regression that returns 20 instead of 200 screenings)
+  // that look healthy to the other two detectors.
   phases.push(
-    await runPhase("Pre-flight (silent-breaker + flaky check)", async () => {
-      // Run both detectors in parallel — they walk the same scraper_runs
-      // table but ask different questions. Silent breakers fire on
-      // consecutive zeros; flaky fires on ratio-based patterns (e.g.
-      // success+0 every other run).
-      const [breakers, flaky] = await Promise.all([
+    await runPhase("Pre-flight (silent-breaker + flaky + yield-drop check)", async () => {
+      // Three orthogonal detectors run in parallel.
+      const [breakers, flaky, yieldDrops] = await Promise.all([
         detectSilentBreakers(),
         detectFlakyCinemas(),
+        detectYieldDrop(),
       ]);
       const criticalFlaky = flaky.filter((f) => f.severity === "critical");
-      if (breakers.length === 0 && criticalFlaky.length === 0) {
-        console.log("[pre-flight] No silently-broken or critical-flaky cinemas — proceeding.");
+      const total = breakers.length + flaky.length + yieldDrops.length;
+      if (breakers.length === 0 && criticalFlaky.length === 0 && yieldDrops.length === 0) {
+        console.log("[pre-flight] No silently-broken, critical-flaky, or yield-dropping cinemas — proceeding.");
         if (flaky.length > 0) {
           // Warn-level flakies still get surfaced so the user can preemptively
           // investigate before they escalate.
           console.log(formatFlakyReport(flaky));
         }
       } else {
-        if (breakers.length > 0) {
-          console.log(formatQuarantineReport(breakers));
-        }
-        if (flaky.length > 0) {
-          console.log(formatFlakyReport(flaky));
-        }
+        if (breakers.length > 0) console.log(formatQuarantineReport(breakers));
+        if (flaky.length > 0) console.log(formatFlakyReport(flaky));
+        if (yieldDrops.length > 0) console.log(formatYieldDropReport(yieldDrops));
         console.log(
           `[pre-flight] ${breakers.length} silent, ${criticalFlaky.length} critical-flaky, ` +
-            `${flaky.length - criticalFlaky.length} warn-flaky. Consider \`/scrape-one <slug>\` ` +
-            "to investigate before starting a full run.",
+            `${flaky.length - criticalFlaky.length} warn-flaky, ${yieldDrops.length} yield-drop. ` +
+            "Consider `/scrape-one <slug>` to investigate before starting a full run.",
         );
+        void total;
       }
       return {
         ok: true,
-        detail: `${breakers.length} silent / ${criticalFlaky.length} critical / ${flaky.length - criticalFlaky.length} warn`,
+        detail: `${breakers.length} silent / ${criticalFlaky.length} critical / ${flaky.length - criticalFlaky.length} warn / ${yieldDrops.length} yield-drop`,
       };
     }),
   );
@@ -165,13 +173,33 @@ async function main(): Promise<void> {
     console.log("[scrape-and-enrich] --skip-enrich: skipping enrichment phases");
   }
 
-  // Phase 4: Quarantine detection (always runs — read-only)
+  // Phase 4: Quarantine detection (always runs — read-only). Reports all
+  // three detectors so post-run state is fully visible.
   phases.push(
-    await runPhase("Health check (silent-breaker detection)", async () => {
-      const breakers = await detectSilentBreakers();
-      const report = formatQuarantineReport(breakers);
-      console.log(report);
-      return { ok: true, detail: `${breakers.length} cinemas flagged` };
+    await runPhase("Health check (silent-breaker + flaky + yield-drop)", async () => {
+      const [breakers, flaky, yieldDrops] = await Promise.all([
+        detectSilentBreakers(),
+        detectFlakyCinemas(),
+        detectYieldDrop(),
+      ]);
+      console.log(formatQuarantineReport(breakers));
+      console.log(formatFlakyReport(flaky));
+      console.log(formatYieldDropReport(yieldDrops));
+      return {
+        ok: true,
+        detail: `${breakers.length} broken, ${flaky.length} flaky, ${yieldDrops.length} yield-drop`,
+      };
+    }),
+  );
+
+  // Phase 5: Per-run delta-vs-baseline report. Quick-win UX surfacer for
+  // "this run vs the 7-day mean" — fires after a single below-baseline run,
+  // unlike yield-drop which needs a 25-run window. Read-only.
+  phases.push(
+    await runPhase("Per-run delta vs 7-day baseline", async () => {
+      const deltas = await detectYieldDeltaSinceBaseline();
+      console.log(formatYieldDeltaReport(deltas));
+      return { ok: true, detail: `${deltas.length} below baseline` };
     }),
   );
 

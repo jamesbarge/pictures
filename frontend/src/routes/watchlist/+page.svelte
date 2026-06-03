@@ -2,7 +2,6 @@
 	import { filmStatuses } from '$lib/stores/film-status.svelte';
 	import { apiGet } from '$lib/api/client';
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
-	import Badge from '$lib/components/ui/Badge.svelte';
 	import { formatTime, getPosterImageAttributes } from '$lib/utils';
 	import { onMount } from 'svelte';
 
@@ -19,7 +18,7 @@
 
 	let films = $state<WatchlistFilm[]>([]);
 	let loading = $state(true);
-	let sortBy = $state<'next' | 'added' | 'title'>('next');
+	let sortBy = $state<'next' | 'title'>('next');
 
 	const wantToSeeIds = $derived(filmStatuses.getFilmIdsByStatus('want_to_see'));
 
@@ -39,8 +38,9 @@
 						film: { id: string; title: string; year: number | null; directors: string[]; runtime: number | null; posterUrl: string | null };
 						screenings: Array<{ id: string; datetime: string; bookingUrl: string }>;
 					}>(`/api/films/${id}`);
+					const now = Date.now();
 					const futureScreenings = res.screenings
-						.filter((s) => new Date(s.datetime) > new Date())
+						.filter((s) => new Date(s.datetime).getTime() > now)
 						.sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime());
 
 					return {

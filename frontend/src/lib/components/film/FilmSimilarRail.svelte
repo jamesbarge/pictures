@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { getPosterImageAttributes } from '$lib/utils';
+
 	interface SimilarFilm {
 		id: string;
 		title: string;
@@ -19,7 +21,21 @@
 				<a href="/film/{s.id}" class="similar-card">
 					<div class="similar-poster">
 						{#if s.posterUrl}
-							<img src={s.posterUrl} alt={s.title} loading="lazy" decoding="async" />
+							{@const poster = getPosterImageAttributes(s.posterUrl, {
+								baseSize: 'w185',
+								srcSetSizes: ['w92', 'w154', 'w185'],
+								sizes: '132px'
+							})}
+							<img
+								src={poster?.src ?? s.posterUrl}
+								srcset={poster?.srcset}
+								sizes={poster?.sizes}
+								alt={s.title}
+								width="132"
+								height="198"
+								loading="lazy"
+								decoding="async"
+							/>
 						{:else}
 							<div class="similar-poster-fallback"><span>{s.title}</span></div>
 						{/if}

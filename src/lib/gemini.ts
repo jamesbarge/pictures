@@ -30,13 +30,12 @@ function getClient(): GoogleGenAI {
 /**
  * Strip markdown code fences that Gemini sometimes wraps around JSON responses.
  * Safe to call on text that doesn't have fences.
+ *
+ * Re-exported from the shared helper for backwards compatibility with
+ * existing imports (`@/lib/gemini`); the canonical implementation lives in
+ * `@/lib/strip-code-fences`.
  */
-export function stripCodeFences(text: string): string {
-  return text
-    .replace(/^```(?:json)?\s*\n?/, "")
-    .replace(/\n?```\s*$/, "")
-    .trim();
-}
+export { stripCodeFences } from "./strip-code-fences";
 
 /**
  * Generate text from a prompt (simple variant).

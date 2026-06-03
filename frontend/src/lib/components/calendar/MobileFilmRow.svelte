@@ -1,24 +1,12 @@
 <script lang="ts">
-	import { formatTime, getPosterImageAttributes } from '$lib/utils';
+	import {
+		formatTime,
+		getPosterImageAttributes,
+		filmByline,
+		cardFilmMetaParts
+	} from '$lib/utils';
 	import { trackScreeningClick } from '$lib/analytics/posthog';
-
-	interface Screening {
-		id: string;
-		datetime: string;
-		cinemaName: string;
-		bookingUrl?: string;
-	}
-
-	interface Film {
-		id: string | number;
-		title: string;
-		year?: number | null;
-		director?: string | null;
-		runtime?: number | null;
-		country?: string | null;
-		certification?: string | null;
-		posterUrl?: string | null;
-	}
+	import type { CardFilm, CardScreening } from './card-shapes';
 
 	let {
 		film,
@@ -26,21 +14,18 @@
 		maxScreenings = 3,
 		priority = false
 	}: {
-		film: Film;
-		screenings: Screening[];
+		film: CardFilm;
+		screenings: CardScreening[];
 		maxScreenings?: number;
 		/** Mark this row's poster as the LCP candidate (first row above fold). */
 		priority?: boolean;
 	} = $props();
 
-	const upcoming = $derived.by(() =>
-		screenings
-			.filter((s) => new Date(s.datetime) > new Date())
-			.sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime())
-	);
-
-	const visible = $derived(upcoming.slice(0, maxScreenings));
-	const overflow = $derived(Math.max(0, upcoming.length - maxScreenings));
+	// Parent (+page.svelte) already filters past screenings via buildFilmMap and
+	// sorts ascending in dayGroups — re-doing it per row was the dominant cost
+	// in mobile profile traces with ~80 rows on screen.
+	const visible = $derived(screenings.slice(0, maxScreenings));
+	const overflow = $derived(Math.max(0, screenings.length - maxScreenings));
 
 	const posterImage = $derived(
 		getPosterImageAttributes(film.posterUrl, {
@@ -50,22 +35,10 @@
 		})
 	);
 
-	const bylineText = $derived.by(() => {
-		const parts: string[] = [];
-		if (film.director) parts.push(film.director);
-		if (film.year) parts.push(String(film.year));
-		return parts.join(', ');
-	});
+	const bylineText = $derived(filmByline(film));
+	const metaParts = $derived(cardFilmMetaParts(film));
 
-	const metaParts = $derived.by(() => {
-		const parts: string[] = [];
-		if (film.runtime) parts.push(`${film.runtime}m`);
-		if (film.country) parts.push(film.country);
-		if (film.certification) parts.push(film.certification);
-		return parts;
-	});
-
-	function handleClick(s: Screening) {
+	function handleClick(s: CardScreening) {
 		trackScreeningClick({
 			filmId: String(film.id),
 			filmTitle: film.title,
