@@ -140,7 +140,8 @@ export const EMPTY_RESULTS: PaletteResults = {};
 export const SECTION_ORDER: Array<keyof PaletteResults> = [
   "recents",
   "actions",
-  "screenings",
+  // "screenings" intentionally omitted — those rows linked OUT to cinema
+  // booking sites; search is internal-only now. Type retained but unused.
   "films",
   "people",
   "cinemas",

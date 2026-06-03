@@ -1,3 +1,16 @@
+## 2026-06-03: Search — instant, typo-tolerant, in-browser film/cinema/people search
+**PR**: TBD | **Files**: `frontend/src/lib/search/catalog-index-core.ts` (new), `frontend/src/lib/search/catalog-index.svelte.ts` (new), `frontend/src/lib/search/catalog-index.test.ts` (new), `frontend/src/lib/stores/palette.svelte.ts`, `frontend/src/lib/search/result-types.ts`, `frontend/src/lib/components/search/ResultsList.svelte`, `frontend/src/lib/components/search/GlobalCmdkBinding.svelte`, `frontend/tests/command-palette.spec.ts`, `frontend/package.json`
+- ⌘K search is now **instant + typo-tolerant**. The catalog (films-with-a-future-screening + cinemas +
+  directors) loads ONCE into the browser (`/api/search/catalog`) and is fuzzy-searched client-side with
+  **MiniSearch** — **0 network calls per keystroke**. Accent-folding + `fuzzy:0.3` + `prefix` means
+  "amelei" → **Amélie**, "scorses" → **Scorsese**. Index is warmed on idle so the first ⌘K is instant.
+- **No links out**: dropped **screening** results — they were the only search rows that opened an external
+  cinema booking site. Every result now navigates internally (`/film/[id]`, `/cinemas/[id]`, `/people/[name]`).
+- **Graceful fallback**: until `/api/search/catalog` is live (needs a backend promote), search falls back to
+  the existing server endpoint (minus screenings), so there's no ordering hazard.
+- MiniSearch stays in a **lazy chunk** (off the eager layout bundle). Verified: svelte-check 0 errors;
+  66/66 unit tests (7 new — typo/accent/director/cinema); production build clean.
+
 ## 2026-06-01: Temporarily remove sign-in from the site
 **PR**: TBD | **Files**: `frontend/src/lib/components/layout/Header.svelte`, `frontend/src/routes/sign-in/[...rest]/+page.ts` (new), `frontend/src/routes/sign-up/[...rest]/+page.ts` (new), `frontend/src/routes/sitemap.xml/+server.ts`
 - The prod **frontend** Clerk key is a dev `pk_test_` key, so the hosted SignIn widget renders blank. Until a `pk_live_` key is set, remove sign-in from the UI: dropped the desktop + mobile "Sign in" links from the header (+ their dead CSS), and `/sign-in` / `/sign-up` now `307`-redirect home so the broken widget isn't reachable. `ClerkProvider` stays mounted so watchlist (localStorage) + festival-follow degrade cleanly. Fully reversible (restore the links, delete the two redirect files).

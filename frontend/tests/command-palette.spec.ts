@@ -97,7 +97,7 @@ test.describe('Command Palette — cmd+k', () => {
 		await expect(dialog).toBeHidden();
 	});
 
-	test('typing a fuzzy query surfaces films + screenings via trigram', async ({ page }) => {
+	test('typing a fuzzy query surfaces matching films (typo + accent tolerant)', async ({ page }) => {
 		await page.goto(BASE);
 		await waitForPaletteBinding(page);
 
@@ -110,8 +110,11 @@ test.describe('Command Palette — cmd+k', () => {
 		const listbox = dialog.getByRole('listbox');
 		await expect(listbox.getByRole('option').first()).toBeVisible({ timeout: 5000 });
 
-		// Either SCREENINGS or FILMS section should contain an Amélie row.
+		// The FILMS section contains an Amélie row despite the typo + missing accent.
 		await expect(listbox.getByRole('option').filter({ hasText: /Amélie/ }).first()).toBeVisible();
+
+		// Search is internal-only now — no SCREENINGS section (it linked out to booking sites).
+		await expect(dialog.getByText('SCREENINGS', { exact: true })).toHaveCount(0);
 	});
 
 	test('Enter on a film row navigates to /film/[id]', async ({ page }) => {
@@ -122,12 +125,11 @@ test.describe('Command Palette — cmd+k', () => {
 		const dialog = page.getByRole('dialog', { name: 'Search pictures.london' });
 		await dialog.getByRole('combobox').fill('akira');
 
-		// Jump to last option (the FILMS section row) and activate.
+		// FILMS is the first result section, so the top option is a film and is
+		// selected by default — Enter activates it → /film/[id].
 		const firstOption = dialog.getByRole('option').first();
 		await expect(firstOption).toBeVisible({ timeout: 5000 });
 
-		// Cmd+Down → last option; the FILM row tends to render at the bottom.
-		await page.keyboard.press('ControlOrMeta+ArrowDown');
 		await page.keyboard.press('Enter');
 
 		await expect(page).toHaveURL(/\/film\/[a-f0-9-]+/, { timeout: 5000 });

@@ -29,6 +29,7 @@ import { apiGet, ApiError } from "$lib/api/client";
 import { filters } from "$lib/stores/filters.svelte";
 import { intentToActions } from "$lib/search/intent-to-actions";
 import { parseQuery, type ParsedIntent } from "$lib/search/parse-query";
+import { catalogIndex } from "$lib/search/catalog-index.svelte";
 import {
   EMPTY_RESULTS,
   flattenResults,
@@ -141,7 +142,8 @@ function mapResponse(res: ServerSearchResponse): PaletteResults {
     films: res.results.map((f) => ({ kind: "film" as const, ...f })),
     people: (res.people ?? []).map((p) => ({ kind: "person" as const, ...p })),
     cinemas: res.cinemas.map((c) => ({ kind: "cinema" as const, ...c })),
-    screenings: res.screenings.map((s) => ({ kind: "screening" as const, ...s })),
+    // Screenings deliberately dropped — they were the only result type that
+    // linked OUT to a cinema booking site. Search is internal-only now.
     festivals: res.festivals.map((f) => ({ kind: "festival" as const, ...f })),
     seasons: res.seasons.map((s) => ({ kind: "season" as const, ...s })),
   };
@@ -177,11 +179,13 @@ async function fetchServer(q: string, signal: AbortSignal): Promise<void> {
 }
 
 /**
- * Schedule a debounced server query. Always cancels any pending fetch.
- * No-op below MIN_QUERY_LEN — empty/short queries clear results
- * synchronously so the UI doesn't show stale data.
+ * Run a search for the current query. INSTANT when the in-browser catalog index
+ * is ready (synchronous fuzzy search, zero network); otherwise warm the
+ * one-time index load and use the debounced server search as a transient
+ * fallback (covers the pre-ready window and the error case). No-op below
+ * MIN_QUERY_LEN — empty/short queries clear results synchronously.
  */
-function scheduleServerSearch() {
+function runSearch() {
   cancelInFlight();
   const q = query.trim();
   if (q.length < MIN_QUERY_LEN) {
@@ -191,6 +195,27 @@ function scheduleServerSearch() {
     serverError = null;
     return;
   }
+
+  // Fast path — instant client-side fuzzy search.
+  if (catalogIndex.status === "ready") {
+    results = catalogIndex.search(q);
+    selectedIndex = 0;
+    isLoading = false;
+    serverError = null;
+    return;
+  }
+
+  // Index not ready — warm it once, then re-run if this is still the query.
+  if (catalogIndex.status !== "error") {
+    void catalogIndex.ensureLoaded().then(() => {
+      if (open && query.trim() === q) runSearch();
+    });
+  }
+
+  // Transient fallback while the index loads (or if it failed to): the existing
+  // debounced server search. `mapResponse` drops screenings, so it stays internal-only.
+  isLoading = true;
+  serverError = null;
   debounceTimer = setTimeout(() => {
     debounceTimer = null;
     inFlight = new AbortController();
@@ -260,12 +285,6 @@ async function activate(row: ResultRow, mode: ActivationMode = "open"): Promise<
       }
       return;
     }
-    case "screening": {
-      // Booking URLs are external; always open new tab regardless of mode.
-      openInNewTab(row.bookingUrl);
-      if (mode !== "newTab") closePalette();
-      return;
-    }
     case "festival": {
       const path = `/festivals/${row.slug}`;
       if (mode === "newTab") {
@@ -309,7 +328,7 @@ async function activate(row: ResultRow, mode: ActivationMode = "open"): Promise<
 function setQueryInternal(v: string) {
   query = v;
   selectedIndex = 0;
-  if (open) scheduleServerSearch();
+  if (open) runSearch();
 }
 
 function closePalette() {
