@@ -115,7 +115,7 @@
 	</a>
 
 	{#if visible.length}
-		<div class="screenings-row" class:filled={visible.length === maxScreenings}>
+		<div class="screenings-row">
 			<div class="screening-list">
 				{#each visible as s (s.id)}
 					<a
@@ -295,18 +295,6 @@
 		min-height: 30px;
 		border-left: 1px solid var(--color-border);
 		border-right: 1px solid var(--color-border);
-		border-bottom: 1px solid var(--color-border);
-	}
-
-	/* When all 3 screening slots are filled the bottom edge is the last
-	   inter-row stroke, so the card's own bottom border is redundant — UNLESS
-	   the card sits in the last visible row (no row below to close it). The
-	   .last-row class is applied by the markLastRow Svelte action in +page. */
-	.screenings-row.filled {
-		border-bottom: none;
-	}
-
-	:global(.card.last-row) .screenings-row.filled {
 		border-bottom: 1px solid var(--color-border);
 	}
 

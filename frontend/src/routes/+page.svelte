@@ -126,24 +126,6 @@
 		return { weekday, ordinal: ORDINALS[dayNum] ?? `${dayNum}th`, month };
 	});
 
-	// Tag cards in the last visual row of a film-row so their CSS can re-enable
-	// the bottom stroke (otherwise filled cards have no bottom border, which
-	// looks fine mid-grid because the row below closes them, but dangling at
-	// the bottom of the section).
-	function markLastRow(node: HTMLElement) {
-		function update() {
-			const cards = node.querySelectorAll<HTMLElement>(':scope > .card');
-			if (!cards.length) return;
-			let maxTop = -Infinity;
-			for (const c of cards) if (c.offsetTop > maxTop) maxTop = c.offsetTop;
-			for (const c of cards) c.classList.toggle('last-row', c.offsetTop === maxTop);
-		}
-		update();
-		const observer = new ResizeObserver(update);
-		observer.observe(node);
-		return { destroy() { observer.disconnect(); } };
-	}
-
 	// Shrink the day section to the actual width of its first row of cards, so
 	// the black day-header bar lines up with the card grid even when a day has
 	// fewer cards than fit per row.
@@ -244,7 +226,7 @@
 							}))}
 						/>
 					{:else}
-						<div class="film-row" use:markLastRow>
+						<div class="film-row">
 							{#each films as { film, screenings }, fi (film.id)}
 								<FigmaFilmCard
 									film={{
