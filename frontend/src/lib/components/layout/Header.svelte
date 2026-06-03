@@ -17,6 +17,14 @@
 
 	let mobileMenuOpen = $state(false);
 	let headerEl = $state<HTMLElement>();
+	let compact = $state(false);
+
+	// Compact the header once the user scrolls into the page; expand again only
+	// near the very top. The thresholds are deliberately far apart (hysteresis):
+	// compacting shrinks the document by ~150px, and browser scroll anchoring
+	// can pull scrollY down by that amount — a single threshold would oscillate.
+	const COMPACT_AT = 180;
+	const EXPAND_AT = 4;
 
 	// Close mobile menu on route change
 	$effect(() => {
@@ -24,18 +32,46 @@
 		mobileMenuOpen = false;
 	});
 
-	// Measure header height and expose as CSS custom property for dropdown positioning.
+	// Broadcast compact state on <html> (same pattern as --header-height) so
+	// fixed-position overlays that share the header's space — the homepage
+	// DimmerDial anchor — can fade out instead of colliding with the nav row.
 	$effect(() => {
-		// Track dependencies that change header height
-		void mobileMenuOpen;
-		if (headerEl) {
-			// Read after a tick so the DOM has updated
-			requestAnimationFrame(() => {
-				if (headerEl) {
-					document.documentElement.style.setProperty('--header-height', `${headerEl.offsetHeight}px`);
-				}
+		document.documentElement.toggleAttribute('data-header-compact', compact);
+	});
+
+	$effect(() => {
+		let raf = 0;
+		const onScroll = () => {
+			if (raf) return;
+			raf = requestAnimationFrame(() => {
+				// Keep the `compact` read inside this async callback — reading it
+				// synchronously in the effect body would register it as a dependency
+				// and re-add the scroll listener on every toggle.
+				raf = 0;
+				const y = window.scrollY;
+				if (!compact && y > COMPACT_AT) compact = true;
+				else if (compact && y < EXPAND_AT) compact = false;
 			});
-		}
+		};
+		onScroll(); // pick up an already-scrolled position (e.g. bfcache restore)
+		window.addEventListener('scroll', onScroll, { passive: true });
+		return () => {
+			window.removeEventListener('scroll', onScroll);
+			if (raf) cancelAnimationFrame(raf);
+		};
+	});
+
+	// Keep --header-height in sync with the rendered header so fixed-position
+	// consumers (mobile Dropdown, DimmerDial) track it through the compact
+	// transition, mobile menu toggling and viewport resizes.
+	$effect(() => {
+		const el = headerEl;
+		if (!el) return;
+		const ro = new ResizeObserver(() => {
+			document.documentElement.style.setProperty('--header-height', `${el.offsetHeight}px`);
+		});
+		ro.observe(el);
+		return () => ro.disconnect();
 	});
 
 	function toggleMobileMenu() {
@@ -43,7 +79,7 @@
 	}
 </script>
 
-<header bind:this={headerEl} class="header" style="background-color: var(--color-bg);">
+<header bind:this={headerEl} class="header" class:compact style="background-color: var(--color-bg);">
 	<div class="header-inner">
 		<!-- ROW A: Brand bar -->
 		<div class="brand-bar">
@@ -116,11 +152,20 @@
 		max-width: none;
 		margin: 0;
 		padding: 24px 1rem 0;
+		transition: padding var(--duration-slow) var(--ease-snap);
+	}
+
+	.header.compact .header-inner {
+		padding: 6px 1rem 0;
 	}
 
 	@media (min-width: 768px) {
 		.header-inner {
 			padding: 32px 2rem 0;
+		}
+
+		.header.compact .header-inner {
+			padding: 8px 2rem 0;
 		}
 	}
 
@@ -130,6 +175,11 @@
 		align-items: center;
 		min-height: 180px;
 		gap: 0.5rem;
+		transition: min-height var(--duration-slow) var(--ease-snap);
+	}
+
+	.header.compact .brand-bar {
+		min-height: 56px;
 	}
 
 	.brand-side {
@@ -148,11 +198,22 @@
 		gap: 6px;
 	}
 
+	.header.compact .brand-side-right {
+		flex-direction: row;
+		justify-content: flex-end;
+		align-items: center;
+	}
+
 	@media (max-width: 320px) {
 		.brand-bar {
 			height: auto;
 			min-height: 40px;
 			flex-wrap: wrap;
+		}
+
+		/* Compact must never be taller than the expanded 40px bar here. */
+		.header.compact .brand-bar {
+			min-height: 40px;
 		}
 	}
 
@@ -171,6 +232,14 @@
 		/* Multiply blends the logo's grey background into the page beige so only
 		   the hand-drawn marks read. */
 		mix-blend-mode: multiply;
+		transition:
+			height var(--duration-slow) var(--ease-snap),
+			width var(--duration-slow) var(--ease-snap);
+	}
+
+	.header.compact .brand-logo {
+		height: 40px;
+		width: 40px;
 	}
 
 	.brand-right {
@@ -196,6 +265,12 @@
 			flex-direction: column;
 			align-items: flex-end;
 			gap: 4px;
+		}
+
+		.header.compact .nav-links {
+			flex-direction: row;
+			align-items: center;
+			gap: 1rem;
 		}
 	}
 

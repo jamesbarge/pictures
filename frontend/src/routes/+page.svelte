@@ -293,6 +293,18 @@
 		top: 32px;
 		right: 24px;
 		z-index: 60;
+		transition: opacity var(--duration-normal) var(--ease-sharp), visibility 0s linear;
+	}
+
+	/* The dial shares the header's top-right corner; when the header compacts
+	   the nav row moves up into that space, so fade the dial out. It returns
+	   when the user scrolls back to the top. */
+	:global(html[data-header-compact]) .dimmer-anchor {
+		opacity: 0;
+		visibility: hidden;
+		transition:
+			opacity var(--duration-normal) var(--ease-sharp),
+			visibility 0s linear var(--duration-normal);
 	}
 
 	@media (min-width: 768px) {

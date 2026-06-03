@@ -1,3 +1,14 @@
+## 2026-06-04: Frontend — scroll-compacting sticky header
+**PR**: #646 | **Files**: `frontend/src/lib/components/layout/Header.svelte`, `frontend/src/routes/+page.svelte`, `changelogs/2026-06-04-compact-header.md`
+- Header now compacts on scroll: 213px → 65px desktop (205 → 63 mobile). Brand bar 180 → 56px, logo 140 → 40px, nav links flip from vertical stack to horizontal row, padding tightens. Expands again at the top of the page.
+- Hysteresis thresholds (compact at scrollY > 180, expand at < 4) — the 176px gap exceeds the ~148px height delta, so browser scroll-anchoring can't oscillate the state.
+- `--header-height` measurement moved from a `mobileMenuOpen`-tracking rAF effect to a ResizeObserver — strict superset (also catches viewport resizes), keeps mobile Dropdown/DimmerDial anchored through the animation.
+- Header broadcasts `data-header-compact` on `<html>`; the homepage DimmerDial (which shares the header's top-right corner) fades out in compact mode instead of colliding with the nav row, `visibility: hidden` delayed past the fade so it leaves the a11y tree.
+- ≤320px keeps compact min-height at 40px so the header never *grows* on scroll at tiny viewports.
+- Why: the sticky header pinned ~213px of chrome to every scroll position — a third of a phone screen — for a logo and five links.
+
+---
+
 ## 2026-06-01: Frontend — Spline redesign polish + responsive fixes
 **PR**: #646 | **Files**: `frontend/src/routes/+page.svelte`, `frontend/src/routes/film/[id]/+page.svelte`, `frontend/src/routes/watchlist/+page.svelte`, `frontend/src/lib/components/calendar/FigmaFilmCard.svelte`, `frontend/src/lib/components/filters/FigmaToolbar.svelte`, `frontend/src/lib/components/layout/Header.svelte`, `frontend/src/lib/components/reachable/ReachableResults.svelte`, `changelogs/2026-06-01-spline-iteration.md`
 - **Film detail Showings**: WHERE/WHEN head row (left-aligned, page-bg band), dark date dividers in new "Show all" toggle, whole-row clickable screenings with unified cream hover, cinema column lightened to `--color-bg-subtle`, popover now styled with surface/border/brutalist shadow to match toolbar, last-row bottom corners rounded to match the panel.
