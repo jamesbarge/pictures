@@ -48,15 +48,23 @@
 	}
 
 	let mobileMenuOpen = $state(false);
-	let headerEl = $state<HTMLElement>();
-	let compact = $state(false);
+	let mastheadEl = $state<HTMLElement>();
+	let barEl = $state<HTMLElement>();
 
-	// Compact the header once the user scrolls into the page; expand again only
-	// near the very top. The thresholds are deliberately far apart (hysteresis):
-	// compacting shrinks the document by ~150px, and browser scroll anchoring
-	// can pull scrollY down by that amount — a single threshold would oscillate.
-	const COMPACT_AT = 180;
-	const EXPAND_AT = 4;
+	// SPLIT HEADER — compaction IS scrolling.
+	//
+	// The header is two pieces: an in-flow masthead (big logo + vertical nav)
+	// that scrolls away like any other content, and a fixed compact bar that
+	// is transparent and inert until the masthead has scrolled past it, then
+	// fades in. Nothing animates layout: per scrolled frame the browser only
+	// composites already-painted layers, exactly as it would for plain
+	// scrolling — the smoothest a shrinking header can physically be.
+	//
+	// Because the masthead never resizes and the bar occupies no flow space,
+	// the document height is constant; the scroll-anchoring oscillation that
+	// previously forced wide hysteresis thresholds cannot occur, so `stuck`
+	// is a single IntersectionObserver crossing — no scroll listener, no rAF.
+	let stuck = $state(false);
 
 	// Close mobile menu on route change
 	$effect(() => {
@@ -66,43 +74,44 @@
 
 	// Broadcast compact state on <html> (same pattern as --header-height) so
 	// fixed-position overlays that share the header's space — the homepage
-	// DimmerDial anchor — can fade out instead of colliding with the nav row.
+	// DimmerDial anchor — can fade out instead of colliding with the bar.
 	$effect(() => {
-		document.documentElement.toggleAttribute('data-header-compact', compact);
+		document.documentElement.toggleAttribute('data-header-compact', stuck);
 	});
 
+	// stuck = the masthead has scrolled above the bar's bottom edge. The
+	// observer fires once per crossing (and once on observe, which makes
+	// mid-page hard loads and BFCache restores correct for free).
 	$effect(() => {
-		let raf = 0;
-		const onScroll = () => {
-			if (raf) return;
-			raf = requestAnimationFrame(() => {
-				// Keep the `compact` read inside this async callback — reading it
-				// synchronously in the effect body would register it as a dependency
-				// and re-add the scroll listener on every toggle.
-				raf = 0;
-				const y = window.scrollY;
-				if (!compact && y > COMPACT_AT) compact = true;
-				else if (compact && y < EXPAND_AT) compact = false;
-			});
-		};
-		onScroll(); // pick up an already-scrolled position (e.g. bfcache restore)
-		window.addEventListener('scroll', onScroll, { passive: true });
-		return () => {
-			window.removeEventListener('scroll', onScroll);
-			if (raf) cancelAnimationFrame(raf);
-		};
+		const mh = mastheadEl;
+		const bar = barEl;
+		if (!mh || !bar) return;
+		const io = new IntersectionObserver(
+			([entry]) => {
+				stuck = !entry.isIntersecting;
+			},
+			{ rootMargin: `-${bar.offsetHeight}px 0px 0px 0px`, threshold: 0 }
+		);
+		io.observe(mh);
+		return () => io.disconnect();
 	});
 
-	// Keep --header-height in sync with the rendered header so fixed-position
-	// consumers (mobile Dropdown, DimmerDial) track it through the compact
-	// transition, mobile menu toggling and viewport resizes.
+	// --header-height drives fixed-position consumers (mobile Dropdown panels,
+	// DimmerDial vignette, the burger menu panel below): the masthead's height
+	// at rest, the bar's constant height once stuck.
 	$effect(() => {
-		const el = headerEl;
-		if (!el) return;
-		const ro = new ResizeObserver(() => {
-			document.documentElement.style.setProperty('--header-height', `${el.offsetHeight}px`);
-		});
-		ro.observe(el);
+		const mh = mastheadEl;
+		const bar = barEl;
+		if (!mh || !bar) return;
+		const isStuck = stuck;
+		const set = () => {
+			const h = isStuck ? bar.offsetHeight : mh.offsetHeight;
+			document.documentElement.style.setProperty('--header-height', `${h}px`);
+		};
+		set();
+		const ro = new ResizeObserver(set);
+		ro.observe(mh);
+		ro.observe(bar);
 		return () => ro.disconnect();
 	});
 
@@ -111,96 +120,119 @@
 	}
 </script>
 
-<header bind:this={headerEl} class="header" class:compact style="background-color: var(--color-bg);">
-	<div class="header-inner">
-		<!-- ROW A: Brand bar -->
-		<div class="brand-bar">
-			<div class="brand-side brand-side-left"></div>
+{#snippet burger()}
+	<button
+		class="mobile-menu-btn"
+		onclick={toggleMobileMenu}
+		aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+		aria-expanded={mobileMenuOpen}
+	>
+		{#if mobileMenuOpen}
+			<svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+				<path d="M4 4L14 14M14 4L4 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"/>
+			</svg>
+		{:else}
+			<svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+				<line x1="2" y1="4" x2="14" y2="4" stroke="currentColor" stroke-width="1.4" stroke-linecap="square"/>
+				<line x1="2" y1="8" x2="14" y2="8" stroke="currentColor" stroke-width="1.4" stroke-linecap="square"/>
+				<line x1="2" y1="12" x2="14" y2="12" stroke="currentColor" stroke-width="1.4" stroke-linecap="square"/>
+			</svg>
+		{/if}
+	</button>
+{/snippet}
 
-			<a href="/" class="brand-link" aria-label="pictures london — home">
-				<img src="/pictures-logo.png" alt="pictures" class="brand-logo" width="80" height="42" />
-			</a>
+<header class="header" class:stuck>
+	<!-- In-flow masthead: scrolls away naturally. Once stuck it goes inert and
+		hands its accessible labels (Main nav, home link) to the bar, so every
+		selector — role, attribute or class — resolves to exactly one element
+		at any scroll position. -->
+	<div class="masthead" bind:this={mastheadEl} inert={stuck} aria-hidden={stuck} style="background-color: var(--color-bg);">
+		<div class="masthead-inner">
+			<div class="brand-bar">
+				<div class="brand-side brand-side-left"></div>
 
-			<div class="brand-side brand-side-right">
-				<nav class="nav-links" aria-label="Main">
-					{#each DESKTOP_NAV as item (item.href)}
-						<a
-							href={item.href}
-							class="nav-link"
-							class:watchlist-link={item.italic}
-							aria-current={isActive(item.href, item.matchPrefix) ? 'page' : undefined}
-						>{item.label}</a>
-					{/each}
-				</nav>
+				<a href="/" class="brand-link" aria-label={stuck ? undefined : 'pictures london — home'}>
+					<img src="/pictures-logo.png" alt="pictures" class="brand-logo" width="140" height="140" />
+				</a>
 
-				<button
-					class="mobile-menu-btn"
-					onclick={toggleMobileMenu}
-					aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
-					aria-expanded={mobileMenuOpen}
-				>
-					{#if mobileMenuOpen}
-						<svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
-							<path d="M4 4L14 14M14 4L4 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"/>
-						</svg>
-					{:else}
-						<svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-							<line x1="2" y1="4" x2="14" y2="4" stroke="currentColor" stroke-width="1.4" stroke-linecap="square"/>
-							<line x1="2" y1="8" x2="14" y2="8" stroke="currentColor" stroke-width="1.4" stroke-linecap="square"/>
-							<line x1="2" y1="12" x2="14" y2="12" stroke="currentColor" stroke-width="1.4" stroke-linecap="square"/>
-						</svg>
+				<div class="brand-side brand-side-right">
+					<nav class="nav-links" aria-label={stuck ? undefined : 'Main'}>
+						{#each DESKTOP_NAV as item (item.href)}
+							<a
+								href={item.href}
+								class="nav-link"
+								class:watchlist-link={item.italic}
+								aria-current={isActive(item.href, item.matchPrefix) ? 'page' : undefined}
+							>{item.label}</a>
+						{/each}
+					</nav>
+
+					{#if !stuck}
+						{@render burger()}
 					{/if}
-				</button>
+				</div>
 			</div>
 		</div>
+		<div class="header-border"></div>
+	</div>
 
-		<!-- Filter bar is owned by the homepage (sidebar on desktop, bottom sheet
-			on mobile) and not rendered in the header anymore. Other routes render
-			their own filters when needed. -->
+	<!-- Fixed compact bar: occupies no flow space, transparent until the
+		masthead scrolls past, then crossfades in (opacity only). Its contents
+		only exist while stuck — the masthead's copies own the page until then. -->
+	<div class="bar" bind:this={barEl}>
+		{#if stuck}
+			<div class="bar-grid">
+				<div class="bar-side"></div>
 
+				<a href="/" class="bar-brand-link" aria-label="pictures london — home">
+					<img src="/pictures-logo.png" alt="pictures" class="bar-logo" width="40" height="40" />
+				</a>
 
-		<!-- Mobile nav menu -->
-		{#if mobileMenuOpen}
-			<nav class="mobile-nav" aria-label="Mobile navigation">
-				{#each MOBILE_NAV as item (item.href)}
-					<a
-						href={item.href}
-						class="mobile-nav-link"
-						aria-current={isActive(item.href, item.matchPrefix) ? 'page' : undefined}
-					>{item.label.toUpperCase()}</a>
-				{/each}
-			</nav>
+				<div class="bar-side bar-side-right">
+					<nav class="bar-nav" aria-label="Main">
+						{#each DESKTOP_NAV as item (item.href)}
+							<a
+								href={item.href}
+								class="nav-link"
+								class:watchlist-link={item.italic}
+								aria-current={isActive(item.href, item.matchPrefix) ? 'page' : undefined}
+							>{item.label}</a>
+						{/each}
+					</nav>
+
+					{@render burger()}
+				</div>
+			</div>
 		{/if}
 	</div>
 
-	<div class="header-border"></div>
+	<!-- Mobile nav menu: fixed panel anchored below whichever chrome is
+		current (masthead at rest, bar when stuck) via --header-height. -->
+	{#if mobileMenuOpen}
+		<nav class="mobile-nav" aria-label="Mobile navigation">
+			{#each MOBILE_NAV as item (item.href)}
+				<a
+					href={item.href}
+					class="mobile-nav-link"
+					aria-current={isActive(item.href, item.matchPrefix) ? 'page' : undefined}
+				>{item.label.toUpperCase()}</a>
+			{/each}
+		</nav>
+	{/if}
 </header>
 
 <style>
-	.header {
-		position: sticky;
-		top: 0;
-		z-index: 40;
-	}
+	/* ── Masthead (in-flow, scrolls away) ── */
 
-	.header-inner {
+	.masthead-inner {
 		max-width: none;
 		margin: 0;
 		padding: 24px 1rem 0;
-		transition: padding var(--duration-slow) var(--ease-snap);
-	}
-
-	.header.compact .header-inner {
-		padding: 6px 1rem 0;
 	}
 
 	@media (min-width: 768px) {
-		.header-inner {
+		.masthead-inner {
 			padding: 32px 2rem 0;
-		}
-
-		.header.compact .header-inner {
-			padding: 8px 2rem 0;
 		}
 	}
 
@@ -210,11 +242,6 @@
 		align-items: center;
 		min-height: 180px;
 		gap: 0.5rem;
-		transition: min-height var(--duration-slow) var(--ease-snap);
-	}
-
-	.header.compact .brand-bar {
-		min-height: 56px;
 	}
 
 	.brand-side {
@@ -233,22 +260,11 @@
 		gap: 6px;
 	}
 
-	.header.compact .brand-side-right {
-		flex-direction: row;
-		justify-content: flex-end;
-		align-items: center;
-	}
-
 	@media (max-width: 320px) {
 		.brand-bar {
 			height: auto;
 			min-height: 40px;
 			flex-wrap: wrap;
-		}
-
-		/* Compact must never be taller than the expanded 40px bar here. */
-		.header.compact .brand-bar {
-			min-height: 40px;
 		}
 	}
 
@@ -265,29 +281,9 @@
 		object-fit: cover;
 		object-position: center 35%;
 		/* Multiply blends the logo's grey background into the page beige so only
-		   the hand-drawn marks read. */
+		   the hand-drawn marks read. Never transform-scale this image — both
+		   header logos render at native size so the blend stays honest. */
 		mix-blend-mode: multiply;
-		transition:
-			height var(--duration-slow) var(--ease-snap),
-			width var(--duration-slow) var(--ease-snap);
-	}
-
-	.header.compact .brand-logo {
-		height: 40px;
-		width: 40px;
-	}
-
-	.brand-right {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		flex-shrink: 0;
-	}
-
-	@media (min-width: 768px) {
-		.brand-right {
-			gap: 1rem;
-		}
 	}
 
 	.nav-links {
@@ -300,12 +296,6 @@
 			flex-direction: column;
 			align-items: flex-end;
 			gap: 4px;
-		}
-
-		.header.compact .nav-links {
-			flex-direction: row;
-			align-items: center;
-			gap: 1rem;
 		}
 	}
 
@@ -330,6 +320,87 @@
 		font-style: italic;
 		font-size: 13px;
 	}
+
+	.header-border {
+		height: 1px;
+		background: var(--color-border);
+	}
+
+	/* ── Compact bar (fixed, no flow space) ── */
+
+	.bar {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		z-index: 40;
+		height: 56px;
+		background-color: var(--color-bg);
+		border-bottom: 1px solid var(--color-border);
+		opacity: 0;
+		/* inert blocks interaction while hidden; pointer-events is belt and
+		   braces for the pre-hydration SSR frame. */
+		pointer-events: none;
+		transition: opacity var(--duration-normal) var(--ease-sharp);
+	}
+
+	.header.stuck .bar {
+		opacity: 1;
+		pointer-events: auto;
+	}
+
+	.bar-grid {
+		display: grid;
+		grid-template-columns: 1fr auto 1fr;
+		align-items: center;
+		height: 100%;
+		padding: 0 1rem;
+		gap: 0.5rem;
+	}
+
+	@media (min-width: 768px) {
+		.bar-grid {
+			padding: 0 2rem;
+		}
+	}
+
+	.bar-side {
+		display: flex;
+		align-items: center;
+	}
+
+	.bar-side-right {
+		justify-content: flex-end;
+	}
+
+	.bar-brand-link {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.bar-logo {
+		display: block;
+		height: 40px;
+		width: 40px;
+		object-fit: cover;
+		object-position: center 35%;
+		mix-blend-mode: multiply;
+	}
+
+	.bar-nav {
+		display: none;
+	}
+
+	@media (min-width: 768px) {
+		.bar-nav {
+			display: flex;
+			align-items: center;
+			gap: 1rem;
+		}
+	}
+
+	/* ── Burger (masthead copy at rest, bar copy when stuck) ── */
 
 	.mobile-menu-btn {
 		display: flex;
@@ -356,11 +427,20 @@
 		}
 	}
 
+	/* ── Mobile nav panel ── */
+
 	.mobile-nav {
+		position: fixed;
+		top: var(--header-height, 56px);
+		left: 0;
+		right: 0;
+		z-index: 40;
 		display: flex;
 		flex-direction: column;
+		background: var(--color-bg);
 		border-top: 1px solid var(--color-border-subtle);
-		padding: 0.5rem 0;
+		border-bottom: 1px solid var(--color-border);
+		padding: 0.5rem 1rem;
 	}
 
 	@media (min-width: 768px) {
@@ -389,10 +469,5 @@
 	.mobile-nav-link[aria-current='page'] {
 		color: var(--color-text);
 		font-weight: 600;
-	}
-
-	.header-border {
-		height: 1px;
-		background: var(--color-border);
 	}
 </style>

@@ -1,3 +1,13 @@
+## 2026-06-04: Split header — compaction is now literally just scrolling (zero animation)
+**PR**: #646 | **Files**: `frontend/src/lib/components/layout/Header.svelte`, `frontend/src/lib/components/ui/Dropdown.svelte`, `changelogs/2026-06-04-split-header-smooth.md`
+- Rearchitected after a 10-agent research + 3-proposal judge panel: the sticky shrinking header is replaced by an **in-flow masthead** (big logo + vertical nav) that scrolls away naturally plus a **fixed always-compact bar** that crossfades in (opacity-only) once the masthead passes it. Nothing animates layout — per frame the browser does exactly what plain scrolling does.
+- Measured under 4× CPU throttle (50 wheel steps crossing the boundary twice): layout passes **26 → 3-5**, style recalc **216ms → 27-30ms**, dropped frames (>33.4ms) **3 → 0**, worst frame **35.2ms → 17.7ms**.
+- Document height is now constant in all states → the scroll-anchoring oscillation is structurally impossible → the hysteresis thresholds + rAF scroll listener are deleted; one IntersectionObserver fires once per crossing.
+- Exactly one `nav[aria-label="Main"]`, one home link and one burger exist at any scroll position (bar contents render only while stuck; masthead hands over labels and goes inert) — E2E selector contract preserved, 7/7 header specs pass.
+- `--header-height` = masthead height at rest, constant 56px when stuck (Dropdown fallback bumped 49→56px); `data-header-compact` boolean unchanged for the house-lights fade.
+
+---
+
 ## 2026-06-04: QA sweep fixes — consent-banner tap theft, mobile popover overflow, year-less meta
 **PR**: #646 | **Files**: `frontend/src/lib/components/ui/CookieConsentBanner.svelte`, `frontend/src/routes/film/[id]/+page.svelte`, `changelogs/2026-06-04-qa-sweep-fixes.md`
 - Three pre-existing defects surfaced by the 12-agent post-merge QA sweep (none were regressions; all verified by reproduction + git forensics):

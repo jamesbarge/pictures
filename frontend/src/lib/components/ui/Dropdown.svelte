@@ -110,10 +110,10 @@
 			position: fixed;
 			left: 0.5rem;
 			right: 0.5rem;
-			top: var(--header-height, 49px);
+			top: var(--header-height, 56px);
 			width: auto;
 			max-width: none;
-			max-height: calc(100dvh - var(--header-height, 49px) - 1rem);
+			max-height: calc(100dvh - var(--header-height, 56px) - 1rem);
 			overflow-y: auto;
 		}
 	}
