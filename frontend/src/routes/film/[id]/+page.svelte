@@ -180,9 +180,9 @@
 
 <svelte:head>
 	<title>{film.title} — pictures · london</title>
-	<meta name="description" content="{film.title} ({film.year}) — {futureScreenings.length} screenings in London" />
+	<meta name="description" content="{film.title}{film.year ? ` (${film.year})` : ''} — {futureScreenings.length} screenings in London" />
 	<meta property="og:title" content="{film.title} — pictures · london" />
-	<meta property="og:description" content="{film.title} ({film.year}){film.directors?.length ? ` directed by ${film.directors[0]}` : ''} — {futureScreenings.length} screenings in London" />
+	<meta property="og:description" content="{film.title}{film.year ? ` (${film.year})` : ''}{film.directors?.length ? ` directed by ${film.directors[0]}` : ''} — {futureScreenings.length} screenings in London" />
 	<meta property="og:type" content="video.movie" />
 	{#if film.posterUrl}<meta property="og:image" content={film.posterUrl} />{/if}
 	<meta name="twitter:card" content="summary_large_image" />
@@ -799,7 +799,17 @@
 	}
 
 	@media (max-width: 767px) {
-		.popover { right: auto; left: 0; }
+		/* Anchored positioning can't fit the 362px calendar on small screens —
+		   the offset parent (.picker-wrap) floats mid-row, so either edge
+		   overflows the viewport. Centre it as a fixed overlay instead. */
+		.popover {
+			position: fixed;
+			top: 50%;
+			left: 50%;
+			right: auto;
+			transform: translate(-50%, -50%);
+			max-width: calc(100vw - 16px);
+		}
 	}
 
 	.empty {

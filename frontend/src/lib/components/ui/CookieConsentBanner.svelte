@@ -25,7 +25,10 @@
 		bottom: 0;
 		left: 0;
 		right: 0;
-		z-index: 9999;
+		/* Above page chrome (header 40, dimmer 60) but BELOW modal layers
+		   (MobileFilterSheet 80, palette 90+) — at 9999 the banner sat over
+		   the filter sheet's footer and stole taps from its primary CTA. */
+		z-index: 70;
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
@@ -33,6 +36,19 @@
 		padding: 0.75rem 1.5rem;
 		background: var(--color-surface);
 		border-top: 2px solid var(--color-border);
+	}
+
+	/* Stack on small screens — the row layout's min-content (text + two
+	   buttons) is wider than the viewport and forced horizontal overflow. */
+	@media (max-width: 600px) {
+		.consent-banner {
+			flex-direction: column;
+			align-items: stretch;
+		}
+
+		.consent-btn {
+			flex: 1;
+		}
 	}
 
 	.consent-text {

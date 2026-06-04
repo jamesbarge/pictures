@@ -1,3 +1,13 @@
+## 2026-06-04: QA sweep fixes — consent-banner tap theft, mobile popover overflow, year-less meta
+**PR**: #646 | **Files**: `frontend/src/lib/components/ui/CookieConsentBanner.svelte`, `frontend/src/routes/film/[id]/+page.svelte`, `changelogs/2026-06-04-qa-sweep-fixes.md`
+- Three pre-existing defects surfaced by the 12-agent post-merge QA sweep (none were regressions; all verified by reproduction + git forensics):
+- **Consent banner z-index 9999 → 70**: it sat above the MobileFilterSheet (z-80) and stole first-visit taps on the "Show N films" CTA — dead primary button until consent given. Now above page chrome (header 40, dimmer 60) but below modal layers. Also stacks vertically ≤600px (row min-content was 543px wide at 390px viewport).
+- **Mobile calendar popover**: anchored absolute positioning couldn't fit the 362px calendar at 390px (11px horizontal scroll); now a viewport-centred fixed overlay under 768px.
+- **SEO metas on 266 year-less films** rendered "Title ()" — year interpolation now guarded.
+- QA verdicts: Letterboxd reveal ✓, default rating sort ✓, all 14 routes clean console/network ✓, dimmer restore-on-reload ✓, E2E suite 93 passed / 0 failed.
+
+---
+
 ## 2026-06-04: Fix card-grid resize ratchet (stuck at 1-per-row after mobile round-trip)
 **PR**: #646 | **Files**: `frontend/src/routes/+page.svelte`
 - `fitToFirstRow` pinned each day section's width in px, then its ResizeObserver watched the *same pinned box* — which can shrink (parent squeeze) but never grow, so wide → mobile → wide left every day stuck at one card per row.
