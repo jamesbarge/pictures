@@ -31,26 +31,28 @@
 	.checkbox-row {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
-		padding: 0.375rem 0.75rem;
-		min-height: 2.75rem;
+		gap: 0.625rem;
+		padding: 0.5rem 0.75rem;
+		min-height: 2.5rem;
 		cursor: pointer;
+		font-family: var(--font-sans);
 		transition: background-color var(--duration-fast) var(--ease-sharp);
 	}
 
 	.checkbox-row:hover {
-		background: var(--color-bg-subtle);
+		background: var(--color-cream);
 	}
 
 	.checkbox-box {
 		width: 16px;
 		height: 16px;
 		border: 1px solid var(--color-border);
+		border-radius: 2px;
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		flex-shrink: 0;
-		color: var(--color-surface);
+		color: var(--color-cream);
 	}
 
 	.checkbox-box.checked {
@@ -59,7 +61,10 @@
 	}
 
 	.checkbox-label {
-		font-size: var(--font-size-sm);
+		font-family: var(--font-sans);
+		font-size: 13px;
+		font-weight: 500;
+		letter-spacing: 0.02em;
 		color: var(--color-text);
 	}
 </style>

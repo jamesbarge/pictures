@@ -8,33 +8,43 @@
 		<link rel="dns-prefetch" href="https://image.tmdb.org" />
 		<link rel="preconnect" href="https://clerk.pictures.london" crossorigin />
 		<link rel="dns-prefetch" href="https://clerk.pictures.london" />
-		<link rel="preload" href="/fonts/Cormorant-Italic.woff2" as="font" type="font/woff2" crossorigin />
-		<link rel="preload" href="/fonts/Fraunces.woff2" as="font" type="font/woff2" crossorigin />
-		<link rel="preload" href="/fonts/IBMPlexMono.woff2" as="font" type="font/woff2" crossorigin />
+		<!-- Spline Sans is the redesign's sole above-the-fold face (latin subset
+		     covers first paint; latin-ext loads on demand via unicode-range). -->
+		<link rel="preload" href="/fonts/SplineSans.woff2" as="font" type="font/woff2" crossorigin />
 		<script>
-			// Prevent flash of wrong theme — apply dimmer value before first paint
+			// Prevent flash of un-dimmed content — apply the saved house-lights
+			// value before first paint. Injects a <main>-scoped stylesheet (the
+			// header deliberately stays light, and <main> doesn't exist yet when
+			// this runs). DimmerDial removes #dimmer-boot-style on mount and
+			// takes over with inline styles. The palette table mirrors L/D in
+			// lib/components/ui/DimmerDial.svelte — keep the two in sync.
 			(function() {
 				try {
 					var t = parseFloat(localStorage.getItem('pictures-dimmer') || '0');
 					if (t > 0.01) {
-						var r = document.documentElement.style;
-						function lerp(a, b) { return Math.round(a + (b - a) * t); }
-						function warmLerp(lr, lg, lb, dr, dg, db, w) {
-							var s = Math.sin(t * Math.PI) * w;
-							return 'rgb(' + Math.min(255, lerp(lr, dr) + s * 50) + ',' + Math.min(255, lerp(lg, dg) + s * 15) + ',' + Math.max(0, lerp(lb, db) - s * 55) + ')';
+						function c(l, d) {
+							return 'rgb(' + Math.round(l[0] + (d[0] - l[0]) * t) + ',' + Math.round(l[1] + (d[1] - l[1]) * t) + ',' + Math.round(l[2] + (d[2] - l[2]) * t) + ')';
 						}
-						function c(lr, lg, lb, dr, dg, db) { return 'rgb(' + lerp(lr, dr) + ',' + lerp(lg, dg) + ',' + lerp(lb, db) + ')'; }
-						r.setProperty('--color-bg', warmLerp(245,242,235, 14,12,10, 1.2));
-						r.setProperty('--color-bg-subtle', warmLerp(236,232,223, 24,21,18, 1));
-						r.setProperty('--color-surface', warmLerp(255,255,255, 30,27,24, 0.8));
-						r.setProperty('--color-text', c(10,10,10, 240,235,220));
-						r.setProperty('--color-text-secondary', c(58,58,58, 185,175,160));
-						r.setProperty('--color-text-tertiary', c(106,106,106, 115,108,98));
-						r.setProperty('--color-border', c(10,10,10, 240,235,220));
-						r.setProperty('--color-border-subtle', c(208,204,196, 50,44,38));
-						r.setProperty('--color-accent', c(230,57,70, 255,85,70));
-						r.setProperty('--color-screening-bg', c(10,10,10, 240,235,220));
-						r.setProperty('--color-screening-text', c(245,242,235, 14,12,10));
+						var P = [
+							['--color-bg', [239,233,220], [14,12,10]],
+							['--color-bg-subtle', [229,223,208], [24,21,18]],
+							['--color-surface', [255,255,255], [30,27,24]],
+							['--color-text', [31,31,31], [240,235,220]],
+							['--color-text-secondary', [42,42,42], [185,175,160]],
+							['--color-text-tertiary', [90,90,90], [115,108,98]],
+							['--color-border', [31,31,31], [240,235,220]],
+							['--color-border-subtle', [202,197,186], [50,44,38]],
+							['--color-accent', [31,31,31], [240,235,220]],
+							['--color-screening-bg', [31,31,31], [240,235,220]],
+							['--color-screening-text', [234,229,194], [14,12,10]]
+						];
+						var css = 'main{';
+						for (var i = 0; i < P.length; i++) css += P[i][0] + ':' + c(P[i][1], P[i][2]) + ';';
+						css += '}';
+						var s = document.createElement('style');
+						s.id = 'dimmer-boot-style';
+						s.textContent = css;
+						document.head.appendChild(s);
 					}
 				} catch(e) {}
 			})();

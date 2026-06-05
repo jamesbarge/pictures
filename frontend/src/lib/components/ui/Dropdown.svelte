@@ -81,14 +81,15 @@
 		top: 100%;
 		left: 0;
 		z-index: 50;
-		margin-top: 4px;
+		margin-top: 6px;
 		min-width: 200px;
 		max-width: calc(100vw - 1rem);
 		max-height: 520px;
 		overflow-y: auto;
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		box-shadow: none;
+		background: var(--color-surface, #ffffff);
+		border: 1px solid var(--color-border, #1f1f1f);
+		border-radius: 4px;
+		box-shadow: var(--shadow-brutalist, 4px 4px 0 0 #1f1f1f);
 	}
 
 	/* Panel is programmatically focused when opened so keyboard users land
@@ -109,10 +110,10 @@
 			position: fixed;
 			left: 0.5rem;
 			right: 0.5rem;
-			top: var(--header-height, 49px);
+			top: var(--header-height, 56px);
 			width: auto;
 			max-width: none;
-			max-height: calc(100dvh - var(--header-height, 49px) - 1rem);
+			max-height: calc(100dvh - var(--header-height, 56px) - 1rem);
 			overflow-y: auto;
 		}
 	}

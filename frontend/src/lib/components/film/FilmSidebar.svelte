@@ -90,79 +90,91 @@
 
 <style>
 	.sidebar {
-		padding-left: 0;
-	}
-
-	@media (min-width: 1024px) {
-		.sidebar {
-			border-left: 1px solid var(--color-border-subtle);
-			padding-left: 32px;
-		}
+		display: flex;
+		flex-direction: column;
+		gap: 20px;
 	}
 
 	.credits-section, .status-section, .tagline-section {
-		padding-bottom: 20px;
-		border-bottom: 1px solid var(--color-border-subtle);
-		margin-bottom: 18px;
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-lg);
+		overflow: hidden;
+		background: var(--color-surface);
 	}
 
 	.credits-title {
-		margin: 0 0 10px;
-		font-family: var(--font-serif);
-		font-size: 14px;
-		font-weight: 500;
-		letter-spacing: -0.005em;
-		color: var(--color-text);
-	}
-	.credit-row {
-		padding: 5px 0;
-		display: flex;
-		gap: 8px;
-		align-items: baseline;
+		margin: 0;
+		padding: 8px 14px;
+		font-family: var(--font-sans);
+		font-size: 13px;
+		font-weight: 700;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: #eae5c2;
+		background: #1f1f1f;
 	}
 
+	.credit-row {
+		padding: 8px 14px;
+		display: flex;
+		gap: 12px;
+		align-items: baseline;
+		border-top: 1px solid var(--color-border);
+	}
+
+	.credit-row:first-of-type { border-top: none; }
+
 	.credit-key {
-		font-family: var(--font-mono-plex);
+		font-family: var(--font-sans);
 		font-size: 10px;
+		font-weight: 700;
 		color: var(--color-text-tertiary);
-		letter-spacing: 0.12em;
+		letter-spacing: 0.1em;
 		text-transform: uppercase;
-		min-width: 90px;
-		padding-top: 3px;
+		min-width: 80px;
+		padding-top: 2px;
 	}
 
 	.credit-val {
 		flex: 1;
-		font-family: var(--font-serif-italic);
-		font-style: italic;
+		font-family: var(--font-sans);
 		font-size: 13px;
-		color: var(--color-text-secondary);
-		line-height: 1.3;
+		font-weight: 500;
+		color: var(--color-text);
+		line-height: 1.35;
+		letter-spacing: -0.005em;
+	}
+
+	.tagline-section {
+		padding: 14px;
 	}
 
 	.tagline {
 		margin: 0;
-		font-family: var(--font-serif-italic);
-		font-style: italic;
-		font-size: 16px;
-		color: var(--color-text-secondary);
-		line-height: 1.35;
+		font-family: var(--font-sans);
+		font-size: 14px;
+		font-weight: 500;
+		color: var(--color-text);
+		line-height: 1.4;
+		text-transform: uppercase;
+		letter-spacing: 0.02em;
 	}
 
 	.status-row {
 		display: flex;
-		border: 1px solid var(--color-border);
+		border-top: 1px solid var(--color-border);
 	}
 
 	.status-btn {
 		flex: 1;
-		padding: 8px 10px;
-		font-family: var(--font-serif);
-		font-size: 12.5px;
-		font-weight: 400;
-		letter-spacing: -0.005em;
-		color: var(--color-text-secondary);
-		background: transparent;
+		padding: 12px 10px;
+		font-family: var(--font-sans);
+		font-size: 11px;
+		font-weight: 700;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--color-text);
+		background: var(--color-surface);
 		border: none;
 		border-right: 1px solid var(--color-border);
 		cursor: pointer;
@@ -172,14 +184,10 @@
 
 	.status-btn:last-child { border-right: none; }
 
-	.status-btn:hover {
-		background: var(--color-bg-subtle);
-		color: var(--color-text);
-	}
+	.status-btn:hover { background: var(--color-cream); }
 
 	.status-btn.active {
 		background: var(--color-text);
-		color: var(--color-bg);
-		font-weight: 500;
+		color: var(--color-cream);
 	}
 </style>

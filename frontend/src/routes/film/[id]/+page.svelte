@@ -14,7 +14,7 @@
 		filmByline,
 		formatScreeningFormat
 	} from '$lib/utils';
-	import { trackFilmView, trackBookingClick, trackFilmStatusChange, trackCalendarExport } from '$lib/analytics/posthog';
+	import { trackFilmView, trackBookingClick, trackFilmStatusChange } from '$lib/analytics/posthog';
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import type { FilmStatus } from '$lib/types';
@@ -110,8 +110,11 @@
 
 	let selectedDay = $state<string | null>(null);
 	let datePickerOpen = $state(false);
+	let showAll = $state(false);
 
-	const activeDay = $derived(selectedDay ?? (groupedByDate[0]?.[0] ?? null));
+	const activeDay = $derived(
+		showAll ? null : (selectedDay ?? (groupedByDate[0]?.[0] ?? null))
+	);
 
 	// If the user picked a date outside the strip, look it up in the grouped
 	// screenings; if there are none, render an empty state with the date label.
@@ -121,15 +124,26 @@
 
 	function pickDate(iso: string) {
 		selectedDay = iso;
+		showAll = false;
 		datePickerOpen = false;
 	}
 
-	// Group the active day's screenings by cinema
-	const screeningsByCinema = $derived.by(() => {
-		const byCinema = groupBy(activeDayScreenings, (s) => s.cinema?.name ?? 'Unknown');
-		return Object.entries(byCinema);
-	});
+	function pickStripDay(date: string) {
+		selectedDay = date;
+		showAll = false;
+	}
 
+	function fullDayLabel(date: string) {
+		if (date === todayStr) return 'Today';
+		return new Intl.DateTimeFormat('en-GB', {
+			weekday: 'long',
+			day: 'numeric',
+			month: 'long',
+			timeZone: 'Europe/London'
+		}).format(new Date(date + 'T12:00:00Z'));
+	}
+
+	// Group the active day's screenings by cinema
 	const posterImage = $derived(
 		getPosterImageAttributes(film.posterUrl, {
 			baseSize: 'w500',
@@ -161,9 +175,9 @@
 
 <svelte:head>
 	<title>{film.title} — pictures · london</title>
-	<meta name="description" content="{film.title} ({film.year}) — {futureScreenings.length} screenings in London" />
+	<meta name="description" content="{film.title}{film.year ? ` (${film.year})` : ''} — {futureScreenings.length} screenings in London" />
 	<meta property="og:title" content="{film.title} — pictures · london" />
-	<meta property="og:description" content="{film.title} ({film.year}){film.directors?.length ? ` directed by ${film.directors[0]}` : ''} — {futureScreenings.length} screenings in London" />
+	<meta property="og:description" content="{film.title}{film.year ? ` (${film.year})` : ''}{film.directors?.length ? ` directed by ${film.directors[0]}` : ''} — {futureScreenings.length} screenings in London" />
 	<meta property="og:type" content="video.movie" />
 	{#if film.posterUrl}<meta property="og:image" content={film.posterUrl} />{/if}
 	<meta name="twitter:card" content="summary_large_image" />
@@ -243,15 +257,25 @@
 					Book next showing <span class="cta-detail">{formatTime(nextScreening.datetime)}, {nextScreening.cinema?.shortName ?? nextScreening.cinema?.name}</span>
 				</a>
 			{/if}
-			<button
-				type="button"
-				class="cta secondary"
-				class:active={currentStatus === 'want_to_see'}
-				onclick={() => toggleStatus('want_to_see')}
-				aria-pressed={currentStatus === 'want_to_see'}
-			>
-				♡ Save
-			</button>
+			{#if currentStatus === 'want_to_see'}
+				<button
+					type="button"
+					class="cta secondary"
+					onclick={() => toggleStatus('want_to_see')}
+					aria-pressed={true}
+				>
+					♥ Remove from saved
+				</button>
+			{:else}
+				<button
+					type="button"
+					class="cta secondary"
+					onclick={() => toggleStatus('want_to_see')}
+					aria-pressed={false}
+				>
+					♡ Save
+				</button>
+			{/if}
 			{#if film.trailerUrl}
 				<a class="cta secondary" href={film.trailerUrl} target="_blank" rel="noopener noreferrer">Trailer</a>
 			{/if}
@@ -278,11 +302,19 @@
 							type="button"
 							class="strip-btn"
 							class:active={activeDay === date}
-							onclick={() => (selectedDay = date)}
+							onclick={() => pickStripDay(date)}
 						>
 							{dayLabel(date)}
 						</button>
 					{/each}
+					<button
+						type="button"
+						class="strip-btn"
+						class:active={showAll}
+						onclick={() => (showAll = !showAll)}
+					>
+						Show all
+					</button>
 				{/if}
 
 				<div class="picker-wrap">
@@ -316,78 +348,66 @@
 			</div>
 		</div>
 
+		{#snippet screeningRow(s: typeof activeDayScreenings[number])}
+			{@const cinemaName = s.cinema?.name ?? 'Unknown'}
+			<a
+				class="screening-row screening-link"
+				href={s.bookingUrl}
+				target="_blank"
+				rel="noopener noreferrer"
+				aria-label="Book {formatTime(s.datetime)} at {cinemaName}"
+				onclick={() => trackBookingClick({
+					filmId: film.id,
+					filmTitle: film.title,
+					screeningId: s.id,
+					screeningTime: s.datetime,
+					cinemaId: s.cinema?.id,
+					cinemaName: s.cinema?.name,
+					format: s.format,
+					bookingUrl: s.bookingUrl
+				}, 'film_detail')}
+			>
+				<div class="row-cinema">
+					<span class="cinema-name">{cinemaName}</span>
+					{#if s.cinema?.shortName && s.cinema.shortName !== cinemaName}
+						<span class="cinema-sub">{s.cinema.shortName}</span>
+					{/if}
+				</div>
+				<div class="row-slot">
+					<time class="slot-time" datetime={s.datetime}>{formatTime(s.datetime)}</time>
+					{#if s.format && s.format !== 'unknown'}
+						<span class="slot-format">{formatScreeningFormat(s.format)}</span>
+					{/if}
+				</div>
+			</a>
+		{/snippet}
+
 		{#if activeDayScreenings.length === 0}
 			<p class="empty">
 				{#if selectedDay}
 					No screenings on {new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/London' }).format(new Date(selectedDay + 'T12:00:00Z'))}.
-					<button type="button" class="empty-clear" onclick={() => (selectedDay = null)}>Show all upcoming</button>
+					<button type="button" class="empty-clear" onclick={() => { selectedDay = null; showAll = true; }}>Show all upcoming</button>
 				{:else}
 					No upcoming screenings.
 				{/if}
 			</p>
 		{:else}
-			{#each screeningsByCinema as [cinemaName, slots] (cinemaName)}
-				<div class="cinema-block">
-					<header class="cinema-head">
-						<div class="cinema-name-wrap">
-							<span class="cinema-name">{cinemaName}</span>
-							{#if slots[0]?.cinema?.shortName && slots[0].cinema.shortName !== cinemaName}
-								<span class="cinema-sub">{slots[0].cinema.shortName}</span>
-							{/if}
-						</div>
-					</header>
-					<div class="slots">
-						{#each slots as s (s.id)}
-							<div class="slot-wrap">
-								<a
-									class="slot"
-									href={s.bookingUrl}
-									target="_blank"
-									rel="noopener noreferrer"
-									aria-label="Book {formatTime(s.datetime)} at {cinemaName}"
-									onclick={() => trackBookingClick({
-										filmId: film.id,
-										filmTitle: film.title,
-										screeningId: s.id,
-										screeningTime: s.datetime,
-										cinemaId: s.cinema?.id,
-										cinemaName: s.cinema?.name,
-										format: s.format,
-										bookingUrl: s.bookingUrl
-									}, 'film_detail')}
-								>
-									<time class="slot-time" datetime={s.datetime}>{formatTime(s.datetime)}</time>
-									{#if s.format && s.format !== 'unknown'}
-										<span class="slot-format">{formatScreeningFormat(s.format)}</span>
-									{/if}
-								</a>
-								<a
-									href="/api/calendar?screening={s.id}"
-									download
-									class="ical-btn"
-									aria-label="Add to calendar"
-									onclick={(e) => {
-										e.stopPropagation();
-										trackCalendarExport({
-											filmId: film.id,
-											filmTitle: film.title,
-											screeningId: s.id,
-											cinemaName: s.cinema?.name
-										});
-									}}
-								>
-									<svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true">
-										<rect x="1.5" y="3" width="13" height="11" stroke="currentColor" stroke-width="1.1" fill="none"/>
-										<line x1="1.5" y1="6.5" x2="14.5" y2="6.5" stroke="currentColor" stroke-width="1.1"/>
-										<line x1="5" y1="1.5" x2="5" y2="4.5" stroke="currentColor" stroke-width="1.1"/>
-										<line x1="11" y1="1.5" x2="11" y2="4.5" stroke="currentColor" stroke-width="1.1"/>
-									</svg>
-								</a>
-							</div>
-						{/each}
-					</div>
-				</div>
-			{/each}
+			<div class="screening-row screening-head" aria-hidden="true">
+				<div class="row-cinema head-cell">Where</div>
+				<div class="row-slot head-cell">When</div>
+			</div>
+			{#if showAll}
+				{#each groupedByDate as [date, dayScreenings] (date)}
+					<div class="day-divider">{fullDayLabel(date)}</div>
+					{#each dayScreenings as s (s.id)}
+						{@render screeningRow(s)}
+					{/each}
+				{/each}
+			{:else}
+				{#each activeDayScreenings as s (s.id)}
+					{@render screeningRow(s)}
+				{/each}
+			{/if}
 		{/if}
 
 		<!-- External links -->
@@ -420,48 +440,50 @@
 {/if}
 
 <style>
+	/* ── Breadcrumb ── */
 	.breadcrumb {
-		max-width: 1400px;
+		max-width: 1340px;
 		margin: 0 auto;
-		padding: 14px 2rem;
-		border-bottom: 1px solid var(--color-border-subtle);
-		font-family: var(--font-serif-italic);
-		font-style: italic;
-		font-size: 13px;
-		color: var(--color-text-tertiary);
+		padding: 16px 16px 0;
+		font-family: var(--font-sans);
+		font-size: 12px;
+		font-weight: 500;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+		color: var(--color-text);
 	}
 
-	.breadcrumb a { color: var(--color-text-tertiary); }
-	.breadcrumb a:hover { color: var(--color-text); }
-	.breadcrumb .sep { margin: 0 8px; }
-	.breadcrumb .current {
-		color: var(--color-text-secondary);
-		font-style: normal;
-		font-family: var(--font-serif);
+	@media (min-width: 768px) {
+		.breadcrumb { padding: 20px 24px 0; }
 	}
 
+	.breadcrumb a { color: var(--color-text); text-decoration: none; }
+	.breadcrumb a:hover { color: var(--color-text); text-decoration: underline; text-underline-offset: 3px; }
+	.breadcrumb .sep { margin: 0 8px; color: var(--color-text-tertiary); }
+	.breadcrumb .current { color: var(--color-text-tertiary); }
+
+	/* ── Hero ── */
 	.hero {
-		max-width: 1400px;
+		max-width: 1340px;
 		margin: 0 auto;
-		padding: 28px 2rem 32px;
+		padding: 20px 16px 28px;
 		display: grid;
 		grid-template-columns: 1fr;
-		gap: 1.5rem;
-		border-bottom: 1px solid var(--color-border);
+		gap: 20px;
 	}
 
 	@media (min-width: 768px) {
 		.hero {
-			grid-template-columns: 280px 1fr;
-			gap: 32px;
-			padding: 40px 2rem 32px;
+			grid-template-columns: 264px 1fr;
+			gap: 28px;
+			padding: 28px 24px 36px;
 		}
 	}
 
 	@media (min-width: 1024px) {
 		.hero {
 			grid-template-columns: 320px 1fr;
-			gap: 40px;
+			gap: 36px;
 		}
 	}
 
@@ -472,12 +494,12 @@
 		aspect-ratio: 2 / 3;
 		border: 1px solid var(--color-border);
 		overflow: hidden;
-		background: var(--color-bg-subtle);
+		background: var(--color-surface);
 	}
 
 	@media (max-width: 767px) {
 		.poster-frame {
-			max-width: 280px;
+			max-width: 264px;
 			margin: 0 auto;
 		}
 	}
@@ -492,81 +514,81 @@
 	.info-col { min-width: 0; }
 
 	.eyebrow {
-		font-family: var(--font-mono-plex);
+		font-family: var(--font-sans);
 		font-size: 10px;
-		color: var(--color-text-tertiary);
-		letter-spacing: 0.2em;
+		font-weight: 700;
+		color: var(--color-text);
+		letter-spacing: 0.12em;
 		text-transform: uppercase;
-		margin-bottom: 12px;
+		margin-bottom: 14px;
 	}
 
 	.film-title {
 		margin: 0;
-		font-family: var(--font-serif);
-		font-size: 48px;
-		font-weight: 300;
-		letter-spacing: -0.035em;
-		line-height: 0.9;
+		font-family: var(--font-sans);
+		font-size: 36px;
+		font-weight: 700;
+		letter-spacing: -0.02em;
+		line-height: 0.95;
 		color: var(--color-text);
-		font-variation-settings: '"SOFT" 100', '"opsz" 144';
-	}
-
-	@media (min-width: 768px) {
-		.film-title { font-size: 72px; }
-	}
-
-	@media (min-width: 1024px) {
-		.film-title { font-size: 96px; }
-	}
-
-	.original-title {
-		font-family: var(--font-serif-italic);
-		font-style: italic;
-		font-size: 16px;
-		color: var(--color-text-tertiary);
-		margin: 8px 0 0;
-	}
-
-	.byline {
-		margin: 18px 0 0;
-		font-family: var(--font-serif-italic);
-		font-style: italic;
-		font-size: 18px;
-		color: var(--color-text-secondary);
-		font-weight: 400;
-		line-height: 1.2;
-	}
-
-	@media (min-width: 1024px) {
-		.byline { font-size: 24px; margin-top: 20px; }
-	}
-
-	.meta {
-		margin: 10px 0 0;
-		font-family: var(--font-mono-plex);
-		font-size: 10px;
-		color: var(--color-text-tertiary);
-		letter-spacing: 0.16em;
 		text-transform: uppercase;
 	}
 
+	@media (min-width: 768px) {
+		.film-title { font-size: 52px; }
+	}
+
 	@media (min-width: 1024px) {
-		.meta { font-size: 11px; }
+		.film-title { font-size: 64px; }
+	}
+
+	.original-title {
+		font-family: var(--font-sans);
+		font-size: 14px;
+		font-weight: 400;
+		color: var(--color-text-tertiary);
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		margin: 10px 0 0;
+	}
+
+	.byline {
+		margin: 16px 0 0;
+		font-family: var(--font-sans);
+		font-size: 14px;
+		font-weight: 400;
+		color: var(--color-text);
+		line-height: 1.3;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+	}
+
+	@media (min-width: 1024px) {
+		.byline { font-size: 16px; margin-top: 20px; }
+	}
+
+	.meta {
+		margin: 8px 0 0;
+		font-family: var(--font-sans);
+		font-size: 11px;
+		font-weight: 500;
+		color: var(--color-text-tertiary);
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
 	}
 
 	.synopsis {
 		margin: 20px 0 0;
-		font-family: var(--font-serif);
+		font-family: var(--font-sans);
 		font-size: 16px;
 		font-weight: 400;
-		color: var(--color-text-secondary);
-		line-height: 1.45;
-		max-width: 560px;
-		font-variation-settings: '"SOFT" 100', '"opsz" 24';
+		color: var(--color-text);
+		line-height: 1.5;
+		max-width: 600px;
 	}
 
 	@media (min-width: 1024px) {
-		.synopsis { font-size: 18px; margin-top: 24px; }
+		.synopsis { font-size: 17px; margin-top: 24px; }
 	}
 
 	.cta-row {
@@ -577,122 +599,147 @@
 	}
 
 	.cta {
-		padding: 12px 18px;
+		padding: 10px 16px;
+		min-height: 40px;
 		border: 1px solid var(--color-border);
-		font-family: var(--font-serif);
-		font-size: 14px;
-		font-weight: 500;
-		letter-spacing: -0.005em;
+		border-radius: var(--radius-sm);
+		box-shadow: var(--shadow-brutalist);
+		font-family: var(--font-sans);
+		font-size: 13px;
+		font-weight: 700;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
 		cursor: pointer;
-		font-variation-settings: '"SOFT" 100', '"opsz" 36';
 		display: inline-flex;
-		align-items: baseline;
-		gap: 6px;
-		background: transparent;
+		align-items: center;
+		gap: 8px;
+		background: var(--color-surface);
 		color: var(--color-text);
+		text-decoration: none;
+		transition: background-color var(--duration-fast) var(--ease-sharp),
+			transform var(--duration-fast) var(--ease-sharp),
+			box-shadow var(--duration-fast) var(--ease-sharp);
+	}
+
+	.cta:hover { background: var(--color-cream); }
+
+	.cta:active {
+		transform: translate(4px, 4px);
+		box-shadow: 0 0 0 0 transparent;
 	}
 
 	.cta.primary {
 		background: var(--color-text);
-		color: var(--color-bg);
+		color: var(--color-cream);
 	}
 
-	.cta.primary:hover { background: var(--color-text-secondary); }
-
-	.cta.secondary {
-		font-family: var(--font-serif-italic);
-		font-style: italic;
-		font-weight: 400;
-	}
-
-	.cta.secondary:hover { background: var(--color-bg-subtle); }
-
-	.cta.secondary.active {
-		background: var(--color-text);
-		color: var(--color-bg);
-	}
+	.cta.primary:hover { background: var(--color-accent-hover); }
 
 	.cta-detail {
-		font-family: var(--font-serif-italic);
-		font-style: italic;
+		font-family: var(--font-sans);
 		font-weight: 400;
+		font-size: 12px;
+		letter-spacing: 0.04em;
+		opacity: 0.85;
 	}
 
 	.letterboxd-rating { margin-top: 20px; }
 
-	/* Body grid */
+	/* ── Body grid ── */
 	.body-grid {
-		max-width: 1400px;
+		max-width: 1340px;
 		margin: 0 auto;
-		padding: 32px 2rem 60px;
+		padding: 16px 16px 0;
 		display: grid;
 		grid-template-columns: 1fr;
-		gap: 32px;
+		gap: 28px;
+	}
+
+	@media (min-width: 768px) {
+		.body-grid { padding: 20px 24px 0; }
 	}
 
 	@media (min-width: 1024px) {
 		.body-grid {
-			grid-template-columns: 1fr 280px;
-			gap: 40px;
+			grid-template-columns: 1fr 300px;
+			gap: 36px;
 		}
 	}
 
-	.showings { min-width: 0; }
+	.showings {
+		min-width: 0;
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-lg);
+		background: var(--color-surface);
+	}
+
+	.screening-row:last-child .row-cinema {
+		border-bottom-left-radius: var(--radius-lg);
+	}
+	.screening-row:last-child .row-slot {
+		border-bottom-right-radius: var(--radius-lg);
+	}
 
 	.showings-head {
+		background: #1f1f1f;
+		color: #eae5c2;
+		padding: 10px 16px;
 		display: flex;
 		justify-content: space-between;
-		align-items: baseline;
+		align-items: center;
 		gap: 16px;
-		margin-bottom: 12px;
 		flex-wrap: wrap;
+		border-top-left-radius: var(--radius-lg);
+		border-top-right-radius: var(--radius-lg);
 	}
 
 	.showings-title {
 		margin: 0;
-		font-family: var(--font-serif);
-		font-size: 28px;
-		font-weight: 400;
-		letter-spacing: -0.025em;
-		color: var(--color-text);
-		font-variation-settings: '"SOFT" 100', '"opsz" 96';
+		font-family: var(--font-sans);
+		font-size: 18px;
+		font-weight: 700;
+		letter-spacing: -0.01em;
+		color: #eae5c2;
+		text-transform: uppercase;
 	}
 
-	@media (min-width: 1024px) {
-		.showings-title { font-size: 32px; }
+	@media (min-width: 768px) {
+		.showings-title { font-size: 20px; }
 	}
 
 	.day-strip {
 		display: flex;
 		gap: 4px;
 		flex-wrap: wrap;
+		align-items: center;
 	}
 
 	.strip-btn {
 		min-width: 52px;
-		padding: 6px 8px;
+		padding: 5px 10px;
 		text-align: center;
 		background: transparent;
-		color: var(--color-text-secondary);
-		border: 1px solid var(--color-border);
+		color: #eae5c2;
+		border: 1px solid #eae5c2;
+		border-radius: var(--radius-sm);
 		cursor: pointer;
-		font-family: var(--font-serif);
-		font-size: 12px;
-		font-weight: 400;
-		letter-spacing: -0.005em;
+		font-family: var(--font-sans);
+		font-size: 11px;
+		font-weight: 500;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
 		transition: background-color var(--duration-fast) var(--ease-sharp),
 			color var(--duration-fast) var(--ease-sharp);
 	}
 
 	.strip-btn.active {
-		background: var(--color-text);
-		color: var(--color-bg);
-		font-weight: 500;
+		background: #eae5c2;
+		color: #1f1f1f;
+		font-weight: 700;
 	}
 
 	.strip-btn:hover:not(.active) {
-		background: var(--color-bg-subtle);
-		color: var(--color-text);
+		background: rgba(234, 229, 194, 0.18);
 	}
 
 	.picker-wrap {
@@ -701,22 +748,26 @@
 	}
 
 	.pick-date-btn {
-		padding: 6px 10px;
-		background: var(--color-bg);
-		color: var(--color-text);
-		border: 1px solid var(--color-border);
+		padding: 5px 10px;
+		background: transparent;
+		color: #eae5c2;
+		border: 1px solid #eae5c2;
+		border-radius: var(--radius-sm);
 		cursor: pointer;
-		font-family: var(--font-serif);
-		font-size: 12px;
+		font-family: var(--font-sans);
+		font-size: 11px;
 		font-weight: 500;
-		letter-spacing: -0.005em;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
 		display: inline-flex;
 		align-items: center;
 		gap: 6px;
 	}
 
+	.pick-date-btn:hover { background: rgba(234, 229, 194, 0.18); }
+
 	.pick-date-btn .chevron {
-		color: var(--color-text-tertiary);
+		opacity: 0.75;
 		margin-left: 2px;
 	}
 
@@ -725,141 +776,201 @@
 		top: calc(100% + 8px);
 		right: 0;
 		z-index: 20;
+		background: var(--color-surface);
+		border: 1px solid var(--color-border);
+		border-radius: 4px;
+		box-shadow: var(--shadow-brutalist);
 	}
 
 	@media (max-width: 767px) {
+		/* Anchored positioning can't fit the 362px calendar on small screens —
+		   the offset parent (.picker-wrap) floats mid-row, so either edge
+		   overflows the viewport. Centre it as a fixed overlay instead. */
 		.popover {
+			position: fixed;
+			top: 50%;
+			left: 50%;
 			right: auto;
-			left: 0;
+			transform: translate(-50%, -50%);
+			max-width: calc(100vw - 16px);
 		}
+	}
+
+	.empty {
+		margin: 0;
+		padding: 24px 16px;
+		font-family: var(--font-sans);
+		font-size: 13px;
+		font-weight: 500;
+		color: var(--color-text-tertiary);
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
 	}
 
 	.empty-clear {
 		display: inline-block;
-		margin-left: 8px;
+		margin-left: 10px;
 		background: transparent;
 		border: none;
 		padding: 0;
-		font-family: var(--font-serif-italic);
-		font-style: italic;
-		font-size: 14px;
-		color: var(--color-text-secondary);
+		font-family: var(--font-sans);
+		font-size: 12px;
+		font-weight: 700;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: var(--color-text);
 		cursor: pointer;
 		text-decoration: underline;
-		text-underline-offset: 2px;
+		text-underline-offset: 3px;
 	}
 	.empty-clear:hover { color: var(--color-text); }
 
-	.cinema-block {
-		padding: 18px 0;
-		border-top: 1px solid var(--color-border-subtle);
+	/* ── Screening rows ──
+	   One row per screening. Cinema gutter 70%, time slot 30% — every row
+	   is the same height so the section reads like a table. */
+	.screening-row {
+		display: flex;
+		align-items: stretch;
+		border-top: 1px solid var(--color-border);
+		min-height: 48px;
 	}
 
-	.cinema-head {
+	.screening-head { min-height: 0; }
+
+	.day-divider {
+		padding: 8px 16px;
+		font-family: var(--font-sans);
+		font-size: 11px;
+		font-weight: 700;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+		background: var(--color-screening-bg);
+		color: var(--color-screening-text);
+		border-top: 1px solid var(--color-border);
+	}
+	.day-divider:first-child { border-top: none; }
+	.screening-head .head-cell {
+		background: var(--color-bg);
+		padding: 6px 16px;
+		font-family: var(--font-sans);
+		font-size: 10px;
+		font-weight: 600;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+		color: var(--color-text-tertiary);
 		display: flex;
-		justify-content: space-between;
-		align-items: baseline;
-		margin-bottom: 10px;
+		flex-direction: row;
+		align-items: center;
+		justify-content: flex-start;
+		text-align: left;
+	}
+
+	.screening-link {
+		text-decoration: none;
+		color: inherit;
+	}
+	.screening-link:hover .row-cinema,
+	.screening-link:hover .row-slot {
+		background: var(--color-cream);
+	}
+
+	.row-cinema {
+		flex: 0 0 70%;
+		background: var(--color-bg-subtle);
+		padding: 12px 16px;
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		gap: 2px;
+		min-width: 0;
+		border-right: 1px solid var(--color-border);
+		transition: background-color var(--duration-fast) var(--ease-sharp);
 	}
 
 	.cinema-name {
-		font-family: var(--font-serif);
-		font-size: 20px;
-		font-weight: 500;
+		font-family: var(--font-sans);
+		font-size: 14px;
+		font-weight: 700;
 		color: var(--color-text);
-		letter-spacing: -0.012em;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+		line-height: 1.15;
 	}
 
 	.cinema-sub {
-		font-family: var(--font-serif-italic);
-		font-style: italic;
-		font-size: 14px;
+		font-family: var(--font-sans);
+		font-size: 10px;
+		font-weight: 500;
 		color: var(--color-text-tertiary);
-		margin-left: 10px;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
 	}
 
-	.slots {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 8px;
-	}
-
-	.slot-wrap {
+	.row-slot {
+		flex: 0 0 30%;
+		padding: 12px 16px;
 		display: inline-flex;
-		align-items: stretch;
-	}
-
-	.slot {
-		padding: 10px 14px;
+		align-items: center;
+		gap: 12px;
 		background: transparent;
-		border: 1px solid var(--color-border);
-		border-right: none;
-		cursor: pointer;
-		display: inline-flex;
-		align-items: baseline;
-		gap: 8px;
-		color: inherit;
+		color: var(--color-text);
+		text-decoration: none;
+		font-family: var(--font-sans);
+		min-width: 0;
+		transition: background-color var(--duration-fast) var(--ease-sharp);
 	}
 
-	.slot:hover { background: var(--color-bg-subtle); }
 
 	.slot-time {
-		font-family: var(--font-mono-plex);
-		font-size: 14px;
+		font-family: var(--font-sans);
+		font-size: 15px;
 		color: var(--color-text);
-		font-weight: 500;
+		font-weight: 700;
 		font-variant-numeric: tabular-nums;
+		letter-spacing: -0.01em;
 	}
 
 	.slot-format {
-		font-family: var(--font-serif-italic);
-		font-style: italic;
-		font-size: 12px;
+		font-family: var(--font-sans);
+		font-size: 11px;
+		font-weight: 500;
 		color: var(--color-text-tertiary);
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
 	}
 
-	.ical-btn {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		width: 40px;
-		border: 1px solid var(--color-border);
-		color: var(--color-text-tertiary);
-		cursor: pointer;
-		background: transparent;
-		transition: color var(--duration-fast) var(--ease-sharp),
-			background-color var(--duration-fast) var(--ease-sharp);
+	/* Mobile: stack cinema on top, time below — 70/30 horizontal too tight <600 */
+	@media (max-width: 599px) {
+		.screening-row { flex-direction: column; }
+		.row-cinema {
+			flex: 0 0 auto;
+			width: 100%;
+			border-right: none;
+			border-bottom: 1px solid var(--color-border);
+			padding: 8px 14px;
+		}
+		.row-slot { flex: 0 0 auto; width: 100%; }
 	}
 
-	.ical-btn:hover {
-		color: var(--color-text);
-		background: var(--color-bg-subtle);
-	}
-
-	.empty {
-		margin: 24px 0;
-		font-family: var(--font-serif-italic);
-		font-style: italic;
-		font-size: 14px;
-		color: var(--color-text-tertiary);
-	}
-
+	/* ── External links ── */
 	.external-links {
 		display: flex;
-		gap: 16px;
-		margin-top: 28px;
-		padding-top: 16px;
-		border-top: 1px dotted var(--color-border-subtle);
+		flex-wrap: wrap;
+		gap: 20px;
+		padding: 16px;
+		border-top: 1px solid var(--color-border);
 	}
 
 	.ext {
-		font-family: var(--font-serif-italic);
-		font-style: italic;
-		font-size: 13px;
-		color: var(--color-text-tertiary);
+		font-family: var(--font-sans);
+		font-size: 11px;
+		font-weight: 700;
+		color: var(--color-text);
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
 		text-decoration: underline;
-		text-underline-offset: 2px;
+		text-underline-offset: 3px;
 	}
 
-	.ext:hover { color: var(--color-text); }
+	.ext:hover { color: var(--color-text-tertiary); }
 </style>

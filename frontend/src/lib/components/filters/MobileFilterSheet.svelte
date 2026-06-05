@@ -2,7 +2,7 @@
 	import { filters } from '$lib/stores/filters.svelte';
 	import { userLocation } from '$lib/stores/user-location.svelte';
 	import { haversineMiles, toLondonDateStr, useModalKeyboardTrap } from '$lib/utils';
-	import MobileDatePicker from './MobileDatePicker.svelte';
+	import CalendarPopover from './CalendarPopover.svelte';
 	import {
 		AREA_CLUSTERS,
 		cinemasInCluster
@@ -285,7 +285,28 @@
 {/if}
 
 {#if datePickerOpen}
-	<MobileDatePicker open={datePickerOpen} onClose={() => (datePickerOpen = false)} />
+	<div
+		class="cal-overlay"
+		role="dialog"
+		aria-modal="true"
+		aria-label="Pick a date"
+		onclick={(e) => { if (e.target === e.currentTarget) datePickerOpen = false; }}
+		onkeydown={() => {}}
+	>
+		<div class="cal-wrap">
+			<CalendarPopover
+				selected={filters.dateFrom ?? today}
+				{today}
+				width={340}
+				onSelect={(iso) => {
+					filters.dateFrom = iso;
+					filters.dateTo = iso;
+					datePickerOpen = false;
+				}}
+				onClose={() => (datePickerOpen = false)}
+			/>
+		</div>
+	</div>
 {/if}
 
 <style>
@@ -296,25 +317,30 @@
 		background: var(--color-bg);
 		display: flex;
 		flex-direction: column;
+		font-family: var(--font-sans);
+		color: var(--color-text);
 	}
 
+	/* Black masthead with cream FILTER title — matches day-header / showings bar */
 	.sheet-head {
-		padding: 52px 18px 14px;
+		padding: 28px 18px 14px;
+		background: #1f1f1f;
 		border-bottom: 1px solid var(--color-border);
 		display: flex;
-		align-items: flex-end;
+		align-items: center;
 		justify-content: space-between;
+		gap: 12px;
 	}
 
 	.sheet-title {
 		margin: 0;
-		font-family: var(--font-serif);
-		font-size: 36px;
-		font-weight: 300;
-		letter-spacing: -0.025em;
-		line-height: 0.92;
-		color: var(--color-text);
-		font-variation-settings: '"SOFT" 100', '"opsz" 144';
+		font-family: var(--font-sans);
+		font-size: 20px;
+		font-weight: 700;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		line-height: 1;
+		color: #eae5c2;
 	}
 
 	.close {
@@ -322,46 +348,57 @@
 		height: 36px;
 		padding: 0;
 		background: transparent;
-		border: 1px solid var(--color-border);
+		border: 1px solid #eae5c2;
+		border-radius: 4px;
 		cursor: pointer;
-		font-family: var(--font-serif);
-		font-size: 18px;
-		color: var(--color-text);
+		font-family: var(--font-sans);
+		font-size: 22px;
+		font-weight: 400;
+		color: #eae5c2;
 		line-height: 1;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		transition: background-color var(--duration-fast) var(--ease-sharp);
 	}
+	.close:hover { background: rgba(234, 229, 194, 0.18); }
 
 	.sheet-body {
 		flex: 1;
 		overflow-y: auto;
+		background: var(--color-bg);
 	}
 
 	.filter-section {
-		padding: 18px 18px 16px;
-		border-bottom: 1px solid var(--color-border-subtle);
+		padding: 18px;
+		border-bottom: 1px solid var(--color-border);
 	}
 
 	.section-head {
 		display: flex;
 		align-items: baseline;
 		justify-content: space-between;
-		margin-bottom: 10px;
+		gap: 12px;
+		margin-bottom: 14px;
 	}
 
 	.section-head h4 {
 		margin: 0;
-		font-family: var(--font-serif);
-		font-size: 18px;
-		font-weight: 400;
-		letter-spacing: -0.015em;
+		font-family: var(--font-sans);
+		font-size: 13px;
+		font-weight: 700;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
 		color: var(--color-text);
-		font-variation-settings: '"SOFT" 100', '"opsz" 36';
 	}
 
 	.hint {
-		font-family: var(--font-serif-italic);
-		font-style: italic;
-		font-size: 13px;
+		font-family: var(--font-sans);
+		font-size: 11px;
+		font-weight: 500;
 		color: var(--color-text-tertiary);
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
 	}
 
 	.mini-search {
@@ -369,99 +406,155 @@
 		align-items: center;
 		gap: 8px;
 		padding: 10px 12px;
-		background: #fff;
+		background: var(--color-surface);
 		border: 1px solid var(--color-border);
+		border-radius: 4px;
 		color: var(--color-text-tertiary);
-		margin-bottom: 10px;
-		font-family: var(--font-serif-italic);
-		font-style: italic;
-		font-size: 14px;
+		margin-bottom: 12px;
+		font-family: var(--font-sans);
+		font-size: 13px;
+		font-weight: 500;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
 	}
 
 	.chips {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 6px;
+		gap: 8px;
 	}
 
 	.chip {
-		padding: 8px 12px;
-		background: transparent;
-		color: var(--color-text-secondary);
+		padding: 9px 14px;
+		min-height: 38px;
+		background: var(--color-surface);
+		color: var(--color-text);
 		border: 1px solid var(--color-border);
+		border-radius: 4px;
+		box-shadow: var(--shadow-brutalist-sm);
 		cursor: pointer;
-		font-family: var(--font-serif);
-		font-size: 14px;
-		font-weight: 400;
-		letter-spacing: -0.005em;
-		font-variation-settings: '"SOFT" 100', '"opsz" 24';
+		font-family: var(--font-sans);
+		font-size: 12px;
+		font-weight: 700;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
 		display: inline-flex;
-		align-items: baseline;
+		align-items: center;
 		gap: 6px;
+		transition: background-color var(--duration-fast) var(--ease-sharp),
+			transform var(--duration-fast) var(--ease-sharp),
+			box-shadow var(--duration-fast) var(--ease-sharp);
+	}
+
+	.chip:hover { background: var(--color-cream); }
+	.chip:active {
+		transform: translate(2px, 2px);
+		box-shadow: 0 0 0 0 transparent;
 	}
 
 	.chip .sub {
-		font-family: var(--font-serif-italic);
-		font-style: italic;
-		font-weight: 400;
-		font-size: 12px;
-		opacity: 0.5;
+		font-family: var(--font-sans);
+		font-weight: 500;
+		font-size: 10px;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		opacity: 0.6;
 	}
 
 	.chip.active {
 		background: var(--color-text);
-		color: var(--color-bg);
-		font-weight: 500;
+		color: var(--color-cream);
 	}
 
-	.chip.active .sub { opacity: 0.65; }
-
-	.chip:disabled { opacity: 0.45; cursor: not-allowed; }
+	.chip.active .sub { opacity: 0.75; color: var(--color-cream); }
+	.chip:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
 
 	.bottom-spacer { height: 96px; }
 
 	.sheet-foot {
 		border-top: 1px solid var(--color-border);
 		background: var(--color-bg);
-		padding: 12px 18px 24px;
+		padding: 14px 18px calc(14px + env(safe-area-inset-bottom, 0px));
 		display: flex;
-		align-items: center;
+		align-items: stretch;
 		gap: 12px;
 	}
 
 	.reset {
 		flex: 0 0 auto;
-		padding: 12px 14px;
-		background: transparent;
+		padding: 12px 16px;
+		background: var(--color-surface);
 		border: 1px solid var(--color-border);
+		border-radius: 4px;
+		box-shadow: var(--shadow-brutalist);
 		color: var(--color-text);
-		font-family: var(--font-serif-italic);
-		font-style: italic;
-		font-size: 14px;
+		font-family: var(--font-sans);
+		font-size: 12px;
+		font-weight: 700;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
 		cursor: pointer;
+		transition: background-color var(--duration-fast) var(--ease-sharp),
+			transform var(--duration-fast) var(--ease-sharp),
+			box-shadow var(--duration-fast) var(--ease-sharp);
+	}
+	.reset:hover { background: var(--color-cream); }
+	.reset:active {
+		transform: translate(4px, 4px);
+		box-shadow: 0 0 0 0 transparent;
 	}
 
 	.show {
 		flex: 1;
 		padding: 14px 16px;
 		background: var(--color-text);
-		color: var(--color-bg);
+		color: var(--color-cream);
 		border: 1px solid var(--color-border);
-		font-family: var(--font-serif);
-		font-size: 15px;
-		font-weight: 500;
-		letter-spacing: -0.005em;
+		border-radius: 4px;
+		box-shadow: var(--shadow-brutalist);
+		font-family: var(--font-sans);
+		font-size: 14px;
+		font-weight: 700;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
 		cursor: pointer;
-		font-variation-settings: '"SOFT" 100', '"opsz" 36';
 		display: inline-flex;
-		align-items: baseline;
+		align-items: center;
 		justify-content: center;
 		gap: 8px;
+		transition: background-color var(--duration-fast) var(--ease-sharp),
+			transform var(--duration-fast) var(--ease-sharp),
+			box-shadow var(--duration-fast) var(--ease-sharp);
+	}
+	.show:hover { background: var(--color-accent-hover, #2f2f2f); }
+	.show:active {
+		transform: translate(4px, 4px);
+		box-shadow: 0 0 0 0 transparent;
 	}
 
 	.show .show-count {
-		font-family: var(--font-serif-italic);
-		font-style: italic;
-		font-weight: 400;
+		font-family: var(--font-sans);
+		font-weight: 700;
+		font-variant-numeric: tabular-nums;
+	}
+
+	/* Calendar overlay (uses the shared CalendarPopover from the toolbar) */
+	.cal-overlay {
+		position: fixed;
+		inset: 0;
+		z-index: 90;
+		background: rgba(31, 31, 31, 0.55);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 16px;
+	}
+
+	.cal-wrap {
+		background: var(--color-surface);
+		border: 1px solid var(--color-border);
+		border-radius: 4px;
+		box-shadow: var(--shadow-brutalist);
+		overflow: hidden;
 	}
 </style>

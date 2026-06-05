@@ -80,6 +80,12 @@
 {/if}
 
 <style>
+	/* Main carries the dimmable background so the area below the header tracks
+	   the house-lights value (header stays on the html bg). */
+	main {
+		background-color: var(--color-bg);
+	}
+
 	.skip-link {
 		position: absolute;
 		top: -100%;

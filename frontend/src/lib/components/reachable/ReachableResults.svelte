@@ -267,6 +267,10 @@
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
+		background: var(--color-screening-bg);
+		color: var(--color-screening-text);
+		padding: 8px 16px;
+		margin-bottom: 0.75rem;
 	}
 
 	.group-label {
@@ -274,24 +278,18 @@
 		font-weight: 700;
 		text-transform: uppercase;
 		letter-spacing: 0.08em;
+		color: var(--color-screening-text);
 	}
 
 	.group-count {
 		font-size: var(--font-size-xs);
-		color: var(--color-text-tertiary);
+		color: var(--color-screening-text);
+		opacity: 0.6;
 	}
 
-	.urgency-soon {
-		color: var(--color-accent);
-	}
-
-	.urgency-hour {
-		color: var(--color-text);
-	}
-
-	.urgency-later {
-		color: var(--color-text-secondary);
-	}
+	.urgency-soon { color: var(--color-screening-text); }
+	.urgency-hour { color: var(--color-screening-text); }
+	.urgency-later { color: var(--color-screening-text); opacity: 0.75; }
 
 	/* ── Cards ── */
 	.cards {
@@ -304,9 +302,10 @@
 		display: flex;
 		gap: 1rem;
 		padding: 1rem;
-		border: 1px solid var(--color-border-subtle);
-		background: var(--color-surface);
-		transition: border-color var(--duration-fast) var(--ease-sharp);
+		border: 1px solid var(--color-border);
+		background: var(--color-bg-subtle);
+		transition: background-color var(--duration-fast) var(--ease-sharp),
+			border-color var(--duration-fast) var(--ease-sharp);
 	}
 
 	.card + .card {
@@ -314,6 +313,7 @@
 	}
 
 	.card:hover {
+		background: var(--color-cream);
 		border-color: var(--color-text);
 		z-index: 1;
 	}
