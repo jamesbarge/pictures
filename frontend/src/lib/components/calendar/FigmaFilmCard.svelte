@@ -1,24 +1,7 @@
 <script lang="ts">
 	import { formatTime, getPosterImageAttributes } from '$lib/utils';
 	import { trackScreeningClick } from '$lib/analytics/posthog';
-
-	interface Screening {
-		id: string;
-		datetime: string;
-		cinemaName: string;
-		cinemaSlug?: string;
-		format?: string | null;
-		bookingUrl?: string;
-	}
-
-	interface Film {
-		id: string | number;
-		title: string;
-		year?: number | null;
-		director?: string | null;
-		runtime?: number | null;
-		posterUrl?: string | null;
-	}
+	import { formatLabel, type CardFilm, type CardScreening } from './card-shapes';
 
 	let {
 		film,
@@ -26,8 +9,8 @@
 		maxScreenings = 3,
 		priority = false
 	}: {
-		film: Film;
-		screenings: Screening[];
+		film: CardFilm;
+		screenings: CardScreening[];
 		maxScreenings?: number;
 		priority?: boolean;
 	} = $props();
@@ -44,8 +27,8 @@
 	const distinctFormats = $derived.by(() => {
 		const seen = new Set<string>();
 		for (const s of upcoming) {
-			if (!s.format || s.format === 'unknown' || s.format === 'dcp') continue;
-			seen.add(s.format.toUpperCase().replace('_', ' '));
+			const label = formatLabel(s.format);
+			if (label) seen.add(label);
 		}
 		return [...seen].slice(0, 2);
 	});
@@ -63,7 +46,7 @@
 		})
 	);
 
-	function handleClick(s: Screening) {
+	function handleClick(s: CardScreening) {
 		trackScreeningClick(
 			{
 				filmId: String(film.id),

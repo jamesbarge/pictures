@@ -63,3 +63,14 @@ export function toCardScreening(s: SourceScreening): CardScreening {
 		bookingUrl: s.bookingUrl
 	};
 }
+
+/**
+ * Display label for a screening format. `unknown` and `dcp` are the default
+ * projection values most venues report — they carry no signal, so they render
+ * as nothing rather than as noise on every row. Underscores become spaces
+ * (`SEVENTY_MM` → `SEVENTY MM`), output is uppercased.
+ */
+export function formatLabel(format: string | null | undefined): string {
+	if (!format || format === 'unknown' || format === 'dcp') return '';
+	return format.toUpperCase().replace('_', ' ');
+}
