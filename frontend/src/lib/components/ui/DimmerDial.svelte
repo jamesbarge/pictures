@@ -27,35 +27,56 @@
 		return `rgb(${Math.round(lerp(light[0], dark[0], t))}, ${Math.round(lerp(light[1], dark[1], t))}, ${Math.round(lerp(light[2], dark[2], t))})`;
 	}
 
-	function warmLerp(light: readonly [number, number, number], dark: readonly [number, number, number], t: number, warmth: number = 0): string {
-		const r = lerp(light[0], dark[0], t);
-		const g = lerp(light[1], dark[1], t);
-		const b = lerp(light[2], dark[2], t);
-		const w = Math.sin(t * Math.PI) * warmth;
-		return `rgb(${Math.round(Math.min(255, r + w * 50))}, ${Math.round(Math.min(255, g + w * 15))}, ${Math.round(Math.max(0, b - w * 55))})`;
-	}
-
+	// Light values mirror the app.css Spline tokens (--color-bg #efe9dc etc.).
+	// The pre-paint boot script in app.html duplicates this table — keep the
+	// two in sync when tokens change.
 	const L = {
-		bg: [245, 242, 235], bgSubtle: [236, 232, 223], surface: [255, 255, 255],
-		text: [10, 10, 10], textSecondary: [58, 58, 58], textTertiary: [106, 106, 106],
-		border: [10, 10, 10], borderSubtle: [208, 204, 196], accent: [230, 57, 70],
-		screenBg: [10, 10, 10], screenText: [245, 242, 235],
+		bg: [239, 233, 220], bgSubtle: [229, 223, 208], surface: [255, 255, 255],
+		text: [31, 31, 31], textSecondary: [42, 42, 42], textTertiary: [90, 90, 90],
+		border: [31, 31, 31], borderSubtle: [202, 197, 186], accent: [31, 31, 31],
+		screenBg: [31, 31, 31], screenText: [234, 229, 194],
 	} as const;
 
 	const D = {
 		bg: [14, 12, 10], bgSubtle: [24, 21, 18], surface: [30, 27, 24],
 		text: [240, 235, 220], textSecondary: [185, 175, 160], textTertiary: [115, 108, 98],
-		border: [240, 235, 220], borderSubtle: [50, 44, 38], accent: [255, 85, 70],
+		border: [240, 235, 220], borderSubtle: [50, 44, 38], accent: [240, 235, 220],
 		screenBg: [240, 235, 220], screenText: [14, 12, 10],
 	} as const;
 
+	const THEME_PROPS = [
+		'--color-bg', '--color-bg-subtle', '--color-surface', '--color-text',
+		'--color-text-secondary', '--color-text-tertiary', '--color-border',
+		'--color-border-subtle', '--color-accent', '--color-screening-bg',
+		'--color-screening-text',
+	] as const;
+
 	function applyTheme(t: number) {
 		if (!browser) return;
+		// Persist first — saving must not depend on <main> being ready, and
+		// must not throw in Safari private mode (setItem raises there).
+		try {
+			localStorage.setItem(STORAGE_KEY, String(t));
+		} catch {
+			// best-effort persistence
+		}
 		// Target <main> rather than the document root so only content below the
 		// header/menu is dimmed. The header keeps light-mode colors regardless
 		// of dimmer position.
 		const target = document.querySelector('main') as HTMLElement | null;
-		if (!target) return;
+		if (!target) {
+			console.warn('[dimmer] no <main> to apply house-lights theme to; value persisted only');
+			return;
+		}
+		// The boot stylesheet (app.html) covered first paint; inline styles
+		// below take over from here.
+		document.getElementById('dimmer-boot-style')?.remove();
+		if (t < 0.01) {
+			// At rest the app.css tokens are the single source of truth —
+			// remove the overrides rather than writing approximations of them.
+			for (const prop of THEME_PROPS) target.style.removeProperty(prop);
+			return;
+		}
 		// No warmth bias — dim is purely a darkening lerp, no amber cast.
 		target.style.setProperty('--color-bg', lerpColor(L.bg, D.bg, t));
 		target.style.setProperty('--color-bg-subtle', lerpColor(L.bgSubtle, D.bgSubtle, t));
@@ -68,7 +89,6 @@
 		target.style.setProperty('--color-accent', lerpColor(L.accent, D.accent, t));
 		target.style.setProperty('--color-screening-bg', lerpColor(L.screenBg, D.screenBg, t));
 		target.style.setProperty('--color-screening-text', lerpColor(L.screenText, D.screenText, t));
-		localStorage.setItem(STORAGE_KEY, String(t));
 	}
 
 	// Reactive — `applyTheme` runs on mount (initial value) and on every

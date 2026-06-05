@@ -1,3 +1,14 @@
+## 2026-06-05: PR-review fixes — dimmer boot/runtime coherence, lazy-import catch, tablet text grid
+**PR**: #646 | **Files**: `frontend/src/app.html`, `frontend/src/lib/components/ui/DimmerDial.svelte`, `frontend/src/routes/+page.svelte`, `frontend/src/routes/film/[id]/+page.svelte`, `frontend/src/lib/components/calendar/FigmaTextDay.svelte`, `frontend/src/lib/server/api.ts`, `frontend/src/lib/components/filters/FigmaToolbar.svelte`, `changelogs/2026-06-05-pr-review-fixes.md`
+- Five-agent PR review (code/comments/silent-failures/types/tests) found and we fixed:
+- **Dimmer boot ↔ runtime mismatch**: app.html's pre-paint script wrote the *old V2a palette* to `<html>` (which the runtime never cleared → header rendered dimmed after reload); it now injects a `<main>`-scoped `#dimmer-boot-style` with the new Spline palette that DimmerDial removes on mount. The dial's own light palette was also stale V2a — at rest it now *removes* the overrides so app.css tokens are the single source of truth. Persistence moved before the DOM guard + try/caught (Safari private mode).
+- **Lazy MobileFilterSheet**: added `.catch()` (deploy-skew chunk failure reloads for the fresh manifest) and moved `mobileFilterOpen = true` inside the success path — the FILTERS button can no longer die silently.
+- **FigmaTextDay tablet band (640–1023px)**: 5 visible cells were squeezed into a 4-column template, wrapping CINEMA onto an implicit row — now 5 columns.
+- **`API_PROXY_TARGET=""`** no longer defeats the fallback (`?.trim() ||`).
+- **`DisplayMode`** deduplicated (imported from FigmaToolbar); PR-introduced dead code removed (`mastheadDate` + masthead CSS, `screeningsByCinema`, `trackCalendarExport` import, `.dimmer-wrap`, `.cta.pressed`/`.cta.secondary.active`, `warmLerp`) — svelte-check warnings 13 → 3.
+
+---
+
 ## 2026-06-04: Split header — compaction is now literally just scrolling (zero animation)
 **PR**: #646 | **Files**: `frontend/src/lib/components/layout/Header.svelte`, `frontend/src/lib/components/ui/Dropdown.svelte`, `changelogs/2026-06-04-split-header-smooth.md`
 - Rearchitected after a 10-agent research + 3-proposal judge panel: the sticky shrinking header is replaced by an **in-flow masthead** (big logo + vertical nav) that scrolls away naturally plus a **fixed always-compact bar** that crossfades in (opacity-only) once the masthead passes it. Nothing animates layout — per frame the browser does exactly what plain scrolling does.

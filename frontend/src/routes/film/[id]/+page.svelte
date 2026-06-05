@@ -14,7 +14,7 @@
 		filmByline,
 		formatScreeningFormat
 	} from '$lib/utils';
-	import { trackFilmView, trackBookingClick, trackFilmStatusChange, trackCalendarExport } from '$lib/analytics/posthog';
+	import { trackFilmView, trackBookingClick, trackFilmStatusChange } from '$lib/analytics/posthog';
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import type { FilmStatus } from '$lib/types';
@@ -144,11 +144,6 @@
 	}
 
 	// Group the active day's screenings by cinema
-	const screeningsByCinema = $derived.by(() => {
-		const byCinema = groupBy(activeDayScreenings, (s) => s.cinema?.name ?? 'Unknown');
-		return Object.entries(byCinema);
-	});
-
 	const posterImage = $derived(
 		getPosterImageAttributes(film.posterUrl, {
 			baseSize: 'w500',
@@ -628,15 +623,9 @@
 
 	.cta:hover { background: var(--color-cream); }
 
-	.cta:active,
-	.cta.pressed {
+	.cta:active {
 		transform: translate(4px, 4px);
 		box-shadow: 0 0 0 0 transparent;
-	}
-
-	.cta.pressed {
-		background: var(--color-text);
-		color: var(--color-cream);
 	}
 
 	.cta.primary {
@@ -645,11 +634,6 @@
 	}
 
 	.cta.primary:hover { background: var(--color-accent-hover); }
-
-	.cta.secondary.active {
-		background: var(--color-text);
-		color: var(--color-cream);
-	}
 
 	.cta-detail {
 		font-family: var(--font-sans);

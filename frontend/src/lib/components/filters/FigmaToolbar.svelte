@@ -666,12 +666,6 @@
 
 	.opt-btn-wide { width: 100%; }
 
-	.dimmer-wrap {
-		margin-left: auto;
-		display: flex;
-		align-items: center;
-	}
-
 	/* Chip + popover anchor */
 	.chip-wrap {
 		position: relative;

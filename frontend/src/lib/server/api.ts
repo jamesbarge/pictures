@@ -1,7 +1,10 @@
 import { env } from '$env/dynamic/private';
 import { ApiError } from '$lib/api/client';
 
-const API_BASE = env.API_PROXY_TARGET ?? 'https://api.pictures.london';
+// `||` (not `??`) so a present-but-empty env var still falls back — an empty
+// API_BASE would silently resolve fetches against the SvelteKit origin and
+// surface as misleading per-route 404s.
+const API_BASE = env.API_PROXY_TARGET?.trim() || 'https://api.pictures.london';
 
 /**
  * Server-side fetcher for SvelteKit `load` functions. Uses the production

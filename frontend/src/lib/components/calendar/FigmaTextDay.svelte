@@ -149,7 +149,10 @@
 	@media (max-width: 1023px) {
 		.text-thead,
 		.text-row {
-			grid-template-columns: 56px minmax(0, 2fr) minmax(0, 1.5fr) minmax(0, 1.5fr);
+			/* 5 columns: TIME TITLE YEAR FORMAT CINEMA (DIRECTOR is hide-md).
+			   Must track the visible cell count or the last cell wraps onto an
+			   implicit grid row. */
+			grid-template-columns: 56px minmax(0, 2fr) 56px 80px minmax(0, 1.5fr);
 			padding: 8px 12px;
 		}
 		.hide-md { display: none; }

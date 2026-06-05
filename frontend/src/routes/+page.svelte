@@ -1,10 +1,8 @@
 <script lang="ts">
 	import FigmaFilmCard from '$lib/components/calendar/FigmaFilmCard.svelte';
 	import FigmaTextDay from '$lib/components/calendar/FigmaTextDay.svelte';
-	import FigmaToolbar from '$lib/components/filters/FigmaToolbar.svelte';
+	import FigmaToolbar, { type DisplayMode } from '$lib/components/filters/FigmaToolbar.svelte';
 	import DimmerDial from '$lib/components/ui/DimmerDial.svelte';
-
-	type DisplayMode = 'posters' | 'text';
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
 	import JsonLd from '$lib/seo/JsonLd.svelte';
 	import { webSiteSchema, faqSchema } from '$lib/seo/json-ld';
@@ -161,15 +159,6 @@
 		29:'twenty-ninth',30:'thirtieth',31:'thirty-first'
 	};
 
-	const mastheadDate = $derived.by(() => {
-		const iso = todayStore.value;
-		const d = new Date(iso + 'T12:00:00Z');
-		const weekday = new Intl.DateTimeFormat('en-GB', { weekday: 'long', timeZone: 'Europe/London' }).format(d);
-		const dayNum = Number(new Intl.DateTimeFormat('en-GB', { day: 'numeric', timeZone: 'Europe/London' }).format(d));
-		const month = new Intl.DateTimeFormat('en-GB', { month: 'long', timeZone: 'Europe/London' }).format(d);
-		return { weekday, ordinal: ORDINALS[dayNum] ?? `${dayNum}th`, month };
-	});
-
 	// Shrink the day section to the actual width of its first row of cards, so
 	// the black day-header bar lines up with the card grid even when a day has
 	// fewer cards than fit per row.
@@ -235,12 +224,22 @@
 		{displayMode}
 		onDisplayModeChange={(m) => (displayMode = m)}
 		onOpenFilters={() => {
-			if (!MobileFilterSheet) {
-				import('$lib/components/filters/MobileFilterSheet.svelte').then((m) => {
-					MobileFilterSheet = m.default;
-				});
+			if (MobileFilterSheet) {
+				mobileFilterOpen = true;
+				return;
 			}
-			mobileFilterOpen = true;
+			import('$lib/components/filters/MobileFilterSheet.svelte')
+				.then((m) => {
+					MobileFilterSheet = m.default;
+					mobileFilterOpen = true;
+				})
+				.catch((err) => {
+					// Most likely deploy skew: this HTML references a chunk hash
+					// that no longer exists. Reloading fetches the current
+					// manifest — without this the FILTERS button is silently dead.
+					console.error('[filters] filter sheet chunk failed to load', err);
+					location.reload();
+				});
 		}}
 	/>
 
@@ -369,28 +368,6 @@
 			gap: 35px;
 		}
 	}
-
-	.masthead {
-		margin: 0;
-		font-family: var(--font-sans);
-		font-size: 28px;
-		font-weight: 400;
-		letter-spacing: -0.03em;
-		line-height: 1;
-		color: var(--color-text);
-		text-align: left;
-	}
-
-	@media (min-width: 768px) {
-		.masthead {
-			font-size: 36px;
-		}
-	}
-
-	.m-weekday { font-weight: 700; }
-	.m-comma   { color: var(--color-text-tertiary); }
-	.m-ordinal { font-weight: 300; color: var(--color-text-secondary); }
-	.m-month   { font-weight: 300; color: var(--color-text-tertiary); }
 
 	/* Day section caps at N cards wide for the viewport. The fitToFirstRow JS
 	   action overrides this with an explicit shrunken width when a day has
