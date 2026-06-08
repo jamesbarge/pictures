@@ -153,6 +153,12 @@ test.describe('Command Palette — cmd+k', () => {
 	});
 
 	test('Enter on the composite action applies filters to the calendar', async ({ page }) => {
+		// Force the desktop layout: the redesigned FigmaToolbar collapses the
+		// FORMAT/GENRE chips into a bottom-sheet below 840px, so the visible
+		// confirmation only exists at desktop width. Both Playwright projects
+		// (chromium + mobile-small) run this file, so we pin the viewport here
+		// rather than relying on the device default (mirrors test-all.spec.ts).
+		await page.setViewportSize({ width: 1440, height: 900 });
 		await page.goto(BASE);
 		await waitForPaletteBinding(page);
 
@@ -161,18 +167,24 @@ test.describe('Command Palette — cmd+k', () => {
 		await dialog.getByRole('combobox').fill('horror 70mm');
 
 		// The composite action is the first row (actions section is first
-		// in SECTION_ORDER), so it's selected by default.
+		// in SECTION_ORDER), so it's selected by default. Activating it calls
+		// filters.applyIntent(parsed) → formats=['70mm'], genres=['horror'].
 		await page.keyboard.press('Enter');
 		await expect(dialog).toBeHidden({ timeout: 5000 });
 
-		// The filter sidebar should now show 70mm + Horror pressed.
-		await expect(page.getByRole('button', { name: '70mm' })).toHaveAttribute(
-			'aria-pressed',
-			'true'
-		);
-		await expect(page.getByRole('button', { name: 'Horror' })).toHaveAttribute(
-			'aria-pressed',
-			'true'
-		);
+		// Visible confirmation in the redesigned toolbar: a single applied
+		// format/genre collapses the chip label to that value, and the chip
+		// flips to its `.active` (inverted) state. These chips are <button>s
+		// that open Dropdown panels — the label is their accessible name.
+		const toolbar = page.getByRole('toolbar', { name: 'Film filters' });
+		const formatChip = toolbar.getByRole('button', { name: '70MM' });
+		const genreChip = toolbar.getByRole('button', { name: 'HORROR' });
+		await expect(formatChip).toBeVisible({ timeout: 5000 });
+		await expect(genreChip).toBeVisible();
+
+		// Open the FORMAT panel and confirm the 70MM option is checked — the
+		// store mutation propagated all the way to the filter UI's checkboxes.
+		await formatChip.click();
+		await expect(page.getByRole('checkbox', { name: '70MM', exact: true })).toBeChecked();
 	});
 });

@@ -1,3 +1,13 @@
+## 2026-06-05: E2E suite refresh — re-pointed at the redesign + 4 regression locks
+**PR**: TBD | **Files**: `frontend/test-all.spec.ts`, `frontend/tests/mobile.spec.ts`, `frontend/tests/command-palette.spec.ts`, `frontend/tests/redesign-regression.spec.ts` (new), `frontend/src/lib/components/pretext/BreathingGrid.svelte` (deleted)
+- ~76 spec lines referenced pre-redesign homepage selectors (`.film-card`, `.masthead-title`, `.day-strip`, `.desktop-toolbar`, `aside.sidebar`, `.breathing-grid`, `.sign-in-link`, `.mobile-*`) — passing vacuously. Re-pointed at the redesigned DOM via role-based locators (toolbar, tablists, `.card`/`.film-row`/`.day-header`).
+- Command-palette filter-confirmation assertion rewritten for the new toolbar (chip label collapse + panel checkbox checked, replacing the removed sidebar's aria-pressed buttons).
+- New `redesign-regression.spec.ts` locks in this week's hand-fixed bugs: fitToFirstRow resize ratchet, split-header selector uniqueness (top + stuck), `--header-height` contract (menu anchors below current chrome), consent-banner z-order (elementFromPoint on the sheet CTA). Stability-tested 24/24 with `--repeat-each=3`.
+- `BreathingGrid.svelte` deleted (orphaned since the redesign; zero imports).
+- Results: test-all 106 ✓, mobile 52 ✓ (4 skipped), palette 10 ✓, regression 8 ✓ — 176 passed, 0 failed.
+
+---
+
 ## 2026-06-05: PR-review fixes — dimmer boot/runtime coherence, lazy-import catch, tablet text grid
 **PR**: #646 | **Files**: `frontend/src/app.html`, `frontend/src/lib/components/ui/DimmerDial.svelte`, `frontend/src/routes/+page.svelte`, `frontend/src/routes/film/[id]/+page.svelte`, `frontend/src/lib/components/calendar/FigmaTextDay.svelte`, `frontend/src/lib/server/api.ts`, `frontend/src/lib/components/filters/FigmaToolbar.svelte`, `changelogs/2026-06-05-pr-review-fixes.md`
 - Five-agent PR review (code/comments/silent-failures/types/tests) found and we fixed:

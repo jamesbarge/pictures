@@ -2,6 +2,37 @@ import { test, expect, devices } from '@playwright/test';
 
 const BASE = 'http://localhost:5173';
 
+// The FILTERS button wires its onclick (which lazy-imports MobileFilterSheet)
+// only after Svelte hydrates. Clicking before hydration silently drops the
+// event, so the sheet never opens — flaky on slower engines (webkit). Waiting
+// for the first rendered film card is a reliable "app is interactive" signal.
+async function gotoHomeHydrated(page: import('@playwright/test').Page) {
+	await page.goto(BASE);
+	await page.locator('section.day .film-row article.card').first().waitFor({ timeout: 10000 });
+}
+
+// Hydration-race-proof openers. A single pre-hydration click is silently
+// dropped (the handler isn't wired yet), so we re-click until the target
+// surface actually appears. Playwright's toPass retries the whole block.
+async function openFilterSheet(page: import('@playwright/test').Page) {
+	const sheet = page.getByRole('dialog', { name: 'Filter programme' });
+	await expect(async () => {
+		await page.getByRole('button', { name: 'Open filters' }).click();
+		await expect(sheet).toBeVisible({ timeout: 2000 });
+	}).toPass({ timeout: 15000 });
+	return sheet;
+}
+
+// The burger button toggles, so re-clicking would close it again — instead we
+// wait for the app to be interactive (a rendered card) before a single click.
+async function openBurgerMenu(page: import('@playwright/test').Page) {
+	await page.locator('section.day .film-row article.card').first().waitFor({ timeout: 10000 });
+	await page.locator('.mobile-menu-btn').click();
+	const nav = page.locator('.mobile-nav');
+	await expect(nav).toBeVisible();
+	return nav;
+}
+
 // Test at iPhone 12 Pro dimensions
 test.use(devices['iPhone 12 Pro']);
 
@@ -23,37 +54,44 @@ test.describe('Mobile Responsive — iPhone 12 Pro (390x844)', () => {
 	// ═══════════════════════════════════════════════
 
 	test.describe('Header', () => {
-		test('brand wordmark fits within brand-link without clipping', async ({ page }) => {
+		test('brand logo fits within the brand link without overflowing the viewport', async ({ page }) => {
 			await page.goto(BASE);
 			const header = page.getByRole('banner');
 			await expect(header).toBeVisible();
 
-			await page.waitForFunction(
-				() => document.querySelectorAll('.breathing-grid .grid-cell').length === 15,
-				{ timeout: 10000 }
-			);
+			// The masthead now renders a single <img class="brand-logo"> inside the
+			// home link — the old breathing-grid wordmark is gone.
+			const logo = page.locator('.brand-logo');
+			await expect(logo).toBeVisible();
 
 			const bodyWidth = await page.evaluate(() => document.body.scrollWidth);
 			const viewportWidth = await page.evaluate(() => window.innerWidth);
 			expect(bodyWidth).toBeLessThanOrEqual(viewportWidth + 1);
 
+			// Logo must not spill past its containing home link (no clipping/overflow).
 			const rightOverflow = await page.evaluate(() => {
 				const link = document.querySelector('.brand-link') as HTMLElement | null;
-				const grid = document.querySelector('.breathing-grid') as HTMLElement | null;
-				if (!link || !grid) return null;
-				return grid.getBoundingClientRect().right - link.getBoundingClientRect().right;
+				const img = document.querySelector('.brand-logo') as HTMLElement | null;
+				if (!link || !img) return null;
+				return img.getBoundingClientRect().right - link.getBoundingClientRect().right;
 			});
 			expect(
 				rightOverflow,
-				`wordmark extends ${rightOverflow}px past the right edge of brand-link (clipped)`
+				`logo extends ${rightOverflow}px past the right edge of brand-link (clipped)`
 			).toBeLessThanOrEqual(1);
 		});
 
-		test('SIGN IN link is hidden in brand-bar on mobile (moved into hamburger menu)', async ({ page }) => {
-			await page.goto(BASE);
-			const brandBarSignIn = page.locator('.brand-bar .sign-in-link');
-			await expect(brandBarSignIn).toHaveAttribute('href', '/sign-in');
-			await expect(brandBarSignIn).toBeHidden();
+		test('sign-in is gone: burger menu has no SIGN IN entry and /sign-in redirects home', async ({ page }) => {
+			// /sign-in 307-redirects to the homepage site-wide.
+			const resp = await page.goto(`${BASE}/sign-in`, { waitUntil: 'commit' });
+			await page.waitForURL(`${BASE}/`);
+			expect(resp?.status()).toBeLessThan(400);
+			expect(new URL(page.url()).pathname).toBe('/');
+
+			// The burger menu carries no sign-in link.
+			await openBurgerMenu(page);
+			await expect(page.locator('.mobile-nav-link', { hasText: /sign\s*in/i })).toHaveCount(0);
+			await expect(page.locator('a[href="/sign-in"]')).toHaveCount(0);
 		});
 
 		test('no horizontal page overflow', async ({ page }) => {
@@ -69,28 +107,43 @@ test.describe('Mobile Responsive — iPhone 12 Pro (390x844)', () => {
 	// ═══════════════════════════════════════════════
 
 	test.describe('Mobile Homepage', () => {
-		test('day header renders with weekday + ordinal in first mobile section', async ({ page }) => {
+		test('day header renders weekday/ordinal (or TODAY) in first day section', async ({ page }) => {
 			await page.goto(BASE);
-			// First mobile-day section now carries its own h2.day-header — the
-			// global `.mobile-date-label` was removed when the homepage moved to a
-			// multi-day rolling layout.
-			const firstHeader = page.locator('section.mobile-day h2.day-header').first();
+			// Mobile now renders the same day shell as desktop: section.day with a
+			// black .day-header band wrapping an h2. The first group is usually
+			// TODAY; later groups read "{WEEKDAY} THE {ordinal} OF {MONTH}".
+			const firstHeader = page.locator('section.day .day-header h2').first();
 			await expect(firstHeader).toBeVisible();
 			const text = (await firstHeader.textContent())?.toLowerCase() ?? '';
-			expect(text).toMatch(/monday|tuesday|wednesday|thursday|friday|saturday|sunday/);
+			expect(text).toMatch(/today|monday|tuesday|wednesday|thursday|friday|saturday|sunday/);
 		});
 
-		test('All / New / Repertory tabs visible (titlecase)', async ({ page }) => {
+		test('toolbar segmented controls are visible on mobile', async ({ page }) => {
 			await page.goto(BASE);
-			const tablist = page.locator('.mobile-type-tabs [role="tablist"]');
-			await expect(tablist.getByRole('tab', { name: 'All', exact: true })).toBeVisible();
-			await expect(tablist.getByRole('tab', { name: 'New', exact: true })).toBeVisible();
-			await expect(tablist.getByRole('tab', { name: 'Repertory', exact: true })).toBeVisible();
+			// Behaviour change: on phone widths the ALL/NEW/REP film-type segment
+			// collapses into the FILTERS sheet (display:none in the toolbar), while
+			// the date-range (TODAY/TOMORROW/THIS WEEK) and display-mode
+			// (POSTERS/TEXT) segments stay on the toolbar. Assert the controls that
+			// remain mobile-visible plus that the FILTERS chip is the entry point.
+			const dateRange = page.getByRole('tablist', { name: 'Date range' });
+			await expect(dateRange.getByRole('tab', { name: 'TODAY', exact: true })).toBeVisible();
+			await expect(dateRange.getByRole('tab', { name: 'TOMORROW', exact: true })).toBeVisible();
+			await expect(dateRange.getByRole('tab', { name: 'THIS WEEK', exact: true })).toBeVisible();
+
+			await expect(page.getByRole('button', { name: 'Open filters' })).toBeVisible();
+
+			// The film-type segment still exists in the DOM, just hidden on phone
+			// (display:none, so it drops out of the a11y tree) — its controls now
+			// live in the FILTERS sheet.
+			const filmType = page.locator('.seg-film-type[aria-label="Film type"]');
+			await expect(filmType).toBeAttached();
+			await expect(filmType).toBeHidden();
 		});
 
-		test('mobile search input is ≥16px (prevents iOS auto-zoom)', async ({ page }) => {
+		test('toolbar search input is ≥16px (prevents iOS auto-zoom)', async ({ page }) => {
 			await page.goto(BASE);
-			const searchInput = page.locator('.mobile-search input');
+			// Search now lives inline in the FigmaToolbar.
+			const searchInput = page.getByRole('searchbox', { name: 'Search films, directors, cast' });
 			await expect(searchInput).toBeVisible();
 			const fontSize = await searchInput.evaluate(
 				(el) => parseFloat(window.getComputedStyle(el as HTMLElement).fontSize)
@@ -99,46 +152,39 @@ test.describe('Mobile Responsive — iPhone 12 Pro (390x844)', () => {
 		});
 
 		test('Filter button opens mobile filter sheet dialog', async ({ page }) => {
-			await page.goto(BASE);
-			await page.getByRole('button', { name: /^Filter/ }).click();
-			await expect(page.getByRole('dialog', { name: 'Filter programme' })).toBeVisible();
+			await gotoHomeHydrated(page);
+			await openFilterSheet(page);
 		});
 
 		test('Close button dismisses the filter sheet', async ({ page }) => {
-			await page.goto(BASE);
-			await page.getByRole('button', { name: /^Filter/ }).click();
-			const sheet = page.getByRole('dialog', { name: 'Filter programme' });
-			await expect(sheet).toBeVisible();
+			await gotoHomeHydrated(page);
+			const sheet = await openFilterSheet(page);
 			await page.getByRole('button', { name: 'Close filters' }).click();
 			await expect(sheet).toBeHidden();
 		});
 
 		test('Escape key dismisses the filter sheet', async ({ page }) => {
-			await page.goto(BASE);
-			await page.getByRole('button', { name: /^Filter/ }).click();
-			const sheet = page.getByRole('dialog', { name: 'Filter programme' });
-			await expect(sheet).toBeVisible();
+			await gotoHomeHydrated(page);
+			const sheet = await openFilterSheet(page);
 			await page.keyboard.press('Escape');
 			await expect(sheet).toBeHidden();
 		});
 
 		test('body scroll is locked while filter sheet is open', async ({ page }) => {
-			await page.goto(BASE);
+			await gotoHomeHydrated(page);
 			const prev = await page.evaluate(() => document.body.style.overflow);
-			await page.getByRole('button', { name: /^Filter/ }).click();
-			await expect(page.getByRole('dialog', { name: 'Filter programme' })).toBeVisible();
+			const sheet = await openFilterSheet(page);
 			const locked = await page.evaluate(() => document.body.style.overflow);
 			expect(locked).toBe('hidden');
 			await page.getByRole('button', { name: 'Close filters' }).click();
-			await expect(page.getByRole('dialog', { name: 'Filter programme' })).toBeHidden();
+			await expect(sheet).toBeHidden();
 			const restored = await page.evaluate(() => document.body.style.overflow);
 			expect(restored).toBe(prev);
 		});
 
 		test('Pick a date chip inside sheet opens mobile date picker', async ({ page }) => {
-			await page.goto(BASE);
-			await page.getByRole('button', { name: /^Filter/ }).click();
-			await expect(page.getByRole('dialog', { name: 'Filter programme' })).toBeVisible();
+			await gotoHomeHydrated(page);
+			await openFilterSheet(page);
 			await page.getByRole('button', { name: 'Pick a date' }).click();
 			await expect(page.getByRole('dialog', { name: 'Pick a date' })).toBeVisible();
 		});
@@ -149,11 +195,13 @@ test.describe('Mobile Responsive — iPhone 12 Pro (390x844)', () => {
 	// ═══════════════════════════════════════════════
 
 	test.describe('Film Cards', () => {
-		test('film cards render as vertical rows on mobile', async ({ page }) => {
+		test('film cards render stacked vertically on mobile', async ({ page }) => {
 			await page.goto(BASE);
-			await page.locator('.mobile-list .film-card').first().waitFor({ timeout: 10000 });
+			// Mobile now renders the same shell as desktop: section.day > .film-row >
+			// article.card, with .film-row stacking column-wise below 768px.
+			await page.locator('section.day .film-row article.card').first().waitFor({ timeout: 10000 });
 
-			const cards = page.locator('.mobile-list .film-card');
+			const cards = page.locator('section.day .film-row article.card');
 			const count = await cards.count();
 			expect(count).toBeGreaterThan(1);
 
@@ -164,9 +212,9 @@ test.describe('Mobile Responsive — iPhone 12 Pro (390x844)', () => {
 
 		test('screening times in film card are readable and within viewport', async ({ page }) => {
 			await page.goto(BASE);
-			await page.locator('.mobile-list .film-card').first().waitFor({ timeout: 10000 });
+			await page.locator('section.day .film-row article.card').first().waitFor({ timeout: 10000 });
 
-			const time = page.locator('.mobile-list .film-card .screening-time').first();
+			const time = page.locator('section.day article.card .screening-time').first();
 			const box = await time.boundingBox();
 			const viewport = await page.evaluate(() => window.innerWidth);
 			expect(box!.x + box!.width).toBeLessThanOrEqual(viewport);
@@ -181,8 +229,9 @@ test.describe('Mobile Responsive — iPhone 12 Pro (390x844)', () => {
 	test.describe('Film Detail Page', () => {
 		test('poster and info stack vertically on mobile', async ({ page }) => {
 			await page.goto(BASE);
-			await page.locator('.mobile-list .film-card').first().waitFor({ timeout: 10000 });
-			await page.locator('.mobile-list .film-card a').first().click();
+			await page.locator('section.day .film-row article.card').first().waitFor({ timeout: 10000 });
+			// The poster is the first link on the card; navigate to the film page.
+			await page.locator('section.day article.card a[href^="/film/"]').first().click();
 			await page.waitForURL(/\/film\//);
 
 			const poster = page.locator('.poster-col').first();
@@ -194,15 +243,18 @@ test.describe('Mobile Responsive — iPhone 12 Pro (390x844)', () => {
 			}
 		});
 
-		test('iCal button is tappable (≥28px)', async ({ page }) => {
+		test('primary booking CTA is tappable (≥28px)', async ({ page }) => {
+			// The standalone iCal/add-to-calendar button was removed from the film
+			// detail page. The hero now leads with a "Book next showing" primary CTA
+			// (plus a Save toggle); assert that CTA is a comfortable tap target.
 			await page.goto(BASE);
-			await page.locator('.mobile-list .film-card').first().waitFor({ timeout: 10000 });
-			await page.locator('.mobile-list .film-card a').first().click();
+			await page.locator('section.day .film-row article.card').first().waitFor({ timeout: 10000 });
+			await page.locator('section.day article.card a[href^="/film/"]').first().click();
 			await page.waitForURL(/\/film\//);
 
-			const icalBtn = page.locator('.ical-btn').first();
-			if (await icalBtn.isVisible()) {
-				const box = await icalBtn.boundingBox();
+			const cta = page.locator('.cta').first();
+			if (await cta.isVisible()) {
+				const box = await cta.boundingBox();
 				expect(box!.width).toBeGreaterThanOrEqual(28);
 				expect(box!.height).toBeGreaterThanOrEqual(28);
 			}
@@ -222,10 +274,7 @@ test.describe('Mobile Responsive — iPhone 12 Pro (390x844)', () => {
 
 		test('hamburger menu opens and shows nav links', async ({ page }) => {
 			await page.goto(BASE);
-			await page.locator('.mobile-menu-btn').click();
-
-			const mobileNav = page.locator('.mobile-nav');
-			await expect(mobileNav).toBeVisible();
+			await openBurgerMenu(page);
 
 			await expect(page.locator('.mobile-nav-link').filter({ hasText: 'ABOUT' })).toBeVisible();
 			await expect(page.locator('.mobile-nav-link').filter({ hasText: 'MAP' })).toBeVisible();
@@ -234,8 +283,7 @@ test.describe('Mobile Responsive — iPhone 12 Pro (390x844)', () => {
 
 		test('mobile nav links have adequate touch targets (44px min)', async ({ page }) => {
 			await page.goto(BASE);
-			await page.locator('.mobile-menu-btn').click();
-			await expect(page.locator('.mobile-nav')).toBeVisible();
+			await openBurgerMenu(page);
 
 			const links = page.locator('.mobile-nav-link');
 			const count = await links.count();
@@ -249,8 +297,7 @@ test.describe('Mobile Responsive — iPhone 12 Pro (390x844)', () => {
 
 		test('hamburger menu closes after navigation', async ({ page }) => {
 			await page.goto(BASE);
-			await page.locator('.mobile-menu-btn').click();
-			await expect(page.locator('.mobile-nav')).toBeVisible();
+			await openBurgerMenu(page);
 
 			await page.locator('.mobile-nav-link').filter({ hasText: 'ABOUT' }).click();
 			await page.waitForURL(/\/about/);
