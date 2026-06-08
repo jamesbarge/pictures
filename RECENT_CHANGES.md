@@ -1,3 +1,10 @@
+## 2026-06-05: Card components consolidated onto card-shapes.ts (+ formatLabel helper)
+**PR**: TBD | **Files**: `frontend/src/lib/components/calendar/card-shapes.ts`, `frontend/src/lib/components/calendar/FigmaFilmCard.svelte`, `frontend/src/lib/components/calendar/FigmaTextDay.svelte`, `frontend/src/lib/components/calendar/card-shapes.test.ts` (new)
+- FigmaFilmCard/FigmaTextDay re-declared inline `Film`/`Screening` interfaces — the exact field-by-field drift `card-shapes.ts` was created to prevent (flagged by the PR #646 type-design review). Both now import `CardFilm`/`CardScreening`.
+- The duplicated format-cleaning logic (filter `unknown`/`dcp`, `_`→space, uppercase) is extracted to a single `formatLabel()` in card-shapes.ts, with unit tests (71/71 passing, 4 new).
+
+---
+
 ## 2026-06-05: PR-review fixes — dimmer boot/runtime coherence, lazy-import catch, tablet text grid
 **PR**: #646 | **Files**: `frontend/src/app.html`, `frontend/src/lib/components/ui/DimmerDial.svelte`, `frontend/src/routes/+page.svelte`, `frontend/src/routes/film/[id]/+page.svelte`, `frontend/src/lib/components/calendar/FigmaTextDay.svelte`, `frontend/src/lib/server/api.ts`, `frontend/src/lib/components/filters/FigmaToolbar.svelte`, `changelogs/2026-06-05-pr-review-fixes.md`
 - Five-agent PR review (code/comments/silent-failures/types/tests) found and we fixed:

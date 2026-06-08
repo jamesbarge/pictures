@@ -1,31 +1,17 @@
 <script lang="ts">
 	import { formatTime } from '$lib/utils';
 	import { trackScreeningClick } from '$lib/analytics/posthog';
-
-	interface Screening {
-		id: string;
-		datetime: string;
-		cinemaName: string;
-		format?: string | null;
-		bookingUrl?: string;
-	}
-
-	interface Film {
-		id: string | number;
-		title: string;
-		year?: number | null;
-		director?: string | null;
-	}
+	import { formatLabel, type CardFilm, type CardScreening } from './card-shapes';
 
 	let {
 		films
 	}: {
-		films: Array<{ film: Film; screenings: Screening[] }>;
+		films: Array<{ film: CardFilm; screenings: CardScreening[] }>;
 	} = $props();
 
 	// Flatten film+screenings into one row per upcoming screening, sorted by time.
 	const rows = $derived.by(() => {
-		const out: Array<{ film: Film; screening: Screening }> = [];
+		const out: Array<{ film: CardFilm; screening: CardScreening }> = [];
 		for (const { film, screenings } of films) {
 			for (const s of screenings) {
 				if (new Date(s.datetime) <= new Date()) continue;
@@ -36,12 +22,7 @@
 		return out;
 	});
 
-	function fmt(f: string | null | undefined): string {
-		if (!f || f === 'unknown' || f === 'dcp') return '';
-		return f.toUpperCase().replace('_', ' ');
-	}
-
-	function clickRow(film: Film, s: Screening) {
+	function clickRow(film: CardFilm, s: CardScreening) {
 		trackScreeningClick(
 			{
 				filmId: String(film.id),
@@ -79,7 +60,7 @@
 			<span class="cell title">{film.title.toUpperCase()}</span>
 			<span class="cell director hide-md">{(film.director ?? '').toUpperCase()}</span>
 			<span class="cell year hide-sm">{film.year ?? ''}</span>
-			<span class="cell format hide-sm">{fmt(screening.format)}</span>
+			<span class="cell format hide-sm">{formatLabel(screening.format)}</span>
 			<span class="cell cinema">{screening.cinemaName.toUpperCase()}</span>
 		</a>
 	{/each}
