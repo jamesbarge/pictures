@@ -1,5 +1,15 @@
+## 2026-06-05: E2E suite refresh — re-pointed at the redesign + 4 regression locks
+**PR**: #648 | **Files**: `frontend/test-all.spec.ts`, `frontend/tests/mobile.spec.ts`, `frontend/tests/command-palette.spec.ts`, `frontend/tests/redesign-regression.spec.ts` (new), `frontend/src/lib/components/pretext/BreathingGrid.svelte` (deleted)
+- ~76 spec lines referenced pre-redesign homepage selectors (`.film-card`, `.masthead-title`, `.day-strip`, `.desktop-toolbar`, `aside.sidebar`, `.breathing-grid`, `.sign-in-link`, `.mobile-*`) — passing vacuously. Re-pointed at the redesigned DOM via role-based locators (toolbar, tablists, `.card`/`.film-row`/`.day-header`).
+- Command-palette filter-confirmation assertion rewritten for the new toolbar (chip label collapse + panel checkbox checked, replacing the removed sidebar's aria-pressed buttons).
+- New `redesign-regression.spec.ts` locks in this week's hand-fixed bugs: fitToFirstRow resize ratchet, split-header selector uniqueness (top + stuck), `--header-height` contract (menu anchors below current chrome), consent-banner z-order (elementFromPoint on the sheet CTA). Stability-tested 24/24 with `--repeat-each=3`.
+- `BreathingGrid.svelte` deleted (orphaned since the redesign; zero imports).
+- Results: test-all 106 ✓, mobile 52 ✓ (4 skipped), palette 10 ✓, regression 8 ✓ — 176 passed, 0 failed.
+
+---
+
 ## 2026-06-05: Card components consolidated onto card-shapes.ts (+ formatLabel helper)
-**PR**: TBD | **Files**: `frontend/src/lib/components/calendar/card-shapes.ts`, `frontend/src/lib/components/calendar/FigmaFilmCard.svelte`, `frontend/src/lib/components/calendar/FigmaTextDay.svelte`, `frontend/src/lib/components/calendar/card-shapes.test.ts` (new)
+**PR**: #647 | **Files**: `frontend/src/lib/components/calendar/card-shapes.ts`, `frontend/src/lib/components/calendar/FigmaFilmCard.svelte`, `frontend/src/lib/components/calendar/FigmaTextDay.svelte`, `frontend/src/lib/components/calendar/card-shapes.test.ts` (new)
 - FigmaFilmCard/FigmaTextDay re-declared inline `Film`/`Screening` interfaces — the exact field-by-field drift `card-shapes.ts` was created to prevent (flagged by the PR #646 type-design review). Both now import `CardFilm`/`CardScreening`.
 - The duplicated format-cleaning logic (filter `unknown`/`dcp`, `_`→space, uppercase) is extracted to a single `formatLabel()` in card-shapes.ts, with unit tests (71/71 passing, 4 new).
 

@@ -110,3 +110,7 @@ logs/
 
 # /scrape progress stamp + scratch
 /tmp/
+
+# Local QA verification screenshots (not for commit)
+pr646-*.png
+split-header-*.png
