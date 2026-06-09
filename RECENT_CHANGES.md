@@ -1,3 +1,11 @@
+## 2026-06-09: Prevent public caching of personalized festival data
+**PR**: TBD | **Files**: `src/app/api/festivals/route.ts`, `src/app/api/festivals/[slug]/route.ts`, `src/lib/cache-headers.ts`
+- Authenticated festival responses now use `private, no-store`.
+- Anonymous festival responses retain their existing public edge-cache policy.
+- Added regression tests for the user-aware cache policy.
+
+---
+
 ## 2026-06-05: E2E suite refresh — re-pointed at the redesign + 4 regression locks
 **PR**: #648 | **Files**: `frontend/test-all.spec.ts`, `frontend/tests/mobile.spec.ts`, `frontend/tests/command-palette.spec.ts`, `frontend/tests/redesign-regression.spec.ts` (new), `frontend/src/lib/components/pretext/BreathingGrid.svelte` (deleted)
 - ~76 spec lines referenced pre-redesign homepage selectors (`.film-card`, `.masthead-title`, `.day-strip`, `.desktop-toolbar`, `aside.sidebar`, `.breathing-grid`, `.sign-in-link`, `.mobile-*`) — passing vacuously. Re-pointed at the redesigned DOM via role-based locators (toolbar, tablists, `.card`/`.film-row`/`.day-header`).
