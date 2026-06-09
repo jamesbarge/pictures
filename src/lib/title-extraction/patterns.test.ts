@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   DOUBLE_FEATURE_PATTERN,
+  findEventPrefix,
   FRANCHISE_PATTERN,
   PRESENTS_PATTERN,
   SINGALONG_PATTERN,
@@ -172,5 +173,19 @@ describe("escapeRegex", () => {
     // are not escaped. Pin this so callers know.
     expect(escapeRegex("a-b")).toBe("a-b");
     expect(escapeRegex("a/b")).toBe("a/b");
+  });
+});
+
+describe("findEventPrefix", () => {
+  it("matches canonical prefixes with colon or whitespace separators", () => {
+    expect(findEventPrefix("Saturday Morning Picture Club: Paddington")).toBe(
+      "Saturday Morning Picture Club",
+    );
+    expect(findEventPrefix("UK PREMIERE Paddington")).toBe("UK PREMIERE");
+  });
+
+  it("does not match a prefix embedded in a film title", () => {
+    expect(findEventPrefix("IMAXimum Impact")).toBeNull();
+    expect(findEventPrefix("The NT Live Story")).toBeNull();
   });
 });

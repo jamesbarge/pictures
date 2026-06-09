@@ -13,73 +13,9 @@ import { films, screenings } from "@/db/schema";
 import { eq, isNull, and, gte, lte, sql } from "drizzle-orm";
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
+import { getKnownNonFilmType } from "@/scrapers/utils/film-title-cleaner";
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
-
-// ---------------------------------------------------------------------------
-// Pass 2: Non-film detection patterns
-// (verbatim copy from scripts/audit-and-fix-upcoming.ts)
-// ---------------------------------------------------------------------------
-
-const LIVE_BROADCAST_PATTERNS = [
-  /\bnt\s+live\b/i,
-  /\bmet\s+opera\b/i,
-  /\broh\s*(:|live)\b/i,
-  /\broyal\s+opera\s+house\b/i,
-  /\broyal\s+ballet\b/i,
-  /\bbolshoi\s+ballet\b/i,
-  /\brbo\s+(cinema|encore|live)\b/i,
-  /\bglyndebourne\b/i,
-  /\blive\s+from\s+(the\s+)?(met|royal|national|covent)/i,
-  /\bopera\s+live\b/i,
-  /\bballet\s+live\b/i,
-];
-
-const CONCERT_PATTERNS = [
-  /\blive\s+in\s+concert\b/i,
-  /\balbum\s+listening\b/i,
-  /\bdj\s+set\b/i,
-  /\blive\s+music\s+performance\b/i,
-  /\bsymphony\s+screening\b/i,
-];
-
-const EVENT_PATTERNS = [
-  /\bquiz\s+night\b/i,
-  /\bpub\s+quiz\b/i,
-  /\bworkshop\b/i,
-  /\bmasterclass\b/i,
-  /\bfilm\s+reading\s+group\b/i,
-  /\bpodcast\s+live\b/i,
-  /\bbook\s+launch\b/i,
-  /\bpanel\s+discussion\b/i,
-  /\bnetworking\s+event\b/i,
-  /\bcommunity\s+meeting\b/i,
-  /\bfundraiser\b/i,
-  /\bcharity\s+event\b/i,
-  /\bopen\s+mic\b/i,
-  /\bstand[\s-]up\s+comedy\b/i,
-  /\bcomedy\s+night\b/i,
-  /\bkaraoke\b/i,
-  /\bcraft\s+session\b/i,
-  /\btasting\s+(event|evening|session)\b/i,
-];
-
-const KIDS_NON_FILM_PATTERNS = [
-  /^toddler\s+time$/i,
-  /^baby\s+cinema$/i,
-  /\bplay\s+&?\s*stay\b/i,
-  /\bsensory\s+session\b/i,
-];
-
-type ContentType = "film" | "concert" | "live_broadcast" | "event";
-
-function classifyNonFilm(title: string): ContentType | null {
-  for (const p of LIVE_BROADCAST_PATTERNS) if (p.test(title)) return "live_broadcast";
-  for (const p of CONCERT_PATTERNS) if (p.test(title)) return "concert";
-  for (const p of EVENT_PATTERNS) if (p.test(title)) return "event";
-  for (const p of KIDS_NON_FILM_PATTERNS) if (p.test(title)) return "event";
-  return null;
-}
 
 export interface NonFilmResult {
   scanned: number;
@@ -119,7 +55,7 @@ export async function runNonFilmDetection(): Promise<NonFilmResult> {
   let deleted = 0;
 
   for (const film of candidates) {
-    const newType = classifyNonFilm(film.title);
+    const newType = getKnownNonFilmType(film.title);
     if (!newType) continue;
 
     const safeToDelete =

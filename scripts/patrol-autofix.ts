@@ -27,6 +27,7 @@ dotenv.config({ path: ".env.local" });
 
 import * as fs from "fs";
 import postgres from "postgres";
+import { decodeHtmlEntities } from "../src/lib/title-patterns";
 import { cleanFilmTitleWithMetadata, getKnownNonFilmType } from "../src/scrapers/utils/film-title-cleaner";
 
 // Warn early when learnings file is missing — Pass 4 silently becomes a no-op
@@ -91,20 +92,6 @@ const stats: Stats = {
   reclassifiedNonFilm: 0,
   collisionsSkipped: 0,
 };
-
-function decodeHtmlEntities(s: string): string {
-  return s
-    .replace(/&amp;/g, "&")
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'")
-    .replace(/&rsquo;/g, "’")
-    .replace(/&lsquo;/g, "‘")
-    .replace(/&hellip;/g, "…")
-    .replace(/&mdash;/g, "—")
-    .replace(/&ndash;/g, "–")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(parseInt(n, 10)));
-}
 
 function smartTitleCase(s: string): string {
   const lowers = new Set(["of", "the", "and", "a", "an", "to", "in", "on", "for", "with", "by", "at", "from", "or", "nor", "but", "vs", "as", "is", "de", "la", "le", "du", "des"]);

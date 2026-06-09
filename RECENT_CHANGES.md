@@ -1,3 +1,11 @@
+## 2026-06-09: Canonical title patterns and entity decoding
+**PR**: TBD | **Files**: `src/lib/title-extraction/patterns.ts`, `src/lib/title-patterns.ts`, `src/scrapers/utils/film-title-cleaner.ts`, title cleanup and audit scripts
+- Made the extraction pattern module the single source for event prefixes, suffixes, non-film patterns, and live-broadcast keywords; poster backfill and audits now consume those shared definitions.
+- Promoted robust named, numeric, and mojibake HTML entity decoding into `title-patterns.ts` and removed divergent script copies.
+- Removed broad private non-film classifiers from destructive audit paths so reclassification and deletion use the curated learned-title contract.
+
+---
+
 ## 2026-06-05: E2E suite refresh — re-pointed at the redesign + 4 regression locks
 **PR**: #648 | **Files**: `frontend/test-all.spec.ts`, `frontend/tests/mobile.spec.ts`, `frontend/tests/command-palette.spec.ts`, `frontend/tests/redesign-regression.spec.ts` (new), `frontend/src/lib/components/pretext/BreathingGrid.svelte` (deleted)
 - ~76 spec lines referenced pre-redesign homepage selectors (`.film-card`, `.masthead-title`, `.day-strip`, `.desktop-toolbar`, `aside.sidebar`, `.breathing-grid`, `.sign-in-link`, `.mobile-*`) — passing vacuously. Re-pointed at the redesigned DOM via role-based locators (toolbar, tablists, `.card`/`.film-row`/`.day-header`).

@@ -15,94 +15,11 @@
 import { db } from "@/db";
 import { films, screenings } from "@/db/schema";
 import { eq, isNull, gte, and } from "drizzle-orm";
+import { decodeHtmlEntities } from "@/lib/title-patterns";
 import { matchFilmToTMDB, getTMDBClient } from "@/lib/tmdb";
 
 const DRY_RUN = process.argv.includes("--dry-run");
 const RATE_LIMIT_MS = 300;
-
-// ---------------------------------------------------------------------------
-// HTML entity / mojibake decoding (copied from enrich-upcoming-films.ts)
-// ---------------------------------------------------------------------------
-
-function decodeHtmlEntities(text: string): string {
-  let decoded = text
-    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
-    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'")
-    .replace(/&nbsp;/g, " ");
-
-  if (/&[A-Za-z]+;/.test(decoded)) {
-    const entityMap: Record<string, number> = {
-      "&Atilde;": 0xC3, "&Acirc;": 0xC2, "&Aring;": 0xC5,
-      "&AElig;": 0xC6, "&Ccedil;": 0xC7, "&Egrave;": 0xC8,
-      "&Eacute;": 0xC9, "&Euml;": 0xCB, "&Iacute;": 0xCD,
-      "&Icirc;": 0xCE, "&Ntilde;": 0xD1, "&Ograve;": 0xD2,
-      "&Oacute;": 0xD3, "&Ouml;": 0xD6, "&Uacute;": 0xDA,
-      "&Uuml;": 0xDC,
-      "&iexcl;": 0xA1, "&cent;": 0xA2, "&pound;": 0xA3,
-      "&curren;": 0xA4, "&yen;": 0xA5, "&brvbar;": 0xA6,
-      "&sect;": 0xA7, "&uml;": 0xA8, "&copy;": 0xA9,
-      "&ordf;": 0xAA, "&laquo;": 0xAB, "&not;": 0xAC,
-      "&shy;": 0xAD, "&reg;": 0xAE, "&macr;": 0xAF,
-      "&deg;": 0xB0, "&plusmn;": 0xB1, "&sup2;": 0xB2,
-      "&sup3;": 0xB3, "&acute;": 0xB4, "&micro;": 0xB5,
-      "&para;": 0xB6, "&middot;": 0xB7, "&cedil;": 0xB8,
-      "&sup1;": 0xB9, "&ordm;": 0xBA, "&raquo;": 0xBB,
-      "&frac14;": 0xBC, "&frac12;": 0xBD, "&frac34;": 0xBE,
-      "&iquest;": 0xBF,
-    };
-
-    const entityPattern = /&[A-Za-z]+;/g;
-    const bytes: number[] = [];
-    let lastIndex = 0;
-    let result = "";
-    let match: RegExpExecArray | null;
-
-    while ((match = entityPattern.exec(decoded)) !== null) {
-      const entity = match[0];
-      const byteVal = entityMap[entity];
-
-      if (byteVal !== undefined) {
-        if (match.index > lastIndex) {
-          if (bytes.length > 0) {
-            result += new TextDecoder().decode(new Uint8Array(bytes));
-            bytes.length = 0;
-          }
-          result += decoded.slice(lastIndex, match.index);
-        }
-        bytes.push(byteVal);
-        lastIndex = match.index + entity.length;
-      } else {
-        if (bytes.length > 0) {
-          result += new TextDecoder().decode(new Uint8Array(bytes));
-          bytes.length = 0;
-        }
-        if (match.index > lastIndex) {
-          result += decoded.slice(lastIndex, match.index);
-        }
-        result += entity;
-        lastIndex = match.index + entity.length;
-      }
-    }
-
-    if (bytes.length > 0) {
-      result += new TextDecoder().decode(new Uint8Array(bytes));
-    }
-    if (lastIndex < decoded.length) {
-      result += decoded.slice(lastIndex);
-    }
-
-    if (result) {
-      decoded = result;
-    }
-  }
-
-  return decoded;
-}
 
 // ---------------------------------------------------------------------------
 // Classification map — one entry per film title

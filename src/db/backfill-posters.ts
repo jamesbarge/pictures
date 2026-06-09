@@ -20,6 +20,16 @@ import { films, screenings } from "./schema";
 import { eq, isNull, or, and } from "drizzle-orm";
 import { matchFilmToTMDB, getTMDBClient } from "@/lib/tmdb";
 import { getPosterService } from "@/lib/posters";
+import {
+  decodeHtmlEntities,
+  EVENT_PREFIX_REGEXES,
+  FESTIVAL_PREFIXES,
+  LIVE_BROADCAST_KEYWORDS,
+  NON_FILM_PATTERNS,
+  PRESENTS_PATTERN,
+  TITLE_SUFFIXES,
+} from "@/lib/title-patterns";
+import { getKnownNonFilmType } from "@/scrapers/utils/film-title-cleaner";
 
 // Parse CLI args
 const args = process.argv.slice(2);
@@ -31,160 +41,6 @@ const LIMIT = limitArg ? parseInt(limitArg.split("=")[1]) : undefined;
 // ============================================================================
 // Title Cleaning Patterns
 // ============================================================================
-
-/**
- * Event prefixes that wrap actual film titles (colon-separated)
- * These get stripped to reveal the underlying film
- */
-const EVENT_PREFIXES = [
-  // Dining/drinking events
-  /^DRINK\s*&\s*DINE:\s*/i,
-  /^Drink\s*&\s*Dine:\s*/i,
-  /^Drink\s+and\s+Dine:\s*/i,
-  /^DINE\s*&\s*DRINK:\s*/i,
-
-  // Cinema clubs/series
-  /^Arabic\s+Cinema\s+Club:\s*/i,
-  /^Arabic\s+Cinema\s+Club\s+curated\s+by[^:]*:?\s*/i,
-  /^Saturday\s+Morning\s+Picture\s+Club:\s*/i,
-  /^Classic\s+Matinee:\s*/i,
-  /^Varda\s+Film\s+Club:\s*/i,
-  /^Artist'?s?\s+Film\s+Picks:\s*/i,
-  /^Films\s+For\s+Workers:\s*/i,
-  /^Reclaim\s+the\s+Frame\s+presents:\s*/i,
-  /^Sonic\s+Cinema:\s*/i,
-  /^The\s+Liberated\s+Film\s+Club:\s*/i,
-  /^RBO\s+Cinema\s+Season\s+\d{4}-\d{2}:\s*/i,
-  /^Underscore\s+Cinema\s+\d{4}:\s*/i,
-  /^Carers\s*&(?:amp;)?\s*Babies:\s*/i,
-  /^Dub\s+Me\s+Always:\s*/i,
-
-  // Special screenings
-  /^Queer\s+Horror\s+Nights:\s*/i,
-  /^A\s+FESTIVE\s+FEAST:\s*/i,
-  /^Funeral\s+Parade\s+presents\s+/i,
-  /^UK\s+PREMIERE\s+/i,
-
-  // Live broadcasts (flag these - may not have film posters)
-  /^Met\s+Opera\s+(Live|Encore):\s*/i,
-  /^National\s+Theatre\s+Live:\s*/i,
-  /^NT\s+Live:\s*/i,
-  /^Royal\s+Opera\s+House:\s*/i,
-  /^ROH\s+Live:\s*/i,
-  /^Royal\s+Ballet:\s*/i,
-  /^Bolshoi\s+Ballet:\s*/i,
-  /^Berliner\s+Philharmoniker\s+Live:\s*/i,
-
-  // Exhibitions/documentaries
-  /^EXHIBITION\s+ON\s+SCREEN:\s*/i,
-  /^Exhibition\s+on\s+Screen:\s*/i,
-  /^Doc\s*'?n'?\s*Roll:\s*/i,
-
-  // Festival screenings
-  /^LSFF:\s*/i,
-  /^LFF:\s*/i,
-  /^BFI\s+Flare:\s*/i,
-
-  // Format-based
-  /^35mm:\s*/i,
-  /^70mm:\s*/i,
-  /^4K:\s*/i,
-  /^IMAX:\s*/i,
-
-  // Interactive events
-  /^Sing-?A-?Long-?A?\s+/i,
-  /^Solve\s+Along\s+A\s+/i,
-  /^Quote-?A-?Long:\s*/i,
-
-  // Artist/filmmaker specific
-  /^Ken\s+Kobland:\s*/i,
-  /^Carl\s+Elsaesser:\s*/i,
-];
-
-/**
- * Suffixes to strip from titles
- */
-const TITLE_SUFFIXES = [
-  // Q&A and intro
-  /\s*\+\s*Q&(?:amp;)?A.*$/i,
-  /\s*\+\s*Intro.*$/i,
-  /\s*\+\s*Discussion.*$/i,
-  /\s*with\s+Q&(?:amp;)?A.*$/i,
-
-  // Special events
-  /\s*with\s+Shadow\s+Cast.*$/i,
-  /\s*\+\s*PJ\s+Party.*$/i,
-
-  // Format markers (keep the title, just strip these)
-  /\s*\(4K\s+Restoration\)$/i,
-  /\s*\(4K\s+Remaster(?:ed)?\)$/i,
-  /\s*\(4K\s+Re-?release\)$/i,
-  /\s*\(Restored\)$/i,
-  /\s*\(Digital\s+Restoration\)$/i,
-  /\s*\(Director'?s?\s+Cut\)$/i,
-  /\s*\(Extended\s+(?:Edition|Cut)\)$/i,
-  /\s*\(Original\s+Cut\)$/i,
-  /\s*\(Theatrical\s+Cut\)$/i,
-  /\s*4K$/i,
-  /\s*\(35mm\)$/i,
-
-  // Anniversary editions - strip but note for year calc
-  /\s*[-•]\s*\d+(?:th|st|nd|rd)?\s+Anniversary.*$/i,
-  /\s*\(\d+(?:th|st|nd|rd)?\s+Anniversary\)$/i,
-
-  // Preview/encore
-  /\s*-\s*Preview$/i,
-  /\s*\(Preview\)$/i,
-  /\s*Encore$/i,
-  /\s*\(\d{4}\s+Encore\)$/i,
-
-  // Future year markers (screening year, not release year)
-  /\s*\(202[5-9]\)$/,
-  /\s*\(203\d\)$/,
-
-  // TBC markers
-  /\s*TBC$/i,
-
-  // Double bill indicators
-  /\s*Double[- ]?Bill$/i,
-
-  // Sing-along suffix (for DRINK & DINE: Grease Sing-Along!)
-  /\s+Sing-?A?-?Long!?$/i,
-
-  // Special edition markers
-  /:\s*Extended\s+Edition$/i,
-  /\s+-\s+Original\s+Cut$/i,
-
-  // Prosecco & Popcorn / Mulled Wine etc
-  /\s*\+\s*(?:Prosecco|Mulled\s+Wine).*$/i,
-];
-
-/**
- * Patterns that indicate this is NOT a film (don't try to match)
- */
-const NON_FILM_PATTERNS = [
-  /\bQuiz\b/i,
-  /\bReading\s+[Gg]roup\b/i,
-  /\bCafé\s+Philo\b/i,
-  /\bCafe\s+Philo\b/i,
-  /\bCafés\s+philo\b/i,
-  /\bCompetition\b/i,
-  /\bStory\s+Time\b/i,
-  /\bBaby\s+Comptines\b/i,
-  /\bLanguage\s+Activity\b/i,
-  /\bIn\s+conversation\s+with\b/i,
-  /\bCome\s+and\s+Sing\b/i,
-  /\bMarathon$/i,  // Just "Marathon" as the whole title
-  /\bOrgan\s+Trio\b/i,
-  /\bBlues\s+at\b/i,
-  /\bFunky\s+Stuff\b/i,
-  /\bMusic\s+Video\s+Preservation\b/i,
-  /\bComedy:/i,  // Comedy shows
-  /\bClub\s+Room\s+Comedy\b/i,
-  /\bVinyl\s+Reggae\b/i,
-  /\bVinyl\s+Sisters\b/i,
-  /\bAnimated\s+Shorts\s+for\b/i,
-];
 
 // ============================================================================
 // Title Processing Functions
@@ -209,45 +65,35 @@ export function processTitle(rawTitle: string): ProcessedTitle {
   let isCompilation = false;
 
   // Check if this is a non-film event
-  for (const pattern of NON_FILM_PATTERNS) {
-    if (pattern.test(title)) {
-      return {
-        cleanedTitle: title,
-        extractedYear: null,
-        isNonFilm: true,
-        isLiveBroadcast: false,
-        isCompilation: false,
-        changes: ["Identified as non-film event"],
-      };
-    }
+  if (getKnownNonFilmType(title) || NON_FILM_PATTERNS.some((pattern) => pattern.test(title))) {
+    return {
+      cleanedTitle: title,
+      extractedYear: null,
+      isNonFilm: true,
+      isLiveBroadcast: false,
+      isCompilation: false,
+      changes: ["Identified as non-film event"],
+    };
   }
 
   // Decode HTML entities
-  title = title
-    .replace(/&amp;/g, "&")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">");
+  title = decodeHtmlEntities(title);
 
   // Extract from "presents" pattern: Funeral Parade presents "Caravaggio"
-  const presentsMatch = title.match(/^.+\s+presents?\s+[""](.+)[""]$/i);
+  const presentsMatch = title.match(PRESENTS_PATTERN);
   if (presentsMatch) {
     title = presentsMatch[1];
     changes.push("Extracted from 'presents' pattern");
   }
 
   // Strip event prefixes
-  for (const prefix of EVENT_PREFIXES) {
+  for (const prefix of EVENT_PREFIX_REGEXES) {
     if (prefix.test(title)) {
       // Check for live broadcast
-      if (/Met\s+Opera|National\s+Theatre|NT\s+Live|Royal\s+Opera|Ballet/i.test(title)) {
-        isLiveBroadcast = true;
-      }
+      const normalized = title.toLowerCase();
+      isLiveBroadcast = LIVE_BROADCAST_KEYWORDS.some((keyword) => normalized.includes(keyword));
       // Check for compilation
-      if (/LSFF|LFF|BFI\s+Flare/i.test(title)) {
-        isCompilation = true;
-      }
+      isCompilation = FESTIVAL_PREFIXES.some((festival) => normalized.includes(festival.toLowerCase()));
 
       title = title.replace(prefix, "").trim();
       changes.push(`Stripped event prefix`);

@@ -12,85 +12,17 @@
  */
 
 import type { Page } from "rebrowser-playwright";
+import {
+  EVENT_PREFIX_PATTERNS,
+  findEventPrefix,
+  LIVE_BROADCAST_KEYWORDS,
+  NON_FILM_PATTERNS,
+  TITLE_SUFFIXES,
+} from "../../../src/lib/title-patterns";
+import { getKnownNonFilmType } from "../../../src/scrapers/utils/film-title-cleaner";
 import type { AuditIssue, FilmCardData, FilmDetailData } from "../types";
 
 const BASE_URL = "https://pictures.london";
-
-// Patterns from src/lib/title-patterns.ts replicated for audit
-const EVENT_PREFIX_PATTERNS = [
-  /^(saturday|sunday|weekday)\s+(morning|afternoon)/i,
-  /^(kids?|family|toddler|baby)\s*(club|time|film)/i,
-  /^(uk|world)\s+premiere/i,
-  /^(35|70)mm[:\s]/i,
-  /^(imax|4k|restoration)[:\s]/i,
-  /^(sing[\s-]?a[\s-]?long|quote[\s-]?a[\s-]?long)[:\s]/i,
-  /^(preview|sneak|advance)[:\s]/i,
-  /^(special|member'?s?)\s+screening/i,
-  /^(double|triple)\s+(feature|bill)/i,
-  /^(cult|classic|christmas)\s+(classic|film)/i,
-  /^(late\s+night|midnight)/i,
-  /^(marathon|retrospective|tribute)[:\s]/i,
-  /^(q\s*&\s*a|live\s+q)/i,
-  /^(intro(duced)?\s+by|with\s+q)/i,
-];
-
-const NON_FILM_PATTERNS = [
-  /\bQuiz\b/i,
-  /\bReading\s+[Gg]roup\b/i,
-  /\bCaf[eé]\s+Philo\b/i,
-  /\bCompetition\b/i,
-  /\bStory\s+Time\b/i,
-  /\bBaby\s+Comptines\b/i,
-  /\bLanguage\s+Activity\b/i,
-  /\bIn\s+conversation\s+with\b/i,
-  /\bCome\s+and\s+Sing\b/i,
-  /\bMarathon$/i,
-  /\bOrgan\s+Trio\b/i,
-  /\bBlues\s+at\b/i,
-  /\bFunky\s+Stuff\b/i,
-  /\bMusic\s+Video\s+Preservation\b/i,
-  /\bComedy:/i,
-  /\bClub\s+Room\s+Comedy\b/i,
-  /\bVinyl\s+Reggae\b/i,
-  /\bVinyl\s+Sisters\b/i,
-  /\bAnimated\s+Shorts\s+for\b/i,
-  // Live broadcasts / non-film
-  /\bMet Opera\b/i,
-  /\bNational Theatre Live\b/i,
-  /\bNT Live\b/i,
-  /\bRoyal Opera\b/i,
-  /\bROH Live\b/i,
-  /\bRoyal Ballet\b/i,
-  /\bBolshoi Ballet\b/i,
-  /\bBerliner Philharmoniker\b/i,
-  /\bExhibition on Screen\b/i,
-];
-
-const KNOWN_PREFIXES = [
-  "DRINK & DINE",
-  "Drink & Dine",
-  "Arabic Cinema Club",
-  "Saturday Morning Picture Club",
-  "Classic Matinee",
-  "Varda Film Club",
-  "Sonic Cinema",
-  "The Liberated Film Club",
-  "Underscore Cinema",
-  "Queer Horror Nights",
-  "Funeral Parade presents",
-  "Doc 'N Roll",
-  "Doc N Roll",
-];
-
-const SUFFIX_PATTERNS = [
-  /\s*\(4K\s+Restoration\)$/i,
-  /\s*\(4K\s+Remaster(?:ed)?\)$/i,
-  /\s*\(Restored\)$/i,
-  /\s*\(Digital\s+Restoration\)$/i,
-  /\s*\(Director'?s?\s+Cut\)$/i,
-  /\s*\((U|PG|12A?|15|18)\*?\)\s*$/i,
-  /\s*\[.*?\]\s*$/,
-];
 
 /**
  * Extract all film cards from the calendar page.
@@ -193,18 +125,16 @@ export function checkFilmCard(card: FilmCardData): AuditIssue[] {
   }
 
   // Title cleanliness - check for event prefixes
-  for (const prefix of KNOWN_PREFIXES) {
-    if (card.title.toLowerCase().startsWith(prefix.toLowerCase())) {
-      issues.push({
-        severity: "warning",
-        category: "title_not_clean",
-        message: `Film title has event prefix: "${card.title}" (prefix: "${prefix}")`,
-        entity: card.title,
-        details: { filmId: card.filmId, prefix },
-        url: `${BASE_URL}${card.href}`,
-      });
-      break;
-    }
+  const prefix = findEventPrefix(card.title);
+  if (prefix) {
+    issues.push({
+      severity: "warning",
+      category: "title_not_clean",
+      message: `Film title has event prefix: "${card.title}" (prefix: "${prefix}")`,
+      entity: card.title,
+      details: { filmId: card.filmId, prefix },
+      url: `${BASE_URL}${card.href}`,
+    });
   }
 
   // Title cleanliness - check regex patterns
@@ -223,7 +153,7 @@ export function checkFilmCard(card: FilmCardData): AuditIssue[] {
   }
 
   // Title cleanliness - check for format/rating suffixes
-  for (const pattern of SUFFIX_PATTERNS) {
+  for (const pattern of TITLE_SUFFIXES) {
     if (pattern.test(card.title)) {
       issues.push({
         severity: "warning",
@@ -238,18 +168,24 @@ export function checkFilmCard(card: FilmCardData): AuditIssue[] {
   }
 
   // Non-film content
-  for (const pattern of NON_FILM_PATTERNS) {
-    if (pattern.test(card.title)) {
-      issues.push({
-        severity: "critical",
-        category: "non_film_content",
-        message: `Non-film content in calendar: "${card.title}"`,
-        entity: card.title,
-        details: { filmId: card.filmId, pattern: pattern.source },
-        url: `${BASE_URL}${card.href}`,
-      });
-      break;
-    }
+  const lowerTitle = card.title.toLowerCase();
+  const nonFilmPattern = NON_FILM_PATTERNS.find((pattern) => pattern.test(card.title));
+  const learnedType = getKnownNonFilmType(card.title);
+  const liveKeyword = LIVE_BROADCAST_KEYWORDS.find((keyword) => lowerTitle.includes(keyword));
+  if (nonFilmPattern || learnedType || liveKeyword) {
+    issues.push({
+      severity: "critical",
+      category: "non_film_content",
+      message: `Non-film content in calendar: "${card.title}"`,
+      entity: card.title,
+      details: {
+        filmId: card.filmId,
+        pattern: nonFilmPattern?.source,
+        learnedType,
+        liveKeyword,
+      },
+      url: `${BASE_URL}${card.href}`,
+    });
   }
 
   return issues;

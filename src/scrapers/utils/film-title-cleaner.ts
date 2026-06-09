@@ -18,6 +18,7 @@
 
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
+import { decodeHtmlEntities } from "@/lib/title-patterns";
 
 // ---------- Learnings loader (declared FIRST so it's available at the module
 // init of EVENT_PREFIXES below) -------------------------------------------------
@@ -32,8 +33,10 @@ interface KnownNonFilm {
   /** When true, match `title` exactly (case-insensitive). */
   exact?: boolean;
   /** Content type to assign on match. Defaults to "event". */
-  type?: "event" | "live_broadcast" | string;
+  type?: KnownNonFilmContentType | string;
 }
+
+export type KnownNonFilmContentType = "concert" | "event" | "live_broadcast";
 
 interface Learnings {
   prefixesToStrip?: string[];
@@ -339,9 +342,12 @@ export function getKnownNonFilmTypeFromEntries(
  * `getKnownNonFilmTypeFromEntries` for the matching contract. The previous
  * implementation only handled exact-match, which left a gap vs. data-check.
  */
-export function getKnownNonFilmType(title: string): string | null {
+export function getKnownNonFilmType(title: string): KnownNonFilmContentType | null {
   const data = loadLearnings();
-  return getKnownNonFilmTypeFromEntries(title, data?.knownNonFilmTitles);
+  const type = getKnownNonFilmTypeFromEntries(title, data?.knownNonFilmTitles);
+  if (!type) return null;
+  if (type === "concert" || type === "live_broadcast") return type;
+  return "event";
 }
 
 /** Boolean convenience wrapper around getKnownNonFilmType. */
@@ -386,18 +392,7 @@ interface CleanTitleResult {
  * so the pipeline can preserve event context (e.g. in screening.eventDescription).
  */
 export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
-  let cleaned = title
-    // Decode common HTML entities (scrapers may pass raw entity strings)
-    .replace(/&amp;/g, "&")
-    // Decode &Acirc; before fraction entities so mojibake fix can work on the result
-    .replace(/&Acirc;/g, "\u00C2")
-    .replace(/&rsquo;/g, "\u2019")
-    .replace(/&lsquo;/g, "\u2018")
-    .replace(/&frac12;/g, "\u00BD")
-    .replace(/&frac14;/g, "\u00BC")
-    .replace(/&frac34;/g, "\u00BE")
-    .replace(/&ndash;/g, "\u2013")
-    .replace(/&mdash;/g, "\u2014")
+  let cleaned = decodeHtmlEntities(title)
     // Fix common mojibake: UTF-8 high bytes decoded as Latin-1 produce Â prefix
     .replace(/\u00c2([\u0080-\u00bf])/g, "$1")
     // Collapse whitespace (including newlines)
