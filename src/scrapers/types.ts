@@ -114,6 +114,8 @@ export interface ChainConfig {
  */
 export interface ChainScraper {
   chainConfig: ChainConfig;
+  /** Per-venue failures from the latest multi-venue scrape. */
+  venueErrors?: Map<string, string>;
   /** Scrape all active venues */
   scrapeAll(): Promise<Map<string, RawScreening[]>>;
   /** Scrape specific venues */
@@ -123,4 +125,3 @@ export interface ChainScraper {
   /** Health check */
   healthCheck(): Promise<boolean>;
 }
-

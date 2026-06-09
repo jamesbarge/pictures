@@ -17,6 +17,7 @@ Update this playbook whenever you:
 - **Never use `new Date(year, month, day, hours, minutes)` to construct screening datetimes.** That ctor interprets numeric args as the runtime's local timezone, which silently produces +1h offsets during BST when the scraper runs under `TZ=UTC` (cron, CI, container). Always call `ukLocalToUTC(...)` from `utils/date-parser.ts` — it builds UTC explicitly and applies BST. Same goes for `parseUKLocalDateTime()` for ISO-like strings without a timezone suffix.
 - After fixing time parsing bugs, verify and clean bad historical screenings (`00:00-09:59`) only when confirmed wrong.
 - **`BaseScraper.healthCheck()` retries** (2026-05-15): 3 attempts, 10s timeout each, 4s backoff between attempts. Fast-fails on 4xx (contract issue), retries on 5xx + network errors. Subclasses can override for cheaper/different checks (e.g. Curzon HEADs the API endpoint with a 401-is-healthy contract). Background: Close-Up was failing 33% of runs at 03:17-03:21 UTC because of brief nightly-maintenance windows.
+- **Do not turn fetch/parse exceptions into successful empty results.** A valid zero-screening chain venue must remain present in the returned `Map` with `[]`; a failed venue must be omitted and recorded in `venueErrors`. The shared runner marks any requested venue missing from the result map as failed. Multi-page independent scrapers must throw when any required page fails so partial coverage is not persisted as a successful run.
 
 ## Health & Flakiness Detection
 The `/scrape` slash command runs three read-only detectors against `scraper_runs`:
@@ -87,6 +88,7 @@ Use this format when recording cinema-specific quirks:
 ### Picturehouse
 - Scraper: `src/scrapers/chains/picturehouse.ts`
 - Notes: API-based flow; generally highest reliability.
+- Failure handling: HTTP errors and invalid API envelopes are recorded in `venueErrors`; failed venues are omitted from the result map.
 
 ### Curzon
 - Scraper: `src/scrapers/chains/curzon.ts`
@@ -105,6 +107,7 @@ Use this format when recording cinema-specific quirks:
   - **Headless detection**: Without stealth plugin + `--disable-blink-features=AutomationControlled`, the Vista SDK does not initialize and no API calls are made
   - **healthCheck**: Cloudflare blocks HEAD to `www.curzon.com`; use API endpoint instead (401 = healthy)
   - **BST timezone (fixed 2026-05-12)**: `schedule.startsAt` is TZ-less. Original `new Date(startsAt)` silently added 1h under `TZ=UTC` during BST. Migrated to `parseUKLocalDateTime`. Duplicate-pair probe confirmed 15 ghost rows existed; cleaned in same change. Same fix class as #484 (Everyman) and #485 (Picturehouse).
+  - **Failure handling**: total auth failure throws; failed venue/date API calls are recorded as venue failures rather than successful empty results.
 - Vista site codes: SOH1, MAY1, BLO1, ALD1, VIC1, HOX1, KIN1, RIC1, WIM01, CAM1
 - Last verified (2026-03-18): SSR token extraction working, all venues returning data
 
@@ -123,7 +126,8 @@ Use this format when recording cinema-specific quirks:
   - **BST timezone**: Displayed times are UK local. Must use `ukLocalToUTC()` to convert.
   - **Sold-out screenings**: Have no `<a>` tag, only a `<span>` with "(Sold out)" appended to the time.
   - **Coverage**: The `/whats-on/cinema?day=` page covers ALL cinema series (New Releases, Cold War Visions, Relaxed Screenings, London Soundtrack Festival, etc.). The old `/whats-on/series/new-releases` page only covered one series.
-  - **Day range**: The nav shows ~7 days but the `?day=` parameter accepts any future date. We scrape 14 days ahead.
+  - **Day range**: The nav shows ~7 days but the `?day=` parameter accepts any future date. We scrape 30 days ahead.
+  - **Failure handling**: any failed fetch or parse in the required 30-day window fails the run, preventing a partial scrape from being recorded as success.
   - **Old performances endpoint**: The `/whats-on/event/{nodeId}/performances` page still works but its `datetime` attribute has a misleading `Z` suffix — the values are actually UK local time, not UTC. The old scraper used `new Date(attr)` which was off by 1 hour during BST.
 - Last verified (2026-04-10): Rewrote to use daily listing approach. 9 screenings parsed from April 10 test page, matching website exactly.
 
@@ -149,6 +153,7 @@ Use this format when recording cinema-specific quirks:
 ### Everyman
 - Scraper: `src/scrapers/chains/everyman.ts`
 - Notes: Playwright-heavy; more sensitive to markup and client-side app changes.
+- Failure handling: scheduled-movie, movie-detail, and schedule API errors are recorded in `venueErrors`; a valid empty schedule remains a successful `[]` result.
 
 ### JW3 (Finchley Road)
 - Scraper: `src/scrapers/cinemas/jw3.ts` (fetch-based, no browser — runnable under tsx).
