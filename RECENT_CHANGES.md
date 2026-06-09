@@ -1,5 +1,5 @@
 ## 2026-06-09: Scraper failures no longer masquerade as successful empty runs
-**PR**: TBD | **Files**: `src/scrapers/runner-factory.ts`, `src/scrapers/chains/`, `src/scrapers/cinemas/`
+**PR**: #654 | **Files**: `src/scrapers/runner-factory.ts`, `src/scrapers/chains/`, `src/scrapers/cinemas/`
 - Chain scrapers now distinguish valid zero-screening results from failed venues, and the shared runner records omitted requested venues as failed.
 - Curzon auth/date failures and required-page failures in Barbican, Close-Up, and Phoenix now fail honestly instead of persisting partial or empty success results.
 

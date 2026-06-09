@@ -1,6 +1,6 @@
 # Scraper Failure Propagation
 
-**PR**: TBD
+**PR**: #654
 **Date**: 2026-06-09
 
 ## Changes
