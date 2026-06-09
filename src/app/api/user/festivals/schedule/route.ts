@@ -8,14 +8,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { userFestivalSchedule, screenings, films, cinemas } from "@/db/schema";
 import type { FestivalScheduleStatus } from "@/db/schema/festivals";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { BadRequestError, handleApiError } from "@/lib/api-errors";
 import { requireAuth, getCurrentUserId } from "@/lib/auth";
+import { boundedSyncArray, idsMissingFrom, newestByKey } from "@/lib/sync-batching";
 
 // Schema for incoming schedule
 const scheduleSchema = z.object({
-  schedule: z.array(
+  schedule: boundedSyncArray(
     z.object({
       id: z.string(),
       screeningId: z.string(),
@@ -29,8 +30,8 @@ const scheduleSchema = z.object({
       cinemaId: z.string().optional(),
       cinemaName: z.string().optional(),
       addedAt: z.string(),
-      updatedAt: z.string(),
-    })
+      updatedAt: z.string().datetime(),
+    }),
   ),
 });
 
@@ -129,7 +130,11 @@ export async function POST(request: NextRequest) {
       throw new BadRequestError("Invalid schedule data", parseResult.error.flatten());
     }
 
-    const { schedule } = parseResult.data;
+    const schedule = newestByKey(
+      parseResult.data.schedule,
+      (entry) => entry.screeningId,
+      (entry) => entry.updatedAt,
+    );
 
     // Get current server schedule
     const serverSchedule = await db
@@ -141,7 +146,7 @@ export async function POST(request: NextRequest) {
     const clientScheduleIds = schedule.map((s) => s.screeningId);
 
     // Delete schedule entries that are no longer in client state
-    const toDelete = serverScheduleIds.filter((id) => !clientScheduleIds.includes(id));
+    const toDelete = idsMissingFrom(serverScheduleIds, clientScheduleIds);
     if (toDelete.length > 0) {
       await db
         .delete(userFestivalSchedule)
@@ -153,27 +158,29 @@ export async function POST(request: NextRequest) {
         );
     }
 
-    // Upsert all client schedule entries
-    for (const entry of schedule) {
-      const status = entry.status as FestivalScheduleStatus;
+    // Upsert all client schedule entries in one statement
+    if (schedule.length > 0) {
+      const updatedAt = new Date();
       await db
         .insert(userFestivalSchedule)
-        .values({
-          id: entry.id,
-          userId,
-          screeningId: entry.screeningId,
-          festivalId: entry.festivalId,
-          status,
-          bookingConfirmation: entry.bookingConfirmation || null,
-          notes: entry.notes || null,
-        })
+        .values(
+          schedule.map((entry) => ({
+            id: entry.id,
+            userId,
+            screeningId: entry.screeningId,
+            festivalId: entry.festivalId,
+            status: entry.status as FestivalScheduleStatus,
+            bookingConfirmation: entry.bookingConfirmation || null,
+            notes: entry.notes || null,
+          })),
+        )
         .onConflictDoUpdate({
           target: [userFestivalSchedule.userId, userFestivalSchedule.screeningId],
           set: {
-            status,
-            bookingConfirmation: entry.bookingConfirmation || null,
-            notes: entry.notes || null,
-            updatedAt: new Date(),
+            status: sql`excluded.status`,
+            bookingConfirmation: sql`excluded.booking_confirmation`,
+            notes: sql`excluded.notes`,
+            updatedAt,
           },
         });
     }

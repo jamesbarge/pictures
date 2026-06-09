@@ -1,3 +1,11 @@
+## 2026-06-09: User sync routes use bounded batch writes
+**PR**: TBD | **Files**: `src/app/api/user/sync/route.ts`, festival sync/follows/schedule routes, `src/lib/sync-batching.ts`, `src/lib/sync-batching.test.ts`, `changelogs/2026-06-09-user-sync-batching.md`
+- Capped festival sync collections at 500 items, retained the existing 5,000-item full film-status allowance, and collapse duplicate conflict keys with newest-wins semantics.
+- Replaced per-row film-status, festival-follow, and festival-schedule writes with one conflict upsert per collection.
+- Festival bidirectional sync now fetches metadata once and uses set membership instead of per-row lookups and repeated linear scans.
+
+---
+
 ## 2026-06-05: E2E suite refresh — re-pointed at the redesign + 4 regression locks
 **PR**: #648 | **Files**: `frontend/test-all.spec.ts`, `frontend/tests/mobile.spec.ts`, `frontend/tests/command-palette.spec.ts`, `frontend/tests/redesign-regression.spec.ts` (new), `frontend/src/lib/components/pretext/BreathingGrid.svelte` (deleted)
 - ~76 spec lines referenced pre-redesign homepage selectors (`.film-card`, `.masthead-title`, `.day-strip`, `.desktop-toolbar`, `aside.sidebar`, `.breathing-grid`, `.sign-in-link`, `.mobile-*`) — passing vacuously. Re-pointed at the redesigned DOM via role-based locators (toolbar, tablists, `.card`/`.film-row`/`.day-header`).

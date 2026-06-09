@@ -7,14 +7,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { userFestivalInterests, festivals } from "@/db/schema";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { BadRequestError, handleApiError } from "@/lib/api-errors";
 import { requireAuth, getCurrentUserId } from "@/lib/auth";
+import { boundedSyncArray, idsMissingFrom, newestByKey } from "@/lib/sync-batching";
 
 // Schema for incoming follows
 const followsSchema = z.object({
-  follows: z.array(
+  follows: boundedSyncArray(
     z.object({
       festivalId: z.string(),
       festivalName: z.string(),
@@ -24,8 +25,8 @@ const followsSchema = z.object({
       notifyProgramme: z.boolean(),
       notifyReminders: z.boolean(),
       followedAt: z.string(),
-      updatedAt: z.string(),
-    })
+      updatedAt: z.string().datetime(),
+    }),
   ),
 });
 
@@ -107,7 +108,11 @@ export async function POST(request: NextRequest) {
       throw new BadRequestError("Invalid follows data", parseResult.error.flatten());
     }
 
-    const { follows } = parseResult.data;
+    const follows = newestByKey(
+      parseResult.data.follows,
+      (follow) => follow.festivalId,
+      (follow) => follow.updatedAt,
+    );
 
     // Get current server follows
     const serverFollows = await db
@@ -119,7 +124,7 @@ export async function POST(request: NextRequest) {
     const clientFollowIds = follows.map((f) => f.festivalId);
 
     // Delete follows that are no longer in client state
-    const toDelete = serverFollowIds.filter((id) => !clientFollowIds.includes(id));
+    const toDelete = idsMissingFrom(serverFollowIds, clientFollowIds);
     if (toDelete.length > 0) {
       await db
         .delete(userFestivalInterests)
@@ -131,26 +136,29 @@ export async function POST(request: NextRequest) {
         );
     }
 
-    // Upsert all client follows
-    for (const follow of follows) {
+    // Upsert all client follows in one statement
+    if (follows.length > 0) {
+      const updatedAt = new Date();
       await db
         .insert(userFestivalInterests)
-        .values({
-          userId,
-          festivalId: follow.festivalId,
-          interestLevel: follow.interestLevel,
-          notifyOnSale: follow.notifyOnSale,
-          notifyProgramme: follow.notifyProgramme,
-          notifyReminders: follow.notifyReminders,
-        })
-        .onConflictDoUpdate({
-          target: [userFestivalInterests.userId, userFestivalInterests.festivalId],
-          set: {
+        .values(
+          follows.map((follow) => ({
+            userId,
+            festivalId: follow.festivalId,
             interestLevel: follow.interestLevel,
             notifyOnSale: follow.notifyOnSale,
             notifyProgramme: follow.notifyProgramme,
             notifyReminders: follow.notifyReminders,
-            updatedAt: new Date(),
+          })),
+        )
+        .onConflictDoUpdate({
+          target: [userFestivalInterests.userId, userFestivalInterests.festivalId],
+          set: {
+            interestLevel: sql`excluded.interest_level`,
+            notifyOnSale: sql`excluded.notify_on_sale`,
+            notifyProgramme: sql`excluded.notify_programme`,
+            notifyReminders: sql`excluded.notify_reminders`,
+            updatedAt,
           },
         });
     }
