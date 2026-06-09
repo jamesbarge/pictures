@@ -1,4 +1,10 @@
 import { apiFetch } from '$lib/server/api';
+import {
+	addDaysToDateString,
+	londonClock,
+	londonDateString,
+	londonDateTime
+} from '$lib/london-date';
 import type { Config } from '@sveltejs/adapter-vercel';
 import type { PageServerLoad } from './$types';
 
@@ -34,23 +40,9 @@ interface ScreeningsResponse {
 export const load: PageServerLoad = async ({ fetch, setHeaders }) => {
 	setHeaders({ 'cache-control': 'public, s-maxage=900, stale-while-revalidate=3600' });
 	const now = new Date();
-	const londonDate = now.toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
-	const londonHour = parseInt(
-		now.toLocaleString('en-GB', { hour: 'numeric', hour12: false, timeZone: 'Europe/London' })
-	);
-
-	// Detect London's UTC offset to build correct UTC datetimes
-	const londonFormatter = new Intl.DateTimeFormat('en-GB', {
-		timeZone: 'Europe/London',
-		timeZoneName: 'shortOffset'
-	});
-	const offsetPart = londonFormatter.formatToParts(now).find((p) => p.type === 'timeZoneName');
-	const offsetHours = parseInt(offsetPart?.value?.replace('GMT', '') || '0') || 0;
-
-	const startUtc = new Date(`${londonDate}T${String(londonHour).padStart(2, '0')}:00:00Z`);
-	startUtc.setUTCHours(startUtc.getUTCHours() - offsetHours);
-	const endUtc = new Date(`${londonDate}T23:59:59Z`);
-	endUtc.setUTCHours(endUtc.getUTCHours() - offsetHours);
+	const londonDate = londonDateString(now);
+	const startUtc = londonDateTime(londonDate, londonClock(now).hour);
+	const endUtc = new Date(londonDateTime(addDaysToDateString(londonDate, 1)).getTime() - 1);
 
 	const data = await apiFetch<ScreeningsResponse>(
 		`/api/screenings?startDate=${startUtc.toISOString()}&endDate=${endUtc.toISOString()}&limit=200`,

@@ -79,6 +79,13 @@ describe("parseQuery — dates", () => {
     expect(isoDate(r.dateTo)).toBe("2026-05-24T23:00:00.000Z");
   });
 
+  it("'this weekend' on Sunday includes the current Sunday", () => {
+    const sunday = new Date("2026-05-17T12:00:00Z");
+    const r = parseQuery("this weekend", sunday);
+    expect(isoDate(r.dateFrom)).toBe("2026-05-15T23:00:00.000Z");
+    expect(isoDate(r.dateTo)).toBe("2026-05-17T23:00:00.000Z");
+  });
+
   it("'this week' spans today + 7 days", () => {
     const r = parseQuery("this week", NOW);
     expect(isoDate(r.dateFrom)).toBe("2026-05-13T23:00:00.000Z");

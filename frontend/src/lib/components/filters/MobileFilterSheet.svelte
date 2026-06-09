@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { filters } from '$lib/stores/filters.svelte';
+	import { addDaysToDateString } from '$lib/london-date';
 	import { userLocation } from '$lib/stores/user-location.svelte';
 	import { haversineMiles, toLondonDateStr, useModalKeyboardTrap } from '$lib/utils';
 	import CalendarPopover from './CalendarPopover.svelte';
@@ -97,11 +98,7 @@
 
 	// When
 	const today = toLondonDateStr(new Date());
-	const tomorrow = (() => {
-		const t = new Date(today + 'T12:00:00Z');
-		t.setUTCDate(t.getUTCDate() + 1);
-		return t.toISOString().split('T')[0];
-	})();
+	const tomorrow = addDaysToDateString(today, 1);
 	const dayFmt = new Intl.DateTimeFormat('en-GB', { weekday: 'short', timeZone: 'Europe/London' });
 	const todayLabel = dayFmt.format(new Date(today + 'T12:00:00Z'));
 	const tomorrowLabel = dayFmt.format(new Date(tomorrow + 'T12:00:00Z'));

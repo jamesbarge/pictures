@@ -1,3 +1,5 @@
+import { addDaysToDateString, londonDateString } from '$lib/london-date';
+
 // Cached Intl formatters — these helpers run inside hot derived-state loops
 // (sort comparators, calendar grouping, per-screening rendering) where
 // instantiating a new Intl.DateTimeFormat per call dominates CPU. Allocating
@@ -13,10 +15,6 @@ const DATE_LONDON_SHORT = new Intl.DateTimeFormat('en-GB', {
 	weekday: 'short',
 	day: 'numeric',
 	month: 'short',
-	timeZone: 'Europe/London'
-});
-
-const DATE_LONDON_ISO = new Intl.DateTimeFormat('en-CA', {
 	timeZone: 'Europe/London'
 });
 
@@ -45,20 +43,18 @@ export function toLondonDateStr(date: Date | string): string {
 			console.warn('toLondonDateStr received invalid date:', date);
 		}
 	}
-	return DATE_LONDON_ISO.format(d); // YYYY-MM-DD
+	return londonDateString(d);
 }
 
 export function formatScreeningDate(date: Date | string): string {
-	const d = typeof date === 'string' ? new Date(date + (!date.includes('T') ? 'T00:00:00' : '')) : date;
+	const dateOnly = typeof date === 'string' && !date.includes('T');
+	const d = typeof date === 'string' ? new Date(date + (dateOnly ? 'T12:00:00Z' : '')) : date;
 	const todayStr = toLondonDateStr(new Date());
-	const targetStr = typeof date === 'string' && !date.includes('T') ? date : toLondonDateStr(d);
+	const targetStr = dateOnly ? date : toLondonDateStr(d);
 
 	if (targetStr === todayStr) return 'TODAY';
 
-	// Check tomorrow
-	const tomorrow = new Date();
-	tomorrow.setDate(tomorrow.getDate() + 1);
-	const tomorrowStr = toLondonDateStr(tomorrow);
+	const tomorrowStr = addDaysToDateString(todayStr, 1);
 	if (targetStr === tomorrowStr) return 'TOMORROW';
 
 	return formatDate(d);

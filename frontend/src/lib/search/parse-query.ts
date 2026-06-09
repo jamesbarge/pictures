@@ -43,6 +43,13 @@ import {
   WATCHLIST_PHRASES_BY_LENGTH,
 } from "./vocab/specials";
 import { TIME_PRESETS, TIME_PHRASES_BY_LENGTH } from "./vocab/time";
+import {
+  addDaysToDateString,
+  londonDateString,
+  londonDateTime,
+  londonDayOfWeek,
+  londonWeekendRange,
+} from "../london-date";
 
 export type PremiereType = "world" | "international" | "european" | "uk";
 export type WatchlistFilter = "want_to_see" | "seen";
@@ -123,64 +130,6 @@ function tokenize(input: string): Token[] {
   return tokens;
 }
 
-// London-timezone helpers.
-// parseQuery() runs on every command-palette keystroke, so these formatters
-// are hoisted to module scope — the Intl.DateTimeFormat constructor (ICU
-// locale/timezone load) is the dominant cost; .format()/.formatToParts() are
-// cheap. Matches the cached-formatter pattern in $lib/utils.ts. Configs are
-// constant, so output is byte-identical to per-call construction.
-const LONDON_DATE_ISO = new Intl.DateTimeFormat("en-CA", {
-  timeZone: "Europe/London",
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-});
-
-const LONDON_WEEKDAY_SHORT = new Intl.DateTimeFormat("en-GB", {
-  weekday: "short",
-  timeZone: "Europe/London",
-});
-
-const LONDON_SHORT_OFFSET = new Intl.DateTimeFormat("en-GB", {
-  timeZone: "Europe/London",
-  timeZoneName: "shortOffset",
-});
-
-function londonDateString(d: Date): string {
-  return LONDON_DATE_ISO.format(d);
-}
-
-function londonDayOfWeek(d: Date): number {
-  const short = LONDON_WEEKDAY_SHORT.format(d);
-  const map: Record<string, number> = {
-    Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
-  };
-  return map[short] ?? d.getDay();
-}
-
-function londonMidnight(yyyyMmDd: string, hour = 0): Date {
-  // Returns a Date representing London midnight (or `hour:00`) on the
-  // given date. We compute the London offset for that specific instant
-  // (DST-aware) and subtract it from UTC midnight.
-  const utcMid = new Date(`${yyyyMmDd}T00:00:00Z`);
-  const offsetPart = LONDON_SHORT_OFFSET
-    .formatToParts(utcMid)
-    .find((p) => p.type === "timeZoneName")?.value;
-  let offsetMin = 0;
-  if (offsetPart && offsetPart.startsWith("GMT")) {
-    const m = offsetPart.match(/GMT([+-]\d+)/);
-    if (m) offsetMin = parseInt(m[1], 10) * 60;
-  }
-  const londonMidUtc = new Date(utcMid.getTime() - offsetMin * 60 * 1000);
-  return new Date(londonMidUtc.getTime() + hour * 3600 * 1000);
-}
-
-function addDaysToDateString(yyyyMmDd: string, days: number): string {
-  const d = new Date(`${yyyyMmDd}T12:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
-}
-
 // ===== Phrase scanning =====
 
 // `scanPhrases` runs ~9x per keystroke over constant module-level tables.
@@ -253,37 +202,31 @@ const NEXT_DAY_PHRASES_BY_LENGTH: Record<number, string[]> = {
 
 function applyTonight(intent: ParsedIntent, now: Date) {
   const today = londonDateString(now);
-  intent.dateFrom = londonMidnight(today, 0);
-  intent.dateTo = londonMidnight(addDaysToDateString(today, 1), 0);
+  intent.dateFrom = londonDateTime(today);
+  intent.dateTo = londonDateTime(addDaysToDateString(today, 1));
   intent.timeFrom = 18;
   intent.chipDescriptors.push({ id: "date:tonight", kind: "date", label: "TONIGHT" });
 }
 
 function applyToday(intent: ParsedIntent, now: Date) {
   const today = londonDateString(now);
-  intent.dateFrom = londonMidnight(today, 0);
-  intent.dateTo = londonMidnight(addDaysToDateString(today, 1), 0);
+  intent.dateFrom = londonDateTime(today);
+  intent.dateTo = londonDateTime(addDaysToDateString(today, 1));
   intent.chipDescriptors.push({ id: "date:today", kind: "date", label: "TODAY" });
 }
 
 function applyTomorrow(intent: ParsedIntent, now: Date) {
   const today = londonDateString(now);
   const tomorrow = addDaysToDateString(today, 1);
-  intent.dateFrom = londonMidnight(tomorrow, 0);
-  intent.dateTo = londonMidnight(addDaysToDateString(tomorrow, 1), 0);
+  intent.dateFrom = londonDateTime(tomorrow);
+  intent.dateTo = londonDateTime(addDaysToDateString(tomorrow, 1));
   intent.chipDescriptors.push({ id: "date:tomorrow", kind: "date", label: "TOMORROW" });
 }
 
 function applyWeekendOffset(intent: ParsedIntent, now: Date, offsetWeeks: number) {
-  const today = londonDateString(now);
-  const dow = londonDayOfWeek(now);
-  let satOffset = (6 - dow + 7) % 7;
-  if (offsetWeeks > 0) satOffset += offsetWeeks * 7;
-  if (offsetWeeks === 0 && dow === 0) satOffset = -1;
-  const sat = addDaysToDateString(today, satOffset);
-  const mon = addDaysToDateString(sat, 2);
-  intent.dateFrom = londonMidnight(sat, 0);
-  intent.dateTo = londonMidnight(mon, 0);
+  const weekend = londonWeekendRange(now, offsetWeeks);
+  intent.dateFrom = londonDateTime(weekend.from);
+  intent.dateTo = londonDateTime(addDaysToDateString(weekend.to, 1));
   intent.chipDescriptors.push({
     id: `date:weekend${offsetWeeks > 0 ? `+${offsetWeeks}` : ""}`,
     kind: "date",
@@ -293,8 +236,8 @@ function applyWeekendOffset(intent: ParsedIntent, now: Date, offsetWeeks: number
 
 function applyThisWeek(intent: ParsedIntent, now: Date) {
   const today = londonDateString(now);
-  intent.dateFrom = londonMidnight(today, 0);
-  intent.dateTo = londonMidnight(addDaysToDateString(today, 7), 0);
+  intent.dateFrom = londonDateTime(today);
+  intent.dateTo = londonDateTime(addDaysToDateString(today, 7));
   intent.chipDescriptors.push({ id: "date:thisweek", kind: "date", label: "THIS WEEK" });
 }
 
@@ -304,8 +247,8 @@ function applyNextDay(intent: ParsedIntent, now: Date, dayIdx: number) {
   let offset = (dayIdx - todayDow + 7) % 7;
   if (offset === 0) offset = 7;
   const target = addDaysToDateString(today, offset);
-  intent.dateFrom = londonMidnight(target, 0);
-  intent.dateTo = londonMidnight(addDaysToDateString(target, 1), 0);
+  intent.dateFrom = londonDateTime(target);
+  intent.dateTo = londonDateTime(addDaysToDateString(target, 1));
   const dayName = WEEKDAY_LABELS[dayIdx];
   intent.chipDescriptors.push({
     id: `date:next-${dayIdx}`,
@@ -319,8 +262,8 @@ function applyDayThisWeek(intent: ParsedIntent, now: Date, dayIdx: number) {
   const todayDow = londonDayOfWeek(now);
   const offset = (dayIdx - todayDow + 7) % 7;
   const target = addDaysToDateString(today, offset);
-  intent.dateFrom = londonMidnight(target, 0);
-  intent.dateTo = londonMidnight(addDaysToDateString(target, 1), 0);
+  intent.dateFrom = londonDateTime(target);
+  intent.dateTo = londonDateTime(addDaysToDateString(target, 1));
   const dayName = WEEKDAY_LABELS[dayIdx];
   intent.chipDescriptors.push({ id: `date:${dayIdx}`, kind: "date", label: dayName });
 }
@@ -397,8 +340,8 @@ export function parseQuery(input: string, now: Date): ParsedIntent {
     if (phrase === "this week") applyThisWeek(intent, now);
     else {
       const today = londonDateString(now);
-      intent.dateFrom = londonMidnight(addDaysToDateString(today, 7), 0);
-      intent.dateTo = londonMidnight(addDaysToDateString(today, 14), 0);
+      intent.dateFrom = londonDateTime(addDaysToDateString(today, 7));
+      intent.dateTo = londonDateTime(addDaysToDateString(today, 14));
       intent.chipDescriptors.push({ id: "date:nextweek", kind: "date", label: "NEXT WEEK" });
     }
     return true;
