@@ -1,5 +1,5 @@
 ## 2026-06-09: Prevent public caching of personalized festival data
-**PR**: TBD | **Files**: `src/app/api/festivals/route.ts`, `src/app/api/festivals/[slug]/route.ts`, `src/lib/cache-headers.ts`
+**PR**: #651 | **Files**: `src/app/api/festivals/route.ts`, `src/app/api/festivals/[slug]/route.ts`, `src/lib/cache-headers.ts`
 - Authenticated festival responses now use `private, no-store`.
 - Anonymous festival responses retain their existing public edge-cache policy.
 - Added regression tests for the user-aware cache policy.
