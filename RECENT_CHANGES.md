@@ -1,3 +1,11 @@
+## 2026-06-09: iCal export rejects property injection
+**PR**: TBD | **Files**: `src/app/api/calendar/route.ts`, `src/lib/ical.ts`, `src/lib/ical.test.ts`, `changelogs/2026-06-09-ical-injection-hardening.md`
+- Calendar text serialization now normalizes CRLF and bare carriage returns before escaping, preventing stored fields from injecting new iCal properties.
+- Booking links are emitted only when they parse as HTTP(S) URLs; unsafe or malformed URLs are omitted from both `URL` and `DESCRIPTION`.
+- Pure serialization helpers now have regression tests covering newline injection and unsafe URL schemes.
+
+---
+
 ## 2026-06-05: E2E suite refresh — re-pointed at the redesign + 4 regression locks
 **PR**: #648 | **Files**: `frontend/test-all.spec.ts`, `frontend/tests/mobile.spec.ts`, `frontend/tests/command-palette.spec.ts`, `frontend/tests/redesign-regression.spec.ts` (new), `frontend/src/lib/components/pretext/BreathingGrid.svelte` (deleted)
 - ~76 spec lines referenced pre-redesign homepage selectors (`.film-card`, `.masthead-title`, `.day-strip`, `.desktop-toolbar`, `aside.sidebar`, `.breathing-grid`, `.sign-in-link`, `.mobile-*`) — passing vacuously. Re-pointed at the redesigned DOM via role-based locators (toolbar, tablists, `.card`/`.film-row`/`.day-header`).
