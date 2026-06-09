@@ -1,5 +1,5 @@
 ## 2026-06-09: Patch P0 dependency vulnerabilities
-**PR**: TBD | **Files**: `package-lock.json`, `frontend/package.json`, `frontend/package-lock.json`
+**PR**: #649 | **Files**: `package-lock.json`, `frontend/package.json`, `frontend/package-lock.json`
 - Updated the root dependency lockfile to patched non-breaking releases, including Next.js 16.2.7.
 - Forced `svelte-clerk` onto patched `js-cookie` 3.0.8 without taking npm's breaking downgrade.
 - Root audit now has no high-severity findings; remaining root findings require breaking dependency changes.

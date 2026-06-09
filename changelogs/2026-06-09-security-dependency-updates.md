@@ -1,6 +1,6 @@
 # Patch P0 Dependency Vulnerabilities
 
-**PR**: TBD
+**PR**: #649
 **Date**: 2026-06-09
 
 ## Changes
