@@ -66,6 +66,8 @@ export type ScraperWave = "chain" | "playwright" | "cheerio" | "enrichment";
 export interface ScraperRegistryEntry {
   /** Task ID, e.g. "scraper-bfi" or "scraper-chain-curzon". */
   taskId: string;
+  /** Optional legacy CLI aliases kept for backwards compatibility. */
+  cliAliases?: string[];
   /** Config shape — used to dispatch in the runner factory. */
   type: "single" | "multi" | "chain";
   /** Logical wave this scraper runs in (orchestration order). */
@@ -125,6 +127,7 @@ const PLAYWRIGHT_ENTRIES: ScraperRegistryEntry[] = [
   },
   {
     taskId: "scraper-phoenix",
+    cliAliases: ["phoenix-east-finchley"],
     type: "single",
     wave: "playwright",
     buildConfig: (): SingleVenueConfig => ({
@@ -212,6 +215,7 @@ const CHEERIO_ENTRIES: ScraperRegistryEntry[] = [
   },
   {
     taskId: "scraper-prince-charles",
+    cliAliases: ["pcc"],
     type: "single",
     wave: "cheerio",
     buildConfig: (): SingleVenueConfig => ({
@@ -252,6 +256,7 @@ const CHEERIO_ENTRIES: ScraperRegistryEntry[] = [
   },
   {
     taskId: "scraper-nickel",
+    cliAliases: ["the-nickel"],
     type: "single",
     wave: "cheerio",
     buildConfig: (): SingleVenueConfig => ({
@@ -404,4 +409,18 @@ export function getScraperByTaskId(taskId: string): ScraperRegistryEntry | undef
 /** All entries in a given wave, in declared order. */
 export function getScrapersByWave(wave: ScraperWave): ScraperRegistryEntry[] {
   return SCRAPER_REGISTRY.filter((e) => e.wave === wave);
+}
+
+/** Canonical CLI ID derived from the task ID. */
+export function getScraperCliId(entry: ScraperRegistryEntry): string {
+  return entry.taskId.replace(/^scraper-chain-/, "").replace(/^scraper-/, "");
+}
+
+/** Resolve canonical or legacy CLI IDs from the central registry. */
+export function getScraperByCliId(id: string): ScraperRegistryEntry | undefined {
+  return SCRAPER_REGISTRY.find(
+    (entry) =>
+      entry.wave !== "enrichment" &&
+      (getScraperCliId(entry) === id || entry.cliAliases?.includes(id)),
+  );
 }

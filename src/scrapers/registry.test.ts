@@ -11,6 +11,8 @@
 import { describe, expect, it } from "vitest";
 import {
   SCRAPER_REGISTRY,
+  getScraperByCliId,
+  getScraperCliId,
   getScraperByTaskId,
   getScrapersByWave,
   type ScraperWave,
@@ -71,6 +73,33 @@ describe("SCRAPER_REGISTRY", () => {
     expect(total).toHaveLength(SCRAPER_REGISTRY.length);
     const ids = new Set(total.map((e) => e.taskId));
     expect(ids.size).toBe(total.length);
+  });
+
+  it("canonical and legacy CLI IDs resolve through the registry", () => {
+    const entries = SCRAPER_REGISTRY.filter((entry) => entry.wave !== "enrichment");
+    for (const entry of entries) {
+      expect(getScraperByCliId(getScraperCliId(entry))).toBe(entry);
+      for (const alias of entry.cliAliases ?? []) {
+        expect(getScraperByCliId(alias)).toBe(entry);
+      }
+    }
+  });
+
+  it("CLI IDs and aliases are unique", () => {
+    const ids = SCRAPER_REGISTRY
+      .filter((entry) => entry.wave !== "enrichment")
+      .flatMap((entry) => [getScraperCliId(entry), ...(entry.cliAliases ?? [])]);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("Riverside uses its canonical cinema ID in both registry and scraper config", () => {
+    const entry = getScraperByTaskId("scraper-riverside");
+    expect(entry).toBeDefined();
+    const config = entry!.buildConfig();
+    expect(config.type).toBe("single");
+    if (config.type !== "single") throw new Error("Expected Riverside single config");
+    expect(config.venue.id).toBe("riverside-studios");
+    expect(config.createScraper().config.cinemaId).toBe("riverside-studios");
   });
 
   it("buildConfig is lazy — calling it succeeds without throwing for every non-enrichment entry", () => {

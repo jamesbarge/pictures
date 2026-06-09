@@ -1,3 +1,11 @@
+## 2026-06-09: Scraper registry is the single source for orchestration and CLI
+**PR**: TBD | **Files**: `src/scrapers/registry.ts`, `src/scrapers/cli.ts`, `src/scrapers/cinemas/riverside-v2.ts`, `src/scrapers/run-riverside-v2.ts`, `src/scrapers/registry.test.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`, `changelogs/2026-06-09-scraper-registry-single-source.md`
+- Removed the unified CLI's stale duplicate scraper registry; listing and execution now consume the same registry used by orchestration while retaining established CLI aliases.
+- Corrected Riverside's scraper and standalone runner to write to canonical cinema ID `riverside-studios`.
+- Added regression coverage for canonical/legacy CLI lookup, uniqueness, and Riverside config consistency.
+
+---
+
 ## 2026-06-05: E2E suite refresh — re-pointed at the redesign + 4 regression locks
 **PR**: #648 | **Files**: `frontend/test-all.spec.ts`, `frontend/tests/mobile.spec.ts`, `frontend/tests/command-palette.spec.ts`, `frontend/tests/redesign-regression.spec.ts` (new), `frontend/src/lib/components/pretext/BreathingGrid.svelte` (deleted)
 - ~76 spec lines referenced pre-redesign homepage selectors (`.film-card`, `.masthead-title`, `.day-strip`, `.desktop-toolbar`, `aside.sidebar`, `.breathing-grid`, `.sign-in-link`, `.mobile-*`) — passing vacuously. Re-pointed at the redesigned DOM via role-based locators (toolbar, tablists, `.card`/`.film-row`/`.day-header`).
