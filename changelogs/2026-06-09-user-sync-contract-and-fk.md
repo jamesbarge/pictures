@@ -1,6 +1,6 @@
 # User Sync Contract And FK Safety
 
-**PR**: TBD
+**PR**: #652
 **Date**: 2026-06-09
 
 ## Changes

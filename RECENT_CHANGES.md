@@ -1,5 +1,5 @@
 ## 2026-06-09: Fix user sync contract and FK safety
-**PR**: TBD | **Files**: `src/lib/user-record.ts`, `src/app/api/user/**`, `src/app/api/festivals/[slug]/follow/route.ts`, `frontend/src/lib/stores/sync.svelte.ts`
+**PR**: #652 | **Files**: `src/lib/user-record.ts`, `src/app/api/user/**`, `src/app/api/festivals/[slug]/follow/route.ts`, `frontend/src/lib/stores/sync.svelte.ts`
 - Every FK-backed user-data write now ensures the parent user row exists with a conflict-safe insert.
 - Production pull sync now consumes the API's status map, and festival follows use one canonical single-follow endpoint.
 
