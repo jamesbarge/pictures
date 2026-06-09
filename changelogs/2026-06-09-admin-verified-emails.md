@@ -1,6 +1,6 @@
 # Require Verified Clerk Emails for Admin Access
 
-**PR**: TBD
+**PR**: #650
 **Date**: 2026-06-09
 
 ## Changes
