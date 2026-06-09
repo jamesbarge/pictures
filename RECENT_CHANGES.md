@@ -1,5 +1,5 @@
 ## 2026-06-09: Fix scraper BST date parsing
-**PR**: TBD | **Files**: `src/scrapers/cinemas/phoenix.ts`, `src/scrapers/cinemas/olympic.ts`, `src/scrapers/cinemas/david-lean.ts`, `src/scrapers/cinemas/genesis.ts`, `src/scrapers/cinemas/close-up.ts`
+**PR**: #653 | **Files**: `src/scrapers/cinemas/phoenix.ts`, `src/scrapers/cinemas/olympic.ts`, `src/scrapers/cinemas/david-lean.ts`, `src/scrapers/cinemas/genesis.ts`, `src/scrapers/cinemas/close-up.ts`
 - Runtime-local date construction no longer shifts affected screenings to the previous day during BST.
 - Shared parser rules now cover Genesis ambiguous times and reject invalid David Lean times instead of fabricating midnight.
 
