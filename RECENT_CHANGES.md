@@ -1,3 +1,11 @@
+## 2026-06-09: Standardized API rate-limit wrapper
+**PR**: TBD | **Files**: `src/lib/rate-limit.ts`, public API route handlers, `src/app/api/travel-times/route.ts`
+- Added a typed `withRateLimit()` route wrapper that centralizes per-IP checks and standardizes 429 responses as `{ error, code: "RATE_LIMITED" }` with retry headers.
+- Replaced copy-pasted rate-limit preambles across all 11 protected routes and added a stricter limit to the paid Google travel-times POST endpoint.
+- Added wrapper and route-level regression tests, including proof that blocked requests never invoke the underlying handler.
+
+---
+
 ## 2026-06-05: E2E suite refresh — re-pointed at the redesign + 4 regression locks
 **PR**: #648 | **Files**: `frontend/test-all.spec.ts`, `frontend/tests/mobile.spec.ts`, `frontend/tests/command-palette.spec.ts`, `frontend/tests/redesign-regression.spec.ts` (new), `frontend/src/lib/components/pretext/BreathingGrid.svelte` (deleted)
 - ~76 spec lines referenced pre-redesign homepage selectors (`.film-card`, `.masthead-title`, `.day-strip`, `.desktop-toolbar`, `aside.sidebar`, `.breathing-grid`, `.sign-in-link`, `.mobile-*`) — passing vacuously. Re-pointed at the redesigned DOM via role-based locators (toolbar, tablists, `.card`/`.film-row`/`.day-header`).

@@ -14,7 +14,7 @@ import { Redis } from "@upstash/redis";
 // ---------------------------------------------------------------------------
 
 /** Configuration for a rate limit rule applied to an API route. */
-interface RateLimitConfig {
+export interface RateLimitConfig {
   /** Maximum number of requests per window */
   limit: number;
   /** Time window in seconds */
@@ -205,6 +205,43 @@ export function getClientIP(request: Request): string {
   return "unknown";
 }
 
+type RouteHandler<R extends Request, A extends unknown[]> = (
+  request: R,
+  ...args: A
+) => Promise<Response>;
+
+/**
+ * Wrap a route handler with a standardized per-IP rate limit.
+ *
+ * The variadic handler signature preserves both static routes and dynamic
+ * routes that receive a Next.js context argument.
+ */
+export function withRateLimit(config: RateLimitConfig, prefix: string) {
+  const prefixedConfig = { ...config, prefix };
+
+  return function wrap<R extends Request, A extends unknown[]>(
+    handler: RouteHandler<R, A>
+  ): RouteHandler<R, A> {
+    return async (request: R, ...args: A): Promise<Response> => {
+      const result = await checkRateLimit(getClientIP(request), prefixedConfig);
+      if (!result.success) {
+        return Response.json(
+          { error: "Too many requests", code: "RATE_LIMITED" },
+          {
+            status: 429,
+            headers: {
+              "Retry-After": String(result.resetIn),
+              "X-RateLimit-Remaining": "0",
+            },
+          }
+        );
+      }
+
+      return handler(request, ...args);
+    };
+  };
+}
+
 /** Preset rate limit configurations for common API route categories. */
 export const RATE_LIMITS = {
   // Public API endpoints - generous limits
@@ -215,4 +252,6 @@ export const RATE_LIMITS = {
   user: { limit: 20, windowSec: 60 },
   // Auth/sync endpoints - strict limits
   sync: { limit: 10, windowSec: 60 },
+  // Endpoints that trigger paid third-party API requests
+  paidApi: { limit: 20, windowSec: 60 },
 } satisfies Record<string, RateLimitConfig>;
