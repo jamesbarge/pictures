@@ -1,3 +1,10 @@
+## 2026-06-09: Fix scraper BST date parsing
+**PR**: TBD | **Files**: `src/scrapers/cinemas/phoenix.ts`, `src/scrapers/cinemas/olympic.ts`, `src/scrapers/cinemas/david-lean.ts`, `src/scrapers/cinemas/genesis.ts`, `src/scrapers/cinemas/close-up.ts`
+- Runtime-local date construction no longer shifts affected screenings to the previous day during BST.
+- Shared parser rules now cover Genesis ambiguous times and reject invalid David Lean times instead of fabricating midnight.
+
+---
+
 ## 2026-06-05: E2E suite refresh — re-pointed at the redesign + 4 regression locks
 **PR**: #648 | **Files**: `frontend/test-all.spec.ts`, `frontend/tests/mobile.spec.ts`, `frontend/tests/command-palette.spec.ts`, `frontend/tests/redesign-regression.spec.ts` (new), `frontend/src/lib/components/pretext/BreathingGrid.svelte` (deleted)
 - ~76 spec lines referenced pre-redesign homepage selectors (`.film-card`, `.masthead-title`, `.day-strip`, `.desktop-toolbar`, `aside.sidebar`, `.breathing-grid`, `.sign-in-link`, `.mobile-*`) — passing vacuously. Re-pointed at the redesigned DOM via role-based locators (toolbar, tablists, `.card`/`.film-row`/`.day-header`).

@@ -257,7 +257,7 @@ export class CloseUpCinemaScraper extends BaseScraper {
     const urlMatch = html.match(/date=(\d{2})-(\d{2})-(\d{4})/);
     if (urlMatch) {
       const [, day, month, year] = urlMatch;
-      return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+      return new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day)));
     }
 
     // Look for date heading like "Saturday, 31 January"
@@ -266,8 +266,8 @@ export class CloseUpCinemaScraper extends BaseScraper {
       const [, , day, month, year] = dateHeadingMatch;
       const monthNum = MONTH_NAMES[month.toLowerCase()];
       if (monthNum !== undefined) {
-        const yearNum = year ? parseInt(year) : new Date().getFullYear();
-        return new Date(yearNum, monthNum, parseInt(day));
+        const yearNum = year ? parseInt(year) : new Date().getUTCFullYear();
+        return new Date(Date.UTC(yearNum, monthNum, parseInt(day)));
       }
     }
 
@@ -280,7 +280,13 @@ export class CloseUpCinemaScraper extends BaseScraper {
   private combineDateAndTime(date: Date, hour: string, minute: string, ampm: string): Date {
     const hourNum = to24Hour(parseInt(hour, 10), ampm);
     const minuteNum = parseInt(minute, 10);
-    return new Date(date.getFullYear(), date.getMonth(), date.getDate(), hourNum, minuteNum, 0);
+    return ukLocalToUTC(
+      date.getUTCFullYear(),
+      date.getUTCMonth(),
+      date.getUTCDate(),
+      hourNum,
+      minuteNum,
+    );
   }
 
   /**
@@ -295,8 +301,8 @@ export class CloseUpCinemaScraper extends BaseScraper {
 
     // Determine year - if month is in the past, assume next year
     const now = new Date();
-    let year = now.getFullYear();
-    const testDate = new Date(year, monthNum, parseInt(day, 10));
+    let year = now.getUTCFullYear();
+    const testDate = new Date(Date.UTC(year, monthNum, parseInt(day, 10)));
     if (testDate < now) {
       year++;
     }
