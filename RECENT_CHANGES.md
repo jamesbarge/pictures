@@ -1,3 +1,10 @@
+## 2026-06-09: Letterboxd imports preserve statuses and create films race-safely
+**PR**: TBD | **Files**: `src/lib/jobs/letterboxd-import.ts`, `src/app/api/user/import-letterboxd/route.ts`
+- Re-importing a watchlist no longer resets existing `seen` or `not_interested` statuses to `want_to_see`.
+- Background imports now create-or-select TMDB films safely and insert the film/status pair in one transaction.
+
+---
+
 ## 2026-06-05: E2E suite refresh — re-pointed at the redesign + 4 regression locks
 **PR**: #648 | **Files**: `frontend/test-all.spec.ts`, `frontend/tests/mobile.spec.ts`, `frontend/tests/command-palette.spec.ts`, `frontend/tests/redesign-regression.spec.ts` (new), `frontend/src/lib/components/pretext/BreathingGrid.svelte` (deleted)
 - ~76 spec lines referenced pre-redesign homepage selectors (`.film-card`, `.masthead-title`, `.day-strip`, `.desktop-toolbar`, `aside.sidebar`, `.breathing-grid`, `.sign-in-link`, `.mobile-*`) — passing vacuously. Re-pointed at the redesigned DOM via role-based locators (toolbar, tablists, `.card`/`.film-row`/`.day-header`).
