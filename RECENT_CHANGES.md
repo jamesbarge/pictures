@@ -1,3 +1,11 @@
+## 2026-06-09: Require verified Clerk emails for admin access
+**PR**: TBD | **Files**: `src/lib/admin-emails.ts`, `src/lib/auth.ts`, `src/middleware.ts`
+- Admin allowlist checks now ignore unverified, pending, or unverifiable Clerk email addresses.
+- Removed the session-claim email shortcut because it did not prove email ownership.
+- Added regression tests for verified and unverified Clerk email records.
+
+---
+
 ## 2026-06-05: E2E suite refresh — re-pointed at the redesign + 4 regression locks
 **PR**: #648 | **Files**: `frontend/test-all.spec.ts`, `frontend/tests/mobile.spec.ts`, `frontend/tests/command-palette.spec.ts`, `frontend/tests/redesign-regression.spec.ts` (new), `frontend/src/lib/components/pretext/BreathingGrid.svelte` (deleted)
 - ~76 spec lines referenced pre-redesign homepage selectors (`.film-card`, `.masthead-title`, `.day-strip`, `.desktop-toolbar`, `aside.sidebar`, `.breathing-grid`, `.sign-in-link`, `.mobile-*`) — passing vacuously. Re-pointed at the redesigned DOM via role-based locators (toolbar, tablists, `.card`/`.film-row`/`.day-header`).
