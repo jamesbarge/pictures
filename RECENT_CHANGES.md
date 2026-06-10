@@ -1,5 +1,5 @@
 ## 2026-06-10: iCal export rejects property injection
-**PR**: TBD | **Files**: `src/app/api/calendar/route.ts`, `src/lib/ical.ts`, `src/lib/ical.test.ts`, `changelogs/2026-06-09-ical-injection-hardening.md`
+**PR**: #657 | **Files**: `src/app/api/calendar/route.ts`, `src/lib/ical.ts`, `src/lib/ical.test.ts`, `changelogs/2026-06-09-ical-injection-hardening.md`
 - Calendar text serialization now normalizes CRLF and bare carriage returns before escaping, preventing stored fields from injecting new iCal properties.
 - Booking links are emitted only when they parse as HTTP(S) URLs; unsafe or malformed URLs are omitted from both `URL` and `DESCRIPTION`.
 - Pure serialization helpers now have regression tests covering newline injection and unsafe URL schemes.

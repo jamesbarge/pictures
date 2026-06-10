@@ -1,6 +1,6 @@
 # iCal Injection Hardening
 
-**PR**: TBD
+**PR**: #657
 **Date**: 2026-06-10
 
 ## Problem
