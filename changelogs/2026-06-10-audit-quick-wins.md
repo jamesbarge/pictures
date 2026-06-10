@@ -1,6 +1,6 @@
 # Audit Quick Wins — Auth Hardening, Scraper Cleanup, CI Visibility
 
-**PR**: #TBD
+**PR**: #661
 **Date**: 2026-06-10
 
 The first batch of quick wins from the `improve` codebase audit. Five small,
