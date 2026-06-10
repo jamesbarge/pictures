@@ -1,6 +1,7 @@
 # iCal Injection Hardening
 
-**PR:** TBD
+**PR**: TBD
+**Date**: 2026-06-10
 
 ## Problem
 
@@ -15,6 +16,12 @@ property, allowing malformed data to inject additional iCal properties.
 - Omit unsafe URLs from both the event URL property and description.
 - Extract pure calendar serialization into `src/lib/ical.ts`.
 - Add regression tests for text-property injection and unsafe URL schemes.
+
+## Impact
+
+- Compromised or malformed scraped screening data can no longer inject arbitrary
+  properties into downloaded calendar events.
+- Valid HTTP(S) booking links continue to appear in calendar events.
 
 ## Verification
 
