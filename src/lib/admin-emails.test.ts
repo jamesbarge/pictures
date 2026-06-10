@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { getAdminEmailAllowlist, isAdminEmail } from "./admin-emails";
+import {
+  getAdminEmailAllowlist,
+  getVerifiedEmailAddresses,
+  isAdminEmail,
+} from "./admin-emails";
 
 const ENV_KEY = "ADMIN_EMAILS";
 
@@ -135,5 +139,46 @@ describe("isAdminEmail", () => {
     expect(isAdminEmail("admin@example.com")).toBe(true);
     expect(isAdminEmail("secretadmin@example.com")).toBe(false);
     expect(isAdminEmail("admin@example.com.attacker")).toBe(false);
+  });
+});
+
+describe("getVerifiedEmailAddresses", () => {
+  it("returns only verified normalized email addresses", () => {
+    expect(
+      getVerifiedEmailAddresses([
+        {
+          emailAddress: " Admin@Example.com ",
+          verification: { status: "verified" },
+        },
+        {
+          emailAddress: "unverified@example.com",
+          verification: { status: "unverified" },
+        },
+        {
+          emailAddress: "pending@example.com",
+          verification: { status: "pending" },
+        },
+      ])
+    ).toEqual(["admin@example.com"]);
+  });
+
+  it("rejects allowlisted-looking addresses without verified ownership", () => {
+    expect(
+      getVerifiedEmailAddresses([
+        {
+          emailAddress: "jdwbarge@gmail.com",
+          verification: null,
+        },
+        {
+          emailAddress: "jdwbarge@gmail.com",
+        },
+      ])
+    ).toEqual([]);
+  });
+
+  it("returns an empty list for absent or empty inputs", () => {
+    expect(getVerifiedEmailAddresses(undefined)).toEqual([]);
+    expect(getVerifiedEmailAddresses(null)).toEqual([]);
+    expect(getVerifiedEmailAddresses([])).toEqual([]);
   });
 });

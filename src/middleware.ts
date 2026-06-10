@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getAdminEmailAllowlist } from "@/lib/admin-emails";
+import {
+  getAdminEmailAllowlist,
+  getVerifiedEmailAddresses,
+} from "@/lib/admin-emails";
 
 /**
  * Clerk Middleware Configuration
@@ -64,9 +67,7 @@ export default async function middleware(request: NextRequest) {
       // Check if user's email is in the admin allowlist
       const client = await clerkClient();
       const user = await client.users.getUser(userId);
-      const userEmails = user.emailAddresses.map((e) =>
-        e.emailAddress.toLowerCase()
-      );
+      const userEmails = getVerifiedEmailAddresses(user.emailAddresses);
       const isAdmin = userEmails.some((email) => adminEmails.includes(email));
 
       if (!isAdmin) {

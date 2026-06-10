@@ -5,6 +5,29 @@
 
 ---
 
+## 2026-06-09: Fix user sync contract and FK safety
+**PR**: #652 | **Files**: `src/lib/user-record.ts`, `src/app/api/user/**`, `src/app/api/festivals/[slug]/follow/route.ts`, `frontend/src/lib/stores/sync.svelte.ts`
+- Every FK-backed user-data write now ensures the parent user row exists with a conflict-safe insert.
+- Production pull sync now consumes the API's status map, and festival follows use one canonical single-follow endpoint.
+
+---
+
+## 2026-06-09: Prevent public caching of personalized festival data
+**PR**: #651 | **Files**: `src/app/api/festivals/route.ts`, `src/app/api/festivals/[slug]/route.ts`, `src/lib/cache-headers.ts`
+- Authenticated festival responses now use `private, no-store`.
+- Anonymous festival responses retain their existing public edge-cache policy.
+- Added regression tests for the user-aware cache policy.
+
+---
+
+## 2026-06-09: Require verified Clerk emails for admin access
+**PR**: #650 | **Files**: `src/lib/admin-emails.ts`, `src/lib/auth.ts`, `src/middleware.ts`
+- Admin allowlist checks now ignore unverified, pending, or unverifiable Clerk email addresses.
+- Removed the session-claim email shortcut because it did not prove email ownership.
+- Added regression tests for verified and unverified Clerk email records.
+
+---
+
 ## 2026-06-09: Patch P0 dependency vulnerabilities
 **PR**: #649 | **Files**: `package-lock.json`, `frontend/package.json`, `frontend/package-lock.json`
 - Updated the root dependency lockfile to patched non-breaking releases, including Next.js 16.2.7.

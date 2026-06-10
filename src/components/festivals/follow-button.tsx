@@ -67,7 +67,7 @@ export function FollowButton({
         // Sync to database if signed in
         if (isSignedIn) {
           const response = await fetch(
-            `/api/user/festivals/follows/${festivalId}`,
+            `/api/festivals/${festivalSlug}/follow`,
             { method: "DELETE" }
           );
 
@@ -97,9 +97,9 @@ export function FollowButton({
         // Sync to database if signed in
         if (isSignedIn) {
           const response = await fetch(
-            `/api/user/festivals/follows/${festivalId}`,
+            `/api/festivals/${festivalSlug}/follow`,
             {
-              method: "PUT",
+              method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 interestLevel: "following",

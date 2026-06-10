@@ -18,7 +18,7 @@ import { eq, and, asc, sql, gte } from "drizzle-orm";
 import { z } from "zod";
 import { BadRequestError, NotFoundError, handleApiError } from "@/lib/api-errors";
 import { getCurrentUserId } from "@/lib/auth";
-import { CACHE_2MIN } from "@/lib/cache-headers";
+import { CACHE_2MIN, getUserAwareCacheHeaders } from "@/lib/cache-headers";
 
 // Query params validation
 const querySchema = z.object({
@@ -295,7 +295,7 @@ export async function GET(
     }
 
     return NextResponse.json(response, {
-      headers: CACHE_2MIN,
+      headers: getUserAwareCacheHeaders(userId, CACHE_2MIN),
     });
   } catch (error) {
     return handleApiError(error, "GET /api/festivals/[slug]");
