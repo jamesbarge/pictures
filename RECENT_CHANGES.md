@@ -1,5 +1,5 @@
 ## 2026-06-10: Mobile filter sheet gains real focus management and cinema search
-**Files**: `frontend/src/lib/components/filters/MobileFilterSheet.svelte`, `frontend/src/lib/components/filters/FigmaToolbar.svelte`, `frontend/src/routes/+page.svelte`, `frontend/src/lib/utils.ts`, `frontend/tests/mobile.spec.ts`
+**PR**: #656 | **Files**: `frontend/src/lib/components/filters/MobileFilterSheet.svelte`, `frontend/src/lib/components/filters/FigmaToolbar.svelte`, `frontend/src/routes/+page.svelte`, `frontend/src/lib/utils.ts`, `frontend/tests/mobile.spec.ts`
 - The mobile filter sheet and nested date picker now move, trap, and restore keyboard focus correctly.
 - Replaced the decorative cinema-search row with a labeled search input and selectable matching cinema results.
 
