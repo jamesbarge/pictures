@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { DECADE_OPTIONS, FORMAT_OPTIONS, GENRE_OPTIONS } from './filters';
+import {
+	DECADE_OPTIONS,
+	FORMAT_OPTIONS,
+	GENRE_OPTIONS,
+	normalizeFormatFilterValue,
+	normalizeGenreFilterValue
+} from './filters';
 
 describe('filter options', () => {
 	it('uses canonical screening format values for every format chip', () => {
@@ -40,5 +46,12 @@ describe('filter options', () => {
 			'70s',
 			'Pre-1970'
 		]);
+	});
+
+	it('normalizes legacy persisted values to their canonical replacements', () => {
+		expect(normalizeFormatFilterValue('4k')).toBe('dcp_4k');
+		expect(normalizeFormatFilterValue('35mm')).toBe('35mm');
+		expect(normalizeGenreFilterValue('sci-fi')).toBe('science fiction');
+		expect(normalizeGenreFilterValue('drama')).toBe('drama');
 	});
 });

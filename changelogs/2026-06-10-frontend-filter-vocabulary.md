@@ -21,13 +21,15 @@ format, and decade lists. Those lists had already diverged:
 - Typed `FORMAT_OPTIONS` against `ScreeningFormat`, added `dcp_4k`, and shared
   the complete list between desktop and mobile.
 - Made command-palette `4k` and `dcp 4k` queries resolve to `dcp_4k`.
+- Migrated legacy persisted `sci-fi` and `4k` selections to their canonical
+  replacements when filters hydrate.
 - Deleted `DesktopFilterSidebar.svelte`, `MobileDatePicker.svelte`, and
   `FilmTypeFilter.svelte`, then updated comments that referenced them.
 - Added regression tests for canonical option values and query parsing.
 
 ## Verification
 
-- `cd frontend && npm test`: 76 passed.
+- `cd frontend && npm test`: 78 passed.
 - `cd frontend && npm run check`: 0 errors, 3 existing warnings.
 - `cd frontend && npm run build`: SSR and client compilation passed; prerender then
   failed because the isolated worktree could not fetch the API-backed `/about`

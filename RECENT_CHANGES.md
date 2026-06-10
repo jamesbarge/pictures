@@ -1,6 +1,7 @@
 ## 2026-06-10: Frontend filter vocabulary consolidated and dead filter components removed
 **Files**: `frontend/src/lib/constants/filters.ts`, `frontend/src/lib/components/filters/FigmaToolbar.svelte`, `frontend/src/lib/components/filters/MobileFilterSheet.svelte`, `frontend/src/lib/search/vocab/formats.ts`, three deleted filter components
 - Desktop and mobile filter surfaces now share canonical genre, decade, and format options. “Sci-fi” stores `science fiction`, Animation is available everywhere, and 4K stores the valid `dcp_4k` screening format.
+- Existing persisted `sci-fi` and `4k` selections are migrated to their canonical replacements on hydration.
 - Command-palette `4k` queries now apply the same canonical format filter.
 - Deleted the zero-import `DesktopFilterSidebar`, `MobileDatePicker`, and `FilmTypeFilter` components and removed stale references.
 

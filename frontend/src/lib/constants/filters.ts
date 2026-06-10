@@ -29,6 +29,14 @@ export const FORMAT_OPTIONS = [
 	{ value: '4dx', label: '4DX' }
 ] as const satisfies readonly { value: ScreeningFormat; label: string }[];
 
+export function normalizeGenreFilterValue(value: string): string {
+	return value === 'sci-fi' ? 'science fiction' : value;
+}
+
+export function normalizeFormatFilterValue(value: string): string {
+	return value === '4k' ? 'dcp_4k' : value;
+}
+
 export const TIME_PRESETS = [
 	{ label: 'MORNING', from: 0, to: 11, description: 'Before 12pm' },
 	{ label: 'AFTERNOON', from: 12, to: 16, description: '12pm – 5pm' },
