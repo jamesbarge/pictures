@@ -1,3 +1,10 @@
+## 2026-06-10: Letterboxd imports preserve statuses and create films race-safely
+**PR**: #659 | **Files**: `src/lib/jobs/letterboxd-import.ts`, `src/app/api/user/import-letterboxd/route.ts`
+- Re-importing a watchlist no longer resets existing `seen` or `not_interested` statuses to `want_to_see`.
+- Background imports now create-or-select TMDB films safely and insert the film/status pair in one transaction.
+
+---
+
 ## 2026-06-10: Declare scraper source-ID partial index in Drizzle
 **PR**: #658 | **Files**: `src/db/schema/screenings.ts`, `src/db/schema/screenings.test.ts`
 - Declared the existing `(cinema_id, source_id) WHERE source_id IS NOT NULL` unique index in the Drizzle schema.

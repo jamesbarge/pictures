@@ -1,4 +1,4 @@
-import { inArray, sql } from "drizzle-orm";
+import { inArray } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 import { db } from "@/db";
@@ -18,8 +18,8 @@ interface UnmatchedEntry {
 /**
  * POST /api/user/import-letterboxd — Authenticated
  *
- * Accepts an array of film IDs and batch-upserts them into the user's
- * watchlist (userFilmStatuses) with status "want_to_see".
+ * Accepts an array of film IDs and adds missing rows to the user's watchlist
+ * (userFilmStatuses) with status "want_to_see". Existing statuses are preserved.
  *
  * Optionally accepts `username` and `unmatchedEntries` to trigger a
  * background TMDB lookup for films not yet in our database.
@@ -86,7 +86,7 @@ export async function POST(req: Request) {
 
     const now = new Date();
 
-    // Build values for upsert — only include IDs that exist in our DB
+    // Build values for insert — only include IDs that exist in our DB
     const valuesToInsert = filmIds
       .filter((id) => filmMap.has(id))
       .map((id) => {
@@ -109,20 +109,12 @@ export async function POST(req: Request) {
     }
 
     if (valuesToInsert.length > 0) {
-      // Batch upsert — on conflict, update status + metadata + timestamp
+      // Preserve any existing user status; imports only add new watchlist rows.
       await db
         .insert(userFilmStatuses)
         .values(valuesToInsert)
-        .onConflictDoUpdate({
+        .onConflictDoNothing({
           target: [userFilmStatuses.userId, userFilmStatuses.filmId],
-          set: {
-            status: sql`excluded.status`,
-            updatedAt: sql`excluded.updated_at`,
-            filmTitle: sql`excluded.film_title`,
-            filmYear: sql`excluded.film_year`,
-            filmDirectors: sql`excluded.film_directors`,
-            filmPosterUrl: sql`excluded.film_poster_url`,
-          },
         });
     }
 
