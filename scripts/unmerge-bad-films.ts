@@ -13,7 +13,7 @@
  *
  * Usage:
  *   npx tsx -r tsconfig-paths/register scripts/unmerge-bad-films.ts            # dry run
- *   npx tsx -r tsconfig-paths/register scripts/unmerge-bad-films.ts --apply    # commit changes
+ *   npx tsx -r tsconfig-paths/register scripts/unmerge-bad-films.ts --execute  # commit changes
  *
  * Each un-merge is one transaction. If the DB is already in the corrected
  * state (no screenings matching the bad source_id), the script is a no-op
@@ -64,7 +64,7 @@ const CASES: UnmergeCase[] = [
   },
 ];
 
-const APPLY = process.argv.includes("--apply");
+const APPLY = process.argv.includes("--execute");
 
 /**
  * Find or create a film record matching `(title, year)` exactly. Returns
@@ -183,7 +183,7 @@ async function main(): Promise<void> {
     await processCase(c);
   }
 
-  console.log(`\nDone. ${APPLY ? "Changes committed." : "Pass --apply to commit changes."}`);
+  console.log(`\nDone. ${APPLY ? "Changes committed." : "Pass --execute to commit changes."}`);
 
   // Brief audit summary at the end so the operator sees if anything else looks suspect.
   console.log(`\n--- Audit: top 5 lowest source-title-vs-film-title trigram scores (Garden, future) ---`);

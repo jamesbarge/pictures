@@ -12,7 +12,8 @@
  *
  * Usage:
  *   npm run poster:audit
- *   npm run poster:audit -- --dry-run --limit=20
+ *   npm run poster:audit -- --execute
+ *   npm run poster:audit -- --limit=20
  *   npm run poster:audit -- --phase=2 --verbose
  *   npm run poster:audit -- --upcoming-only --json
  */
@@ -36,7 +37,7 @@ import type { FilmSelect } from "@/db/schema/films";
 // ============================================================================
 
 const args = process.argv.slice(2);
-const DRY_RUN = args.includes("--dry-run");
+const DRY_RUN = !args.includes("--execute");
 const VERBOSE = args.includes("--verbose");
 const UPCOMING_ONLY = args.includes("--upcoming-only");
 const JSON_OUTPUT = args.includes("--json");
@@ -645,7 +646,7 @@ function phase5Report(
 
   if (DRY_RUN) {
     log(
-      "\n⚠️  This was a DRY RUN. Run without --dry-run to apply changes."
+      "\n⚠️  This was a DRY RUN. Re-run with --execute to apply changes."
     );
   }
 

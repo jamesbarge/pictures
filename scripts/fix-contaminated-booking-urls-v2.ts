@@ -4,7 +4,8 @@
  * These are data quality issues where the Curzon scraper's booking URLs
  * got stored against the wrong cinema's screenings.
  *
- * Run: npx dotenv -e .env.local -- npx tsx scripts/fix-contaminated-booking-urls-v2.ts
+ * Preview: npx dotenv -e .env.local -- npx tsx scripts/fix-contaminated-booking-urls-v2.ts
+ * Execute: npx dotenv -e .env.local -- npx tsx scripts/fix-contaminated-booking-urls-v2.ts --execute
  */
 
 import { db } from "@/db";
@@ -12,7 +13,7 @@ import { sql } from "drizzle-orm";
 
 
 async function main() {
-  const DRY_RUN = process.argv.includes("--dry-run");
+  const DRY_RUN = !process.argv.includes("--execute");
   console.log(`${DRY_RUN ? "[DRY RUN] " : ""}Cleaning contaminated booking URLs...\n`);
 
   // Cinema ID = slug in this schema. Find curzon.com booking URLs at non-Curzon cinemas.

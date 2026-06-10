@@ -9,7 +9,7 @@ For bulk data cleanup (title fixing, non-film detection, TMDB matching, duplicat
 2. **Domain knowledge** - Knows that "Giselle" and "Siegfried" are ballet (reclassify as `live_broadcast`), "Big Mood Series 2" is TV (reclassify as `event`), and "THE GIRL WHO LEPT THROUGH TIME" is a misspelling of the Mamoru Hosoda anime
 3. **False positive prevention** - Can maintain a `BAD_MERGE_TMDB_IDS` blocklist to prevent "The Birds" merging into "The Bird's Placebo" or "The World" into "The World According To Bush"
 4. **Multi-phase orchestration** - Structures work into phases: delete non-films -> explicit title fixes -> auto-match remaining. Each phase builds on the last
-5. **Immediate verification** - Can query the database, run the script with `--dry-run`, review results, fix issues, then execute live - all in one session
+5. **Immediate verification** - Can query the database, run the default dry preview, review results, fix issues, then execute with `--execute` - all in one session
 
 ### When to use the API agent instead
 - Ongoing maintenance of small batches (1-10 films)
@@ -17,19 +17,18 @@ For bulk data cleanup (title fixing, non-film detection, TMDB matching, duplicat
 - Cases where TMDB matching needs web search context
 
 ### Workflow for major data quality passes
-1. Run `npm run audit:fix-upcoming` to identify issues
-2. Have Claude Code write `scripts/manual-title-fixes.ts` with explicit fixes
-3. Run with `--dry-run`, review, then execute live
-4. Re-run the audit to verify improvement
+1. Run `npm run audit:fix-upcoming` to preview issues and proposed changes
+2. Review the dry-run output and correct any unsafe classifications
+3. Run `npm run audit:fix-upcoming -- --execute` to apply approved changes
+4. Re-run the default dry audit to verify improvement
 
 ## Key Scripts
 
 | Script | Purpose |
 |--------|---------|
-| `npm run audit:fix-upcoming` | 8-pass orchestrator (non-film detection -> dedup -> TMDB -> enrichment -> poster -> dodgy detection) |
-| `scripts/manual-title-fixes.ts` | Claude Code-generated title fixes + TMDB matching (re-generate each session) |
+| `npm run audit:fix-upcoming` | Default-dry 8-pass orchestrator (non-film detection -> dedup -> TMDB -> enrichment -> poster -> dodgy detection); pass `--execute` to apply |
 | `scripts/cleanup-duplicate-films.ts` | TMDB ID + trigram similarity dedup with union-find clustering |
-| `npm run cleanup:upcoming` | 4-phase pipeline: title cleanup, TMDB, metadata, Letterboxd |
+| `npm run cleanup:upcoming` | Default-dry 4-phase pipeline: title cleanup, TMDB, metadata, Letterboxd; pass `--execute` to apply |
 
 ## AutoResearch (Autonomous Experimentation)
 

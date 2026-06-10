@@ -1,3 +1,10 @@
+## 2026-06-10: Destructive maintenance scripts now default to dry-run
+**PR**: #660 | **Files**: `scripts/`, `src/scripts/`, `package.json`, `.claude/rules/data-quality.md`
+- Reviewed database-mutating maintenance scripts now require an explicit `--execute` flag before writing.
+- Five superseded or dangerous one-off cleanup scripts were removed, including the stale PCC timezone fix and live-deleting “test” script.
+
+---
+
 ## 2026-06-10: Letterboxd imports preserve statuses and create films race-safely
 **PR**: #659 | **Files**: `src/lib/jobs/letterboxd-import.ts`, `src/app/api/user/import-letterboxd/route.ts`
 - Re-importing a watchlist no longer resets existing `seen` or `not_interested` statuses to `want_to_see`.

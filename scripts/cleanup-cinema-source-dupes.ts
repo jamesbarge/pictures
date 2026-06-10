@@ -31,14 +31,14 @@
  *
  * Usage:
  *   npx dotenv -e .env.local -- npx tsx scripts/cleanup-cinema-source-dupes.ts
- *   npx dotenv -e .env.local -- npx tsx scripts/cleanup-cinema-source-dupes.ts --apply
+ *   npx dotenv -e .env.local -- npx tsx scripts/cleanup-cinema-source-dupes.ts --execute
  *   add --verbose to print every group's decision
  */
 import { db } from "@/db";
 import { screenings } from "@/db/schema";
 import { inArray, sql } from "drizzle-orm";
 
-const APPLY = process.argv.includes("--apply");
+const APPLY = process.argv.includes("--execute");
 const VERBOSE = process.argv.includes("--verbose");
 
 interface DupRow {
@@ -149,7 +149,7 @@ async function main(): Promise<void> {
   console.log(`Rows to delete:                              ${idsToDelete.length}\n`);
 
   if (!APPLY) {
-    console.log(`[DRY RUN] Re-run with --apply to commit deletions.`);
+    console.log(`[DRY RUN] Re-run with --execute to commit deletions.`);
     process.exit(0);
   }
 

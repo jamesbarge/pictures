@@ -159,7 +159,8 @@ async function main(): Promise<void> {
   if (!SKIP_ENRICH) {
     phases.push(
       await runPhase("Cleanup upcoming films (4 sub-phases)", async () => {
-        const ok = await runNpmScript("cleanup:upcoming");
+        // The unified scrape command is already a live operational workflow.
+        const ok = await runNpmScript("cleanup:upcoming", ["--execute"]);
         return { ok };
       }),
     );
