@@ -1,5 +1,5 @@
 ## 2026-06-10: Letterboxd imports preserve statuses and create films race-safely
-**PR**: TBD | **Files**: `src/lib/jobs/letterboxd-import.ts`, `src/app/api/user/import-letterboxd/route.ts`
+**PR**: #659 | **Files**: `src/lib/jobs/letterboxd-import.ts`, `src/app/api/user/import-letterboxd/route.ts`
 - Re-importing a watchlist no longer resets existing `seen` or `not_interested` statuses to `want_to_see`.
 - Background imports now create-or-select TMDB films safely and insert the film/status pair in one transaction.
 
