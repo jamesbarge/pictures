@@ -1,6 +1,6 @@
 # Destructive Script Guards
 
-**PR**: TBD
+**PR**: #660
 **Date**: 2026-06-10
 
 ## Changes
