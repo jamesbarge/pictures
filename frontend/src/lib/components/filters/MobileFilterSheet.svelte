@@ -21,22 +21,46 @@
 		cinemas = [],
 		filmCount = 0,
 		open,
-		onClose
+		onClose,
+		returnFocusTo
 	}: {
 		cinemas?: SheetCinema[];
 		filmCount?: number;
 		open: boolean;
 		onClose: () => void;
+		returnFocusTo?: HTMLElement;
 	} = $props();
 
 	let datePickerOpen = $state(false);
+	let cinemaSearch = $state('');
+	let sheetEl = $state<HTMLDivElement>();
+	let dateDialogEl = $state<HTMLDivElement>();
+	let datePickerTriggerEl = $state<HTMLButtonElement>();
 
-	// Modal a11y — Escape closes the sheet and body scroll is locked while
-	// it's open. The shared helper handles both concerns and restores prior
-	// `body.style.overflow` on close.
+	function closeSheet() {
+		datePickerOpen = false;
+		cinemaSearch = '';
+		onClose();
+	}
+
+	function closeDatePicker() {
+		datePickerOpen = false;
+	}
+
 	$effect(() => {
-		if (!open) return;
-		return useModalKeyboardTrap(onClose);
+		if (!open || !sheetEl) return;
+		return useModalKeyboardTrap(sheetEl, closeSheet, {
+			isActive: () => !datePickerOpen,
+			returnFocusTo
+		});
+	});
+
+	$effect(() => {
+		if (!datePickerOpen || !dateDialogEl) return;
+		return useModalKeyboardTrap(dateDialogEl, closeDatePicker, {
+			lockBodyScroll: false,
+			returnFocusTo: datePickerTriggerEl
+		});
 	});
 
 	// Area cluster definitions + helpers live in `./area-clusters` so the
@@ -65,6 +89,15 @@
 			? filters.cinemaIds.filter((id) => !ids.includes(id))
 			: Array.from(new Set([...filters.cinemaIds, ...ids]));
 	}
+	const matchingCinemas = $derived.by(() => {
+		const query = cinemaSearch.trim().toLocaleLowerCase('en-GB');
+		if (!query) return [];
+		return cinemas.filter((cinema) =>
+			[cinema.name, cinema.shortName]
+				.filter((name): name is string => Boolean(name))
+				.some((name) => name.toLocaleLowerCase('en-GB').includes(query))
+		);
+	});
 
 	// "Within 2 miles" — browser geolocation required.
 	const WITHIN_RADIUS = 2;
@@ -160,10 +193,17 @@
 </script>
 
 {#if open}
-	<div class="sheet" role="dialog" aria-label="Filter programme" aria-modal="true">
+	<div
+		bind:this={sheetEl}
+		class="sheet"
+		role="dialog"
+		aria-label="Filter programme"
+		aria-modal="true"
+		tabindex="-1"
+	>
 		<header class="sheet-head">
 			<h2 class="sheet-title">Filter</h2>
-			<button class="close" onclick={onClose} aria-label="Close filters" type="button">×</button>
+			<button class="close" onclick={closeSheet} aria-label="Close filters" type="button">×</button>
 		</header>
 
 		<div class="sheet-body">
@@ -173,13 +213,44 @@
 					<h4>Where</h4>
 					<span class="hint">anywhere in London</span>
 				</div>
-				<div class="mini-search">
+				<label class="mini-search">
 					<svg width="11" height="11" viewBox="0 0 14 14" aria-hidden="true">
 						<circle cx="6" cy="6" r="4.5" stroke="currentColor" stroke-width="1.2" fill="none"/>
 						<path d="M9.5 9.5L13 13" stroke="currentColor" stroke-width="1.2"/>
 					</svg>
-					<span>Search cinemas by name…</span>
-				</div>
+					<input
+						type="search"
+						autocomplete="off"
+						placeholder="Search cinemas by name…"
+						aria-label="Search cinemas by name"
+						bind:value={cinemaSearch}
+					/>
+				</label>
+				{#if cinemaSearch.trim()}
+					<div class="cinema-results">
+						<p class="sr-only" aria-live="polite">
+							{matchingCinemas.length} {matchingCinemas.length === 1 ? 'cinema' : 'cinemas'} found
+						</p>
+						{#if matchingCinemas.length > 0}
+							<div class="chips" aria-label="Cinema search results">
+								{#each matchingCinemas as cinema (cinema.id)}
+									{@const active = filters.cinemaIds.includes(cinema.id)}
+									<button
+										type="button"
+										class="chip"
+										class:active
+										onclick={() => filters.toggleCinema(cinema.id)}
+										aria-pressed={active}
+									>
+										{cinema.shortName ?? cinema.name}
+									</button>
+								{/each}
+							</div>
+						{:else}
+							<p class="cinema-empty">No cinemas found</p>
+						{/if}
+					</div>
+				{/if}
 				<div class="chips">
 					{#each AREA_CLUSTERS as cluster (cluster.label)}
 						{@const active = isAreaActive(cluster.label)}
@@ -208,7 +279,14 @@
 					<button type="button" class="chip" class:active={whenState === 'today'} onclick={() => pick(whenState === 'today' ? null : 'today')}>Today<span class="sub">{todayLabel} {todayDay}</span></button>
 					<button type="button" class="chip" class:active={whenState === 'tomorrow'} onclick={() => pick(whenState === 'tomorrow' ? null : 'tomorrow')}>Tomorrow<span class="sub">{tomorrowLabel} {tomorrowDay}</span></button>
 					<button type="button" class="chip" class:active={whenState === 'weekend'} onclick={() => pick(whenState === 'weekend' ? null : 'weekend')}>This weekend</button>
-					<button type="button" class="chip" onclick={() => (datePickerOpen = true)}>Pick a date</button>
+					<button
+						bind:this={datePickerTriggerEl}
+						type="button"
+						class="chip"
+						onclick={() => (datePickerOpen = true)}
+					>
+						Pick a date
+					</button>
 				</div>
 			</section>
 
@@ -266,7 +344,7 @@
 
 		<footer class="sheet-foot">
 			<button class="reset" type="button" onclick={() => filters.clearAll()}>Reset</button>
-			<button class="show" type="button" onclick={onClose}>
+			<button class="show" type="button" onclick={closeSheet}>
 				Show <span class="show-count">{filmCount}</span> films
 			</button>
 		</footer>
@@ -275,12 +353,20 @@
 
 {#if datePickerOpen}
 	<div
+		bind:this={dateDialogEl}
 		class="cal-overlay"
 		role="dialog"
 		aria-modal="true"
 		aria-label="Pick a date"
-		onclick={(e) => { if (e.target === e.currentTarget) datePickerOpen = false; }}
-		onkeydown={() => {}}
+		tabindex="-1"
+		onclick={(e) => { if (e.target === e.currentTarget) closeDatePicker(); }}
+		onkeydown={(e) => {
+			if (e.key === 'Escape') {
+				e.preventDefault();
+				e.stopPropagation();
+				closeDatePicker();
+			}
+		}}
 	>
 		<div class="cal-wrap">
 			<CalendarPopover
@@ -290,9 +376,9 @@
 				onSelect={(iso) => {
 					filters.dateFrom = iso;
 					filters.dateTo = iso;
-					datePickerOpen = false;
+					closeDatePicker();
 				}}
-				onClose={() => (datePickerOpen = false)}
+				onClose={closeDatePicker}
 			/>
 		</div>
 	</div>
@@ -394,7 +480,7 @@
 		display: flex;
 		align-items: center;
 		gap: 8px;
-		padding: 10px 12px;
+		padding: 0 12px;
 		background: var(--color-surface);
 		border: 1px solid var(--color-border);
 		border-radius: 4px;
@@ -404,6 +490,30 @@
 		font-size: 13px;
 		font-weight: 500;
 		letter-spacing: 0.04em;
+		text-transform: uppercase;
+	}
+	.mini-search:focus-within { box-shadow: var(--shadow-brutalist-sm); }
+	.mini-search input {
+		width: 100%;
+		min-width: 0;
+		padding: 10px 0;
+		border: 0;
+		outline: 0;
+		background: transparent;
+		color: var(--color-text);
+		font: inherit;
+		letter-spacing: inherit;
+		text-transform: inherit;
+	}
+	.mini-search input::placeholder { color: var(--color-text-tertiary); opacity: 1; }
+	.cinema-results { margin-bottom: 12px; }
+	.cinema-empty {
+		margin: 0;
+		padding: 10px 12px;
+		color: var(--color-text-tertiary);
+		font-size: 12px;
+		font-weight: 500;
+		letter-spacing: 0.06em;
 		text-transform: uppercase;
 	}
 
