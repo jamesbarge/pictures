@@ -1,3 +1,10 @@
+## 2026-06-09: Scraper failures no longer masquerade as successful empty runs
+**PR**: #654 | **Files**: `src/scrapers/runner-factory.ts`, `src/scrapers/chains/`, `src/scrapers/cinemas/`
+- Chain scrapers now distinguish valid zero-screening results from failed venues, and the shared runner records omitted requested venues as failed.
+- Curzon auth/date failures and required-page failures in Barbican, Close-Up, and Phoenix now fail honestly instead of persisting partial or empty success results.
+
+---
+
 ## 2026-06-09: Fix scraper BST date parsing
 **PR**: #653 | **Files**: `src/scrapers/cinemas/phoenix.ts`, `src/scrapers/cinemas/olympic.ts`, `src/scrapers/cinemas/david-lean.ts`, `src/scrapers/cinemas/genesis.ts`, `src/scrapers/cinemas/close-up.ts`
 - Runtime-local date construction no longer shifts affected screenings to the previous day during BST.

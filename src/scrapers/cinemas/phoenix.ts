@@ -80,6 +80,7 @@ export class PhoenixScraper implements CinemaScraper {
 
       // Step 2: Visit each film page and extract showtimes
       const allScreenings: RawScreening[] = [];
+      const failedFilms: string[] = [];
       const now = new Date();
       const currentYear = getYear(now);
 
@@ -172,7 +173,12 @@ export class PhoenixScraper implements CinemaScraper {
           await page.waitForTimeout(this.config.delayBetweenRequests);
         } catch (error) {
           console.warn(`[${this.config.cinemaId}] Error fetching showtimes for "${film.title}":`, error);
+          failedFilms.push(film.title);
         }
+      }
+
+      if (failedFilms.length > 0) {
+        throw new Error(`Failed to fetch ${failedFilms.length}/${films.length} Phoenix film pages`);
       }
 
       // Deduplicate

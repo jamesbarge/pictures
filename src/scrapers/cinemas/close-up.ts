@@ -56,6 +56,7 @@ export class CloseUpCinemaScraper extends BaseScraper {
 
   protected async fetchPages(): Promise<string[]> {
     const pages: string[] = [];
+    const failures: string[] = [];
 
     // Fetch the homepage first (has JSON data + immediate screenings)
     const homepageUrl = this.config.baseUrl;
@@ -86,7 +87,12 @@ export class CloseUpCinemaScraper extends BaseScraper {
         await this.delay(this.config.delayBetweenRequests);
       } catch (error) {
         console.warn(`[${this.config.cinemaId}] Failed to fetch ${dateUrl}:`, error);
+        failures.push(dateUrl);
       }
+    }
+
+    if (failures.length > 0) {
+      throw new Error(`Failed to fetch ${failures.length}/${weeksToFetch} Close-Up search pages`);
     }
 
     return pages;
