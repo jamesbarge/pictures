@@ -1,3 +1,11 @@
+## 2026-06-09: Patch P0 dependency vulnerabilities
+**PR**: #649 | **Files**: `package-lock.json`, `frontend/package.json`, `frontend/package-lock.json`
+- Updated the root dependency lockfile to patched non-breaking releases, including Next.js 16.2.7.
+- Forced `svelte-clerk` onto patched `js-cookie` 3.0.8 without taking npm's breaking downgrade.
+- Root audit now has no high-severity findings; remaining root findings require breaking dependency changes.
+
+---
+
 ## 2026-06-05: E2E suite refresh — re-pointed at the redesign + 4 regression locks
 **PR**: #648 | **Files**: `frontend/test-all.spec.ts`, `frontend/tests/mobile.spec.ts`, `frontend/tests/command-palette.spec.ts`, `frontend/tests/redesign-regression.spec.ts` (new), `frontend/src/lib/components/pretext/BreathingGrid.svelte` (deleted)
 - ~76 spec lines referenced pre-redesign homepage selectors (`.film-card`, `.masthead-title`, `.day-strip`, `.desktop-toolbar`, `aside.sidebar`, `.breathing-grid`, `.sign-in-link`, `.mobile-*`) — passing vacuously. Re-pointed at the redesigned DOM via role-based locators (toolbar, tablists, `.card`/`.film-row`/`.day-header`).
