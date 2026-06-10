@@ -15,7 +15,7 @@ import type { RawScreening, ScraperConfig, CinemaScraper } from "../types";
 import { FestivalDetector } from "../festivals/festival-detector";
 import { checkHealth } from "../utils/health-check";
 import { CHROME_USER_AGENT } from "../constants";
-import { ukLocalToUTC } from "../utils/date-parser";
+import { parseScreeningTime, ukLocalToUTC } from "../utils/date-parser";
 
 // ============================================================================
 // Genesis Configuration
@@ -272,25 +272,17 @@ export class GenesisScraper implements CinemaScraper {
       const month = months[monthName];
       if (month === undefined) return null;
 
-      // Parse time like "19:30" or "7:30pm"
-      const timeMatch = timeStr.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
-      if (!timeMatch) return null;
-
-      let hours = parseInt(timeMatch[1]);
-      const minutes = parseInt(timeMatch[2]);
-      const ampm = timeMatch[3]?.toLowerCase();
-
-      if (ampm === "pm" && hours < 12) hours += 12;
-      if (ampm === "am" && hours === 12) hours = 0;
+      const time = parseScreeningTime(timeStr);
+      if (!time) return null;
 
       // Build UTC explicitly with BST offset — never rely on the runtime TZ.
       // `new Date(y,m,d,h,mi)` interprets args as local time, so a UTC-runtime
       // would store London times one hour ahead during BST.
-      let date = ukLocalToUTC(year, month, day, hours, minutes);
+      let date = ukLocalToUTC(year, month, day, time.hours, time.minutes);
 
       // If date is in the past, assume next year
       if (date < new Date()) {
-        date = ukLocalToUTC(year + 1, month, day, hours, minutes);
+        date = ukLocalToUTC(year + 1, month, day, time.hours, time.minutes);
       }
 
       return date;

@@ -1,7 +1,7 @@
 # Declare Scraper Source-ID Partial Index in Drizzle
 
 **PR**: TBD
-**Date**: 2026-06-09
+**Date**: 2026-06-10
 
 ## Changes
 - Added `idx_screenings_cinema_source` to the Drizzle `screenings` table definition as a partial unique index on `(cinema_id, source_id)` where `source_id IS NOT NULL`.
