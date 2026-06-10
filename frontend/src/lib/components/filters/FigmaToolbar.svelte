@@ -30,7 +30,7 @@
 		cinemas?: FilterCinema[];
 		displayMode?: DisplayMode;
 		onDisplayModeChange?: (m: DisplayMode) => void;
-		onOpenFilters?: () => void;
+		onOpenFilters?: (trigger: HTMLButtonElement) => void;
 	} = $props();
 
 	// — Mobile FILTERS chip: count of active non-search, non-date filters —
@@ -333,7 +333,7 @@
 				type="button"
 				class="chip chip-full chip-mobile-filters"
 				class:active={mobileFilterCount > 0}
-				onclick={() => onOpenFilters?.()}
+				onclick={(event) => onOpenFilters?.(event.currentTarget)}
 				aria-label="Open filters"
 			>
 				<span class="chip-label">

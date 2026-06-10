@@ -26,6 +26,7 @@
 	}>);
 
 	let mobileFilterOpen = $state(false);
+	let mobileFilterTrigger = $state<HTMLButtonElement>();
 	let displayMode = $state<DisplayMode>('posters');
 
 	// Lazy-load the mobile filter sheet on first open. It never renders until
@@ -222,7 +223,8 @@
 		{cinemas}
 		{displayMode}
 		onDisplayModeChange={(m) => (displayMode = m)}
-		onOpenFilters={() => {
+		onOpenFilters={(trigger) => {
+			mobileFilterTrigger = trigger;
 			if (MobileFilterSheet) {
 				mobileFilterOpen = true;
 				return;
@@ -317,6 +319,7 @@
 		filmCount={filmMap.size}
 		open={mobileFilterOpen}
 		onClose={() => (mobileFilterOpen = false)}
+		returnFocusTo={mobileFilterTrigger}
 	/>
 {/if}
 

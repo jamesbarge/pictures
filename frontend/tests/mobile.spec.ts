@@ -163,6 +163,24 @@ test.describe('Mobile Responsive — iPhone 12 Pro (390x844)', () => {
 			await expect(sheet).toBeHidden();
 		});
 
+		test('filter sheet traps focus and restores it to the trigger', async ({ page }) => {
+			await gotoHomeHydrated(page);
+			const trigger = page.getByRole('button', { name: 'Open filters' });
+			const sheet = await openFilterSheet(page);
+			const close = page.getByRole('button', { name: 'Close filters' });
+			const show = sheet.locator('.show');
+
+			await expect(close).toBeFocused();
+			await page.keyboard.press('Shift+Tab');
+			await expect(show).toBeFocused();
+			await page.keyboard.press('Tab');
+			await expect(close).toBeFocused();
+
+			await close.click();
+			await expect(sheet).toBeHidden();
+			await expect(trigger).toBeFocused();
+		});
+
 		test('Escape key dismisses the filter sheet', async ({ page }) => {
 			await gotoHomeHydrated(page);
 			const sheet = await openFilterSheet(page);
@@ -182,11 +200,36 @@ test.describe('Mobile Responsive — iPhone 12 Pro (390x844)', () => {
 			expect(restored).toBe(prev);
 		});
 
+		test('cinema search exposes selectable matching cinemas', async ({ page }) => {
+			await gotoHomeHydrated(page);
+			const sheet = await openFilterSheet(page);
+			await sheet.getByRole('searchbox', { name: 'Search cinemas by name' }).fill('Curzon');
+
+			const results = sheet.locator('.cinema-results .chip');
+			await expect(results.first()).toBeVisible();
+			expect(await results.count()).toBeGreaterThan(0);
+
+			const labels = await results.allTextContents();
+			expect(labels.every((label) => label.toLowerCase().includes('curzon'))).toBe(true);
+
+			await results.first().click();
+			await expect(results.first()).toHaveAttribute('aria-pressed', 'true');
+		});
+
 		test('Pick a date chip inside sheet opens mobile date picker', async ({ page }) => {
 			await gotoHomeHydrated(page);
-			await openFilterSheet(page);
-			await page.getByRole('button', { name: 'Pick a date' }).click();
-			await expect(page.getByRole('dialog', { name: 'Pick a date' })).toBeVisible();
+			const sheet = await openFilterSheet(page);
+			const trigger = sheet.getByRole('button', { name: 'Pick a date' });
+			await trigger.click();
+
+			const datePicker = page.getByRole('dialog', { name: 'Pick a date' });
+			await expect(datePicker).toBeVisible();
+			await expect(datePicker.getByRole('button', { name: 'Previous month' })).toBeFocused();
+
+			await page.keyboard.press('Escape');
+			await expect(datePicker).toBeHidden();
+			await expect(trigger).toBeFocused();
+			await expect(sheet).toBeVisible();
 		});
 	});
 
