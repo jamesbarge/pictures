@@ -1,5 +1,8 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
-import { getAdminEmailAllowlist, isAdminEmail } from "@/lib/admin-emails";
+import {
+  getAdminEmailAllowlist,
+  getVerifiedEmailAddresses,
+} from "@/lib/admin-emails";
 
 /**
  * Get the current user's ID, or null if not signed in.
@@ -33,30 +36,15 @@ interface AdminAuthContext {
  * Returns either admin context or an HTTP response to return directly.
  */
 export async function requireAdmin(): Promise<AdminAuthContext | Response> {
-  const { userId, sessionClaims } = await auth();
+  const { userId } = await auth();
   if (!userId) {
     return unauthorizedResponse();
   }
 
-  // Fast path: check session claim email if present.
-  const claimEmail =
-    typeof sessionClaims === "object" &&
-    sessionClaims !== null &&
-    "email" in sessionClaims &&
-    typeof (sessionClaims as Record<string, unknown>).email === "string"
-      ? ((sessionClaims as Record<string, unknown>).email as string).toLowerCase()
-      : null;
-
-  if (claimEmail && isAdminEmail(claimEmail)) {
-    return { userId, email: claimEmail };
-  }
-
-  // Fallback: fetch full Clerk user and evaluate all emails.
+  // Session claims do not prove that an email address is verified, so always
+  // fetch the Clerk user before evaluating the admin allowlist.
   const user = await currentUser();
-  const userEmails =
-    user?.emailAddresses
-      .map((item) => item.emailAddress?.toLowerCase())
-      .filter((email): email is string => Boolean(email)) ?? [];
+  const userEmails = getVerifiedEmailAddresses(user?.emailAddresses);
 
   const allowlist = getAdminEmailAllowlist();
   const matchingEmail = userEmails.find((email) => allowlist.includes(email));

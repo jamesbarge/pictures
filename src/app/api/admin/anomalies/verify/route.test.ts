@@ -55,7 +55,12 @@ describe("POST /api/admin/anomalies/verify", () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     vi.mocked(currentUser).mockResolvedValue({
-      emailAddresses: [{ emailAddress: "jdwbarge@gmail.com" }],
+      emailAddresses: [
+        {
+          emailAddress: "jdwbarge@gmail.com",
+          verification: { status: "verified" },
+        },
+      ],
     } as never);
     // Import fresh module
     const module = await import("./route");

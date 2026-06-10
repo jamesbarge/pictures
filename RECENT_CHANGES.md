@@ -6,6 +6,67 @@
 
 ---
 
+## 2026-06-10: Mobile filter sheet gains real focus management and cinema search
+**PR**: #656 | **Files**: `frontend/src/lib/components/filters/MobileFilterSheet.svelte`, `frontend/src/lib/components/filters/FigmaToolbar.svelte`, `frontend/src/routes/+page.svelte`, `frontend/src/lib/utils.ts`, `frontend/tests/mobile.spec.ts`
+- The mobile filter sheet and nested date picker now move, trap, and restore keyboard focus correctly.
+- Replaced the decorative cinema-search row with a labeled search input and selectable matching cinema results.
+
+---
+
+## 2026-06-10: Frontend filter vocabulary consolidated and dead filter components removed
+**Files**: `frontend/src/lib/constants/filters.ts`, `frontend/src/lib/components/filters/FigmaToolbar.svelte`, `frontend/src/lib/components/filters/MobileFilterSheet.svelte`, `frontend/src/lib/search/vocab/formats.ts`, three deleted filter components
+- Desktop and mobile filter surfaces now share canonical genre, decade, and format options. “Sci-fi” stores `science fiction`, Animation is available everywhere, and 4K stores the valid `dcp_4k` screening format.
+- Existing persisted `sci-fi` and `4k` selections are migrated to their canonical replacements on hydration.
+- Command-palette `4k` queries now apply the same canonical format filter.
+- Deleted the zero-import `DesktopFilterSidebar`, `MobileDatePicker`, and `FilmTypeFilter` components and removed stale references.
+
+---
+
+## 2026-06-09: Scraper failures no longer masquerade as successful empty runs
+**PR**: #654 | **Files**: `src/scrapers/runner-factory.ts`, `src/scrapers/chains/`, `src/scrapers/cinemas/`
+- Chain scrapers now distinguish valid zero-screening results from failed venues, and the shared runner records omitted requested venues as failed.
+- Curzon auth/date failures and required-page failures in Barbican, Close-Up, and Phoenix now fail honestly instead of persisting partial or empty success results.
+
+---
+
+## 2026-06-09: Fix scraper BST date parsing
+**PR**: #653 | **Files**: `src/scrapers/cinemas/phoenix.ts`, `src/scrapers/cinemas/olympic.ts`, `src/scrapers/cinemas/david-lean.ts`, `src/scrapers/cinemas/genesis.ts`, `src/scrapers/cinemas/close-up.ts`
+- Runtime-local date construction no longer shifts affected screenings to the previous day during BST.
+- Shared parser rules now cover Genesis ambiguous times and reject invalid David Lean times instead of fabricating midnight.
+
+---
+
+## 2026-06-09: Fix user sync contract and FK safety
+**PR**: #652 | **Files**: `src/lib/user-record.ts`, `src/app/api/user/**`, `src/app/api/festivals/[slug]/follow/route.ts`, `frontend/src/lib/stores/sync.svelte.ts`
+- Every FK-backed user-data write now ensures the parent user row exists with a conflict-safe insert.
+- Production pull sync now consumes the API's status map, and festival follows use one canonical single-follow endpoint.
+
+---
+
+## 2026-06-09: Prevent public caching of personalized festival data
+**PR**: #651 | **Files**: `src/app/api/festivals/route.ts`, `src/app/api/festivals/[slug]/route.ts`, `src/lib/cache-headers.ts`
+- Authenticated festival responses now use `private, no-store`.
+- Anonymous festival responses retain their existing public edge-cache policy.
+- Added regression tests for the user-aware cache policy.
+
+---
+
+## 2026-06-09: Require verified Clerk emails for admin access
+**PR**: #650 | **Files**: `src/lib/admin-emails.ts`, `src/lib/auth.ts`, `src/middleware.ts`
+- Admin allowlist checks now ignore unverified, pending, or unverifiable Clerk email addresses.
+- Removed the session-claim email shortcut because it did not prove email ownership.
+- Added regression tests for verified and unverified Clerk email records.
+
+---
+
+## 2026-06-09: Patch P0 dependency vulnerabilities
+**PR**: #649 | **Files**: `package-lock.json`, `frontend/package.json`, `frontend/package-lock.json`
+- Updated the root dependency lockfile to patched non-breaking releases, including Next.js 16.2.7.
+- Forced `svelte-clerk` onto patched `js-cookie` 3.0.8 without taking npm's breaking downgrade.
+- Root audit now has no high-severity findings; remaining root findings require breaking dependency changes.
+
+---
+
 ## 2026-06-05: E2E suite refresh — re-pointed at the redesign + 4 regression locks
 **PR**: #648 | **Files**: `frontend/test-all.spec.ts`, `frontend/tests/mobile.spec.ts`, `frontend/tests/command-palette.spec.ts`, `frontend/tests/redesign-regression.spec.ts` (new), `frontend/src/lib/components/pretext/BreathingGrid.svelte` (deleted)
 - ~76 spec lines referenced pre-redesign homepage selectors (`.film-card`, `.masthead-title`, `.day-strip`, `.desktop-toolbar`, `aside.sidebar`, `.breathing-grid`, `.sign-in-link`, `.mobile-*`) — passing vacuously. Re-pointed at the redesigned DOM via role-based locators (toolbar, tablists, `.card`/`.film-row`/`.day-header`).

@@ -68,6 +68,10 @@ async function main() {
   }
 
   console.log(`[curzon] Complete: ${totalScreenings} screenings from ${results.size} venue(s)`);
+
+  if (scraper.venueErrors.size > 0) {
+    throw new Error(`Curzon venue failures: ${Array.from(scraper.venueErrors.entries()).map(([id, error]) => `${id}: ${error}`).join("; ")}`);
+  }
 }
 
 main().catch((error) => {
