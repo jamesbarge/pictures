@@ -33,7 +33,12 @@ describe("Agent API Routes", () => {
     // Set API key so routes don't return "not configured" error
     process.env.GEMINI_API_KEY = "test-api-key";
     vi.mocked(currentUser).mockResolvedValue({
-      emailAddresses: [{ emailAddress: "jdwbarge@gmail.com" }],
+      emailAddresses: [
+        {
+          emailAddress: "jdwbarge@gmail.com",
+          verification: { status: "verified" },
+        },
+      ],
     } as never);
   });
 
