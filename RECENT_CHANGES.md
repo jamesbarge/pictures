@@ -1,3 +1,10 @@
+## 2026-06-09: Fix scraper BST date parsing
+**PR**: #653 | **Files**: `src/scrapers/cinemas/phoenix.ts`, `src/scrapers/cinemas/olympic.ts`, `src/scrapers/cinemas/david-lean.ts`, `src/scrapers/cinemas/genesis.ts`, `src/scrapers/cinemas/close-up.ts`
+- Runtime-local date construction no longer shifts affected screenings to the previous day during BST.
+- Shared parser rules now cover Genesis ambiguous times and reject invalid David Lean times instead of fabricating midnight.
+
+---
+
 ## 2026-06-09: Fix user sync contract and FK safety
 **PR**: #652 | **Files**: `src/lib/user-record.ts`, `src/app/api/user/**`, `src/app/api/festivals/[slug]/follow/route.ts`, `frontend/src/lib/stores/sync.svelte.ts`
 - Every FK-backed user-data write now ensures the parent user row exists with a conflict-safe insert.

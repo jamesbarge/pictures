@@ -9,12 +9,15 @@
  * Website uses a classic ASP.NET/DLL system with /PhoenixCinemaLondon.dll endpoints.
  */
 
-import { parse, getYear } from "date-fns";
+import { getYear } from "date-fns";
 import { chromium } from "rebrowser-playwright";
 
 import type { RawScreening, ScraperConfig, CinemaScraper } from "../types";
 import { BOT_USER_AGENT } from "../constants";
-import { combineDateAndTime } from "../utils/date-parser";
+import {
+  combineDateAndTime,
+  parseScreeningDate,
+} from "../utils/date-parser";
 
 const PHOENIX_CONFIG: ScraperConfig & { programmeUrl: string } = {
   cinemaId: "phoenix-east-finchley",
@@ -221,27 +224,27 @@ export class PhoenixScraper implements CinemaScraper {
       const day = parseInt(dateMatch[1], 10);
       const monthStr = dateMatch[2];
 
-      // Parse time like "17:00" or "14:15"
       const timeMatch = timeStr.match(/^(\d{1,2}):(\d{2})$/);
       if (!timeMatch) return null;
+      const time = {
+        hours: parseInt(timeMatch[1], 10),
+        minutes: parseInt(timeMatch[2], 10),
+      };
 
-      const hours = parseInt(timeMatch[1], 10);
-      const minutes = parseInt(timeMatch[2], 10);
-
-      // Build date string and parse
       const dateFullStr = `${day} ${monthStr} ${currentYear}`;
-      let parsedDate = parse(dateFullStr, "d MMM yyyy", new Date());
+      let parsedDate = parseScreeningDate(dateFullStr, now);
+      if (!parsedDate) return null;
 
       // Only roll to next year if date is more than 30 days in the past
       // (handles year boundary cases like Dec->Jan, but not recent past dates)
-      const thirtyDaysAgo = new Date(now);
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 86_400_000);
 
       if (parsedDate < thirtyDaysAgo) {
-        parsedDate = parse(`${day} ${monthStr} ${currentYear + 1}`, "d MMM yyyy", new Date());
+        parsedDate = parseScreeningDate(`${day} ${monthStr} ${currentYear + 1}`, now);
+        if (!parsedDate) return null;
       }
 
-      return combineDateAndTime(parsedDate, { hours, minutes });
+      return combineDateAndTime(parsedDate, time);
     } catch {
       return null;
     }
