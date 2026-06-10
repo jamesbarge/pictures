@@ -214,9 +214,8 @@ export function toISODate(year: number, monthZeroIndexed: number, day: number): 
  *   - Escape closes the modal.
  *   - Body scroll is locked (with the previous overflow restored on close).
  *
- * Returns a cleanup callback suitable for use inside a `$effect`. Designed to
- * de-duplicate the identical setup previously inlined in `MobileFilterSheet`
- * and `MobileDatePicker`.
+ * Returns a cleanup callback suitable for use inside a `$effect`. Designed for
+ * reuse by modal surfaces such as `MobileFilterSheet`.
  *
  * @example
  *   $effect(() => {

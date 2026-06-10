@@ -1,3 +1,11 @@
+## 2026-06-10: Frontend filter vocabulary consolidated and dead filter components removed
+**Files**: `frontend/src/lib/constants/filters.ts`, `frontend/src/lib/components/filters/FigmaToolbar.svelte`, `frontend/src/lib/components/filters/MobileFilterSheet.svelte`, `frontend/src/lib/search/vocab/formats.ts`, three deleted filter components
+- Desktop and mobile filter surfaces now share canonical genre, decade, and format options. “Sci-fi” stores `science fiction`, Animation is available everywhere, and 4K stores the valid `dcp_4k` screening format.
+- Command-palette `4k` queries now apply the same canonical format filter.
+- Deleted the zero-import `DesktopFilterSidebar`, `MobileDatePicker`, and `FilmTypeFilter` components and removed stale references.
+
+---
+
 ## 2026-06-05: E2E suite refresh — re-pointed at the redesign + 4 regression locks
 **PR**: #648 | **Files**: `frontend/test-all.spec.ts`, `frontend/tests/mobile.spec.ts`, `frontend/tests/command-palette.spec.ts`, `frontend/tests/redesign-regression.spec.ts` (new), `frontend/src/lib/components/pretext/BreathingGrid.svelte` (deleted)
 - ~76 spec lines referenced pre-redesign homepage selectors (`.film-card`, `.masthead-title`, `.day-strip`, `.desktop-toolbar`, `aside.sidebar`, `.breathing-grid`, `.sign-in-link`, `.mobile-*`) — passing vacuously. Re-pointed at the redesigned DOM via role-based locators (toolbar, tablists, `.card`/`.film-row`/`.day-header`).
