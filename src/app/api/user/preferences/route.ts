@@ -4,6 +4,7 @@ import { userPreferences } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { requireAuth } from "@/lib/auth";
 import { BadRequestError, handleApiError } from "@/lib/api-errors";
+import { ensureUserRecord } from "@/lib/user-record";
 import { z } from "zod";
 
 const storedPreferencesSchema = z.object({
@@ -72,6 +73,8 @@ export async function PUT(request: NextRequest) {
       throw new BadRequestError("Invalid request body", parseResult.error.flatten());
     }
     const { preferences, persistedFilters, updatedAt } = parseResult.data;
+
+    await ensureUserRecord(userId);
 
     // Check if entry exists
     const existing = await db.query.userPreferences.findFirst({

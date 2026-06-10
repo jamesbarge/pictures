@@ -16,6 +16,7 @@ import {
   handleApiError,
 } from "@/lib/api-errors";
 import { requireAuth } from "@/lib/auth";
+import { ensureUserRecord } from "@/lib/user-record";
 
 // Schema for POST/PATCH body
 const followSchema = z.object({
@@ -63,6 +64,8 @@ export async function POST(
     if (!festival) {
       throw new NotFoundError(`Festival not found: ${slug}`);
     }
+
+    await ensureUserRecord(userId);
 
     // Check if already following
     const [existing] = await db

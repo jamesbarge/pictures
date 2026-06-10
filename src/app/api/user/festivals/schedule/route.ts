@@ -12,6 +12,7 @@ import { eq, and, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { BadRequestError, handleApiError } from "@/lib/api-errors";
 import { requireAuth, getCurrentUserId } from "@/lib/auth";
+import { ensureUserRecord } from "@/lib/user-record";
 
 // Schema for incoming schedule
 const scheduleSchema = z.object({
@@ -130,6 +131,8 @@ export async function POST(request: NextRequest) {
     }
 
     const { schedule } = parseResult.data;
+
+    await ensureUserRecord(userId);
 
     // Get current server schedule
     const serverSchedule = await db

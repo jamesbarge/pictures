@@ -7,6 +7,13 @@
 
 const DEFAULT_ADMIN_EMAILS = ["jdwbarge@gmail.com"] as const;
 
+interface ClerkEmailAddressLike {
+  emailAddress?: string | null;
+  verification?: {
+    status?: string | null;
+  } | null;
+}
+
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
@@ -29,4 +36,16 @@ export function getAdminEmailAllowlist(): string[] {
 export function isAdminEmail(email: string | null | undefined): boolean {
   if (!email) return false;
   return getAdminEmailAllowlist().includes(normalizeEmail(email));
+}
+
+/** Return normalized Clerk email addresses whose ownership has been verified. */
+export function getVerifiedEmailAddresses(
+  emailAddresses: readonly ClerkEmailAddressLike[] | null | undefined
+): string[] {
+  return (
+    emailAddresses
+      ?.filter((item) => item.verification?.status === "verified")
+      .map((item) => item.emailAddress && normalizeEmail(item.emailAddress))
+      .filter((email): email is string => Boolean(email)) ?? []
+  );
 }

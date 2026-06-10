@@ -14,6 +14,7 @@ Update this playbook whenever you:
 - If a time is `1-9` with no AM/PM, default to PM.
 - Treat times before `10:00` as likely parse errors and log warnings.
 - Use `src/scrapers/utils/date-parser.ts` for shared parsing behavior.
+- Dates passed to `combineDateAndTime()` must be UTC-midnight dates from `parseScreeningDate()` or `Date.UTC(...)`; `date-fns/parse()` returns runtime-local midnight and can shift the screening to the previous day when `combineDateAndTime()` reads UTC components.
 - **Never use `new Date(year, month, day, hours, minutes)` to construct screening datetimes.** That ctor interprets numeric args as the runtime's local timezone, which silently produces +1h offsets during BST when the scraper runs under `TZ=UTC` (cron, CI, container). Always call `ukLocalToUTC(...)` from `utils/date-parser.ts` — it builds UTC explicitly and applies BST. Same goes for `parseUKLocalDateTime()` for ISO-like strings without a timezone suffix.
 - After fixing time parsing bugs, verify and clean bad historical screenings (`00:00-09:59`) only when confirmed wrong.
 - **`BaseScraper.healthCheck()` retries** (2026-05-15): 3 attempts, 10s timeout each, 4s backoff between attempts. Fast-fails on 4xx (contract issue), retries on 5xx + network errors. Subclasses can override for cheaper/different checks (e.g. Curzon HEADs the API endpoint with a 401-is-healthy contract). Background: Close-Up was failing 33% of runs at 03:17-03:21 UTC because of brief nightly-maintenance windows.
@@ -45,6 +46,11 @@ The `/scrape` slash command runs three read-only detectors against `scraper_runs
 4. Check times are sensible (mostly `10:00-23:59`).
 5. Add/update tests when parser logic changes.
 6. Record site-specific notes below.
+
+## Date Parser Notes
+- **Phoenix, Olympic, David Lean (2026-06-09):** Date labels are parsed through `parseScreeningDate()` before combining with UK-local times. Do not reintroduce `date-fns/parse()` for these paths.
+- **Genesis (2026-06-09):** Time labels use `parseScreeningTime()` so ambiguous `1:00-9:59` values default to PM.
+- **Close-Up (2026-06-09):** Search-page date-only values are UTC-midnight dates; combine them with `ukLocalToUTC()` using UTC date components.
 
 ## Site Note Template
 Use this format when recording cinema-specific quirks:

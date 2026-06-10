@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { films, userFilmStatuses } from "@/db/schema";
 import { requireAuth, unauthorizedResponse } from "@/lib/auth";
 import { runLetterboxdImport } from "@/lib/jobs/letterboxd-import";
+import { ensureUserRecord } from "@/lib/user-record";
 
 const MAX_FILM_IDS = 500;
 
@@ -66,6 +67,8 @@ export async function POST(req: Request) {
   }
 
   try {
+    await ensureUserRecord(userId);
+
     // Look up denormalized film metadata for all requested IDs
     const filmRows = await db
       .select({
