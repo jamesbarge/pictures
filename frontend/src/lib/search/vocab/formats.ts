@@ -21,6 +21,10 @@ export const FORMAT_TOKENS: Record<string, string> = {
   "70mm imax": "70mm_imax",
   "70mm-imax": "70mm_imax",
 
+  // 4K digital
+  "4k": "dcp_4k",
+  "dcp 4k": "dcp_4k",
+
   // IMAX
   "imax": "imax",
   "imax laser": "imax_laser",
@@ -37,12 +41,12 @@ export const FORMAT_TOKENS: Record<string, string> = {
   "4dx": "4dx",
   "4 dx": "4dx",
 
-  // Digital and 3D — not in FORMAT_OPTIONS yet but commonly typed
+  // Digital and 3D — not surfaced in FORMAT_OPTIONS but commonly typed
   // We intentionally do NOT add these to filters.formats since the
   // existing UI doesn't surface them; they end up in freeText so
   // the server can still match via screenings.format tsvector.
 };
 
 export const FORMAT_PHRASES_BY_LENGTH: Record<number, string[]> = {
-  2: ["70mm imax", "70 mm", "70mm-imax", "imax laser", "imax-laser", "35 mm", "dolby cinema", "dolby vision", "dolby atmos", "4 dx"],
+  2: ["70mm imax", "70 mm", "70mm-imax", "dcp 4k", "imax laser", "imax-laser", "35 mm", "dolby cinema", "dolby vision", "dolby atmos", "4 dx"],
 };

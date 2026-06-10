@@ -1,7 +1,7 @@
 # Letterboxd Import Integrity
 
 **PR**: TBD
-**Date**: 2026-06-09
+**Date**: 2026-06-10
 
 ## Changes
 - Changed direct Letterboxd watchlist imports to insert missing statuses without overwriting existing user state.

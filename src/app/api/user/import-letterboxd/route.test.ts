@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => {
     userFilmStatuses,
     onConflictDoNothing,
     values,
+    ensureUserRecord: vi.fn(),
     requireAuth: vi.fn(),
     runLetterboxdImport: vi.fn(),
   };
@@ -55,6 +56,10 @@ vi.mock("@/lib/jobs/letterboxd-import", () => ({
   runLetterboxdImport: mocks.runLetterboxdImport,
 }));
 
+vi.mock("@/lib/user-record", () => ({
+  ensureUserRecord: mocks.ensureUserRecord,
+}));
+
 vi.mock("drizzle-orm", () => ({
   inArray: vi.fn(),
 }));
@@ -73,6 +78,7 @@ describe("POST /api/user/import-letterboxd", () => {
     }));
 
     expect(response.status).toBe(200);
+    expect(mocks.ensureUserRecord).toHaveBeenCalledWith("user-1");
     expect(mocks.onConflictDoNothing).toHaveBeenCalledWith({
       target: [mocks.userFilmStatuses.userId, mocks.userFilmStatuses.filmId],
     });

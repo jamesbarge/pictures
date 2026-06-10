@@ -298,6 +298,7 @@ interface ScheduleResponse {
 
 export class EverymanScraper implements ChainScraper {
   chainConfig = EVERYMAN_CONFIG;
+  venueErrors = new Map<string, string>();
   private movieCache = new Map<string, MovieInfo>();
 
   /**
@@ -313,11 +314,12 @@ export class EverymanScraper implements ChainScraper {
    */
   async scrapeVenues(venueIds: string[]): Promise<Map<string, RawScreening[]>> {
     const results = new Map<string, RawScreening[]>();
+    this.venueErrors.clear();
 
     for (const venueId of venueIds) {
       const venue = this.chainConfig.venues.find(v => v.id === venueId);
       if (!venue) {
-        console.warn(`[everyman] Unknown venue: ${venueId}`);
+        this.venueErrors.set(venueId, `Unknown Everyman venue: ${venueId}`);
         continue;
       }
 
@@ -327,8 +329,9 @@ export class EverymanScraper implements ChainScraper {
         const screenings = await this.scrapeVenue(venueId);
         results.set(venueId, screenings);
       } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
         console.error(`[everyman] Error scraping ${venue.name}:`, error);
-        results.set(venueId, []);
+        this.venueErrors.set(venueId, message);
       }
 
       // Rate limiting
@@ -344,77 +347,64 @@ export class EverymanScraper implements ChainScraper {
   async scrapeVenue(venueId: string): Promise<RawScreening[]> {
     const venue = this.chainConfig.venues.find(v => v.id === venueId);
     if (!venue) {
-      console.error(`[everyman] Venue not found: ${venueId}`);
-      return [];
+      throw new Error(`Everyman venue not found: ${venueId}`);
     }
 
     const theaterId = THEATER_IDS[venue.slug];
     if (!theaterId) {
-      console.error(`[everyman] No theater ID for: ${venue.slug}`);
+      throw new Error(`No Everyman theater ID for: ${venue.slug}`);
+    }
+
+    // Step 1: Get scheduled movies for this venue
+    const scheduledMovies = await this.fetchScheduledMovies(theaterId);
+    if (!scheduledMovies.movieIds.titleAsc.length) {
+      console.log(`[everyman] ${venue.name}: No scheduled movies found`);
       return [];
     }
 
-    try {
-      // Step 1: Get scheduled movies for this venue
-      const scheduledMovies = await this.fetchScheduledMovies(theaterId);
-      if (!scheduledMovies || !scheduledMovies.movieIds.titleAsc.length) {
-        console.log(`[everyman] ${venue.name}: No scheduled movies found`);
-        return [];
-      }
+    const movieIds = scheduledMovies.movieIds.titleAsc;
 
-      const movieIds = scheduledMovies.movieIds.titleAsc;
+    // Step 2: Fetch movie details
+    await this.fetchMovieDetails(movieIds);
 
-      // Step 2: Fetch movie details
-      await this.fetchMovieDetails(movieIds);
+    // Step 3: Fetch schedule for the rolling window.
+    // Window must comfortably exceed Everyman's publication horizon so that
+    // end-of-month dates aren't clipped: a 30-day window run late in a month
+    // (e.g. 2026-05-28) stops at ~2026-06-27 and silently misses the final
+    // days of June. 45 days clears any month boundary with margin while still
+    // being a single schedule API call (range width adds no extra requests).
+    const SCHEDULE_WINDOW_DAYS = 45;
+    const now = new Date();
+    const fromDate = format(now, "yyyy-MM-dd'T'HH:mm:ss");
+    const toDate = format(addDays(now, SCHEDULE_WINDOW_DAYS), "yyyy-MM-dd'T'23:59:59");
 
-      // Step 3: Fetch schedule for the rolling window.
-      // Window must comfortably exceed Everyman's publication horizon so that
-      // end-of-month dates aren't clipped: a 30-day window run late in a month
-      // (e.g. 2026-05-28) stops at ~2026-06-27 and silently misses the final
-      // days of June. 45 days clears any month boundary with margin while still
-      // being a single schedule API call (range width adds no extra requests).
-      const SCHEDULE_WINDOW_DAYS = 45;
-      const now = new Date();
-      const fromDate = format(now, "yyyy-MM-dd'T'HH:mm:ss");
-      const toDate = format(addDays(now, SCHEDULE_WINDOW_DAYS), "yyyy-MM-dd'T'23:59:59");
-
-      const schedule = await this.fetchSchedule(theaterId, fromDate, toDate);
-      if (!schedule || !schedule[theaterId]) {
-        console.log(`[everyman] ${venue.name}: No schedule data found`);
-        return [];
-      }
-
-      // Step 4: Transform schedule into screenings
-      const screenings = this.transformSchedule(schedule[theaterId].schedule, venue);
-
-      console.log(`[everyman] ${venue.name}: ${screenings.length} screenings`);
-      return screenings;
-    } catch (error) {
-      console.error(`[everyman] Error scraping ${venue.name}:`, error);
+    const schedule = await this.fetchSchedule(theaterId, fromDate, toDate);
+    if (!schedule[theaterId]) {
+      console.log(`[everyman] ${venue.name}: No schedule data found`);
       return [];
     }
+
+    // Step 4: Transform schedule into screenings
+    const screenings = this.transformSchedule(schedule[theaterId].schedule, venue);
+
+    console.log(`[everyman] ${venue.name}: ${screenings.length} screenings`);
+    return screenings;
   }
 
-  private async fetchScheduledMovies(theaterId: string): Promise<ScheduledMoviesResponse | null> {
-    try {
-      const url = `${this.chainConfig.baseUrl}/api/gatsby-source-boxofficeapi/scheduledMovies?theaterId=${theaterId}`;
-      const response = await fetch(url, {
-        headers: {
-          'Accept': 'application/json',
-          'User-Agent': CHROME_USER_AGENT,
-        },
-      });
+  private async fetchScheduledMovies(theaterId: string): Promise<ScheduledMoviesResponse> {
+    const url = `${this.chainConfig.baseUrl}/api/gatsby-source-boxofficeapi/scheduledMovies?theaterId=${theaterId}`;
+    const response = await fetch(url, {
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': CHROME_USER_AGENT,
+      },
+    });
 
-      if (!response.ok) {
-        console.error(`[everyman] Failed to fetch scheduled movies: ${response.status}`);
-        return null;
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error(`[everyman] Error fetching scheduled movies:`, error);
-      return null;
+    if (!response.ok) {
+      throw new Error(`Failed to fetch Everyman scheduled movies: HTTP ${response.status}`);
     }
+
+    return response.json();
   }
 
   private async fetchMovieDetails(movieIds: string[]): Promise<void> {
@@ -422,53 +412,42 @@ export class EverymanScraper implements ChainScraper {
     const uncachedIds = movieIds.filter(id => !this.movieCache.has(id));
     if (uncachedIds.length === 0) return;
 
-    try {
-      const params = uncachedIds.map(id => `ids=${id}`).join('&');
-      const url = `${this.chainConfig.baseUrl}/api/gatsby-source-boxofficeapi/movies?basic=false&castingLimit=0&${params}`;
+    const params = uncachedIds.map(id => `ids=${id}`).join('&');
+    const url = `${this.chainConfig.baseUrl}/api/gatsby-source-boxofficeapi/movies?basic=false&castingLimit=0&${params}`;
 
-      const response = await fetch(url, {
-        headers: {
-          'Accept': 'application/json',
-          'User-Agent': CHROME_USER_AGENT,
-        },
-      });
+    const response = await fetch(url, {
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': CHROME_USER_AGENT,
+      },
+    });
 
-      if (!response.ok) {
-        console.error(`[everyman] Failed to fetch movie details: ${response.status}`);
-        return;
-      }
+    if (!response.ok) {
+      throw new Error(`Failed to fetch Everyman movie details: HTTP ${response.status}`);
+    }
 
-      const movies = await response.json() as MovieInfo[];
-      for (const movie of movies) {
-        this.movieCache.set(movie.id, movie);
-      }
-    } catch (error) {
-      console.error(`[everyman] Error fetching movie details:`, error);
+    const movies = await response.json() as MovieInfo[];
+    for (const movie of movies) {
+      this.movieCache.set(movie.id, movie);
     }
   }
 
-  private async fetchSchedule(theaterId: string, fromDate: string, toDate: string): Promise<ScheduleResponse | null> {
-    try {
-      const theatersParam = encodeURIComponent(JSON.stringify({ id: theaterId, timeZone: "Europe/London" }));
-      const url = `${this.chainConfig.baseUrl}/api/gatsby-source-boxofficeapi/schedule?from=${encodeURIComponent(fromDate)}&to=${encodeURIComponent(toDate)}&theaters=${theatersParam}`;
+  private async fetchSchedule(theaterId: string, fromDate: string, toDate: string): Promise<ScheduleResponse> {
+    const theatersParam = encodeURIComponent(JSON.stringify({ id: theaterId, timeZone: "Europe/London" }));
+    const url = `${this.chainConfig.baseUrl}/api/gatsby-source-boxofficeapi/schedule?from=${encodeURIComponent(fromDate)}&to=${encodeURIComponent(toDate)}&theaters=${theatersParam}`;
 
-      const response = await fetch(url, {
-        headers: {
-          'Accept': 'application/json',
-          'User-Agent': CHROME_USER_AGENT,
-        },
-      });
+    const response = await fetch(url, {
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': CHROME_USER_AGENT,
+      },
+    });
 
-      if (!response.ok) {
-        console.error(`[everyman] Failed to fetch schedule: ${response.status}`);
-        return null;
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error(`[everyman] Error fetching schedule:`, error);
-      return null;
+    if (!response.ok) {
+      throw new Error(`Failed to fetch Everyman schedule: HTTP ${response.status}`);
     }
+
+    return response.json();
   }
 
   private transformSchedule(
