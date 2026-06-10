@@ -23,20 +23,20 @@ describe("getAdminEmailAllowlist", () => {
     }
   });
 
-  it("returns the built-in default when ADMIN_EMAILS is unset", () => {
-    expect(getAdminEmailAllowlist()).toEqual(["jdwbarge@gmail.com"]);
+  it("returns an empty allowlist when ADMIN_EMAILS is unset (fail-closed)", () => {
+    expect(getAdminEmailAllowlist()).toEqual([]);
   });
 
-  it("returns the built-in default when ADMIN_EMAILS is an empty string", () => {
+  it("returns an empty allowlist when ADMIN_EMAILS is an empty string (fail-closed)", () => {
     process.env[ENV_KEY] = "";
-    expect(getAdminEmailAllowlist()).toEqual(["jdwbarge@gmail.com"]);
+    expect(getAdminEmailAllowlist()).toEqual([]);
   });
 
-  it("returns the built-in default when ADMIN_EMAILS contains only commas/whitespace", () => {
+  it("returns an empty allowlist when ADMIN_EMAILS contains only commas/whitespace", () => {
     // All entries get .trim()ed to empty and filtered out, so the env value
-    // collapses to an empty list and the function falls back to the default.
+    // collapses to an empty list and the allowlist stays empty (fail-closed).
     process.env[ENV_KEY] = " , ,  ";
-    expect(getAdminEmailAllowlist()).toEqual(["jdwbarge@gmail.com"]);
+    expect(getAdminEmailAllowlist()).toEqual([]);
   });
 
   it("parses a single email from the env var", () => {
@@ -70,11 +70,11 @@ describe("getAdminEmailAllowlist", () => {
     expect(getAdminEmailAllowlist()).toEqual(["alice@example.com"]);
   });
 
-  it("does NOT override the default when env var produces zero entries after filtering", () => {
-    // Mixing defaults with env is intentionally avoided — env replaces default
-    // entirely, but only when env yields ≥1 entry. Pinning the contract.
+  it("stays empty when env var produces zero entries after filtering", () => {
+    // Env yielding zero entries is equivalent to being unset: the allowlist is
+    // empty and no email is admin. Pinning the fail-closed contract.
     process.env[ENV_KEY] = " ,,, ";
-    expect(getAdminEmailAllowlist()).toEqual(["jdwbarge@gmail.com"]);
+    expect(getAdminEmailAllowlist()).toEqual([]);
   });
 });
 
@@ -107,27 +107,35 @@ describe("isAdminEmail", () => {
     expect(isAdminEmail("")).toBe(false);
   });
 
-  it("returns true for the default admin email", () => {
-    expect(isAdminEmail("jdwbarge@gmail.com")).toBe(true);
+  it("returns false for any email when ADMIN_EMAILS is unset (fail-closed)", () => {
+    expect(isAdminEmail("jdwbarge@gmail.com")).toBe(false);
+  });
+
+  it("returns true for an allowlisted email", () => {
+    process.env[ENV_KEY] = "alice@example.com";
+    expect(isAdminEmail("alice@example.com")).toBe(true);
   });
 
   it("is case-insensitive", () => {
-    expect(isAdminEmail("JDWBARGE@gmail.com")).toBe(true);
-    expect(isAdminEmail("JDWBarge@Gmail.com")).toBe(true);
+    process.env[ENV_KEY] = "alice@example.com";
+    expect(isAdminEmail("ALICE@example.com")).toBe(true);
+    expect(isAdminEmail("Alice@Example.com")).toBe(true);
   });
 
   it("trims input before checking", () => {
-    expect(isAdminEmail("  jdwbarge@gmail.com  ")).toBe(true);
+    process.env[ENV_KEY] = "alice@example.com";
+    expect(isAdminEmail("  alice@example.com  ")).toBe(true);
   });
 
   it("returns false for non-admin emails", () => {
+    process.env[ENV_KEY] = "alice@example.com";
     expect(isAdminEmail("attacker@evil.com")).toBe(false);
   });
 
-  it("honours the env-var override", () => {
+  it("admits only the configured emails, rejecting all others", () => {
     process.env[ENV_KEY] = "alice@example.com";
     expect(isAdminEmail("alice@example.com")).toBe(true);
-    // Default admin should now be REJECTED — env replaces default entirely.
+    // Anything not in ADMIN_EMAILS is rejected — the allowlist is exhaustive.
     expect(isAdminEmail("jdwbarge@gmail.com")).toBe(false);
   });
 

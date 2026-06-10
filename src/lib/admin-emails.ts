@@ -1,11 +1,14 @@
 /**
  * Admin email allowlist helpers.
  *
- * You can override the default list with:
+ * The allowlist is configured exclusively via the ADMIN_EMAILS env var:
  * ADMIN_EMAILS="admin1@example.com,admin2@example.com"
+ *
+ * There is no built-in default. If ADMIN_EMAILS is unset (or yields zero
+ * entries after parsing), the allowlist is empty and NO email is treated as
+ * admin — fail-closed. This prevents a missing or mistyped env var from
+ * silently granting access to a single hardcoded account.
  */
-
-const DEFAULT_ADMIN_EMAILS = ["jdwbarge@gmail.com"] as const;
 
 interface ClerkEmailAddressLike {
   emailAddress?: string | null;
@@ -18,7 +21,7 @@ function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
-/** Return the list of admin emails, from `ADMIN_EMAILS` env var or the built-in default. */
+/** Return the admin email allowlist from `ADMIN_EMAILS`, or `[]` if unconfigured (fail-closed). */
 export function getAdminEmailAllowlist(): string[] {
   const fromEnv = process.env.ADMIN_EMAILS
     ?.split(",")
@@ -29,7 +32,7 @@ export function getAdminEmailAllowlist(): string[] {
     return Array.from(new Set(fromEnv));
   }
 
-  return [...DEFAULT_ADMIN_EMAILS];
+  return [];
 }
 
 /** Check whether the given email is on the admin allowlist. */
