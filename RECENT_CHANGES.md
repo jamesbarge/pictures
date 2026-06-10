@@ -1,3 +1,10 @@
+## 2026-06-10: Declare scraper source-ID partial index in Drizzle
+**PR**: #658 | **Files**: `src/db/schema/screenings.ts`, `src/db/schema/screenings.test.ts`
+- Declared the existing `(cinema_id, source_id) WHERE source_id IS NOT NULL` unique index in the Drizzle schema.
+- Added a schema regression test so future `drizzle-kit generate/push` operations preserve the conflict target used by scraper upserts.
+
+---
+
 ## 2026-06-10: iCal export rejects property injection
 **PR**: #657 | **Files**: `src/app/api/calendar/route.ts`, `src/lib/ical.ts`, `src/lib/ical.test.ts`, `changelogs/2026-06-09-ical-injection-hardening.md`
 - Calendar text serialization now normalizes CRLF and bare carriage returns before escaping, preventing stored fields from injecting new iCal properties.
