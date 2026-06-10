@@ -101,9 +101,10 @@ jobs:
         env:
           CI: true
 
-      - name: Skip E2E tests (no database)
+      - name: Warn that E2E tests were skipped (no database)
         if: steps.check-db.outputs.skip == 'true'
-        run: echo "E2E tests skipped - DATABASE_URL_TEST not configured"
+        run: |
+          echo "::warning title=E2E tests skipped::DATABASE_URL_TEST is not configured in repository secrets, so the Playwright E2E suite did NOT run. Add the DATABASE_URL_TEST secret to enforce E2E coverage on PRs."
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
@@ -136,6 +137,6 @@ jobs:
             exit 1
           fi
           if [ "$E2E_RESULT" == "skipped" ]; then
-            echo "E2E tests skipped (no DATABASE_URL_TEST configured)"
+            echo "::warning title=E2E coverage missing::E2E tests did not run (no DATABASE_URL_TEST configured). Unit tests passed, but the Playwright suite was not exercised."
           fi
-          echo "All tests passed!"
+          echo "All required tests passed!"

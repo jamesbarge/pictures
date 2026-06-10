@@ -1,3 +1,13 @@
+## 2026-06-10: Audit quick wins — auth hardening, scraper cleanup, CI visibility
+**PR**: #661 | **Files**: `src/lib/auth.ts`, `src/lib/admin-emails.ts`, `src/lib/admin-emails.test.ts`, `src/test/setup.ts`, `package.json`, `.github/workflows/test.yml`, `src/scrapers/run-{curzon,picturehouse,everyman}.ts` (deleted)
+- **Cron secret** now compared with `crypto.timingSafeEqual` instead of `===` (no timing side-channel).
+- **Admin allowlist is fail-closed**: removed the hardcoded `jdwbarge@gmail.com` default — a missing/typo'd `ADMIN_EMAILS` now grants nobody admin instead of silently falling back to one personal account. (`ADMIN_EMAILS` is set in Vercel prod.)
+- **Scraper v1/v2 sprawl removed**: `scrape:curzon/picturehouse/everyman` now point at the v2 runner-factory path; deleted 3 dead `@ts-nocheck` v1 runners and 3 redundant `-v2` aliases.
+- **CI E2E gate**: the silent skip when `DATABASE_URL_TEST` is unset is now a loud `::warning::` annotation, so a green check no longer hides that the Playwright suite never ran (non-blocking — PRs still pass).
+- From the `improve` codebase audit backlog.
+
+---
+
 ## 2026-06-10: Destructive maintenance scripts now default to dry-run
 **PR**: #660 | **Files**: `scripts/`, `src/scripts/`, `package.json`, `.claude/rules/data-quality.md`
 - Reviewed database-mutating maintenance scripts now require an explicit `--execute` flag before writing.

@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import {
   getAdminEmailAllowlist,
@@ -87,8 +88,18 @@ export function verifyCronSecret(request: Request): boolean {
   const authHeader = request.headers.get("authorization");
   if (!authHeader) return false;
 
+  const secret = process.env.CRON_SECRET;
+  if (!secret) return false;
+
   const token = authHeader.replace("Bearer ", "");
-  return token === process.env.CRON_SECRET;
+
+  // Constant-time comparison to avoid leaking the secret via response timing.
+  // timingSafeEqual requires equal-length buffers, so length-mismatch is an
+  // early (non-constant-time) reject — acceptable, as length is not the secret.
+  const tokenBuf = Buffer.from(token);
+  const secretBuf = Buffer.from(secret);
+  if (tokenBuf.length !== secretBuf.length) return false;
+  return timingSafeEqual(tokenBuf, secretBuf);
 }
 
 /**
