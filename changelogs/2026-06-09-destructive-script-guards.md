@@ -4,8 +4,10 @@
 **Date**: 2026-06-10
 
 ## Changes
-- Changed active database-mutating maintenance scripts to preview by default and require `--execute` before writing.
+- Changed reviewed database-mutating maintenance scripts to preview by default and require `--execute` before writing.
 - Updated the upcoming-film audit orchestrator to forward `--execute` only to mutating child scripts.
+- Kept the already-live unified scrape workflow explicit by forwarding `--execute` to its cleanup phase.
+- Added a default-dry guard to the cinema-coordinate backfill.
 - Added the documented `audit:fix-upcoming` package command and removed the obsolete `cleanup:feb-films` command.
 - Deleted superseded hazardous one-offs:
   - `scripts/merge-duplicate-films.ts`
@@ -13,6 +15,7 @@
   - `scripts/manual-title-fixes.ts`
   - `src/scripts/cleanup-feb-films.ts`
   - `scripts/test-bfi-cleanup.ts`
+- Standardized remaining reviewed maintenance flags from `--apply`/`--fix` to `--execute`.
 - Updated the data-quality workflow documentation and added static regression tests for the guard contract.
 
 ## Impact

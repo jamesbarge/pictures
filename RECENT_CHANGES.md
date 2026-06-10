@@ -1,6 +1,6 @@
 ## 2026-06-10: Destructive maintenance scripts now default to dry-run
 **PR**: TBD | **Files**: `scripts/`, `src/scripts/`, `package.json`, `.claude/rules/data-quality.md`
-- Active database-mutating maintenance scripts now require an explicit `--execute` flag before writing.
+- Reviewed database-mutating maintenance scripts now require an explicit `--execute` flag before writing.
 - Five superseded or dangerous one-off cleanup scripts were removed, including the stale PCC timezone fix and live-deleting “test” script.
 
 ---

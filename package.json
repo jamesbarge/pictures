@@ -38,7 +38,7 @@
     "db:classify-events": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/db/classify-events.ts",
     "db:cleanup-screenings": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/db/cleanup-screenings.ts",
     "db:check-duplicates": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register scripts/check-duplicates.ts",
-    "db:fix-duplicates": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register scripts/check-duplicates.ts --fix",
+    "db:fix-duplicates": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register scripts/check-duplicates.ts --execute",
     "db:backfill-posters": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/db/backfill-posters.ts",
     "db:migrate-cinema-ids": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/db/migrations/canonicalize-cinema-ids.ts",
     "scrape:bfi": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scrapers/run-bfi-v2.ts",
