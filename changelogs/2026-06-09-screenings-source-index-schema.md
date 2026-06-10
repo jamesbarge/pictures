@@ -1,6 +1,6 @@
 # Declare Scraper Source-ID Partial Index in Drizzle
 
-**PR**: TBD
+**PR**: #658
 **Date**: 2026-06-10
 
 ## Changes

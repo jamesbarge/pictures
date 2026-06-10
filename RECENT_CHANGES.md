@@ -1,5 +1,5 @@
 ## 2026-06-10: Declare scraper source-ID partial index in Drizzle
-**PR**: TBD | **Files**: `src/db/schema/screenings.ts`, `src/db/schema/screenings.test.ts`
+**PR**: #658 | **Files**: `src/db/schema/screenings.ts`, `src/db/schema/screenings.test.ts`
 - Declared the existing `(cinema_id, source_id) WHERE source_id IS NOT NULL` unique index in the Drizzle schema.
 - Added a schema regression test so future `drizzle-kit generate/push` operations preserve the conflict target used by scraper upserts.
 
