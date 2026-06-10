@@ -13,14 +13,35 @@
  * Methods under test are `private`; we reach in via `as unknown as { ... }`
  * rather than changing visibility just for tests.
  */
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { RichMixScraper } from "./rich-mix";
 import { RichMixScraperV2 } from "./rich-mix-v2";
 import { BFIScraper } from "./bfi";
+import { PhoenixScraper } from "./phoenix";
+import { OlympicScraper } from "./olympic";
+import { DavidLeanScraper } from "./david-lean";
+import { GenesisScraper } from "./genesis";
+import { CloseUpCinemaScraper } from "./close-up";
 
 type PrivDate = { parseDateTime: (s: string) => Date | null };
 type PrivBFI = { parseBFIDateTime: (s: string) => Date | null };
+type PrivPhoenix = {
+  parseShowtime: (date: string, time: string, year: number, now: Date) => Date | null;
+};
+type PrivOlympic = { parsePages: (pages: string[]) => Promise<Array<{ datetime: Date }>> };
+type PrivDavidLean = {
+  parseDateTime: (day: string, month: string, time: string, year: number) => Date | null;
+};
+type PrivGenesis = { parseDateTime: (date: string, time: string) => Date | null };
+type PrivCloseUp = {
+  extractPageDate: (html: string) => Date | null;
+  combineDateAndTime: (date: Date, hour: string, minute: string, ampm: string) => Date;
+};
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 describe("BST regression: Rich Mix parseDateTime", () => {
   const scraper = new RichMixScraper() as unknown as PrivDate;
@@ -61,5 +82,74 @@ describe("BST regression: BFI parseBFIDateTime", () => {
   it("GMT: 'Thursday 15 January 2026 18:10' → 18:10 UTC (no offset)", () => {
     expect(scraper.parseBFIDateTime("Thursday 15 January 2026 18:10")?.toISOString())
       .toBe("2026-01-15T18:10:00.000Z");
+  });
+});
+
+describe("BST regression: Phoenix parseShowtime", () => {
+  const scraper = new PhoenixScraper() as unknown as PrivPhoenix;
+
+  it("keeps the screening date and converts the UK-local time to UTC", () => {
+    const now = new Date("2026-06-01T12:00:00.000Z");
+    expect(scraper.parseShowtime("Tue 14 Jul", "18:10", 2026, now)?.toISOString())
+      .toBe("2026-07-14T17:10:00.000Z");
+  });
+});
+
+describe("BST regression: Olympic parsePages", () => {
+  const scraper = new OlympicScraper() as unknown as PrivOlympic;
+
+  it("keeps the screening date and converts the UK-local time to UTC", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-01T12:00:00.000Z"));
+
+    const [screening] = await scraper.parsePages([`
+      <h3 class="date-day">Tuesday July 14</h3>
+      <div class="row">
+        <div class="col-md-12">
+          <a class="text-decoration-none text-black">Example Film</a>
+          <a class="btn" href="https://empire.mycloudcinema.com/book/123">
+            <span class="btn-times-fs">18:10</span>
+          </a>
+        </div>
+      </div>
+    `]);
+
+    expect(screening.datetime.toISOString()).toBe("2026-07-14T17:10:00.000Z");
+  });
+});
+
+describe("BST regression: David Lean parseDateTime", () => {
+  const scraper = new DavidLeanScraper() as unknown as PrivDavidLean;
+
+  it("keeps the screening date and converts the UK-local time to UTC", () => {
+    expect(scraper.parseDateTime("14", "Jul", "6.10pm", 2026)?.toISOString())
+      .toBe("2026-07-14T17:10:00.000Z");
+  });
+
+  it("rejects invalid times instead of fabricating midnight", () => {
+    expect(scraper.parseDateTime("14", "Jul", "not-a-time", 2026)).toBeNull();
+  });
+});
+
+describe("BST regression: Genesis parseDateTime", () => {
+  const scraper = new GenesisScraper() as unknown as PrivGenesis;
+
+  it("applies the shared PM assumption to ambiguous 1-9 hours", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-01T12:00:00.000Z"));
+
+    expect(scraper.parseDateTime("14 Jul 2026", "7:30")?.toISOString())
+      .toBe("2026-07-14T18:30:00.000Z");
+  });
+});
+
+describe("BST regression: Close-Up search-page dates", () => {
+  const scraper = new CloseUpCinemaScraper() as unknown as PrivCloseUp;
+
+  it("builds page dates in UTC and combines them as UK-local screening times", () => {
+    const pageDate = scraper.extractPageDate("date=14-07-2026");
+    expect(pageDate?.toISOString()).toBe("2026-07-14T00:00:00.000Z");
+    expect(scraper.combineDateAndTime(pageDate!, "6", "10", "pm").toISOString())
+      .toBe("2026-07-14T17:10:00.000Z");
   });
 });

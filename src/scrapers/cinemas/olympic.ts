@@ -10,11 +10,14 @@
  * Cheerio-based scraper - suitable for serverless cloud execution
  */
 
-import { parse, getYear } from "date-fns";
+import { getYear } from "date-fns";
 
 import { BaseScraper } from "../base";
 import type { RawScreening, ScraperConfig } from "../types";
-import { combineDateAndTime } from "../utils/date-parser";
+import {
+  combineDateAndTime,
+  parseScreeningDate,
+} from "../utils/date-parser";
 
 export class OlympicScraper extends BaseScraper {
   config: ScraperConfig = {
@@ -49,15 +52,27 @@ export class OlympicScraper extends BaseScraper {
     dateHeaders.each((_, dateHeader) => {
       const dateText = $(dateHeader).text().trim();
       // Parse date like "Tuesday December 30" - add year
-      const dateWithYear = `${dateText} ${currentYear}`;
+      const dateMatch = dateText.match(
+        /(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\s+([A-Za-z]+)\s+(\d{1,2})/i
+      );
+      if (!dateMatch) {
+        console.warn(`[${this.config.cinemaId}] Failed to parse date: ${dateText}`);
+        return;
+      }
+      const [, month, day] = dateMatch;
+      const dateWithYear = `${day} ${month} ${currentYear}`;
       let parsedDate: Date;
 
       try {
-        parsedDate = parse(dateWithYear, "EEEE MMMM d yyyy", new Date());
+        const currentYearDate = parseScreeningDate(dateWithYear, now);
+        if (!currentYearDate) throw new Error("Invalid date");
+        parsedDate = currentYearDate;
 
         // Handle year rollover (e.g., if we're in December and the date is January)
-        if (parsedDate < now && parsedDate.getMonth() < now.getMonth()) {
-          parsedDate = parse(`${dateText} ${currentYear + 1}`, "EEEE MMMM d yyyy", new Date());
+        if (parsedDate < now && parsedDate.getUTCMonth() < now.getUTCMonth()) {
+          const nextYearDate = parseScreeningDate(`${day} ${month} ${currentYear + 1}`, now);
+          if (!nextYearDate) throw new Error("Invalid rollover date");
+          parsedDate = nextYearDate;
         }
       } catch {
         console.warn(`[${this.config.cinemaId}] Failed to parse date: ${dateText}`);
@@ -86,7 +101,6 @@ export class OlympicScraper extends BaseScraper {
           const timeText = $(btn).find(".btn-times-fs").text().trim();
           if (!timeText) return;
 
-          // Parse time (format: "15:30")
           const [hours, minutes] = timeText.split(":").map(Number);
           if (isNaN(hours) || isNaN(minutes)) return;
 

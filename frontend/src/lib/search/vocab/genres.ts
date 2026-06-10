@@ -1,7 +1,7 @@
 /**
  * Genre token dictionary.
  *
- * Canonical values mirror lower-cased COMMON_GENRES from
+ * Canonical values include the values in `GENRE_OPTIONS` from
  * `$lib/constants/filters.ts` plus the long-tail genres present
  * in the films table (countries/genres arrays are populated from
  * TMDB which uses lowercase forms like "science fiction", "noir").
@@ -12,7 +12,7 @@
  */
 
 export const GENRE_TOKENS: Record<string, string> = {
-  // From COMMON_GENRES
+  // From GENRE_OPTIONS
   drama: "drama",
   comedy: "comedy",
   horror: "horror",

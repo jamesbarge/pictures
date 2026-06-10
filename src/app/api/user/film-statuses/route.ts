@@ -4,6 +4,7 @@ import { userFilmStatuses } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { requireAuth } from "@/lib/auth";
 import { handleApiError } from "@/lib/api-errors";
+import { ensureUserRecord } from "@/lib/user-record";
 import { z } from "zod";
 
 // Validation schema for film status
@@ -79,6 +80,8 @@ export async function POST(request: NextRequest) {
     if (statuses.length === 0) {
       return NextResponse.json({ success: true, results: { processed: 0, skipped: 0 } });
     }
+
+    await ensureUserRecord(userId);
 
     // 1. Fetch all existing statuses for this user in ONE query
     const existingStatuses = await db.query.userFilmStatuses.findMany({

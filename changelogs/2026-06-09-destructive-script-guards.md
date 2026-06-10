@@ -1,7 +1,7 @@
 # Destructive Script Guards
 
 **PR**: TBD
-**Date**: 2026-06-09
+**Date**: 2026-06-10
 
 ## Changes
 - Changed active database-mutating maintenance scripts to preview by default and require `--execute` before writing.

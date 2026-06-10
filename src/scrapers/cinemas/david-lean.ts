@@ -10,12 +10,16 @@
  * Playwright-based scraper for dynamic content
  */
 
-import { parse, getYear, addYears } from "date-fns";
+import { getYear, addYears } from "date-fns";
 import { chromium } from "rebrowser-playwright";
 
 import { BOT_USER_AGENT } from "../constants";
 import type { RawScreening, ScraperConfig, CinemaScraper } from "../types";
-import { combineDateAndTime } from "../utils/date-parser";
+import {
+  combineDateAndTime,
+  parseScreeningDate,
+  parseScreeningTime,
+} from "../utils/date-parser";
 import { checkHealth } from "../utils/health-check";
 
 const DAVID_LEAN_CONFIG: ScraperConfig = {
@@ -203,8 +207,13 @@ export class DavidLeanScraper implements CinemaScraper {
       const times = this.extractTimes(timeStr + " " + text.substring(match.index + match[0].length, match.index + match[0].length + 30));
 
       for (const time of times) {
+        const datetime = this.parseDateTime(dayNum, monthName, time, currentYear);
+        if (!datetime) {
+          console.warn(`[${this.config.cinemaId}] Failed to parse showtime: ${dayNum} ${monthName} ${time}`);
+          continue;
+        }
+
         try {
-          const datetime = this.parseDateTime(dayNum, monthName, time, currentYear);
           // Only roll a parsed date forward a year for a genuine year-boundary
           // case (e.g. a "5 Jan" listing seen in December). A date that is only
           // RECENTLY past — this week's already-shown screenings, which a
@@ -264,34 +273,15 @@ export class DavidLeanScraper implements CinemaScraper {
     monthName: string,
     timeStr: string,
     currentYear: number
-  ): Date {
-    // Normalize time format: "2.30pm" or "2:30pm" -> "14:30", "11am" -> "11:00"
-    const normalizedTime = this.normalizeTime(timeStr);
-    const [hours, minutes] = normalizedTime.split(":").map(Number);
+  ): Date | null {
+    const time = parseScreeningTime(timeStr);
+    if (!time) return null;
 
-    // Parse date
     const dateStr = `${dayNum} ${monthName} ${currentYear}`;
-    const parsedDate = parse(dateStr, "d MMM yyyy", new Date());
+    const parsedDate = parseScreeningDate(dateStr);
+    if (!parsedDate) return null;
 
-    return combineDateAndTime(parsedDate, { hours, minutes });
-  }
-
-  private normalizeTime(timeStr: string): string {
-    // Convert "2.30pm" or "2:30pm" to "14:30"
-    const match = timeStr.toLowerCase().match(/(\d{1,2})[.:]?(\d{2})?(am|pm)/);
-    if (!match) return "00:00";
-
-    let hours = parseInt(match[1], 10);
-    const minutes = match[2] ? parseInt(match[2], 10) : 0;
-    const period = match[3];
-
-    if (period === "pm" && hours !== 12) {
-      hours += 12;
-    } else if (period === "am" && hours === 12) {
-      hours = 0;
-    }
-
-    return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
+    return combineDateAndTime(parsedDate, time);
   }
 
   async healthCheck(): Promise<boolean> {
