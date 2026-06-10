@@ -1,3 +1,11 @@
+## 2026-06-10: iCal export rejects property injection
+**PR**: #657 | **Files**: `src/app/api/calendar/route.ts`, `src/lib/ical.ts`, `src/lib/ical.test.ts`, `changelogs/2026-06-09-ical-injection-hardening.md`
+- Calendar text serialization now normalizes CRLF and bare carriage returns before escaping, preventing stored fields from injecting new iCal properties.
+- Booking links are emitted only when they parse as HTTP(S) URLs; unsafe or malformed URLs are omitted from both `URL` and `DESCRIPTION`.
+- Pure serialization helpers now have regression tests covering newline injection and unsafe URL schemes.
+
+---
+
 ## 2026-06-10: Mobile filter sheet gains real focus management and cinema search
 **PR**: #656 | **Files**: `frontend/src/lib/components/filters/MobileFilterSheet.svelte`, `frontend/src/lib/components/filters/FigmaToolbar.svelte`, `frontend/src/routes/+page.svelte`, `frontend/src/lib/utils.ts`, `frontend/tests/mobile.spec.ts`
 - The mobile filter sheet and nested date picker now move, trap, and restore keyboard focus correctly.

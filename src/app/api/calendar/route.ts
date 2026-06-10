@@ -15,90 +15,12 @@ import { NextRequest } from "next/server";
 import { handleApiError } from "@/lib/api-errors";
 import { db } from "@/db";
 import { screenings, films, cinemas } from "@/db/schema";
+import {
+  buildIcsCalendar,
+  buildIcsEvent,
+  type IcalScreeningData,
+} from "@/lib/ical";
 import { eq, gte, and } from "drizzle-orm";
-
-function escapeIcal(text: string): string {
-  return text
-    .replace(/\\/g, "\\\\")
-    .replace(/;/g, "\\;")
-    .replace(/,/g, "\\,")
-    .replace(/\n/g, "\\n");
-}
-
-function formatIcalDate(date: Date): string {
-  return date
-    .toISOString()
-    .replace(/[-:]/g, "")
-    .replace(/\.\d{3}/, "");
-}
-
-interface ScreeningData {
-  id: string;
-  datetime: Date;
-  format: string | null;
-  screen: string | null;
-  eventType: string | null;
-  bookingUrl: string;
-  filmTitle: string;
-  filmYear: number | null;
-  filmRuntime: number | null;
-  cinemaName: string;
-  cinemaAddress: {
-    street?: string;
-    area?: string;
-    postcode?: string;
-  } | null;
-}
-
-function buildIcsEvent(screening: ScreeningData): string {
-  const start = formatIcalDate(new Date(screening.datetime));
-  const duration = screening.filmRuntime || 120; // Default 2 hours
-  const end = formatIcalDate(
-    new Date(new Date(screening.datetime).getTime() + duration * 60 * 1000)
-  );
-
-  const title = `${screening.filmTitle}${screening.filmYear ? ` (${screening.filmYear})` : ""}`;
-
-  const descParts = [title, `at ${screening.cinemaName}`];
-  if (screening.format && screening.format !== "unknown") {
-    descParts.push(`Format: ${screening.format.toUpperCase()}`);
-  }
-  if (screening.eventType) {
-    descParts.push(`Event: ${screening.eventType.replace(/_/g, " ")}`);
-  }
-  descParts.push(`Book: ${screening.bookingUrl}`);
-  descParts.push("via Pictures (pictures.london)");
-
-  const location = screening.cinemaAddress
-    ? `${screening.cinemaName}, ${screening.cinemaAddress.street || ""}, ${screening.cinemaAddress.area || ""}, ${screening.cinemaAddress.postcode || ""}`
-    : screening.cinemaName;
-
-  return [
-    "BEGIN:VEVENT",
-    `UID:${screening.id}@pictures.london`,
-    `DTSTART:${start}`,
-    `DTEND:${end}`,
-    `SUMMARY:${escapeIcal(title)} at ${escapeIcal(screening.cinemaName)}`,
-    `DESCRIPTION:${escapeIcal(descParts.join("\n"))}`,
-    `LOCATION:${escapeIcal(location)}`,
-    `URL:${screening.bookingUrl}`,
-    `STATUS:CONFIRMED`,
-    "END:VEVENT",
-  ].join("\r\n");
-}
-
-function buildIcsCalendar(events: string[]): string {
-  return [
-    "BEGIN:VCALENDAR",
-    "VERSION:2.0",
-    "PRODID:-//Pictures London//Cinema Listings//EN",
-    "CALSCALE:GREGORIAN",
-    "METHOD:PUBLISH",
-    "X-WR-CALNAME:Pictures London Cinema",
-    ...events,
-    "END:VCALENDAR",
-  ].join("\r\n");
-}
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
@@ -113,7 +35,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    let results: ScreeningData[];
+    let results: IcalScreeningData[];
 
     if (screeningId) {
       // Single screening
