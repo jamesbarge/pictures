@@ -5,6 +5,7 @@ import { and, eq } from "drizzle-orm";
 import { requireAuth } from "@/lib/auth";
 import { BadRequestError, handleApiError } from "@/lib/api-errors";
 import { syncUserToPostHog } from "@/lib/posthog-supabase-sync";
+import { ensureUserRecord } from "@/lib/user-record";
 import { z } from "zod";
 
 const updateFilmStatusSchema = z.object({
@@ -47,6 +48,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       filmPosterUrl,
       updatedAt,
     } = parseResult.data;
+
+    await ensureUserRecord(userId);
 
     // Check if entry exists
     const existing = await db.query.userFilmStatuses.findFirst({
