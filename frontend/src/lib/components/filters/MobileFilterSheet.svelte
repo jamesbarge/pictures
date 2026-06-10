@@ -2,6 +2,7 @@
 	import { filters } from '$lib/stores/filters.svelte';
 	import { userLocation } from '$lib/stores/user-location.svelte';
 	import { haversineMiles, toLondonDateStr, useModalKeyboardTrap } from '$lib/utils';
+	import { DECADE_OPTIONS, FORMAT_OPTIONS, GENRE_OPTIONS } from '$lib/constants/filters';
 	import CalendarPopover from './CalendarPopover.svelte';
 	import {
 		AREA_CLUSTERS,
@@ -38,9 +39,8 @@
 		return useModalKeyboardTrap(onClose);
 	});
 
-	// Area cluster definitions + helpers live in `./area-clusters` and are
-	// shared with `DesktopFilterSidebar` so the two surfaces can't disagree
-	// about which neighbourhoods belong to which chip.
+	// Area cluster definitions + helpers live in `./area-clusters` so the
+	// neighbourhood membership behind each chip has one source of truth.
 	//
 	// Cluster-to-cinema-ID membership is a pure function of `cinemas`, so
 	// precompute it once per `cinemas` change instead of rescanning all cinemas
@@ -143,26 +143,15 @@
 		else filters.setTimePreset(f, t);
 	}
 
-	// Format
-	const FORMATS = [
-		{ value: '35mm', label: '35mm' },
-		{ value: '70mm', label: '70mm' },
-		{ value: 'imax', label: 'IMAX' },
-		{ value: '4k', label: '4K' }
-	];
-
-	// Genre — chip labels map to lowercase keys. Mobile uses full-word labels.
-	const GENRES = ['Drama', 'Comedy', 'Documentary', 'Thriller', 'Sci-fi', 'Romance', 'Animation', 'Horror'];
-	function toggleGenre(g: string) {
-		const key = g.toLowerCase();
-		filters.genres = filters.genres.includes(key)
-			? filters.genres.filter(x => x !== key)
-			: [...filters.genres, key];
+	// Genre
+	function toggleGenre(value: string) {
+		filters.genres = filters.genres.includes(value)
+			? filters.genres.filter(x => x !== value)
+			: [...filters.genres, value];
 	}
-	function isGenreActive(g: string) { return filters.genres.includes(g.toLowerCase()); }
+	function isGenreActive(value: string) { return filters.genres.includes(value); }
 
 	// Era — decade chips. Matches the homepage filter chain's expected form.
-	const DECADES = ['2020s', '2010s', '2000s', '90s', '80s', '70s', 'Pre-1970'];
 	function toggleDecade(d: string) {
 		filters.decades = filters.decades.includes(d)
 			? filters.decades.filter(x => x !== d)
@@ -240,7 +229,7 @@
 			<section class="filter-section">
 				<div class="section-head"><h4>Format</h4></div>
 				<div class="chips">
-					{#each FORMATS as fmt (fmt.value)}
+					{#each FORMAT_OPTIONS as fmt (fmt.value)}
 						{@const active = filters.formats.includes(fmt.value)}
 						<button type="button" class="chip" class:active onclick={() => filters.toggleFormat(fmt.value)} aria-pressed={active}>{fmt.label}</button>
 					{/each}
@@ -251,9 +240,9 @@
 			<section class="filter-section">
 				<div class="section-head"><h4>Genre</h4></div>
 				<div class="chips">
-					{#each GENRES as g (g)}
-						{@const active = isGenreActive(g)}
-						<button type="button" class="chip" class:active onclick={() => toggleGenre(g)} aria-pressed={active}>{g}</button>
+					{#each GENRE_OPTIONS as genre (genre.value)}
+						{@const active = isGenreActive(genre.value)}
+						<button type="button" class="chip" class:active onclick={() => toggleGenre(genre.value)} aria-pressed={active}>{genre.label}</button>
 					{/each}
 				</div>
 			</section>
@@ -265,7 +254,7 @@
 					<span class="hint">repertory only</span>
 				</div>
 				<div class="chips">
-					{#each DECADES as d (d)}
+					{#each DECADE_OPTIONS as d (d)}
 						{@const active = filters.decades.includes(d)}
 						<button type="button" class="chip" class:active onclick={() => toggleDecade(d)} aria-pressed={active}>{d}</button>
 					{/each}

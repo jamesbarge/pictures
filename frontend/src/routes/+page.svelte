@@ -28,10 +28,9 @@
 	let mobileFilterOpen = $state(false);
 	let displayMode = $state<DisplayMode>('posters');
 
-	// Lazy-load the mobile filter sheet on first open. The sheet (plus its
-	// MobileDatePicker subtree) is filter UI that never renders until the user
-	// taps Filter in the toolbar, so keep it out of the home route's client
-	// chunk until then. Mirrors the FilmSimilarRail lazy pattern.
+	// Lazy-load the mobile filter sheet on first open. It never renders until
+	// the user taps Filter in the toolbar, so keep it out of the home route's
+	// client chunk until then. Mirrors the FilmSimilarRail lazy pattern.
 	let MobileFilterSheet =
 		$state<typeof import('$lib/components/filters/MobileFilterSheet.svelte').default | null>(null);
 

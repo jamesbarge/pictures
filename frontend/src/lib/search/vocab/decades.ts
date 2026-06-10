@@ -1,6 +1,6 @@
 /**
- * Decade tokens. Canonical values match `DECADES` from
- * `$lib/constants/filters.ts` exactly.
+ * Decade tokens accepted by search. The homepage's curated chip values live
+ * in `DECADE_OPTIONS` in `$lib/constants/filters.ts`.
  *
  * NOTE: "20s" alone is ambiguous (1920s vs 2020s). We default it
  * to 1920s — more common in cinema discourse (silent era,
