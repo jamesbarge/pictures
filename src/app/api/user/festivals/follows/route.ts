@@ -126,45 +126,49 @@ export async function POST(request: NextRequest) {
     const serverFollowIds = serverFollows.map((f) => f.festivalId);
     const clientFollowIds = follows.map((f) => f.festivalId);
 
-    // Delete follows that are no longer in client state
+    // Full-replace semantics: the delete and upsert must land together, or a
+    // dropped connection between them would wipe follows the client still has.
     const toDelete = idsMissingFrom(serverFollowIds, clientFollowIds);
-    if (toDelete.length > 0) {
-      await db
-        .delete(userFestivalInterests)
-        .where(
-          and(
-            eq(userFestivalInterests.userId, userId),
-            inArray(userFestivalInterests.festivalId, toDelete)
-          )
-        );
-    }
+    await db.transaction(async (tx) => {
+      // Delete follows that are no longer in client state
+      if (toDelete.length > 0) {
+        await tx
+          .delete(userFestivalInterests)
+          .where(
+            and(
+              eq(userFestivalInterests.userId, userId),
+              inArray(userFestivalInterests.festivalId, toDelete)
+            )
+          );
+      }
 
-    // Upsert all client follows in one statement
-    if (follows.length > 0) {
-      const updatedAt = new Date();
-      await db
-        .insert(userFestivalInterests)
-        .values(
-          follows.map((follow) => ({
-            userId,
-            festivalId: follow.festivalId,
-            interestLevel: follow.interestLevel,
-            notifyOnSale: follow.notifyOnSale,
-            notifyProgramme: follow.notifyProgramme,
-            notifyReminders: follow.notifyReminders,
-          })),
-        )
-        .onConflictDoUpdate({
-          target: [userFestivalInterests.userId, userFestivalInterests.festivalId],
-          set: {
-            interestLevel: sql`excluded.interest_level`,
-            notifyOnSale: sql`excluded.notify_on_sale`,
-            notifyProgramme: sql`excluded.notify_programme`,
-            notifyReminders: sql`excluded.notify_reminders`,
-            updatedAt,
-          },
-        });
-    }
+      // Upsert all client follows in one statement
+      if (follows.length > 0) {
+        const updatedAt = new Date();
+        await tx
+          .insert(userFestivalInterests)
+          .values(
+            follows.map((follow) => ({
+              userId,
+              festivalId: follow.festivalId,
+              interestLevel: follow.interestLevel,
+              notifyOnSale: follow.notifyOnSale,
+              notifyProgramme: follow.notifyProgramme,
+              notifyReminders: follow.notifyReminders,
+            })),
+          )
+          .onConflictDoUpdate({
+            target: [userFestivalInterests.userId, userFestivalInterests.festivalId],
+            set: {
+              interestLevel: sql`excluded.interest_level`,
+              notifyOnSale: sql`excluded.notify_on_sale`,
+              notifyProgramme: sql`excluded.notify_programme`,
+              notifyReminders: sql`excluded.notify_reminders`,
+              updatedAt,
+            },
+          });
+      }
+    });
 
     return NextResponse.json({
       success: true,

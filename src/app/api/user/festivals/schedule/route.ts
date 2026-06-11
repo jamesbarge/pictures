@@ -148,45 +148,49 @@ export async function POST(request: NextRequest) {
     const serverScheduleIds = serverSchedule.map((s) => s.screeningId);
     const clientScheduleIds = schedule.map((s) => s.screeningId);
 
-    // Delete schedule entries that are no longer in client state
+    // Full-replace semantics: the delete and upsert must land together, or a
+    // dropped connection between them would wipe entries the client still has.
     const toDelete = idsMissingFrom(serverScheduleIds, clientScheduleIds);
-    if (toDelete.length > 0) {
-      await db
-        .delete(userFestivalSchedule)
-        .where(
-          and(
-            eq(userFestivalSchedule.userId, userId),
-            inArray(userFestivalSchedule.screeningId, toDelete)
-          )
-        );
-    }
+    await db.transaction(async (tx) => {
+      // Delete schedule entries that are no longer in client state
+      if (toDelete.length > 0) {
+        await tx
+          .delete(userFestivalSchedule)
+          .where(
+            and(
+              eq(userFestivalSchedule.userId, userId),
+              inArray(userFestivalSchedule.screeningId, toDelete)
+            )
+          );
+      }
 
-    // Upsert all client schedule entries in one statement
-    if (schedule.length > 0) {
-      const updatedAt = new Date();
-      await db
-        .insert(userFestivalSchedule)
-        .values(
-          schedule.map((entry) => ({
-            id: entry.id,
-            userId,
-            screeningId: entry.screeningId,
-            festivalId: entry.festivalId,
-            status: entry.status as FestivalScheduleStatus,
-            bookingConfirmation: entry.bookingConfirmation || null,
-            notes: entry.notes || null,
-          })),
-        )
-        .onConflictDoUpdate({
-          target: [userFestivalSchedule.userId, userFestivalSchedule.screeningId],
-          set: {
-            status: sql`excluded.status`,
-            bookingConfirmation: sql`excluded.booking_confirmation`,
-            notes: sql`excluded.notes`,
-            updatedAt,
-          },
-        });
-    }
+      // Upsert all client schedule entries in one statement
+      if (schedule.length > 0) {
+        const updatedAt = new Date();
+        await tx
+          .insert(userFestivalSchedule)
+          .values(
+            schedule.map((entry) => ({
+              id: entry.id,
+              userId,
+              screeningId: entry.screeningId,
+              festivalId: entry.festivalId,
+              status: entry.status as FestivalScheduleStatus,
+              bookingConfirmation: entry.bookingConfirmation || null,
+              notes: entry.notes || null,
+            })),
+          )
+          .onConflictDoUpdate({
+            target: [userFestivalSchedule.userId, userFestivalSchedule.screeningId],
+            set: {
+              status: sql`excluded.status`,
+              bookingConfirmation: sql`excluded.booking_confirmation`,
+              notes: sql`excluded.notes`,
+              updatedAt,
+            },
+          });
+      }
+    });
 
     return NextResponse.json({
       success: true,

@@ -6,6 +6,7 @@
 	import { movieSchema, breadcrumbSchema } from '$lib/seo/json-ld';
 	import { filmStatuses } from '$lib/stores/film-status.svelte';
 	import { today as todayStore } from '$lib/stores/today.svelte';
+	import { addDaysToDateString } from '$lib/london-date';
 	import {
 		formatTime,
 		toLondonDateStr,
@@ -85,14 +86,7 @@
 		const today = todayStore.value;
 		const nextDate = toLondonDateStr(nextScreening.datetime);
 		if (nextDate === today) return 'today';
-		// Resolve "tomorrow" through the same London-civil-date helper used for
-		// `today` and `nextDate` so all three operands speak the same date
-		// language. Behaviour-equivalent here (UTC noon and London noon are
-		// always the same calendar day), but the previous shape mixed UTC
-		// slices with London civils — the same code-smell that masked #445.
-		const tomorrowD = new Date(today + 'T12:00:00Z');
-		tomorrowD.setUTCDate(tomorrowD.getUTCDate() + 1);
-		if (nextDate === toLondonDateStr(tomorrowD)) return 'tomorrow';
+		if (nextDate === addDaysToDateString(today, 1)) return 'tomorrow';
 		return new Intl.DateTimeFormat('en-GB', { weekday: 'long', timeZone: 'Europe/London' })
 			.format(new Date(nextScreening.datetime))
 			.toLowerCase();

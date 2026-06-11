@@ -242,7 +242,8 @@ export function formatLeaveBy(leaveBy: Date, minutesUntilLeave: number): string 
 	return `Leave by ${leaveBy.toLocaleTimeString('en-GB', {
 		hour: 'numeric',
 		minute: '2-digit',
-		hour12: true
+		hour12: true,
+		timeZone: 'Europe/London'
 	})}`;
 }
 

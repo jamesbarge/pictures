@@ -290,89 +290,93 @@ export async function POST(request: NextRequest) {
     const serverFollowIds = serverFollows.map((f) => f.festivalId);
     const removedFollowIds = idsMissingFrom(serverFollowIds, mergedFollowIds);
 
-    if (removedFollowIds.length > 0) {
-      await db
-        .delete(userFestivalInterests)
-        .where(
-          and(
-            eq(userFestivalInterests.userId, userId),
-            inArray(userFestivalInterests.festivalId, removedFollowIds)
-          )
-        );
-    }
-
-    // Upsert merged follows in one statement
-    const followsToUpsert = Object.values(mergedFollows);
-    if (followsToUpsert.length > 0) {
-      const updatedAt = new Date();
-      await db
-        .insert(userFestivalInterests)
-        .values(
-          followsToUpsert.map((follow) => ({
-            userId,
-            festivalId: follow.festivalId,
-            interestLevel: follow.interestLevel,
-            notifyOnSale: follow.notifyOnSale,
-            notifyProgramme: follow.notifyProgramme,
-            notifyReminders: follow.notifyReminders,
-          })),
-        )
-        .onConflictDoUpdate({
-          target: [userFestivalInterests.userId, userFestivalInterests.festivalId],
-          set: {
-            interestLevel: sql`excluded.interest_level`,
-            notifyOnSale: sql`excluded.notify_on_sale`,
-            notifyProgramme: sql`excluded.notify_programme`,
-            notifyReminders: sql`excluded.notify_reminders`,
-            updatedAt,
-          },
-        });
-    }
-
     // Persist merged schedule to server
-    // Delete removed schedule entries
     const mergedScheduleIds = Object.keys(mergedSchedule);
     const serverScheduleIds = serverSchedule.map((s) => s.screeningId);
     const removedScheduleIds = idsMissingFrom(serverScheduleIds, mergedScheduleIds);
-
-    if (removedScheduleIds.length > 0) {
-      await db
-        .delete(userFestivalSchedule)
-        .where(
-          and(
-            eq(userFestivalSchedule.userId, userId),
-            inArray(userFestivalSchedule.screeningId, removedScheduleIds)
-          )
-        );
-    }
-
-    // Upsert merged schedule in one statement
+    const followsToUpsert = Object.values(mergedFollows);
     const scheduleToUpsert = Object.values(mergedSchedule);
-    if (scheduleToUpsert.length > 0) {
-      const updatedAt = new Date();
-      await db
-        .insert(userFestivalSchedule)
-        .values(
-          scheduleToUpsert.map((entry) => ({
-            id: entry.id,
-            userId,
-            screeningId: entry.screeningId,
-            festivalId: entry.festivalId,
-            status: entry.status,
-            bookingConfirmation: entry.bookingConfirmation || null,
-            notes: entry.notes || null,
-          })),
-        )
-        .onConflictDoUpdate({
-          target: [userFestivalSchedule.userId, userFestivalSchedule.screeningId],
-          set: {
-            status: sql`excluded.status`,
-            bookingConfirmation: sql`excluded.booking_confirmation`,
-            notes: sql`excluded.notes`,
-            updatedAt,
-          },
-        });
-    }
+
+    // Full-replace semantics: deletes and upserts must land together, or a
+    // dropped connection mid-sequence would wipe rows the merge decided to keep.
+    await db.transaction(async (tx) => {
+      if (removedFollowIds.length > 0) {
+        await tx
+          .delete(userFestivalInterests)
+          .where(
+            and(
+              eq(userFestivalInterests.userId, userId),
+              inArray(userFestivalInterests.festivalId, removedFollowIds)
+            )
+          );
+      }
+
+      // Upsert merged follows in one statement
+      if (followsToUpsert.length > 0) {
+        const updatedAt = new Date();
+        await tx
+          .insert(userFestivalInterests)
+          .values(
+            followsToUpsert.map((follow) => ({
+              userId,
+              festivalId: follow.festivalId,
+              interestLevel: follow.interestLevel,
+              notifyOnSale: follow.notifyOnSale,
+              notifyProgramme: follow.notifyProgramme,
+              notifyReminders: follow.notifyReminders,
+            })),
+          )
+          .onConflictDoUpdate({
+            target: [userFestivalInterests.userId, userFestivalInterests.festivalId],
+            set: {
+              interestLevel: sql`excluded.interest_level`,
+              notifyOnSale: sql`excluded.notify_on_sale`,
+              notifyProgramme: sql`excluded.notify_programme`,
+              notifyReminders: sql`excluded.notify_reminders`,
+              updatedAt,
+            },
+          });
+      }
+
+      // Delete removed schedule entries
+      if (removedScheduleIds.length > 0) {
+        await tx
+          .delete(userFestivalSchedule)
+          .where(
+            and(
+              eq(userFestivalSchedule.userId, userId),
+              inArray(userFestivalSchedule.screeningId, removedScheduleIds)
+            )
+          );
+      }
+
+      // Upsert merged schedule in one statement
+      if (scheduleToUpsert.length > 0) {
+        const updatedAt = new Date();
+        await tx
+          .insert(userFestivalSchedule)
+          .values(
+            scheduleToUpsert.map((entry) => ({
+              id: entry.id,
+              userId,
+              screeningId: entry.screeningId,
+              festivalId: entry.festivalId,
+              status: entry.status,
+              bookingConfirmation: entry.bookingConfirmation || null,
+              notes: entry.notes || null,
+            })),
+          )
+          .onConflictDoUpdate({
+            target: [userFestivalSchedule.userId, userFestivalSchedule.screeningId],
+            set: {
+              status: sql`excluded.status`,
+              bookingConfirmation: sql`excluded.booking_confirmation`,
+              notes: sql`excluded.notes`,
+              updatedAt,
+            },
+          });
+      }
+    });
 
     return NextResponse.json({
       success: true,

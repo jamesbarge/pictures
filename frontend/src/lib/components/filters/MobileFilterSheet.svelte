@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { filters } from '$lib/stores/filters.svelte';
+	import { today as todayStore } from '$lib/stores/today.svelte';
+	import { addDaysToDateString } from '$lib/london-date';
 	import { userLocation } from '$lib/stores/user-location.svelte';
-	import { haversineMiles, toLondonDateStr, useModalKeyboardTrap } from '$lib/utils';
+	import { haversineMiles, useModalKeyboardTrap } from '$lib/utils';
 	import { DECADE_OPTIONS, FORMAT_OPTIONS, GENRE_OPTIONS } from '$lib/constants/filters';
 	import CalendarPopover from './CalendarPopover.svelte';
 	import {
@@ -128,18 +130,16 @@
 			: Array.from(new Set([...filters.cinemaIds, ...ids]));
 	}
 
-	// When
-	const today = toLondonDateStr(new Date());
-	const tomorrow = (() => {
-		const t = new Date(today + 'T12:00:00Z');
-		t.setUTCDate(t.getUTCDate() + 1);
-		return t.toISOString().split('T')[0];
-	})();
+	// When — derived from the shared London-midnight-ticking store so the
+	// sheet's Today/Tomorrow chips stay correct (and consistent with the
+	// toolbar) when the app is left open across midnight.
+	const today = $derived(todayStore.value);
+	const tomorrow = $derived(addDaysToDateString(today, 1));
 	const dayFmt = new Intl.DateTimeFormat('en-GB', { weekday: 'short', timeZone: 'Europe/London' });
-	const todayLabel = dayFmt.format(new Date(today + 'T12:00:00Z'));
-	const tomorrowLabel = dayFmt.format(new Date(tomorrow + 'T12:00:00Z'));
-	const todayDay = new Date(today + 'T12:00:00Z').getUTCDate();
-	const tomorrowDay = new Date(tomorrow + 'T12:00:00Z').getUTCDate();
+	const todayLabel = $derived(dayFmt.format(new Date(today + 'T12:00:00Z')));
+	const tomorrowLabel = $derived(dayFmt.format(new Date(tomorrow + 'T12:00:00Z')));
+	const todayDay = $derived(new Date(today + 'T12:00:00Z').getUTCDate());
+	const tomorrowDay = $derived(new Date(tomorrow + 'T12:00:00Z').getUTCDate());
 
 	function pick(preset: 'today' | 'tomorrow' | 'weekend' | null) {
 		if (preset === 'today') {
