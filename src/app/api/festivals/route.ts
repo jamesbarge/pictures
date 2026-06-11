@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
-import { CACHE_5MIN } from "@/lib/cache-headers";
+import { CACHE_5MIN, getUserAwareCacheHeaders } from "@/lib/cache-headers";
 import { db } from "@/db";
 import { festivals, userFestivalInterests } from "@/db/schema";
 import { eq, and, gte, asc, sql } from "drizzle-orm";
@@ -188,7 +188,7 @@ export async function GET(request: NextRequest) {
         },
       },
       {
-        headers: CACHE_5MIN,
+        headers: getUserAwareCacheHeaders(userId, CACHE_5MIN),
       }
     );
   } catch (error) {

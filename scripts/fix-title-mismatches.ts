@@ -1,7 +1,8 @@
 /**
  * Fix film title mismatches found in audit.
  *
- * Run: npx dotenv -e .env.local -- npx tsx scripts/fix-title-mismatches.ts
+ * Preview: npx dotenv -e .env.local -- npx tsx scripts/fix-title-mismatches.ts
+ * Execute: npx dotenv -e .env.local -- npx tsx scripts/fix-title-mismatches.ts --execute
  */
 
 import { db } from "@/db";
@@ -52,7 +53,7 @@ async function main() {
   }
 
   // Apply fixes
-  const DRY_RUN = process.argv.includes("--dry-run");
+  const DRY_RUN = !process.argv.includes("--execute");
 
   const fixes: Array<{ id: string; oldTitle: string; newTitle: string; reason: string }> = [
     {

@@ -209,31 +209,95 @@ export function toISODate(year: number, monthZeroIndexed: number, day: number): 
 	return `${year}-${padTwo(monthZeroIndexed + 1)}-${padTwo(day)}`;
 }
 
+const MODAL_FOCUSABLE_SELECTOR = [
+	'a[href]',
+	'button:not([disabled])',
+	'input:not([disabled])',
+	'select:not([disabled])',
+	'textarea:not([disabled])',
+	'[tabindex]:not([tabindex="-1"])'
+].join(',');
+
+interface ModalKeyboardTrapOptions {
+	/** Lets a parent modal yield keyboard handling while a nested modal is open. */
+	isActive?: () => boolean;
+	lockBodyScroll?: boolean;
+	returnFocusTo?: HTMLElement;
+}
+
+function modalFocusableElements(container: HTMLElement): HTMLElement[] {
+	return Array.from(container.querySelectorAll<HTMLElement>(MODAL_FOCUSABLE_SELECTOR))
+		.filter((element) => element.getClientRects().length > 0 && element.getAttribute('aria-hidden') !== 'true');
+}
+
 /**
- * Run the standard mobile-modal a11y wiring while `open` is true:
- *   - Escape closes the modal.
- *   - Body scroll is locked (with the previous overflow restored on close).
- *
- * Returns a cleanup callback suitable for use inside a `$effect`. Designed to
- * de-duplicate the identical setup previously inlined in `MobileFilterSheet`
- * and `MobileDatePicker`.
- *
- * @example
- *   $effect(() => {
- *     if (!open) return;
- *     return useModalKeyboardTrap(onClose);
- *   });
+ * Run the standard modal focus lifecycle while the modal is mounted:
+ *   - Move initial focus inside and trap Tab/Shift+Tab.
+ *   - Escape closes the active modal.
+ *   - Restore focus to the trigger on cleanup.
+ *   - Lock body scroll unless a nested modal delegates that to its parent.
  */
-export function useModalKeyboardTrap(onClose: () => void): () => void {
-	const handler = (e: KeyboardEvent) => {
-		if (e.key === 'Escape') onClose();
-	};
-	document.addEventListener('keydown', handler);
+export function useModalKeyboardTrap(
+	container: HTMLElement,
+	onClose: () => void,
+	options: ModalKeyboardTrapOptions = {}
+): () => void {
+	const trigger = options.returnFocusTo
+		?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
+	const isActive = options.isActive ?? (() => true);
+	const lockBodyScroll = options.lockBodyScroll ?? true;
 	const prevOverflow = document.body.style.overflow;
-	document.body.style.overflow = 'hidden';
+
+	if (lockBodyScroll) document.body.style.overflow = 'hidden';
+
+	queueMicrotask(() => {
+		if (!isActive() || !container.isConnected) return;
+		(modalFocusableElements(container)[0] ?? container).focus({ preventScroll: true });
+	});
+
+	const handler = (event: KeyboardEvent) => {
+		if (!isActive()) return;
+
+		if (event.key === 'Escape') {
+			event.preventDefault();
+			// Only the top-most active modal handles this Escape. Without this,
+			// closing a nested modal can make its parent active for later
+			// document listeners handling the same key event.
+			event.stopImmediatePropagation();
+			onClose();
+			return;
+		}
+
+		if (event.key !== 'Tab') return;
+
+		const focusable = modalFocusableElements(container);
+		if (focusable.length === 0) {
+			event.preventDefault();
+			container.focus({ preventScroll: true });
+			return;
+		}
+
+		const first = focusable[0];
+		const last = focusable[focusable.length - 1];
+		const current = document.activeElement;
+
+		if (event.shiftKey && (current === first || !container.contains(current))) {
+			event.preventDefault();
+			last.focus({ preventScroll: true });
+		} else if (!event.shiftKey && (current === last || !container.contains(current))) {
+			event.preventDefault();
+			first.focus({ preventScroll: true });
+		}
+	};
+
+	document.addEventListener('keydown', handler);
+
 	return () => {
 		document.removeEventListener('keydown', handler);
-		document.body.style.overflow = prevOverflow;
+		if (lockBodyScroll) document.body.style.overflow = prevOverflow;
+		if (trigger?.isConnected) {
+			queueMicrotask(() => trigger.focus({ preventScroll: true }));
+		}
 	};
 }
 

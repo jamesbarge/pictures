@@ -260,6 +260,7 @@ function classifyAccessibilityFeatures(
 
 export class CurzonScraper implements ChainScraper {
   chainConfig = CURZON_CONFIG;
+  venueErrors = new Map<string, string>();
   private page: Page | null = null;
   private authToken: string | null = null;
   private apiBase = "https://digital-api.curzon.com/ocapi/v1";
@@ -277,6 +278,7 @@ export class CurzonScraper implements ChainScraper {
    */
   async scrapeVenues(venueIds: string[]): Promise<Map<string, RawScreening[]>> {
     const results = new Map<string, RawScreening[]>();
+    this.venueErrors.clear();
     await FestivalDetector.preload();
 
     try {
@@ -284,8 +286,7 @@ export class CurzonScraper implements ChainScraper {
       await this.initialize();
 
       if (!this.authToken) {
-        console.error("[curzon] Failed to capture auth token");
-        return results;
+        throw new Error("Failed to capture Curzon auth token");
       }
 
       console.log("[curzon] Auth token captured, starting API scrape...");
@@ -293,13 +294,19 @@ export class CurzonScraper implements ChainScraper {
       for (const venueId of venueIds) {
         const venue = this.chainConfig.venues.find(v => v.id === venueId);
         if (!venue) {
-          console.warn(`[curzon] Unknown venue: ${venueId}`);
+          this.venueErrors.set(venueId, `Unknown Curzon venue: ${venueId}`);
           continue;
         }
 
         console.log(`[curzon] Scraping ${venue.name} (${venue.chainVenueId})...`);
-        const screenings = await this.scrapeVenueViaApi(venue);
-        results.set(venueId, screenings);
+        try {
+          const screenings = await this.scrapeVenueViaApi(venue);
+          results.set(venueId, screenings);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          console.error(`[curzon] Error scraping ${venue.name}:`, error);
+          this.venueErrors.set(venueId, message);
+        }
 
         // Small delay between venues
         await new Promise(r => setTimeout(r, this.chainConfig.delayBetweenRequests));
@@ -317,8 +324,7 @@ export class CurzonScraper implements ChainScraper {
   async scrapeVenue(venueId: string): Promise<RawScreening[]> {
     const venue = this.chainConfig.venues.find(v => v.id === venueId);
     if (!venue) {
-      console.error(`[curzon] Venue not found: ${venueId}`);
-      return [];
+      throw new Error(`Curzon venue not found: ${venueId}`);
     }
 
     if (!this.authToken) {
@@ -326,8 +332,7 @@ export class CurzonScraper implements ChainScraper {
     }
 
     if (!this.authToken) {
-      console.error("[curzon] No auth token available");
-      return [];
+      throw new Error("No Curzon auth token available");
     }
 
     return this.scrapeVenueViaApi(venue);
@@ -339,80 +344,75 @@ export class CurzonScraper implements ChainScraper {
   private async scrapeVenueViaApi(venue: VenueConfig): Promise<RawScreening[]> {
     const siteId = venue.chainVenueId;
     if (!siteId) {
-      console.error(`[curzon] No siteId for venue: ${venue.id}`);
-      return [];
+      throw new Error(`No Curzon siteId for venue: ${venue.id}`);
     }
 
     const allScreenings: RawScreening[] = [];
 
-    try {
-      // Get available screening dates for this venue
-      const dates = await this.getAvailableDates(siteId);
-      if (dates.length === 0) {
-        console.warn(`[curzon] No screening dates found for ${venue.name}`);
-        return [];
-      }
-
-      console.log(`[curzon] ${venue.name}: ${dates.length} dates to fetch`);
-
-      // Fetch showtimes for the next 30 published dates. The Vista API returns
-      // a list of business dates with screenings, not consecutive calendar
-      // days — taking the first N entries is a horizon on "days with anything
-      // programmed", which suits Curzon's release-driven schedule. 30 covers
-      // their typical 4-8 week publication window.
-      const datesToFetch = dates.slice(0, 30);
-
-      for (const date of datesToFetch) {
-        try {
-          const response = await this.fetchWithAuth(
-            `${this.apiBase}/showtimes/by-business-date/${date}?siteIds=${siteId}`
-          );
-
-          if (!response.ok) {
-            console.warn(`[curzon] API error for ${date}: ${response.status}`);
-            continue;
-          }
-
-          const data: VistaShowtimesResponse = await response.json();
-          const screenings = this.convertToRawScreenings(data, venue);
-          allScreenings.push(...screenings);
-
-          // Small delay between dates
-          await new Promise(r => setTimeout(r, 100));
-        } catch (error) {
-          console.warn(`[curzon] Error fetching ${date} for ${venue.name}:`, error);
-        }
-      }
-
-      console.log(`[curzon] ${venue.name}: ${allScreenings.length} screenings`);
-      return this.deduplicate(allScreenings);
-
-    } catch (error) {
-      console.error(`[curzon] Error scraping ${venue.name}:`, error);
+    // Get available screening dates for this venue
+    const dates = await this.getAvailableDates(siteId);
+    if (dates.length === 0) {
+      console.warn(`[curzon] No screening dates found for ${venue.name}`);
       return [];
     }
+
+    console.log(`[curzon] ${venue.name}: ${dates.length} dates to fetch`);
+
+    // Fetch showtimes for the next 30 published dates. The Vista API returns
+    // a list of business dates with screenings, not consecutive calendar
+    // days — taking the first N entries is a horizon on "days with anything
+    // programmed", which suits Curzon's release-driven schedule. 30 covers
+    // their typical 4-8 week publication window.
+    const datesToFetch = dates.slice(0, 30);
+    const failedDates: string[] = [];
+
+    for (const date of datesToFetch) {
+      try {
+        const response = await this.fetchWithAuth(
+          `${this.apiBase}/showtimes/by-business-date/${date}?siteIds=${siteId}`
+        );
+
+        if (!response.ok) {
+          failedDates.push(`${date} (HTTP ${response.status})`);
+          continue;
+        }
+
+        const data: VistaShowtimesResponse = await response.json();
+        const screenings = this.convertToRawScreenings(data, venue);
+        allScreenings.push(...screenings);
+
+        // Small delay between dates
+        await new Promise(r => setTimeout(r, 100));
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        failedDates.push(`${date} (${message})`);
+      }
+    }
+
+    if (failedDates.length > 0) {
+      throw new Error(
+        `Failed to fetch ${failedDates.length}/${datesToFetch.length} Curzon dates for ${venue.name}: ${failedDates.slice(0, 3).join(", ")}`
+      );
+    }
+
+    console.log(`[curzon] ${venue.name}: ${allScreenings.length} screenings`);
+    return this.deduplicate(allScreenings);
   }
 
   /**
    * Get available screening dates for a venue
    */
   private async getAvailableDates(siteId: string): Promise<string[]> {
-    try {
-      const response = await this.fetchWithAuth(
-        `${this.apiBase}/film-screening-dates?siteIds=${siteId}`
-      );
+    const response = await this.fetchWithAuth(
+      `${this.apiBase}/film-screening-dates?siteIds=${siteId}`
+    );
 
-      if (!response.ok) {
-        console.warn(`[curzon] Failed to get dates: ${response.status}`);
-        return [];
-      }
-
-      const data: VistaScreeningDatesResponse = await response.json();
-      return data.filmScreeningDates?.map(d => d.businessDate) || [];
-    } catch (error) {
-      console.warn(`[curzon] Error getting dates for ${siteId}:`, error);
-      return [];
+    if (!response.ok) {
+      throw new Error(`Failed to get Curzon dates for ${siteId}: HTTP ${response.status}`);
     }
+
+    const data: VistaScreeningDatesResponse = await response.json();
+    return data.filmScreeningDates?.map(d => d.businessDate) || [];
   }
 
   /**

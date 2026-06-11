@@ -47,7 +47,12 @@ describe("Cinema Config API", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(currentUser).mockResolvedValue({
-      emailAddresses: [{ emailAddress: "jdwbarge@gmail.com" }],
+      emailAddresses: [
+        {
+          emailAddress: "jdwbarge@gmail.com",
+          verification: { status: "verified" },
+        },
+      ],
     } as never);
   });
 

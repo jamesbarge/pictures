@@ -3,15 +3,15 @@
  * Some non-Curzon cinemas have Curzon booking URLs stored against their screenings.
  * This deletes those bad URLs so scrapers can fill in correct ones on next run.
  *
- * Run: npx dotenv -e .env.local -- npx tsx scripts/fix-contaminated-booking-urls.ts
- * Dry run: npx dotenv -e .env.local -- npx tsx scripts/fix-contaminated-booking-urls.ts --dry-run
+ * Preview: npx dotenv -e .env.local -- npx tsx scripts/fix-contaminated-booking-urls.ts
+ * Execute: npx dotenv -e .env.local -- npx tsx scripts/fix-contaminated-booking-urls.ts --execute
  */
 
 import { db } from "@/db";
 import { screenings, cinemas, films } from "@/db/schema";
 import { eq, and, like, gte, not, inArray } from "drizzle-orm";
 
-const DRY_RUN = process.argv.includes("--dry-run");
+const DRY_RUN = !process.argv.includes("--execute");
 
 // Curzon cinema IDs (only these should have curzon.com booking URLs)
 const CURZON_IDS = [

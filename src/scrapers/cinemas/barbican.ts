@@ -36,6 +36,7 @@ export class BarbicanScraper extends BaseScraper {
 
   protected async fetchPages(): Promise<string[]> {
     const pages: string[] = [];
+    const failures: string[] = [];
     const today = new Date();
 
     for (let i = 0; i < DAYS_AHEAD; i++) {
@@ -52,7 +53,12 @@ export class BarbicanScraper extends BaseScraper {
         pages.push(JSON.stringify({ date: dateStr, html }));
       } catch (error) {
         console.error(`[${this.config.cinemaId}] Failed to fetch ${url}:`, error);
+        failures.push(url);
       }
+    }
+
+    if (failures.length > 0) {
+      throw new Error(`Failed to fetch ${failures.length}/${DAYS_AHEAD} Barbican day pages`);
     }
 
     console.log(`[${this.config.cinemaId}] Fetched ${pages.length} day pages`);
@@ -62,6 +68,7 @@ export class BarbicanScraper extends BaseScraper {
   protected async parsePages(htmlPages: string[]): Promise<RawScreening[]> {
     await FestivalDetector.preload();
     const screenings: RawScreening[] = [];
+    let failures = 0;
 
     for (const page of htmlPages) {
       try {
@@ -76,7 +83,12 @@ export class BarbicanScraper extends BaseScraper {
         }
       } catch (error) {
         console.error(`[${this.config.cinemaId}] Error parsing day page:`, error);
+        failures++;
       }
+    }
+
+    if (failures > 0) {
+      throw new Error(`Failed to parse ${failures}/${htmlPages.length} Barbican day pages`);
     }
 
     console.log(`[${this.config.cinemaId}] Found ${screenings.length} screenings total`);
