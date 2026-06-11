@@ -1,5 +1,5 @@
 ## 2026-06-11: Canonical title patterns and entity decoding
-**PR**: TBD | **Files**: `src/lib/title-extraction/patterns.ts`, `src/lib/title-patterns.ts`, `src/scrapers/utils/film-title-cleaner.ts`, title cleanup and audit scripts
+**PR**: #666 | **Files**: `src/lib/title-extraction/patterns.ts`, `src/lib/title-patterns.ts`, `src/scrapers/utils/film-title-cleaner.ts`, title cleanup and audit scripts
 - Made the extraction pattern module the single source for event prefixes, suffixes, non-film patterns, and live-broadcast keywords; poster backfill and audits now consume those shared definitions.
 - Promoted robust named, numeric, and mojibake HTML entity decoding into `title-patterns.ts` and removed divergent script copies.
 - Removed broad private non-film classifiers from destructive audit paths so reclassification and deletion use the curated learned-title contract.

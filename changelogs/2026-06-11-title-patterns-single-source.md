@@ -1,6 +1,6 @@
 # Canonical Title Patterns and Entity Decoding
 
-**PR**: TBD
+**PR**: #666
 **Date**: 2026-06-11
 
 ## Changes
