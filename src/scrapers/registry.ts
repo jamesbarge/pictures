@@ -38,7 +38,7 @@ import { createPhoenixScraper } from "@/scrapers/cinemas/phoenix";
 import { createElectricScraperV2 } from "@/scrapers/cinemas/electric-v2";
 import { createLexiScraper } from "@/scrapers/cinemas/lexi";
 import { createRegentStreetScraper } from "@/scrapers/cinemas/regent-street";
-import { createRichMixScraper } from "@/scrapers/cinemas/rich-mix";
+import { createRichMixScraperV2 } from "@/scrapers/cinemas/rich-mix-v2";
 import { createJW3Scraper } from "@/scrapers/cinemas/jw3";
 
 // Independent (Cheerio / API) factories
@@ -48,7 +48,7 @@ import { createPrinceCharlesScraper } from "@/scrapers/cinemas/prince-charles";
 import { createICAScraper } from "@/scrapers/cinemas/ica";
 import { createGenesisScraper } from "@/scrapers/cinemas/genesis";
 import { createPeckhamplexScraper } from "@/scrapers/cinemas/peckhamplex";
-import { createNickelScraper } from "@/scrapers/cinemas/the-nickel";
+import { createNickelScraperV2 } from "@/scrapers/cinemas/nickel-v2";
 import { createGardenCinemaScraper } from "@/scrapers/cinemas/garden";
 import { createCloseUpCinemaScraper } from "@/scrapers/cinemas/close-up";
 import { createBerthaDochouseScraper } from "@/scrapers/cinemas/bertha-dochouse";
@@ -176,7 +176,7 @@ const PLAYWRIGHT_ENTRIES: ScraperRegistryEntry[] = [
     buildConfig: (): SingleVenueConfig => ({
       type: "single",
       venue: getVenueFromRegistry("rich-mix"),
-      createScraper: () => createRichMixScraper(),
+      createScraper: () => createRichMixScraperV2(),
     }),
   },
   {
@@ -262,7 +262,7 @@ const CHEERIO_ENTRIES: ScraperRegistryEntry[] = [
     buildConfig: (): SingleVenueConfig => ({
       type: "single",
       venue: getVenueFromRegistry("the-nickel"),
-      createScraper: () => createNickelScraper(),
+      createScraper: () => createNickelScraperV2(),
     }),
   },
   {

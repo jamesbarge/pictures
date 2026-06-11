@@ -12,6 +12,7 @@
 
 import { BaseScraper } from "../base";
 import type { RawScreening, ScraperConfig } from "../types";
+import { FestivalDetector } from "../festivals/festival-detector";
 import { ukLocalToUTC } from "../utils/date-parser";
 
 // API response types
@@ -63,6 +64,7 @@ export class RichMixScraperV2 extends BaseScraper {
   }
 
   protected async parsePages(jsonPages: string[]): Promise<RawScreening[]> {
+    await FestivalDetector.preload();
     const films: RichMixFilm[] = JSON.parse(jsonPages[0]);
     console.log(`[rich-mix] Found ${films.length} films`);
 
@@ -105,6 +107,7 @@ export class RichMixScraperV2 extends BaseScraper {
             datetime,
             bookingUrl,
             sourceId,
+            ...FestivalDetector.detect("rich-mix", film.post_title, datetime, bookingUrl),
           });
         }
       }
