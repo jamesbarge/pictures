@@ -1,5 +1,5 @@
 ## 2026-06-11: User sync routes use bounded batch writes
-**PR**: TBD | **Files**: `src/app/api/user/sync/route.ts`, festival sync/follows/schedule routes, `src/lib/sync-batching.ts`, `src/lib/sync-batching.test.ts`, `changelogs/2026-06-11-user-sync-batching.md`
+**PR**: #665 | **Files**: `src/app/api/user/sync/route.ts`, festival sync/follows/schedule routes, `src/lib/sync-batching.ts`, `src/lib/sync-batching.test.ts`, `changelogs/2026-06-11-user-sync-batching.md`
 - Capped festival sync collections at 500 items, retained the existing 5,000-item full film-status allowance, and collapse duplicate conflict keys with newest-wins semantics.
 - Replaced per-row film-status, festival-follow, and festival-schedule writes with one conflict upsert per collection, with delete + upsert wrapped in a transaction.
 - Festival bidirectional sync now fetches metadata once and uses set membership instead of per-row lookups and repeated linear scans.
