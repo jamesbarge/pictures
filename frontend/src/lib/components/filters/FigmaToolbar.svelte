@@ -4,6 +4,7 @@
 	import CalendarPopover from './CalendarPopover.svelte';
 	import { filters } from '$lib/stores/filters.svelte';
 	import { today as todayStore } from '$lib/stores/today.svelte';
+	import { addDaysToDateString } from '$lib/london-date';
 	import {
 		DECADE_OPTIONS,
 		FORMAT_OPTIONS,
@@ -74,19 +75,13 @@
 	}
 
 	// — Date range (THIS WEEK / TODAY / ALL) —
-	function plusDays(iso: string, n: number) {
-		const d = new Date(iso + 'T12:00:00Z');
-		d.setUTCDate(d.getUTCDate() + n);
-		return d.toISOString().split('T')[0];
-	}
-
 	const dateRange = $derived.by<'today' | 'tomorrow' | 'this-week' | 'all' | 'custom'>(() => {
 		const t = todayStore.value;
 		if (!filters.dateFrom && !filters.dateTo) return 'all';
 		if (filters.dateFrom === t && filters.dateTo === t) return 'today';
-		const tomorrow = plusDays(t, 1);
+		const tomorrow = addDaysToDateString(t, 1);
 		if (filters.dateFrom === tomorrow && filters.dateTo === tomorrow) return 'tomorrow';
-		if (filters.dateFrom === t && filters.dateTo === plusDays(t, 7)) return 'this-week';
+		if (filters.dateFrom === t && filters.dateTo === addDaysToDateString(t, 7)) return 'this-week';
 		return 'custom';
 	});
 
@@ -105,7 +100,7 @@
 		} else if (value === 'today') {
 			filters.setDatePreset('today');
 		} else if (value === 'tomorrow') {
-			const tom = plusDays(todayStore.value, 1);
+			const tom = addDaysToDateString(todayStore.value, 1);
 			filters.dateFrom = tom;
 			filters.dateTo = tom;
 		} else {
@@ -116,9 +111,7 @@
 	// — Chip labels reflect current filter state —
 	const whenLabel = $derived.by(() => {
 		const today = todayStore.value;
-		const t = new Date(today + 'T12:00:00Z');
-		t.setUTCDate(t.getUTCDate() + 1);
-		const tomorrow = t.toISOString().split('T')[0];
+		const tomorrow = addDaysToDateString(today, 1);
 		if (!filters.dateFrom) return 'WHEN';
 		if (filters.dateFrom === today) return 'TODAY';
 		if (filters.dateFrom === tomorrow) return 'TOMORROW';
@@ -211,9 +204,7 @@
 		}
 		if (preset === 'today') filters.setDatePreset('today');
 		else if (preset === 'tomorrow') {
-			const t = new Date(todayStore.value + 'T12:00:00Z');
-			t.setUTCDate(t.getUTCDate() + 1);
-			const iso = t.toISOString().split('T')[0];
+			const iso = addDaysToDateString(todayStore.value, 1);
 			filters.dateFrom = iso;
 			filters.dateTo = iso;
 		}

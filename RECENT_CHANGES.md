@@ -1,3 +1,11 @@
+## 2026-06-11: Frontend uses shared London civil-date arithmetic
+**PR**: #664 | **Files**: `frontend/src/lib/london-date.ts`, reachable components, filter/date surfaces, tonight/weekend loaders, Letterboxd results, tests, `changelogs/2026-06-11-frontend-london-time.md`
+- Reachable deadline presets and labels now construct and render times in `Europe/London`, independent of the visitor's device timezone.
+- Added one DST-aware London date helper and replaced duplicate arithmetic across command-palette parsing, filters, film labels, and route loaders.
+- Standardized "this weekend" as Saturday through Sunday even when invoked on Sunday; added DST, Sunday, and non-UK-device regression tests.
+
+---
+
 ## 2026-06-11: Scraper registry is the single source for orchestration and CLI
 **PR**: #663 | **Files**: `src/scrapers/registry.ts`, `src/scrapers/cli.ts`, `src/scrapers/cinemas/riverside-v2.ts`, `src/scrapers/cinemas/rich-mix-v2.ts`, `src/scrapers/run-riverside-v2.ts`, `src/scrapers/registry.test.ts`, `src/config/cinema-registry.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`, `changelogs/2026-06-11-scraper-registry-single-source.md`
 - Removed the unified CLI's stale duplicate scraper registry; listing and execution now consume the same registry used by orchestration while retaining established CLI aliases.
@@ -175,7 +183,7 @@
 ---
 
 ## 2026-06-03: Search — instant, typo-tolerant, in-browser film/cinema/people search
-**PR**: TBD | **Files**: `frontend/src/lib/search/catalog-index-core.ts` (new), `frontend/src/lib/search/catalog-index.svelte.ts` (new), `frontend/src/lib/search/catalog-index.test.ts` (new), `frontend/src/lib/stores/palette.svelte.ts`, `frontend/src/lib/search/result-types.ts`, `frontend/src/lib/components/search/ResultsList.svelte`, `frontend/src/lib/components/search/GlobalCmdkBinding.svelte`, `frontend/tests/command-palette.spec.ts`, `frontend/package.json`
+**PR**: #664 | **Files**: `frontend/src/lib/search/catalog-index-core.ts` (new), `frontend/src/lib/search/catalog-index.svelte.ts` (new), `frontend/src/lib/search/catalog-index.test.ts` (new), `frontend/src/lib/stores/palette.svelte.ts`, `frontend/src/lib/search/result-types.ts`, `frontend/src/lib/components/search/ResultsList.svelte`, `frontend/src/lib/components/search/GlobalCmdkBinding.svelte`, `frontend/tests/command-palette.spec.ts`, `frontend/package.json`
 - ⌘K search is now **instant + typo-tolerant**. The catalog (films-with-a-future-screening + cinemas +
   directors) loads ONCE into the browser (`/api/search/catalog`) and is fuzzy-searched client-side with
   **MiniSearch** — **0 network calls per keystroke**. Accent-folding + `fuzzy:0.3` + `prefix` means
@@ -190,7 +198,7 @@
 ---
 
 ## 2026-06-03: Search — read-only catalog endpoint (enables instant in-browser search)
-**PR**: TBD | **Files**: `src/app/api/search/catalog/route.ts` (new), `src/lib/cache-headers.ts`
+**PR**: #664 | **Files**: `src/app/api/search/catalog/route.ts` (new), `src/lib/cache-headers.ts`
 - New `GET /api/search/catalog` returns a lean snapshot — **films** (with a future screening) + active
   **cinemas** + **directors** — so the frontend can build a MiniSearch index and serve instant,
   typo-tolerant suggestions with zero per-keystroke server round-trips (frontend lands next).
@@ -215,7 +223,7 @@
 ---
 
 ## 2026-06-01: Temporarily remove sign-in from the site
-**PR**: TBD | **Files**: `frontend/src/lib/components/layout/Header.svelte`, `frontend/src/routes/sign-in/[...rest]/+page.ts` (new), `frontend/src/routes/sign-up/[...rest]/+page.ts` (new), `frontend/src/routes/sitemap.xml/+server.ts`
+**PR**: #664 | **Files**: `frontend/src/lib/components/layout/Header.svelte`, `frontend/src/routes/sign-in/[...rest]/+page.ts` (new), `frontend/src/routes/sign-up/[...rest]/+page.ts` (new), `frontend/src/routes/sitemap.xml/+server.ts`
 - The prod **frontend** Clerk key is a dev `pk_test_` key, so the hosted SignIn widget renders blank. Until a `pk_live_` key is set, remove sign-in from the UI: dropped the desktop + mobile "Sign in" links from the header (+ their dead CSS), and `/sign-in` / `/sign-up` now `307`-redirect home so the broken widget isn't reachable. `ClerkProvider` stays mounted so watchlist (localStorage) + festival-follow degrade cleanly. Fully reversible (restore the links, delete the two redirect files).
 - Drive-by fix: `sitemap.xml` had a `svelte-check` type error (`'updatedAt' in f` narrowed the no-updatedAt union branch to `unknown`) — collapsed both film sources to one `FilmRef` type. `vite build` was lenient so it shipped + is live; svelte-check now clean (0 errors).
 
@@ -239,7 +247,7 @@
 ---
 
 ## 2026-06-01: BFI scraper hardening — canonical sourceId + retry dead-code + parser tests
-**PR**: TBD (#640) | **Files**: `src/scrapers/bfi-pdf/bfi-source-id.ts` (new), `src/scrapers/bfi-pdf/bfi-source-id.test.ts` (new), `src/scrapers/cinemas/bfi.ts`, `src/scrapers/cinemas/bfi-parse.ts` (new), `src/scrapers/cinemas/bfi-parse.test.ts` (new), `src/scrapers/bfi-pdf/pdf-parser.ts`, `src/scrapers/bfi-pdf/programme-changes-parser.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`, `scripts/dedup-bfi-sourceid-migration.ts` (new)
+**PR**: #664 (#640) | **Files**: `src/scrapers/bfi-pdf/bfi-source-id.ts` (new), `src/scrapers/bfi-pdf/bfi-source-id.test.ts` (new), `src/scrapers/cinemas/bfi.ts`, `src/scrapers/cinemas/bfi-parse.ts` (new), `src/scrapers/cinemas/bfi-parse.test.ts` (new), `src/scrapers/bfi-pdf/pdf-parser.ts`, `src/scrapers/bfi-pdf/programme-changes-parser.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`, `scripts/dedup-bfi-sourceid-migration.ts` (new)
 - **(Task 6) Retry dead-code + parser tests**: `RETRY_BACKOFF_MS[2]` (60s) was never read (`[attempt-1]` indexes −1/0/1) yet the array length set the attempt count — decoupled into `MAX_SEARCH_ATTEMPTS=3` + `[10s,30s]` so the dead value is gone without dropping a retry. Extracted `parseSearchResultsArray` + `SearchRow` into a pure `cinemas/bfi-parse.ts` and added 7 unit tests (nested arrays, bracket-in-string, escaped quotes, malformed→null). `mapRows`/0-indexed-month test deferred (needs a pure-extraction refactor of the instance-coupled mapper).
 - **Bug:** the three BFI ingest paths each built a different sourceId (`bfi-…`/articleId vs `bfi-pdf-…` vs `bfi-changes-…`), so a path flip (Playwright → PDF fallback) produced a different id for the same screening → the `(cinema_id, source_id)` upsert INSERTed a duplicate instead of updating. Same-time NFT1/NFT2 shows could also collapse.
 - **Fix:** shared `buildBfiSourceId(cinemaId, title, screen, datetime)` → `bfi-<cinemaId>-<titleSlug>-<screen>-<iso>`, used by all three paths. `screen` normalised to a canonical token (NFT1–4/STUDIO/IMAX/REUBEN) so "Southbank - NFT3" (Playwright) and "NFT3" (PDF) key identically; the screen segment also disambiguates simultaneous NFT1/NFT2 shows. Dropped the articleId variant + dead `extractArticleId`; PDF path now keys on per-screening venue→cinemaId (not the file-level pdfLabel).
@@ -249,7 +257,7 @@
 ---
 
 ## 2026-06-01: JW3 cinema scraper — last uncovered London rep/indie venue (Spektrix)
-**PR**: TBD | **Files**: `src/scrapers/cinemas/jw3.ts` (new), `src/config/cinema-registry.ts`, `src/scrapers/registry.ts`, `src/scrapers/cli.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`
+**PR**: #664 | **Files**: `src/scrapers/cinemas/jw3.ts` (new), `src/config/cinema-registry.ts`, `src/scrapers/registry.ts`, `src/scrapers/cli.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`
 - Adds **JW3** (341-351 Finchley Road) — the last London rep/indie venue with no coverage. Fetch-based (no browser): 2 calls to the Spektrix v3 read API (client `jw3`) — `GET /events` filtered to `attribute_Genre == "Cinema"` (excludes the centre's talks/languages/classes), `GET /instances?startFrom&startTo` joined by `event.id`.
 - `startUtc` is already UTC (append `Z`), so the BST off-by-one that bit the HTML scrapers cannot occur. Booking via verified `…/spektrix/ChooseSeats?EventInstanceId=…`. Poster from `event.imageUrl`; availability from `isOnSale`.
 - Verified dry-run vs live API: **109 Cinema events → 81 screenings / 25 films**, Jun 2 → Aug 16, 0 past, all with booking URLs. tsc clean. Registered in cinema-registry + scraper registry + CLI; playbook documented.
@@ -257,7 +265,7 @@
 ---
 
 ## 2026-05-31: Search — people search + /people/[name] director & actor pages
-**PR**: TBD | **Files**: `src/app/api/films/search/route.ts`, `src/app/api/people/[name]/route.ts` (new), `frontend/src/lib/search/result-types.ts`, `frontend/src/lib/components/search/rows/PersonRow.svelte` (new), `frontend/src/lib/components/search/ResultsList.svelte`, `frontend/src/lib/stores/palette.svelte.ts`, `frontend/src/lib/seo/json-ld.ts`, `frontend/src/routes/people/[name]/+page.{server.ts,svelte}` (new), `frontend/src/routes/directors/+page.svelte`, `scripts/verify-people-search.ts` (new)
+**PR**: #664 | **Files**: `src/app/api/films/search/route.ts`, `src/app/api/people/[name]/route.ts` (new), `frontend/src/lib/search/result-types.ts`, `frontend/src/lib/components/search/rows/PersonRow.svelte` (new), `frontend/src/lib/components/search/ResultsList.svelte`, `frontend/src/lib/stores/palette.svelte.ts`, `frontend/src/lib/seo/json-ld.ts`, `frontend/src/routes/people/[name]/+page.{server.ts,svelte}` (new), `frontend/src/routes/directors/+page.svelte`, `scripts/verify-people-search.ts` (new)
 - **New discovery axis: search by person.** The command palette now has a **PEOPLE** group — typing a director's name (e.g. "scorsese") surfaces them with their upcoming-film count; Enter → a new `/people/[name]` page. Trigram-matched so typos still hit ("scorses" → Scorsese).
 - **`/people/[name]` pages** (ISR + Person JSON-LD): a director/actor's upcoming London showings as a poster grid, sectioned **As Director** / **On Screen**, each film linking to its detail page. Indexable long-tail SEO ("[director] films showing London").
 - Backend: `/api/films/search` gains a `people[]` group (directors via `unnest`, mirrors `/api/directors`); new `GET /api/people/[name]` matches director (`= ANY(directors)`) OR cast (`cast @> [{name}]`) joined to upcoming screenings. `/directors` list entries now link to the pages.
@@ -283,7 +291,7 @@
 ---
 
 ## 2026-05-30: Scraper coverage + freshness pass — end of June 2026
-**PR**: TBD | **Files**: `src/scrapers/pipeline.ts`, `src/scrapers/chains/everyman.ts`, `src/scrapers/cinemas/bfi.ts`, `src/scrapers/cinemas/olympic.ts`, `src/scrapers/cinemas/david-lean.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`
+**PR**: #664 | **Files**: `src/scrapers/pipeline.ts`, `src/scrapers/chains/everyman.ts`, `src/scrapers/cinemas/bfi.ts`, `src/scrapers/cinemas/olympic.ts`, `src/scrapers/cinemas/david-lean.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`
 - **42P10 upsert keystone**: `(cinema_id, source_id)` upsert lacked `targetWhere source_id IS NOT NULL` for its partial index → Postgres silently dropped every fresh INSERT across all source_id scrapers (Everyman/Curzon/Picturehouse), freezing forward coverage. Re-applied the lost 2026-05-27 fix.
 - **BFI fixed with stealth Playwright, no paid proxy**: single wide date-range search per venue (`page_size=2000` → 1 navigation/venue) reading the inline AudienceView `searchResults` array. bfi-southbank → Jul 31, bfi-imax 2 → 94 → Jul 19. PDF importer kept as fallback.
 - **Everyman window 30→45 days** (end-of-month no longer clipped → chain reaches Jul 12); **olympic** canonical-id fix (dup cinema); **david-lean** year-rollover fix (phantom 2027 dates).
@@ -304,7 +312,7 @@
 ---
 
 ## 2026-05-30: P0 — rate limiter fails open (prod outage fix)
-**PR**: TBD | **Files**: `src/lib/rate-limit.ts`, `changelogs/2026-05-30-rate-limit-fail-open.md` (new)
+**PR**: #664 | **Files**: `src/lib/rate-limit.ts`, `changelogs/2026-05-30-rate-limit-fail-open.md` (new)
 - Production was fully down (every API route + SSR returning 500 / `FUNCTION_INVOCATION_FAILED`). Root cause: Upstash Redis hit its 500k-request quota; `checkRateLimit()` (the first call in every route) threw the `max requests limit exceeded` error instead of failing open, 500'ing all DB-backed endpoints before the query even ran.
 - Fix: `checkRateLimit` now catches backing-store errors and falls back to the existing in-memory limiter — a rate limiter can no longer take down the whole API.
 - Also corrected during triage: prod `DATABASE_URL` env var had a trailing literal `\n` (corrupted db name `postgres\n`, `3D000`) — a latent bug that would have broken queries once past the limiter.
@@ -312,7 +320,7 @@
 ---
 
 ## 2026-05-26: BST timezone fix — bfi.ts, rich-mix.ts, rich-mix-v2.ts off by +1h
-**PR**: TBD | **Files**: `src/scrapers/cinemas/bfi.ts`, `src/scrapers/cinemas/rich-mix.ts`, `src/scrapers/cinemas/rich-mix-v2.ts`, `src/scrapers/cinemas/bst-regression.test.ts` (new), `scripts/verify-bst-fix.ts` (new), `scripts/diagnose-bst-bug.ts` (new)
+**PR**: #664 | **Files**: `src/scrapers/cinemas/bfi.ts`, `src/scrapers/cinemas/rich-mix.ts`, `src/scrapers/cinemas/rich-mix-v2.ts`, `src/scrapers/cinemas/bst-regression.test.ts` (new), `scripts/verify-bst-fix.ts` (new), `scripts/diagnose-bst-bug.ts` (new)
 - Customer-reported bug: site displayed showtimes 1 hour ahead of reality during BST. Three scrapers were using `new Date(y, m, d, h, mi)` (local-TZ constructor); on the UTC server this stored BST clock-face times as UTC, and the frontend's UTC→Europe/London render added +1h on top. Verified end-to-end against Rich Mix's Spektrix API.
 - Fix: route all three through `ukLocalToUTC()` — the project's existing BST-safe helper that Curzon/Picturehouse/Everyman already use.
 - Data backfill: 5 BFI duplicates deleted (rows where a correct PDF-source twin existed at -1h) + 210 BFI rows shifted -1h + 79 Rich Mix rows shifted -1h. 294 rows total. Scoped strictly by `source_id` prefix; bfi-pdf and bfi-changes data left untouched.
@@ -321,7 +329,7 @@
 ---
 
 ## 2026-05-20: cmd+k step 10 — E2E spec + production alias promotion + step-9 deferred
-**PR**: TBD | **Files**: `frontend/tests/command-palette.spec.ts` (new), `changelogs/2026-05-19-cmdk-step9-deferred.md` (new)
+**PR**: #664 | **Files**: `frontend/tests/command-palette.spec.ts` (new), `changelogs/2026-05-19-cmdk-step9-deferred.md` (new)
 - Step 10: 5-case Playwright spec locks in the cmd+k contract — ⌘K opens / Esc closes, fuzzy query renders Amélie via trigram, Enter on a film row navigates to `/film/[id]`, composite filter-action surfaces for multi-slice queries, Enter on it mutates the calendar (`70mm` + `Horror` pressed in sidebar). All 5 pass cleanly in 15.3s on chromium.
 - `openPalette()` helper auto-retries up to 3 times around a bits-ui Dialog mount race in headless: the first synthetic keydown can land before the document-level listener wires up. Worth it — eliminates flakes entirely.
 - Production alias promoted: `api.pictures.london` was pinned to a 23-day-old deployment (April 26). `vercel promote` pointed it at the latest production build (step 7), unblocking the new RRF API for the live frontend. Confirmed: pictures.london ⌘K now returns 8 Amélie screenings + film row from a trigram-fuzzy "amelei" query.
@@ -330,7 +338,7 @@
 ---
 
 ## 2026-05-19: cmd+k step 8 — intent-to-actions + filters.applyIntent
-**PR**: TBD | **Files**: `frontend/src/lib/search/intent-to-actions.ts` (new), `frontend/src/lib/search/intent-to-actions.test.ts` (new), `frontend/src/lib/stores/filters.svelte.ts`, `frontend/src/lib/stores/palette.svelte.ts`
+**PR**: #664 | **Files**: `frontend/src/lib/search/intent-to-actions.ts` (new), `frontend/src/lib/search/intent-to-actions.test.ts` (new), `frontend/src/lib/stores/filters.svelte.ts`, `frontend/src/lib/stores/palette.svelte.ts`
 - Step 8: the palette can now mutate the calendar. Typing "horror 70mm tonight" surfaces a "JUMP TO" composite action row; pressing Enter (or Alt+Enter, or clicking) applies all parsed slices to the filters store and closes the palette. The calendar narrows behind the (intentionally non-blurred) backdrop — the 5-second magic.
 - `intentToActions(parsed)` returns at most ONE composite filter-action row. Adding more keywords narrows the same row rather than multiplying choices — matches user mental model better than per-slice rows. 9 Vitest cases cover empty intent, single slice, multi-slice composition, stable id keyed on slice values, decade rendering, and a "cinema tokens deferred" guard so we don't silently surface no-op actions.
 - `filters.applyIntent(parsed)` is a batch mutator covering formats, genres, decades, dates (DST-aware via `Intl.DateTimeFormat` round-trip), times, and the `repertory` programming type. Existing filter state for other slices survives so users can build filters across multiple queries.
@@ -355,7 +363,7 @@
 ---
 
 ## 2026-05-17: Frontend — Spline neo-brutalist redesign (Figma 2070:669)
-**PR**: TBD | **Files**: `frontend/src/app.css`, `frontend/src/routes/+page.svelte`, `frontend/src/lib/components/calendar/FigmaFilmCard.svelte` (new), `frontend/src/lib/components/filters/FigmaToolbar.svelte` (new), `frontend/static/fonts/SplineSans.woff2` (new), `frontend/static/fonts/SplineSans-ext.woff2` (new), `changelogs/2026-05-17-spline-redesign.md`
+**PR**: #664 | **Files**: `frontend/src/app.css`, `frontend/src/routes/+page.svelte`, `frontend/src/lib/components/calendar/FigmaFilmCard.svelte` (new), `frontend/src/lib/components/filters/FigmaToolbar.svelte` (new), `frontend/static/fonts/SplineSans.woff2` (new), `frontend/static/fonts/SplineSans-ext.woff2` (new), `changelogs/2026-05-17-spline-redesign.md`
 - Full design-token swap to match Figma 2070:669: Spline Sans replaces Fraunces/Cormorant/IBM Plex Mono, black-on-cream (`#eae5c2`) replaces oxblood accent, 4px button radii + 16px day-section radii + 42px outer-card radius replace zero-radius. New `--shadow-brutalist: 4px 4px 0 0 #000` for chips. Spline Sans variable woff2 self-hosted (latin + latin-ext, ~78KB total).
 - Homepage rebuilt: white rounded-42 outer card houses PICTURES.LONDON wordmark, FigmaToolbar (ALL/NEW/REPERTORY + WHEN/SEARCH/WHERE/HOW chips with cream icon tiles + POSTERS/TEXT), day sections with black cream-text headers, and `FigmaFilmCard` rows (264px poster + 64px right rail for year/director/format chips, 88px title row, 30px screening rows, rotated MORE bar on overflow).
 - Mobile: full-width card with poster + right rail layout preserved, toolbar wraps to 2-up.
@@ -365,7 +373,7 @@
 ---
 
 ## 2026-05-17: /goal conditions #8 & #9 — flaky detector + BST sentinel (Phase 1 of scraper-perfection plan)
-**PR**: TBD | **Files**: `src/lib/scrape-quarantine.ts`, `src/lib/scrape-quarantine.test.ts` (new), `src/scripts/run-scrape-and-enrich.ts`, `scripts/goal-check-flaky-cinemas.ts` (new), `scripts/goal-check-bst-sentinel.ts` (new), `scripts/goal-status.ts`, `tasks/goal.md`, `changelogs/2026-05-17-goal-ws-a-flaky-and-bst.md`
+**PR**: #664 | **Files**: `src/lib/scrape-quarantine.ts`, `src/lib/scrape-quarantine.test.ts` (new), `src/scripts/run-scrape-and-enrich.ts`, `scripts/goal-check-flaky-cinemas.ts` (new), `scripts/goal-check-bst-sentinel.ts` (new), `scripts/goal-status.ts`, `tasks/goal.md`, `changelogs/2026-05-17-goal-ws-a-flaky-and-bst.md`
 - Phase 1 of the "make scrapers perfect" plan (WS-A: measurement substrate). Two new end conditions added to `tasks/goal.md`, taking the goal from 7 conditions to 9.
 - **Condition #8 — No flaky-critical cinemas**: resurrected `detectFlakyCinemas` (a ratio-based detector that catches alternating-failure cinemas like BFI IMAX in May 2026 — 14/21 success+0 runs but never two consecutive, so the silent-breaker detector missed it). New unit test covers 9 fixture scenarios including the BFI IMAX ground truth, Close-Up failed-runs pattern, threshold-bumping logic, and lastGoodRunAt accuracy. Wired into `/scrape` pre-flight so flakies are surfaced before a 30-60min run wastes time on broken cinemas.
 - **Condition #9 — Zero BST-pattern screenings**: standing guardrail for the recurring BST off-by-one bug class that has bitten Curzon, Everyman, and Picturehouse in the last 4 weeks. Queries the 02:00-09:59 UK-local window for upcoming screenings. The 00:00-01:59 zone is deliberately excluded because Everyman, PCC, and Genesis legitimately programme midnight cult screenings (Mulholland Drive, Obsession, Hokum at Everyman Broadgate were flagged during smoke-testing — false positives the wider window would have produced).

@@ -2,7 +2,7 @@
  * Parse-query test suite — 40 fixtures covering every token category
  * and the multi-word phrase precedence rules.
  *
- * `NOW` is a fixed reference instant (Wednesday 14 May 2026, 12:00 UTC
+ * `NOW` is a fixed reference instant (Thursday 14 May 2026, 12:00 UTC
  * = 13:00 BST in London). All temporal assertions are computed from
  * this anchor.
  */
@@ -10,7 +10,7 @@
 import { describe, expect, it } from "vitest";
 import { parseQuery } from "./parse-query";
 
-// Wednesday 14 May 2026 13:00 BST (12:00 UTC). London is in BST in May.
+// Thursday 14 May 2026 13:00 BST (12:00 UTC). London is in BST in May.
 const NOW = new Date("2026-05-14T12:00:00Z");
 
 function isoDate(d?: Date): string | undefined {
@@ -82,9 +82,9 @@ describe("parseQuery — dates", () => {
     expect(isoDate(r.dateTo)).toBe("2026-05-15T23:00:00.000Z");
   });
 
-  it("'this weekend' on a Wednesday spans Sat–Mon", () => {
+  it("'this weekend' on a weekday spans Sat–Mon", () => {
     const r = parseQuery("this weekend", NOW);
-    // From Wed 14 May → Sat 16 May ... Mon 18 May
+    // From Thu 14 May → Sat 16 May ... Mon 18 May
     expect(isoDate(r.dateFrom)).toBe("2026-05-15T23:00:00.000Z");
     expect(isoDate(r.dateTo)).toBe("2026-05-17T23:00:00.000Z");
   });
@@ -93,6 +93,13 @@ describe("parseQuery — dates", () => {
     const r = parseQuery("next weekend", NOW);
     expect(isoDate(r.dateFrom)).toBe("2026-05-22T23:00:00.000Z");
     expect(isoDate(r.dateTo)).toBe("2026-05-24T23:00:00.000Z");
+  });
+
+  it("'this weekend' on Sunday includes the current Sunday", () => {
+    const sunday = new Date("2026-05-17T12:00:00Z");
+    const r = parseQuery("this weekend", sunday);
+    expect(isoDate(r.dateFrom)).toBe("2026-05-15T23:00:00.000Z");
+    expect(isoDate(r.dateTo)).toBe("2026-05-17T23:00:00.000Z");
   });
 
   it("'this week' spans today + 7 days", () => {
