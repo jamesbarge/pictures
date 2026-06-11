@@ -52,7 +52,12 @@ describe("Admin Screenings API", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(currentUser).mockResolvedValue({
-      emailAddresses: [{ emailAddress: "jdwbarge@gmail.com" }],
+      emailAddresses: [
+        {
+          emailAddress: "jdwbarge@gmail.com",
+          verification: { status: "verified" },
+        },
+      ],
     } as never);
     // Reset db mock to return existing screening
     mockLimit.mockResolvedValue([{ id: "test-screening-id" }]);

@@ -43,6 +43,22 @@ describe("parseQuery — empty & freeText", () => {
   });
 });
 
+describe("parseQuery — canonical filter values", () => {
+  it("maps 4k to the canonical DCP 4K screening format", () => {
+    const r = parseQuery("4k", NOW);
+
+    expect(r.formats).toEqual(["dcp_4k"]);
+    expect(r.freeText).toBe("");
+  });
+
+  it("maps sci-fi to the canonical science fiction genre", () => {
+    const r = parseQuery("sci-fi", NOW);
+
+    expect(r.genres).toEqual(["science fiction"]);
+    expect(r.freeText).toBe("");
+  });
+});
+
 describe("parseQuery — dates", () => {
   it("'tonight' sets today 00:00 → tomorrow 00:00 with timeFrom 18", () => {
     const r = parseQuery("tonight", NOW);

@@ -25,11 +25,11 @@
  *      Default tolerancePercent=30 stays unless the row already exists.
  *      Honour manualOverride=true: never overwrite those rows.
  *
- * Default mode is DRY-RUN. Pass --apply to actually write.
+ * Default mode is DRY-RUN. Pass --execute to actually write.
  *
  * Run:
  *   npx tsx --env-file=.env.local scripts/backfill-cinema-baselines.ts
- *   npx tsx --env-file=.env.local scripts/backfill-cinema-baselines.ts --apply
+ *   npx tsx --env-file=.env.local scripts/backfill-cinema-baselines.ts --execute
  */
 
 import { db } from "@/db";
@@ -58,7 +58,7 @@ function median(values: number[]): number | null {
 }
 
 async function main() {
-  const apply = process.argv.includes("--apply");
+  const apply = process.argv.includes("--execute");
   const since = new Date(Date.now() - DAYS * 24 * 60 * 60 * 1000);
 
   console.log(`[backfill-baselines] Window: last ${DAYS} days (since ${since.toISOString().slice(0, 10)})`);
@@ -137,7 +137,7 @@ async function main() {
   console.log("");
 
   if (!apply) {
-    console.log("[backfill-baselines] DRY RUN — no changes written. Re-run with --apply to write.");
+    console.log("[backfill-baselines] DRY RUN — no changes written. Re-run with --execute to write.");
     process.exit(0);
   }
 

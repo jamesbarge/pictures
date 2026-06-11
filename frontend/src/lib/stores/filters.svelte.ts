@@ -1,5 +1,9 @@
 import { browser } from '$app/environment';
-import type { FilterProgrammingType } from '$lib/constants/filters';
+import {
+	normalizeFormatFilterValue,
+	normalizeGenreFilterValue,
+	type FilterProgrammingType
+} from '$lib/constants/filters';
 import {
 	addDaysToDateString,
 	londonDateString,
@@ -57,9 +61,13 @@ if (browser) {
 		requestAnimationFrame(() => {
 			const persisted = loadPersisted();
 			if (persisted.cinemaIds?.length) cinemaIds = persisted.cinemaIds;
-			if (persisted.formats?.length) formats = persisted.formats;
+			if (persisted.formats?.length) {
+				formats = Array.from(new Set(persisted.formats.map(normalizeFormatFilterValue)));
+			}
 			if (persisted.programmingTypes?.length) programmingTypes = persisted.programmingTypes;
-			if (persisted.genres?.length) genres = persisted.genres;
+			if (persisted.genres?.length) {
+				genres = Array.from(new Set(persisted.genres.map(normalizeGenreFilterValue)));
+			}
 			if (persisted.decades?.length) decades = persisted.decades;
 			hydrated = true;
 		});

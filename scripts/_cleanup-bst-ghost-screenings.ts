@@ -12,7 +12,7 @@
  *
  * Usage:
  *   npx tsx -r tsconfig-paths/register --env-file=.env.local scripts/_cleanup-bst-ghost-screenings.ts            (dry-run)
- *   npx tsx -r tsconfig-paths/register --env-file=.env.local scripts/_cleanup-bst-ghost-screenings.ts --apply    (apply)
+ *   npx tsx -r tsconfig-paths/register --env-file=.env.local scripts/_cleanup-bst-ghost-screenings.ts --execute  (apply)
  */
 
 import { db } from "@/db";
@@ -20,7 +20,7 @@ import { screenings, cinemas } from "@/db/schema";
 import { sql, inArray } from "drizzle-orm";
 
 async function main() {
-  const apply = process.argv.includes("--apply");
+  const apply = process.argv.includes("--execute");
   const mode = apply ? "APPLY" : "DRY-RUN";
   console.log(`\n=== BST ghost cleanup (${mode}) ===\n`);
 
@@ -88,7 +88,7 @@ async function main() {
   }
 
   if (!apply) {
-    console.log(`\n[DRY-RUN] No rows deleted. Re-run with --apply to delete ${rows.length} rows.`);
+    console.log(`\n[DRY-RUN] No rows deleted. Re-run with --execute to delete ${rows.length} rows.`);
     process.exit(0);
   }
 

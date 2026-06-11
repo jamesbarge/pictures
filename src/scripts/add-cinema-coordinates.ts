@@ -1,11 +1,14 @@
 /**
  * Add coordinates for all cinemas missing them
- * Run with: npx dotenv -e .env.local -- npx tsx src/scripts/add-cinema-coordinates.ts
+ * Preview: npx dotenv -e .env.local -- npx tsx src/scripts/add-cinema-coordinates.ts
+ * Execute: npx dotenv -e .env.local -- npx tsx src/scripts/add-cinema-coordinates.ts --execute
  */
 
 import { db } from "../db";
 import { cinemas } from "../db/schema";
 import { eq } from "drizzle-orm";
+
+const EXECUTE = process.argv.includes("--execute");
 
 // Coordinates for London cinemas
 // Source: Google Maps lookup for each venue
@@ -68,7 +71,7 @@ const cinemaCoordinates: Record<string, { lat: number; lng: number }> = {
 };
 
 async function addCoordinates() {
-  console.log("Adding coordinates to cinemas...\n");
+  console.log(`${EXECUTE ? "Adding" : "Previewing"} coordinates for cinemas...\n`);
 
   // Get all cinemas
   const allCinemas = await db.select().from(cinemas);
@@ -85,11 +88,13 @@ async function addCoordinates() {
 
     const coords = cinemaCoordinates[cinema.id];
     if (coords) {
-      await db
-        .update(cinemas)
-        .set({ coordinates: coords, updatedAt: new Date() })
-        .where(eq(cinemas.id, cinema.id));
-      console.log(`✓ ${cinema.shortName || cinema.name} - (${coords.lat}, ${coords.lng})`);
+      if (EXECUTE) {
+        await db
+          .update(cinemas)
+          .set({ coordinates: coords, updatedAt: new Date() })
+          .where(eq(cinemas.id, cinema.id));
+      }
+      console.log(`${EXECUTE ? "Updated" : "Would update"} ${cinema.shortName || cinema.name} - (${coords.lat}, ${coords.lng})`);
       updated++;
     } else {
       console.log(`✗ ${cinema.shortName || cinema.name} (${cinema.id}) - NO COORDINATES FOUND`);
@@ -99,8 +104,9 @@ async function addCoordinates() {
 
   console.log(`\n--- Summary ---`);
   console.log(`Already had coordinates: ${alreadyHas}`);
-  console.log(`Updated: ${updated}`);
+  console.log(`${EXECUTE ? "Updated" : "Would update"}: ${updated}`);
   console.log(`Missing coordinates: ${notFound}`);
+  if (!EXECUTE) console.log("No changes written. Re-run with --execute to apply.");
 
   process.exit(0);
 }

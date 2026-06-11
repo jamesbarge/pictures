@@ -21,7 +21,7 @@
  *
  * Usage:
  *   npm run db:migrate-cinema-ids             # Dry run (shows what would change)
- *   npm run db:migrate-cinema-ids -- --apply  # Apply changes
+ *   npm run db:migrate-cinema-ids -- --execute  # Apply changes
  */
 
 import { db } from "../index";
@@ -33,7 +33,7 @@ import { getLegacyIdMappings, getCinemaById, getCinemasSeedData } from "@/config
 // Configuration
 // ============================================================================
 
-const DRY_RUN = !process.argv.includes("--apply");
+const DRY_RUN = !process.argv.includes("--execute");
 
 // ============================================================================
 // Migration Steps
@@ -255,7 +255,7 @@ async function main() {
 
   if (DRY_RUN) {
     console.log("\n🔍 DRY RUN MODE - No changes will be made");
-    console.log("   Run with --apply to execute migration\n");
+    console.log("   Run with --execute to execute migration\n");
   } else {
     console.log("\n⚡ APPLYING CHANGES\n");
   }
@@ -268,7 +268,7 @@ async function main() {
 
     console.log("\n══════════════════════════════════════════════════════════════");
     if (DRY_RUN) {
-      console.log("✅ Dry run complete. Run with --apply to execute migration.");
+      console.log("✅ Dry run complete. Run with --execute to execute migration.");
     } else {
       console.log("✅ Migration complete!");
     }
