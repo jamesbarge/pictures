@@ -2,7 +2,8 @@
  * One-time script to reclassify known non-film content from the 2026-02-28 audit.
  * Targets 11 specific items that should not appear in the film calendar.
  *
- * Run: dotenv -e .env.local -- npx tsx scripts/fix-non-film-content.ts
+ * Preview: dotenv -e .env.local -- npx tsx scripts/fix-non-film-content.ts
+ * Execute: dotenv -e .env.local -- npx tsx scripts/fix-non-film-content.ts --execute
  */
 
 import { db } from "@/db";
@@ -26,7 +27,7 @@ const RECLASSIFICATIONS: Reclassification[] = [
   { pattern: "Elvis Presley in Concert%", newType: "concert", reason: "concert broadcast" },
 ];
 
-const DRY_RUN = process.argv.includes("--dry-run");
+const DRY_RUN = !process.argv.includes("--execute");
 
 async function main() {
   console.log(`${DRY_RUN ? "[DRY RUN] " : ""}Reclassifying non-film content...\n`);

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { filters } from '$lib/stores/filters.svelte';
 	import { today as todayStore } from '$lib/stores/today.svelte';
+	import { addDaysToDateString } from '$lib/london-date';
 	import { formatOrdinalDay } from '$lib/utils';
 	import CalendarPopover from '$lib/components/filters/CalendarPopover.svelte';
 
@@ -28,18 +29,12 @@
 	// Compose the day strip: prev arrow, Today, and next 4 days of the week.
 	interface StripItem { key: string; label: string; date: string; isActive: boolean; }
 
-	function addDays(iso: string, n: number) {
-		const d = new Date(iso + 'T12:00:00Z');
-		d.setUTCDate(d.getUTCDate() + n);
-		return d.toISOString().split('T')[0];
-	}
-
 	const stripItems = $derived.by<StripItem[]>(() => {
 		const items: StripItem[] = [];
 		const todayISO = today;
 		items.push({ key: 'today', label: 'Today', date: todayISO, isActive: activeDate === todayISO });
 		for (let i = 1; i <= 4; i++) {
-			const iso = addDays(todayISO, i);
+			const iso = addDaysToDateString(todayISO, i);
 			const d = new Date(iso + 'T12:00:00Z');
 			const label = WEEKDAY_SHORT.format(d);
 			items.push({ key: iso, label, date: iso, isActive: activeDate === iso });
@@ -61,7 +56,7 @@
 
 	function stepDay(delta: number) {
 		const base = activeDate;
-		const next = addDays(base, delta);
+		const next = addDaysToDateString(base, delta);
 		if (next < today) return;
 		selectDate(next);
 	}

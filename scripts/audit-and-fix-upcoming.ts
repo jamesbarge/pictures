@@ -17,7 +17,7 @@
  *
  * Usage:
  *   npx dotenv -e .env.local -- npx tsx scripts/audit-and-fix-upcoming.ts
- *   npx dotenv -e .env.local -- npx tsx scripts/audit-and-fix-upcoming.ts --dry-run
+ *   npx dotenv -e .env.local -- npx tsx scripts/audit-and-fix-upcoming.ts --execute
  *   npx dotenv -e .env.local -- npx tsx scripts/audit-and-fix-upcoming.ts --pass 2
  *   npx dotenv -e .env.local -- npx tsx scripts/audit-and-fix-upcoming.ts --skip 5,6
  */
@@ -36,7 +36,7 @@ import { getKnownNonFilmType } from "../src/scrapers/utils/film-title-cleaner";
 // ---------------------------------------------------------------------------
 
 const args = process.argv.slice(2);
-const DRY_RUN = args.includes("--dry-run");
+const DRY_RUN = !args.includes("--execute");
 const passIndex = args.indexOf("--pass");
 const PASS_FILTER = passIndex !== -1 ? parseInt(args[passIndex + 1], 10) : null;
 const skipIndex = args.indexOf("--skip");
@@ -112,9 +112,13 @@ function shouldRun(pass: number): boolean {
  * Shell out to an npm script safely using execFileSync (no shell injection).
  * All arguments are passed as array elements, never interpolated into a shell string.
  */
-function runNpmScript(script: string, extraArgs: string[] = []): void {
+function runNpmScript(
+  script: string,
+  extraArgs: string[] = [],
+  forwardsExecute = true,
+): void {
   const scriptArgs = ["run", script, "--"];
-  if (DRY_RUN) scriptArgs.push("--dry-run");
+  if (!DRY_RUN && forwardsExecute) scriptArgs.push("--execute");
   scriptArgs.push(...extraArgs);
 
   console.log(`\n  $ npm ${scriptArgs.join(" ")}\n`);
@@ -263,7 +267,7 @@ function pass5FallbackEnrichment(): void {
     return;
   }
 
-  runNpmScript("agents:fallback-enrich", ["100"]);
+  runNpmScript("agents:fallback-enrich", ["100"], false);
 }
 
 // ---------------------------------------------------------------------------

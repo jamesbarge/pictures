@@ -4,21 +4,11 @@
 
 import { createMain, type SingleVenueConfig } from "./runner-factory";
 import { createRiversideScraperV2 } from "./cinemas/riverside-v2";
+import { getVenueFromRegistry } from "./utils/venue-from-registry";
 
 const config: SingleVenueConfig = {
   type: "single",
-  venue: {
-    id: "riverside",
-    name: "Riverside Studios",
-    shortName: "Riverside",
-    website: "https://riversidestudios.co.uk",
-    address: {
-      street: "101 Queen Caroline Street",
-      area: "Hammersmith",
-      postcode: "W6 9BN",
-    },
-    features: ["independent", "arts-centre", "riverside"],
-  },
+  venue: getVenueFromRegistry("riverside-studios"),
   createScraper: () => createRiversideScraperV2(),
 };
 

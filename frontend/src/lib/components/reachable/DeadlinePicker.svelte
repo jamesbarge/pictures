@@ -3,22 +3,28 @@
 	// every DeadlinePicker instead of reconstructed on each formatSelectedTime
 	// call. The configs are constant so the formatted output is byte-identical
 	// to the per-call builders they replace.
-	const LONDON_DATE_FORMATTER = new Intl.DateTimeFormat('en-CA', {
-		timeZone: 'Europe/London'
-	});
 	const TIME_FORMATTER = new Intl.DateTimeFormat('en-GB', {
 		hour: '2-digit',
 		minute: '2-digit',
-		hour12: false
+		hour12: false,
+		timeZone: 'Europe/London'
 	});
 	const DAY_MONTH_FORMATTER = new Intl.DateTimeFormat('en-GB', {
 		weekday: 'short',
 		day: 'numeric',
-		month: 'short'
+		month: 'short',
+		timeZone: 'Europe/London'
 	});
 </script>
 
 <script lang="ts">
+	import {
+		addDaysToDateString,
+		londonClock,
+		londonDateString,
+		nextLondonDateTime
+	} from '$lib/london-date';
+
 	let {
 		value = null,
 		onchange
@@ -44,8 +50,7 @@
 	// Check which preset is selected
 	const selectedPresetLabel = $derived.by(() => {
 		if (!value) return null;
-		const hour = value.getHours();
-		const minute = value.getMinutes();
+		const { hour, minute } = londonClock(value);
 		const found = PRESETS.find((p) => {
 			const presetHour = p.nextDay ? 0 : p.hour;
 			return presetHour === hour && p.minute === minute;
@@ -69,25 +74,14 @@
 	});
 
 	function handlePreset(preset: TimePreset) {
-		const now = new Date();
-		const date = new Date();
-		date.setHours(preset.hour, preset.minute, 0, 0);
-
-		// If time has passed today or explicitly next day
-		if (date <= now || preset.nextDay) {
-			date.setDate(date.getDate() + 1);
-		}
-
-		onchange(date);
+		onchange(nextLondonDateTime(preset.hour, preset.minute, new Date(), preset.nextDay));
 	}
 
 	function formatSelectedTime(date: Date): string {
 		const now = new Date();
-		const todayStr = LONDON_DATE_FORMATTER.format(now);
-		const tomorrowDate = new Date(now);
-		tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-		const tomorrowStr = LONDON_DATE_FORMATTER.format(tomorrowDate);
-		const targetStr = LONDON_DATE_FORMATTER.format(date);
+		const todayStr = londonDateString(now);
+		const tomorrowStr = addDaysToDateString(todayStr, 1);
+		const targetStr = londonDateString(date);
 
 		const timeStr = TIME_FORMATTER.format(date);
 

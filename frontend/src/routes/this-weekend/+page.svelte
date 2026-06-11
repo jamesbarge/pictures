@@ -59,7 +59,7 @@
 							{formatScreeningDate(date)}
 						</h2>
 						<span class="text-xs text-[var(--color-text-tertiary)] tracking-wide-swiss uppercase">
-							{new Date(date + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short', timeZone: 'Europe/London' }).toUpperCase()}
+							{new Date(date + 'T12:00:00Z').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short', timeZone: 'Europe/London' }).toUpperCase()}
 						</span>
 					</div>
 

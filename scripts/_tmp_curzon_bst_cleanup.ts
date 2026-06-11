@@ -2,7 +2,7 @@ import * as dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
 import postgres from "postgres";
 
-const APPLY = process.argv.includes("--apply");
+const APPLY = process.argv.includes("--execute");
 
 async function main() {
   const sql = postgres(process.env.DATABASE_URL!, { prepare: false });
@@ -46,7 +46,7 @@ async function main() {
     const result = await sql`DELETE FROM screenings WHERE id = ANY(${ids}) RETURNING id`;
     console.log(`\nDeleted ${result.length} ghost rows.`);
   } else if (!APPLY) {
-    console.log(`\n(dry run — re-run with --apply to delete)`);
+    console.log(`\n(dry run — re-run with --execute to delete)`);
   }
 
   await sql.end();

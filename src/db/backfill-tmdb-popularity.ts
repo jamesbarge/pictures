@@ -8,7 +8,7 @@ import { films } from "./schema";
 import { and, eq, isNotNull, isNull } from "drizzle-orm";
 import { getTMDBClient } from "@/lib/tmdb";
 
-const DRY_RUN = process.argv.includes("--dry-run");
+const DRY_RUN = !process.argv.includes("--execute");
 const limitArg = process.argv.find((arg) => arg.startsWith("--limit="));
 const LIMIT = limitArg ? Number.parseInt(limitArg.split("=")[1] ?? "", 10) : undefined;
 const RATE_LIMIT_MS = 250;

@@ -4,7 +4,13 @@
 	import CalendarPopover from './CalendarPopover.svelte';
 	import { filters } from '$lib/stores/filters.svelte';
 	import { today as todayStore } from '$lib/stores/today.svelte';
-	import { FORMAT_OPTIONS, TIME_PRESETS } from '$lib/constants/filters';
+	import { addDaysToDateString } from '$lib/london-date';
+	import {
+		DECADE_OPTIONS,
+		FORMAT_OPTIONS,
+		GENRE_OPTIONS,
+		TIME_PRESETS
+	} from '$lib/constants/filters';
 	import { trackFilterChange } from '$lib/analytics/posthog';
 
 	interface FilterCinema {
@@ -25,7 +31,7 @@
 		cinemas?: FilterCinema[];
 		displayMode?: DisplayMode;
 		onDisplayModeChange?: (m: DisplayMode) => void;
-		onOpenFilters?: () => void;
+		onOpenFilters?: (trigger: HTMLButtonElement) => void;
 	} = $props();
 
 	// — Mobile FILTERS chip: count of active non-search, non-date filters —
@@ -69,19 +75,13 @@
 	}
 
 	// — Date range (THIS WEEK / TODAY / ALL) —
-	function plusDays(iso: string, n: number) {
-		const d = new Date(iso + 'T12:00:00Z');
-		d.setUTCDate(d.getUTCDate() + n);
-		return d.toISOString().split('T')[0];
-	}
-
 	const dateRange = $derived.by<'today' | 'tomorrow' | 'this-week' | 'all' | 'custom'>(() => {
 		const t = todayStore.value;
 		if (!filters.dateFrom && !filters.dateTo) return 'all';
 		if (filters.dateFrom === t && filters.dateTo === t) return 'today';
-		const tomorrow = plusDays(t, 1);
+		const tomorrow = addDaysToDateString(t, 1);
 		if (filters.dateFrom === tomorrow && filters.dateTo === tomorrow) return 'tomorrow';
-		if (filters.dateFrom === t && filters.dateTo === plusDays(t, 7)) return 'this-week';
+		if (filters.dateFrom === t && filters.dateTo === addDaysToDateString(t, 7)) return 'this-week';
 		return 'custom';
 	});
 
@@ -100,7 +100,7 @@
 		} else if (value === 'today') {
 			filters.setDatePreset('today');
 		} else if (value === 'tomorrow') {
-			const tom = plusDays(todayStore.value, 1);
+			const tom = addDaysToDateString(todayStore.value, 1);
 			filters.dateFrom = tom;
 			filters.dateTo = tom;
 		} else {
@@ -111,9 +111,7 @@
 	// — Chip labels reflect current filter state —
 	const whenLabel = $derived.by(() => {
 		const today = todayStore.value;
-		const t = new Date(today + 'T12:00:00Z');
-		t.setUTCDate(t.getUTCDate() + 1);
-		const tomorrow = t.toISOString().split('T')[0];
+		const tomorrow = addDaysToDateString(today, 1);
 		if (!filters.dateFrom) return 'WHEN';
 		if (filters.dateFrom === today) return 'TODAY';
 		if (filters.dateFrom === tomorrow) return 'TOMORROW';
@@ -139,17 +137,13 @@
 	});
 
 	// — Genre + Era —
-	const GENRES = ['Drama', 'Comedy', 'Documentary', 'Thriller', 'Sci-fi', 'Romance', 'Horror'];
-	const DECADES = ['2020s', '2010s', '2000s', '90s', '80s', '70s', 'Pre-1970'];
-
-	function toggleGenre(g: string) {
-		const key = g.toLowerCase();
-		const was = filters.genres.includes(key);
-		filters.genres = was ? filters.genres.filter((x) => x !== key) : [...filters.genres, key];
-		trackFilterChange('genre', g, was ? 'removed' : 'added');
+	function toggleGenre(value: string, label: string) {
+		const was = filters.genres.includes(value);
+		filters.genres = was ? filters.genres.filter((x) => x !== value) : [...filters.genres, value];
+		trackFilterChange('genre', label, was ? 'removed' : 'added');
 	}
-	function isGenreActive(g: string) {
-		return filters.genres.includes(g.toLowerCase());
+	function isGenreActive(value: string) {
+		return filters.genres.includes(value);
 	}
 
 	function toggleDecade(d: string) {
@@ -160,7 +154,12 @@
 
 	const genreLabel = $derived.by(() => {
 		if (!filters.genres.length) return 'GENRE';
-		if (filters.genres.length === 1) return filters.genres[0].toUpperCase();
+		if (filters.genres.length === 1) {
+			return (
+				GENRE_OPTIONS.find((genre) => genre.value === filters.genres[0])?.label
+				?? filters.genres[0]
+			).toUpperCase();
+		}
 		return `${filters.genres.length} GENRES`;
 	});
 
@@ -205,9 +204,7 @@
 		}
 		if (preset === 'today') filters.setDatePreset('today');
 		else if (preset === 'tomorrow') {
-			const t = new Date(todayStore.value + 'T12:00:00Z');
-			t.setUTCDate(t.getUTCDate() + 1);
-			const iso = t.toISOString().split('T')[0];
+			const iso = addDaysToDateString(todayStore.value, 1);
 			filters.dateFrom = iso;
 			filters.dateTo = iso;
 		}
@@ -327,7 +324,7 @@
 				type="button"
 				class="chip chip-full chip-mobile-filters"
 				class:active={mobileFilterCount > 0}
-				onclick={() => onOpenFilters?.()}
+				onclick={(event) => onOpenFilters?.(event.currentTarget)}
 				aria-label="Open filters"
 			>
 				<span class="chip-label">
@@ -403,11 +400,11 @@
 				<Dropdown open={openPanel === 'genre'} onClose={close} align="right" ariaLabel="Genre">
 					<div class="panel">
 						<div class="panel-section">
-							{#each GENRES as g (g)}
+							{#each GENRE_OPTIONS as genre (genre.value)}
 								<Checkbox
-									checked={isGenreActive(g)}
-									label={g}
-									onToggle={() => toggleGenre(g)}
+									checked={isGenreActive(genre.value)}
+									label={genre.label}
+									onToggle={() => toggleGenre(genre.value, genre.label)}
 								/>
 							{/each}
 						</div>
@@ -470,7 +467,7 @@
 				<Dropdown open={openPanel === 'era'} onClose={close} align="right" ariaLabel="Era">
 					<div class="panel">
 						<div class="panel-section">
-							{#each DECADES as d (d)}
+							{#each DECADE_OPTIONS as d (d)}
 								<Checkbox
 									checked={filters.decades.includes(d)}
 									label={d}

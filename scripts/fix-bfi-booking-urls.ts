@@ -9,7 +9,7 @@
  *
  * Usage:
  *   npx tsx scripts/fix-bfi-booking-urls.ts          # dry run
- *   npx tsx scripts/fix-bfi-booking-urls.ts --apply   # apply changes
+ *   npx tsx scripts/fix-bfi-booking-urls.ts --execute # apply changes
  */
 
 import { db } from "../src/db";
@@ -17,7 +17,7 @@ import { screenings } from "../src/db/schema";
 import { sql, eq } from "drizzle-orm";
 import { buildBFISearchUrl } from "../src/scrapers/bfi-pdf/url-builder";
 
-const DRY_RUN = !process.argv.includes("--apply");
+const DRY_RUN = !process.argv.includes("--execute");
 
 async function main() {
   console.log(`[fix-bfi-urls] ${DRY_RUN ? "DRY RUN" : "APPLYING CHANGES"}\n`);
@@ -93,7 +93,7 @@ async function main() {
   console.log(`  Total:   ${broken.length}`);
 
   if (DRY_RUN && updated > 0) {
-    console.log(`\nRe-run with --apply to commit changes.`);
+    console.log(`\nRe-run with --execute to commit changes.`);
   }
 
   process.exit(0);

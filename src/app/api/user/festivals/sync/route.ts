@@ -10,6 +10,7 @@ import { eq, and, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { BadRequestError, handleApiError } from "@/lib/api-errors";
 import { requireAuth } from "@/lib/auth";
+import { ensureUserRecord } from "@/lib/user-record";
 import type {
   FestivalInterestLevel,
   FestivalScheduleStatus,
@@ -126,6 +127,8 @@ export async function POST(request: NextRequest) {
     }
 
     const { follows: clientFollows, schedule: clientSchedule } = parseResult.data;
+
+    await ensureUserRecord(userId);
 
     // Get existing server data
     const serverFollows = await db

@@ -244,7 +244,8 @@
 										NEXT: {new Date(film.screenings.next.datetime).toLocaleDateString('en-GB', {
 											weekday: 'short',
 											day: 'numeric',
-											month: 'short'
+											month: 'short',
+											timeZone: 'Europe/London'
 										})}
 										@ {film.screenings.next.cinemaName}
 									</p>

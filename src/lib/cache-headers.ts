@@ -20,3 +20,16 @@ export const CACHE_2MIN = {
 export const CACHE_1HOUR = {
   "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400",
 } as const;
+
+/** Private responses must never be stored by browsers or shared edge caches. */
+export const PRIVATE_NO_STORE = {
+  "Cache-Control": "private, no-store",
+} as const;
+
+/** Keep anonymous responses cacheable while preventing personalized response caching. */
+export function getUserAwareCacheHeaders<T extends Record<string, string>>(
+  userId: string | null,
+  publicHeaders: T
+): T | typeof PRIVATE_NO_STORE {
+  return userId ? PRIVATE_NO_STORE : publicHeaders;
+}

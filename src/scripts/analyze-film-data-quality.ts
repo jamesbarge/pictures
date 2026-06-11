@@ -256,13 +256,13 @@ async function main() {
     if (results.problematicTitles.length > 0) {
       console.log("\n1. Fix problematic titles:");
       console.log("   - Add missing event patterns to src/lib/title-patterns.ts");
-      console.log("   - Run: npm run db:backfill-posters -- --limit=100");
+      console.log("   - Preview: npm run db:backfill-posters -- --limit=100");
     }
 
     if (results.filmsMissingPoster > 0) {
       console.log("\n2. Backfill missing posters:");
-      console.log("   - Run: npm run db:backfill-posters");
-      console.log("   - For dry run: npm run db:backfill-posters -- --dry-run");
+      console.log("   - Preview: npm run db:backfill-posters");
+      console.log("   - Execute: npm run db:backfill-posters -- --execute");
     }
 
     if (results.filmsMissingTmdbId > 0) {

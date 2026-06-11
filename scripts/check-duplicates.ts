@@ -43,8 +43,8 @@ async function checkAndCleanDuplicates() {
     console.log("  (none)");
   }
 
-  // If --fix flag is passed, clean up duplicates
-  const shouldFix = process.argv.includes("--fix");
+  // If --execute is passed, clean up duplicates
+  const shouldFix = process.argv.includes("--execute");
 
   if (duplicateGroups.length > 0 && shouldFix) {
     console.log("\n--- FIXING DUPLICATES ---\n");
@@ -101,8 +101,8 @@ async function checkAndCleanDuplicates() {
 
     console.log("Cleanup complete!");
   } else if (duplicateGroups.length > 0) {
-    console.log("\nTo fix duplicates, run with --fix flag:");
-    console.log("  npx tsx scripts/check-duplicates.ts --fix");
+    console.log("\nTo fix duplicates, run with --execute:");
+    console.log("  npx tsx scripts/check-duplicates.ts --execute");
   }
 
   // Show summary
@@ -120,4 +120,3 @@ async function checkAndCleanDuplicates() {
 }
 
 checkAndCleanDuplicates();
-

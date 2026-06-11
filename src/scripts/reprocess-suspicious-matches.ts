@@ -9,8 +9,7 @@
  *
  * Run with: npx tsx src/scripts/reprocess-suspicious-matches.ts
  * Options:
- *   --dry-run     Show what would be done without making changes
- *   --fix         Actually update the database with new matches
+ *   --execute     Actually update the database with new matches
  *   --cinema=X    Only process films from a specific cinema
  */
 
@@ -46,8 +45,8 @@ interface SuspiciousFilm {
 
 async function main() {
   const args = process.argv.slice(2);
-  const isDryRun = args.includes("--dry-run");
-  const shouldFix = args.includes("--fix");
+  const shouldFix = args.includes("--execute");
+  const isDryRun = !shouldFix;
   const cinemaArg = args.find((a) => a.startsWith("--cinema="));
   const cinemaFilter = cinemaArg?.split("=")[1];
 

@@ -7,10 +7,11 @@
  * 3. Re-running TMDB matching with better hints
  * 4. Fetching posters from multiple sources
  *
- * Run with: npx dotenv -e .env.local -- npx tsx src/db/backfill-posters.ts
+ * Preview: npx dotenv -e .env.local -- npx tsx src/db/backfill-posters.ts
+ * Execute: npx dotenv -e .env.local -- npx tsx src/db/backfill-posters.ts --execute
  *
  * Options:
- *   --dry-run    Show what would be updated without making changes
+ *   --execute    Apply proposed changes
  *   --limit=N    Process only N films (for testing)
  *   --verbose    Show detailed logging
  */
@@ -33,7 +34,7 @@ import { getKnownNonFilmType } from "@/scrapers/utils/film-title-cleaner";
 
 // Parse CLI args
 const args = process.argv.slice(2);
-const DRY_RUN = args.includes("--dry-run");
+const DRY_RUN = !args.includes("--execute");
 const VERBOSE = args.includes("--verbose");
 const limitArg = args.find(a => a.startsWith("--limit="));
 const LIMIT = limitArg ? parseInt(limitArg.split("=")[1]) : undefined;
@@ -564,7 +565,7 @@ async function backfillPosters(): Promise<void> {
   }
 
   if (DRY_RUN) {
-    console.log("\n⚠️  This was a DRY RUN. Run without --dry-run to apply changes.");
+    console.log("\n⚠️  This was a DRY RUN. Re-run with --execute to apply changes.");
   }
 }
 

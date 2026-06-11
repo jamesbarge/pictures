@@ -210,34 +210,29 @@ interface PicturehouseApiResponse {
 
 export class PicturehouseScraper implements ChainScraper {
   chainConfig = PICTUREHOUSE_CONFIG;
+  venueErrors = new Map<string, string>();
 
   /**
    * Fetch showtimes from Picturehouse API for a specific venue
    */
-  private async fetchVenueShowtimes(venue: VenueConfig): Promise<PicturehouseApiResponse | null> {
+  private async fetchVenueShowtimes(venue: VenueConfig): Promise<PicturehouseApiResponse> {
     const formData = new FormData();
     formData.append("cinema_id", venue.chainVenueId || "");
 
-    try {
-      const response = await fetch(this.chainConfig.apiUrl!, {
-        method: "POST",
-        body: formData,
-        headers: {
-          "User-Agent": CHROME_USER_AGENT,
-          "Accept": "application/json",
-        },
-      });
+    const response = await fetch(this.chainConfig.apiUrl!, {
+      method: "POST",
+      body: formData,
+      headers: {
+        "User-Agent": CHROME_USER_AGENT,
+        "Accept": "application/json",
+      },
+    });
 
-      if (!response.ok) {
-        console.error(`[picturehouse] API error for ${venue.name}: ${response.status}`);
-        return null;
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error(`[picturehouse] Failed to fetch ${venue.name}:`, error);
-      return null;
+    if (!response.ok) {
+      throw new Error(`Picturehouse API error for ${venue.name}: HTTP ${response.status}`);
     }
+
+    return response.json();
   }
 
   /**
@@ -247,7 +242,7 @@ export class PicturehouseScraper implements ChainScraper {
     const screenings: RawScreening[] = [];
 
     if (data.response !== "success" || !data.movies) {
-      return screenings;
+      throw new Error(`Picturehouse API returned an invalid response for ${venue.name}`);
     }
 
     for (const movie of data.movies) {
@@ -380,17 +375,24 @@ export class PicturehouseScraper implements ChainScraper {
    */
   async scrapeVenues(venueIds: string[]): Promise<Map<string, RawScreening[]>> {
     const results = new Map<string, RawScreening[]>();
+    this.venueErrors.clear();
 
     for (const venueId of venueIds) {
       const venue = this.chainConfig.venues.find(v => v.id === venueId);
       if (!venue) {
-        console.warn(`[picturehouse] Unknown venue: ${venueId}`);
+        this.venueErrors.set(venueId, `Unknown Picturehouse venue: ${venueId}`);
         continue;
       }
 
       console.log(`[picturehouse] Scraping ${venue.name}...`);
-      const screenings = await this.scrapeVenue(venueId);
-      results.set(venueId, screenings);
+      try {
+        const screenings = await this.scrapeVenue(venueId);
+        results.set(venueId, screenings);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error(`[picturehouse] Error scraping ${venue.name}:`, error);
+        this.venueErrors.set(venueId, message);
+      }
 
       // Rate limiting
       await new Promise(r => setTimeout(r, this.chainConfig.delayBetweenRequests));
@@ -405,13 +407,10 @@ export class PicturehouseScraper implements ChainScraper {
   async scrapeVenue(venueId: string): Promise<RawScreening[]> {
     const venue = this.chainConfig.venues.find(v => v.id === venueId);
     if (!venue) {
-      console.error(`[picturehouse] Venue not found: ${venueId}`);
-      return [];
+      throw new Error(`Picturehouse venue not found: ${venueId}`);
     }
 
     const data = await this.fetchVenueShowtimes(venue);
-    if (!data) return [];
-
     const screenings = this.parseShowtimes(data, venue);
     console.log(`[picturehouse] ${venue.name}: ${screenings.length} screenings`);
 
