@@ -60,6 +60,9 @@ function londonOffsetMs(date: Date): number {
 		parts.minute,
 		parts.second
 	);
+	// londonAsUtc is whole-second (Intl gives no sub-second parts), so strip
+	// the input's sub-second component too or the offset would be wrong by up
+	// to 999ms for inputs like `new Date()`.
 	return londonAsUtc - Math.floor(date.getTime() / 1000) * 1000;
 }
 
