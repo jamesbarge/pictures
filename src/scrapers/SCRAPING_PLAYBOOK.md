@@ -29,6 +29,7 @@ The `/scrape` slash command runs three read-only detectors against `scraper_runs
 
 ## Primary Entrypoints
 - Unified CLI: `src/scrapers/cli.ts` (`npm run scrape -- <slug>`)
+- Scraper registry: `src/scrapers/registry.ts` is the single source of truth for orchestrator tasks and the unified CLI. Add new scrapers there; use `cliAliases` only to preserve established CLI slugs.
 - Pipeline orchestration: `src/scrapers/pipeline.ts`
 - Base contract: `src/scrapers/base.ts`
 - Shared runner helper: `src/scrapers/runner-factory.ts`

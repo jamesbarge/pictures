@@ -38,7 +38,7 @@ import { createPhoenixScraper } from "@/scrapers/cinemas/phoenix";
 import { createElectricScraperV2 } from "@/scrapers/cinemas/electric-v2";
 import { createLexiScraper } from "@/scrapers/cinemas/lexi";
 import { createRegentStreetScraper } from "@/scrapers/cinemas/regent-street";
-import { createRichMixScraper } from "@/scrapers/cinemas/rich-mix";
+import { createRichMixScraperV2 } from "@/scrapers/cinemas/rich-mix-v2";
 import { createJW3Scraper } from "@/scrapers/cinemas/jw3";
 
 // Independent (Cheerio / API) factories
@@ -48,7 +48,7 @@ import { createPrinceCharlesScraper } from "@/scrapers/cinemas/prince-charles";
 import { createICAScraper } from "@/scrapers/cinemas/ica";
 import { createGenesisScraper } from "@/scrapers/cinemas/genesis";
 import { createPeckhamplexScraper } from "@/scrapers/cinemas/peckhamplex";
-import { createNickelScraper } from "@/scrapers/cinemas/the-nickel";
+import { createNickelScraperV2 } from "@/scrapers/cinemas/nickel-v2";
 import { createGardenCinemaScraper } from "@/scrapers/cinemas/garden";
 import { createCloseUpCinemaScraper } from "@/scrapers/cinemas/close-up";
 import { createBerthaDochouseScraper } from "@/scrapers/cinemas/bertha-dochouse";
@@ -66,6 +66,8 @@ export type ScraperWave = "chain" | "playwright" | "cheerio" | "enrichment";
 export interface ScraperRegistryEntry {
   /** Task ID, e.g. "scraper-bfi" or "scraper-chain-curzon". */
   taskId: string;
+  /** Optional legacy CLI aliases kept for backwards compatibility. */
+  cliAliases?: string[];
   /** Config shape — used to dispatch in the runner factory. */
   type: "single" | "multi" | "chain";
   /** Logical wave this scraper runs in (orchestration order). */
@@ -125,6 +127,7 @@ const PLAYWRIGHT_ENTRIES: ScraperRegistryEntry[] = [
   },
   {
     taskId: "scraper-phoenix",
+    cliAliases: ["phoenix-east-finchley"],
     type: "single",
     wave: "playwright",
     buildConfig: (): SingleVenueConfig => ({
@@ -173,7 +176,7 @@ const PLAYWRIGHT_ENTRIES: ScraperRegistryEntry[] = [
     buildConfig: (): SingleVenueConfig => ({
       type: "single",
       venue: getVenueFromRegistry("rich-mix"),
-      createScraper: () => createRichMixScraper(),
+      createScraper: () => createRichMixScraperV2(),
     }),
   },
   {
@@ -212,6 +215,7 @@ const CHEERIO_ENTRIES: ScraperRegistryEntry[] = [
   },
   {
     taskId: "scraper-prince-charles",
+    cliAliases: ["pcc"],
     type: "single",
     wave: "cheerio",
     buildConfig: (): SingleVenueConfig => ({
@@ -252,12 +256,13 @@ const CHEERIO_ENTRIES: ScraperRegistryEntry[] = [
   },
   {
     taskId: "scraper-nickel",
+    cliAliases: ["the-nickel"],
     type: "single",
     wave: "cheerio",
     buildConfig: (): SingleVenueConfig => ({
       type: "single",
       venue: getVenueFromRegistry("the-nickel"),
-      createScraper: () => createNickelScraper(),
+      createScraper: () => createNickelScraperV2(),
     }),
   },
   {
@@ -404,4 +409,18 @@ export function getScraperByTaskId(taskId: string): ScraperRegistryEntry | undef
 /** All entries in a given wave, in declared order. */
 export function getScrapersByWave(wave: ScraperWave): ScraperRegistryEntry[] {
   return SCRAPER_REGISTRY.filter((e) => e.wave === wave);
+}
+
+/** Canonical CLI ID derived from the task ID. */
+export function getScraperCliId(entry: ScraperRegistryEntry): string {
+  return entry.taskId.replace(/^scraper-chain-/, "").replace(/^scraper-/, "");
+}
+
+/** Resolve canonical or legacy CLI IDs from the central registry. */
+export function getScraperByCliId(id: string): ScraperRegistryEntry | undefined {
+  return SCRAPER_REGISTRY.find(
+    (entry) =>
+      entry.wave !== "enrichment" &&
+      (getScraperCliId(entry) === id || entry.cliAliases?.includes(id)),
+  );
 }
