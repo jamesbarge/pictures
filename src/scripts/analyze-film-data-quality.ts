@@ -13,68 +13,12 @@
 import { db } from "@/db";
 import { films, screenings } from "@/db/schema";
 import { gte } from "drizzle-orm";
-
-// Patterns that indicate a title wasn't properly cleaned
-const PROBLEMATIC_TITLE_PATTERNS = [
-  // Festival patterns
-  /\bFilm\s+Festival\s*:/i,
-  /\bFest\s*:/i,
-  /\bFestival\s*:/i,
-  /^Anne['']s\s+Film\s+Festival/i,
-  /^LSFF\s*:/i,
-  /^LFF\s*:/i,
-  /^BFI\s+Flare\s*:/i,
-  /^Raindance\s*:/i,
-  /^FrightFest\s*:/i,
-
-  // Event series that should have been stripped
-  /^Saturday\s+Morning\s+Picture\s+Club\s*:/i,
-  /^Kids['']?\s*Club\s*:/i,
-  /^Family\s+Film\s*:/i,
-  /^Classic\s+Matinee\s*:/i,
-  /^Varda\s+Film\s+Club\s*:/i,
-  /^Arabic\s+Cinema\s+Club\s*:/i,
-  /^The\s+Liberated\s+Film\s+Club\s*:/i,
-  /^Queer\s+Horror\s+Nights\s*:/i,
-  /^Drink\s+&\s+Dine\s*:/i,
-  /^DINE\s+&\s+DRINK\s*:/i,
-  /^Doc\s*['N\s]*Roll\s*:/i,
-  /^Underscore\s+Cinema\s*:/i,
-
-  // Premiere patterns
-  /^UK\s+Premiere\s*[\|:]/i,
-  /^World\s+Premiere\s*[\|:]/i,
-  /^Preview\s*:/i,
-
-  // Format prefixes
-  /^35mm\s*:/i,
-  /^70mm\s*:/i,
-  /^4K\s*:/i,
-  /^IMAX\s*:/i,
-
-  // Live broadcasts that should be categorized differently
-  /^Met\s+Opera\s+(Live|Encore)\s*:/i,
-  /^National\s+Theatre\s+Live\s*:/i,
-  /^NT\s+Live\s*:/i,
-  /^Royal\s+(Opera|Ballet)\s*:/i,
-  /^ROH\s+Live\s*:/i,
-
-  // Double/triple bills not handled
-  /Double[-\s]?Bill/i,
-  /Triple[-\s]?Bill/i,
-];
-
-// Live broadcast patterns (should have contentType = "live_broadcast")
-const LIVE_BROADCAST_PATTERNS = [
-  /\bMet\s+Opera\b/i,
-  /\bNational\s+Theatre\s+Live\b/i,
-  /\bNT\s+Live\b/i,
-  /\bRoyal\s+(Opera|Ballet)\b/i,
-  /\bROH\s+Live\b/i,
-  /\bBolshoi\s+Ballet\b/i,
-  /\bBerliner\s+Philharmoniker\b/i,
-  /\bExhibition\s+on\s+Screen\b/i,
-];
+import {
+  EVENT_PREFIX_PATTERNS,
+  findEventPrefix,
+  LIVE_BROADCAST_KEYWORDS,
+  TITLE_SUFFIXES,
+} from "@/lib/title-patterns";
 
 interface AnalysisResult {
   totalFilms: number;
@@ -136,17 +80,17 @@ async function analyzeFilmDataQuality(): Promise<AnalysisResult> {
   console.log("\n🔍 Checking for problematic titles...");
   const problematicTitles = [];
   for (const film of allFilms) {
-    for (const pattern of PROBLEMATIC_TITLE_PATTERNS) {
-      if (pattern.test(film.title)) {
-        problematicTitles.push({
-          id: film.id,
-          title: film.title,
-          pattern: pattern.source,
-          posterUrl: film.posterUrl,
-          tmdbId: film.tmdbId,
-        });
-        break; // Only count each film once
-      }
+    const prefix = findEventPrefix(film.title);
+    const pattern = [...EVENT_PREFIX_PATTERNS, ...TITLE_SUFFIXES].find((value) =>
+      value.test(film.title));
+    if (prefix || pattern) {
+      problematicTitles.push({
+        id: film.id,
+        title: film.title,
+        pattern: prefix ?? pattern!.source,
+        posterUrl: film.posterUrl,
+        tmdbId: film.tmdbId,
+      });
     }
   }
   console.log(`Films with problematic titles: ${problematicTitles.length}`);
@@ -155,17 +99,16 @@ async function analyzeFilmDataQuality(): Promise<AnalysisResult> {
   console.log("\n🔍 Checking for misclassified live broadcasts...");
   const liveBroadcastsMisclassified = [];
   for (const film of allFilms) {
-    if (film.contentType === "film") {
-      for (const pattern of LIVE_BROADCAST_PATTERNS) {
-        if (pattern.test(film.title)) {
-          liveBroadcastsMisclassified.push({
-            id: film.id,
-            title: film.title,
-            contentType: film.contentType,
-          });
-          break;
-        }
-      }
+    const normalized = film.title.toLowerCase();
+    if (
+      film.contentType === "film" &&
+      LIVE_BROADCAST_KEYWORDS.some((keyword) => normalized.includes(keyword))
+    ) {
+      liveBroadcastsMisclassified.push({
+        id: film.id,
+        title: film.title,
+        contentType: film.contentType,
+      });
     }
   }
   console.log(`Live broadcasts misclassified as films: ${liveBroadcastsMisclassified.length}`);

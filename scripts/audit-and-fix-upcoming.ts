@@ -29,6 +29,7 @@ import { films, screenings } from "../src/db/schema";
 import { eq, isNull, gte, and, count } from "drizzle-orm";
 import { execFileSync } from "child_process";
 import type { AuditSummary } from "../src/scripts/audit-film-data";
+import { getKnownNonFilmType } from "../src/scrapers/utils/film-title-cleaner";
 
 // ---------------------------------------------------------------------------
 // CLI flags
@@ -80,86 +81,6 @@ function loadThresholdOverrides(path: string | null): DodgyThresholds {
     console.warn(`  [Warning] Could not load thresholds from ${path}, using defaults`);
     return defaults;
   }
-}
-
-// ---------------------------------------------------------------------------
-// Non-film detection patterns (Pass 2)
-// ---------------------------------------------------------------------------
-
-/** Patterns that indicate live broadcast content */
-const LIVE_BROADCAST_PATTERNS = [
-  /\bnt\s+live\b/i,
-  /\bmet\s+opera\b/i,
-  /\broh\s*(:|live)\b/i,
-  /\broyal\s+opera\s+house\b/i,
-  /\broyal\s+ballet\b/i,
-  /\bbolshoi\s+ballet\b/i,
-  /\brbo\s+(cinema|encore|live)\b/i,
-  /\bglyndebourne\b/i,
-  /\blive\s+from\s+(the\s+)?(met|royal|national|covent)/i,
-  /\bopera\s+live\b/i,
-  /\bballet\s+live\b/i,
-];
-
-/** Patterns that indicate concert/music content */
-const CONCERT_PATTERNS = [
-  /\blive\s+in\s+concert\b/i,
-  /\balbum\s+listening\b/i,
-  /\bdj\s+set\b/i,
-  /\blive\s+music\s+performance\b/i,
-  /\bsymphony\s+screening\b/i,
-];
-
-/** Patterns that indicate non-viewable events */
-const EVENT_PATTERNS = [
-  /\bquiz\s+night\b/i,
-  /\bpub\s+quiz\b/i,
-  /\bworkshop\b/i,
-  /\bmasterclass\b/i,
-  /\bfilm\s+reading\s+group\b/i,
-  /\bpodcast\s+live\b/i,
-  /\bbook\s+launch\b/i,
-  /\bpanel\s+discussion\b/i,
-  /\bnetworking\s+event\b/i,
-  /\bcommunity\s+meeting\b/i,
-  /\bfundraiser\b/i,
-  /\bcharity\s+event\b/i,
-  /\bopen\s+mic\b/i,
-  /\bstand[\s-]up\s+comedy\b/i,
-  /\bcomedy\s+night\b/i,
-  /\bkaraoke\b/i,
-  /\bcraft\s+session\b/i,
-  /\btasting\s+(event|evening|session)\b/i,
-];
-
-/** Patterns for kids activities that aren't actual films */
-const KIDS_NON_FILM_PATTERNS = [
-  /^toddler\s+time$/i,           // "Toddler Time" alone (no film title)
-  /^baby\s+cinema$/i,            // "Baby Cinema" alone
-  /\bplay\s+&?\s*stay\b/i,
-  /\bsensory\s+session\b/i,
-];
-
-type ContentType = "film" | "concert" | "live_broadcast" | "event";
-
-/**
- * Classify a film title as non-film content.
- * Returns null if it looks like a real film.
- */
-function classifyNonFilm(title: string): ContentType | null {
-  for (const pattern of LIVE_BROADCAST_PATTERNS) {
-    if (pattern.test(title)) return "live_broadcast";
-  }
-  for (const pattern of CONCERT_PATTERNS) {
-    if (pattern.test(title)) return "concert";
-  }
-  for (const pattern of EVENT_PATTERNS) {
-    if (pattern.test(title)) return "event";
-  }
-  for (const pattern of KIDS_NON_FILM_PATTERNS) {
-    if (pattern.test(title)) return "event";
-  }
-  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -255,6 +176,7 @@ async function pass2NonFilmDetection(): Promise<{ reclassified: number; deleted:
       title: films.title,
       tmdbId: films.tmdbId,
       contentType: films.contentType,
+      createdAt: films.createdAt,
     })
     .from(films)
     .innerJoin(screenings, eq(screenings.filmId, films.id))
@@ -271,11 +193,17 @@ async function pass2NonFilmDetection(): Promise<{ reclassified: number; deleted:
   let reclassified = 0;
   let deleted = 0;
 
+  const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
   for (const film of candidates) {
-    const newType = classifyNonFilm(film.title);
+    const newType = getKnownNonFilmType(film.title);
     if (!newType) continue;
 
-    const isNonViewable = newType === "event";
+    // Same 24-hour guard as runNonFilmDetection in src/lib/data-quality:
+    // a brand-new film that matches an event pattern may simply not have
+    // been enriched yet — reclassify it instead of destroying it.
+    const isNonViewable =
+      newType === "event" && Boolean(film.createdAt && film.createdAt <= oneDayAgo);
 
     if (isNonViewable) {
       console.log(`  [DELETE] "${film.title}" -> ${newType}`);

@@ -22,6 +22,7 @@ import {
   LIVE_BROADCAST_KEYWORDS,
   escapeRegex,
 } from "./patterns";
+import { decodeHtmlEntities } from "../title-patterns";
 
 /** Confidence when no extraction is needed — title used as-is */
 const FULL_CONFIDENCE = 1.0;
@@ -80,12 +81,7 @@ export function extractFilmTitleSync(title: string): PatternExtractionResult {
   }
 
   // Decode HTML entities
-  extracted = extracted
-    .replace(/&amp;/g, "&")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">");
+  extracted = decodeHtmlEntities(extracted);
 
   // Check for "presents" pattern first
   const presentsMatch = extracted.match(PRESENTS_PATTERN);

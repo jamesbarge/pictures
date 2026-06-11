@@ -189,11 +189,32 @@ describe("decodeHtmlEntities", () => {
     expect(decodeHtmlEntities("Plain Title")).toBe("Plain Title");
   });
 
-  it("does NOT decode other entities (only the 5 explicit ones)", () => {
-    // The function does not use a generic HTML entity decoder — only the
-    // 5 patterns above. `&nbsp;` and named entities are left alone.
-    // Pinning this so future callers know to NOT rely on full decoding.
-    expect(decodeHtmlEntities("Cool&nbsp;Title")).toBe("Cool&nbsp;Title");
+  it("decodes common punctuation and spacing entities", () => {
+    expect(decodeHtmlEntities("Cool&nbsp;Title")).toBe("Cool Title");
+    expect(decodeHtmlEntities("It&rsquo;s &lsquo;alive&rsquo;")).toBe(
+      "It’s ‘alive’",
+    );
+    expect(decodeHtmlEntities("Wait&hellip; now&mdash;go")).toBe(
+      "Wait… now—go",
+    );
+  });
+
+  it("decodes decimal and hexadecimal numeric entities", () => {
+    expect(decodeHtmlEntities("Q&#38;A")).toBe("Q&A");
+    expect(decodeHtmlEntities("Q&#x26;A")).toBe("Q&A");
+    expect(decodeHtmlEntities("&#8217;")).toBe("’");
+  });
+
+  it("repairs HTML-encoded UTF-8 mojibake", () => {
+    expect(
+      decodeHtmlEntities("S&Atilde;&iexcl;t&Atilde;&iexcl;ntang&Atilde;&sup3;"),
+    ).toBe("Sátántangó");
+  });
+
+  it("leaves unknown and invalid entities unchanged", () => {
     expect(decodeHtmlEntities("Caf&eacute;")).toBe("Caf&eacute;");
+    expect(decodeHtmlEntities("Bad &#99999999; entity")).toBe(
+      "Bad &#99999999; entity",
+    );
   });
 });

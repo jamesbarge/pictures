@@ -15,108 +15,11 @@ import { films, screenings } from "@/db/schema";
 import { eq, isNull, gte, and } from "drizzle-orm";
 import { matchFilmToTMDB, getTMDBClient } from "@/lib/tmdb";
 import { extractFilmTitle } from "@/lib/title-extraction";
+import { decodeHtmlEntities } from "@/lib/title-patterns";
 import { cleanFilmTitle } from "@/scrapers/pipeline";
 
 const DRY_RUN = !process.argv.includes("--execute");
 const RATE_LIMIT_MS = 300;
-
-// ---------------------------------------------------------------------------
-// HTML entity decoding
-// ---------------------------------------------------------------------------
-
-/**
- * Decode HTML entities and mojibake (double-encoded UTF-8 via Latin-1).
- * Example: "S&Atilde;&iexcl;t&Atilde;&iexcl;ntang&Atilde;&sup3;" → "Sátántangó"
- */
-export function decodeHtmlEntities(text: string): string {
-  // First pass: named + numeric HTML entities
-  let decoded = text
-    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
-    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'")
-    .replace(/&nbsp;/g, " ");
-
-  // Common mojibake: UTF-8 bytes interpreted as Latin-1 then HTML-encoded
-  // &Atilde; is Ã (0xC3), which is the leading byte of 2-byte UTF-8 sequences
-  if (/&[A-Za-z]+;/.test(decoded)) {
-    // Build a full entity map for Latin-1 range used in mojibake
-    const entityMap: Record<string, number> = {
-      "&Atilde;": 0xC3, "&Acirc;": 0xC2, "&Aring;": 0xC5,
-      "&AElig;": 0xC6, "&Ccedil;": 0xC7, "&Egrave;": 0xC8,
-      "&Eacute;": 0xC9, "&Euml;": 0xCB, "&Iacute;": 0xCD,
-      "&Icirc;": 0xCE, "&Ntilde;": 0xD1, "&Ograve;": 0xD2,
-      "&Oacute;": 0xD3, "&Ouml;": 0xD6, "&Uacute;": 0xDA,
-      "&Uuml;": 0xDC,
-      // Continuation bytes (0x80–0xBF range)
-      "&iexcl;": 0xA1, "&cent;": 0xA2, "&pound;": 0xA3,
-      "&curren;": 0xA4, "&yen;": 0xA5, "&brvbar;": 0xA6,
-      "&sect;": 0xA7, "&uml;": 0xA8, "&copy;": 0xA9,
-      "&ordf;": 0xAA, "&laquo;": 0xAB, "&not;": 0xAC,
-      "&shy;": 0xAD, "&reg;": 0xAE, "&macr;": 0xAF,
-      "&deg;": 0xB0, "&plusmn;": 0xB1, "&sup2;": 0xB2,
-      "&sup3;": 0xB3, "&acute;": 0xB4, "&micro;": 0xB5,
-      "&para;": 0xB6, "&middot;": 0xB7, "&cedil;": 0xB8,
-      "&sup1;": 0xB9, "&ordm;": 0xBA, "&raquo;": 0xBB,
-      "&frac14;": 0xBC, "&frac12;": 0xBD, "&frac34;": 0xBE,
-      "&iquest;": 0xBF,
-    };
-
-    // Replace entity pairs that represent UTF-8 byte sequences
-    const entityPattern = /&[A-Za-z]+;/g;
-    const bytes: number[] = [];
-    let lastIndex = 0;
-    let result = "";
-    let match: RegExpExecArray | null;
-
-    while ((match = entityPattern.exec(decoded)) !== null) {
-      const entity = match[0];
-      const byteVal = entityMap[entity];
-
-      if (byteVal !== undefined) {
-        // Flush any plain text before this entity
-        if (match.index > lastIndex) {
-          // If we had accumulated bytes, try to decode them first
-          if (bytes.length > 0) {
-            result += new TextDecoder().decode(new Uint8Array(bytes));
-            bytes.length = 0;
-          }
-          result += decoded.slice(lastIndex, match.index);
-        }
-        bytes.push(byteVal);
-        lastIndex = match.index + entity.length;
-      } else {
-        // Unknown entity: flush bytes and keep it as-is
-        if (bytes.length > 0) {
-          result += new TextDecoder().decode(new Uint8Array(bytes));
-          bytes.length = 0;
-        }
-        if (match.index > lastIndex) {
-          result += decoded.slice(lastIndex, match.index);
-        }
-        result += entity;
-        lastIndex = match.index + entity.length;
-      }
-    }
-
-    // Flush remaining
-    if (bytes.length > 0) {
-      result += new TextDecoder().decode(new Uint8Array(bytes));
-    }
-    if (lastIndex < decoded.length) {
-      result += decoded.slice(lastIndex);
-    }
-
-    if (result) {
-      decoded = result;
-    }
-  }
-
-  return decoded;
-}
 
 // ---------------------------------------------------------------------------
 // Main
@@ -160,13 +63,13 @@ async function main() {
     const film = rows[i];
     const originalTitle = film.title;
 
-    // Step 1: Decode HTML entities
-    let cleanedTitle = decodeHtmlEntities(originalTitle);
-    const htmlDecoded = cleanedTitle !== originalTitle;
-
-    // Step 2: Apply cleanFilmTitle (strip event prefixes/suffixes)
-    cleanedTitle = cleanFilmTitle(cleanedTitle);
-    const prefixStripped = cleanedTitle !== decodeHtmlEntities(originalTitle);
+    // Steps 1–2: cleanFilmTitle decodes HTML entities internally before
+    // stripping event prefixes/suffixes; the standalone decode below exists
+    // only to attribute the change to the right step in telemetry.
+    const decodedTitle = decodeHtmlEntities(originalTitle);
+    const htmlDecoded = decodedTitle !== originalTitle;
+    let cleanedTitle = cleanFilmTitle(originalTitle);
+    const prefixStripped = cleanedTitle !== decodedTitle;
 
     // Step 3: AI title extraction for complex cases
     let aiExtracted = false;

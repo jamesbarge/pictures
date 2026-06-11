@@ -2,7 +2,17 @@
 **PR**: TBD | **Files**: `src/lib/rate-limit.ts`, public API route handlers, `src/app/api/travel-times/route.ts`
 - Added a typed `withRateLimit()` route wrapper that centralizes per-IP checks and standardizes 429 responses as `{ error, code: "RATE_LIMITED" }` with retry headers.
 - Replaced copy-pasted rate-limit preambles across all 11 protected routes and added a stricter limit to the paid Google travel-times POST endpoint.
+- Hardened client-IP extraction to prefer platform-set headers over the spoofable leftmost `x-forwarded-for` entry.
 - Added wrapper and route-level regression tests, including proof that blocked requests never invoke the underlying handler.
+
+---
+
+## 2026-06-11: Canonical title patterns and entity decoding
+**PR**: #666 | **Files**: `src/lib/title-extraction/patterns.ts`, `src/lib/title-patterns.ts`, `src/scrapers/utils/film-title-cleaner.ts`, title cleanup and audit scripts
+- Made the extraction pattern module the single source for event prefixes, suffixes, non-film patterns, and live-broadcast keywords; poster backfill and audits now consume those shared definitions.
+- Promoted robust named, numeric, and mojibake HTML entity decoding into `title-patterns.ts` and removed divergent script copies.
+- Removed broad private non-film classifiers from destructive audit paths so reclassification and deletion use the curated learned-title contract.
+- Ported the 24-hour deletion guard into the CLI audit orchestrator so same-day scrapes matching an event pattern are reclassified, not hard-deleted.
 
 ---
 

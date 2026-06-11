@@ -65,7 +65,7 @@ export const EVENT_PREFIXES = [
   "70mm",
   "4K",
   "IMAX",
-];
+] as const;
 
 /**
  * Event prefix patterns used by the AI extractor's `isLikelyCleanTitle` heuristic.
@@ -161,6 +161,15 @@ export const TITLE_SUFFIXES: RegExp[] = [
 
   // Drink add-ons
   /\s*\+\s*(?:Prosecco|Mulled\s+Wine).*$/i,
+
+  // BBFC ratings
+  /\s*\((U|PG|12A?|15|18)\*?\)\s*$/i,
+
+  // Bracketed notes
+  /\s*\[.*?\]\s*$/,
+
+  // Format suffixes
+  /\s*-\s*(35mm|70mm|4k|imax)\s*$/i,
 ];
 
 /**
@@ -226,7 +235,15 @@ export const DOUBLE_FEATURE_PATTERN = /^(.+?)\s*\+\s*.+$/;
 export const FESTIVAL_PREFIXES = ["LSFF", "LFF", "BFI FLARE"];
 
 /** Live broadcast prefixes (NT Live, Met Opera, etc.) */
-export const LIVE_BROADCAST_KEYWORDS = ["opera", "theatre", "ballet", "nt live", "roh"];
+export const LIVE_BROADCAST_KEYWORDS = [
+  "opera",
+  "theatre",
+  "ballet",
+  "nt live",
+  "roh",
+  "exhibition on screen",
+  "berliner philharmoniker",
+];
 
 /** Franchise patterns — titles with colons that are legitimate subtitles, not event prefixes */
 export const FRANCHISE_PATTERN =
@@ -235,4 +252,18 @@ export const FRANCHISE_PATTERN =
 /** Escape special regex characters in a string */
 export function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** Convert a canonical literal prefix into a regex that accepts colon or space separators. */
+export function eventPrefixToRegex(prefix: string): RegExp {
+  return new RegExp(`^${escapeRegex(prefix)}(?:\\s*:\\s*|\\s+)`, "i");
+}
+
+/** Regex equivalents of EVENT_PREFIXES for callers that need to strip a prefix. */
+export const EVENT_PREFIX_REGEXES = EVENT_PREFIXES.map(eventPrefixToRegex);
+
+/** Return the canonical event prefix at the start of a title, if present. */
+export function findEventPrefix(title: string): string | null {
+  const index = EVENT_PREFIX_REGEXES.findIndex((pattern) => pattern.test(title));
+  return index === -1 ? null : EVENT_PREFIXES[index];
 }
