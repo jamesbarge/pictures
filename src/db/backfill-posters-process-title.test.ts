@@ -28,6 +28,13 @@ describe("processTitle", () => {
     expect(result.cleanedTitle).toContain("Salt & Pepper");
   });
 
+  it("uses the shared event-prefix and suffix patterns", () => {
+    const result = processTitle("Saturday Morning Picture Club: Vertigo + Q&A");
+    expect(result.cleanedTitle).toBe("Vertigo");
+    expect(result.changes).toContain("Stripped event prefix");
+    expect(result.changes).toContain("Stripped suffix");
+  });
+
   it("extracts the inner title from 'X presents \"Y\"' pattern", () => {
     const result = processTitle('Funeral Parade presents "Caravaggio"');
     expect(result.cleanedTitle).toBe("Caravaggio");

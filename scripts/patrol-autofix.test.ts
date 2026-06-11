@@ -1,29 +1,15 @@
 /**
  * Unit tests for patrol-autofix's pure helpers. The DB-touching main()
  * is integration-only; these tests pin the title-transformation contracts
- * so future regressions in `decodeHtmlEntities`, `smartTitleCase`, or
- * `shouldFlagAllCaps` are caught by `npm run test:run`.
+ * so future regressions in `smartTitleCase` or `shouldFlagAllCaps` are caught
+ * by `npm run test:run`. Shared entity decoding is tested in title-patterns.
  */
 import { describe, it, expect } from "vitest";
 
-// We re-implement the helpers here to keep the test pure (avoid importing
+// We re-implement these helpers here to keep the test pure (avoid importing
 // the file which has top-level postgres connection side effects). The test
 // is a pinning contract — if the helpers drift in patrol-autofix.ts,
 // this test will fail and force the implementer to update both sides.
-
-function decodeHtmlEntities(s: string): string {
-  return s
-    .replace(/&amp;/g, "&")
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'")
-    .replace(/&rsquo;/g, "’")
-    .replace(/&lsquo;/g, "‘")
-    .replace(/&hellip;/g, "…")
-    .replace(/&mdash;/g, "—")
-    .replace(/&ndash;/g, "–")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(parseInt(n, 10)));
-}
 
 const ACRONYMS = new Set([
   "LVSFF", "SXSW", "BFI", "BAFTA", "IMAX", "UK", "USA", "US", "UFO",
@@ -55,31 +41,6 @@ function shouldFlagAllCaps(title: string): boolean {
     /\s/.test(title)
   );
 }
-
-describe("decodeHtmlEntities", () => {
-  it("decodes the entities cleanFilmTitle handles", () => {
-    expect(decodeHtmlEntities("Q&amp;A")).toBe("Q&A");
-    expect(decodeHtmlEntities("Moss &amp; Freud")).toBe("Moss & Freud");
-    expect(decodeHtmlEntities("It&rsquo;s")).toBe("It’s");
-    expect(decodeHtmlEntities("&lsquo;hello&rsquo;")).toBe("‘hello’");
-    expect(decodeHtmlEntities("a&mdash;b")).toBe("a—b");
-    expect(decodeHtmlEntities("a&ndash;b")).toBe("a–b");
-    expect(decodeHtmlEntities("a&hellip;")).toBe("a…");
-    expect(decodeHtmlEntities("a&nbsp;b")).toBe("a b");
-    expect(decodeHtmlEntities("&quot;A&quot;")).toBe('"A"');
-    expect(decodeHtmlEntities("&apos;A&apos;")).toBe("'A'");
-  });
-
-  it("decodes numeric character references", () => {
-    expect(decodeHtmlEntities("Q&#38;A")).toBe("Q&A"); // &
-    expect(decodeHtmlEntities("&#8217;")).toBe("’");
-  });
-
-  it("is a no-op for clean strings", () => {
-    expect(decodeHtmlEntities("Already Clean")).toBe("Already Clean");
-    expect(decodeHtmlEntities("")).toBe("");
-  });
-});
 
 describe("smartTitleCase", () => {
   it("converts ALL CAPS multi-word titles to title case", () => {

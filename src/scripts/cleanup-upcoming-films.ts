@@ -20,8 +20,8 @@ import { eq, isNull, gte, and } from "drizzle-orm";
 import { matchFilmToTMDB, getTMDBClient } from "@/lib/tmdb";
 import { isRepertoryFilm } from "@/lib/tmdb/match";
 import { extractFilmTitle } from "@/lib/title-extraction";
+import { decodeHtmlEntities } from "@/lib/title-patterns";
 import { cleanFilmTitle } from "@/scrapers/pipeline";
-import { decodeHtmlEntities } from "@/scripts/enrich-upcoming-films";
 import { enrichLetterboxdRatings } from "@/db/enrich-letterboxd";
 import { sanitizeDirectors, sanitizeYear } from "@/scrapers/utils/film-write-guards";
 

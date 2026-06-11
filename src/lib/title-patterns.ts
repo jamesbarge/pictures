@@ -1,195 +1,12 @@
 /**
- * Shared Title Extraction Patterns
- *
- * Used by both AI-powered (lib/title-extractor.ts) and regex-based
- * (agents/enrichment/title-extractor.ts) extractors for consistent
- * pattern recognition.
+ * Shared title helpers layered on top of the canonical extraction patterns.
  */
+import {
+  EVENT_PREFIX_PATTERNS,
+  TITLE_SUFFIXES,
+} from "./title-extraction/patterns";
 
-/**
- * Event prefixes that wrap actual film titles (colon-separated)
- * Examples: "Saturday Morning Picture Club: Song of the Sea"
- */
-export const EVENT_PREFIXES = [
-  // Dining/drinking events
-  "DRINK & DINE",
-  "Drink & Dine",
-  "Drink and Dine",
-  "DINE & DRINK",
-
-  // Cinema clubs/series
-  "Arabic Cinema Club",
-  "Saturday Morning Picture Club",
-  "Classic Matinee",
-  "Varda Film Club",
-  "Artist's Film Picks",
-  "Films For Workers",
-  "Reclaim the Frame presents",
-  "Sonic Cinema",
-  "The Liberated Film Club",
-  "Underscore Cinema",
-  "Dub Me Always",
-  "Carers & Babies",
-  "Carers and Babies",
-
-  // Special screenings
-  "Queer Horror Nights",
-  "A FESTIVE FEAST",
-  "Funeral Parade presents",
-  "UK PREMIERE",
-
-  // Live broadcasts
-  "Met Opera Live",
-  "Met Opera Encore",
-  "National Theatre Live",
-  "NT Live",
-  "Royal Opera House",
-  "ROH Live",
-  "Royal Ballet",
-  "Bolshoi Ballet",
-  "Berliner Philharmoniker Live",
-
-  // Documentaries/exhibitions
-  "EXHIBITION ON SCREEN",
-  "Exhibition on Screen",
-  "Doc 'N Roll",
-  "Doc N Roll",
-
-  // Festival screenings
-  "LSFF",
-  "LFF",
-  "BFI Flare",
-
-  // Format-based
-  "35mm",
-  "70mm",
-  "4K",
-  "IMAX",
-] as const;
-
-/**
- * Regex patterns for event prefixes
- * Used for quick "needs extraction" detection
- */
-export const EVENT_PREFIX_PATTERNS = [
-  /^(saturday|sunday|weekday)\s+(morning|afternoon)/i,
-  /^(kids?|family|toddler|baby)\s*(club|time|film)/i,
-  /^(uk|world)\s+premiere/i,
-  /^(35|70)mm[:\s]/i,
-  /^(imax|4k|restoration)[:\s]/i,
-  /^(sing[\s-]?a[\s-]?long|quote[\s-]?a[\s-]?long)[:\s]/i,
-  /^(preview|sneak|advance)[:\s]/i,
-  /^(special|member'?s?)\s+screening/i,
-  /^(double|triple)\s+(feature|bill)/i,
-  /^(cult|classic|christmas)\s+(classic|film)/i,
-  /^(late\s+night|midnight)/i,
-  /^(marathon|retrospective|tribute)[:\s]/i,
-  /^(q\s*&\s*a|live\s+q)/i,
-  /^(intro(duced)?\s+by|with\s+q)/i,
-  /^(classic\s+matinee)[:\s]/i,
-  /^(queer|horror|comedy|sci-?fi)\s+(night|horror|film)/i,
-  /^(doc\s*'?n'?\s*roll)[:\s]/i,
-  /^(lsff|bfi|afi|tiff)[:\s]/i,
-  /^(underscore\s+cinema)[:\s!]/i,
-  /^(neurospicy|dyke\s+tv)[:\s!]/i,
-];
-
-/**
- * Suffixes to strip from titles
- */
-export const TITLE_SUFFIXES = [
-  // Q&A and intro
-  /\s*\+\s*Q&(?:amp;)?A.*$/i,
-  /\s*\+\s*Intro.*$/i,
-  /\s*\+\s*Introduction.*$/i,
-  /\s*\+\s*Panel.*$/i,
-  /\s*\+\s*Discussion.*$/i,
-  /\s*with\s+Q&(?:amp;)?A.*$/i,
-
-  // Special events
-  /\s*with\s+Shadow\s+Cast.*$/i,
-  /\s*with\s+Live\s+.*$/i,
-  /\s*\+\s*PJ\s+Party.*$/i,
-  /\s*\+\s*Pajama\s+Party.*$/i,
-
-  // Format/restoration markers
-  /\s*\(4K\s+Restoration\)$/i,
-  /\s*\(4K\s+Remaster(?:ed)?\)$/i,
-  /\s*\(4K\s+Re-?release\)$/i,
-  /\s*\(Restored\)$/i,
-  /\s*\(Digital\s+Restoration\)$/i,
-  /\s*\(Director'?s?\s+Cut\)$/i,
-  /\s*\(Extended\s+(?:Edition|Cut)\)$/i,
-  /\s*\(Original\s+Cut\)$/i,
-  /\s*\(Theatrical\s+Cut\)$/i,
-  /\s*4K$/i,
-  /\s*\(35mm\)$/i,
-
-  // Anniversary editions
-  /\s*[-•]\s*\d+(?:th|st|nd|rd)?\s+Anniversary.*$/i,
-  /\s*\(\d+(?:th|st|nd|rd)?\s+Anniversary\)$/i,
-
-  // Preview/encore screenings
-  /\s*-\s*Preview$/i,
-  /\s*\(Preview\)$/i,
-  /\s*\(\d{4}\s+Encore\)$/i,
-  /\s*Encore$/i,
-
-  // Double bills
-  /\s*Double[- ]?Bill$/i,
-  /\s*\+\s+.+Double[- ]?Bill$/i,
-
-  // Future year markers
-  /\s*\(202[5-9]\)$/,
-  /\s*\(203\d\)$/,
-
-  // TBC markers
-  /\s*TBC$/i,
-
-  // Sing-along suffix
-  /\s+Sing-?A?-?Long!?$/i,
-
-  // Special edition markers
-  /:\s*Extended\s+Edition$/i,
-  /\s+-\s+Original\s+Cut$/i,
-
-  // Drink add-ons
-  /\s*\+\s*(?:Prosecco|Mulled\s+Wine).*$/i,
-
-  // BBFC ratings
-  /\s*\((U|PG|12A?|15|18)\*?\)\s*$/i,
-
-  // Bracketed notes
-  /\s*\[.*?\]\s*$/g,
-
-  // Format suffixes
-  /\s*-\s*(35mm|70mm|4k|imax)\s*$/i,
-];
-
-/**
- * Patterns that indicate this is NOT a film
- */
-export const NON_FILM_PATTERNS = [
-  /\bQuiz\b/i,
-  /\bReading\s+[Gg]roup\b/i,
-  /\bCaf[eé]\s+Philo\b/i,
-  /\bCompetition\b/i,
-  /\bStory\s+Time\b/i,
-  /\bBaby\s+Comptines\b/i,
-  /\bLanguage\s+Activity\b/i,
-  /\bIn\s+conversation\s+with\b/i,
-  /\bCome\s+and\s+Sing\b/i,
-  /\bMarathon$/i,
-  /\bOrgan\s+Trio\b/i,
-  /\bBlues\s+at\b/i,
-  /\bFunky\s+Stuff\b/i,
-  /\bMusic\s+Video\s+Preservation\b/i,
-  /\bComedy:/i,
-  /\bClub\s+Room\s+Comedy\b/i,
-  /\bVinyl\s+Reggae\b/i,
-  /\bVinyl\s+Sisters\b/i,
-  /\bAnimated\s+Shorts\s+for\b/i,
-];
+export * from "./title-extraction/patterns";
 
 /**
  * Known franchises where colon is part of the title
@@ -242,19 +59,6 @@ export function isLikelyCleanTitle(title: string): boolean {
     }
   }
 
-  // Check suffix patterns that indicate event wrapping
-  const suffixIndicators = [
-    /\+\s*q\s*&?\s*a\s*$/i,
-    /with\s+shadow\s+cast/i,
-    /\+\s*(discussion|intro|live)/i,
-  ];
-
-  for (const pattern of suffixIndicators) {
-    if (pattern.test(normalized)) {
-      return false;
-    }
-  }
-
   // Check for suspicious colon patterns
   if (normalized.includes(":")) {
     const beforeColon = normalized.split(":")[0].trim();
@@ -285,14 +89,114 @@ export function cleanBasicCruft(title: string): string {
   return cleaned;
 }
 
+const MOJIBAKE_ENTITY_BYTES: Record<string, number> = {
+  Atilde: 0xc3,
+  Acirc: 0xc2,
+  Aring: 0xc5,
+  AElig: 0xc6,
+  Ccedil: 0xc7,
+  Egrave: 0xc8,
+  Eacute: 0xc9,
+  Euml: 0xcb,
+  Iacute: 0xcd,
+  Icirc: 0xce,
+  Ntilde: 0xd1,
+  Ograve: 0xd2,
+  Oacute: 0xd3,
+  Ouml: 0xd6,
+  Uacute: 0xda,
+  Uuml: 0xdc,
+  iexcl: 0xa1,
+  cent: 0xa2,
+  pound: 0xa3,
+  curren: 0xa4,
+  yen: 0xa5,
+  brvbar: 0xa6,
+  sect: 0xa7,
+  uml: 0xa8,
+  copy: 0xa9,
+  ordf: 0xaa,
+  laquo: 0xab,
+  not: 0xac,
+  shy: 0xad,
+  reg: 0xae,
+  macr: 0xaf,
+  deg: 0xb0,
+  plusmn: 0xb1,
+  sup2: 0xb2,
+  sup3: 0xb3,
+  acute: 0xb4,
+  micro: 0xb5,
+  para: 0xb6,
+  middot: 0xb7,
+  cedil: 0xb8,
+  sup1: 0xb9,
+  ordm: 0xba,
+  raquo: 0xbb,
+  frac14: 0xbc,
+  frac12: 0xbd,
+  frac34: 0xbe,
+  iquest: 0xbf,
+};
+
+const NAMED_HTML_ENTITIES: Record<string, string> = {
+  amp: "&",
+  quot: '"',
+  apos: "'",
+  "#39": "'",
+  lt: "<",
+  gt: ">",
+  nbsp: " ",
+  rsquo: "\u2019",
+  lsquo: "\u2018",
+  hellip: "\u2026",
+  mdash: "\u2014",
+  ndash: "\u2013",
+  // frac* also appear in MOJIBAKE_ENTITY_BYTES \u2014 intentional: the mojibake
+  // decoder only fires on runs of 2+ entities, so these catch the
+  // standalone case. Both paths yield the same character.
+  frac12: "\u00bd",
+  frac14: "\u00bc",
+  frac34: "\u00be",
+};
+
+function decodeMojibakeEntityRuns(text: string): string {
+  return text.replace(/(?:&[A-Za-z0-9]+;){2,}/g, (run) => {
+    const names = Array.from(run.matchAll(/&([A-Za-z0-9]+);/g), (match) => match[1]);
+    const bytes = names.map((name) => MOJIBAKE_ENTITY_BYTES[name]);
+    if (bytes.some((byte) => byte === undefined)) return run;
+
+    try {
+      return new TextDecoder("utf-8", { fatal: true }).decode(new Uint8Array(bytes));
+    } catch {
+      return run;
+    }
+  });
+}
+
+function decodeCodePoint(value: string, radix: number, original: string): string {
+  const codePoint = Number.parseInt(value, radix);
+  if (!Number.isInteger(codePoint) || codePoint < 0 || codePoint > 0x10ffff) {
+    return original;
+  }
+
+  try {
+    return String.fromCodePoint(codePoint);
+  } catch {
+    return original;
+  }
+}
+
 /**
- * Decode HTML entities in title
+ * Decode the named and numeric entities found in scraped titles, including
+ * common HTML-encoded UTF-8 mojibake such as "&Atilde;&iexcl;".
  */
 export function decodeHtmlEntities(title: string): string {
-  return title
-    .replace(/&amp;/g, "&")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">");
+  return decodeMojibakeEntityRuns(title)
+    .replace(/&#x([0-9a-f]+);/gi, (original, value: string) =>
+      decodeCodePoint(value, 16, original))
+    .replace(/&#(\d+);/g, (original, value: string) =>
+      decodeCodePoint(value, 10, original))
+    .replace(/&([A-Za-z0-9]+|#39);/g, (original, name: string) =>
+      NAMED_HTML_ENTITIES[name] ?? original);
 }
