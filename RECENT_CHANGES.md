@@ -1,5 +1,5 @@
 ## 2026-06-11: Scraper registry is the single source for orchestration and CLI
-**PR**: TBD | **Files**: `src/scrapers/registry.ts`, `src/scrapers/cli.ts`, `src/scrapers/cinemas/riverside-v2.ts`, `src/scrapers/cinemas/rich-mix-v2.ts`, `src/scrapers/run-riverside-v2.ts`, `src/scrapers/registry.test.ts`, `src/config/cinema-registry.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`, `changelogs/2026-06-11-scraper-registry-single-source.md`
+**PR**: #663 | **Files**: `src/scrapers/registry.ts`, `src/scrapers/cli.ts`, `src/scrapers/cinemas/riverside-v2.ts`, `src/scrapers/cinemas/rich-mix-v2.ts`, `src/scrapers/run-riverside-v2.ts`, `src/scrapers/registry.test.ts`, `src/config/cinema-registry.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`, `changelogs/2026-06-11-scraper-registry-single-source.md`
 - Removed the unified CLI's stale duplicate scraper registry; listing and execution now consume the same registry used by orchestration while retaining established CLI aliases.
 - Aligned the registry's Nickel and Rich Mix entries with the canonical V2 scraper implementations used by package commands, and restored the festival tagging the Rich Mix V2 rewrite had dropped.
 - Corrected Riverside's scraper and standalone runner to write to canonical cinema ID `riverside-studios`.
