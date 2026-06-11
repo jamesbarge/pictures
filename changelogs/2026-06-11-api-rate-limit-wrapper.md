@@ -1,6 +1,6 @@
 # Standardized API Rate-Limit Wrapper
 
-**PR**: TBD
+**PR**: #667
 **Date**: 2026-06-11
 
 ## Changes
