@@ -1,14 +1,34 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { NextRequest } from "next/server";
 
-vi.mock("@/lib/rate-limit", () => ({
-  checkRateLimit: vi.fn().mockResolvedValue({ success: true, remaining: 99, resetIn: 60 }),
-  getClientIP: vi.fn().mockReturnValue("127.0.0.1"),
-  RATE_LIMITS: {
-    public: { limit: 100, windowSec: 60 },
-    search: { limit: 30, windowSec: 60 },
-  },
-}));
+vi.mock("@/lib/rate-limit", () => {
+  const checkRateLimit = vi.fn().mockResolvedValue({
+    success: true,
+    remaining: 99,
+    resetIn: 60,
+  });
+  return {
+    checkRateLimit,
+    getClientIP: vi.fn().mockReturnValue("127.0.0.1"),
+    withRateLimit:
+      (config: { limit: number; windowSec: number }, prefix: string) =>
+      (handler: (request: Request, ...args: unknown[]) => Promise<Response>) =>
+      async (request: Request, ...args: unknown[]) => {
+        const result = await checkRateLimit("127.0.0.1", { ...config, prefix });
+        if (!result.success) {
+          return Response.json(
+            { error: "Too many requests", code: "RATE_LIMITED" },
+            { status: 429, headers: { "Retry-After": String(result.resetIn) } }
+          );
+        }
+        return handler(request, ...args);
+      },
+    RATE_LIMITS: {
+      public: { limit: 100, windowSec: 60 },
+      search: { limit: 30, windowSec: 60 },
+    },
+  };
+});
 
 vi.mock("@/db/repositories", () => ({
   getScreenings: vi.fn().mockResolvedValue([]),
@@ -57,7 +77,7 @@ describe("Screenings API", () => {
       expect(response.status).toBe(429);
       const data = await response.json();
       expect(data.error).toBe("Too many requests");
-      expect(data.screenings).toEqual([]);
+      expect(data.code).toBe("RATE_LIMITED");
     });
 
     it("should include Retry-After header on 429", async () => {

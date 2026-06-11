@@ -12,24 +12,9 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { CACHE_5MIN } from "@/lib/cache-headers";
-import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
+import { RATE_LIMITS, withRateLimit } from "@/lib/rate-limit";
 
-export async function GET(request: NextRequest) {
-  const ip = getClientIP(request);
-  const rateLimitResult = await checkRateLimit(ip, {
-    ...RATE_LIMITS.public,
-    prefix: "directors",
-  });
-  if (!rateLimitResult.success) {
-    return NextResponse.json(
-      { error: "Too many requests", directors: [] },
-      {
-        status: 429,
-        headers: { "Retry-After": String(rateLimitResult.resetIn) },
-      }
-    );
-  }
-
+export const GET = withRateLimit(RATE_LIMITS.public, "directors")(async (request: NextRequest) => {
   const searchParams = request.nextUrl.searchParams;
   const days = Math.min(Number(searchParams.get("days")) || 14, 60);
 
@@ -63,4 +48,4 @@ export async function GET(request: NextRequest) {
     { directors },
     { headers: CACHE_5MIN }
   );
-}
+});

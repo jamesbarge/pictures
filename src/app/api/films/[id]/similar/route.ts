@@ -16,7 +16,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { handleApiError } from "@/lib/api-errors";
-import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
+import { RATE_LIMITS, withRateLimit } from "@/lib/rate-limit";
 import { getFilmById, findByTmdbIds } from "@/db/repositories/film";
 import { getTMDBClient } from "@/lib/tmdb/client";
 
@@ -38,26 +38,11 @@ const CACHE_EMPTY = {
   "Cache-Control": "public, s-maxage=300, stale-while-revalidate=300",
 } as const;
 
-export async function GET(
-  request: NextRequest,
+export const GET = withRateLimit(RATE_LIMITS.public, "films-similar")(async (
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   try {
-    const ip = getClientIP(request);
-    const rateLimitResult = await checkRateLimit(ip, {
-      ...RATE_LIMITS.public,
-      prefix: "films-similar",
-    });
-    if (!rateLimitResult.success) {
-      return NextResponse.json(
-        { error: "Too many requests", similar: [] },
-        {
-          status: 429,
-          headers: { "Retry-After": String(rateLimitResult.resetIn) },
-        }
-      );
-    }
-
     const { id } = await params;
     const parseResult = paramsSchema.safeParse({ id });
     if (!parseResult.success) {
@@ -118,4 +103,4 @@ export async function GET(
   } catch (error) {
     return handleApiError(error);
   }
-}
+});

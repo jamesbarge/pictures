@@ -19,6 +19,7 @@
 
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { RATE_LIMITS, withRateLimit } from "@/lib/rate-limit";
 
 // Validation schema
 const requestSchema = z.object({
@@ -102,7 +103,7 @@ function parseDistanceMatrixElements(
   return result;
 }
 
-export async function POST(request: Request) {
+export const POST = withRateLimit(RATE_LIMITS.paidApi, "travel-times")(async (request: Request) => {
   try {
     const body = await request.json();
 
@@ -237,7 +238,7 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-}
+});
 
 async function fetchGoogleTimes(
   originsParam: string,
@@ -287,8 +288,10 @@ async function fetchGoogleTimes(
   return data;
 }
 
-// Also support GET for simple testing (limited to a few destinations)
-export async function GET(request: Request) {
+// Also support GET for simple testing (limited to a few destinations).
+// Rate-limited like every other public route so it never becomes an
+// unprotected path if it grows real logic.
+export const GET = withRateLimit(RATE_LIMITS.public, "travel-times-get")(async (request: Request) => {
   const { searchParams } = new URL(request.url);
 
   const lat = searchParams.get("lat");
@@ -315,4 +318,4 @@ export async function GET(request: Request) {
       },
     },
   });
-}
+});

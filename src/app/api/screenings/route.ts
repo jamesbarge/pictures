@@ -8,7 +8,7 @@ import { endOfDay, addDays } from "date-fns";
 import { z } from "zod";
 import type { ScreeningFormat } from "@/types/screening";
 import { BadRequestError, handleApiError } from "@/lib/api-errors";
-import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
+import { RATE_LIMITS, withRateLimit } from "@/lib/rate-limit";
 import {
   getScreenings,
   getScreeningsWithCursor,
@@ -35,21 +35,8 @@ const querySchema = z.object({
   limit: z.coerce.number().int().min(1).max(500).optional(),
 });
 
-export async function GET(request: NextRequest) {
+export const GET = withRateLimit(RATE_LIMITS.public, "screenings")(async (request: NextRequest) => {
   try {
-    // Rate limit check
-    const ip = getClientIP(request);
-    const rateLimitResult = await checkRateLimit(ip, { ...RATE_LIMITS.public, prefix: "screenings" });
-    if (!rateLimitResult.success) {
-      return NextResponse.json(
-        { error: "Too many requests", screenings: [] },
-        {
-          status: 429,
-          headers: { "Retry-After": String(rateLimitResult.resetIn) },
-        }
-      );
-    }
-
     const searchParams = request.nextUrl.searchParams;
 
     // Validate query parameters
@@ -187,4 +174,4 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     return handleApiError(error, "GET /api/screenings");
   }
-}
+});

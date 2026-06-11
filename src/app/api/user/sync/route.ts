@@ -3,10 +3,10 @@ import { db } from "@/db";
 import { userFilmStatuses, userPreferences } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { requireAuth } from "@/lib/auth";
-import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
+import { RATE_LIMITS, withRateLimit } from "@/lib/rate-limit";
 import { currentUser } from "@clerk/nextjs/server";
 import type { StoredPreferences, StoredFilters } from "@/db/schema/user-preferences";
-import { BadRequestError, RateLimitError, handleApiError } from "@/lib/api-errors";
+import { BadRequestError, handleApiError } from "@/lib/api-errors";
 import { syncUserToPostHog } from "@/lib/posthog-supabase-sync";
 import { ensureUserRecord } from "@/lib/user-record";
 import { z } from "zod";
@@ -84,18 +84,8 @@ function toDbValues(status: FilmStatusPayload) {
  * 3. Merges client preferences with server (timestamp-based)
  * 4. Returns the merged data for client to apply
  */
-export async function POST(request: NextRequest) {
+export const POST = withRateLimit(RATE_LIMITS.sync, "sync")(async (request: NextRequest) => {
   try {
-    // Rate limit check
-    const ip = getClientIP(request);
-    const rateLimitResult = await checkRateLimit(ip, { ...RATE_LIMITS.sync, prefix: "sync" });
-    if (!rateLimitResult.success) {
-      throw new RateLimitError(
-        "Too many requests. Please try again later.",
-        rateLimitResult.resetIn
-      );
-    }
-
     const userId = await requireAuth();
     const clerkUser = await currentUser();
     const parseResult = syncRequestSchema.safeParse(await request.json());
@@ -271,4 +261,4 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     return handleApiError(error, "POST /api/user/sync");
   }
-}
+});
