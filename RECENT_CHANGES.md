@@ -3,6 +3,15 @@
 - Made the extraction pattern module the single source for event prefixes, suffixes, non-film patterns, and live-broadcast keywords; poster backfill and audits now consume those shared definitions.
 - Promoted robust named, numeric, and mojibake HTML entity decoding into `title-patterns.ts` and removed divergent script copies.
 - Removed broad private non-film classifiers from destructive audit paths so reclassification and deletion use the curated learned-title contract.
+- Ported the 24-hour deletion guard into the CLI audit orchestrator so same-day scrapes matching an event pattern are reclassified, not hard-deleted.
+
+---
+
+## 2026-06-11: User sync routes use bounded batch writes
+**PR**: #665 | **Files**: `src/app/api/user/sync/route.ts`, festival sync/follows/schedule routes, `src/lib/sync-batching.ts`, `src/lib/sync-batching.test.ts`, `changelogs/2026-06-11-user-sync-batching.md`
+- Capped festival sync collections at 500 items, retained the existing 5,000-item full film-status allowance, and collapse duplicate conflict keys with newest-wins semantics.
+- Replaced per-row film-status, festival-follow, and festival-schedule writes with one conflict upsert per collection, with delete + upsert wrapped in a transaction.
+- Festival bidirectional sync now fetches metadata once and uses set membership instead of per-row lookups and repeated linear scans.
 
 ---
 
