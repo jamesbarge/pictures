@@ -176,6 +176,7 @@ async function pass2NonFilmDetection(): Promise<{ reclassified: number; deleted:
       title: films.title,
       tmdbId: films.tmdbId,
       contentType: films.contentType,
+      createdAt: films.createdAt,
     })
     .from(films)
     .innerJoin(screenings, eq(screenings.filmId, films.id))
@@ -192,11 +193,17 @@ async function pass2NonFilmDetection(): Promise<{ reclassified: number; deleted:
   let reclassified = 0;
   let deleted = 0;
 
+  const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
   for (const film of candidates) {
     const newType = getKnownNonFilmType(film.title);
     if (!newType) continue;
 
-    const isNonViewable = newType === "event";
+    // Same 24-hour guard as runNonFilmDetection in src/lib/data-quality:
+    // a brand-new film that matches an event pattern may simply not have
+    // been enriched yet — reclassify it instead of destroying it.
+    const isNonViewable =
+      newType === "event" && Boolean(film.createdAt && film.createdAt <= oneDayAgo);
 
     if (isNonViewable) {
       console.log(`  [DELETE] "${film.title}" -> ${newType}`);

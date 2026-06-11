@@ -152,6 +152,9 @@ const NAMED_HTML_ENTITIES: Record<string, string> = {
   hellip: "\u2026",
   mdash: "\u2014",
   ndash: "\u2013",
+  // frac* also appear in MOJIBAKE_ENTITY_BYTES \u2014 intentional: the mojibake
+  // decoder only fires on runs of 2+ entities, so these catch the
+  // standalone case. Both paths yield the same character.
   frac12: "\u00bd",
   frac14: "\u00bc",
   frac34: "\u00be",

@@ -63,13 +63,13 @@ async function main() {
     const film = rows[i];
     const originalTitle = film.title;
 
-    // Step 1: Decode HTML entities
-    let cleanedTitle = decodeHtmlEntities(originalTitle);
-    const htmlDecoded = cleanedTitle !== originalTitle;
-
-    // Step 2: Apply cleanFilmTitle (strip event prefixes/suffixes)
-    cleanedTitle = cleanFilmTitle(cleanedTitle);
-    const prefixStripped = cleanedTitle !== decodeHtmlEntities(originalTitle);
+    // Steps 1–2: cleanFilmTitle decodes HTML entities internally before
+    // stripping event prefixes/suffixes; the standalone decode below exists
+    // only to attribute the change to the right step in telemetry.
+    const decodedTitle = decodeHtmlEntities(originalTitle);
+    const htmlDecoded = decodedTitle !== originalTitle;
+    let cleanedTitle = cleanFilmTitle(originalTitle);
+    const prefixStripped = cleanedTitle !== decodedTitle;
 
     // Step 3: AI title extraction for complex cases
     let aiExtracted = false;
