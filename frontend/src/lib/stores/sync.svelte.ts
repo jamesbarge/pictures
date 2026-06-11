@@ -3,18 +3,11 @@
  * when a user is signed in via Clerk.
  */
 
-import { apiGet, apiPut, apiPost, apiDelete } from '$lib/api/client';
+import { apiGet, apiPut, apiDelete } from '$lib/api/client';
 import { filmStatuses } from './film-status.svelte';
 import { debounce } from '$lib/utils';
 import { trackSyncInitiated, trackSyncCompleted, trackSyncFailed } from '$lib/analytics/posthog';
-
-type FilmStatusValue = 'want_to_see' | 'seen' | 'not_interested';
-
-interface ServerFilmStatus {
-	filmId: string;
-	status: FilmStatusValue;
-	updatedAt?: string;
-}
+import { getServerFilmStatuses, type FilmStatusValue, type FilmStatusesResponse } from './sync-contract';
 
 interface ServerPreferences {
 	theme?: string;
@@ -59,7 +52,8 @@ async function pullFromServer() {
 	trackSyncInitiated('sign_in', 0);
 
 	try {
-		const serverStatuses = await apiGet<ServerFilmStatus[]>('/api/user/film-statuses', { token });
+		const response = await apiGet<FilmStatusesResponse>('/api/user/film-statuses', { token });
+		const serverStatuses = getServerFilmStatuses(response);
 
 		// Merge: server wins (we trust server as source of truth on first pull)
 		// Use setStatusLocal to avoid pushing data back to server during pull

@@ -26,12 +26,12 @@
  *
  * Every triple is fixed under exactly one tier — there is no "skip" path.
  * The dry-run output prints the tier decision per triple so the operator
- * can spot-check before --apply.
+ * can spot-check before --execute.
  *
  * Usage:
  *   npx dotenv -e .env.local -- npx tsx -r tsconfig-paths/register \
  *       scripts/dedupe-screening-source-id-duplicates.ts
- *   ... add --apply to commit deletions.
+ *   ... add --execute to commit deletions.
  *
  * Read-only by default. Each delete is a single statement.
  */
@@ -39,7 +39,7 @@ import { db } from "@/db";
 import { screenings } from "@/db/schema";
 import { sql, inArray } from "drizzle-orm";
 
-const APPLY = process.argv.includes("--apply");
+const APPLY = process.argv.includes("--execute");
 const VERBOSE = process.argv.includes("--verbose");
 
 interface RowCandidate {
@@ -174,7 +174,7 @@ async function main(): Promise<void> {
   console.log(`(Re-run with --verbose to see every triple decision.)`);
 
   if (!APPLY) {
-    console.log(`\n[DRY RUN] Pass --apply to commit deletions.`);
+    console.log(`\n[DRY RUN] Pass --execute to commit deletions.`);
     process.exit(0);
   }
 

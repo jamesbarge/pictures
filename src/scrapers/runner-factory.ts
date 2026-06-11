@@ -589,10 +589,35 @@ async function runScraperInner(
       try {
         const results = await chainScraper.scrapeVenues(activeVenueIds);
 
-        // Process results for each venue
-        for (const [venueId, screenings] of results) {
-          const venue = venuesToScrape.find((v) => v.id === venueId);
-          if (!venue) continue;
+        // Process every requested venue so omitted results become explicit failures.
+        for (const venue of venuesToScrape) {
+          const venueId = venue.id;
+          const screenings = results.get(venueId);
+          if (!screenings) {
+            const error = chainScraper.venueErrors?.get(venueId)
+              ?? `Chain scraper returned no result for requested venue ${venueId}`;
+            pushPendingRecord(recordScraperRun({
+              cinemaId: venueId,
+              startedAt: new Date(startTime),
+              status: "failed",
+              screeningCount: 0,
+              durationMs: Date.now() - startTime,
+              error,
+            }));
+            venueResults.push({
+              venueId,
+              venueName: venue.name,
+              success: false,
+              screeningsFound: 0,
+              screeningsAdded: 0,
+              screeningsUpdated: 0,
+              screeningsFailed: 0,
+              durationMs: Date.now() - startTime,
+              error,
+              retryCount: 0,
+            });
+            continue;
+          }
 
           const venueStartTime = Date.now();
           let added = 0, updated = 0, failed = 0;

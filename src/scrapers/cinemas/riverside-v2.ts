@@ -38,7 +38,7 @@ interface RiversideEvent {
 
 export class RiversideScraperV2 extends BaseScraper {
   config: ScraperConfig = {
-    cinemaId: "riverside",
+    cinemaId: "riverside-studios",
     baseUrl: "https://riversidestudios.co.uk",
     requestsPerMinute: 30,
     delayBetweenRequests: 500,

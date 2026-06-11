@@ -1,19 +1,17 @@
 import { browser } from '$app/environment';
-import type { FilterProgrammingType } from '$lib/constants/filters';
+import {
+	normalizeFormatFilterValue,
+	normalizeGenreFilterValue,
+	type FilterProgrammingType
+} from '$lib/constants/filters';
+import {
+	addDaysToDateString,
+	londonDateString,
+	londonWeekendRange
+} from '$lib/london-date';
 import type { ParsedIntent } from '$lib/search/parse-query';
 
 const STORAGE_KEY = 'pictures-filters';
-
-// Cached London-tz YYYY-MM-DD formatter reused across applyIntent calls.
-// Instantiating a fresh Intl.DateTimeFormat per call dominates the cost on
-// the cmd+k keystroke path; allocate once at module scope (mirrors the
-// DATE_LONDON_ISO hoist in utils.ts). Stateless — identical output across DST.
-const LONDON_YMD = new Intl.DateTimeFormat('en-CA', {
-	timeZone: 'Europe/London',
-	year: 'numeric',
-	month: '2-digit',
-	day: '2-digit'
-});
 
 interface PersistedFilters {
 	cinemaIds: string[];
@@ -63,9 +61,13 @@ if (browser) {
 		requestAnimationFrame(() => {
 			const persisted = loadPersisted();
 			if (persisted.cinemaIds?.length) cinemaIds = persisted.cinemaIds;
-			if (persisted.formats?.length) formats = persisted.formats;
+			if (persisted.formats?.length) {
+				formats = Array.from(new Set(persisted.formats.map(normalizeFormatFilterValue)));
+			}
 			if (persisted.programmingTypes?.length) programmingTypes = persisted.programmingTypes;
-			if (persisted.genres?.length) genres = persisted.genres;
+			if (persisted.genres?.length) {
+				genres = Array.from(new Set(persisted.genres.map(normalizeGenreFilterValue)));
+			}
 			if (persisted.decades?.length) decades = persisted.decades;
 			hydrated = true;
 		});
@@ -183,31 +185,18 @@ export const filters = {
 			return;
 		}
 		const now = new Date();
-		// Use London timezone for all date calculations
-		const todayStr = now.toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
+		const todayStr = londonDateString(now);
 
 		if (preset === 'today') {
 			dateFrom = todayStr;
 			dateTo = todayStr;
 		} else if (preset === 'weekend') {
-			// Get London day of week
-			const londonDow = new Intl.DateTimeFormat('en-GB', { weekday: 'short', timeZone: 'Europe/London' }).format(now);
-			const dayMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
-			const day = dayMap[londonDow] ?? now.getDay();
-			const satOffset = day === 0 ? -1 : 6 - day;
-			const londonNoon = new Date(todayStr + 'T12:00:00Z');
-			const sat = new Date(londonNoon);
-			sat.setUTCDate(londonNoon.getUTCDate() + satOffset);
-			const sun = new Date(sat);
-			sun.setUTCDate(sat.getUTCDate() + 1);
-			dateFrom = sat.toISOString().split('T')[0];
-			dateTo = sun.toISOString().split('T')[0];
+			const weekend = londonWeekendRange(now);
+			dateFrom = weekend.from;
+			dateTo = weekend.to;
 		} else if (preset === '7days') {
-			const londonNoon = new Date(todayStr + 'T12:00:00Z');
-			const end = new Date(londonNoon);
-			end.setUTCDate(londonNoon.getUTCDate() + 7);
 			dateFrom = todayStr;
-			dateTo = end.toISOString().split('T')[0];
+			dateTo = addDaysToDateString(todayStr, 7);
 		}
 	},
 
@@ -279,8 +268,8 @@ export const filters = {
 			// ParsedIntent.dateFrom/dateTo are JS Dates representing the
 			// London-midnight instant; the filters store uses YYYY-MM-DD
 			// strings in London tz. Round-trip via Intl so DST stays sane.
-			dateFrom = parsed.dateFrom ? LONDON_YMD.format(parsed.dateFrom) : null;
-			dateTo = parsed.dateTo ? LONDON_YMD.format(parsed.dateTo) : null;
+			dateFrom = parsed.dateFrom ? londonDateString(parsed.dateFrom) : null;
+			dateTo = parsed.dateTo ? londonDateString(parsed.dateTo) : null;
 		}
 		if (parsed.timeFrom !== undefined) timeFrom = parsed.timeFrom;
 		if (parsed.timeTo !== undefined) timeTo = parsed.timeTo;

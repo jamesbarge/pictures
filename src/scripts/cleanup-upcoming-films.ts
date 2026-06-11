@@ -8,10 +8,10 @@
  *   4. Letterboxd enrichment
  *
  * Usage:
- *   npm run cleanup:upcoming                    # run all phases
- *   npm run cleanup:upcoming -- --dry-run       # preview only
- *   npm run cleanup:upcoming -- --phase 1       # run specific phase
- *   npm run cleanup:upcoming -- --phase 2 --dry-run
+ *   npm run cleanup:upcoming                     # preview all phases
+ *   npm run cleanup:upcoming -- --execute        # apply all phases
+ *   npm run cleanup:upcoming -- --phase 1        # preview a specific phase
+ *   npm run cleanup:upcoming -- --phase 2 --execute
  */
 
 import { db } from "@/db";
@@ -29,7 +29,7 @@ import { sanitizeDirectors, sanitizeYear } from "@/scrapers/utils/film-write-gua
 // CLI flags
 // ---------------------------------------------------------------------------
 
-const DRY_RUN = process.argv.includes("--dry-run");
+const DRY_RUN = !process.argv.includes("--execute");
 const phaseIndex = process.argv.indexOf("--phase");
 const PHASE_FILTER = phaseIndex !== -1 ? parseInt(process.argv[phaseIndex + 1], 10) : null;
 

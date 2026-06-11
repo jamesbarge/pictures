@@ -6,8 +6,8 @@
  * fixes bad years, and attempts TMDB matching.
  *
  * Usage:
- *   npm run enrich:upcoming            # run for real
- *   npm run enrich:upcoming -- --dry-run  # preview only
+ *   npm run enrich:upcoming               # preview only
+ *   npm run enrich:upcoming -- --execute  # apply changes
  */
 
 import { db } from "@/db";
@@ -17,7 +17,7 @@ import { matchFilmToTMDB, getTMDBClient } from "@/lib/tmdb";
 import { extractFilmTitle } from "@/lib/title-extraction";
 import { cleanFilmTitle } from "@/scrapers/pipeline";
 
-const DRY_RUN = process.argv.includes("--dry-run");
+const DRY_RUN = !process.argv.includes("--execute");
 const RATE_LIMIT_MS = 300;
 
 // ---------------------------------------------------------------------------

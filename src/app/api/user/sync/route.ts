@@ -1,15 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { users, userFilmStatuses, userPreferences } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { userFilmStatuses, userPreferences } from "@/db/schema";
+import { eq, sql } from "drizzle-orm";
 import { requireAuth } from "@/lib/auth";
 import { RATE_LIMITS, withRateLimit } from "@/lib/rate-limit";
 import { currentUser } from "@clerk/nextjs/server";
 import type { StoredPreferences, StoredFilters } from "@/db/schema/user-preferences";
 import { BadRequestError, handleApiError } from "@/lib/api-errors";
-import { captureServerEvent, setServerUserProperties } from "@/lib/posthog-server";
 import { syncUserToPostHog } from "@/lib/posthog-supabase-sync";
+import { ensureUserRecord } from "@/lib/user-record";
 import { z } from "zod";
+import {
+  boundedSyncArray,
+  MAX_FILM_STATUS_SYNC_ITEMS,
+  newestByKey,
+} from "@/lib/sync-batching";
 
 const filmStatusPayloadSchema = z.object({
   filmId: z.string().max(200),
@@ -48,7 +53,7 @@ const storedFiltersSchema = z.object({
 });
 
 const syncRequestSchema = z.object({
-  filmStatuses: z.array(filmStatusPayloadSchema).max(5000),
+  filmStatuses: boundedSyncArray(filmStatusPayloadSchema, MAX_FILM_STATUS_SYNC_ITEMS),
   preferences: storedPreferencesSchema.nullable(),
   persistedFilters: storedFiltersSchema.nullable(),
   preferencesUpdatedAt: z.string().datetime().nullable(),
@@ -71,47 +76,6 @@ function toDbValues(status: FilmStatusPayload) {
 }
 
 /**
- * Ensures a user record exists in the database.
- * Creates one from Clerk data if needed, tracking the event in PostHog.
- * @returns true if a new user was created
- */
-async function ensureUserRecord(
-  userId: string,
-  clerkUser: Awaited<ReturnType<typeof currentUser>>
-): Promise<boolean> {
-  const existing = await db.query.users.findFirst({
-    where: eq(users.id, userId),
-  });
-
-  if (existing) return false;
-
-  await db
-    .insert(users)
-    .values({
-      id: userId,
-      email: clerkUser?.emailAddresses[0]?.emailAddress || null,
-      displayName: clerkUser?.firstName
-        ? `${clerkUser.firstName}${clerkUser.lastName ? ` ${clerkUser.lastName}` : ""}`
-        : null,
-    });
-
-  captureServerEvent(userId, "user_created", {
-    source: "sync",
-    email_domain: clerkUser?.emailAddresses[0]?.emailAddress?.split("@")[1],
-    has_name: !!clerkUser?.firstName,
-  });
-
-  setServerUserProperties(userId, {
-    created_at: new Date().toISOString(),
-    signup_source: "sync",
-    email: clerkUser?.emailAddresses[0]?.emailAddress,
-    name: clerkUser?.fullName,
-  });
-
-  return true;
-}
-
-/**
  * POST /api/user/sync - Full bidirectional sync
  *
  * This endpoint:
@@ -129,9 +93,22 @@ export const POST = withRateLimit(RATE_LIMITS.sync, "sync")(async (request: Next
       throw new BadRequestError("Invalid request body", parseResult.error.flatten());
     }
     const body = parseResult.data;
+    const clientFilmStatuses = newestByKey(
+      body.filmStatuses,
+      (status) => status.filmId,
+      (status) => status.updatedAt,
+    );
 
     // 1. Ensure user record exists
-    const isNewUser = await ensureUserRecord(userId, clerkUser);
+    const displayName = clerkUser?.firstName
+      ? `${clerkUser.firstName}${clerkUser.lastName ? ` ${clerkUser.lastName}` : ""}`
+      : undefined;
+    const isNewUser = await ensureUserRecord(userId, {
+      email: clerkUser?.emailAddresses[0]?.emailAddress,
+      displayName,
+      fullName: clerkUser?.fullName,
+      source: "sync",
+    });
 
     // 2. Merge film statuses
     const serverStatuses = await db.query.userFilmStatuses.findMany({
@@ -160,7 +137,7 @@ export const POST = withRateLimit(RATE_LIMITS.sync, "sync")(async (request: Next
     // Then, merge client statuses (newer wins)
     const statusesToUpsert: FilmStatusPayload[] = [];
 
-    for (const clientStatus of body.filmStatuses) {
+    for (const clientStatus of clientFilmStatuses) {
       const serverStatus = mergedStatuses[clientStatus.filmId];
 
       if (!serverStatus) {
@@ -181,22 +158,32 @@ export const POST = withRateLimit(RATE_LIMITS.sync, "sync")(async (request: Next
       }
     }
 
-    // Upsert client changes to server
-    for (const status of statusesToUpsert) {
-      const existing = serverStatuses.find((s) => s.filmId === status.filmId);
-
-      if (existing) {
-        await db
-          .update(userFilmStatuses)
-          .set(toDbValues(status))
-          .where(eq(userFilmStatuses.id, existing.id));
-      } else {
-        await db.insert(userFilmStatuses).values({
-          userId,
-          filmId: status.filmId,
-          ...toDbValues(status),
+    // Upsert client changes to server in one statement.
+    if (statusesToUpsert.length > 0) {
+      await db
+        .insert(userFilmStatuses)
+        .values(
+          statusesToUpsert.map((status) => ({
+            userId,
+            filmId: status.filmId,
+            ...toDbValues(status),
+          })),
+        )
+        .onConflictDoUpdate({
+          target: [userFilmStatuses.userId, userFilmStatuses.filmId],
+          set: {
+            status: sql`excluded.status`,
+            addedAt: sql`excluded.added_at`,
+            seenAt: sql`excluded.seen_at`,
+            rating: sql`excluded.rating`,
+            notes: sql`excluded.notes`,
+            filmTitle: sql`excluded.film_title`,
+            filmYear: sql`excluded.film_year`,
+            filmDirectors: sql`excluded.film_directors`,
+            filmPosterUrl: sql`excluded.film_poster_url`,
+            updatedAt: sql`excluded.updated_at`,
+          },
         });
-      }
     }
 
     // 3. Merge preferences

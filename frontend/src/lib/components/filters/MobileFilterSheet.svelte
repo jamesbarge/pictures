@@ -1,7 +1,10 @@
 <script lang="ts">
 	import { filters } from '$lib/stores/filters.svelte';
+	import { today as todayStore } from '$lib/stores/today.svelte';
+	import { addDaysToDateString } from '$lib/london-date';
 	import { userLocation } from '$lib/stores/user-location.svelte';
-	import { haversineMiles, toLondonDateStr, useModalKeyboardTrap } from '$lib/utils';
+	import { haversineMiles, useModalKeyboardTrap } from '$lib/utils';
+	import { DECADE_OPTIONS, FORMAT_OPTIONS, GENRE_OPTIONS } from '$lib/constants/filters';
 	import CalendarPopover from './CalendarPopover.svelte';
 	import {
 		AREA_CLUSTERS,
@@ -20,27 +23,50 @@
 		cinemas = [],
 		filmCount = 0,
 		open,
-		onClose
+		onClose,
+		returnFocusTo
 	}: {
 		cinemas?: SheetCinema[];
 		filmCount?: number;
 		open: boolean;
 		onClose: () => void;
+		returnFocusTo?: HTMLElement;
 	} = $props();
 
 	let datePickerOpen = $state(false);
+	let cinemaSearch = $state('');
+	let sheetEl = $state<HTMLDivElement>();
+	let dateDialogEl = $state<HTMLDivElement>();
+	let datePickerTriggerEl = $state<HTMLButtonElement>();
 
-	// Modal a11y — Escape closes the sheet and body scroll is locked while
-	// it's open. The shared helper handles both concerns and restores prior
-	// `body.style.overflow` on close.
+	function closeSheet() {
+		datePickerOpen = false;
+		cinemaSearch = '';
+		onClose();
+	}
+
+	function closeDatePicker() {
+		datePickerOpen = false;
+	}
+
 	$effect(() => {
-		if (!open) return;
-		return useModalKeyboardTrap(onClose);
+		if (!open || !sheetEl) return;
+		return useModalKeyboardTrap(sheetEl, closeSheet, {
+			isActive: () => !datePickerOpen,
+			returnFocusTo
+		});
 	});
 
-	// Area cluster definitions + helpers live in `./area-clusters` and are
-	// shared with `DesktopFilterSidebar` so the two surfaces can't disagree
-	// about which neighbourhoods belong to which chip.
+	$effect(() => {
+		if (!datePickerOpen || !dateDialogEl) return;
+		return useModalKeyboardTrap(dateDialogEl, closeDatePicker, {
+			lockBodyScroll: false,
+			returnFocusTo: datePickerTriggerEl
+		});
+	});
+
+	// Area cluster definitions + helpers live in `./area-clusters` so the
+	// neighbourhood membership behind each chip has one source of truth.
 	//
 	// Cluster-to-cinema-ID membership is a pure function of `cinemas`, so
 	// precompute it once per `cinemas` change instead of rescanning all cinemas
@@ -65,6 +91,15 @@
 			? filters.cinemaIds.filter((id) => !ids.includes(id))
 			: Array.from(new Set([...filters.cinemaIds, ...ids]));
 	}
+	const matchingCinemas = $derived.by(() => {
+		const query = cinemaSearch.trim().toLocaleLowerCase('en-GB');
+		if (!query) return [];
+		return cinemas.filter((cinema) =>
+			[cinema.name, cinema.shortName]
+				.filter((name): name is string => Boolean(name))
+				.some((name) => name.toLocaleLowerCase('en-GB').includes(query))
+		);
+	});
 
 	// "Within 2 miles" — browser geolocation required.
 	const WITHIN_RADIUS = 2;
@@ -95,18 +130,16 @@
 			: Array.from(new Set([...filters.cinemaIds, ...ids]));
 	}
 
-	// When
-	const today = toLondonDateStr(new Date());
-	const tomorrow = (() => {
-		const t = new Date(today + 'T12:00:00Z');
-		t.setUTCDate(t.getUTCDate() + 1);
-		return t.toISOString().split('T')[0];
-	})();
+	// When — derived from the shared London-midnight-ticking store so the
+	// sheet's Today/Tomorrow chips stay correct (and consistent with the
+	// toolbar) when the app is left open across midnight.
+	const today = $derived(todayStore.value);
+	const tomorrow = $derived(addDaysToDateString(today, 1));
 	const dayFmt = new Intl.DateTimeFormat('en-GB', { weekday: 'short', timeZone: 'Europe/London' });
-	const todayLabel = dayFmt.format(new Date(today + 'T12:00:00Z'));
-	const tomorrowLabel = dayFmt.format(new Date(tomorrow + 'T12:00:00Z'));
-	const todayDay = new Date(today + 'T12:00:00Z').getUTCDate();
-	const tomorrowDay = new Date(tomorrow + 'T12:00:00Z').getUTCDate();
+	const todayLabel = $derived(dayFmt.format(new Date(today + 'T12:00:00Z')));
+	const tomorrowLabel = $derived(dayFmt.format(new Date(tomorrow + 'T12:00:00Z')));
+	const todayDay = $derived(new Date(today + 'T12:00:00Z').getUTCDate());
+	const tomorrowDay = $derived(new Date(tomorrow + 'T12:00:00Z').getUTCDate());
 
 	function pick(preset: 'today' | 'tomorrow' | 'weekend' | null) {
 		if (preset === 'today') {
@@ -143,26 +176,15 @@
 		else filters.setTimePreset(f, t);
 	}
 
-	// Format
-	const FORMATS = [
-		{ value: '35mm', label: '35mm' },
-		{ value: '70mm', label: '70mm' },
-		{ value: 'imax', label: 'IMAX' },
-		{ value: '4k', label: '4K' }
-	];
-
-	// Genre — chip labels map to lowercase keys. Mobile uses full-word labels.
-	const GENRES = ['Drama', 'Comedy', 'Documentary', 'Thriller', 'Sci-fi', 'Romance', 'Animation', 'Horror'];
-	function toggleGenre(g: string) {
-		const key = g.toLowerCase();
-		filters.genres = filters.genres.includes(key)
-			? filters.genres.filter(x => x !== key)
-			: [...filters.genres, key];
+	// Genre
+	function toggleGenre(value: string) {
+		filters.genres = filters.genres.includes(value)
+			? filters.genres.filter(x => x !== value)
+			: [...filters.genres, value];
 	}
-	function isGenreActive(g: string) { return filters.genres.includes(g.toLowerCase()); }
+	function isGenreActive(value: string) { return filters.genres.includes(value); }
 
 	// Era — decade chips. Matches the homepage filter chain's expected form.
-	const DECADES = ['2020s', '2010s', '2000s', '90s', '80s', '70s', 'Pre-1970'];
 	function toggleDecade(d: string) {
 		filters.decades = filters.decades.includes(d)
 			? filters.decades.filter(x => x !== d)
@@ -171,10 +193,17 @@
 </script>
 
 {#if open}
-	<div class="sheet" role="dialog" aria-label="Filter programme" aria-modal="true">
+	<div
+		bind:this={sheetEl}
+		class="sheet"
+		role="dialog"
+		aria-label="Filter programme"
+		aria-modal="true"
+		tabindex="-1"
+	>
 		<header class="sheet-head">
 			<h2 class="sheet-title">Filter</h2>
-			<button class="close" onclick={onClose} aria-label="Close filters" type="button">×</button>
+			<button class="close" onclick={closeSheet} aria-label="Close filters" type="button">×</button>
 		</header>
 
 		<div class="sheet-body">
@@ -184,13 +213,44 @@
 					<h4>Where</h4>
 					<span class="hint">anywhere in London</span>
 				</div>
-				<div class="mini-search">
+				<label class="mini-search">
 					<svg width="11" height="11" viewBox="0 0 14 14" aria-hidden="true">
 						<circle cx="6" cy="6" r="4.5" stroke="currentColor" stroke-width="1.2" fill="none"/>
 						<path d="M9.5 9.5L13 13" stroke="currentColor" stroke-width="1.2"/>
 					</svg>
-					<span>Search cinemas by name…</span>
-				</div>
+					<input
+						type="search"
+						autocomplete="off"
+						placeholder="Search cinemas by name…"
+						aria-label="Search cinemas by name"
+						bind:value={cinemaSearch}
+					/>
+				</label>
+				{#if cinemaSearch.trim()}
+					<div class="cinema-results">
+						<p class="sr-only" aria-live="polite">
+							{matchingCinemas.length} {matchingCinemas.length === 1 ? 'cinema' : 'cinemas'} found
+						</p>
+						{#if matchingCinemas.length > 0}
+							<div class="chips" aria-label="Cinema search results">
+								{#each matchingCinemas as cinema (cinema.id)}
+									{@const active = filters.cinemaIds.includes(cinema.id)}
+									<button
+										type="button"
+										class="chip"
+										class:active
+										onclick={() => filters.toggleCinema(cinema.id)}
+										aria-pressed={active}
+									>
+										{cinema.shortName ?? cinema.name}
+									</button>
+								{/each}
+							</div>
+						{:else}
+							<p class="cinema-empty">No cinemas found</p>
+						{/if}
+					</div>
+				{/if}
 				<div class="chips">
 					{#each AREA_CLUSTERS as cluster (cluster.label)}
 						{@const active = isAreaActive(cluster.label)}
@@ -219,7 +279,14 @@
 					<button type="button" class="chip" class:active={whenState === 'today'} onclick={() => pick(whenState === 'today' ? null : 'today')}>Today<span class="sub">{todayLabel} {todayDay}</span></button>
 					<button type="button" class="chip" class:active={whenState === 'tomorrow'} onclick={() => pick(whenState === 'tomorrow' ? null : 'tomorrow')}>Tomorrow<span class="sub">{tomorrowLabel} {tomorrowDay}</span></button>
 					<button type="button" class="chip" class:active={whenState === 'weekend'} onclick={() => pick(whenState === 'weekend' ? null : 'weekend')}>This weekend</button>
-					<button type="button" class="chip" onclick={() => (datePickerOpen = true)}>Pick a date</button>
+					<button
+						bind:this={datePickerTriggerEl}
+						type="button"
+						class="chip"
+						onclick={() => (datePickerOpen = true)}
+					>
+						Pick a date
+					</button>
 				</div>
 			</section>
 
@@ -240,7 +307,7 @@
 			<section class="filter-section">
 				<div class="section-head"><h4>Format</h4></div>
 				<div class="chips">
-					{#each FORMATS as fmt (fmt.value)}
+					{#each FORMAT_OPTIONS as fmt (fmt.value)}
 						{@const active = filters.formats.includes(fmt.value)}
 						<button type="button" class="chip" class:active onclick={() => filters.toggleFormat(fmt.value)} aria-pressed={active}>{fmt.label}</button>
 					{/each}
@@ -251,9 +318,9 @@
 			<section class="filter-section">
 				<div class="section-head"><h4>Genre</h4></div>
 				<div class="chips">
-					{#each GENRES as g (g)}
-						{@const active = isGenreActive(g)}
-						<button type="button" class="chip" class:active onclick={() => toggleGenre(g)} aria-pressed={active}>{g}</button>
+					{#each GENRE_OPTIONS as genre (genre.value)}
+						{@const active = isGenreActive(genre.value)}
+						<button type="button" class="chip" class:active onclick={() => toggleGenre(genre.value)} aria-pressed={active}>{genre.label}</button>
 					{/each}
 				</div>
 			</section>
@@ -265,7 +332,7 @@
 					<span class="hint">repertory only</span>
 				</div>
 				<div class="chips">
-					{#each DECADES as d (d)}
+					{#each DECADE_OPTIONS as d (d)}
 						{@const active = filters.decades.includes(d)}
 						<button type="button" class="chip" class:active onclick={() => toggleDecade(d)} aria-pressed={active}>{d}</button>
 					{/each}
@@ -277,7 +344,7 @@
 
 		<footer class="sheet-foot">
 			<button class="reset" type="button" onclick={() => filters.clearAll()}>Reset</button>
-			<button class="show" type="button" onclick={onClose}>
+			<button class="show" type="button" onclick={closeSheet}>
 				Show <span class="show-count">{filmCount}</span> films
 			</button>
 		</footer>
@@ -286,12 +353,20 @@
 
 {#if datePickerOpen}
 	<div
+		bind:this={dateDialogEl}
 		class="cal-overlay"
 		role="dialog"
 		aria-modal="true"
 		aria-label="Pick a date"
-		onclick={(e) => { if (e.target === e.currentTarget) datePickerOpen = false; }}
-		onkeydown={() => {}}
+		tabindex="-1"
+		onclick={(e) => { if (e.target === e.currentTarget) closeDatePicker(); }}
+		onkeydown={(e) => {
+			if (e.key === 'Escape') {
+				e.preventDefault();
+				e.stopPropagation();
+				closeDatePicker();
+			}
+		}}
 	>
 		<div class="cal-wrap">
 			<CalendarPopover
@@ -301,9 +376,9 @@
 				onSelect={(iso) => {
 					filters.dateFrom = iso;
 					filters.dateTo = iso;
-					datePickerOpen = false;
+					closeDatePicker();
 				}}
-				onClose={() => (datePickerOpen = false)}
+				onClose={closeDatePicker}
 			/>
 		</div>
 	</div>
@@ -405,7 +480,7 @@
 		display: flex;
 		align-items: center;
 		gap: 8px;
-		padding: 10px 12px;
+		padding: 0 12px;
 		background: var(--color-surface);
 		border: 1px solid var(--color-border);
 		border-radius: 4px;
@@ -415,6 +490,30 @@
 		font-size: 13px;
 		font-weight: 500;
 		letter-spacing: 0.04em;
+		text-transform: uppercase;
+	}
+	.mini-search:focus-within { box-shadow: var(--shadow-brutalist-sm); }
+	.mini-search input {
+		width: 100%;
+		min-width: 0;
+		padding: 10px 0;
+		border: 0;
+		outline: 0;
+		background: transparent;
+		color: var(--color-text);
+		font: inherit;
+		letter-spacing: inherit;
+		text-transform: inherit;
+	}
+	.mini-search input::placeholder { color: var(--color-text-tertiary); opacity: 1; }
+	.cinema-results { margin-bottom: 12px; }
+	.cinema-empty {
+		margin: 0;
+		padding: 10px 12px;
+		color: var(--color-text-tertiary);
+		font-size: 12px;
+		font-weight: 500;
+		letter-spacing: 0.06em;
 		text-transform: uppercase;
 	}
 
