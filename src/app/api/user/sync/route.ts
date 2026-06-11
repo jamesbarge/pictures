@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { users, userFilmStatuses, userPreferences } from "@/db/schema";
+import { userFilmStatuses, userPreferences } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { requireAuth } from "@/lib/auth";
 import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
 import { currentUser } from "@clerk/nextjs/server";
 import type { StoredPreferences, StoredFilters } from "@/db/schema/user-preferences";
 import { BadRequestError, RateLimitError, handleApiError } from "@/lib/api-errors";
-import { captureServerEvent, setServerUserProperties } from "@/lib/posthog-server";
 import { syncUserToPostHog } from "@/lib/posthog-supabase-sync";
+import { ensureUserRecord } from "@/lib/user-record";
 import { z } from "zod";
 import {
   boundedSyncArray,
@@ -76,47 +76,6 @@ function toDbValues(status: FilmStatusPayload) {
 }
 
 /**
- * Ensures a user record exists in the database.
- * Creates one from Clerk data if needed, tracking the event in PostHog.
- * @returns true if a new user was created
- */
-async function ensureUserRecord(
-  userId: string,
-  clerkUser: Awaited<ReturnType<typeof currentUser>>
-): Promise<boolean> {
-  const existing = await db.query.users.findFirst({
-    where: eq(users.id, userId),
-  });
-
-  if (existing) return false;
-
-  await db
-    .insert(users)
-    .values({
-      id: userId,
-      email: clerkUser?.emailAddresses[0]?.emailAddress || null,
-      displayName: clerkUser?.firstName
-        ? `${clerkUser.firstName}${clerkUser.lastName ? ` ${clerkUser.lastName}` : ""}`
-        : null,
-    });
-
-  captureServerEvent(userId, "user_created", {
-    source: "sync",
-    email_domain: clerkUser?.emailAddresses[0]?.emailAddress?.split("@")[1],
-    has_name: !!clerkUser?.firstName,
-  });
-
-  setServerUserProperties(userId, {
-    created_at: new Date().toISOString(),
-    signup_source: "sync",
-    email: clerkUser?.emailAddresses[0]?.emailAddress,
-    name: clerkUser?.fullName,
-  });
-
-  return true;
-}
-
-/**
  * POST /api/user/sync - Full bidirectional sync
  *
  * This endpoint:
@@ -151,7 +110,15 @@ export async function POST(request: NextRequest) {
     );
 
     // 1. Ensure user record exists
-    const isNewUser = await ensureUserRecord(userId, clerkUser);
+    const displayName = clerkUser?.firstName
+      ? `${clerkUser.firstName}${clerkUser.lastName ? ` ${clerkUser.lastName}` : ""}`
+      : undefined;
+    const isNewUser = await ensureUserRecord(userId, {
+      email: clerkUser?.emailAddresses[0]?.emailAddress,
+      displayName,
+      fullName: clerkUser?.fullName,
+      source: "sync",
+    });
 
     // 2. Merge film statuses
     const serverStatuses = await db.query.userFilmStatuses.findMany({

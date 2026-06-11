@@ -6,6 +6,7 @@ import {
   index,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { films } from "./films";
 import { cinemas } from "./cinemas";
 import type { ScreeningFormat, EventType } from "@/types/screening";
@@ -90,6 +91,10 @@ export const screenings = pgTable(
     index("idx_screenings_cinema_datetime").on(table.cinemaId, table.datetime),
     // Unique constraint to prevent duplicate screenings
     uniqueIndex("idx_screenings_unique").on(table.filmId, table.cinemaId, table.datetime),
+    // Source-backed upserts use this partial index as their conflict target.
+    uniqueIndex("idx_screenings_cinema_source")
+      .on(table.cinemaId, table.sourceId)
+      .where(sql`${table.sourceId} is not null`),
   ]
 );
 

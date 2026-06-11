@@ -13,7 +13,7 @@ const FILM_ID = "960847a6-d5ec-4ab7-bed5-4b54e93e0464";
 const CORRECT_TMDB_ID = 223706;
 
 async function main() {
-  const apply = process.argv.includes("--apply");
+  const apply = process.argv.includes("--execute");
   const tmdb = getTMDBClient();
 
   // Verify the target TMDB ID actually is Boy and the World
@@ -56,7 +56,7 @@ async function main() {
     console.log(`  poster_url= [from TMDB]`);
     console.log(`  synopsis  = ${(data.details.overview ?? "").slice(0, 80)}…`);
     console.log(`  is_repertory = true  (2012 film screening in 2026)`);
-    console.log(`\nRe-run with --apply.`);
+    console.log(`\nRe-run with --execute.`);
     process.exit(0);
   }
 

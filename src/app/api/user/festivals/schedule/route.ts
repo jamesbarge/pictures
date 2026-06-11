@@ -13,6 +13,7 @@ import { z } from "zod";
 import { BadRequestError, handleApiError } from "@/lib/api-errors";
 import { requireAuth, getCurrentUserId } from "@/lib/auth";
 import { boundedSyncArray, idsMissingFrom, newestByKey } from "@/lib/sync-batching";
+import { ensureUserRecord } from "@/lib/user-record";
 
 // Schema for incoming schedule
 const scheduleSchema = z.object({
@@ -135,6 +136,8 @@ export async function POST(request: NextRequest) {
       (entry) => entry.screeningId,
       (entry) => entry.updatedAt,
     );
+
+    await ensureUserRecord(userId);
 
     // Get current server schedule
     const serverSchedule = await db

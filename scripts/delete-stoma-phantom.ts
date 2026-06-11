@@ -20,13 +20,13 @@
  *      datetime, linked to a film titled 'Stoma'.
  *   4. Source_id contains the substring 'stoma' (sanity).
  *
- * Run dry by default; pass --apply to commit.
+ * Run dry by default; pass --execute to commit.
  */
 import { db } from "@/db";
 import { films, screenings } from "@/db/schema";
 import { eq, and, ne } from "drizzle-orm";
 
-const APPLY = process.argv.includes("--apply");
+const APPLY = process.argv.includes("--execute");
 
 const TARGET_ID = "cbcdfce0-94c1-4a7c-bde2-da4fa86a3889";
 const EXPECTED_WRONG_FILM_TITLE = "Guo Ran";

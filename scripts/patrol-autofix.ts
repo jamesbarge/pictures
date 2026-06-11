@@ -18,8 +18,8 @@
  *     within 24h (the patrol's stuck-enrichment guard equivalent)
  *
  * Usage:
- *   npx tsx scripts/patrol-autofix.ts --dry-run
  *   npx tsx scripts/patrol-autofix.ts
+ *   npx tsx scripts/patrol-autofix.ts --execute
  *   npx tsx scripts/patrol-autofix.ts --only=html_entity,event_prefix
  */
 import * as dotenv from "dotenv";
@@ -46,7 +46,7 @@ import { cleanFilmTitleWithMetadata, getKnownNonFilmType } from "../src/scrapers
   }
 })();
 
-const DRY_RUN = process.argv.includes("--dry-run");
+const DRY_RUN = !process.argv.includes("--execute");
 const ONLY_FLAG = process.argv.find(a => a.startsWith("--only="));
 const ONLY = ONLY_FLAG ? new Set(ONLY_FLAG.slice("--only=".length).split(",").map(s => s.trim())) : null;
 

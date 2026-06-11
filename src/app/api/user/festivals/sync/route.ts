@@ -11,6 +11,7 @@ import { z } from "zod";
 import { BadRequestError, handleApiError } from "@/lib/api-errors";
 import { requireAuth } from "@/lib/auth";
 import { boundedSyncArray, idsMissingFrom, newestByKey } from "@/lib/sync-batching";
+import { ensureUserRecord } from "@/lib/user-record";
 import type {
   FestivalInterestLevel,
   FestivalScheduleStatus,
@@ -124,6 +125,8 @@ export async function POST(request: NextRequest) {
       (entry) => entry.screeningId,
       (entry) => entry.updatedAt,
     );
+
+    await ensureUserRecord(userId);
 
     // Get existing server data
     const serverFollows = await db

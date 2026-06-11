@@ -1,14 +1,12 @@
 /**
- * Shared "area cluster" definitions and helpers for filter surfaces
- * (`DesktopFilterSidebar` and `MobileFilterSheet`).
+ * Shared "area cluster" definitions and helpers for filter surfaces.
  *
  * A "cluster" maps an editorial label (e.g. "Soho & West End") onto a set of
  * neighbourhood substrings. A cinema belongs to the cluster if its
  * `address.area` (case-insensitively) contains any of the substrings.
  *
- * Previously each filter surface inlined the cluster table and the three
- * helpers verbatim — a label added to one would silently disagree with the
- * other. Sharing here makes the surface mismatch impossible.
+ * Keeping the editorial membership table here prevents chips from silently
+ * disagreeing when another filter surface is added.
  */
 
 export interface AreaCluster {

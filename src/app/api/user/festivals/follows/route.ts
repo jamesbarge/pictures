@@ -12,6 +12,7 @@ import { z } from "zod";
 import { BadRequestError, handleApiError } from "@/lib/api-errors";
 import { requireAuth, getCurrentUserId } from "@/lib/auth";
 import { boundedSyncArray, idsMissingFrom, newestByKey } from "@/lib/sync-batching";
+import { ensureUserRecord } from "@/lib/user-record";
 
 // Schema for incoming follows
 const followsSchema = z.object({
@@ -113,6 +114,8 @@ export async function POST(request: NextRequest) {
       (follow) => follow.festivalId,
       (follow) => follow.updatedAt,
     );
+
+    await ensureUserRecord(userId);
 
     // Get current server follows
     const serverFollows = await db

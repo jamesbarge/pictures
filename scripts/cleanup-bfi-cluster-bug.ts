@@ -17,13 +17,13 @@
  *
  * Usage:
  *   npx dotenv -e .env.local -- npx tsx scripts/cleanup-bfi-cluster-bug.ts
- *   add --apply to commit deletions
+ *   add --execute to commit deletions
  */
 import { db } from "@/db";
 import { screenings } from "@/db/schema";
 import { inArray, sql } from "drizzle-orm";
 
-const APPLY = process.argv.includes("--apply");
+const APPLY = process.argv.includes("--execute");
 
 async function main() {
   console.log(`BFI Southbank cluster cleanup — ${APPLY ? "APPLY" : "DRY RUN"} mode`);
@@ -74,7 +74,7 @@ async function main() {
   if (byDatetime.size > 5) console.log(`  … and ${byDatetime.size - 5} more clusters.`);
 
   if (!APPLY) {
-    console.log(`\n[DRY RUN] Pass --apply to delete ${rows.length} bogus rows.`);
+    console.log(`\n[DRY RUN] Pass --execute to delete ${rows.length} bogus rows.`);
     process.exit(0);
   }
 

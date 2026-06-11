@@ -56,7 +56,7 @@ export async function runLetterboxdImport(
     await import("@/lib/tmdb");
   const { db } = await import("@/db");
   const { films, userFilmStatuses } = await import("@/db/schema");
-  const { eq, sql } = await import("drizzle-orm");
+  const { eq } = await import("drizzle-orm");
   const { v4: uuidv4 } = await import("uuid");
 
   const { userId, username, entries } = payload;
@@ -98,118 +98,115 @@ export async function runLetterboxdImport(
         .where(eq(films.tmdbId, match.tmdbId))
         .limit(1);
 
-      let filmId: string;
-      let filmTitle: string = match.title;
-      let filmYear: number | null = match.year || null;
-      let filmDirectors: string[] = [];
-      let filmPosterUrl: string | null = match.posterPath
-        ? `https://image.tmdb.org/t/p/w500${match.posterPath}`
-        : null;
+      // Fetch external TMDB data before opening the DB transaction.
+      let newFilm: {
+        title: string;
+        values: (typeof films)["$inferInsert"];
+      } | null = null;
+      if (existing.length === 0) {
+        const client = getTMDBClient();
+        const fullData = await client.getFullFilmData(match.tmdbId);
+        const posterUrl = fullData.details.poster_path
+          ? `https://image.tmdb.org/t/p/w500${fullData.details.poster_path}`
+          : null;
 
-      if (existing.length > 0) {
-        // Film already exists -- use it
-        filmId = existing[0].id;
+        newFilm = {
+          title: fullData.details.title,
+          values: {
+            id: uuidv4(),
+            tmdbId: match.tmdbId,
+            imdbId: fullData.details.imdb_id,
+            title: fullData.details.title,
+            originalTitle: fullData.details.original_title,
+            year: match.year || null,
+            runtime: fullData.details.runtime,
+            directors: fullData.directors,
+            cast: fullData.cast,
+            genres: fullData.details.genres.map((g) => g.name.toLowerCase()),
+            countries: fullData.details.production_countries.map((c) => c.iso_3166_1),
+            languages: fullData.details.spoken_languages.map((l) => l.iso_639_1),
+            certification: fullData.certification,
+            synopsis: fullData.details.overview,
+            tagline: fullData.details.tagline,
+            posterUrl,
+            backdropUrl: fullData.details.backdrop_path
+              ? `https://image.tmdb.org/t/p/w1280${fullData.details.backdrop_path}`
+              : null,
+            isRepertory: isRepertoryFilm(fullData.details.release_date),
+            decade: match.year ? getDecade(match.year) : null,
+            tmdbRating: fullData.details.vote_average,
+            tmdbPopularity: fullData.details.popularity,
+            matchConfidence: match.confidence,
+            matchStrategy: entry.year ? "auto-with-year" : "auto-no-hints",
+            matchedAt: new Date(),
+          },
+        };
+      }
 
-        // Fetch the existing film's metadata for the denormalized status row
-        const filmRow = await db
+      // Create-or-select the canonical film and add a new watchlist status atomically.
+      const { film, created } = await db.transaction(async (tx) => {
+        let created = false;
+        if (newFilm) {
+          const inserted = await tx
+            .insert(films)
+            .values(newFilm.values)
+            .onConflictDoNothing({ target: films.tmdbId })
+            .returning({ id: films.id });
+          created = inserted.length > 0;
+        }
+
+        const [film] = await tx
           .select({
+            id: films.id,
             title: films.title,
             year: films.year,
             directors: films.directors,
             posterUrl: films.posterUrl,
           })
           .from(films)
-          .where(eq(films.id, filmId))
+          .where(eq(films.tmdbId, match.tmdbId))
           .limit(1);
 
-        if (filmRow.length > 0) {
-          filmTitle = filmRow[0].title;
-          filmYear = filmRow[0].year;
-          filmDirectors = filmRow[0].directors;
-          filmPosterUrl = filmRow[0].posterUrl;
+        if (!film) {
+          throw new Error(`Film ${match.tmdbId} was not available after create-or-select`);
         }
-      } else {
-        // Step 3: Create a new film record from TMDB data
-        const client = getTMDBClient();
-        const fullData = await client.getFullFilmData(match.tmdbId);
 
-        filmId = uuidv4();
-        filmTitle = fullData.details.title;
-        filmYear = match.year || null;
-        filmDirectors = fullData.directors;
-        filmPosterUrl = fullData.details.poster_path
-          ? `https://image.tmdb.org/t/p/w500${fullData.details.poster_path}`
-          : null;
+        const now = new Date();
+        await tx
+          .insert(userFilmStatuses)
+          .values({
+            userId,
+            filmId: film.id,
+            status: "want_to_see",
+            addedAt: now,
+            updatedAt: now,
+            filmTitle: film.title,
+            filmYear: film.year,
+            filmDirectors: film.directors,
+            filmPosterUrl: film.posterUrl,
+          })
+          .onConflictDoNothing({
+            target: [userFilmStatuses.userId, userFilmStatuses.filmId],
+          });
 
-        await db.insert(films).values({
-          id: filmId,
-          tmdbId: match.tmdbId,
-          imdbId: fullData.details.imdb_id,
-          title: fullData.details.title,
-          originalTitle: fullData.details.original_title,
-          year: match.year || null,
-          runtime: fullData.details.runtime,
-          directors: fullData.directors,
-          cast: fullData.cast,
-          genres: fullData.details.genres.map((g) => g.name.toLowerCase()),
-          countries: fullData.details.production_countries.map((c) => c.iso_3166_1),
-          languages: fullData.details.spoken_languages.map((l) => l.iso_639_1),
-          certification: fullData.certification,
-          synopsis: fullData.details.overview,
-          tagline: fullData.details.tagline,
-          posterUrl: filmPosterUrl,
-          backdropUrl: fullData.details.backdrop_path
-            ? `https://image.tmdb.org/t/p/w1280${fullData.details.backdrop_path}`
-            : null,
-          isRepertory: isRepertoryFilm(fullData.details.release_date),
-          decade: match.year ? getDecade(match.year) : null,
-          tmdbRating: fullData.details.vote_average,
-          tmdbPopularity: fullData.details.popularity,
-          matchConfidence: match.confidence,
-          matchStrategy: entry.year ? "auto-with-year" : "auto-no-hints",
-          matchedAt: new Date(),
-        });
+        return { film, created };
+      });
 
+      if (created && newFilm) {
         console.log(
-          `[letterboxd-import] Created film: ${fullData.details.title} (${match.year})`,
+          `[letterboxd-import] Created film: ${newFilm.title} (${match.year})`,
         );
-
+      }
+      if (newFilm) {
         // Extra delay after getFullFilmData (which makes multiple TMDB calls)
         await sleep(500);
       }
-
-      // Step 4: Upsert into userFilmStatuses as "want_to_see"
-      const now = new Date();
-      await db
-        .insert(userFilmStatuses)
-        .values({
-          userId,
-          filmId,
-          status: "want_to_see",
-          addedAt: now,
-          updatedAt: now,
-          filmTitle,
-          filmYear,
-          filmDirectors,
-          filmPosterUrl,
-        })
-        .onConflictDoUpdate({
-          target: [userFilmStatuses.userId, userFilmStatuses.filmId],
-          set: {
-            status: sql`excluded.status`,
-            updatedAt: sql`excluded.updated_at`,
-            filmTitle: sql`excluded.film_title`,
-            filmYear: sql`excluded.film_year`,
-            filmDirectors: sql`excluded.film_directors`,
-            filmPosterUrl: sql`excluded.film_poster_url`,
-          },
-        });
 
       details.push({
         title: entry.title,
         year: entry.year,
         status: "matched",
-        filmId,
+        filmId: film.id,
         tmdbId: match.tmdbId,
       });
       matched++;

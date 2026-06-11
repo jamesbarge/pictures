@@ -28,7 +28,7 @@
  *
  * Usage:
  *   npx tsx -r tsconfig-paths/register --env-file=.env.local scripts/spot-check-and-fix.ts            (report only)
- *   npx tsx -r tsconfig-paths/register --env-file=.env.local scripts/spot-check-and-fix.ts --apply    (auto-fix)
+ *   npx tsx -r tsconfig-paths/register --env-file=.env.local scripts/spot-check-and-fix.ts --execute  (auto-fix)
  */
 
 import { db } from "@/db";
@@ -263,7 +263,7 @@ async function runIteration(iteration: number, apply: boolean): Promise<{ issues
 }
 
 async function main() {
-  const apply = process.argv.includes("--apply");
+  const apply = process.argv.includes("--execute");
   console.log(`\n=== Spot-check loop (${apply ? "APPLY" : "REPORT-ONLY"}) ===`);
 
   let iter = 1;
@@ -277,7 +277,7 @@ async function main() {
     allFixes.push(...fixes);
 
     if (!apply) {
-      console.log(`\n[REPORT-ONLY] Re-run with --apply to fix issues.`);
+      console.log(`\n[REPORT-ONLY] Re-run with --execute to fix issues.`);
       break;
     }
     if (fixes.length === 0) {
