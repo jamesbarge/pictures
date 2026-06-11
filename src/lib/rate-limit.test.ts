@@ -98,7 +98,7 @@ describe("getClientIP", () => {
     expect(getClientIP(request)).toBe("unknown");
   });
 
-  it("should prefer x-forwarded-for over other headers", () => {
+  it("should prefer platform-set x-real-ip over spoofable x-forwarded-for", () => {
     const request = new Request("http://example.com", {
       headers: {
         "x-forwarded-for": "10.0.0.1",
@@ -106,7 +106,17 @@ describe("getClientIP", () => {
         "x-real-ip": "10.0.0.3",
       },
     });
-    expect(getClientIP(request)).toBe("10.0.0.1");
+    expect(getClientIP(request)).toBe("10.0.0.3");
+  });
+
+  it("should prefer cf-connecting-ip over x-forwarded-for when x-real-ip is absent", () => {
+    const request = new Request("http://example.com", {
+      headers: {
+        "x-forwarded-for": "10.0.0.1",
+        "cf-connecting-ip": "10.0.0.2",
+      },
+    });
+    expect(getClientIP(request)).toBe("10.0.0.2");
   });
 });
 

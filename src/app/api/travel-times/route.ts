@@ -288,8 +288,10 @@ async function fetchGoogleTimes(
   return data;
 }
 
-// Also support GET for simple testing (limited to a few destinations)
-export async function GET(request: Request) {
+// Also support GET for simple testing (limited to a few destinations).
+// Rate-limited like every other public route so it never becomes an
+// unprotected path if it grows real logic.
+export const GET = withRateLimit(RATE_LIMITS.public, "travel-times-get")(async (request: Request) => {
   const { searchParams } = new URL(request.url);
 
   const lat = searchParams.get("lat");
@@ -316,4 +318,4 @@ export async function GET(request: Request) {
       },
     },
   });
-}
+});

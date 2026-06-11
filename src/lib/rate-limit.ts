@@ -56,11 +56,16 @@ const redis = hasRedis ? new Redis({ url: redisUrl!, token: redisToken! }) : nul
 const ratelimiters = new Map<string, Ratelimit>();
 
 function getOrCreateRatelimiter(config: RateLimitConfig): Ratelimit {
+  if (!redis) {
+    // checkRateLimit guards this; enforce the invariant here too so a future
+    // direct caller fails loudly instead of constructing a broken Ratelimit.
+    throw new Error("getOrCreateRatelimiter requires a configured Redis client");
+  }
   const key = `${config.prefix ?? ""}:${config.limit}:${config.windowSec}`;
   let rl = ratelimiters.get(key);
   if (!rl) {
     rl = new Ratelimit({
-      redis: redis!,
+      redis,
       limiter: Ratelimit.slidingWindow(config.limit, `${config.windowSec} s`),
       prefix: `rl:${config.prefix ?? "default"}`,
       analytics: false,
@@ -184,22 +189,26 @@ export async function checkRateLimit(
  * Works with Vercel, Cloudflare, and standard proxies.
  */
 export function getClientIP(request: Request): string {
-  // Vercel
-  const forwardedFor = request.headers.get("x-forwarded-for");
-  if (forwardedFor) {
-    return forwardedFor.split(",")[0].trim();
+  // Vercel sets x-real-ip to the verified client IP and strips inbound
+  // values, so it cannot be spoofed through the platform edge. Check it
+  // before x-forwarded-for, whose leftmost entry is client-controlled on
+  // generic proxies.
+  const realIP = request.headers.get("x-real-ip");
+  if (realIP) {
+    return realIP;
   }
 
-  // Cloudflare
+  // Cloudflare sets this at its edge and strips inbound values.
   const cfConnectingIP = request.headers.get("cf-connecting-ip");
   if (cfConnectingIP) {
     return cfConnectingIP;
   }
 
-  // Standard
-  const realIP = request.headers.get("x-real-ip");
-  if (realIP) {
-    return realIP;
+  // Fallback for other proxies. On Vercel this header is also
+  // platform-sanitized, so the first entry is the real client.
+  const forwardedFor = request.headers.get("x-forwarded-for");
+  if (forwardedFor) {
+    return forwardedFor.split(",")[0].trim();
   }
 
   return "unknown";
