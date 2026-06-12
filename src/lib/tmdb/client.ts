@@ -119,11 +119,15 @@ export class TMDBClient {
   }
 
   /**
-   * Get full film data including credits and certification
+   * Get full film data including credits and certification.
+   *
+   * @param prefetchedDetails - Skip the details fetch when the caller already
+   *   holds them (e.g. the matcher's runtime cross-check fetched details for
+   *   the same tmdbId moments earlier).
    */
-  async getFullFilmData(tmdbId: number) {
+  async getFullFilmData(tmdbId: number, prefetchedDetails?: TMDBMovieDetails) {
     const [details, credits, certification] = await Promise.all([
-      this.getFilmDetails(tmdbId),
+      prefetchedDetails ?? this.getFilmDetails(tmdbId),
       this.getFilmCredits(tmdbId),
       this.getUKCertification(tmdbId).catch(() => null),
     ]);

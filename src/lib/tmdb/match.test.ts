@@ -165,6 +165,38 @@ describe("matchFilmToTMDB — runtime cross-check (step 3)", () => {
 
     expect(match).not.toBeNull();
   });
+
+  it("attaches the fetched details to the match for downstream reuse", async () => {
+    // matchAndCreateFromTMDB passes these to getFullFilmData so a
+    // runtime-verified match makes no duplicate getFilmDetails call.
+    mocks.searchFilms.mockResolvedValue({ results: [makeResult({ id: 11 })] });
+    const fetched = { runtime: 97, title: "Joyland" };
+    mocks.getFilmDetails.mockResolvedValue(fetched);
+
+    const match = await matchFilmToTMDB("Joyland", { year: 2022, runtime: 100 });
+
+    expect(match).not.toBeNull();
+    expect(match!.details).toBe(fetched);
+  });
+
+  it("leaves details unset when the cross-check did not run", async () => {
+    mocks.searchFilms.mockResolvedValue({ results: [makeResult({ id: 11 })] });
+
+    const match = await matchFilmToTMDB("Joyland", { year: 2022 });
+
+    expect(match).not.toBeNull();
+    expect(match!.details).toBeUndefined();
+  });
+
+  it("leaves details unset when the cross-check fetch failed", async () => {
+    mocks.searchFilms.mockResolvedValue({ results: [makeResult({ id: 11 })] });
+    mocks.getFilmDetails.mockRejectedValue(new Error("TMDB API error: 503"));
+
+    const match = await matchFilmToTMDB("Joyland", { year: 2022, runtime: 100 });
+
+    expect(match).not.toBeNull();
+    expect(match!.details).toBeUndefined();
+  });
 });
 
 describe("matchFilmToTMDB — director credit tie-break (step 4)", () => {
