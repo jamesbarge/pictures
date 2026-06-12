@@ -294,18 +294,29 @@ async function recordScraperRun(params: {
  * True if the error looks like a DB connection/pooler failure (non-retryable
  * at run level). Used by the scrape-all circuit breaker to distinguish a
  * wedged database (abort the run) from ordinary per-site scrape failures
- * (keep going). Deliberately matches the venue wall-clock cap's "timeout"
- * message so capped venues count toward the breaker.
+ * (keep going).
+ *
+ * Deliberately narrow: a Playwright nav timeout ("page.goto: Timeout 30000ms
+ * exceeded") or a venue site refusing connections must NOT count — only
+ * markers that can solely originate from the DB path or the venue cap:
+ * withDbTimeout rejects with "... (client-side)" (src/db/index.ts) and the
+ * venue wall-clock cap appends "(venue wall-clock cap)". ECONNREFUSED counts
+ * only on the Postgres ports (5432 direct / 6543 pooler), not a website's
+ * 80/443.
  */
 export function isConnectionError(err: unknown): boolean {
   const msg = (err instanceof Error ? err.message : String(err)).toLowerCase();
   return (
-    msg.includes("timeout") || // withDbTimeout / venue-cap client-side reject
-    msg.includes("econnrefused") ||
-    msg.includes("connection") ||
+    msg.includes("(client-side)") || // withDbTimeout reject marker
+    msg.includes("wall-clock cap") || // venue cap expiry
+    (msg.includes("econnrefused") && (msg.includes(":5432") || msg.includes(":6543"))) ||
+    msg.includes("connect_timeout") || // postgres-js connect timeout
     msg.includes("pool") ||
+    msg.includes("max client connections") || // Supavisor at capacity
+    msg.includes("remaining connection slots") || // Postgres at capacity
     msg.includes("57014") || // query_canceled (statement_timeout)
-    msg.includes("terminating connection")
+    msg.includes("terminating connection") ||
+    msg.includes("connection terminated") // postgres-js mid-query drop
   );
 }
 
@@ -320,14 +331,17 @@ export function isConnectionError(err: unknown): boolean {
  * on 2026-06-11 two runs hung 50/25 min on awaits not covered by the
  * per-query withDbTimeout. This cap bounds the whole venue unit instead.
  */
-const VENUE_TIMEOUT_MS = process.env.SCRAPE_VENUE_TIMEOUT_MS
-  ? Math.max(60_000, Number(process.env.SCRAPE_VENUE_TIMEOUT_MS))
-  : 10 * 60_000;
+const VENUE_TIMEOUT_MS = (() => {
+  const parsed = Number(process.env.SCRAPE_VENUE_TIMEOUT_MS);
+  // A malformed value must fall back to the default, never NaN — setTimeout
+  // coerces NaN to 0, which would cap every venue instantly.
+  return Number.isFinite(parsed) && parsed > 0 ? Math.max(60_000, parsed) : 10 * 60_000;
+})();
 
 /**
- * Race `p` against a wall-clock cap. Rejects with a "timeout" error on
- * expiry (the message intentionally matches isConnectionError so capped
- * venues count toward the run-level breaker). Like withDbTimeout, this
+ * Race `p` against a wall-clock cap. Rejects on expiry with a message
+ * containing "(venue wall-clock cap)" — intentionally matched by
+ * isConnectionError so capped venues count toward the breaker. Like withDbTimeout, this
  * stops *waiting* on the promise — the abandoned work keeps running in the
  * background until its own cleanup; that's acceptable because the goal is
  * to unblock the run, not to reclaim the socket.

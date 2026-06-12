@@ -98,9 +98,13 @@ interface WaveSummary {
  * Breaker threshold K: abort the run after K consecutive connection-level
  * scraper failures. Default 3; override via SCRAPE_BREAKER_THRESHOLD.
  */
-const BREAKER_THRESHOLD = process.env.SCRAPE_BREAKER_THRESHOLD
-  ? Math.max(1, Number(process.env.SCRAPE_BREAKER_THRESHOLD))
-  : 3;
+const BREAKER_THRESHOLD = (() => {
+  const parsed = Number(process.env.SCRAPE_BREAKER_THRESHOLD);
+  // A malformed value must fall back to the default, never NaN — a NaN
+  // threshold makes `consecutive >= NaN` always false, silently disabling
+  // the breaker.
+  return Number.isFinite(parsed) && parsed >= 1 ? Math.floor(parsed) : 3;
+})();
 
 /** Run-scoped circuit breaker shared across all scrape waves. */
 export interface RunBreaker {
@@ -117,9 +121,12 @@ export interface RunBreaker {
 /**
  * Create a run-level circuit breaker. After 2026-06-09's 13.7h stall (a
  * wedged Supabase pooler turned four venue scrapes into futile 13.4h retry
- * loops and took the whole DB offline), a run with a dead DB must abort in
- * minutes: K consecutive connection failures trip the breaker and the
- * remaining scrapers are skipped.
+ * loops and took the whole DB offline), K consecutive connection failures
+ * trip the breaker and the remaining scrapers + enrichment are skipped.
+ * Worst-case time-to-trip is bounded by the venue wall-clock caps of the
+ * entries in flight (a chain-heavy first wave can take a couple of hours,
+ * since each entry only records its outcome on completion) — a huge
+ * improvement on 13.7h, but not literally "minutes" in every shape of run.
  *
  * NOTE: the counter is mutated cooperatively by the wave worker pool
  * (concurrency cap 4) — fine single-threaded; revisit if scraping ever
@@ -194,6 +201,34 @@ export async function runWithConcurrency<T>(
 }
 
 /** Run a single scraper-registry entry and return wave-summary contribution. */
+/**
+ * Compute the breaker outcome for a completed scraper entry.
+ *
+ * Any write proves the DB is alive — a wedged pooler can't write — so a
+ * 12-venue chain with 11 successes and one site timeout counts as
+ * breaker-success, not as a consecutive connection failure. Only entries
+ * that failed AND wrote nothing feed their per-venue error messages to the
+ * breaker (where isConnectionError decides if they count).
+ *
+ * Exported for tests: this is the seam between runScraper's results and the
+ * run-level circuit breaker.
+ */
+export function breakerOutcomeFor(result: {
+  success: boolean;
+  totalScreeningsAdded: number;
+  totalScreeningsUpdated: number;
+  venueResults: Array<{ success: boolean; error?: string }>;
+}): { succeeded: boolean; errors: string[] } {
+  return {
+    succeeded:
+      result.success ||
+      result.totalScreeningsAdded + result.totalScreeningsUpdated > 0,
+    errors: result.venueResults
+      .filter((v) => !v.success && v.error)
+      .map((v) => v.error as string),
+  };
+}
+
 async function runScraperEntry(
   entry: ScraperRegistryEntry,
   waveLabel: string,
@@ -233,12 +268,7 @@ async function runScraperEntry(
     // Feed the circuit breaker: runScraper rarely throws (venue failures —
     // including wall-clock-cap timeouts — are folded into venueResults), so
     // connection errors must be detected from the per-venue error messages.
-    breaker?.record(taskId, {
-      succeeded: result.success,
-      errors: result.venueResults
-        .filter((v) => !v.success && v.error)
-        .map((v) => v.error as string),
-    });
+    breaker?.record(taskId, breakerOutcomeFor(result));
     return { succeeded: result.success };
   } catch (err) {
     const ms = Date.now() - startedAt.getTime();

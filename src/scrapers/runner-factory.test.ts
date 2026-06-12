@@ -40,8 +40,11 @@ describe("isConnectionError", () => {
     expect(isConnectionError(new Error("connect ECONNREFUSED 1.2.3.4:5432"))).toBe(true);
     expect(isConnectionError(new Error("Connection terminated unexpectedly"))).toBe(true);
     expect(isConnectionError(new Error("remaining connection slots are reserved"))).toBe(true);
-    expect(isConnectionError(new Error("timeout exceeded when trying to connect"))).toBe(true);
-    expect(isConnectionError(new Error("max client connections reached (pool)"))).toBe(true);
+    expect(isConnectionError(new Error("write CONNECT_TIMEOUT 1.2.3.4:6543"))).toBe(true);
+    expect(isConnectionError(new Error("Max client connections reached"))).toBe(true);
+    expect(
+      isConnectionError(new Error("Venue rio-dalston timeout after 600000ms (venue wall-clock cap)")),
+    ).toBe(true);
     expect(isConnectionError(new Error("canceling statement due to user request (57014)"))).toBe(
       true,
     );
@@ -55,10 +58,17 @@ describe("isConnectionError", () => {
     expect(isConnectionError(new Error("Health check failed - site not accessible"))).toBe(false);
     expect(isConnectionError(new Error("scrape_blocked_by_diff_check"))).toBe(false);
     expect(isConnectionError(new Error("Cloudflare challenge page detected"))).toBe(false);
+    // A Playwright nav timeout is the venue's WEBSITE being slow, not the DB —
+    // it must not count toward a breaker that aborts the whole run.
+    expect(isConnectionError(new Error("page.goto: Timeout 30000ms exceeded"))).toBe(false);
+    // A venue site refusing connections is not the DB (no Postgres port).
+    expect(isConnectionError(new Error("connect ECONNREFUSED 93.184.216.34:443"))).toBe(false);
   });
 
   it("handles non-Error values", () => {
-    expect(isConnectionError("ETIMEDOUT: socket timeout")).toBe(true);
+    // Ambiguous-origin socket timeouts no longer count (could be a venue
+    // site); the breaker's progress-based success guard compensates.
+    expect(isConnectionError("ETIMEDOUT: socket timeout")).toBe(false);
     expect(isConnectionError("no showtimes found")).toBe(false);
     expect(isConnectionError(undefined)).toBe(false);
   });

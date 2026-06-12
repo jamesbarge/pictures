@@ -29,7 +29,7 @@ vi.mock("@/lib/scrape-progress", () => ({
   stampProgress: vi.fn(async () => {}),
 }));
 
-import { createRunBreaker, runWithConcurrency } from "./scrape-all";
+import { breakerOutcomeFor, createRunBreaker, runWithConcurrency } from "./scrape-all";
 
 const CONN_ERROR = "getOrCreateFilm: Film X timeout after 20000ms (client-side)";
 const SITE_ERROR = "Health check failed - site not accessible";
@@ -71,6 +71,51 @@ describe("createRunBreaker", () => {
     breaker.record("cinema-d", { succeeded: false, errors: [CONN_ERROR] });
     breaker.record("cinema-e", { succeeded: false, errors: [CONN_ERROR] });
 
+    expect(breaker.isTripped()).toBe(false);
+  });
+});
+
+describe("breakerOutcomeFor (entry → breaker seam)", () => {
+  it("treats a failed entry that still wrote screenings as breaker-success", () => {
+    // 12-venue chain, 11 ok + 1 site timeout: the DB demonstrably works.
+    const outcome = breakerOutcomeFor({
+      success: false,
+      totalScreeningsAdded: 14,
+      totalScreeningsUpdated: 230,
+      venueResults: [
+        { success: true },
+        { success: false, error: "page.goto: Timeout 30000ms exceeded" },
+      ],
+    });
+    expect(outcome.succeeded).toBe(true);
+  });
+
+  it("feeds a zero-write failure's errors to the breaker, and a wall-clock-capped venue counts toward a trip", () => {
+    const capError = "Venue rio-dalston timeout after 600000ms (venue wall-clock cap)";
+    const outcome = breakerOutcomeFor({
+      success: false,
+      totalScreeningsAdded: 0,
+      totalScreeningsUpdated: 0,
+      venueResults: [{ success: false, error: capError }],
+    });
+    expect(outcome).toEqual({ succeeded: false, errors: [capError] });
+
+    const breaker = createRunBreaker(3);
+    breaker.record("a", outcome);
+    breaker.record("b", outcome);
+    breaker.record("c", outcome);
+    expect(breaker.isTripped()).toBe(true);
+  });
+
+  it("does not let a venue-website nav timeout count toward the breaker", () => {
+    const outcome = breakerOutcomeFor({
+      success: false,
+      totalScreeningsAdded: 0,
+      totalScreeningsUpdated: 0,
+      venueResults: [{ success: false, error: "page.goto: Timeout 30000ms exceeded" }],
+    });
+    const breaker = createRunBreaker(1);
+    breaker.record("a", outcome);
     expect(breaker.isTripped()).toBe(false);
   });
 });
