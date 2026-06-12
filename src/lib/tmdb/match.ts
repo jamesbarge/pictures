@@ -31,6 +31,12 @@ const YEAR_MISMATCH_PENALTY = -0.1;
 const CLASSIC_YEAR_THRESHOLD = 2000;
 const CLASSIC_YEAR_MISMATCH_TOLERANCE = 5;
 const CLASSIC_CONFIDENCE_FLOOR = 0.85;
+// Runtime cross-check (plan 005, step 3)
+const MIN_RUNTIME_HINT_MINUTES = 40; // ignore short-programme hints
+const STUB_RUNTIME_MAX_MINUTES = 30; // TMDB runtime below this = stub/short
+const FEATURE_RUNTIME_MIN_MINUTES = 60; // venue runtime at/above this = feature
+const RUNTIME_MISMATCH_TOLERANCE_MINUTES = 30;
+const RUNTIME_MISMATCH_PENALTY = 0.15;
 
 /**
  * Get TMDB matching thresholds from the AutoQuality-tuned config.
@@ -51,6 +57,8 @@ function getTmdbThresholds() {
 interface MatchHints {
   year?: number;
   director?: string;
+  /** Film runtime in minutes from the venue (cross-checked against TMDB) */
+  runtime?: number;
   /** If true, skip ambiguity checks (for re-processing with known good metadata) */
   skipAmbiguityCheck?: boolean;
 }
@@ -164,19 +172,71 @@ export async function matchFilmToTMDB(
   // Search with year hint if provided
   const searchResults = await client.searchFilms(title, hints?.year);
 
+  let best: MatchResult | null;
   if (searchResults.results.length === 0) {
     // Try without year hint
-    if (hints?.year) {
-      const fallbackResults = await client.searchFilms(title);
-      if (fallbackResults.results.length === 0) {
-        return null;
-      }
-      return findBestMatch(title, fallbackResults.results, hints);
+    if (!hints?.year) {
+      return null;
     }
+    const fallbackResults = await client.searchFilms(title);
+    if (fallbackResults.results.length === 0) {
+      return null;
+    }
+    best = findBestMatch(title, fallbackResults.results, hints);
+  } else {
+    best = findBestMatch(title, searchResults.results, hints);
+  }
+
+  return applyRuntimeCrossCheck(best, hints, client);
+}
+
+/**
+ * Cross-check the winning candidate's TMDB runtime against the venue-provided
+ * runtime (plan 005, step 3). Gated on the hint being present and
+ * feature-plausible, so typical matches make zero extra API calls.
+ *
+ * - TMDB runtime missing/tiny vs a feature-length hint → reject (junk stubs
+ *   and shorts have runtime 0/null/<30 on TMDB).
+ * - Runtimes differing by >30 min → −0.15 confidence (e.g. Nosferatu 2024's
+ *   131 min vs the 1922 original's 97 min), re-gated on the floor.
+ */
+async function applyRuntimeCrossCheck(
+  best: MatchResult | null,
+  hints: MatchHints | undefined,
+  client: ReturnType<typeof getTMDBClient>
+): Promise<MatchResult | null> {
+  if (!best || !hints?.runtime || hints.runtime < MIN_RUNTIME_HINT_MINUTES) {
+    return best;
+  }
+
+  const details = await client.getFilmDetails(best.tmdbId);
+  const tmdbRuntime = details.runtime ?? 0;
+
+  // Stub/short vs feature: a candidate with no or tiny runtime cannot be the
+  // feature-length film the venue is showing.
+  if (tmdbRuntime < STUB_RUNTIME_MAX_MINUTES && hints.runtime >= FEATURE_RUNTIME_MIN_MINUTES) {
+    console.log(
+      `[tmdb-match] Rejecting "${best.title}" (tmdb=${best.tmdbId}): ` +
+        `TMDB runtime ${tmdbRuntime}min vs venue runtime ${hints.runtime}min (stub/short vs feature)`
+    );
     return null;
   }
 
-  return findBestMatch(title, searchResults.results, hints);
+  if (tmdbRuntime > 0) {
+    const diff = Math.abs(tmdbRuntime - hints.runtime);
+    if (diff > RUNTIME_MISMATCH_TOLERANCE_MINUTES) {
+      best.confidence = Math.max(0, best.confidence - RUNTIME_MISMATCH_PENALTY);
+    }
+    if (best.confidence < getTmdbThresholds().minMatchConfidence) {
+      console.log(
+        `[tmdb-match] Rejecting "${best.title}" (tmdb=${best.tmdbId}): ` +
+          `runtime mismatch (${tmdbRuntime}min vs ${hints.runtime}min) dropped confidence below floor`
+      );
+      return null;
+    }
+  }
+
+  return best;
 }
 
 /**
