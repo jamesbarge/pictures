@@ -158,3 +158,28 @@ describe("pickDominantExactTitleMatch", () => {
     expect(pickDominantExactTitleMatch("Aliens", results, CURRENT_YEAR)).toBeNull();
   });
 });
+
+describe("pickDominantExactTitleMatch — punctuation folding", () => {
+  it('treats TMDB\'s "Adaptation." as an exact match for "Adaptation"', () => {
+    const results = [
+      {
+        id: 2757,
+        title: "Adaptation.",
+        original_title: "Adaptation.",
+        overview: "",
+        release_date: "2002-12-06",
+        poster_path: null,
+        backdrop_path: null,
+        vote_average: 7.5,
+        genre_ids: [],
+        original_language: "en",
+        adult: false,
+        popularity: 30,
+      },
+    ];
+    expect(pickDominantExactTitleMatch("Adaptation", results, 2026)).toEqual({
+      tmdbId: 2757,
+      year: 2002,
+    });
+  });
+});

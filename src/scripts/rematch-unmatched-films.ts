@@ -110,14 +110,16 @@ const EXACT_TITLE_DOMINANCE_RATIO = 5;
 
 /** Strict normalizer for exact-title equality — deliberately NOT the loose
  *  matcher normalizer (which strips ": subtitles", so "Alien: Romulus" would
- *  "equal" "Alien"). Lowercase, fold diacritics, collapse whitespace. */
+ *  "equal" "Alien"). Lowercase, fold diacritics, fold punctuation to spaces
+ *  (TMDB's official title for the 2002 Jonze film is "Adaptation." with a
+ *  trailing period), collapse whitespace. The words themselves must still
+ *  match exactly — "alien romulus" remains distinct from "aliens". */
 function normalizeExact(title: string): string {
   return title
     .toLowerCase()
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "")
-    .replace(/['‘’]/g, "'")
-    .replace(/[“”]/g, '"')
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
