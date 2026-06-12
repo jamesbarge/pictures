@@ -1,3 +1,13 @@
+## 2026-06-12: Letterboxd integrity — no-anchor guard, canonical slug, era-scaled year tolerance
+**PR**: pending | **Files**: `src/db/schema/films.ts`, `src/db/enrich-letterboxd.ts`, `src/agents/fallback-enrichment/index.ts`, `src/lib/jobs/letterboxd-import.ts`, `src/lib/letterboxd-import.ts`, `src/scripts/backfill-letterboxd-slugs.ts`
+- New `films.letterboxd_slug` + `films.letterboxd_enriched_at` columns (migration applied). Letterboxd's canonical slug is now persisted from watchlist imports (`data-film-slug`) and from the post-redirect URL of successful enrichment fetches.
+- Enrichment never guesses slugs for films without a TMDB anchor (a missing link is correct; a wrong link is a bug) and prefers the stored slug over guessing. The fallback agent (all tmdb_id IS NULL films) no longer assigns Letterboxd URLs at all.
+- Watchlist matching: era-scaled year tolerance (<1970 ±3, <2000 ±2, else ±1); ambiguous same-titled entries with no year stay unmatched instead of grabbing the first candidate.
+- Backfill script (default-dry): 1,401 slug-style URLs backfilled; 149 `/tmdb/`-style URLs pending network redirect resolution.
+- Fixes the class of wrong links behind "Doctors Under Attack" → /film/gaza/ and "Nighthawks (1978)" → the 1981 Stallone film.
+
+---
+
 ## 2026-06-12: Scrapers capture runtime — Rio, ICA, Garden, Curzon (plan 006)
 **PR**: pending | **Files**: `src/scrapers/cinemas/rio.ts`, `src/scrapers/cinemas/ica.ts`, `src/scrapers/cinemas/garden.ts`, `src/scrapers/chains/curzon.ts`, `src/scrapers/utils/metadata-parser.ts`, `src/lib/tmdb/match.ts`, `src/lib/tmdb/client.ts`, `src/scrapers/utils/film-matching.ts`
 - Four scrapers that already parsed runtime and threw it away now forward it as `RawScreening.runtime`: Rio (embedded JSON `RunningTime`), ICA (`#colophon` text), Garden (stats line "Director, Country, Year, Runtime"), Curzon (Vista OCAPI `runtimeInMinutes`).
