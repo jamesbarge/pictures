@@ -1,3 +1,10 @@
+## 2026-06-12: Scrape accuracy audit — handoff plans 004–010
+**PR**: TBD | **Files**: `plans/HANDOFF-2026-06-11.md`, `plans/004-…010-*.md`, `plans/README.md`
+- Master handoff report + seven self-contained implementation plans from the 2026-06-11 live `/scrape` run and four-way audit (TMDB matching, Letterboxd, scraper metadata, live-DB evidence).
+- Key findings encoded: films INSERT drops match audit trail (4.3% coverage); runtime parsed-then-discarded by 4 scrapers; Letterboxd slug-guessing without TMDB anchor; 392 BFI phantom rows (since swept); double-wedge reproduction of the missing circuit breaker.
+
+---
+
 ## 2026-06-11: Canonical title patterns and entity decoding
 **PR**: #666 | **Files**: `src/lib/title-extraction/patterns.ts`, `src/lib/title-patterns.ts`, `src/scrapers/utils/film-title-cleaner.ts`, title cleanup and audit scripts
 - Made the extraction pattern module the single source for event prefixes, suffixes, non-film patterns, and live-broadcast keywords; poster backfill and audits now consume those shared definitions.
