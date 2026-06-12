@@ -161,8 +161,21 @@ export async function matchAndCreateFromTMDB(
   scraperDirector?: string,
   scraperPosterUrl?: string
 ): Promise<string | null> {
+  // Year discipline: many scrapers send the SCREENING year as the film year,
+  // and pipeline.ts also extracts "(YYYY)" from titles — for the current year
+  // those are indistinguishable from screening-year pollution. A wrong
+  // current-year hint gives junk stubs a +0.2/+0.3 exact-year bonus and
+  // SELECTS the wrong film; losing a true hint merely costs a bonus. Same
+  // rule as createFilmWithoutTMDB: only accept years strictly before the
+  // current year (and within sane bounds).
+  const currentYear = new Date().getFullYear();
+  const releaseYearHint =
+    scraperYear && scraperYear >= 1900 && scraperYear < currentYear
+      ? scraperYear
+      : undefined;
+
   const match = await matchFilmToTMDB(matchingTitle, {
-    year: scraperYear,
+    year: releaseYearHint,
     director: scraperDirector,
   });
 

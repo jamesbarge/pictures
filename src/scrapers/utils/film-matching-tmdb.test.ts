@@ -131,3 +131,46 @@ describe("matchAndCreateFromTMDB — audit trail persistence (step 1)", () => {
     expect(mocks.insertValues).not.toHaveBeenCalled();
   });
 });
+describe("matchAndCreateFromTMDB — year discipline (step 2)", () => {
+  it("strips a current-year hint before calling matchFilmToTMDB", async () => {
+    mocks.matchFilmToTMDB.mockResolvedValue(null);
+    const currentYear = new Date().getFullYear();
+
+    await matchAndCreateFromTMDB(makeCache(), "Cronos", currentYear);
+
+    expect(mocks.matchFilmToTMDB).toHaveBeenCalledWith(
+      "Cronos",
+      expect.objectContaining({ year: undefined })
+    );
+  });
+
+  it("passes a historical release year through unchanged", async () => {
+    mocks.matchFilmToTMDB.mockResolvedValue(null);
+
+    await matchAndCreateFromTMDB(makeCache(), "Aguirre, the Wrath of God", 1972);
+
+    expect(mocks.matchFilmToTMDB).toHaveBeenCalledWith(
+      "Aguirre, the Wrath of God",
+      expect.objectContaining({ year: 1972 })
+    );
+  });
+
+  it("strips future years and pre-1900 years", async () => {
+    mocks.matchFilmToTMDB.mockResolvedValue(null);
+    const futureYear = new Date().getFullYear() + 1;
+
+    await matchAndCreateFromTMDB(makeCache(), "Some Film", futureYear);
+    await matchAndCreateFromTMDB(makeCache(), "Some Film", 1850);
+
+    expect(mocks.matchFilmToTMDB).toHaveBeenNthCalledWith(
+      1,
+      "Some Film",
+      expect.objectContaining({ year: undefined })
+    );
+    expect(mocks.matchFilmToTMDB).toHaveBeenNthCalledWith(
+      2,
+      "Some Film",
+      expect.objectContaining({ year: undefined })
+    );
+  });
+});
