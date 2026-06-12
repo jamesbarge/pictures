@@ -93,6 +93,18 @@ describe("matchFilmToTMDB — runtime cross-check (step 3)", () => {
     expect(match!.confidence).toBeCloseTo(control!.confidence, 10);
   });
 
+  it("keeps the match when the runtime-check getFilmDetails call fails", async () => {
+    // A transient TMDB failure must skip verification, not convert a
+    // successful match into a TMDB-less film via the pipeline fallback.
+    mocks.searchFilms.mockResolvedValue({ results: [makeResult({ id: 11 })] });
+    mocks.getFilmDetails.mockRejectedValue(new Error("TMDB API error: 503"));
+
+    const match = await matchFilmToTMDB("Joyland", { year: 2022, runtime: 100 });
+
+    expect(match).not.toBeNull();
+    expect(match!.tmdbId).toBe(11);
+  });
+
   it("applies a -0.15 penalty when runtimes differ by more than 30 minutes", async () => {
     // Nosferatu 2024 (131 min) vs the venue's 1922 original (97 min)
     mocks.searchFilms.mockResolvedValue({ results: [makeResult({ id: 11 })] });
@@ -234,6 +246,29 @@ describe("matchFilmToTMDB — director credit tie-break (step 4)", () => {
 
     expect(match).not.toBeNull();
     expect(match!.tmdbId).toBe(100);
+  });
+
+  it("ignores a director hint that matches no close candidate (dirty hint / namesake)", async () => {
+    mocks.searchFilms.mockResolvedValue({ results: draculaTie() });
+    // findDirectorId resolved SOMEONE (e.g. a namesake), but they directed
+    // neither close candidate — the adjustment must be a no-op, not a
+    // blanket penalty that could reject a correct match or promote a weaker
+    // never-examined candidate.
+    mocks.findDirectorId.mockResolvedValue(99);
+    mocks.getPersonCredits.mockResolvedValue({
+      cast: [],
+      crew: [{ id: 555, job: "Director", title: "An Unrelated Film" }],
+    });
+
+    const withDirtyHint = await matchFilmToTMDB("Dracula", {
+      year: 2025,
+      director: "Misspelled Namesake",
+    });
+    const control = await matchFilmToTMDB("Dracula", { year: 2025 });
+
+    expect(withDirtyHint).not.toBeNull();
+    expect(withDirtyHint!.tmdbId).toBe(control!.tmdbId);
+    expect(withDirtyHint!.confidence).toBeCloseTo(control!.confidence, 5);
   });
 });
 

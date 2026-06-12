@@ -216,7 +216,19 @@ async function applyRuntimeCrossCheck(
     return best;
   }
 
-  const details = await client.getFilmDetails(best.tmdbId);
+  // Best-effort, like the director tie-break: a transient TMDB failure must
+  // skip verification and keep the match — throwing here would convert a
+  // successful match into a TMDB-less film row via the pipeline's fallback.
+  let details: Awaited<ReturnType<typeof client.getFilmDetails>>;
+  try {
+    details = await client.getFilmDetails(best.tmdbId);
+  } catch (err) {
+    console.warn(
+      `[tmdb-match] Runtime cross-check skipped for tmdb=${best.tmdbId}: ` +
+        `getFilmDetails failed (${err instanceof Error ? err.message : String(err)})`
+    );
+    return best;
+  }
   const tmdbRuntime = details.runtime ?? 0;
 
   // Stub/short vs feature: a candidate with no or tiny runtime cannot be the
@@ -370,25 +382,40 @@ async function findBestMatch(
         const directedIds = new Set(
           credits.crew.filter((c) => c.job === "Director").map((c) => c.id)
         );
-        for (const scored of scoredResults) {
-          if (scored.score >= competitorThreshold) {
-            scored.score += directedIds.has(scored.result.id)
-              ? DIRECTOR_MATCH_BONUS
-              : -DIRECTOR_MISMATCH_PENALTY;
+        // Only adjust when the resolved director actually directed at least
+        // one close competitor. A dirty hint (misspelling, namesake picked by
+        // findDirectorId) that discriminates nothing must be a no-op:
+        // penalizing every tied candidate both rejects correct matches and
+        // can promote a weaker, never-examined candidate past the tie set.
+        const discriminates = scoredResults.some(
+          (s) => s.score >= competitorThreshold && directedIds.has(s.result.id)
+        );
+        if (discriminates) {
+          for (const scored of scoredResults) {
+            if (scored.score >= competitorThreshold) {
+              scored.score += directedIds.has(scored.result.id)
+                ? DIRECTOR_MATCH_BONUS
+                : -DIRECTOR_MISMATCH_PENALTY;
+            }
           }
-        }
-        scoredResults.sort((a, b) => b.score - a.score);
-        if (scoredResults[0] !== best) {
-          console.log(
-            `[tmdb-match] Director tie-break for "${searchTitle}": ` +
-              `"${directorHint}" credits pick tmdb=${scoredResults[0].result.id} over tmdb=${best.result.id}`
+          scoredResults.sort((a, b) => b.score - a.score);
+          if (scoredResults[0] !== best) {
+            console.log(
+              `[tmdb-match] Director tie-break for "${searchTitle}": ` +
+                `"${directorHint}" credits pick tmdb=${scoredResults[0].result.id} over tmdb=${best.result.id}`
+            );
+          }
+          best = scoredResults[0];
+          competitorThreshold = best.score * tmdb.competitorThresholdRatio;
+          closeCompetitors = scoredResults.filter(
+            (r) => r.score >= competitorThreshold
+          ).length;
+        } else {
+          console.warn(
+            `[tmdb-match] Director hint "${directorHint}" matches no close ` +
+              `candidate for "${searchTitle}" — ignoring (dirty hint or namesake)`
           );
         }
-        best = scoredResults[0];
-        competitorThreshold = best.score * tmdb.competitorThresholdRatio;
-        closeCompetitors = scoredResults.filter(
-          (r) => r.score >= competitorThreshold
-        ).length;
       }
     } catch (error) {
       // Director resolution is best-effort — never fail the match over it

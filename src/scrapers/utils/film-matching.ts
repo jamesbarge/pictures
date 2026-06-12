@@ -183,6 +183,15 @@ export async function matchAndCreateFromTMDB(
     venueLanguages,
   });
 
+  // Audit-trail accuracy: record the strategy that actually applied. After
+  // year-stripping, a current-year film matches with NO year hint — labeling
+  // it "auto-with-year" would be wrong (schema vocabulary: films.ts).
+  const matchStrategy = releaseYearHint
+    ? "auto-with-year"
+    : scraperDirector
+      ? "auto-with-director"
+      : "auto-no-hints";
+
   if (!match) {
     return null;
   }
@@ -262,7 +271,7 @@ export async function matchAndCreateFromTMDB(
     // any recorded confidence.
     letterboxdUrl: `https://letterboxd.com/tmdb/${match.tmdbId}`,
     matchConfidence: match.confidence ?? null,
-    matchStrategy: "auto-with-year",
+    matchStrategy,
     matchedAt: new Date(),
   });
 
@@ -298,7 +307,7 @@ export async function matchAndCreateFromTMDB(
     letterboxdUrl: `https://letterboxd.com/tmdb/${match.tmdbId}`,
     letterboxdRating: null,
     matchConfidence: match.confidence ?? null,
-    matchStrategy: "auto-with-year",
+    matchStrategy,
     matchedAt: new Date(),
     enrichmentStatus: null,
     createdAt: new Date(),

@@ -115,6 +115,51 @@ describe("matchAndCreateFromTMDB — audit trail persistence (step 1)", () => {
     expect(payload.letterboxdUrl).toBe("https://letterboxd.com/tmdb/555");
   });
 
+  it("records auto-no-hints when the year hint was stripped as current-year contamination", async () => {
+    mocks.matchFilmToTMDB.mockResolvedValue({
+      tmdbId: 556,
+      confidence: 0.8,
+      title: "Some New Film",
+      year: new Date().getFullYear(),
+      posterPath: null,
+    });
+    mocks.getFullFilmData.mockResolvedValue(makeFullFilmData());
+
+    // Current-year scraperYear is stripped before matching, so the audit
+    // trail must not claim a year hint was used.
+    const filmId = await matchAndCreateFromTMDB(
+      makeCache(),
+      "Some New Film",
+      new Date().getFullYear()
+    );
+
+    expect(filmId).not.toBeNull();
+    const payload = mocks.insertValues.mock.calls[0][0];
+    expect(payload.matchStrategy).toBe("auto-no-hints");
+  });
+
+  it("records auto-with-director when only a director hint applied", async () => {
+    mocks.matchFilmToTMDB.mockResolvedValue({
+      tmdbId: 557,
+      confidence: 0.8,
+      title: "Some New Film",
+      year: new Date().getFullYear(),
+      posterPath: null,
+    });
+    mocks.getFullFilmData.mockResolvedValue(makeFullFilmData());
+
+    const filmId = await matchAndCreateFromTMDB(
+      makeCache(),
+      "Some New Film",
+      undefined,
+      "Saim Sadiq"
+    );
+
+    expect(filmId).not.toBeNull();
+    const payload = mocks.insertValues.mock.calls[0][0];
+    expect(payload.matchStrategy).toBe("auto-with-director");
+  });
+
   it("returns existing film id without inserting when TMDB id already exists in DB", async () => {
     mocks.matchFilmToTMDB.mockResolvedValue({
       tmdbId: 555,
