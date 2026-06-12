@@ -203,3 +203,41 @@ describe("resolveYearHint", () => {
     expect(resolveYearHint(null, undefined, CURRENT_YEAR)).toBeUndefined();
   });
 });
+
+describe("pickDominantExactTitleMatch — upcoming-conflict guard", () => {
+  function res(id: number, title: string, date: string, popularity: number) {
+    return {
+      id,
+      title,
+      original_title: title,
+      overview: "",
+      release_date: date,
+      poster_path: null,
+      backdrop_path: null,
+      vote_average: 0,
+      genre_ids: [],
+      original_language: "en",
+      adult: false,
+      popularity,
+    };
+  }
+
+  it("bails when a non-stub same-title film exists in the current/future window (Supergirl trap)", () => {
+    const results = [
+      res(9651, "Supergirl", "1984-07-19", 40),
+      res(1234, "Supergirl", "2026-06-26", 95), // the new DC release
+    ];
+    expect(pickDominantExactTitleMatch("Supergirl", results, 2026)).toBeNull();
+  });
+
+  it("ignores upcoming STUBS (below the popularity floor) when guarding", () => {
+    const results = [
+      res(679, "Aliens", "1986-07-18", 120),
+      res(999, "Aliens", "2026-01-01", 0.3), // fan-film stub must not block
+    ];
+    expect(pickDominantExactTitleMatch("Aliens", results, 2026)).toEqual({
+      tmdbId: 679,
+      year: 1986,
+    });
+  });
+});

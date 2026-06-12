@@ -171,7 +171,7 @@ export function pickDominantExactTitleMatch(
   const target = normalizeExact(cleanedTitle);
   if (!target) return null;
 
-  const exact = results
+  const exactAllYears = results
     .filter(
       (r) =>
         !r.adult &&
@@ -179,7 +179,20 @@ export function pickDominantExactTitleMatch(
         (normalizeExact(r.title) === target || normalizeExact(r.original_title) === target),
     )
     .map((r) => ({ r, year: parseInt(r.release_date.split("-")[0], 10) }))
-    .filter(({ year }) => Number.isInteger(year) && year >= 1900 && year < currentYear);
+    .filter(({ year }) => Number.isInteger(year) && year >= 1900);
+
+  // Upcoming-conflict guard: when a NON-stub exact-title film exists in the
+  // current/future-year window, the bare title is ambiguous between the
+  // classic and the new release ("Supergirl" 1984 vs the 2026 DC film,
+  // "Masters of the Universe" 1987 vs the 2026 remake — both real cases from
+  // the first production dry run). A venue listing the bare title during the
+  // remake's release window could mean either — bail out rather than guess.
+  const hasUpcomingConflict = exactAllYears.some(
+    ({ r, year }) => year >= currentYear && r.popularity >= EXACT_TITLE_MIN_POPULARITY,
+  );
+  if (hasUpcomingConflict) return null;
+
+  const exact = exactAllYears.filter(({ year }) => year < currentYear);
 
   if (exact.length === 0) return null;
 
