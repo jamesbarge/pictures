@@ -168,13 +168,20 @@ export class GardenCinemaScraper extends BaseScraper {
     const yearMatch = stats.match(/\b(19|20)\d{2}\b/);
     const year = yearMatch ? parseInt(yearMatch[0], 10) : undefined;
 
-    // Match runtime: "135m.", "97 mins", "120 min" — the unit suffix keeps
-    // this from colliding with the bare 4-digit year.
-    const runtimeMatch = stats.match(/\b(\d{1,3})\s*m(?:ins?)?\.?(?=[\s,]|$)/i);
+    const parts = stats.split(",").map((s) => s.trim());
+
+    // Match runtime from the LAST comma-separated token only (the stats line
+    // ends with the runtime): "135m.", "97 mins", "120 min". The unit suffix
+    // keeps this from colliding with the bare 4-digit year. Bail on hour
+    // formats ("3h 21m") rather than capture the minute component as the
+    // whole runtime.
+    const lastPart = parts[parts.length - 1] ?? "";
+    const runtimeMatch = /\d\s*h\b/i.test(lastPart)
+      ? null
+      : lastPart.match(/\b(\d{1,3})\s*m(?:ins?)?\.?(?=[\s,]|$)/i);
     const runtime = runtimeMatch ? sanitizeRuntime(runtimeMatch[1]) : undefined;
 
     // Director is typically the first part before the first comma
-    const parts = stats.split(",").map((s) => s.trim());
     const firstPart = parts[0];
     // First part is typically the director unless it's a country or year
     const director =

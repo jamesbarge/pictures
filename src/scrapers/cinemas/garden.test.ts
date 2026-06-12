@@ -141,4 +141,16 @@ describe("GardenCinemaScraper — stats-line runtime → RawScreening.runtime", 
     expect(screenings[0].year).toBe(1962);
     expect(screenings[0].runtime).toBeUndefined();
   });
+
+  it("bails on hour formats instead of capturing the minute component", async () => {
+    // "3h 21m" must NOT become runtime=21 (a confidently wrong hint)
+    const screenings = await parse("Chantal Akerman, Belgium, 1975, 3h 21m");
+    expect(screenings[0].runtime).toBeUndefined();
+  });
+
+  it("ignores runtime-like tokens that are not the final stats field", async () => {
+    // Only the last comma-separated token is parsed for runtime
+    const screenings = await parse("Some Director, 35m short program, 2019");
+    expect(screenings[0].runtime).toBeUndefined();
+  });
 });

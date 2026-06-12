@@ -22,7 +22,9 @@ onto `RawScreening.runtime`:
 - **Garden Cinema** (`src/scrapers/cinemas/garden.ts`): the stats line
   ("Greta Gerwig, USA, 2019, 135m.") parser now also extracts runtime — the
   regex requires the `m`/`min`/`mins` unit suffix so the bare 4-digit year
-  can never be mistaken for a runtime.
+  can never be mistaken for a runtime; only the final comma-separated token
+  is parsed, and hour formats ("3h 21m") bail rather than capture the minute
+  component as the whole runtime (code-review finding).
 - **Curzon** (`src/scrapers/chains/curzon.ts`): the Vista OCAPI film payload's
   `runtimeInMinutes` (already typed on `VistaFilm`) is forwarded for every
   showtime of that film.
@@ -39,7 +41,9 @@ onto `RawScreening.runtime`:
   `getFullFilmData`. The match result now carries the fetched details
   (`MatchResult.details`) and `TMDBClient.getFullFilmData` accepts an
   optional `prefetchedDetails` argument, so runtime-verified matches make
-  one fewer TMDB call.
+  one fewer TMDB call. The client ignores prefetched details whose `id`
+  doesn't match the requested tmdbId (code-review hardening), so misuse can
+  never mix two films' metadata.
 
 ### PR #670 reviewer follow-up (b): NOT done (noted)
 - "Stub-reject tries the runner-up candidate" was assessed and skipped:
@@ -76,8 +80,12 @@ onto `RawScreening.runtime`:
 - The matcher's runtime signal (stub rejection, −0.15 mismatch penalty) now
   receives real data for four venues — including Curzon's ten London sites —
   instead of never firing.
-- Note: venue runtimes can include event padding (intros/Q&As, e.g. Rio's
-  "film + Q&A" listings); the matcher's ±30 min tolerance absorbs typical
-  padding, and hints <40 min are ignored by design.
+- Caveat: venue runtimes can include event padding (intros/Q&As, e.g. Rio's
+  "film + Q&A" listings). Padding within 30 min is tolerated; larger gaps
+  (e.g. Rio's "LITTLE SHOP OF HORRORS + event" = 150 vs the film's 94) draw
+  the −0.15 penalty, which strong matches survive. Hints <40 min are ignored
+  by design. Backlog (from code review): consider an asymmetric tolerance in
+  plan 005 scoring — venue-above-TMDB is usually padding, venue-below-TMDB is
+  a strong wrong-film signal.
 - No schema changes; purely additive optional metadata. Scrapers without a
   runtime source are unaffected.

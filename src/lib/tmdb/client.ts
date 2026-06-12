@@ -123,11 +123,14 @@ export class TMDBClient {
    *
    * @param prefetchedDetails - Skip the details fetch when the caller already
    *   holds them (e.g. the matcher's runtime cross-check fetched details for
-   *   the same tmdbId moments earlier).
+   *   the same tmdbId moments earlier). Ignored (fresh fetch) if its id does
+   *   not match tmdbId, so misuse can never mix two films' metadata.
    */
   async getFullFilmData(tmdbId: number, prefetchedDetails?: TMDBMovieDetails) {
+    const reusableDetails =
+      prefetchedDetails?.id === tmdbId ? prefetchedDetails : undefined;
     const [details, credits, certification] = await Promise.all([
-      prefetchedDetails ?? this.getFilmDetails(tmdbId),
+      reusableDetails ?? this.getFilmDetails(tmdbId),
       this.getFilmCredits(tmdbId),
       this.getUKCertification(tmdbId).catch(() => null),
     ]);
