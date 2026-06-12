@@ -1,3 +1,13 @@
+## 2026-06-12: Unmatched re-match sweep + preventive blocklist + decoration suffixes (plan 008)
+**PR**: pending | **Files**: `src/scripts/rematch-unmatched-films.ts`, `src/scrapers/utils/film-title-cleaner.ts`, `src/scrapers/utils/film-matching.ts`, `src/lib/tmdb/blocklist.ts`, `src/scripts/run-scrape-and-enrich.ts`, `package.json`
+- New `npm run rematch:unmatched` (default-dry, `--execute`, `--limit N`): retries TMDB matching for unmatched films with upcoming screenings; UPDATE in place (match_strategy='rematch-sweep' + letterboxd /tmdb/{id}) or MERGE into the row that already owns the tmdb_id (transactional repoint-before-delete); suspected non-films flagged only.
+- Derived-year second-chance pass for hint-less classics (Aliens/Adaptation anchors): dominant exact-title candidate supplies a year hint, real matcher must confirm independently at the unchanged 0.6 floor.
+- `initFilmCache` no longer serves blocklisted (known-wrong) TMDB ids via the tmdb-id index; byTitle still serves the row so no duplicate film rows spawn.
+- Cleaner strips `(Subbed)`/`(Dubbed)`/bare `(4K)`, runs suffix strips to fixpoint (stacked decorations), and returns `extractedYear` instead of discarding stripped `(YYYY)`.
+- Optional pipeline phase (`SCRAPE_REMATCH_SWEEP=1`, default off) runs the sweep `--execute --limit 100` after enrichment.
+
+---
+
 ## 2026-06-12: Pipeline write-resilience — retry queue, validator provenance, progress-file fix (plan 010)
 **PR**: pending | **Files**: `src/scrapers/pipeline.ts`, `src/scrapers/utils/screening-validator.ts`, `src/scrapers/types.ts`, `src/lib/scrape-progress.ts`, `src/scrapers/chains/curzon.ts`, `src/scrapers/chains/everyman.ts`, `src/scrapers/chains/picturehouse.ts`, `src/scrapers/cinemas/castle-calendar.ts`
 - Connection-timeout `insertScreening` failures are now queued and retried once (serial, 1s gap, cap 50/venue) at end of venue instead of being lost until next week's run — the 2026-06-11 runs dropped 19 screenings at electric-white-city alone. Thunks close over resolved filmIds; no re-matching. Non-connection errors (FK violations) are never retried.
