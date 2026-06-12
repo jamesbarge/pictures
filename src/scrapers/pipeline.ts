@@ -14,6 +14,7 @@ import { generateScrapeDiff, printDiffReport, shouldBlockScrape } from "./utils/
 import { linkFilmToMatchingSeasons } from "./seasons/season-linker";
 
 import { runPhase, stampProgress } from "@/lib/scrape-progress";
+import { VENUE_LANGUAGE_PRIORS } from "@/config/cinema-registry";
 
 // Extracted utility modules
 import {
@@ -245,7 +246,9 @@ export async function processScreenings(
               firstScreening.filmTitle,
               firstScreening.year,
               firstScreening.director,
-              firstScreening.posterUrl
+              firstScreening.posterUrl,
+              firstScreening.runtime,
+              VENUE_LANGUAGE_PRIORS[cinemaId]
             ),
             20_000,
             `getOrCreateFilm: ${firstScreening.filmTitle}`,
@@ -399,7 +402,9 @@ async function getOrCreateFilm(
   title: string,
   scraperYear?: number,
   scraperDirector?: string,
-  scraperPosterUrl?: string
+  scraperPosterUrl?: string,
+  scraperRuntime?: number,
+  venueLanguages?: string[]
 ): Promise<string | null> {
   // Use AI to extract the actual film title from event-style names
   // e.g., "Saturday Morning Picture Club: The Muppets Christmas Carol" → "The Muppets Christmas Carol"
@@ -479,7 +484,9 @@ async function getOrCreateFilm(
       matchingTitle,
       scraperYear,
       scraperDirector,
-      scraperPosterUrl
+      scraperPosterUrl,
+      scraperRuntime,
+      venueLanguages
     );
     if (tmdbFilmId) {
       return tmdbFilmId;

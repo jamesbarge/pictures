@@ -159,7 +159,9 @@ export async function matchAndCreateFromTMDB(
   matchingTitle: string,
   scraperYear?: number,
   scraperDirector?: string,
-  scraperPosterUrl?: string
+  scraperPosterUrl?: string,
+  scraperRuntime?: number,
+  venueLanguages?: string[]
 ): Promise<string | null> {
   // Year discipline: many scrapers send the SCREENING year as the film year,
   // and pipeline.ts also extracts "(YYYY)" from titles — for the current year
@@ -177,6 +179,8 @@ export async function matchAndCreateFromTMDB(
   const match = await matchFilmToTMDB(matchingTitle, {
     year: releaseYearHint,
     director: scraperDirector,
+    runtime: scraperRuntime,
+    venueLanguages,
   });
 
   if (!match) {

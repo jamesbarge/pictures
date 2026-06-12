@@ -174,3 +174,37 @@ describe("matchAndCreateFromTMDB — year discipline (step 2)", () => {
     );
   });
 });
+
+describe("matchAndCreateFromTMDB — hint threading (step 6)", () => {
+  it("threads runtime and venueLanguages hints into matchFilmToTMDB", async () => {
+    mocks.matchFilmToTMDB.mockResolvedValue(null);
+
+    await matchAndCreateFromTMDB(
+      makeCache(),
+      "La Piscine",
+      1969,
+      "Jacques Deray",
+      undefined,
+      120,
+      ["fr"]
+    );
+
+    expect(mocks.matchFilmToTMDB).toHaveBeenCalledWith("La Piscine", {
+      year: 1969,
+      director: "Jacques Deray",
+      runtime: 120,
+      venueLanguages: ["fr"],
+    });
+  });
+
+  it("leaves runtime and venueLanguages undefined when not provided", async () => {
+    mocks.matchFilmToTMDB.mockResolvedValue(null);
+
+    await matchAndCreateFromTMDB(makeCache(), "Joyland", 2022);
+
+    expect(mocks.matchFilmToTMDB).toHaveBeenCalledWith(
+      "Joyland",
+      expect.objectContaining({ runtime: undefined, venueLanguages: undefined })
+    );
+  });
+});
