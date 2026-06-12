@@ -24,7 +24,7 @@ import { cinemas } from "@/db/schema/cinemas";
 import { screenings } from "@/db/schema/screenings";
 import { sendTelegramAlert } from "@/lib/telegram";
 import { stampProgress } from "@/lib/scrape-progress";
-import { runScraper } from "@/scrapers/runner-factory";
+import { runScraper, isConnectionError } from "@/scrapers/runner-factory";
 import {
   SCRAPER_REGISTRY,
   type ScraperRegistryEntry,
@@ -90,19 +90,93 @@ interface WaveSummary {
   total: number;
 }
 
+// ============================================================================
+// Run-level circuit breaker (plan 001)
+// ============================================================================
+
+/**
+ * Breaker threshold K: abort the run after K consecutive connection-level
+ * scraper failures. Default 3; override via SCRAPE_BREAKER_THRESHOLD.
+ */
+const BREAKER_THRESHOLD = (() => {
+  const parsed = Number(process.env.SCRAPE_BREAKER_THRESHOLD);
+  // A malformed value must fall back to the default, never NaN — a NaN
+  // threshold makes `consecutive >= NaN` always false, silently disabling
+  // the breaker.
+  return Number.isFinite(parsed) && parsed >= 1 ? Math.floor(parsed) : 3;
+})();
+
+/** Run-scoped circuit breaker shared across all scrape waves. */
+export interface RunBreaker {
+  /** True once the breaker has tripped — workers stop pulling new tasks. */
+  isTripped: () => boolean;
+  /**
+   * Record one scraper-entry outcome. Connection-level failures (see
+   * isConnectionError) increment the consecutive-failure counter; any
+   * success or ordinary site failure resets it to 0.
+   */
+  record: (source: string, outcome: { succeeded: boolean; errors?: string[] }) => void;
+}
+
+/**
+ * Create a run-level circuit breaker. After 2026-06-09's 13.7h stall (a
+ * wedged Supabase pooler turned four venue scrapes into futile 13.4h retry
+ * loops and took the whole DB offline), K consecutive connection failures
+ * trip the breaker and the remaining scrapers + enrichment are skipped.
+ * Worst-case time-to-trip is bounded by the venue wall-clock caps of the
+ * entries in flight (a chain-heavy first wave can take a couple of hours,
+ * since each entry only records its outcome on completion) — a huge
+ * improvement on 13.7h, but not literally "minutes" in every shape of run.
+ *
+ * NOTE: the counter is mutated cooperatively by the wave worker pool
+ * (concurrency cap 4) — fine single-threaded; revisit if scraping ever
+ * moves to true parallelism.
+ */
+export function createRunBreaker(
+  threshold: number = BREAKER_THRESHOLD,
+  onTrip?: (source: string, count: number, lastError: string) => void,
+): RunBreaker {
+  let consecutive = 0;
+  let tripped = false;
+  return {
+    isTripped: () => tripped,
+    record(source, outcome) {
+      if (outcome.succeeded) {
+        consecutive = 0;
+        return;
+      }
+      const connError = (outcome.errors ?? []).find((e) => isConnectionError(e));
+      if (connError === undefined) {
+        consecutive = 0;
+        return;
+      }
+      consecutive++;
+      if (!tripped && consecutive >= threshold) {
+        tripped = true;
+        onTrip?.(source, consecutive, connError);
+      }
+    },
+  };
+}
+
 /**
  * Run an array of async tasks with a concurrency cap. Resolves once all
  * tasks settle — never rejects (errors are surfaced via task return values).
+ *
+ * If `shouldStop` returns true, workers stop pulling new tasks; entries that
+ * never started are recorded as rejected with "circuit breaker tripped".
  */
-async function runWithConcurrency<T>(
+export async function runWithConcurrency<T>(
   tasks: Array<() => Promise<T>>,
   limit: number,
+  shouldStop?: () => boolean,
 ): Promise<PromiseSettledResult<T>[]> {
   const results: PromiseSettledResult<T>[] = new Array(tasks.length);
   let cursor = 0;
 
   async function worker(): Promise<void> {
     while (true) {
+      if (shouldStop?.()) return;
       const idx = cursor++;
       if (idx >= tasks.length) return;
       try {
@@ -116,13 +190,49 @@ async function runWithConcurrency<T>(
 
   const workers = Array.from({ length: Math.min(limit, tasks.length) }, () => worker());
   await Promise.all(workers);
+
+  // Mark tasks the breaker prevented from starting.
+  for (let i = 0; i < tasks.length; i++) {
+    if (results[i] === undefined) {
+      results[i] = { status: "rejected", reason: new Error("circuit breaker tripped") };
+    }
+  }
   return results;
 }
 
 /** Run a single scraper-registry entry and return wave-summary contribution. */
+/**
+ * Compute the breaker outcome for a completed scraper entry.
+ *
+ * Any write proves the DB is alive — a wedged pooler can't write — so a
+ * 12-venue chain with 11 successes and one site timeout counts as
+ * breaker-success, not as a consecutive connection failure. Only entries
+ * that failed AND wrote nothing feed their per-venue error messages to the
+ * breaker (where isConnectionError decides if they count).
+ *
+ * Exported for tests: this is the seam between runScraper's results and the
+ * run-level circuit breaker.
+ */
+export function breakerOutcomeFor(result: {
+  success: boolean;
+  totalScreeningsAdded: number;
+  totalScreeningsUpdated: number;
+  venueResults: Array<{ success: boolean; error?: string }>;
+}): { succeeded: boolean; errors: string[] } {
+  return {
+    succeeded:
+      result.success ||
+      result.totalScreeningsAdded + result.totalScreeningsUpdated > 0,
+    errors: result.venueResults
+      .filter((v) => !v.success && v.error)
+      .map((v) => v.error as string),
+  };
+}
+
 async function runScraperEntry(
   entry: ScraperRegistryEntry,
   waveLabel: string,
+  breaker?: RunBreaker,
 ): Promise<{ succeeded: boolean; error?: string }> {
   const taskId = entry.taskId.replace(/^scraper-/, "");
   const startedAt = new Date();
@@ -155,6 +265,10 @@ async function runScraperEntry(
         updated: result.totalScreeningsUpdated,
       },
     });
+    // Feed the circuit breaker: runScraper rarely throws (venue failures —
+    // including wall-clock-cap timeouts — are folded into venueResults), so
+    // connection errors must be detected from the per-venue error messages.
+    breaker?.record(taskId, breakerOutcomeFor(result));
     return { succeeded: result.success };
   } catch (err) {
     const ms = Date.now() - startedAt.getTime();
@@ -168,6 +282,7 @@ async function runScraperEntry(
       durationMs: ms,
       error: message,
     });
+    breaker?.record(taskId, { succeeded: false, errors: [message] });
     return { succeeded: false, error: message };
   }
 }
@@ -268,7 +383,13 @@ async function runWave(
   concurrency: number,
   freshness: FreshnessMap,
   countMap: ScreeningCountMap,
+  breaker: RunBreaker,
 ): Promise<WaveSummary> {
+  if (breaker.isTripped()) {
+    const count = SCRAPER_REGISTRY.filter((e) => e.wave === wave).length;
+    console.log(`[scrape-all] ${label}: skipped (circuit breaker tripped) — ${count} scrapers`);
+    return { label, succeeded: 0, failed: count, total: count };
+  }
   // Sort by screening count ASC (fewest first — broken scrapers surface fast),
   // staleness ASC as tiebreaker (preserve rotation when counts are equal).
   // Compute both keys once per entry; sort + log share the results.
@@ -289,8 +410,8 @@ async function runWave(
     console.log(`[scrape-all] ${label} order (fewest screenings, then stalest): ${orderStr}`);
   }
   const entries = ranked.map((r) => r.entry);
-  const tasks = entries.map((entry) => () => runScraperEntry(entry, label));
-  const settled = await runWithConcurrency(tasks, concurrency);
+  const tasks = entries.map((entry) => () => runScraperEntry(entry, label, breaker));
+  const settled = await runWithConcurrency(tasks, concurrency, breaker.isTripped);
 
   let succeeded = 0;
   let failed = 0;
@@ -360,6 +481,22 @@ export async function runScrapeAll(): Promise<ScrapeAllResult> {
   const startedAt = new Date(startTime);
   const waveSummaries: WaveSummary[] = [];
 
+  // Run-level circuit breaker: K consecutive connection failures abort the
+  // run in minutes instead of cascading into a multi-hour DB outage.
+  const breaker = createRunBreaker(BREAKER_THRESHOLD, (source, count, lastError) => {
+    console.error(
+      `[scrape-all] CIRCUIT BREAKER TRIPPED after ${count} consecutive connection failures ` +
+        `(last failing cinema: ${source} — ${lastError}). Skipping remaining scrapers.`,
+    );
+    void sendTelegramAlert({
+      title: "Scrape circuit breaker tripped",
+      message:
+        `${count} consecutive connection-level failures — aborting the run.\n` +
+        `Last failing cinema: ${source}\n${lastError}`,
+      level: "error",
+    }).catch(() => {});
+  });
+
   // Load sort signals once, up front. Within each wave, entries are sorted
   // fewest-screenings first (broken scrapers surface fast) with staleness as
   // a tiebreaker (preserves the rotation behaviour from commit 712ee16).
@@ -369,16 +506,22 @@ export async function runScrapeAll(): Promise<ScrapeAllResult> {
   ]);
 
   // Wave 1: Chain scrapers (3 — fully parallel)
-  waveSummaries.push(await runWave("chain", "Chains", 4, freshness, countMap));
+  waveSummaries.push(await runWave("chain", "Chains", 4, freshness, countMap, breaker));
 
   // Wave 2: Playwright independents (7 — cap at 4 for memory headroom)
-  waveSummaries.push(await runWave("playwright", "Playwright", 4, freshness, countMap));
+  waveSummaries.push(await runWave("playwright", "Playwright", 4, freshness, countMap, breaker));
 
   // Wave 3: Cheerio / API independents (16 — cap at 4 to mirror prior chunking)
-  waveSummaries.push(await runWave("cheerio", "Cheerio", 4, freshness, countMap));
+  waveSummaries.push(await runWave("cheerio", "Cheerio", 4, freshness, countMap, breaker));
 
-  // Wave 4: Post-scrape enrichment (Letterboxd ratings)
-  waveSummaries.push(await runEnrichmentWave());
+  // Wave 4: Post-scrape enrichment (Letterboxd ratings). Skipped when the
+  // breaker tripped — enrichment would only hammer the same wedged DB.
+  if (breaker.isTripped()) {
+    console.log("[scrape-all] Enrichment: skipped (circuit breaker tripped)");
+    waveSummaries.push({ label: "Enrichment", succeeded: 0, failed: 1, total: 1 });
+  } else {
+    waveSummaries.push(await runEnrichmentWave());
+  }
 
   const totalSucceeded = waveSummaries.reduce((s, w) => s + w.succeeded, 0);
   const totalFailed = waveSummaries.reduce((s, w) => s + w.failed, 0);
