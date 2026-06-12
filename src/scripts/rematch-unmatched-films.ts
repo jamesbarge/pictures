@@ -41,6 +41,7 @@ import {
   cleanFilmTitleWithMetadata,
   getKnownNonFilmType,
 } from "@/scrapers/utils/film-title-cleaner";
+import { sanitizeDirectors, sanitizeYear } from "@/scrapers/utils/film-write-guards";
 
 const DRY_RUN = !process.argv.includes("--execute");
 
@@ -48,6 +49,8 @@ const DRY_RUN = !process.argv.includes("--execute");
 const RATE_LIMIT_MS = 350;
 /** Backoff schedule when TMDB answers 429 — do not hammer (plan STOP condition). */
 const RATE_LIMIT_BACKOFF_MS = [2_000, 5_000, 15_000];
+/** Plan STOP condition: >250 UPDATEs in one run is suspiciously high. */
+const MAX_EXECUTE_UPDATES = 250;
 
 function parseLimit(argv: string[]): number | undefined {
   const idx = argv.indexOf("--limit");
@@ -81,6 +84,23 @@ export function sanitizeYearHint(
 ): number | undefined {
   if (year && year >= 1900 && year < currentYear) return year;
   return undefined;
+}
+
+/**
+ * Compose the year hint from the film row and the title-extracted year.
+ * Each candidate is sanitized INDIVIDUALLY: a polluted `film.year` (e.g. a
+ * screening year written before the write guards landed) must not shadow a
+ * valid year extracted from the title — "Suspiria (1977)" with row year 2026
+ * should hint 1977, not nothing. (Code-review blocker fix.)
+ */
+export function resolveYearHint(
+  filmYear: number | null | undefined,
+  extractedYear: number | undefined,
+  currentYear = new Date().getFullYear(),
+): number | undefined {
+  return (
+    sanitizeYearHint(filmYear, currentYear) ?? sanitizeYearHint(extractedYear, currentYear)
+  );
 }
 
 /**
@@ -258,7 +278,15 @@ interface FlagAction {
 /** Apply an UPDATE action: enrich the existing row in place with TMDB data. */
 async function executeUpdate(action: UpdateAction): Promise<void> {
   const client = getTMDBClient();
-  const details = await client.getFullFilmData(action.tmdbId);
+  const details = await withTmdbBackoff(() => client.getFullFilmData(action.tmdbId));
+
+  // Same write guards as the pipeline path (film-matching.ts) — every
+  // film-write path enforces the same invariants (code-review major).
+  const guardedYear = sanitizeYear(action.tmdbYear);
+  const guardedDirectors = sanitizeDirectors(
+    details.directors.length > 0 ? details.directors : action.film.directors,
+    `rematch-sweep tmdb=${action.tmdbId} title="${details.details.title}"`,
+  );
 
   await db
     .update(films)
@@ -267,9 +295,9 @@ async function executeUpdate(action: UpdateAction): Promise<void> {
       imdbId: details.details.imdb_id || null,
       title: details.details.title,
       originalTitle: details.details.original_title,
-      year: action.tmdbYear,
+      year: guardedYear,
       runtime: details.details.runtime || null,
-      directors: details.directors.length > 0 ? details.directors : action.film.directors,
+      directors: guardedDirectors,
       cast: details.cast,
       genres: details.details.genres.map((g) => g.name.toLowerCase()),
       countries: details.details.production_countries.map((c) => c.iso_3166_1),
@@ -284,7 +312,7 @@ async function executeUpdate(action: UpdateAction): Promise<void> {
         ? `https://image.tmdb.org/t/p/w1280${details.details.backdrop_path}`
         : null,
       isRepertory: isRepertoryFilm(details.details.release_date),
-      decade: action.tmdbYear ? getDecade(action.tmdbYear) : null,
+      decade: guardedYear ? getDecade(guardedYear) : null,
       tmdbRating: details.details.vote_average,
       tmdbPopularity: details.details.popularity,
       // Audit trail + Letterboxd anchor, consistent with the pipeline path.
@@ -309,6 +337,22 @@ async function executeMerge(action: MergeAction): Promise<void> {
   const primaryId = action.targetFilmId;
 
   await db.transaction(async (tx) => {
+    // 0. Drop dupe screenings that would collide with the primary on the
+    //    unique (film_id, cinema_id, datetime) index after repoint — they are
+    //    true duplicates of rows the primary already has (the sanctioned
+    //    deletion case). Without this, a single collision aborts the merge
+    //    (code-review major; the BFI phantom rows make it a real scenario).
+    await tx.execute(sql`
+      DELETE FROM screenings s
+      WHERE s.film_id = ${dupeId}
+        AND EXISTS (
+          SELECT 1 FROM screenings p
+          WHERE p.film_id = ${primaryId}
+            AND p.cinema_id = s.cinema_id
+            AND p.datetime = s.datetime
+        )
+    `);
+
     // 1. Repoint screenings
     await tx
       .update(screenings)
@@ -405,6 +449,7 @@ async function main(): Promise<void> {
   const merges: MergeAction[] = [];
   const suspectedNonFilms: FlagAction[] = [];
   const noMatches: FlagAction[] = [];
+  const failed: FlagAction[] = [];
 
   // tmdb_id -> film planned for UPDATE in this run. A second film matching
   // the same id must MERGE into it (the tmdb_id column is UNIQUE; in dry
@@ -425,7 +470,7 @@ async function main(): Promise<void> {
       continue;
     }
 
-    const yearHint = sanitizeYearHint(film.year ?? meta.extractedYear);
+    const yearHint = resolveYearHint(film.year, meta.extractedYear);
     const directorHint = film.directors?.[0] || undefined;
 
     let match: Awaited<ReturnType<typeof matchFilmToTMDB>>;
@@ -495,13 +540,24 @@ async function main(): Promise<void> {
         targetTitle: existing[0].title,
         screeningCount: screeningCount[0]?.count ?? 0,
       };
-      merges.push(action);
       console.log(
         `${progress} MERGE "${film.title}" → existing "${existing[0].title}" ` +
           `(tmdb ${match.tmdbId}), ${action.screeningCount} screenings to repoint`,
       );
-      if (!DRY_RUN) {
-        await executeMerge(action);
+      if (DRY_RUN) {
+        merges.push(action);
+      } else {
+        // Per-film failure isolation: one failed write (unique violation
+        // from a concurrent scrape, transient TMDB/DB error) must not abort
+        // the rest of the run. The transaction guarantees per-film atomicity.
+        try {
+          await executeMerge(action);
+          merges.push(action);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          console.warn(`${progress} MERGE FAILED "${film.title}": ${message}`);
+          failed.push({ film, cleanedTitle: cleaned, reason: `merge failed: ${message}` });
+        }
       }
     } else {
       const action: UpdateAction = {
@@ -515,14 +571,31 @@ async function main(): Promise<void> {
         derivedYear,
         directorHint,
       };
-      updates.push(action);
-      plannedByTmdbId.set(match.tmdbId, { id: film.id, title: match.title });
       console.log(
         `${progress} UPDATE "${film.title}" → "${match.title}" (${match.year}) ` +
           `[tmdb ${match.tmdbId}, conf ${match.confidence.toFixed(2)}]`,
       );
-      if (!DRY_RUN) {
-        await executeUpdate(action);
+      if (DRY_RUN) {
+        updates.push(action);
+        plannedByTmdbId.set(match.tmdbId, { id: film.id, title: match.title });
+      } else if (updates.length >= MAX_EXECUTE_UPDATES) {
+        // Plan STOP condition: >250 proposed UPDATEs is suspiciously high.
+        // In execute mode stop applying instead of ploughing on.
+        console.warn(
+          `${progress} UPDATE cap reached (${MAX_EXECUTE_UPDATES}) — skipping "${film.title}"; ` +
+            "review with the operator before a larger run",
+        );
+        failed.push({ film, cleanedTitle: cleaned, reason: "skipped: execute UPDATE cap reached" });
+      } else {
+        try {
+          await executeUpdate(action);
+          updates.push(action);
+          plannedByTmdbId.set(match.tmdbId, { id: film.id, title: match.title });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          console.warn(`${progress} UPDATE FAILED "${film.title}": ${message}`);
+          failed.push({ film, cleanedTitle: cleaned, reason: `update failed: ${message}` });
+        }
       }
     }
 
@@ -568,13 +641,29 @@ async function main(): Promise<void> {
     console.log(`  "${f.film.title}" (searched "${f.cleanedTitle}") — ${f.reason}`);
   }
 
+  if (failed.length > 0) {
+    console.log(`\n=== FAILED (${failed.length}) — left untouched, re-run to retry ===`);
+    for (const f of failed) {
+      console.log(`  "${f.film.title}" — ${f.reason}`);
+    }
+  }
+
   console.log(`\n${"=".repeat(70)}`);
   console.log(`Summary: ${candidates.length} processed`);
   console.log(`  UPDATE:             ${updates.length}`);
   console.log(`  MERGE:              ${merges.length}`);
   console.log(`  SUSPECTED_NON_FILM: ${suspectedNonFilms.length}`);
   console.log(`  NO_MATCH:           ${noMatches.length}`);
+  if (failed.length > 0) {
+    console.log(`  FAILED:             ${failed.length}`);
+  }
   if (DRY_RUN) {
+    if (updates.length > MAX_EXECUTE_UPDATES) {
+      console.warn(
+        `\n[WARNING] ${updates.length} proposed UPDATEs exceeds the ${MAX_EXECUTE_UPDATES} ` +
+          "STOP threshold — review with the operator before executing.",
+      );
+    }
     console.log("\n[DRY RUN] No changes were made. Review the UPDATE/MERGE lists, then re-run with --execute.");
   }
 }

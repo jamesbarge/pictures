@@ -17,6 +17,7 @@ vi.mock("@/lib/tmdb", () => ({
 
 import {
   sanitizeYearHint,
+  resolveYearHint,
   isSuspectedNonFilm,
   pickDominantExactTitleMatch,
 } from "./rematch-unmatched-films";
@@ -181,5 +182,24 @@ describe("pickDominantExactTitleMatch — punctuation folding", () => {
       tmdbId: 2757,
       year: 2002,
     });
+  });
+});
+
+describe("resolveYearHint", () => {
+  const CURRENT_YEAR = 2026;
+
+  it("prefers a sane film.year over the extracted year", () => {
+    expect(resolveYearHint(1977, 2001, CURRENT_YEAR)).toBe(1977);
+  });
+
+  it("falls through to extractedYear when film.year is polluted (review blocker)", () => {
+    // Screening-year pollution on the row must not shadow a valid title year:
+    // "Suspiria (1977)" with row year 2026 should hint 1977, not nothing.
+    expect(resolveYearHint(2026, 1977, CURRENT_YEAR)).toBe(1977);
+  });
+
+  it("returns undefined when both candidates are unusable", () => {
+    expect(resolveYearHint(2026, 2026, CURRENT_YEAR)).toBeUndefined();
+    expect(resolveYearHint(null, undefined, CURRENT_YEAR)).toBeUndefined();
   });
 });

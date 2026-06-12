@@ -492,6 +492,11 @@ export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
     // Capture the year inside "(2026 Re-release)"-style decorations as a
     // year hint before the chain below discards it. `??=` so a plain
     // trailing release year (stripTrailingYear above/below) wins on collision.
+    // Known limitation (reviewed, accepted): only decorations trailing at the
+    // START of a pass are seen — "Film (2026 Re-release) (PG)" loses the 2026
+    // because one pass strips "(PG)" and "(2026 Re-release)" in a single
+    // chain. Decoration years are almost always current-year and get
+    // discarded by year discipline anyway.
     const decorationYear = cleaned.match(
       /\((\d{4})\s+(?:re-?release|restoration|reissue|encore)\)\s*$/i,
     );

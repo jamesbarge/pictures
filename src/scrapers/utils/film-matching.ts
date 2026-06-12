@@ -77,11 +77,14 @@ export async function initFilmCache(
     }
     // Build TMDB ID index — two films with same TMDB ID are always the same film.
     // Preventive blocklist (plan 008): a film carrying a blocklisted (known
-    // wrong) TMDB id must NOT be reachable through the tmdb-id index, or the
-    // wrong id keeps getting reused for every future title that matches to it.
+    // wrong) TMDB id must NOT be reachable through the tmdb-id index, so the
+    // wrong id can't be reused by tmdb-id lookups. Belt-and-braces: the
+    // matcher already filters blocked ids from search results, so this skip
+    // only matters if a blocked id reaches the dedup path some other way.
     // The byTitle entry above is intentionally kept — skipping it too would
     // make the same-title path create a duplicate film row per scrape. Row
-    // repair itself is the rematch sweep's job (rematch-unmatched-films.ts).
+    // REPAIR (re-matching to the correct id) is the rematch sweep's job
+    // (rematch-unmatched-films.ts), not this cache's.
     if (film.tmdbId) {
       if (isBlockedTmdbId(film.tmdbId)) {
         blockedCount++;
@@ -96,7 +99,7 @@ export async function initFilmCache(
   );
   if (blockedCount > 0) {
     console.log(
-      `[Pipeline] ${blockedCount} cached films carry blocklisted TMDB ids — they will be re-matched on next encounter`,
+      `[Pipeline] ${blockedCount} cached films carry blocklisted TMDB ids — invisible to tmdb-id lookups; run the rematch sweep to repair the rows`,
     );
   }
   return cache;

@@ -594,3 +594,9 @@ describe("decoration suffixes + (YYYY) capture (plan 008)", () => {
     expect(cleanFilmTitle(once)).toBe(once);
   });
 });
+
+describe("fixpoint cap boundary (plan 008)", () => {
+  it("resolves three stacked decorations within the 3-pass cap", () => {
+    expect(cleanFilmTitle("AKIRA (2026 Re-release) (Subbed) (4K)")).toBe("AKIRA");
+  });
+});
