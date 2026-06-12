@@ -1,3 +1,9 @@
+## 2026-06-12: Untrack tasks/ session scratch
+**PR**: TBD | **Files**: `.gitignore`, `tasks/todo.md` (untracked)
+- tasks/todo.md was accidentally committed in #670 (agent-worktree `git add -A`); removed from tracking and gitignored — it is per-session scratch.
+
+---
+
 ## 2026-06-12: Venue scraper fixes (Cinema Museum, David Lean; Close-Up blocked)
 **PR**: pending | **Files**: `src/scrapers/constants.ts`, `src/scrapers/cinemas/cinema-museum.ts`, `src/scrapers/cinemas/david-lean.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`, `changelogs/2026-06-12-venue-scraper-fixes.md`
 - **Cinema Museum**: SiteGround WAF now 403s both browser UAs and the old self-identifying UA on the iCal feed; switched `fetchPages()` + `healthCheck()` to a generic `CALENDAR_CLIENT_USER_AGENT` ("Google-Calendar-Importer") which gets 200. scrape() → 25 screenings (was failing).
