@@ -534,3 +534,63 @@ describe("getKnownNonFilmTypeFromEntries", () => {
     expect(getKnownNonFilmTypeFromEntries("anything", entries)).toBeNull();
   });
 });
+
+describe("decoration suffixes + (YYYY) capture (plan 008)", () => {
+  describe("table-driven acceptance cases", () => {
+    const cases: Array<{ input: string; cleaned: string; year?: number }> = [
+      // Stacked decorations need the fixpoint loop
+      { input: "AKIRA (2026 Re-release) (Subbed)", cleaned: "AKIRA", year: 2026 },
+      { input: "Boogie Nights (4K Restoration)", cleaned: "Boogie Nights" },
+      { input: "Princess Mononoke (Subbed)", cleaned: "Princess Mononoke" },
+      { input: "Princess Mononoke (Dubbed)", cleaned: "Princess Mononoke" },
+      { input: "Seven Samurai (4K)", cleaned: "Seven Samurai" },
+      // Event prefix recoveries from the 2026-06-11 unmatched audit
+      { input: "CAMP CLASSICS presents Barbarella", cleaned: "Barbarella" },
+      // Plain trailing year is captured as a hint, not discarded
+      { input: "Jaws (1975)", cleaned: "Jaws", year: 1975 },
+      // Decoration year + plain year: the plain release year wins
+      { input: "Akira (1988) (2026 Re-release)", cleaned: "Akira", year: 1988 },
+      // Decoration strip can expose a trailing (YYYY) — still captured
+      { input: "Suspiria (1977) (4K Restoration)", cleaned: "Suspiria", year: 1977 },
+    ];
+
+    for (const { input, cleaned, year } of cases) {
+      it(`"${input}" → "${cleaned}"${year ? ` + year ${year}` : ""}`, () => {
+        const result = cleanFilmTitleWithMetadata(input);
+        expect(result.cleanedTitle).toBe(cleaned);
+        if (year) {
+          expect(result.extractedYear).toBe(year);
+        }
+      });
+    }
+  });
+
+  describe("historical prefix-as-title failures must NOT strip", () => {
+    const preserved = [
+      // "The Old Ways" is a film-ish name, not a curatorial prefix — the
+      // after-colon part must not be promoted to the title.
+      "The Old Ways: A Century in Sound",
+      // Franchise / subtitle colons stay intact
+      "Star Wars: The Empire Strikes Back",
+    ];
+
+    for (const title of preserved) {
+      it(`preserves "${title}"`, () => {
+        expect(cleanFilmTitle(title)).toBe(title);
+      });
+    }
+
+    it("does not strip (Subbed)/(Dubbed)-like words mid-title", () => {
+      expect(cleanFilmTitle("Dubbed in Blood")).toBe("Dubbed in Blood");
+    });
+  });
+
+  it("extractedYear is undefined when no year present", () => {
+    expect(cleanFilmTitleWithMetadata("Nosferatu").extractedYear).toBeUndefined();
+  });
+
+  it("remains idempotent on already-clean output", () => {
+    const once = cleanFilmTitle("AKIRA (2026 Re-release) (Subbed)");
+    expect(cleanFilmTitle(once)).toBe(once);
+  });
+});
