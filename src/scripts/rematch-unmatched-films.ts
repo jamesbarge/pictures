@@ -35,6 +35,7 @@ import { db } from "@/db";
 import { films, screenings } from "@/db/schema";
 import { and, eq, gte, isNull, sql } from "drizzle-orm";
 import { matchFilmToTMDB, getTMDBClient, isRepertoryFilm, getDecade } from "@/lib/tmdb";
+import type { TMDBSearchResult } from "@/lib/tmdb/types";
 import { NON_FILM_PATTERNS, LIVE_BROADCAST_KEYWORDS } from "@/lib/title-patterns";
 import {
   cleanFilmTitleWithMetadata,
@@ -103,26 +104,81 @@ export function isSuspectedNonFilm(rawTitle: string, cleanedTitle: string): stri
   return null;
 }
 
+/** Derived-year fallback guards (see pickDominantExactTitleMatch). */
+const EXACT_TITLE_MIN_POPULARITY = 2;
+const EXACT_TITLE_DOMINANCE_RATIO = 5;
+
+/** Strict normalizer for exact-title equality — deliberately NOT the loose
+ *  matcher normalizer (which strips ": subtitles", so "Alien: Romulus" would
+ *  "equal" "Alien"). Lowercase, fold diacritics, collapse whitespace. */
+function normalizeExact(title: string): string {
+  return title
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/['‘’]/g, "'")
+    .replace(/[“”]/g, '"')
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Second-chance pass for hint-less films: plain classic titles like "Aliens"
+ * or "Adaptation" fail the primary match not because the film is unclear but
+ * because franchise siblings trigger the competition penalty (0.73 - 0.15 =
+ * 0.58 < the 0.6 floor) and the DB rows carry no year/director to recover it.
+ *
+ * From the raw search results, pick a candidate ONLY when:
+ *   - its title or original_title is an exact normalized match, AND
+ *   - its release year is a past year (year discipline: current/future-year
+ *     stubs are exactly the junk the matcher reform exists to avoid), AND
+ *   - it is popular enough to be a real film (not a TMDB stub), AND
+ *   - it dominates every other exact-title candidate by >= 5x popularity
+ *     (same-title art-film-vs-blockbuster cases like "Dracula" stay
+ *     unresolved rather than guessed).
+ *
+ * The caller then re-runs the REAL matcher with the candidate's year as a
+ * hint and only accepts the result if the matcher independently lands on the
+ * same tmdb id at/above the unchanged 0.6 floor.
+ */
+export function pickDominantExactTitleMatch(
+  cleanedTitle: string,
+  results: TMDBSearchResult[],
+  currentYear = new Date().getFullYear(),
+): { tmdbId: number; year: number } | null {
+  const target = normalizeExact(cleanedTitle);
+  if (!target) return null;
+
+  const exact = results
+    .filter(
+      (r) =>
+        !r.adult &&
+        r.release_date &&
+        (normalizeExact(r.title) === target || normalizeExact(r.original_title) === target),
+    )
+    .map((r) => ({ r, year: parseInt(r.release_date.split("-")[0], 10) }))
+    .filter(({ year }) => Number.isInteger(year) && year >= 1900 && year < currentYear);
+
+  if (exact.length === 0) return null;
+
+  exact.sort((a, b) => b.r.popularity - a.r.popularity);
+  const top = exact[0];
+  if (top.r.popularity < EXACT_TITLE_MIN_POPULARITY) return null;
+  if (exact.length > 1 && top.r.popularity < exact[1].r.popularity * EXACT_TITLE_DOMINANCE_RATIO) {
+    return null;
+  }
+
+  return { tmdbId: top.r.id, year: top.year };
+}
+
 // ---------------------------------------------------------------------------
 // TMDB call with 429 backoff
 // ---------------------------------------------------------------------------
 
-async function matchWithBackoff(
-  title: string,
-  hints: { year?: number; director?: string },
-): Promise<Awaited<ReturnType<typeof matchFilmToTMDB>>> {
+async function withTmdbBackoff<T>(fn: () => Promise<T>): Promise<T> {
   for (let attempt = 0; ; attempt++) {
     try {
-      return await matchFilmToTMDB(title, {
-        ...hints,
-        // The titles in this sweep already sit in the DB and have been
-        // through the cleaner; single-word classics like "Aliens" or
-        // "Adaptation" often carry no year/director, and the ambiguity gate
-        // would refuse them outright. Bypassing it follows the
-        // enrich-upcoming-films precedent — the 0.6 confidence floor,
-        // blocklist filtering, and dry-run review are the safeguards here.
-        skipAmbiguityCheck: true,
-      });
+      return await fn();
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       if (!message.includes("429")) throw error;
@@ -134,6 +190,24 @@ async function matchWithBackoff(
       await sleep(wait);
     }
   }
+}
+
+function matchWithBackoff(
+  title: string,
+  hints: { year?: number; director?: string },
+): Promise<Awaited<ReturnType<typeof matchFilmToTMDB>>> {
+  return withTmdbBackoff(() =>
+    matchFilmToTMDB(title, {
+      ...hints,
+      // The titles in this sweep already sit in the DB and have been
+      // through the cleaner; single-word classics like "Aliens" or
+      // "Adaptation" often carry no year/director, and the ambiguity gate
+      // would refuse them outright. Bypassing it follows the
+      // enrich-upcoming-films precedent — the 0.6 confidence floor,
+      // blocklist filtering, and dry-run review are the safeguards here.
+      skipAmbiguityCheck: true,
+    }),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -155,6 +229,8 @@ interface UpdateAction {
   tmdbYear: number;
   confidence: number;
   yearHint?: number;
+  /** Year derived via the exact-title second-chance pass (review marker). */
+  derivedYear?: number;
   directorHint?: string;
 }
 
@@ -351,8 +427,31 @@ async function main(): Promise<void> {
     const directorHint = film.directors?.[0] || undefined;
 
     let match: Awaited<ReturnType<typeof matchFilmToTMDB>>;
+    let derivedYear: number | undefined;
     try {
       match = await matchWithBackoff(cleaned, { year: yearHint, director: directorHint });
+
+      // Second-chance pass for hint-less films (see pickDominantExactTitleMatch):
+      // derive a year hint from a dominant exact-title candidate, then make
+      // the real matcher confirm it independently with the year on board.
+      if (!match && !yearHint) {
+        const search = await withTmdbBackoff(() => getTMDBClient().searchFilms(cleaned));
+        const pick = pickDominantExactTitleMatch(cleaned, search.results);
+        if (pick) {
+          await sleep(RATE_LIMIT_MS);
+          const retry = await matchWithBackoff(cleaned, {
+            year: pick.year,
+            director: directorHint,
+          });
+          if (retry && retry.tmdbId === pick.tmdbId) {
+            match = retry;
+            derivedYear = pick.year;
+            console.log(
+              `${progress}   derived-year pass: "${cleaned}" → ${pick.year} (tmdb ${pick.tmdbId})`,
+            );
+          }
+        }
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       if (message.includes("aborting sweep")) throw error;
@@ -411,6 +510,7 @@ async function main(): Promise<void> {
         tmdbYear: match.year,
         confidence: match.confidence,
         yearHint,
+        derivedYear,
         directorHint,
       };
       updates.push(action);
@@ -437,6 +537,7 @@ async function main(): Promise<void> {
   for (const u of updates) {
     const hints = [
       u.yearHint ? `year ${u.yearHint}` : null,
+      u.derivedYear ? `DERIVED year ${u.derivedYear} — review` : null,
       u.directorHint ? `director ${u.directorHint}` : null,
     ]
       .filter(Boolean)

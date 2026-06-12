@@ -15,7 +15,11 @@ vi.mock("@/lib/tmdb", () => ({
   getDecade: vi.fn(),
 }));
 
-import { sanitizeYearHint, isSuspectedNonFilm } from "./rematch-unmatched-films";
+import {
+  sanitizeYearHint,
+  isSuspectedNonFilm,
+  pickDominantExactTitleMatch,
+} from "./rematch-unmatched-films";
 
 describe("sanitizeYearHint", () => {
   const CURRENT_YEAR = 2026;
@@ -64,5 +68,93 @@ describe("isSuspectedNonFilm", () => {
     expect(isSuspectedNonFilm("Aliens", "Aliens")).toBeNull();
     expect(isSuspectedNonFilm("Adaptation", "Adaptation")).toBeNull();
     expect(isSuspectedNonFilm("CAMP CLASSICS presents Barbarella", "Barbarella")).toBeNull();
+  });
+});
+
+describe("pickDominantExactTitleMatch", () => {
+  const CURRENT_YEAR = 2026;
+
+  function result(overrides: Partial<import("@/lib/tmdb/types").TMDBSearchResult>) {
+    return {
+      id: 0,
+      title: "",
+      original_title: "",
+      overview: "",
+      release_date: "",
+      poster_path: null,
+      backdrop_path: null,
+      vote_average: 0,
+      genre_ids: [],
+      original_language: "en",
+      adult: false,
+      popularity: 0,
+      ...overrides,
+    };
+  }
+
+  it("picks the dominant exact-title classic (the Aliens anchor shape)", () => {
+    const results = [
+      result({ id: 679, title: "Aliens", release_date: "1986-07-18", popularity: 120 }),
+      result({ id: 348, title: "Alien", release_date: "1979-05-25", popularity: 110 }),
+      result({ id: 945961, title: "Alien: Romulus", release_date: "2024-08-13", popularity: 90 }),
+    ];
+    expect(pickDominantExactTitleMatch("Aliens", results, CURRENT_YEAR)).toEqual({
+      tmdbId: 679,
+      year: 1986,
+    });
+  });
+
+  it("requires STRICT title equality — franchise siblings are not exact matches", () => {
+    const results = [
+      result({ id: 348, title: "Alien", release_date: "1979-05-25", popularity: 110 }),
+      result({ id: 945961, title: "Alien: Romulus", release_date: "2024-08-13", popularity: 90 }),
+    ];
+    expect(pickDominantExactTitleMatch("Aliens", results, CURRENT_YEAR)).toBeNull();
+  });
+
+  it("matches on original_title too", () => {
+    const results = [
+      result({
+        id: 426,
+        title: "Queen Margot",
+        original_title: "La Reine Margot",
+        release_date: "1994-05-13",
+        popularity: 15,
+      }),
+    ];
+    expect(pickDominantExactTitleMatch("La Reine Margot", results, CURRENT_YEAR)).toEqual({
+      tmdbId: 426,
+      year: 1994,
+    });
+  });
+
+  it("refuses ambiguous same-title pairs without 5x dominance (the Dracula trap)", () => {
+    const results = [
+      result({ id: 1, title: "Dracula", release_date: "2025-05-30", popularity: 60 }),
+      result({ id: 2, title: "Dracula", release_date: "2024-11-01", popularity: 25 }),
+    ];
+    expect(pickDominantExactTitleMatch("Dracula", results, CURRENT_YEAR)).toBeNull();
+  });
+
+  it("rejects current/future-year candidates (year discipline)", () => {
+    const results = [
+      result({ id: 3, title: "Akira", release_date: "2026-03-01", popularity: 50 }),
+    ];
+    expect(pickDominantExactTitleMatch("Akira", results, CURRENT_YEAR)).toBeNull();
+  });
+
+  it("rejects low-popularity stubs", () => {
+    const results = [
+      result({ id: 4, title: "Light Industry", release_date: "2011-01-01", popularity: 0.4 }),
+    ];
+    expect(pickDominantExactTitleMatch("Light Industry", results, CURRENT_YEAR)).toBeNull();
+  });
+
+  it("ignores adult results and entries without release dates", () => {
+    const results = [
+      result({ id: 5, title: "Aliens", release_date: "1986-07-18", popularity: 80, adult: true }),
+      result({ id: 6, title: "Aliens", release_date: "", popularity: 70 }),
+    ];
+    expect(pickDominantExactTitleMatch("Aliens", results, CURRENT_YEAR)).toBeNull();
   });
 });
