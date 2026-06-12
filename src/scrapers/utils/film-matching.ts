@@ -240,6 +240,13 @@ export async function matchAndCreateFromTMDB(
     decade: guardedYear ? getDecade(guardedYear) : null,
     tmdbRating: details.details.vote_average,
     tmdbPopularity: details.details.popularity,
+    // Match audit trail — must mirror the addToFilmCache call below. These
+    // were silently dropped before plan 005: only 4.3% of matched films had
+    // any recorded confidence.
+    letterboxdUrl: `https://letterboxd.com/tmdb/${match.tmdbId}`,
+    matchConfidence: match.confidence ?? null,
+    matchStrategy: "auto-with-year",
+    matchedAt: new Date(),
   });
 
   // Add to cache so subsequent lookups in this run find it
