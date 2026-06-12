@@ -2,7 +2,7 @@
  * Tests for runner-factory: connection-error classification and the
  * per-venue wall-clock cap (plan 001 — scrape circuit breaker).
  */
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 
 // Keep the runner away from any real database: recordScraperRun/getBaseline
 // short-circuit when isDatabaseAvailable is false.
@@ -27,7 +27,8 @@ vi.mock("./pipeline", () => ({
   ensureCinemaExists: vi.fn(async () => {}),
 }));
 
-import { isConnectionError } from "./runner-factory";
+import { isConnectionError, runScraper, type MultiVenueConfig } from "./runner-factory";
+import type { CinemaScraper } from "./types";
 
 describe("isConnectionError", () => {
   it("classifies DB connection/pooler failures as connection errors", () => {
@@ -60,5 +61,46 @@ describe("isConnectionError", () => {
     expect(isConnectionError("ETIMEDOUT: socket timeout")).toBe(true);
     expect(isConnectionError("no showtimes found")).toBe(false);
     expect(isConnectionError(undefined)).toBe(false);
+  });
+});
+
+describe("per-venue wall-clock cap", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("aborts a venue that exceeds the cap and continues to the next venue", async () => {
+    vi.useFakeTimers();
+
+    const makeVenue = (id: string) => ({ id, name: id, shortName: id });
+    const hangingScraper = {
+      healthCheck: vi.fn(async () => true),
+      // Wedges forever — simulates the 2026-06-09/11 hangs on an await the
+      // per-query withDbTimeout does not cover.
+      scrape: vi.fn(() => new Promise<never>(() => {})),
+    } as unknown as CinemaScraper;
+    const quickScraper = {
+      healthCheck: vi.fn(async () => true),
+      scrape: vi.fn(async () => []),
+    } as unknown as CinemaScraper;
+
+    const config: MultiVenueConfig = {
+      type: "multi",
+      venues: [makeVenue("wedged-venue"), makeVenue("healthy-venue")],
+      createScraper: (venueId: string) =>
+        venueId === "wedged-venue" ? hangingScraper : quickScraper,
+    };
+
+    const resultPromise = runScraper(config, { useValidation: true });
+    // Default cap is 10 minutes — advance past it so the race rejects.
+    await vi.advanceTimersByTimeAsync(10 * 60_000 + 1_000);
+    const result = await resultPromise;
+
+    expect(result.venueResults).toHaveLength(2);
+    expect(result.venueResults[0]).toMatchObject({ venueId: "wedged-venue", success: false });
+    expect(result.venueResults[0].error).toMatch(/timeout/i);
+    // The wedged venue did not block the rest of the run.
+    expect(result.venueResults[1]).toMatchObject({ venueId: "healthy-venue", success: true });
+    expect(result.success).toBe(false);
   });
 });

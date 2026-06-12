@@ -310,6 +310,86 @@ export function isConnectionError(err: unknown): boolean {
 }
 
 // ============================================================================
+// Per-venue wall-clock cap (plan 001)
+// ============================================================================
+
+/**
+ * Hard wall-clock cap for a single venue's scrape + pipeline + retries.
+ * Default 10 minutes; override via SCRAPE_VENUE_TIMEOUT_MS (floored at 60s).
+ * On 2026-06-09 four venues each ran ~13.4h against a wedged Supabase pooler;
+ * on 2026-06-11 two runs hung 50/25 min on awaits not covered by the
+ * per-query withDbTimeout. This cap bounds the whole venue unit instead.
+ */
+const VENUE_TIMEOUT_MS = process.env.SCRAPE_VENUE_TIMEOUT_MS
+  ? Math.max(60_000, Number(process.env.SCRAPE_VENUE_TIMEOUT_MS))
+  : 10 * 60_000;
+
+/**
+ * Race `p` against a wall-clock cap. Rejects with a "timeout" error on
+ * expiry (the message intentionally matches isConnectionError so capped
+ * venues count toward the run-level breaker). Like withDbTimeout, this
+ * stops *waiting* on the promise — the abandoned work keeps running in the
+ * background until its own cleanup; that's acceptable because the goal is
+ * to unblock the run, not to reclaim the socket.
+ */
+function withWallClockCap<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`${label} timeout after ${ms}ms (venue wall-clock cap)`)),
+      ms,
+    );
+  });
+  return Promise.race([p, timeout]).finally(() => {
+    if (timer) clearTimeout(timer);
+  });
+}
+
+/**
+ * Run one venue under the wall-clock cap. `runSingleVenue` never rejects
+ * (it catches internally and returns a failed VenueResult), so the only
+ * rejection path here is the cap itself — record it as a failed venue and
+ * let the caller continue to the next one.
+ */
+async function runVenueWithCap(
+  venue: VenueDefinition,
+  run: () => Promise<VenueResult>,
+): Promise<VenueResult> {
+  const startTime = Date.now();
+  try {
+    return await withWallClockCap(run(), VENUE_TIMEOUT_MS, `venue ${venue.id}`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const durationMs = Date.now() - startTime;
+    log({
+      level: "error",
+      event: "venue_timeout",
+      data: { venueId: venue.id, capMs: VENUE_TIMEOUT_MS, durationMs },
+    });
+    pushPendingRecord(recordScraperRun({
+      cinemaId: venue.id,
+      startedAt: new Date(startTime),
+      status: "failed",
+      screeningCount: 0,
+      durationMs,
+      error: message,
+    }));
+    return {
+      venueId: venue.id,
+      venueName: venue.name,
+      success: false,
+      screeningsFound: 0,
+      screeningsAdded: 0,
+      screeningsUpdated: 0,
+      screeningsFailed: 0,
+      durationMs,
+      error: message,
+      retryCount: 0,
+    };
+  }
+}
+
+// ============================================================================
 // Core Runner
 // ============================================================================
 
@@ -554,7 +634,9 @@ async function runScraperInner(
       });
 
       const scraper = config.createScraper();
-      const result = await runSingleVenue(config.venue, scraper, options);
+      const result = await runVenueWithCap(config.venue, () =>
+        runSingleVenue(config.venue, scraper, options),
+      );
       venueResults.push(result);
 
     } else if (config.type === "multi") {
@@ -575,7 +657,9 @@ async function runScraperInner(
         });
 
         const scraper = config.createScraper(venue.id);
-        const result = await runSingleVenue(venue, scraper, options);
+        const result = await runVenueWithCap(venue, () =>
+          runSingleVenue(venue, scraper, options),
+        );
         venueResults.push(result);
 
         // Continue on error (retry-then-continue behavior)
@@ -610,7 +694,15 @@ async function runScraperInner(
       const startTime = Date.now();
 
       try {
-        const results = await chainScraper.scrapeVenues(activeVenueIds);
+        // Chain scrapers fetch every venue in one call, so the wall-clock
+        // cap scales with venue count (e.g. Curzon ~15 venues). A timeout
+        // rejects into the catch below, which marks all venues failed.
+        const chainCapMs = VENUE_TIMEOUT_MS * Math.max(1, venuesToScrape.length);
+        const results = await withWallClockCap(
+          chainScraper.scrapeVenues(activeVenueIds),
+          chainCapMs,
+          `chain ${config.chainName}`,
+        );
 
         // Process every requested venue so omitted results become explicit failures.
         for (const venue of venuesToScrape) {
