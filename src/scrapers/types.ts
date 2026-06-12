@@ -31,6 +31,12 @@ export interface RawScreening {
   festivalSection?: string;
   /** Ticket availability status from the booking system */
   availabilityStatus?: "available" | "low" | "sold_out" | "returns" | "unknown";
+  /**
+   * How datetime was derived. ISO/API timestamps can't have AM/PM errors,
+   * so the validator relaxes the heuristics that exist to catch text-parsing
+   * mistakes (early-time rejection, 90-day future cap). Unset means "text".
+   */
+  timeSource?: "iso" | "text";
 }
 
 // ============================================================================
