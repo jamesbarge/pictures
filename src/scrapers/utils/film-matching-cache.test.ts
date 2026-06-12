@@ -6,8 +6,28 @@
  * (initFilmCache, findFilmBySimilarity, matchAndCreateFromTMDB, etc.) need
  * full Drizzle mocks and are out of scope.
  */
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const mocks = vi.hoisted(() => ({
+  /** Rows returned by the mocked `db.select().from(films)` in initFilmCache. */
+  filmRows: [] as Array<Record<string, unknown>>,
+  /** TMDB ids treated as blocklisted by the mocked blocklist module. */
+  blockedIds: new Set<number>(),
+}));
+
+vi.mock("@/db", () => ({
+  db: {
+    select: () => ({ from: () => Promise.resolve(mocks.filmRows) }),
+  },
+  withDbTimeout: <T>(promise: Promise<T>) => promise,
+}));
+
+vi.mock("@/lib/tmdb/blocklist", () => ({
+  isBlockedTmdbId: (id: number) => mocks.blockedIds.has(id),
+}));
+
 import {
+  initFilmCache,
   lookupFilmInCache,
   logCacheStats,
   type FilmCache,
@@ -119,6 +139,82 @@ describe("logCacheStats", () => {
     const msg = spy.mock.calls[0][0] as string;
     // 1/3 = 33.333...% → "33.3% hit rate"
     expect(msg).toContain("33.3% hit rate");
+    spy.mockRestore();
+  });
+});
+
+describe("initFilmCache — preventive blocklist (plan 008 step 2)", () => {
+  const normalize = (s: string) => s.toLowerCase().trim();
+
+  beforeEach(() => {
+    mocks.filmRows = [];
+    mocks.blockedIds = new Set();
+  });
+
+  it("does not serve a blocklisted tmdbId via byTmdbId", async () => {
+    mocks.filmRows = [
+      { id: "f-wrong", title: "Joyland", tmdbId: 111 },
+      { id: "f-good", title: "Aftersun", tmdbId: 222 },
+    ];
+    mocks.blockedIds = new Set([111]);
+
+    const cache = await initFilmCache(normalize);
+
+    expect(cache.byTmdbId.has(111)).toBe(false);
+    expect(cache.byTmdbId.get(222)?.id).toBe("f-good");
+  });
+
+  it("STILL serves the blocklisted film via byTitle — the duplicate-row trap", async () => {
+    // If the title lookup also skipped the row, every screening for this title
+    // would re-link to a freshly created duplicate film row. The title lookup
+    // must keep returning the existing row; only the tmdb-id index goes blind.
+    mocks.filmRows = [{ id: "f-wrong", title: "Joyland", tmdbId: 111 }];
+    mocks.blockedIds = new Set([111]);
+
+    const cache = await initFilmCache(normalize);
+
+    expect(lookupFilmInCache(cache, "joyland")?.id).toBe("f-wrong");
+  });
+
+  it("leaves non-blocked films fully indexed (both maps)", async () => {
+    mocks.filmRows = [{ id: "f-good", title: "Aftersun", tmdbId: 222 }];
+    mocks.blockedIds = new Set([111]);
+
+    const cache = await initFilmCache(normalize);
+
+    expect(cache.byTmdbId.get(222)?.id).toBe("f-good");
+    expect(lookupFilmInCache(cache, "aftersun")?.id).toBe("f-good");
+  });
+
+  it("logs a once-per-run count of cached films carrying blocklisted ids", async () => {
+    mocks.filmRows = [
+      { id: "f-1", title: "Joyland", tmdbId: 111 },
+      { id: "f-2", title: "Dracula", tmdbId: 333 },
+      { id: "f-3", title: "Aftersun", tmdbId: 222 },
+    ];
+    mocks.blockedIds = new Set([111, 333]);
+    const spy = vi.spyOn(console, "log").mockImplementation(() => {});
+
+    await initFilmCache(normalize);
+
+    const blockedLine = spy.mock.calls
+      .map((c) => String(c[0]))
+      .find((m) => m.includes("blocklisted TMDB ids"));
+    expect(blockedLine).toBeDefined();
+    expect(blockedLine).toContain("2 cached films");
+    spy.mockRestore();
+  });
+
+  it("does not log the blocklist line when nothing is blocked", async () => {
+    mocks.filmRows = [{ id: "f-good", title: "Aftersun", tmdbId: 222 }];
+    const spy = vi.spyOn(console, "log").mockImplementation(() => {});
+
+    await initFilmCache(normalize);
+
+    const blockedLine = spy.mock.calls
+      .map((c) => String(c[0]))
+      .find((m) => m.includes("blocklisted TMDB ids"));
+    expect(blockedLine).toBeUndefined();
     spy.mockRestore();
   });
 });

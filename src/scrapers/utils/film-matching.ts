@@ -16,6 +16,7 @@ import {
   isSimilarityConfigured,
 } from "@/lib/film-similarity";
 import { v4 as uuidv4 } from "uuid";
+import { isBlockedTmdbId } from "@/lib/tmdb/blocklist";
 import { sanitizeDirectors, sanitizeYear } from "./film-write-guards";
 
 type FilmRecord = typeof films.$inferSelect;
@@ -66,6 +67,7 @@ export async function initFilmCache(
     "initFilmCache: select films",
   );
 
+  let blockedCount = 0;
   for (const film of allFilms) {
     const normalized = normalizeTitle(film.title);
     // If duplicate normalized titles exist, keep the one with more data (has TMDB ID)
@@ -73,15 +75,30 @@ export async function initFilmCache(
     if (!existing || (film.tmdbId && !existing.tmdbId)) {
       cache.byTitle.set(normalized, film);
     }
-    // Build TMDB ID index — two films with same TMDB ID are always the same film
+    // Build TMDB ID index — two films with same TMDB ID are always the same film.
+    // Preventive blocklist (plan 008): a film carrying a blocklisted (known
+    // wrong) TMDB id must NOT be reachable through the tmdb-id index, or the
+    // wrong id keeps getting reused for every future title that matches to it.
+    // The byTitle entry above is intentionally kept — skipping it too would
+    // make the same-title path create a duplicate film row per scrape. Row
+    // repair itself is the rematch sweep's job (rematch-unmatched-films.ts).
     if (film.tmdbId) {
-      cache.byTmdbId.set(film.tmdbId, film);
+      if (isBlockedTmdbId(film.tmdbId)) {
+        blockedCount++;
+      } else {
+        cache.byTmdbId.set(film.tmdbId, film);
+      }
     }
   }
 
   console.log(
     `[Pipeline] Film cache initialized with ${cache.byTitle.size} unique films, ${cache.byTmdbId.size} TMDB IDs (${allFilms.length} total)`,
   );
+  if (blockedCount > 0) {
+    console.log(
+      `[Pipeline] ${blockedCount} cached films carry blocklisted TMDB ids — they will be re-matched on next encounter`,
+    );
+  }
   return cache;
 }
 
