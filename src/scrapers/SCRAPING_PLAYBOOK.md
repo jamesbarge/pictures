@@ -19,6 +19,7 @@ Update this playbook whenever you:
 - After fixing time parsing bugs, verify and clean bad historical screenings (`00:00-09:59`) only when confirmed wrong.
 - **`BaseScraper.healthCheck()` retries** (2026-05-15): 3 attempts, 10s timeout each, 4s backoff between attempts. Fast-fails on 4xx (contract issue), retries on 5xx + network errors. Subclasses can override for cheaper/different checks (e.g. Curzon HEADs the API endpoint with a 401-is-healthy contract). Background: Close-Up was failing 33% of runs at 03:17-03:21 UTC because of brief nightly-maintenance windows.
 - **Do not turn fetch/parse exceptions into successful empty results.** A valid zero-screening chain venue must remain present in the returned `Map` with `[]`; a failed venue must be omitted and recorded in `venueErrors`. The shared runner marks any requested venue missing from the result map as failed. Multi-page independent scrapers must throw when any required page fails so partial coverage is not persisted as a successful run.
+- **Runtime capture (plan 006, 2026-06-12)**: when a source exposes the film's runtime, forward it as `RawScreening.runtime` (minutes) — the TMDB matcher uses it to reject junk stubs and penalize wrong-era matches. Always pass the raw value through `sanitizeRuntime()` (`src/scrapers/utils/metadata-parser.ts`): coerces numeric strings, guards to the 1–600 minute band, returns `undefined` otherwise. Currently emitted by Rio, ICA, Garden Cinema, and Curzon. Note: venue runtimes may include event padding (intros/Q&As), which the matcher's ±30 min tolerance absorbs.
 
 ## Health & Flakiness Detection
 The `/scrape` slash command runs three read-only detectors against `scraper_runs`:
@@ -116,6 +117,7 @@ Use this format when recording cinema-specific quirks:
   - **BST timezone (fixed 2026-05-12)**: `schedule.startsAt` is TZ-less. Original `new Date(startsAt)` silently added 1h under `TZ=UTC` during BST. Migrated to `parseUKLocalDateTime`. Duplicate-pair probe confirmed 15 ghost rows existed; cleaned in same change. Same fix class as #484 (Everyman) and #485 (Picturehouse).
   - **Failure handling**: total auth failure throws; failed venue/date API calls are recorded as venue failures rather than successful empty results.
 - Vista site codes: SOH1, MAY1, BLO1, ALD1, VIC1, HOX1, KIN1, RIC1, WIM01, CAM1
+- Metadata: `relatedData.films[].runtimeInMinutes` (integer minutes) is forwarded as `RawScreening.runtime` via `sanitizeRuntime()` (plan 006, 2026-06-12). Year comes from `releaseDate`, director from `castAndCrew` cross-referenced against `relatedData.castAndCrew`.
 - Last verified (2026-03-18): SSR token extraction working, all venues returning data
 
 ### Barbican
@@ -136,6 +138,7 @@ Use this format when recording cinema-specific quirks:
   - **Day range**: The nav shows ~7 days but the `?day=` parameter accepts any future date. We scrape 30 days ahead.
   - **Failure handling**: any failed fetch or parse in the required 30-day window fails the run, preventing a partial scrape from being recorded as success.
   - **Old performances endpoint**: The `/whats-on/event/{nodeId}/performances` page still works but its `datetime` attribute has a misleading `Z` suffix — the values are actually UK local time, not UTC. The old scraper used `new Date(attr)` which was off by 1 hour during BST.
+  - **BBFC certificate in titles**: Raw titles carry a trailing certificate like `"(12A)"`, which the title cleaner strips. Deliberately NOT captured (plan 006 YAGNI decision, 2026-06-12): `RawScreening` has no certificate field, the matcher doesn't consume certificates, and `films.certification` is filled by TMDB enrichment. Revisit only if a consumer lands.
 - Last verified (2026-04-10): Rewrote to use daily listing approach. 9 screenings parsed from April 10 test page, matching website exactly.
 
 ### Castle Cinema (Hackney) and Castle Sidcup
@@ -210,3 +213,45 @@ Use this format when recording cinema-specific quirks:
 - Year roll-forward guard retained: only bump a parsed date forward a year when it is >180 days in the past (genuine year boundary); recently-past dates stay in the current year and are dropped by the `>= now` filter (prevents the old ~360-day phantom screenings).
 - **Load-bearing format assumption: ONE date per line.** The time blob captures to end-of-line, so a line like "Tues 16 June at 2.30pm and Wed 17 June at 7.30pm" would attribute BOTH times to 16 June and never see the second date. The site doesn't currently do this; if listings change shape, stop the blob at the next day-name token. Regression tests: `david-lean.test.ts`.
 - Verified live 2026-06-12: `scrape()` → 49 screenings (was 0), 0 suspect (<09:00 UTC) times. Cross-checked vs site: "Fairyland" 16 June 2.30pm+7.30pm, "Who Framed Roger Rabbit?" 20 June 11.00am, "The Devil Wears Prada 2" 24 June 5.30pm.
+
+### Rio Cinema (Dalston)
+- Scraper: `src/scrapers/cinemas/rio.ts`
+- Source URL pattern: homepage `https://riocinema.org.uk` (redirects to `/Rio.dll/Home`)
+- Approach: all event data is embedded as JSON in the page — `var Events = {"Events": [...]};` — extracted by bracket-matching (the JSON contains HTML strings, so naive regex slicing breaks).
+- Date/time format: `Performances[].StartDate` = `"YYYY-MM-DD"`, `StartTime` = `"HHMM"` (24-hour, e.g. `"1800"`). Combined via `combineDateAndTime()` on a UTC-midnight date.
+- Metadata per event: `Director` (string), `Year` (string, parsed to int), `RunningTime` (JSON number, minutes — forwarded as `RawScreening.runtime` via `sanitizeRuntime()`, plan 006). RunningTime tolerates string-shaped values defensively.
+- Booking URL: film page `https://riocinema.org.uk/Rio.dll/WhatsOn?f={event.ID}` (stable) — NOT `Performances[].URL` (session params expire).
+- sourceId format: `rio-dalston-{event.ID}-{ISO datetime}`.
+- Known pitfalls:
+  - `RunningTime` is the venue's stated event length: for event screenings (film + Q&A/intro) it can exceed the film's true runtime (e.g. "LITTLE SHOP OF HORRORS + event" = 150). The matcher's ±30 min tolerance absorbs typical padding.
+  - Titles often carry event prefixes ("Classic Matinee:", "Pink Palace:") — handled downstream by title cleaning.
+- Last verified (2026-06-12): live run — 38/38 films emitted runtime, all within 1–600; JAWS=124, RINGU=96 match the venue JSON and canonical runtimes.
+
+### ICA
+- Scraper: `src/scrapers/cinemas/ica.ts`
+- Source URL pattern: listing `https://www.ica.art/films` → per-film detail pages `/films/{slug}` (capped at 50 per run, 3s delay between fetches).
+- Approach: Cheerio over each film detail page.
+- Key selectors:
+  - `span.title` — film title (nested `.tag/.badge/.label/.flag` removed first to avoid concatenation)
+  - `#colophon` — metadata line, format `"<i>Title</i>, dir Director Name, Country Year, Runtime mins."`
+  - `.performance-list .performance` with `.time` (`"04:15 pm"`), `.date` (`"Fri, 19 Dec 2025"`), `.venue`
+- Metadata from `#colophon`: director (`dir X`), year (4-digit), runtime (`"(\d+)\s*mins?"` — forwarded as `RawScreening.runtime` via `sanitizeRuntime()`, plan 006), country.
+- sourceId format: `ica-{slugified title}-{ISO datetime}`.
+- Known pitfalls:
+  - Excluded listing URLs (year archives, `/films/today`, etc.) are filtered in `isExcludedUrl` — keep in sync if ICA adds new non-film listing pages.
+  - One detail-page fetch per film: a full run costs ~50 requests; don't loop live runs.
+- Last verified (2026-06-12): live run — 19/21 films emitted runtime (two had no runtime in colophon), all within 1–600.
+
+### Garden Cinema (Covent Garden)
+- Scraper: `src/scrapers/cinemas/garden.ts`
+- Source URL pattern: homepage `https://thegardencinema.co.uk` (all dates on one page)
+- Approach: Cheerio; `div.date-block[data-date="YYYY-MM-DD"]` → `.films-list__by-date__film` cards → `a.screening` time links (24-hour `"HH:MM"`).
+- Key selectors:
+  - `.films-list__by-date__film__title a` — title (trailing BBFC rating span flattens into the text; stripped end-anchored via `cleanTitle`)
+  - `.films-list__by-date__film__stats` — stats line `"Director, Country, Year, Runtime"` (e.g. `"Greta Gerwig, USA, 2019, 135m."`)
+  - `.films-list__by-date__film__thumb` — poster `src`
+- Metadata from stats line: director (first comma part unless country/year), year (4-digit), runtime (`"135m."`/`"117 mins"` — unit suffix required so the bare year can't match; forwarded as `RawScreening.runtime` via `sanitizeRuntime()`, plan 006).
+- sourceId format: `garden-{slug(title)}-{ISO datetime}`.
+- Known pitfalls:
+  - Rating strip must stay end-anchored (regression: `"What's Up, Doc? U"` → `"What's p, Doc?"` with substring replace).
+- Last verified (2026-06-12): live run — 88/88 films emitted runtime, all within 1–600; His Girl Friday=92 matches canonical.
