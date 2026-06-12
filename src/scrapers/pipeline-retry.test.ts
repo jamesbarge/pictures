@@ -134,4 +134,38 @@ describe("retryDeferredWrites", () => {
 
     expect(outcome).toEqual({ recovered: 2, added: 2, updated: 0, failed: 1 });
   });
+
+  it("stops retrying when the time budget is exhausted, counting the rest as failed", async () => {
+    // Budget 0 → exhausted before the first attempt; no thunk may run. This
+    // bounds the retry pass under plan 001's 10-minute venue wall-clock cap.
+    const run = vi.fn().mockResolvedValue(true);
+    const deferred: DeferredWrite[] = [
+      { label: "w1", run },
+      { label: "w2", run },
+      { label: "w3", run },
+    ];
+
+    const outcome = await retryDeferredWrites(deferred, 0, 0);
+
+    expect(outcome).toEqual({ recovered: 0, added: 0, updated: 0, failed: 3 });
+    expect(run).not.toHaveBeenCalled();
+  });
+
+  it("budget exhaustion mid-queue keeps earlier recoveries", async () => {
+    const slow = vi.fn().mockImplementation(
+      () => new Promise<boolean>((resolve) => setTimeout(() => resolve(true), 30)),
+    );
+    const never = vi.fn().mockResolvedValue(true);
+    const deferred: DeferredWrite[] = [
+      { label: "slow", run: slow },
+      { label: "skipped", run: never },
+    ];
+
+    // 10ms budget: the first write starts (budget not yet exhausted) and
+    // recovers; by the second iteration the budget is spent.
+    const outcome = await retryDeferredWrites(deferred, 0, 10);
+
+    expect(outcome).toEqual({ recovered: 1, added: 1, updated: 0, failed: 1 });
+    expect(never).not.toHaveBeenCalled();
+  });
 });

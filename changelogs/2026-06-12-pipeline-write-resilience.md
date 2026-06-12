@@ -34,8 +34,17 @@
 - Queue cap: 50/venue. Beyond that the venue is sick and plan 001's run-level
   circuit breaker is the responder — excess writes are logged, counted as
   failed, and dropped.
-- Non-connection errors (e.g. FK violations) rethrow to the film-level catch
-  unchanged — they would fail identically on retry.
+- Non-connection errors (e.g. FK violations) rethrow to the film-level catch.
+  That catch now counts only the film's *unsettled* screenings as failed
+  (review fix) — previously it recounted already-added/updated ones, and with
+  the new queue it would have double-counted deferred writes (failed here +
+  added on retry).
+- The retry pass has a cumulative 120s wall-clock budget (review fix):
+  plan 001's per-venue cap is 10 minutes for scrape + pipeline + retries, and
+  50 retries against a still-wedged pool (~16s each) would blow it — turning
+  a partially-successful venue into a cap failure that also feeds the
+  run-level breaker. Healthy-pool retries (~1s each) all fit; a wedged pool
+  is cut off after ~7 attempts and the rest are counted failed.
 - Final pipeline log gains `(N recovered on retry)`; the retry pass stamps
   `retry-deferred-writes` in the progress file.
 - Tests (`src/scrapers/pipeline-retry.test.ts`): recover-once, fail-twice

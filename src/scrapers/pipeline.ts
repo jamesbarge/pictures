@@ -114,20 +114,45 @@ export async function attemptScreeningWrite(
 }
 
 /**
+ * Cumulative wall-clock budget for the retry pass. Plan 001's per-venue cap
+ * is 10 minutes for scrape + pipeline + retries; an unbounded retry pass
+ * against a still-wedged pool (50 writes x ~16s each) would blow it, turning
+ * a partially-successful venue into a cap failure that also feeds the
+ * run-level breaker. Healthy-pool retries are ~1s each, so 50 fit easily;
+ * a wedged pool burns ~16s per failure and gets cut off after ~7 attempts.
+ */
+const RETRY_BUDGET_MS = 120_000;
+
+/**
  * Retry deferred writes serially, once each, with a gap between attempts.
  * The failure mode being recovered is pool contention — retrying in
  * parallel (or without the gap) would recreate it. A second failure is
  * final for this run; the next scheduled scrape picks the screening up.
+ *
+ * Note: if the original (abandoned-by-withDbTimeout) insert completed late
+ * in the background, the retry hits the unique index and lands here as a
+ * counting-only "failure" — the screening is in the DB either way.
  *
  * Exported for tests (pass gapMs=0 there).
  */
 export async function retryDeferredWrites(
   deferred: DeferredWrite[],
   gapMs = 1_000,
+  budgetMs = RETRY_BUDGET_MS,
 ): Promise<RetryOutcome> {
   const outcome: RetryOutcome = { recovered: 0, added: 0, updated: 0, failed: 0 };
   console.log(`[Pipeline] Retrying ${deferred.length} deferred writes (serial, ${gapMs}ms gap)`);
-  for (const write of deferred) {
+  const startedAt = Date.now();
+  for (let i = 0; i < deferred.length; i++) {
+    if (Date.now() - startedAt >= budgetMs) {
+      const remaining = deferred.length - i;
+      outcome.failed += remaining;
+      console.error(
+        `[Pipeline] Retry budget (${budgetMs}ms) exhausted — pool still unhealthy; ${remaining} deferred writes not retried this run`
+      );
+      break;
+    }
+    const write = deferred[i];
     await new Promise((resolve) => setTimeout(resolve, gapMs)); // let the pool breathe
     try {
       if (await write.run()) {
@@ -334,6 +359,13 @@ export async function processScreenings(
     "film-loop",
     async () => {
       for (const [normalizedTitle, filmScreenings] of screeningsByFilm) {
+        // Screenings of this film that already reached an accounted state
+        // (added/updated counted now, dropped counted as failed now, deferred
+        // counted by the retry pass). The film-level catch must only count
+        // the *remainder* as failed — otherwise a non-connection error midway
+        // through a film double-counts the settled ones (a deferred write
+        // would be counted failed here AND added/failed again on retry).
+        let settled = 0;
         try {
           // Get the first screening for film metadata (use any scraper-provided data)
           const firstScreening = filmScreenings[0];
@@ -388,10 +420,11 @@ export async function processScreenings(
               result.failed++;
             }
             // "deferred" outcomes are counted after the retry pass below.
+            settled++;
           }
         } catch (error) {
           console.error(`[Pipeline] Error processing film "${normalizedTitle}":`, error);
-          result.failed += filmScreenings.length;
+          result.failed += filmScreenings.length - settled;
         }
       }
     },
