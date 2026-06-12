@@ -287,6 +287,29 @@ async function recordScraperRun(params: {
 }
 
 // ============================================================================
+// Connection-error classification (run-level circuit breaker, plan 001)
+// ============================================================================
+
+/**
+ * True if the error looks like a DB connection/pooler failure (non-retryable
+ * at run level). Used by the scrape-all circuit breaker to distinguish a
+ * wedged database (abort the run) from ordinary per-site scrape failures
+ * (keep going). Deliberately matches the venue wall-clock cap's "timeout"
+ * message so capped venues count toward the breaker.
+ */
+export function isConnectionError(err: unknown): boolean {
+  const msg = (err instanceof Error ? err.message : String(err)).toLowerCase();
+  return (
+    msg.includes("timeout") || // withDbTimeout / venue-cap client-side reject
+    msg.includes("econnrefused") ||
+    msg.includes("connection") ||
+    msg.includes("pool") ||
+    msg.includes("57014") || // query_canceled (statement_timeout)
+    msg.includes("terminating connection")
+  );
+}
+
+// ============================================================================
 // Core Runner
 // ============================================================================
 
