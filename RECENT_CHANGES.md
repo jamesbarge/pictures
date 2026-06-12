@@ -1,3 +1,11 @@
+## 2026-06-12: Pipeline write-resilience — retry queue, validator provenance, progress-file fix (plan 010)
+**PR**: pending | **Files**: `src/scrapers/pipeline.ts`, `src/scrapers/utils/screening-validator.ts`, `src/scrapers/types.ts`, `src/lib/scrape-progress.ts`, `src/scrapers/chains/curzon.ts`, `src/scrapers/chains/everyman.ts`, `src/scrapers/chains/picturehouse.ts`, `src/scrapers/cinemas/castle-calendar.ts`
+- Connection-timeout `insertScreening` failures are now queued and retried once (serial, 1s gap, cap 50/venue) at end of venue instead of being lost until next week's run — the 2026-06-11 runs dropped 19 screenings at electric-white-city alone. Thunks close over resolved filmIds; no re-matching. Non-connection errors (FK violations) are never retried.
+- `RawScreening.timeSource: "iso"` flags API/ISO timestamps (Curzon, Picturehouse, Everyman, Castle). The validator keeps 09:00 ISO screenings with a warning (Everyman's real kids/early shows — 145 in live data) and raises the future cap to 180 days for ISO (Met Opera/NT Live long-lead bookings; 90 days stays for text-parsed times). Read-only sanity check: ~201 newly admitted screenings (~350 with Curzon estimated), under the 500 STOP threshold.
+- `scrape-progress.json` writes no longer fail under wave concurrency: temp filenames are unique per write (the shared `.tmp` rename race was the real cause of the every-run ENOENT — the mkdir already existed), and the dir memo resets on failure.
+
+---
+
 ## 2026-06-12: Letterboxd integrity — no-anchor guard, canonical slug, era-scaled year tolerance
 **PR**: pending | **Files**: `src/db/schema/films.ts`, `src/db/enrich-letterboxd.ts`, `src/agents/fallback-enrichment/index.ts`, `src/lib/jobs/letterboxd-import.ts`, `src/lib/letterboxd-import.ts`, `src/scripts/backfill-letterboxd-slugs.ts`
 - New `films.letterboxd_slug` + `films.letterboxd_enriched_at` columns (migration applied). Letterboxd's canonical slug is now persisted from watchlist imports (`data-film-slug`) and from the post-redirect URL of successful enrichment fetches.

@@ -2,8 +2,10 @@
  * Screening Validator
  *
  * Validates scraped screenings before database insertion to catch:
- * - Invalid times (before 10:00 AM - cinemas don't show films that early)
- * - Dates too far in future (>90 days - likely parsing errors)
+ * - Invalid times (before 10:00 AM - usually AM/PM text-parsing errors;
+ *   warn-only for ISO/API-sourced times, which can't have those)
+ * - Dates too far in future (>90 days text / >180 days ISO - parsing errors
+ *   vs. legitimate long-lead event cinema)
  * - Malformed booking URLs
  * - Suspicious patterns (Christmas Day, etc.)
  */
@@ -50,8 +52,13 @@ interface ValidationSummary {
 const MIN_SCREENING_HOUR = 10;  // 10:00 AM
 const MAX_SCREENING_HOUR = 23;  // 11:00 PM (last screening start)
 
-// Maximum days in future for valid screenings
+// Maximum days in future for valid screenings. Text-parsed times keep the
+// tight 90-day cap (guards against parse-year errors like 2027-for-2026).
+// ISO/API-sourced times get 180 days: long-lead event cinema (Met Opera /
+// RBO / NT Live 2026-27 seasons, 99-176 days out at the chains) is real,
+// bookable, and was being discarded by the 90-day cap (plan 010).
 const MAX_DAYS_IN_FUTURE = 90;
+const MAX_DAYS_IN_FUTURE_ISO = 180;
 
 // Holidays when most cinemas are closed
 const CLOSED_DATES = [
@@ -94,16 +101,28 @@ function validateScreening(screening: RawScreening): ValidationResult {
       errors.push("past_screening: Screening is in the past");
     }
 
+    // Time-provenance awareness (plan 010): the early-time guard exists to
+    // catch AM/PM *text-parsing* errors. ISO/API timestamps can't have those,
+    // so a 09:00 from an API (Everyman kids/early shows) is kept with a
+    // warning instead of rejected. Text-parsed times are rejected as before.
+    const isoSourced = screening.timeSource === "iso";
+
     // Check time of day
     if (hour < MIN_SCREENING_HOUR) {
-      errors.push(`suspicious_time_early: Screening at ${hour}:00 is before ${MIN_SCREENING_HOUR}:00 AM`);
+      const message = `suspicious_time_early: Screening at ${hour}:00 is before ${MIN_SCREENING_HOUR}:00 AM`;
+      if (isoSourced) {
+        warnings.push(`${message} (kept: ISO-sourced time)`);
+      } else {
+        errors.push(message);
+      }
     } else if (hour > MAX_SCREENING_HOUR) {
       warnings.push(`late_screening: Screening starts at ${hour}:00 (after ${MAX_SCREENING_HOUR}:00)`);
     }
 
-    // Check date range
-    if (daysDiff > MAX_DAYS_IN_FUTURE) {
-      errors.push(`too_far_future: Screening is ${daysDiff} days in future (max ${MAX_DAYS_IN_FUTURE})`);
+    // Check date range (looser cap for ISO-sourced times — see constants)
+    const maxDaysInFuture = isoSourced ? MAX_DAYS_IN_FUTURE_ISO : MAX_DAYS_IN_FUTURE;
+    if (daysDiff > maxDaysInFuture) {
+      errors.push(`too_far_future: Screening is ${daysDiff} days in future (max ${maxDaysInFuture})`);
     }
 
     // Check closed dates

@@ -502,6 +502,7 @@ export class CurzonScraper implements ChainScraper {
       screenings.push({
         filmTitle,
         datetime,
+        timeSource: "iso", // Vista API ISO timestamp — no AM/PM parsing involved
         bookingUrl,
         sourceId,
         year,

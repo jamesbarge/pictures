@@ -46,10 +46,19 @@ async function ensureDir(): Promise<void> {
   ensuredDir = true;
 }
 
+/** Monotonic counter so concurrent writers in one process never share a temp file. */
+let writeSeq = 0;
+
 /**
  * Atomically write the snapshot to `tmp/scrape-progress.json`. Failures are
  * logged once and otherwise swallowed — a broken progress stamp must never
  * fail the scrape itself.
+ *
+ * The temp filename is unique per write (pid + counter). Scrape waves run
+ * 3-4 venues in parallel and each stamps progress concurrently; with a
+ * single shared `.tmp` path, writer B's `rename` raced writer A's (A renames
+ * the shared temp file away, B's rename then throws ENOENT) — observed as
+ * "write failed: rename ... ENOENT" on every concurrent run on 2026-06-11.
  */
 export async function stampProgress(input: Omit<ProgressSnapshot, "lastHeartbeatAt"> & { lastHeartbeatAt?: string }): Promise<void> {
   const now = new Date().toISOString();
@@ -57,12 +66,18 @@ export async function stampProgress(input: Omit<ProgressSnapshot, "lastHeartbeat
     lastHeartbeatAt: now,
     ...input,
   };
+  const tmp = `${PROGRESS_PATH}.${process.pid}.${writeSeq++}.tmp`;
   try {
     await ensureDir();
-    const tmp = `${PROGRESS_PATH}.tmp`;
     await fs.writeFile(tmp, JSON.stringify(snapshot, null, 2) + "\n");
     await fs.rename(tmp, PROGRESS_PATH);
   } catch (err) {
+    // The directory may have been removed mid-run (e.g. a tmp/ cleanup);
+    // drop the memo so the next stamp recreates it instead of failing forever.
+    ensuredDir = false;
+    // Best-effort cleanup — unique temp names would otherwise accumulate
+    // orphans when writeFile succeeded but rename failed.
+    await fs.unlink(tmp).catch(() => {});
     // Surface once at warn level; don't spam.
     console.warn(`[scrape-progress] write failed: ${err instanceof Error ? err.message : String(err)}`);
   }

@@ -164,6 +164,7 @@ export function parseCalendarPage(
     screenings.push({
       filmTitle,
       datetime,
+      timeSource: "iso", // data-start-time ISO attribute — no AM/PM parsing involved
       bookingUrl,
       sourceId: `${sourceIdPrefix}-${button.perfId}`,
     });
