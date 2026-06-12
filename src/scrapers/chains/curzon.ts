@@ -22,6 +22,7 @@ import { CHROME_USER_AGENT } from "../constants";
 import { FestivalDetector } from "../festivals/festival-detector";
 import { getBrowser, closeBrowser, createPage } from "../utils/browser";
 import { parseUKLocalDateTime } from "../utils/date-parser";
+import { sanitizeRuntime } from "../utils/metadata-parser";
 import type { Page } from "rebrowser-playwright";
 
 // ============================================================================
@@ -505,6 +506,7 @@ export class CurzonScraper implements ChainScraper {
         sourceId,
         year,
         director,
+        runtime: sanitizeRuntime(film.runtimeInMinutes),
         eventDescription: eventDescriptions.length > 0 ? eventDescriptions.join(", ") : undefined,
         // Availability status from Vista API
         availabilityStatus: showtime.isSoldOut ? "sold_out" : "available",
