@@ -53,6 +53,16 @@
   real matcher with that year; the result is accepted only if the matcher
   independently returns the same tmdb id at/above the unchanged floor.
   Derived-year rows are marked "DERIVED year — review" in dry output.
+  Upcoming-conflict guard: when a non-stub exact-title candidate exists in
+  the current/future-year window ("Supergirl" 1984 vs the 2026 DC film,
+  "Masters of the Universe" 1987 vs the 2026 remake — both caught in the
+  production dry run), the pass bails rather than guesses.
+- Code-review hardening: year-hint candidates sanitized individually
+  (polluted row year can't shadow a valid title year); executeUpdate uses
+  429 backoff + the plan-005 write guards; executeMerge pre-deletes dupe
+  screenings that would collide with the primary on the unique
+  (film_id, cinema_id, datetime) index; per-film failure isolation (FAILED
+  bucket) and a 250-UPDATE execute cap matching the plan's STOP threshold.
 
 ### Pipeline wire-up (step 4)
 - `run-scrape-and-enrich.ts` gains an optional post-enrichment phase running
