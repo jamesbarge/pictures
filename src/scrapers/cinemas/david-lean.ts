@@ -68,21 +68,29 @@ export class DavidLeanScraper implements CinemaScraper {
 
       console.log(`[${this.config.cinemaId}] Found ${Object.keys(sliderBookingMap).length} booking URLs from slider`);
 
-      // Extract listings from the schedule section
+      // Extract listings from the schedule section.
+      // IMPORTANT: use innerText (NOT textContent) so the rendered line breaks
+      // are preserved. The blocks are structured one item per line —
+      //   "The Drama\n\n2025 | USA | 105 min\nFri 12 June at 11.00am ..."
+      // parseListingText() relies on splitting on "\n" to separate the title
+      // from the metadata/date lines. textContent collapses everything onto a
+      // single run ("...105 minFri 12 June..."), which broke title extraction.
       const listings = await page.evaluate(() => {
         const textElements = document.querySelectorAll('.et_pb_text_inner');
         const results: Array<{ text: string; link: string | null }> = [];
 
         textElements.forEach(el => {
-          const text = el.textContent?.trim() || "";
+          const text = (el as HTMLElement).innerText?.trim() || "";
           // Check for links anywhere in the element or its parent column
           const link = el.querySelector('a[href*="tinyurl"], a[href*="ticketsolve"], a.et_pb_button')?.getAttribute('href')
             || el.closest('.et_pb_column')?.querySelector('a[href*="tinyurl"], a[href*="ticketsolve"]')?.getAttribute('href')
             || null;
 
-          // Look for patterns with date/time info
-          if (text.match(/\d{1,2}\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/i) &&
-              text.match(/at\s+\d{1,2}[.:]\d{2}(am|pm)/i)) {
+          // Look for patterns with date/time info. The site writes FULL month
+          // names ("June", "July"), so match a 3-letter prefix followed by any
+          // trailing letters; the "at <time>" check tolerates spaces in "2.00 pm".
+          if (text.match(/\d{1,2}\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*/i) &&
+              text.match(/at\s+\d{1,2}[.:]\d{2}\s*(am|pm)/i)) {
             results.push({ text, link });
           }
         });
@@ -197,14 +205,21 @@ export class DavidLeanScraper implements CinemaScraper {
 
     if (!filmTitle) return screenings;
 
-    // Extract date/time patterns from the full text
-    // Pattern: "Day DD Mon at HH.MMam/pm"
-    const dateTimePattern = /(Mon|Tue|Tues|Wed|Thur|Thurs|Fri|Sat|Sun)\s+(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+at\s+([\d.:]+(?:am|pm))/gi;
+    // Extract date/time patterns from the full text.
+    // Pattern: "<DayName> DD <Month> at <rest-of-line>"
+    //   - DayName: tolerate the site's variants (Tues, Weds, Thur, Thurs) via \w*.
+    //   - Month: 3-letter prefix + optional trailing letters → matches both the
+    //     FULL names the site actually uses ("June", "July") and any abbreviation.
+    //     The old pattern required a bare 3-letter month, so "June" never matched
+    //     "Jun" + "\s+at" — this was why the scraper had NEVER returned a screening.
+    //   - Capture the REST OF THE LINE as the time blob (stop at newline) so
+    //     multiple showtimes ("2.30pm and 7.30pm", "2.30pm (HOH) and 7.30pm") are
+    //     all captured, including ones interrupted by parentheticals.
+    const dateTimePattern = /(?:Mon|Tue|Tues|Wed|Weds|Thur|Thurs|Fri|Sat|Sun)\w*\s+(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+at\s+([^\n]*)/gi;
 
-    let match;
-    while ((match = dateTimePattern.exec(text)) !== null) {
-      const [, , dayNum, monthName, timeStr] = match;
-      const times = this.extractTimes(timeStr + " " + text.substring(match.index + match[0].length, match.index + match[0].length + 30));
+    for (const match of text.matchAll(dateTimePattern)) {
+      const [, dayNum, monthName, timeBlob] = match;
+      const times = this.extractTimes(timeBlob);
 
       for (const time of times) {
         const datetime = this.parseDateTime(dayNum, monthName, time, currentYear);
@@ -248,21 +263,25 @@ export class DavidLeanScraper implements CinemaScraper {
 
   private extractTimes(text: string): string[] {
     const times: string[] = [];
-    const timePattern = /(\d{1,2}[.:]\d{2}(?:am|pm))/gi;
 
-    let match;
-    while ((match = timePattern.exec(text)) !== null) {
-      times.push(match[1]);
+    // "HH.MMam" / "HH:MM pm" — tolerate a space before am/pm (the site writes
+    // "2.00 pm"). Normalise by stripping internal whitespace so downstream
+    // parseScreeningTime sees a clean token.
+    const timePattern = /(\d{1,2}[.:]\d{2}\s*(?:am|pm))/gi;
+    let remaining = text;
+    for (const m of text.matchAll(timePattern)) {
+      times.push(m[1].replace(/\s+/g, ""));
     }
+    // Remove the detailed times from the text BEFORE scanning for bare-hour
+    // times. Otherwise the bare-hour pattern matches the minute half of a
+    // detailed time — e.g. "2.00pm" yields a spurious "00pm" — which then
+    // parses to 00:xx and produces phantom early-morning / next-day screenings.
+    remaining = remaining.replace(timePattern, " ");
 
-    // Also handle "HHam" or "HHpm" format
-    const simpleTimePattern = /(\d{1,2}(?:am|pm))/gi;
-    while ((match = simpleTimePattern.exec(text)) !== null) {
-      const simple = match[1];
-      // Don't add if we already have a detailed time for this hour
-      if (!times.some(t => t.startsWith(simple.replace(/am|pm/i, "")))) {
-        times.push(simple);
-      }
+    // Also handle bare "HHam" / "HH pm" format (no minutes)
+    const simpleTimePattern = /(\d{1,2}\s*(?:am|pm))/gi;
+    for (const m of remaining.matchAll(simpleTimePattern)) {
+      times.push(m[1].replace(/\s+/g, ""));
     }
 
     return times;
