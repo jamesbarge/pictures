@@ -154,3 +154,76 @@ describe("matchFilmToTMDB — runtime cross-check (step 3)", () => {
     expect(match).not.toBeNull();
   });
 });
+
+describe("matchFilmToTMDB — director credit tie-break (step 4)", () => {
+  /** Two same-title same-year candidates: the Besson (high popularity) and the Jude. */
+  function draculaTie() {
+    return [
+      makeResult({
+        id: 100,
+        title: "Dracula",
+        original_title: "Dracula",
+        release_date: "2025-07-30",
+        popularity: 900, // popularity alone would pick this one
+        original_language: "en",
+      }),
+      makeResult({
+        id: 200,
+        title: "Dracula",
+        original_title: "Dracula",
+        release_date: "2025-07-30",
+        popularity: 5,
+        original_language: "ro",
+      }),
+    ];
+  }
+
+  it("picks the film the hinted director actually directed when candidates tie", async () => {
+    mocks.searchFilms.mockResolvedValue({ results: draculaTie() });
+    mocks.findDirectorId.mockResolvedValue(77);
+    mocks.getPersonCredits.mockResolvedValue({
+      cast: [],
+      crew: [
+        { id: 200, job: "Director", title: "Dracula" },
+        { id: 300, job: "Writer", title: "Something Else" },
+      ],
+    });
+
+    const match = await matchFilmToTMDB("Dracula", { year: 2025, director: "Radu Jude" });
+
+    expect(mocks.findDirectorId).toHaveBeenCalledWith("Radu Jude");
+    expect(match).not.toBeNull();
+    expect(match!.tmdbId).toBe(200);
+  });
+
+  it("does not fetch director credits when there is a single dominant candidate", async () => {
+    mocks.searchFilms.mockResolvedValue({ results: [makeResult({ id: 11 })] });
+
+    const match = await matchFilmToTMDB("Joyland", { year: 2022, director: "Saim Sadiq" });
+
+    expect(match).not.toBeNull();
+    expect(mocks.findDirectorId).not.toHaveBeenCalled();
+    expect(mocks.getPersonCredits).not.toHaveBeenCalled();
+  });
+
+  it("falls back to the popularity winner when the director cannot be resolved", async () => {
+    mocks.searchFilms.mockResolvedValue({ results: draculaTie() });
+    mocks.findDirectorId.mockResolvedValue(null);
+
+    const match = await matchFilmToTMDB("Dracula", { year: 2025, director: "Unknown Person" });
+
+    expect(match).not.toBeNull();
+    expect(match!.tmdbId).toBe(100);
+    expect(mocks.getPersonCredits).not.toHaveBeenCalled();
+  });
+
+  it("survives a director-credit API failure and still returns a match", async () => {
+    mocks.searchFilms.mockResolvedValue({ results: draculaTie() });
+    mocks.findDirectorId.mockRejectedValue(new Error("TMDB API error: 500"));
+
+    const match = await matchFilmToTMDB("Dracula", { year: 2025, director: "Radu Jude" });
+
+    expect(match).not.toBeNull();
+    expect(match!.tmdbId).toBe(100);
+  });
+});

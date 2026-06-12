@@ -37,6 +37,9 @@ const STUB_RUNTIME_MAX_MINUTES = 30; // TMDB runtime below this = stub/short
 const FEATURE_RUNTIME_MIN_MINUTES = 60; // venue runtime at/above this = feature
 const RUNTIME_MISMATCH_TOLERANCE_MINUTES = 30;
 const RUNTIME_MISMATCH_PENALTY = 0.15;
+// Director credit tie-break (plan 005, step 4)
+const DIRECTOR_MATCH_BONUS = 0.15;
+const DIRECTOR_MISMATCH_PENALTY = 0.1;
 
 /**
  * Get TMDB matching thresholds from the AutoQuality-tuned config.
@@ -182,9 +185,9 @@ export async function matchFilmToTMDB(
     if (fallbackResults.results.length === 0) {
       return null;
     }
-    best = findBestMatch(title, fallbackResults.results, hints);
+    best = await findBestMatch(title, fallbackResults.results, hints);
   } else {
-    best = findBestMatch(title, searchResults.results, hints);
+    best = await findBestMatch(title, searchResults.results, hints);
   }
 
   return applyRuntimeCrossCheck(best, hints, client);
@@ -247,12 +250,17 @@ async function applyRuntimeCrossCheck(
  * - Year match: +0.2 for exact, +0.1 for ±1 year
  * - Popularity: reduced to max 3% to prevent blockbuster bias
  * - Match count penalty: reduces confidence when many films have similar scores
+ * - Director credit tie-break: when >= 2 candidates score within the
+ *   competitor threshold of the best AND a director hint exists, candidates
+ *   the hinted director actually directed get +0.15, others -0.1
+ *   (async only for that tie-only TMDB person lookup — typical matches make
+ *   zero extra API calls)
  */
-function findBestMatch(
+async function findBestMatch(
   searchTitle: string,
   results: TMDBSearchResult[],
   hints?: MatchHints
-): MatchResult | null {
+): Promise<MatchResult | null> {
   // Load AutoQuality-tuned thresholds (cached, near-zero cost)
   const tmdb = getTmdbThresholds();
 
@@ -325,15 +333,59 @@ function findBestMatch(
   // Sort by score descending
   scoredResults.sort((a, b) => b.score - a.score);
 
-  const best = scoredResults[0];
+  let best = scoredResults[0];
 
   // Calculate match count penalty
   // If many films have similar scores, reduce confidence
   // This catches cases like "Ten" where 5 films all score 0.85
-  const competitorThreshold = best.score * tmdb.competitorThresholdRatio;
-  const closeCompetitors = scoredResults.filter(
+  let competitorThreshold = best.score * tmdb.competitorThresholdRatio;
+  let closeCompetitors = scoredResults.filter(
     (r) => r.score >= competitorThreshold
   ).length;
+
+  // Director credit tie-break (plan 005, step 4): only when the title+year
+  // signals genuinely tie (>= 2 close competitors) AND a director hint
+  // exists. Resolves "Dracula" -> Radu Jude's film instead of Besson's
+  // higher-popularity one. The gate keeps the two extra TMDB calls
+  // tie-situations-only.
+  const directorHint = hints?.director?.trim();
+  if (directorHint && closeCompetitors >= 2) {
+    try {
+      const client = getTMDBClient();
+      const directorId = await client.findDirectorId(directorHint);
+      if (directorId) {
+        const credits = await client.getPersonCredits(directorId);
+        const directedIds = new Set(
+          credits.crew.filter((c) => c.job === "Director").map((c) => c.id)
+        );
+        for (const scored of scoredResults) {
+          if (scored.score >= competitorThreshold) {
+            scored.score += directedIds.has(scored.result.id)
+              ? DIRECTOR_MATCH_BONUS
+              : -DIRECTOR_MISMATCH_PENALTY;
+          }
+        }
+        scoredResults.sort((a, b) => b.score - a.score);
+        if (scoredResults[0] !== best) {
+          console.log(
+            `[tmdb-match] Director tie-break for "${searchTitle}": ` +
+              `"${directorHint}" credits pick tmdb=${scoredResults[0].result.id} over tmdb=${best.result.id}`
+          );
+        }
+        best = scoredResults[0];
+        competitorThreshold = best.score * tmdb.competitorThresholdRatio;
+        closeCompetitors = scoredResults.filter(
+          (r) => r.score >= competitorThreshold
+        ).length;
+      }
+    } catch (error) {
+      // Director resolution is best-effort — never fail the match over it
+      console.warn(
+        `[tmdb-match] Director credit check failed for "${directorHint}":`,
+        error
+      );
+    }
+  }
 
   let matchCountPenalty = 0;
   if (closeCompetitors >= 4) {
