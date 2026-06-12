@@ -22,6 +22,82 @@ Update this playbook whenever you:
 - **Time provenance (plan 010, 2026-06-12)**: when a scraper's datetimes come from ISO/API timestamps (not parsed display text), set `RawScreening.timeSource: "iso"`. The validator then treats `suspicious_time_early` (<10:00) as warn-not-reject (ISO times can't have AM/PM errors — Everyman's real 09:00 kids shows were being discarded) and raises the `too_far_future` cap from 90 to 180 days (long-lead event cinema like Met Opera 2026-27 at the chains). Leave text-parsed scrapers unset (treated as `"text"`, full strictness). Currently set by: Curzon (Vista API), Picturehouse (API), Everyman (boxofficeapi), Castle/Castle Sidcup (`data-start-time` attribute via castle-calendar).
 - **Runtime capture (plan 006, 2026-06-12)**: when a source exposes the film's runtime, forward it as `RawScreening.runtime` (minutes) — the TMDB matcher uses it to reject junk stubs and penalize wrong-era matches. Always pass the raw value through `sanitizeRuntime()` (`src/scrapers/utils/metadata-parser.ts`): coerces numeric strings, guards to the 1–600 minute band, returns `undefined` otherwise. Currently emitted by Rio, ICA, Garden Cinema, and Curzon. Caveat: venue runtimes may include event padding (intros/Q&As). Padding within 30 min is tolerated; beyond that the matcher applies a −0.15 confidence penalty, which strong matches (e.g. exact-year classics) usually survive but borderline ones may not. An asymmetric tolerance (venue-above-TMDB is padding, venue-below-TMDB is a wrong-film signal) is a candidate plan-005 scoring follow-up.
 
+## sourceId Schemes (plan 009, 2026-06-12)
+
+`screenings.source_id` is the stable per-row dedup key behind the partial
+unique index `(cinema_id, source_id) WHERE source_id IS NOT NULL`. The
+pipeline is upsert-only — rows that vanish from a source are never deleted —
+so **changing a scraper's sourceId scheme strands every existing row as a
+phantom**. This table is what makes the next scheme change detectable.
+
+Rules:
+- Every scraper must set `sourceId` on **every** emitted `RawScreening` —
+  unconditionally (no regex-miss `undefined` paths).
+- Prefer an upstream booking-system id; otherwise derive a deterministic
+  composite (`{prefix}-{slugify(title)}-{datetime.toISOString()}` using
+  `slugify` from `src/scrapers/utils/url.ts`). Derived ids change when the
+  source retitles or moves a screening — that is expected, and the reconcile
+  sweep cleans the strays.
+- **If you change any scheme below, you MUST update this table and run the
+  reconcile sequence for that cinema in the same session:**
+  scrape venue once → `npm run reconcile:plan -- <cinemaId>` → review →
+  `npm run reconcile:apply -- <cinemaId>`. Otherwise every pre-change row
+  becomes a permanent phantom.
+
+| Scraper (file) | cinema_id(s) | Scheme | Key source |
+|---|---|---|---|
+| Curzon (`chains/curzon.ts`) | `curzon-*` | `curzon-{showtime.id}` | Vista OCAPI showtime id |
+| Picturehouse (`chains/picturehouse.ts`) | `picturehouse-*` | `picturehouse-{venue.id}-{ShowTime.SessionId}` | API SessionId |
+| Everyman (`chains/everyman.ts`) | `everyman-*` | `everyman-{venue.id}-{showtime.id}` | boxofficeapi showtime id |
+| BFI (`cinemas/bfi.ts` → `bfi-pdf/bfi-source-id.ts`) | `bfi-southbank`, `bfi-imax` | `bfi-{cinemaId}-{titleSlug}-{screen}-{ISO}` | derived, path-agnostic across Playwright/PDF (PR #640) |
+| Barbican (`cinemas/barbican.ts`) | `barbican` | `barbican-{YYYY-MM-DD}-{HHMM}-{titleSlug}` | derived |
+| Phoenix (`cinemas/phoenix.ts`) | `phoenix-east-finchley` | `phoenix-{titleSlug}-{ISO}` | derived |
+| Electric (`cinemas/electric-v2.ts`) | `electric-portobello`, `electric-white-city` | `electric-{screeningId}` | site JSON screening key |
+| Lexi (`cinemas/lexi.ts`) | `lexi` | `lexi-{film.ID}-{perf.ID}` | Admit One API ids |
+| Regent Street (`cinemas/regent-street.ts`) | `regent-street` | `regent-street-{showing.id}` | API showing id |
+| Rich Mix (`cinemas/rich-mix-v2.ts`) | `rich-mix` | `richmix-{instanceId\|id}` | Spektrix instance id |
+| JW3 (`cinemas/jw3.ts`) | `jw3` | `jw3-{inst.id}` | API instance id |
+| Castle (`cinemas/castle.ts` → `castle-calendar.ts`) | `castle` | `castle-{perfId}` | Jacro perf id |
+| Castle Sidcup (`cinemas/castle-sidcup.ts` → `castle-calendar.ts`) | `castle-sidcup` | `castle-sidcup-{perfId}` | Jacro perf id |
+| Rio (`cinemas/rio.ts`) | `rio-dalston` | `rio-dalston-{event.ID}-{ISO}` | event id + datetime |
+| Prince Charles (`cinemas/prince-charles.ts`) | `prince-charles` | `{perfId}` (bare digits from `booknow/(\d+)`); fallback `prince-charles-{titleSlug}-{ISO}` | Jacro perf id; derived fallback added 2026-06-12 so sourceId is never undefined. Bare-digit primary kept deliberately — prefixing would strand all existing rows |
+| ICA (`cinemas/ica.ts`) | `ica` | `ica-{titleSlug}-{ISO}` | derived (lowercase, whitespace→dash, punctuation kept) |
+| Genesis (`cinemas/genesis.ts`) | `genesis` | `genesis-{perfCode}` | site perfCode |
+| Peckhamplex (`cinemas/peckhamplex.ts`) | `peckhamplex` | `peckhamplex-{titleSlug}-{ISO}` | derived |
+| Nickel (`cinemas/nickel-v2.ts`) | `the-nickel` | `nickel-{item.id}` | API item id |
+| Garden (`cinemas/garden.ts`) | `garden` | `garden-{slugify(title)}-{ISO}` | derived |
+| Close-Up (`cinemas/close-up.ts`) | `close-up-cinema` | `close-up-{show.id}-{ISO}` (API), `close-up-html-{ISO}-{titleSlug}`, `close-up-search-{ISO}-{titleSlug}` | API id; derived on HTML/search fallback paths |
+| Bertha DocHouse (`cinemas/bertha-dochouse.ts`) | `bertha-dochouse` | `bertha-{ticketId}` | ticket id (`BLO1-XXXXXX`) |
+| Cinema Museum (`cinemas/cinema-museum.ts`) | `cinema-museum` | `cinema-museum-{ev.uid}` | ICS event uid |
+| Ciné Lumière (`cinemas/cine-lumiere.ts`) | `cine-lumiere` | `cine-lumiere-{titleSlug}-{ISO}` | derived (lowercase, whitespace→dash, punctuation kept) |
+| ArtHouse Crouch End (`cinemas/arthouse-crouch-end.ts`) | `arthouse-crouch-end` | `arthouse-{titleSlug}-{ISO}` | derived (lowercase, whitespace→dash, punctuation kept) |
+| Coldharbour Blue (`cinemas/coldharbour-blue.ts`) | `coldharbour-blue` | `coldharbour-{event.id}` | API event id |
+| Olympic (`cinemas/olympic.ts`) | `olympic-studios` | `olympic-{bookingId}-{ISO}` | booking id from URL (`""` when absent; ISO keeps it unique) |
+| David Lean (`cinemas/david-lean.ts`) | `david-lean-cinema` | `david-lean-{titleSlug≤30}-{ISO}` | derived (lowercase, whitespace→dash, punctuation kept) |
+| Riverside (`cinemas/riverside-v2.ts`) | `riverside-studios` | `riverside-{event.id}-{perf.timestamp}` | event id + perf timestamp |
+
+### Phantom reconcile (`src/scripts/reconcile-phantom-screenings.ts`)
+
+Generalized, default-dry sweep for rows the source no longer lists. It
+**supersedes the one-off `src/scripts/_bfi_reconcile.ts`** staging script
+(untracked; delete it when encountered — its logic now lives here,
+parameterized per cinema). Unlike the BFI one-off it does not scrape: run the
+venue's scraper first, then reconcile while the run is < 2h fresh.
+
+- `npm run reconcile:plan -- <cinemaId>` — prints every doomed row; no writes.
+- `npm run reconcile:apply -- <cinemaId>` — deletes the planned rows.
+- Hard guards (all enforced, unit-tested pure functions): single registry-known
+  cinema per invocation; successful `scraper_runs` entry completed < 2h ago
+  AND with a non-zero screening count (an empty "success" scrape is refused,
+  never overridable); candidates limited to `datetime >= now()` AND
+  `scraped_at < run start` AND `datetime <= scrape horizon` (the latest
+  datetime the run actually refreshed — stale rows beyond demonstrated
+  coverage are printed as EXCLUDED, never deleted); re-guarded inside the
+  DELETE; refusal above a 40% deletion cap (`--force-large` overrides with a
+  red warning); batched (100) deletes in a single transaction.
+- Limitation: accepts canonical registry cinema IDs only — rows under legacy
+  cinema IDs are not swept.
+
 ## Health & Flakiness Detection
 The `/scrape` slash command runs three read-only detectors against `scraper_runs`:
 - **`detectSilentBreakers`** (`src/lib/scrape-quarantine.ts`) — Prowlarr-pattern: flags cinemas with ≥N *consecutive* `success+0` runs.

@@ -1,3 +1,13 @@
+## 2026-06-12: Generalized phantom-screening reconcile + sourceId hardening (plan 009)
+**PR**: pending | **Files**: `src/scripts/reconcile-phantom-screenings.ts`, `src/scripts/reconcile-phantom-screenings.test.ts`, `src/scrapers/cinemas/prince-charles.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`, `package.json`
+- New `npm run reconcile:plan -- <cinemaId>` / `reconcile:apply -- <cinemaId>`: generalized, default-dry sweep for upcoming rows the source no longer lists (`scraped_at` < last successful run start). Supersedes the one-off `_bfi_reconcile.ts` staging script.
+- Five hard guards as unit-tested pure functions: single registry-known cinema per invocation; successful scrape completed <2h ago; future-only + stale-only candidates (re-guarded inside the DELETE); 40% deletion cap (`--force-large` override); batched (100) transactional deletes with every doomed row printed first. Plus two non-overridable review-driven guards: empty "success" scrapes are refused outright, and stale rows beyond the run's demonstrated scrape horizon are excluded (printed, never deleted).
+- Prince Charles sourceId can no longer be `undefined` (derived composite fallback when the `booknow/{id}` regex misses; existing bare-digit scheme untouched).
+- SCRAPING_PLAYBOOK.md now documents every scraper's sourceId scheme — the table that makes the next scheme change detectable. Audit finding: contra plan 009's premise, 27/28 registry scrapers already emitted sourceId unconditionally.
+- Rollout (per-venue scrape → reconcile, plan Step 1/3) deliberately NOT run here — code only.
+
+---
+
 ## 2026-06-12: Unmatched re-match sweep + preventive blocklist + decoration suffixes (plan 008)
 **PR**: pending | **Files**: `src/scripts/rematch-unmatched-films.ts`, `src/scrapers/utils/film-title-cleaner.ts`, `src/scrapers/utils/film-matching.ts`, `src/lib/tmdb/blocklist.ts`, `src/scripts/run-scrape-and-enrich.ts`, `package.json`
 - New `npm run rematch:unmatched` (default-dry, `--execute`, `--limit N`): retries TMDB matching for unmatched films with upcoming screenings; UPDATE in place (match_strategy='rematch-sweep' + letterboxd /tmdb/{id}) or MERGE into the row that already owns the tmdb_id (transactional repoint-before-delete); suspected non-films flagged only.

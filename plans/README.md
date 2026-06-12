@@ -26,7 +26,7 @@ Recommended order: 004 → 001 (+002/003) → 005 → 006 ∥ 007 → 008 → 00
 | 006 | Scraper metadata capture (runtime at Rio/ICA/Garden/Curzon) | P1 | M | 005 | DONE (pending PR) |
 | 007 | Letterboxd integrity: no-anchor guard, canonical slug, year tolerance | P1 | M | — | DONE (pending PR) |
 | 008 | Unmatched re-match sweep + preventive blocklist + prefix single-sourcing | P1 | M–L | 005 | DONE (pending PR/execute) |
-| 009 | sourceId rollout + generalized phantom reconcile | P2 | M–L | 004 | TODO |
+| 009 | sourceId rollout + generalized phantom reconcile | P2 | M–L | 004 | DONE (code; rollout pending) |
 | 010 | Pipeline write-resilience: insert retry queue, validator provenance | P2 | M | 001 | DONE (pending PR) |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (one-line reason) | REJECTED (one-line rationale)
