@@ -27,7 +27,7 @@ Recommended order: 004 → 001 (+002/003) → 005 → 006 ∥ 007 → 008 → 00
 | 007 | Letterboxd integrity: no-anchor guard, canonical slug, year tolerance | P1 | M | — | DONE (pending PR) |
 | 008 | Unmatched re-match sweep + preventive blocklist + prefix single-sourcing | P1 | M–L | 005 | TODO |
 | 009 | sourceId rollout + generalized phantom reconcile | P2 | M–L | 004 | TODO |
-| 010 | Pipeline write-resilience: insert retry queue, validator provenance | P2 | M | 001 | TODO |
+| 010 | Pipeline write-resilience: insert retry queue, validator provenance | P2 | M | 001 | DONE (pending PR) |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (one-line reason) | REJECTED (one-line rationale)
 
