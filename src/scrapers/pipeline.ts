@@ -12,6 +12,7 @@ import { v4 as uuidv4 } from "uuid";
 import { validateScreenings, printValidationSummary } from "./utils/screening-validator";
 import { generateScrapeDiff, printDiffReport, shouldBlockScrape } from "./utils/scrape-diff";
 import { linkFilmToMatchingSeasons } from "./seasons/season-linker";
+import { isConnectionError } from "./runner-factory";
 
 import { runPhase, stampProgress } from "@/lib/scrape-progress";
 import { VENUE_LANGUAGE_PRIORS } from "@/config/cinema-registry";
@@ -47,6 +48,101 @@ interface PipelineResult {
   rejected: number;  // Validation failures
   blocked: boolean;  // True when scrape was blocked by diff check
   scrapedAt: Date;
+}
+
+// ============================================================================
+// Deferred-write retry queue (plan 010, step 2)
+// ============================================================================
+
+/**
+ * Max connection-timeout writes queued for the end-of-venue retry pass.
+ * Beyond this the venue (or the DB) is sick — plan 001's run-level circuit
+ * breaker is the responder, not a longer queue. Excess writes are counted
+ * as failed and dropped.
+ */
+const MAX_DEFERRED_WRITES_PER_VENUE = 50;
+
+/**
+ * A prepared screening write that hit a connection-shaped failure and will
+ * be retried once after the venue's main film loop. The thunk closes over
+ * the already-resolved filmId and normalized screening — re-running it does
+ * NOT redo title extraction or TMDB matching.
+ */
+export interface DeferredWrite {
+  /** Log label, e.g. "insertScreening: castle/castle-123" */
+  label: string;
+  /** Re-runs the prepared insert. Resolves true if a new row was added. */
+  run: () => Promise<boolean>;
+}
+
+interface RetryOutcome {
+  recovered: number;
+  added: number;
+  updated: number;
+  failed: number;
+}
+
+/**
+ * Attempt one screening write. Connection-shaped failures (pool contention,
+ * client-side DB timeouts — see isConnectionError) are deferred for the
+ * end-of-venue retry pass instead of being lost until the next weekly run.
+ * Anything else (FK violation, bad data) rethrows so the film-level catch
+ * handles it exactly as before — those would fail again on retry.
+ *
+ * Exported for tests.
+ */
+export async function attemptScreeningWrite(
+  label: string,
+  run: () => Promise<boolean>,
+  deferred: DeferredWrite[],
+  maxDeferred = MAX_DEFERRED_WRITES_PER_VENUE,
+): Promise<"added" | "updated" | "deferred" | "dropped"> {
+  try {
+    return (await run()) ? "added" : "updated";
+  } catch (error) {
+    if (!isConnectionError(error)) throw error;
+    if (deferred.length >= maxDeferred) {
+      console.error(
+        `[Pipeline] Deferred-write queue full (${maxDeferred}); dropping ${label} — venue is sick, leaving it to the run-level breaker`
+      );
+      return "dropped";
+    }
+    console.warn(`[Pipeline] Connection timeout on ${label} — deferred for end-of-venue retry`);
+    deferred.push({ label, run });
+    return "deferred";
+  }
+}
+
+/**
+ * Retry deferred writes serially, once each, with a gap between attempts.
+ * The failure mode being recovered is pool contention — retrying in
+ * parallel (or without the gap) would recreate it. A second failure is
+ * final for this run; the next scheduled scrape picks the screening up.
+ *
+ * Exported for tests (pass gapMs=0 there).
+ */
+export async function retryDeferredWrites(
+  deferred: DeferredWrite[],
+  gapMs = 1_000,
+): Promise<RetryOutcome> {
+  const outcome: RetryOutcome = { recovered: 0, added: 0, updated: 0, failed: 0 };
+  console.log(`[Pipeline] Retrying ${deferred.length} deferred writes (serial, ${gapMs}ms gap)`);
+  for (const write of deferred) {
+    await new Promise((resolve) => setTimeout(resolve, gapMs)); // let the pool breathe
+    try {
+      if (await write.run()) {
+        outcome.added++;
+      } else {
+        outcome.updated++;
+      }
+      outcome.recovered++;
+    } catch (error) {
+      outcome.failed++;
+      console.error(`[Pipeline] Deferred write failed on retry (final this run): ${write.label}:`, error);
+    }
+  }
+  console.log(`[Pipeline] Deferred-write retry: ${outcome.recovered} recovered, ${outcome.failed} failed`);
+  return outcome;
 }
 
 /**
@@ -222,6 +318,10 @@ export async function processScreenings(
 
   console.log(`[Pipeline] ${screeningsByFilm.size} unique films after extraction`);
 
+  // Connection-timeout screening writes get queued here and retried once,
+  // serially, after the film loop — see attemptScreeningWrite.
+  const deferredWrites: DeferredWrite[] = [];
+
   // Process each film
   // The two awaited boundaries — getOrCreateFilm and insertScreening — are
   // wrapped with withDbTimeout. If a half-open Supabase conn wedges any inner
@@ -270,18 +370,24 @@ export async function processScreenings(
 
           // Insert screenings (normalize timestamps to zero seconds/ms).
           // 15s ceiling per screening: covers checkForDuplicate + insert/update.
+          // Connection-shaped failures are deferred for an end-of-venue retry
+          // instead of dropping the screening until next week's run.
           for (const screening of filmScreenings) {
             const normalizedScreening = { ...screening, datetime: normalizeTimestamp(screening.datetime) };
-            const added = await withDbTimeout(
-              insertScreening(filmId, cinemaId, normalizedScreening),
-              15_000,
-              `insertScreening: ${cinemaId}/${normalizedScreening.sourceId ?? "<nosrc>"}`,
+            const label = `insertScreening: ${cinemaId}/${normalizedScreening.sourceId ?? "<nosrc>"}`;
+            const status = await attemptScreeningWrite(
+              label,
+              () => withDbTimeout(insertScreening(filmId, cinemaId, normalizedScreening), 15_000, label),
+              deferredWrites,
             );
-            if (added) {
+            if (status === "added") {
               result.added++;
-            } else {
+            } else if (status === "updated") {
               result.updated++;
+            } else if (status === "dropped") {
+              result.failed++;
             }
+            // "deferred" outcomes are counted after the retry pass below.
           }
         } catch (error) {
           console.error(`[Pipeline] Error processing film "${normalizedTitle}":`, error);
@@ -291,6 +397,22 @@ export async function processScreenings(
     },
     { uniqueFilms: screeningsByFilm.size },
   );
+
+  // Retry connection-timeout writes once, serially, before cleanup. The
+  // thunks close over resolved filmIds — no re-matching happens here.
+  let recoveredOnRetry = 0;
+  if (deferredWrites.length > 0) {
+    const retryOutcome = await runPhase(
+      cinemaId,
+      "retry-deferred-writes",
+      () => retryDeferredWrites(deferredWrites),
+      { deferred: deferredWrites.length },
+    );
+    result.added += retryOutcome.added;
+    result.updated += retryOutcome.updated;
+    result.failed += retryOutcome.failed;
+    recoveredOnRetry = retryOutcome.recovered;
+  }
 
   // Clean up superseded same-day screenings (time-shift orphans)
   // Only runs when the scrape wasn't blocked and produced results
@@ -310,7 +432,8 @@ export async function processScreenings(
     .where(eq(cinemas.id, cinemaId));
 
   console.log(
-    `[Pipeline] Complete: ${result.added} added, ${result.updated} updated, ${result.failed} failed`
+    `[Pipeline] Complete: ${result.added} added, ${result.updated} updated, ${result.failed} failed` +
+      (recoveredOnRetry > 0 ? ` (${recoveredOnRetry} recovered on retry)` : "")
   );
 
   // Log cache performance stats
