@@ -13,7 +13,7 @@ import { levenshteinDistance } from "@/lib/levenshtein";
 import { loadThresholds } from "@/lib/data-quality/load-thresholds";
 
 import { getTMDBClient } from "./client";
-import type { TMDBSearchResult } from "./types";
+import type { TMDBMovieDetails, TMDBSearchResult } from "./types";
 import { analyzeTitleAmbiguity, hasSufficientMetadata } from "./ambiguity";
 import { getBlockedTmdbIds, checkTitleBlocklist, incrementBlocklistUsage } from "./blocklist";
 
@@ -76,6 +76,12 @@ interface MatchResult {
   title: string;
   year: number;
   posterPath: string | null;
+  /**
+   * Full TMDB details, populated only when the runtime cross-check already
+   * fetched them — lets callers (matchAndCreateFromTMDB) skip a duplicate
+   * getFilmDetails call on runtime-verified matches.
+   */
+  details?: TMDBMovieDetails;
 }
 
 /**
@@ -230,6 +236,10 @@ async function applyRuntimeCrossCheck(
     return best;
   }
   const tmdbRuntime = details.runtime ?? 0;
+
+  // Reuse the fetched details downstream — matchAndCreateFromTMDB would
+  // otherwise refetch them via getFullFilmData.
+  best.details = details;
 
   // Stub/short vs feature: a candidate with no or tiny runtime cannot be the
   // feature-length film the venue is showing.

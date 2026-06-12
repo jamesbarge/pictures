@@ -10,6 +10,7 @@ import { BaseScraper } from "../base";
 import type { RawScreening, ScraperConfig } from "../types";
 import { FestivalDetector } from "../festivals/festival-detector";
 import { combineDateAndTime } from "../utils/date-parser";
+import { sanitizeRuntime } from "../utils/metadata-parser";
 
 interface RioPerformance {
   StartDate: string;      // "2025-12-19"
@@ -23,7 +24,8 @@ interface RioEvent {
   Title: string;
   Director: string;
   Year: string;
-  RunningTime: number;
+  /** Runtime in minutes — observed as a JSON number, but tolerate strings */
+  RunningTime: number | string;
   URL: string;
   Performances: RioPerformance[];
 }
@@ -136,6 +138,7 @@ export class RioScraper extends BaseScraper {
             // Pass metadata from JSON for better TMDB matching
             year: event.Year ? parseInt(event.Year, 10) : undefined,
             director: event.Director || undefined,
+            runtime: sanitizeRuntime(event.RunningTime),
             ...FestivalDetector.detect("rio-dalston", event.Title, datetime, bookingUrl),
           });
         }

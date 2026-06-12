@@ -5,7 +5,7 @@
  * The static URL builders are pure string concatenation and benefit from
  * tests independently.
  */
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { TMDBClient } from "./client";
 
 describe("TMDBClient.getPosterUrl", () => {
@@ -66,5 +66,48 @@ describe("TMDBClient.getProfileUrl", () => {
     // Person profiles use a height-based size (h632) which is unusual —
     // pin it so a refactor that drops the union member is caught.
     expect(TMDBClient.getProfileUrl("/p.jpg", "h632")).toContain("/h632/");
+  });
+});
+
+describe("TMDBClient.getFullFilmData — prefetched details reuse (plan 006 follow-up)", () => {
+  function makeDetails(id: number) {
+    return { id, runtime: 97, title: "Joyland" } as unknown as import("./types").TMDBMovieDetails;
+  }
+
+  function stubClient() {
+    const client = new TMDBClient("test-key");
+    const getFilmDetails = vi
+      .spyOn(client, "getFilmDetails")
+      .mockResolvedValue(makeDetails(11));
+    vi.spyOn(client, "getFilmCredits").mockResolvedValue({ cast: [], crew: [] } as never);
+    vi.spyOn(client, "getUKCertification").mockResolvedValue(null);
+    return { client, getFilmDetails };
+  }
+
+  it("skips the details fetch when prefetched details match the tmdbId", async () => {
+    const { client, getFilmDetails } = stubClient();
+    const prefetched = makeDetails(11);
+
+    const result = await client.getFullFilmData(11, prefetched);
+
+    expect(getFilmDetails).not.toHaveBeenCalled();
+    expect(result.details).toBe(prefetched);
+  });
+
+  it("refetches when prefetched details belong to a different tmdbId", async () => {
+    const { client, getFilmDetails } = stubClient();
+
+    const result = await client.getFullFilmData(11, makeDetails(99));
+
+    expect(getFilmDetails).toHaveBeenCalledWith(11);
+    expect(result.details.id).toBe(11);
+  });
+
+  it("fetches normally when no prefetched details are provided", async () => {
+    const { client, getFilmDetails } = stubClient();
+
+    await client.getFullFilmData(11);
+
+    expect(getFilmDetails).toHaveBeenCalledWith(11);
   });
 });

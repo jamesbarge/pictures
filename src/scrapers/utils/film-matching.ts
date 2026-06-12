@@ -214,9 +214,10 @@ export async function matchAndCreateFromTMDB(
     return byTmdbId[0].id;
   }
 
-  // Get full details from TMDB
+  // Get full details from TMDB. When the runtime cross-check already fetched
+  // the details for this match, reuse them instead of refetching.
   const client = getTMDBClient();
-  const details = await client.getFullFilmData(match.tmdbId);
+  const details = await client.getFullFilmData(match.tmdbId, match.details);
 
   // Determine poster URL - try TMDB first, then fallback sources
   let posterUrl = details.details.poster_path

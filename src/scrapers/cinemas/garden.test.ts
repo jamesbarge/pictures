@@ -1,5 +1,7 @@
-import { describe, it, expect } from "vitest";
+import { beforeEach, describe, it, expect, vi } from "vitest";
 import { GardenCinemaScraper } from "./garden";
+import { FestivalDetector } from "../festivals/festival-detector";
+import type { RawScreening } from "../types";
 
 /**
  * Garden Cinema title cleanup regression tests.
@@ -72,5 +74,83 @@ describe("GardenCinemaScraper.cleanTitle", () => {
     it("returns empty string for empty input", () => {
       expect(GardenCinemaScraper.cleanTitle("", "U")).toBe("");
     });
+  });
+});
+
+/**
+ * Stats-line runtime capture (plan 006).
+ *
+ * The Garden Cinema stats line is "Director, Country, Year, Runtime"
+ * (e.g. "Greta Gerwig, USA, 2019, 135m."). The scraper has always parsed
+ * year + director out of it; these tests pin that runtime now flows onto
+ * the emitted RawScreening too, guarded to the 1-600 band.
+ */
+function fixturePage(stats: string): string {
+  return `<html><body>
+    <div class="date-block" data-date="2030-06-20">
+      <div class="films-list__by-date__film">
+        <div class="films-list__by-date__film__title"><a href="/film/little-women/">Little Women</a></div>
+        <div class="films-list__by-date__film__rating">U</div>
+        <div class="films-list__by-date__film__stats">${stats}</div>
+        <a class="screening" href="/checkout/1234/">18:30</a>
+      </div>
+    </div>
+  </body></html>`;
+}
+
+async function parse(stats: string): Promise<RawScreening[]> {
+  const scraper = new GardenCinemaScraper();
+  const internals = scraper as unknown as {
+    parsePages: (pages: string[]) => Promise<RawScreening[]>;
+  };
+  return internals.parsePages([fixturePage(stats)]);
+}
+
+describe("GardenCinemaScraper — stats-line runtime → RawScreening.runtime", () => {
+  beforeEach(() => {
+    vi.spyOn(FestivalDetector, "preload").mockResolvedValue();
+  });
+
+  it("forwards runtime from the '135m.' stats format", async () => {
+    const screenings = await parse("Greta Gerwig, USA, 2019, 135m.");
+    expect(screenings).toHaveLength(1);
+    expect(screenings[0].runtime).toBe(135);
+  });
+
+  it("forwards runtime from the '117 mins' stats format", async () => {
+    const screenings = await parse("Frank Capra, USA, 1946, 117 mins");
+    expect(screenings[0].runtime).toBe(117);
+  });
+
+  it("forwards year and director alongside runtime (regression)", async () => {
+    const screenings = await parse("Greta Gerwig, USA, 2019, 135m.");
+    expect(screenings[0].year).toBe(2019);
+    expect(screenings[0].director).toBe("Greta Gerwig");
+    expect(screenings[0].filmTitle).toBe("Little Women");
+  });
+
+  it("leaves runtime undefined when the stats line has none", async () => {
+    const screenings = await parse("Greta Gerwig, USA, 2019");
+    expect(screenings).toHaveLength(1);
+    expect(screenings[0].runtime).toBeUndefined();
+  });
+
+  it("does not mistake the year for a runtime", async () => {
+    // No unit suffix anywhere — the bare 4-digit year must not become runtime
+    const screenings = await parse("Agnès Varda, France, 1962");
+    expect(screenings[0].year).toBe(1962);
+    expect(screenings[0].runtime).toBeUndefined();
+  });
+
+  it("bails on hour formats instead of capturing the minute component", async () => {
+    // "3h 21m" must NOT become runtime=21 (a confidently wrong hint)
+    const screenings = await parse("Chantal Akerman, Belgium, 1975, 3h 21m");
+    expect(screenings[0].runtime).toBeUndefined();
+  });
+
+  it("ignores runtime-like tokens that are not the final stats field", async () => {
+    // Only the last comma-separated token is parsed for runtime
+    const screenings = await parse("Some Director, 35m short program, 2019");
+    expect(screenings[0].runtime).toBeUndefined();
   });
 });

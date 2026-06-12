@@ -253,3 +253,38 @@ describe("matchAndCreateFromTMDB — hint threading (step 6)", () => {
     );
   });
 });
+
+describe("matchAndCreateFromTMDB — details reuse (plan 006 follow-up)", () => {
+  it("passes runtime-check details through to getFullFilmData (no refetch)", async () => {
+    const prefetched = { title: "Joyland", runtime: 126 };
+    mocks.matchFilmToTMDB.mockResolvedValue({
+      tmdbId: 555,
+      confidence: 0.87,
+      title: "Joyland",
+      year: 2022,
+      posterPath: "/poster.jpg",
+      details: prefetched,
+    });
+    mocks.getFullFilmData.mockResolvedValue(makeFullFilmData());
+
+    const filmId = await matchAndCreateFromTMDB(makeCache(), "Joyland", 2022);
+
+    expect(filmId).not.toBeNull();
+    expect(mocks.getFullFilmData).toHaveBeenCalledWith(555, prefetched);
+  });
+
+  it("passes undefined when the match carries no details", async () => {
+    mocks.matchFilmToTMDB.mockResolvedValue({
+      tmdbId: 555,
+      confidence: 0.87,
+      title: "Joyland",
+      year: 2022,
+      posterPath: "/poster.jpg",
+    });
+    mocks.getFullFilmData.mockResolvedValue(makeFullFilmData());
+
+    await matchAndCreateFromTMDB(makeCache(), "Joyland", 2022);
+
+    expect(mocks.getFullFilmData).toHaveBeenCalledWith(555, undefined);
+  });
+});

@@ -1,3 +1,15 @@
+## 2026-06-12: Scrapers capture runtime — Rio, ICA, Garden, Curzon (plan 006)
+**PR**: pending | **Files**: `src/scrapers/cinemas/rio.ts`, `src/scrapers/cinemas/ica.ts`, `src/scrapers/cinemas/garden.ts`, `src/scrapers/chains/curzon.ts`, `src/scrapers/utils/metadata-parser.ts`, `src/lib/tmdb/match.ts`, `src/lib/tmdb/client.ts`, `src/scrapers/utils/film-matching.ts`
+- Four scrapers that already parsed runtime and threw it away now forward it as `RawScreening.runtime`: Rio (embedded JSON `RunningTime`), ICA (`#colophon` text), Garden (stats line "Director, Country, Year, Runtime"), Curzon (Vista OCAPI `runtimeInMinutes`).
+- New shared `sanitizeRuntime()` guard in `metadata-parser.ts`: coerces numeric strings, accepts only the 1–600 minute band.
+- Feeds plan 005's runtime cross-check with real data — junk TMDB stubs can now be rejected for these venues. Live-verified: Rio 38/38, Garden 88/88, ICA 19/21 films emit in-band runtimes.
+- PR #670 follow-up: runtime-verified matches no longer refetch film details (`MatchResult.details` passes through to `getFullFilmData`).
+- Barbican certificate capture (plan step 5) skipped per the plan's YAGNI clause — no consumer exists; decision recorded in the playbook.
+
+---
+
+## 2026-06-12: TMDB matcher — audit trail persisted, year discipline, runtime/director/language signals
+**PR**: pending | **Files**: `src/lib/tmdb/match.ts`, `src/scrapers/utils/film-matching.ts`, `src/scrapers/pipeline.ts`, `src/scrapers/types.ts`, `src/config/cinema-registry.ts`
 ## 2026-06-12: Untrack tasks/ session scratch
 **PR**: TBD | **Files**: `.gitignore`, `tasks/todo.md` (untracked)
 - tasks/todo.md was accidentally committed in #670 (agent-worktree `git add -A`); removed from tracking and gitignored — it is per-session scratch.
