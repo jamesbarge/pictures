@@ -19,7 +19,7 @@ Recommended order: 004 → 001 (+002/003) → 005 → 006 ∥ 007 → 008 → 00
 | Plan | Title | Priority | Effort | Depends on | Status |
 |------|-------|----------|--------|------------|--------|
 | 004 | Enrich run + production data repairs (operational) | P0 | S–M | — | TODO |
-| 001 | Scrape run-level circuit breaker + per-venue wall-clock cap | P1 | M | — | TODO |
+| 001 | Scrape run-level circuit breaker + per-venue wall-clock cap | P1 | M | — | DONE (pending PR) |
 | 002 | Consolidate behaviorally-equivalent `normalizeTitle` copies | P2 | M | — | TODO |
 | 003 | Eliminate per-film N+1 queries in the season linker | P2 | M | 002 | TODO |
 | 005 | TMDB matcher: audit trail, year discipline, runtime/director/language signals | P1 | L | — | TODO |

@@ -1,3 +1,11 @@
+## 2026-06-12: Scrape circuit breaker and per-venue wall-clock cap
+**PR**: pending | **Files**: `src/lib/jobs/scrape-all.ts`, `src/scrapers/runner-factory.ts`, `src/lib/jobs/scrape-all.test.ts`, `src/scrapers/runner-factory.test.ts`
+- Added a run-level circuit breaker to the scrape orchestrator: after 3 consecutive connection-level scraper failures (override via `SCRAPE_BREAKER_THRESHOLD`) the run aborts, remaining scrapers and enrichment are skipped, and a Telegram alert fires.
+- Added a hard per-venue wall-clock cap (default 10 min, override via `SCRAPE_VENUE_TIMEOUT_MS`) around the entire venue unit — scrape, pipeline phases, retries — so awaits not covered by `withDbTimeout` can no longer wedge the run; chain scrapers get the cap scaled by venue count.
+- Why: on 2026-06-09 a wedged Supabase pooler turned four venue scrapes into 13.4h retry loops and took the production DB offline for 13.7h; on 2026-06-11 two runs hung 50/25 min on inter-phase awaits. A wedged DB now costs minutes, not hours.
+
+---
+
 ## 2026-06-12: Scrape accuracy audit — handoff plans 004–010
 **PR**: TBD | **Files**: `plans/HANDOFF-2026-06-11.md`, `plans/004-…010-*.md`, `plans/README.md`
 - Master handoff report + seven self-contained implementation plans from the 2026-06-11 live `/scrape` run and four-way audit (TMDB matching, Letterboxd, scraper metadata, live-DB evidence).
