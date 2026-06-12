@@ -379,13 +379,15 @@ export async function enrichLetterboxdRatings(
 
       // Update the film, persisting Letterboxd's canonical slug from the
       // final (post-redirect) URL so future enrichment never has to guess.
+      // A slug already stored from a watchlist import (Letterboxd's own
+      // data-film-slug) is higher-trust than a redirect — never downgrade it.
       const slugMatch = result.url.match(/letterboxd\.com\/film\/([^/]+)\//);
       await db
         .update(films)
         .set({
           letterboxdRating: result.rating,
           letterboxdUrl: result.url,
-          letterboxdSlug: slugMatch?.[1] ?? null,
+          letterboxdSlug: film.letterboxdSlug ?? slugMatch?.[1] ?? null,
           letterboxdEnrichedAt: new Date(),
           updatedAt: new Date(),
         })

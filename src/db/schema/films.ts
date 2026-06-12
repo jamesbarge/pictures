@@ -79,7 +79,7 @@ export const films = pgTable("films", {
   // post-redirect URL of a successful enrichment fetch. Never guessed.
   letterboxdSlug: text("letterboxd_slug"),
   // When the Letterboxd enrichment fetch last succeeded (staleness tracking)
-  letterboxdEnrichedAt: timestamp("letterboxd_enriched_at"),
+  letterboxdEnrichedAt: timestamp("letterboxd_enriched_at", { withTimezone: true }),
 
   // Match tracking - for auditing and reprocessing
   // Confidence score from TMDB matching (0-1)

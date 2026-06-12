@@ -1,0 +1,1 @@
+ALTER TABLE "films" ALTER COLUMN "letterboxd_enriched_at" SET DATA TYPE timestamp with time zone;

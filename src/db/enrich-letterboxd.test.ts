@@ -197,6 +197,36 @@ describe("enrichLetterboxdRatings", () => {
     expect(result.enriched).toBe(1);
   });
 
+  it("never downgrades a stored watchlist slug when Letterboxd redirects", async () => {
+    mockSelectDistinctWhere.mockResolvedValue([
+      {
+        id: "film-nighthawks",
+        title: "Nighthawks",
+        year: 1978,
+        tmdbId: 84097,
+        letterboxdSlug: "nighthawks-1978",
+      },
+    ]);
+
+    // Letterboxd redirects the year-qualified slug to a plain one; the
+    // stored watchlist slug is higher-trust and must be kept.
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      url: "https://letterboxd.com/film/nighthawks/",
+      text: async () => letterboxdPage("Nighthawks", 1978, "3.80 out of 5"),
+    });
+
+    await enrichLetterboxdRatings(undefined, true);
+
+    expect(mockUpdateSet).toHaveBeenCalledWith(
+      expect.objectContaining({
+        letterboxdUrl: "https://letterboxd.com/film/nighthawks/",
+        letterboxdSlug: "nighthawks-1978",
+      }),
+    );
+  });
+
   it("persists the canonical slug from the post-redirect URL", async () => {
     mockSelectDistinctWhere.mockResolvedValue([
       {

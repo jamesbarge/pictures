@@ -11,6 +11,10 @@
   highest-trust identity source. Never guessed.
 - `films.letterboxd_enriched_at` (timestamp) — when the rating fetch last
   succeeded; staleness baseline is 1,550 films with a URL but no timestamp.
+- Follow-up migration `0006_cooing_sharon_ventura.sql` (single ALTER COLUMN
+  → `timestamp with time zone`, matching repo convention; column is
+  all-NULL so the ALTER is safe) is generated but **not yet applied** —
+  apply with `npm run db:migrate` before/at merge.
 - The generated migration also re-emitted `CREATE UNIQUE INDEX
   idx_screenings_cinema_source` (a snapshot-sync artifact: PR #658 declared
   the index in the schema while it was created out-of-band by migration
