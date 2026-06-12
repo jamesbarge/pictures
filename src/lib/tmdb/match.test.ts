@@ -217,11 +217,77 @@ describe("matchFilmToTMDB — director credit tie-break (step 4)", () => {
     expect(mocks.getPersonCredits).not.toHaveBeenCalled();
   });
 
+  it("does not fetch director credits when there is no director hint, even on ties", async () => {
+    mocks.searchFilms.mockResolvedValue({ results: draculaTie() });
+
+    const match = await matchFilmToTMDB("Dracula", { year: 2025 });
+
+    expect(match).not.toBeNull();
+    expect(mocks.findDirectorId).not.toHaveBeenCalled();
+  });
+
   it("survives a director-credit API failure and still returns a match", async () => {
     mocks.searchFilms.mockResolvedValue({ results: draculaTie() });
     mocks.findDirectorId.mockRejectedValue(new Error("TMDB API error: 500"));
 
     const match = await matchFilmToTMDB("Dracula", { year: 2025, director: "Radu Jude" });
+
+    expect(match).not.toBeNull();
+    expect(match!.tmdbId).toBe(100);
+  });
+});
+
+describe("matchFilmToTMDB — venue language prior (step 5)", () => {
+  /** Same-title same-year candidates: an English one (more popular) and a French one. */
+  function languageTie() {
+    return [
+      makeResult({
+        id: 100,
+        title: "La Piscine",
+        original_title: "The Swimming Pool",
+        release_date: "2003-05-14",
+        popularity: 400,
+        original_language: "en",
+      }),
+      makeResult({
+        id: 200,
+        title: "La Piscine",
+        original_title: "La Piscine",
+        release_date: "2003-05-14",
+        popularity: 8,
+        original_language: "fr",
+      }),
+    ];
+  }
+
+  it("boosts the venue-language candidate past an otherwise-tied one", async () => {
+    mocks.searchFilms.mockResolvedValue({ results: languageTie() });
+
+    const match = await matchFilmToTMDB("La Piscine", {
+      year: 2003,
+      venueLanguages: ["fr"],
+    });
+
+    expect(match).not.toBeNull();
+    expect(match!.tmdbId).toBe(200);
+  });
+
+  it("has no effect when no venue languages are provided", async () => {
+    mocks.searchFilms.mockResolvedValue({ results: languageTie() });
+
+    const match = await matchFilmToTMDB("La Piscine", { year: 2003 });
+
+    expect(match).not.toBeNull();
+    expect(match!.tmdbId).toBe(100);
+  });
+
+  it("has no effect when the venue languages do not include the candidate's language", async () => {
+    mocks.searchFilms.mockResolvedValue({ results: languageTie() });
+
+    const match = await matchFilmToTMDB("La Piscine", {
+      year: 2003,
+      venueLanguages: ["de"],
+    });
 
     expect(match).not.toBeNull();
     expect(match!.tmdbId).toBe(100);

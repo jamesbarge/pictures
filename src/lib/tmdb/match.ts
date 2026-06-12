@@ -40,6 +40,8 @@ const RUNTIME_MISMATCH_PENALTY = 0.15;
 // Director credit tie-break (plan 005, step 4)
 const DIRECTOR_MATCH_BONUS = 0.15;
 const DIRECTOR_MISMATCH_PENALTY = 0.1;
+// Venue original-language prior (plan 005, step 5)
+const VENUE_LANGUAGE_BONUS = 0.05;
 
 /**
  * Get TMDB matching thresholds from the AutoQuality-tuned config.
@@ -62,6 +64,8 @@ interface MatchHints {
   director?: string;
   /** Film runtime in minutes from the venue (cross-checked against TMDB) */
   runtime?: number;
+  /** ISO 639-1 language priors for the venue (e.g. ["fr"] for Ciné Lumière) */
+  venueLanguages?: string[];
   /** If true, skip ambiguity checks (for re-processing with known good metadata) */
   skipAmbiguityCheck?: boolean;
 }
@@ -322,8 +326,16 @@ async function findBestMatch(
     // A film with popularity 1000 gets only 3% boost, not 10%
     const popularityBonus = Math.min(result.popularity / POPULARITY_DIVISOR, MAX_POPULARITY_BONUS);
 
+    // Venue language prior (plan 005, step 5): venues that program a
+    // specific national cinema (e.g. Ciné Lumière → fr) nudge same-language
+    // candidates past otherwise-tied ones. Zero API cost.
+    const languageBonus = hints?.venueLanguages?.includes(result.original_language)
+      ? VENUE_LANGUAGE_BONUS
+      : 0;
+
     // Calculate total score
-    const score = titleSimilarity * tmdb.titleSimilarityWeight + yearBonus + popularityBonus;
+    const score =
+      titleSimilarity * tmdb.titleSimilarityWeight + yearBonus + popularityBonus + languageBonus;
 
     scoredResults.push({ result, titleSimilarity, score });
   }
