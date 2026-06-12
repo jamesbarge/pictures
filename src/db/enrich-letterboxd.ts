@@ -73,15 +73,38 @@ type FailureReason =
 
 async function fetchLetterboxdRating(
   title: string,
-  year?: number | null
+  year?: number | null,
+  knownSlug?: string | null
 ): Promise<{ rating: number; url: string; failureReason?: never } | { rating?: never; url?: never; failureReason: FailureReason } | null> {
-  const slug = titleToSlug(title);
   const headers = {
     "User-Agent": CHROME_USER_AGENT,
     Accept: "text/html",
   };
 
   try {
+    // Highest trust: a stored canonical slug (Letterboxd's own id, captured
+    // from watchlist imports or a previous enrichment redirect). Fetch it
+    // directly and skip slug-guessing entirely. No year verification — the
+    // slug identifies the film exactly, and restorations/reissues often list
+    // a different year than ours.
+    if (knownSlug) {
+      const slugUrl = `https://letterboxd.com/film/${knownSlug}/`;
+      const slugResponse = await fetch(slugUrl, { headers });
+      if (!slugResponse.ok) {
+        return { failureReason: "slug_404" };
+      }
+      const html = await slugResponse.text();
+      const result = parseRatingWithVerification(
+        html,
+        slugResponse.url || slugUrl,
+        null
+      );
+      if (result) return result;
+      return { failureReason: "no_rating_meta" };
+    }
+
+    const slug = titleToSlug(title);
+
     // If we have a year, try year-suffixed URL FIRST to avoid wrong film matches
     // e.g., "Paprika (2006)" should try /film/paprika-2006/ before /film/paprika/
     if (year) {
@@ -90,7 +113,13 @@ async function fetchLetterboxdRating(
 
       if (yearResponse.ok) {
         const html = await yearResponse.text();
-        const result = parseRatingWithVerification(html, urlWithYear, year);
+        // Use the post-redirect URL (response.url) so we persist the
+        // canonical slug Letterboxd redirected us to.
+        const result = parseRatingWithVerification(
+          html,
+          yearResponse.url || urlWithYear,
+          year
+        );
         if (result) return result;
       }
     }
@@ -104,7 +133,7 @@ async function fetchLetterboxdRating(
     }
 
     const html = await response.text();
-    const result = parseRatingWithVerification(html, url, year);
+    const result = parseRatingWithVerification(html, response.url || url, year);
     if (result) return result;
 
     // Determine why verification failed
@@ -208,6 +237,8 @@ function extractFilmTitle(rawTitle: string): string | null {
 export interface EnrichmentResult {
   enriched: number;
   failed: number;
+  /** Films skipped because they have no TMDB anchor (never guess slugs for these) */
+  skipped: number;
   total: number;
 }
 
@@ -230,6 +261,8 @@ export async function enrichLetterboxdRatings(
       id: films.id,
       title: films.title,
       year: films.year,
+      tmdbId: films.tmdbId,
+      letterboxdSlug: films.letterboxdSlug,
     })
     .from(films)
     .innerJoin(screenings, eq(films.id, screenings.filmId))
@@ -254,6 +287,8 @@ export async function enrichLetterboxdRatings(
         id: films.id,
         title: films.title,
         year: films.year,
+        tmdbId: films.tmdbId,
+        letterboxdSlug: films.letterboxdSlug,
       })
       .from(films)
       .where(and(isNull(films.letterboxdRating), eq(films.contentType, "film")));
@@ -275,8 +310,10 @@ export async function enrichLetterboxdRatings(
 
   let enriched = 0;
   let failed = 0;
+  let skipped = 0;
   const failureBreakdown: Record<string, number> = {
     event_filtered: 0,
+    no_tmdb_anchor: 0,
     slug_404: 0,
     year_mismatch: 0,
     no_rating_meta: 0,
@@ -297,12 +334,27 @@ export async function enrichLetterboxdRatings(
     try {
       process.stdout.write(`Processing: ${film.title} (${film.year || "?"})... `);
 
-      let result = await fetchLetterboxdRating(film.title, film.year);
+      // Never guess a Letterboxd slug for a film without a TMDB anchor.
+      // For event-titled rows the guess is garbage ("Doctors Under Attack…"
+      // → /film/gaza/). A missing link is correct; a wrong link is a bug.
+      if (!film.tmdbId) {
+        failureBreakdown.no_tmdb_anchor++;
+        console.log("⊘ skipped (no TMDB anchor)");
+        skipped++;
+        continue;
+      }
 
-      // If not found, try extracting a clean film title
+      let result = await fetchLetterboxdRating(
+        film.title,
+        film.year,
+        film.letterboxdSlug
+      );
+
+      // If not found, try extracting a clean film title — but only when we
+      // had no stored canonical slug (the slug path skips guessing entirely).
       if (!result || ("failureReason" in result && result.failureReason)) {
         const firstFailure = result && "failureReason" in result ? result.failureReason : null;
-        const cleanTitle = extractFilmTitle(film.title);
+        const cleanTitle = film.letterboxdSlug ? null : extractFilmTitle(film.title);
         if (cleanTitle && cleanTitle !== film.title) {
           result = await fetchLetterboxdRating(cleanTitle, film.year);
         }
@@ -325,12 +377,16 @@ export async function enrichLetterboxdRatings(
         continue;
       }
 
-      // Update the film
+      // Update the film, persisting Letterboxd's canonical slug from the
+      // final (post-redirect) URL so future enrichment never has to guess.
+      const slugMatch = result.url.match(/letterboxd\.com\/film\/([^/]+)\//);
       await db
         .update(films)
         .set({
           letterboxdRating: result.rating,
           letterboxdUrl: result.url,
+          letterboxdSlug: slugMatch?.[1] ?? null,
+          letterboxdEnrichedAt: new Date(),
           updatedAt: new Date(),
         })
         .where(eq(films.id, film.id));
@@ -350,6 +406,7 @@ export async function enrichLetterboxdRatings(
   console.log("\n📊 Summary:");
   console.log(`  ✓ Enriched: ${enriched}`);
   console.log(`  ✗ Failed: ${failed}`);
+  console.log(`  ⊘ Skipped (no TMDB anchor): ${skipped}`);
   console.log("\n📋 Failure breakdown:");
   for (const [reason, count] of Object.entries(failureBreakdown)) {
     if (count > 0) {
@@ -357,7 +414,7 @@ export async function enrichLetterboxdRatings(
     }
   }
 
-  return { enriched, failed, total: filteredFilms.length };
+  return { enriched, failed, skipped, total: filteredFilms.length };
 }
 
 // Run if called directly (not when imported as a module)

@@ -19,7 +19,6 @@ import {
   extractFilmDataFromBookingPage,
 } from "./booking-page-scraper";
 import { calculateConfidence } from "./confidence";
-import { fetchLetterboxdRating } from "./letterboxd";
 import type { AgentResult } from "../types";
 
 interface FallbackEnrichmentOptions {
@@ -119,23 +118,16 @@ export async function runFallbackEnrichment(
         }
       }
 
-      // Step 3: Try Letterboxd if not already found by AI
-      if (!webData.letterboxdRating && webData.title) {
-        const lbResult = await fetchLetterboxdRating(
-          webData.title,
-          webData.year
-        );
-        if (lbResult) {
-          webData.letterboxdUrl = lbResult.url;
-          webData.letterboxdRating = lbResult.rating;
-        }
-      }
+      // NOTE: No Letterboxd slug-guessing here. Every film this agent
+      // processes has tmdb_id IS NULL (see getFilmsNeedingEnrichment), and
+      // films without a TMDB anchor must never be assigned a guessed
+      // Letterboxd URL — a missing link is correct; a wrong link is a bug.
 
-      // Step 4: Merge data (web search preferred, booking page as fallback)
+      // Step 3: Merge data (web search preferred, booking page as fallback)
       const mergedPosterUrl = webData.posterUrl || bookingData.posterUrl || null;
       const mergedSynopsis = webData.synopsis || bookingData.synopsis || null;
 
-      // Step 5: Calculate confidence
+      // Step 4: Calculate confidence
       const confidence = calculateConfidence({
         originalTitle: film.title,
         originalYear: film.year,
@@ -150,7 +142,7 @@ export async function runFallbackEnrichment(
 
       const pctStr = `${(confidence.score * 100).toFixed(0)}%`;
 
-      // Step 6: Apply or queue
+      // Step 5: Apply or queue
       if (autoApply && confidence.shouldAutoApply) {
         await applyEnrichmentToFilm(film.id, {
           ...webData,
@@ -315,10 +307,9 @@ async function applyEnrichmentToFilm(
   if (!existing.certification && data.certification)
     updates.certification = data.certification;
   if (!existing.imdbId && data.imdbId) updates.imdbId = data.imdbId;
-  if (!existing.letterboxdUrl && data.letterboxdUrl)
-    updates.letterboxdUrl = data.letterboxdUrl;
-  if (existing.letterboxdRating == null && data.letterboxdRating != null)
-    updates.letterboxdRating = data.letterboxdRating;
+  // Letterboxd URL/rating intentionally NOT applied: these films have no
+  // TMDB anchor, so any Letterboxd identity here is a guess. Never write
+  // a letterboxd_url to a film with tmdb_id IS NULL (plan 007).
   if ((!existing.directors || existing.directors.length === 0) && data.directors.length > 0)
     updates.directors = data.directors;
   if ((!existing.cast || existing.cast.length === 0) && data.cast.length > 0)
