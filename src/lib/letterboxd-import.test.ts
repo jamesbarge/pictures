@@ -36,6 +36,7 @@ vi.mock("drizzle-orm", () => ({
 
 import {
   normalizeTitle,
+  yearTolerance,
   scrapeLetterboxdWatchlist,
   matchAndEnrich,
   getOrCreateImportResults,
@@ -167,6 +168,27 @@ describe("normalizeTitle", () => {
 
   it("preserves hyphens", () => {
     expect(normalizeTitle("Spider-Man")).toBe("spider-man");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Test: yearTolerance
+// ---------------------------------------------------------------------------
+
+describe("yearTolerance", () => {
+  it("gives pre-1970 films +/-3 (restoration years drift most)", () => {
+    expect(yearTolerance(1969)).toBe(3);
+    expect(yearTolerance(1922)).toBe(3);
+  });
+
+  it("gives 1970-1999 films +/-2", () => {
+    expect(yearTolerance(1970)).toBe(2);
+    expect(yearTolerance(1999)).toBe(2);
+  });
+
+  it("gives 2000+ films +/-1", () => {
+    expect(yearTolerance(2000)).toBe(1);
+    expect(yearTolerance(2024)).toBe(1);
   });
 });
 
@@ -628,7 +650,7 @@ describe("matchAndEnrich", () => {
     expect(result.matched[0].filmId).toBe("film-3");
   });
 
-  it("takes first candidate when entry has no year and multiple candidates", async () => {
+  it("marks entry unmatched when it has no year and multiple candidates share the title", async () => {
     const filmsChain = setupFilmsQuery([
       {
         id: "film-nosf-1922",
@@ -646,11 +668,7 @@ describe("matchAndEnrich", () => {
       },
     ]);
 
-    const screeningsChain = setupScreeningsQuery([]);
-
-    mockDbSelect
-      .mockReturnValueOnce(filmsChain)
-      .mockReturnValueOnce(screeningsChain);
+    mockDbSelect.mockReturnValueOnce(filmsChain);
 
     const entries: LetterboxdEntry[] = [
       {
@@ -663,9 +681,78 @@ describe("matchAndEnrich", () => {
 
     const result = await matchAndEnrich(entries);
 
-    // No year + multiple candidates -> takes first
+    // No year + multiple candidates -> ambiguous, stay unmatched (the
+    // background import resolves these via TMDB + canonical slug instead)
+    expect(result.matched).toHaveLength(0);
+    expect(result.unmatched).toHaveLength(1);
+    expect(result.unmatched[0].letterboxdId).toBe("111");
+  });
+
+  it("matches a classic-era entry within the wider +/-3 tolerance", async () => {
+    const filmsChain = setupFilmsQuery([
+      {
+        id: "film-classic",
+        title: "The Colour of Pomegranates",
+        year: 1970, // DB has 1970
+        directors: ["Sergei Parajanov"],
+        posterUrl: null,
+      },
+    ]);
+
+    const screeningsChain = setupScreeningsQuery([]);
+
+    mockDbSelect
+      .mockReturnValueOnce(filmsChain)
+      .mockReturnValueOnce(screeningsChain);
+
+    const entries: LetterboxdEntry[] = [
+      {
+        title: "The Colour of Pomegranates",
+        year: 1968, // Letterboxd lists 1968 — |1968-1970| = 2 <= tolerance 3
+        letterboxdSlug: "the-color-of-pomegranates",
+        letterboxdId: "777",
+      },
+    ];
+
+    const result = await matchAndEnrich(entries);
+
     expect(result.matched).toHaveLength(1);
-    expect(result.matched[0].filmId).toBe("film-nosf-1922");
+    expect(result.matched[0].filmId).toBe("film-classic");
+  });
+
+  it("keeps tight +/-1 tolerance for modern-era entries", async () => {
+    const filmsChain = setupFilmsQuery([
+      {
+        id: "film-1999",
+        title: "The Mirror",
+        year: 1999,
+        directors: ["Someone"],
+        posterUrl: null,
+      },
+      {
+        id: "film-2010",
+        title: "The Mirror",
+        year: 2010,
+        directors: ["Someone Else"],
+        posterUrl: null,
+      },
+    ]);
+
+    mockDbSelect.mockReturnValueOnce(filmsChain);
+
+    const entries: LetterboxdEntry[] = [
+      {
+        title: "The Mirror",
+        year: 2001, // 2001 is modern era -> tolerance 1; |2001-1999| = 2 -> no match
+        letterboxdSlug: "the-mirror-2001",
+        letterboxdId: "888",
+      },
+    ];
+
+    const result = await matchAndEnrich(entries);
+
+    expect(result.matched).toHaveLength(0);
+    expect(result.unmatched).toHaveLength(1);
   });
 
   it("marks entry unmatched when year has no match among multiple candidates", async () => {

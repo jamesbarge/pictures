@@ -109,6 +109,23 @@ export function normalizeTitle(title: string): string {
 }
 
 /**
+ * Era-scaled year tolerance for watchlist matching.
+ *
+ * Letterboxd often lists restoration/reissue years for older films while our
+ * DB stores the original release year, so older eras get wider tolerance.
+ * Gaps larger than 3 years (e.g. a 2012 restoration of a 1958 film) are NOT
+ * covered here — widening further would create false merges between distinct
+ * same-titled films. Those cases are handled by the canonical-slug path
+ * (films created by the background import carry letterboxd_slug, which
+ * matches by Letterboxd's own id and is immune to year drift).
+ */
+export function yearTolerance(year: number): number {
+  if (year < 1970) return 3;
+  if (year < 2000) return 2;
+  return 1;
+}
+
+/**
  * Parse title and year from a Letterboxd data attribute.
  * Format: "Film Title (2024)" or just "Film Title"
  */
@@ -339,24 +356,23 @@ export async function matchAndEnrich(
     let bestMatch: (typeof allFilms)[0] | null = null;
 
     if (entry.year !== null) {
-      // Prefer exact year match, then +/-1
+      // Prefer exact year match, then era-scaled tolerance (see yearTolerance)
       bestMatch =
         candidates.find((f) => f.year === entry.year) ??
         candidates.find(
-          (f) => f.year !== null && Math.abs(f.year - entry.year!) <= 1,
+          (f) =>
+            f.year !== null &&
+            Math.abs(f.year - entry.year!) <= yearTolerance(entry.year!),
         ) ??
         null;
     }
 
-    // If no year on the entry, or no year-matched candidate, take first candidate
-    // (only if there's exactly one candidate to avoid ambiguity)
-    if (!bestMatch) {
-      if (candidates.length === 1) {
-        bestMatch = candidates[0];
-      } else if (entry.year === null) {
-        // Multiple candidates and no year hint -- take the first but it's risky
-        bestMatch = candidates[0];
-      }
+    // If no year on the entry, or no year-matched candidate, take the single
+    // candidate. Multiple same-titled candidates with NO year hint stay
+    // unmatched — picking the first caused wrong matches (the "Mary 1931"
+    // accident); the background import resolves these via TMDB + slug instead.
+    if (!bestMatch && candidates.length === 1) {
+      bestMatch = candidates[0];
     }
 
     if (bestMatch) {
