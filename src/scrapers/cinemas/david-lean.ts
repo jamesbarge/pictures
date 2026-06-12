@@ -185,7 +185,18 @@ export class DavidLeanScraper implements CinemaScraper {
     }
   }
 
-  private parseListingText(
+  /**
+   * Parse one listing's text block into screenings.
+   *
+   * Public for tests: this scraper ran at ZERO yield for its entire life
+   * because nothing exercised this parser (the month regex required "Jun"
+   * while the site writes "June"). The fixture test encodes that failure.
+   *
+   * Format assumption (load-bearing): ONE date per line — the time blob
+   * captures to end-of-line, so two dates on one line would mis-attribute
+   * the second date's times to the first.
+   */
+  parseListingText(
     text: string,
     bookingUrl: string | null,
     currentYear: number,
@@ -274,8 +285,9 @@ export class DavidLeanScraper implements CinemaScraper {
     }
     // Remove the detailed times from the text BEFORE scanning for bare-hour
     // times. Otherwise the bare-hour pattern matches the minute half of a
-    // detailed time — e.g. "2.00pm" yields a spurious "00pm" — which then
-    // parses to 00:xx and produces phantom early-morning / next-day screenings.
+    // detailed time — "11.00am" yields a spurious "00am" (→ 00:xx phantom
+    // early-morning/next-day screenings) and "2.00pm" a spurious "00pm"
+    // (→ phantom noon, since 0pm parses to 12:00).
     remaining = remaining.replace(timePattern, " ");
 
     // Also handle bare "HHam" / "HH pm" format (no minutes)

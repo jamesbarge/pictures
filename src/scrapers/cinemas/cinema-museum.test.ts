@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { CinemaMuseumScraper, parseVEvents } from "./cinema-museum";
+import { CALENDAR_CLIENT_USER_AGENT } from "../constants";
 
 /**
  * Fixture derived from a real cinemamuseum.org.uk iCal feed slice
@@ -133,5 +134,42 @@ describe("CinemaMuseumScraper.parseICal", () => {
     expect(events[0].summary).toBe(
       "This is a very long title that has been folded onto a continuation line per RFC 5545",
     );
+  });
+});
+
+describe("CinemaMuseumScraper — WAF user agent", () => {
+  // The SiteGround WAF 403s browser UAs AND the old self-identifying scraper
+  // UA, but serves plain calendar-client UAs. These tests pin the UA on both
+  // network paths so a future "consolidate scrapers onto a Chrome UA" tidy-up
+  // cannot silently re-break this venue.
+  it("sends CALENDAR_CLIENT_USER_AGENT on the iCal fetch", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async () => new Response("BEGIN:VCALENDAR\r\nEND:VCALENDAR"));
+
+    // Call fetchPages directly: scrape() runs loadConfigOverlay() first,
+    // which hits the DB and must not run in a unit test.
+    const scraper = new CinemaMuseumScraper();
+    await (scraper as unknown as { fetchPages(): Promise<string[]> }).fetchPages();
+
+    expect(fetchSpy).toHaveBeenCalled();
+    const headers = fetchSpy.mock.calls[0][1]?.headers as Record<string, string>;
+    expect(headers["User-Agent"]).toBe(CALENDAR_CLIENT_USER_AGENT);
+    expect(headers["User-Agent"]).not.toMatch(/Mozilla|Chrome/);
+    fetchSpy.mockRestore();
+  });
+
+  it("sends CALENDAR_CLIENT_USER_AGENT on healthCheck", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async () => new Response("ok"));
+
+    const scraper = new CinemaMuseumScraper();
+    const healthy = await scraper.healthCheck();
+
+    expect(healthy).toBe(true);
+    const headers = fetchSpy.mock.calls[0][1]?.headers as Record<string, string>;
+    expect(headers["User-Agent"]).toBe(CALENDAR_CLIENT_USER_AGENT);
+    fetchSpy.mockRestore();
   });
 });
