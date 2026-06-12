@@ -136,6 +136,13 @@ export async function runLetterboxdImport(
             decade: match.year ? getDecade(match.year) : null,
             tmdbRating: fullData.details.vote_average,
             tmdbPopularity: fullData.details.popularity,
+            // Letterboxd's own canonical slug (data-film-slug from the
+            // watchlist scrape) — the highest-trust identity source.
+            // Beats any title-guessed or /tmdb/-redirect URL.
+            letterboxdSlug: entry.slug || null,
+            letterboxdUrl: entry.slug
+              ? `https://letterboxd.com/film/${entry.slug}/`
+              : null,
             matchConfidence: match.confidence,
             matchStrategy: entry.year ? "auto-with-year" : "auto-no-hints",
             matchedAt: new Date(),
