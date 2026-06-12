@@ -1,3 +1,13 @@
+## 2026-06-12: TMDB matcher — audit trail persisted, year discipline, runtime/director/language signals
+**PR**: pending | **Files**: `src/lib/tmdb/match.ts`, `src/scrapers/utils/film-matching.ts`, `src/scrapers/pipeline.ts`, `src/scrapers/types.ts`, `src/config/cinema-registry.ts`
+- Fixed the films INSERT silently dropping `matchConfidence`/`matchStrategy`/`matchedAt`/`letterboxdUrl` — only 4.3% of matched films had any audit trail.
+- Current-year hints (screening-year pollution) are stripped before TMDB matching; historical years pass through.
+- New match signals: runtime cross-check (rejects stubs/shorts vs features, −0.15 on >30min mismatch), director credit tie-break (+0.15/−0.1, tie-situations only so typical matches add zero API calls), venue original-language prior (+0.05, Ciné Lumière → fr).
+- Fixes the class of wrong matches behind Joyland → Kansas doc and Dracula → Besson-instead-of-Jude. The 0.6 confidence floor is unchanged.
+- Review hardening: director tie-break no-ops on non-discriminating (dirty/namesake) hints; runtime check survives transient TMDB failures; matchStrategy reflects the hints that actually applied.
+
+---
+
 ## 2026-06-12: Scrape circuit breaker and per-venue wall-clock cap
 **PR**: pending | **Files**: `src/lib/jobs/scrape-all.ts`, `src/scrapers/runner-factory.ts`, `src/lib/jobs/scrape-all.test.ts`, `src/scrapers/runner-factory.test.ts`
 - Added a run-level circuit breaker to the scrape orchestrator: after 3 consecutive connection-level scraper failures (override via `SCRAPE_BREAKER_THRESHOLD`) the run aborts, remaining scrapers and enrichment are skipped, and a Telegram alert fires.

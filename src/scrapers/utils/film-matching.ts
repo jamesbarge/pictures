@@ -159,12 +159,38 @@ export async function matchAndCreateFromTMDB(
   matchingTitle: string,
   scraperYear?: number,
   scraperDirector?: string,
-  scraperPosterUrl?: string
+  scraperPosterUrl?: string,
+  scraperRuntime?: number,
+  venueLanguages?: string[]
 ): Promise<string | null> {
+  // Year discipline: many scrapers send the SCREENING year as the film year,
+  // and pipeline.ts also extracts "(YYYY)" from titles — for the current year
+  // those are indistinguishable from screening-year pollution. A wrong
+  // current-year hint gives junk stubs a +0.2/+0.3 exact-year bonus and
+  // SELECTS the wrong film; losing a true hint merely costs a bonus. Same
+  // rule as createFilmWithoutTMDB: only accept years strictly before the
+  // current year (and within sane bounds).
+  const currentYear = new Date().getFullYear();
+  const releaseYearHint =
+    scraperYear && scraperYear >= 1900 && scraperYear < currentYear
+      ? scraperYear
+      : undefined;
+
   const match = await matchFilmToTMDB(matchingTitle, {
-    year: scraperYear,
+    year: releaseYearHint,
     director: scraperDirector,
+    runtime: scraperRuntime,
+    venueLanguages,
   });
+
+  // Audit-trail accuracy: record the strategy that actually applied. After
+  // year-stripping, a current-year film matches with NO year hint — labeling
+  // it "auto-with-year" would be wrong (schema vocabulary: films.ts).
+  const matchStrategy = releaseYearHint
+    ? "auto-with-year"
+    : scraperDirector
+      ? "auto-with-director"
+      : "auto-no-hints";
 
   if (!match) {
     return null;
@@ -240,6 +266,13 @@ export async function matchAndCreateFromTMDB(
     decade: guardedYear ? getDecade(guardedYear) : null,
     tmdbRating: details.details.vote_average,
     tmdbPopularity: details.details.popularity,
+    // Match audit trail — must mirror the addToFilmCache call below. These
+    // were silently dropped before plan 005: only 4.3% of matched films had
+    // any recorded confidence.
+    letterboxdUrl: `https://letterboxd.com/tmdb/${match.tmdbId}`,
+    matchConfidence: match.confidence ?? null,
+    matchStrategy,
+    matchedAt: new Date(),
   });
 
   // Add to cache so subsequent lookups in this run find it
@@ -274,7 +307,7 @@ export async function matchAndCreateFromTMDB(
     letterboxdUrl: `https://letterboxd.com/tmdb/${match.tmdbId}`,
     letterboxdRating: null,
     matchConfidence: match.confidence ?? null,
-    matchStrategy: "auto-with-year",
+    matchStrategy,
     matchedAt: new Date(),
     enrichmentStatus: null,
     createdAt: new Date(),
