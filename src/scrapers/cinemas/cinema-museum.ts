@@ -25,6 +25,7 @@
  */
 
 import { BaseScraper } from "../base";
+import { CALENDAR_CLIENT_USER_AGENT } from "../constants";
 import type { RawScreening, ScraperConfig } from "../types";
 import { FestivalDetector } from "../festivals/festival-detector";
 import { ukLocalToUTC } from "../utils/date-parser";
@@ -54,14 +55,17 @@ export class CinemaMuseumScraper extends BaseScraper {
 
   protected async fetchPages(): Promise<string[]> {
     console.log(`[${this.config.cinemaId}] Fetching iCal feed: ${ICAL_URL}`);
-    // Override the BaseScraper's UA: the WP host's WAF blocks browser-looking
-    // user agents on the iCal feed (returns 403 for "Mozilla/5.0 ... Chrome/120
-    // ..."), but allows generic calendar-client UAs. We hand-roll the fetch
-    // here rather than monkey-patching the base class.
+    // Override the BaseScraper's UA: the WP host's SiteGround WAF (verified live
+    // 2026-06-12) returns 403 to BOTH browser-fingerprint UAs (anything with
+    // "Chrome" / a full desktop string) AND the old self-identifying
+    // "pictures-cinema-museum-scraper/1.0" UA we previously sent here — the WAF
+    // behaviour tightened since this scraper was written. Plain non-browser
+    // calendar-client UAs (the same class Google/Apple Calendar subscribers
+    // send) still get 200. We hand-roll the fetch here rather than
+    // monkey-patching the base class. See CALENDAR_CLIENT_USER_AGENT.
     const response = await fetch(ICAL_URL, {
       headers: {
-        // Calendar-client-style UA — matches what Google/Apple iCal subscribers send
-        "User-Agent": "Mozilla/5.0 (compatible; pictures-cinema-museum-scraper/1.0; +https://pictures.london)",
+        "User-Agent": CALENDAR_CLIENT_USER_AGENT,
         Accept: "text/calendar, text/plain;q=0.9, */*;q=0.5",
         "Accept-Language": "en-GB,en;q=0.9",
       },
@@ -75,14 +79,15 @@ export class CinemaMuseumScraper extends BaseScraper {
 
   /**
    * Override the BaseScraper healthCheck for the same reason: the WAF rejects
-   * the default Chrome UA. We HEAD the iCal feed with the same compatible UA.
+   * both browser UAs and our old self-identifying UA. We GET the iCal feed with
+   * the same generic calendar-client UA the real fetch uses.
    */
   async healthCheck(): Promise<boolean> {
     try {
       const response = await fetch(ICAL_URL, {
         method: "GET",
         headers: {
-          "User-Agent": "Mozilla/5.0 (compatible; pictures-cinema-museum-scraper/1.0; +https://pictures.london)",
+          "User-Agent": CALENDAR_CLIENT_USER_AGENT,
         },
         signal: AbortSignal.timeout(10_000),
       });
