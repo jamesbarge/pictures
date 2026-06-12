@@ -74,6 +74,12 @@ export const films = pgTable("films", {
   tmdbPopularity: real("tmdb_popularity"),
   letterboxdUrl: text("letterboxd_url"),
   letterboxdRating: real("letterboxd_rating"), // 0-5 scale
+  // Letterboxd's canonical film slug (e.g. "nighthawks-1978"). Highest-trust
+  // identity source — set from watchlist imports (data-film-slug) or the
+  // post-redirect URL of a successful enrichment fetch. Never guessed.
+  letterboxdSlug: text("letterboxd_slug"),
+  // When the Letterboxd enrichment fetch last succeeded (staleness tracking)
+  letterboxdEnrichedAt: timestamp("letterboxd_enriched_at"),
 
   // Match tracking - for auditing and reprocessing
   // Confidence score from TMDB matching (0-1)
