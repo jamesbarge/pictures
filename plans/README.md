@@ -22,7 +22,7 @@ Recommended order: 004 → 001 (+002/003) → 005 → 006 ∥ 007 → 008 → 00
 | 001 | Scrape run-level circuit breaker + per-venue wall-clock cap | P1 | M | — | DONE (pending PR) |
 | 002 | Consolidate behaviorally-equivalent `normalizeTitle` copies | P2 | M | — | TODO |
 | 003 | Eliminate per-film N+1 queries in the season linker | P2 | M | 002 | TODO |
-| 005 | TMDB matcher: audit trail, year discipline, runtime/director/language signals | P1 | L | — | TODO |
+| 005 | TMDB matcher: audit trail, year discipline, runtime/director/language signals | P1 | L | — | DONE (pending PR) |
 | 006 | Scraper metadata capture (runtime at Rio/ICA/Garden/Curzon) | P1 | M | 005 | TODO |
 | 007 | Letterboxd integrity: no-anchor guard, canonical slug, year tolerance | P1 | M | — | TODO |
 | 008 | Unmatched re-match sweep + preventive blocklist + prefix single-sourcing | P1 | M–L | 005 | TODO |
