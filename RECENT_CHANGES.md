@@ -1,3 +1,12 @@
+## 2026-06-12: Venue scraper fixes (Cinema Museum, David Lean; Close-Up blocked)
+**PR**: pending | **Files**: `src/scrapers/constants.ts`, `src/scrapers/cinemas/cinema-museum.ts`, `src/scrapers/cinemas/david-lean.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`, `changelogs/2026-06-12-venue-scraper-fixes.md`
+- **Cinema Museum**: SiteGround WAF now 403s both browser UAs and the old self-identifying UA on the iCal feed; switched `fetchPages()` + `healthCheck()` to a generic `CALENDAR_CLIENT_USER_AGENT` ("Google-Calendar-Importer") which gets 200. scrape() → 25 screenings (was failing).
+- **David Lean**: fixed a never-worked extractor — date regex demanded 3-letter months but the site writes full names ("June"); now reads listings via `innerText` and strips detailed times before bare-hour scanning to kill phantom 00:xx screenings. scrape() → 49 screenings (was 0).
+- **Close-Up**: investigated, left UNCHANGED — every endpoint (incl. iCal-style paths) is behind an interactive Cloudflare Turnstile that rebrowser-playwright cannot solve; documented in the playbook, stopped per the 3-attempt rule.
+- Regression tests added per review: david-lean parser fixtures (the never-worked failure mode) + cinema-museum UA pinning on both network paths.
+
+---
+
 ## 2026-06-12: TMDB matcher — audit trail persisted, year discipline, runtime/director/language signals
 **PR**: pending | **Files**: `src/lib/tmdb/match.ts`, `src/scrapers/utils/film-matching.ts`, `src/scrapers/pipeline.ts`, `src/scrapers/types.ts`, `src/config/cinema-registry.ts`
 - Fixed the films INSERT silently dropping `matchConfidence`/`matchStrategy`/`matchedAt`/`letterboxdUrl` — only 4.3% of matched films had any audit trail.

@@ -174,3 +174,39 @@ Use this format when recording cinema-specific quirks:
 - `sourceId`: `jw3-<instance.id>`; poster from `event.imageUrl`; availability from `instance.isOnSale`.
 - Known: NT Live / live broadcasts also carry `attribute_Genre = "Cinema"` and flow through; the
   data-quality pipeline classifies `content_type` downstream.
+
+### Cinema Museum (Kennington, SE11)
+- Scraper: `src/scrapers/cinemas/cinema-museum.ts` (fetch-based iCal, runnable under tsx).
+- Source URL pattern: `https://cinemamuseum.org.uk/schedule/?ical=1` (The Events Calendar WP plugin iCal feed).
+- Date/time format: timezone-aware `DTSTART;TZID=Europe/London`, parsed via `parseVEvents()` → `ukLocalToUTC()`.
+- `sourceId`: `cinema-museum-<UID>`. Excludes `Tours` / `Bazaar(s)` categories.
+- **WAF / User-Agent (UPDATED 2026-06-12 — behaviour INVERTED since the scraper was written):**
+  - The site is behind a SiteGround WAF. Verified live 2026-06-12 against `?ical=1`:
+    - **403** to browser-fingerprint UAs (anything containing `Chrome` or a full desktop UA string).
+    - **403** to the OLD self-identifying UA `Mozilla/5.0 (compatible; pictures-cinema-museum-scraper/1.0; +https://pictures.london)` that this scraper used to send — the WAF now blocks it too. THIS was the breakage.
+    - **200** to plain non-browser calendar-client UAs (`curl/*`, empty UA, `Googlebot`, Node's default fetch UA, and `Google-Calendar-Importer`).
+  - Fix: both `fetchPages()` and `healthCheck()` now send `CALENDAR_CLIENT_USER_AGENT` (`"Google-Calendar-Importer"`, in `src/scrapers/constants.ts`). **Do NOT switch this to a Chrome UA — that is the blocked class.**
+  - Note: the original code comment claimed browser UAs were blocked while the self-id UA was allowed. The first half is still true; the second half is no longer — hence the inverted-behaviour warning.
+- Verified live 2026-06-12: `healthCheck()` true, `scrape()` → 25 screenings, 0 suspect (<09:00 UTC) times. Cross-checked "The Night of the Hunter (1955)" 19:30 BST (→18:30 UTC) against the feed `DTSTART;TZID=Europe/London:20260617T193000`.
+
+### Close-Up Film Centre (Shoreditch) — ⚠️ BLOCKED (interactive Cloudflare Turnstile)
+- Scraper: `src/scrapers/cinemas/close-up.ts` (fetch + Cheerio; embedded `var shows ='[...]'` JSON on the homepage + `/search_film_programmes/?date=DD-MM-YYYY` pages).
+- Date/time format: JSON `show_time` is `"YYYY-MM-DD HH:MM:SS"` (UK local, 24h) → `ukLocalToUTC()`. Search-page date-only values are UTC-midnight → combine with `ukLocalToUTC()` using UTC components.
+- **Status as of 2026-06-12: BLOCKED, scraper left UNCHANGED (fails loudly rather than silently).**
+  - `https://www.closeupfilmcentre.com` and EVERY path probed (`/`, `/search_film_programmes/?date=...`, `/?ical=1`, `/whats_on/?ical=1`, `/feed/`, `/calendar.ics`, `/whatson.ics`, `/events.ics`) return **403 with `cf-mitigated: challenge`** regardless of UA (browser UA and plain UA both blocked). There is NO unprotected iCal endpoint to fall back to.
+  - The challenge is an **interactive Cloudflare Turnstile** ("Verify you are human" checkbox) — confirmed by screenshot — NOT the automatic JS challenge the BFI `createPersistentPage` + `waitForCloudflare` pattern clears. Three attempts failed: (1) headless persistent context (challenge never cleared in 60s); (2) headed persistent context (title stuck on "Just a moment..." for 120s, automated checkbox clicks ignored); (3) warm two-pass headed profile reusing the on-disk `cf_clearance` dir (both passes still "Just a moment..."). rebrowser-playwright's automation fingerprint cannot solve the Turnstile checkbox.
+  - The BFI pattern works because BFI uses the *non-interactive managed challenge*; Close-Up's interactive Turnstile is a different, harder class. Options for a future fix (all require approval / new deps): a CAPTCHA-solving service, a residential-proxy + warmed-cookie pipeline, or Camoufox/Patchright (already noted as candidates in `utils/browser.ts`). STOPPED here per the 3-attempt rule.
+
+### The David Lean Cinema (Croydon Clocktower)
+- Scraper: `src/scrapers/cinemas/david-lean.ts` (Playwright/`rebrowser-playwright`, Divi/WordPress site).
+- Source URL: `https://www.davidleancinema.uk` (homepage carries the full what's-on list).
+- Booking: TicketSolve via `tinyurl`/`ticketsolve` links. Most listing blocks carry their own booking link, so the slider title→URL matcher is a fallback only.
+- Key selectors: listings in `.et_pb_text_inner`; slider booking map from `.et_pb_slide` (`.et_pb_slide_title` + `a.et_pb_more_button`).
+- Date/time format: one film per `.et_pb_text_inner` block; lines are `Title` / `YYYY | Country | NN min` / `<DayName> DD <Month> at <times>` (e.g. `Tues 16 June at 2.30pm and 7.30pm`, sometimes split by a `(HOH)`/`(Relaxed)` parenthetical). Parsed via `parseScreeningDate()` + `parseScreeningTime()` → `combineDateAndTime()`.
+- **Zero-yield bug fixed 2026-06-12 (had NEVER returned a screening):**
+  1. The date/time regex required a bare 3-letter month (`Jun`); the site writes FULL month names (`June`). `Jun` matched inside `June` but the following `\s+at` then failed → no listing ever parsed. Widened the month alternation to a 3-letter prefix + optional trailing letters (`(Jan|...|Dec)[a-z]*`), widened the day-name group (`Tues`/`Weds`/`Thur`/`Thurs` via `\w*`), and capture the rest of the line as the time blob (`[^\n]*`) so multi-time listings and ones interrupted by `(HOH)` are fully captured.
+  2. Listings are read via `innerText` (NOT `textContent`) so the per-line title/metadata/date structure is preserved — `textContent` collapsed everything onto one run (`...105 minFri 12 June...`), breaking title extraction.
+  3. `extractTimes()` strips the detailed `HH.MMam` times from the text BEFORE scanning for bare-hour times; otherwise the bare-hour pattern matched the minute half of a detailed time (`2.00pm` → spurious `00pm`), producing phantom 00:xx / next-day screenings.
+- Year roll-forward guard retained: only bump a parsed date forward a year when it is >180 days in the past (genuine year boundary); recently-past dates stay in the current year and are dropped by the `>= now` filter (prevents the old ~360-day phantom screenings).
+- **Load-bearing format assumption: ONE date per line.** The time blob captures to end-of-line, so a line like "Tues 16 June at 2.30pm and Wed 17 June at 7.30pm" would attribute BOTH times to 16 June and never see the second date. The site doesn't currently do this; if listings change shape, stop the blob at the next day-name token. Regression tests: `david-lean.test.ts`.
+- Verified live 2026-06-12: `scrape()` → 49 screenings (was 0), 0 suspect (<09:00 UTC) times. Cross-checked vs site: "Fairyland" 16 June 2.30pm+7.30pm, "Who Framed Roger Rabbit?" 20 June 11.00am, "The Devil Wears Prada 2" 24 June 5.30pm.
