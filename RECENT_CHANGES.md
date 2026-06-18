@@ -1,3 +1,10 @@
+## 2026-06-18: Changelog cleanup — remove duplicate TMDB-matcher entry
+**PR**: TBD | **Files**: `RECENT_CHANGES.md`, `changelogs/2026-06-18-changelog-dedupe.md`
+- Removed an orphaned duplicate "TMDB matcher" header (body-less, separator-less) that landed above the "Untrack tasks" entry during the #668–#677 changelog merges; the complete entry remains intact lower in the file.
+- Docs only — no runtime impact.
+
+---
+
 ## 2026-06-12: Generalized phantom-screening reconcile + sourceId hardening (plan 009)
 **PR**: pending | **Files**: `src/scripts/reconcile-phantom-screenings.ts`, `src/scripts/reconcile-phantom-screenings.test.ts`, `src/scrapers/cinemas/prince-charles.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`, `package.json`
 - New `npm run reconcile:plan -- <cinemaId>` / `reconcile:apply -- <cinemaId>`: generalized, default-dry sweep for upcoming rows the source no longer lists (`scraped_at` < last successful run start). Supersedes the one-off `_bfi_reconcile.ts` staging script.
@@ -46,8 +53,6 @@
 
 ---
 
-## 2026-06-12: TMDB matcher — audit trail persisted, year discipline, runtime/director/language signals
-**PR**: pending | **Files**: `src/lib/tmdb/match.ts`, `src/scrapers/utils/film-matching.ts`, `src/scrapers/pipeline.ts`, `src/scrapers/types.ts`, `src/config/cinema-registry.ts`
 ## 2026-06-12: Untrack tasks/ session scratch
 **PR**: TBD | **Files**: `.gitignore`, `tasks/todo.md` (untracked)
 - tasks/todo.md was accidentally committed in #670 (agent-worktree `git add -A`); removed from tracking and gitignored — it is per-session scratch.
