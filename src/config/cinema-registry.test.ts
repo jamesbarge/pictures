@@ -14,6 +14,7 @@ import {
   getLegacyIdMappings,
   getPlaywrightCinemas,
   isLegacyId,
+  VENUE_LANGUAGE_PRIORS,
 } from "./cinema-registry";
 
 describe("getCinemaById", () => {
@@ -172,5 +173,22 @@ describe("chain getters", () => {
       0,
     );
     expect(independentCount + chainedCount).toBe(CINEMA_REGISTRY.length);
+  });
+});
+
+describe("VENUE_LANGUAGE_PRIORS", () => {
+  it("only contains venue ids that exist in the registry", () => {
+    const registeredIds = new Set(CINEMA_REGISTRY.map((c) => c.id));
+    for (const venueId of Object.keys(VENUE_LANGUAGE_PRIORS)) {
+      expect(registeredIds.has(venueId), `unknown venue id: ${venueId}`).toBe(true);
+    }
+  });
+
+  it("uses lowercase ISO 639-1 language codes", () => {
+    for (const languages of Object.values(VENUE_LANGUAGE_PRIORS)) {
+      for (const lang of languages) {
+        expect(lang).toMatch(/^[a-z]{2}$/);
+      }
+    }
   });
 });

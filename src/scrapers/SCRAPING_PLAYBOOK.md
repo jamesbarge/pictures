@@ -19,6 +19,84 @@ Update this playbook whenever you:
 - After fixing time parsing bugs, verify and clean bad historical screenings (`00:00-09:59`) only when confirmed wrong.
 - **`BaseScraper.healthCheck()` retries** (2026-05-15): 3 attempts, 10s timeout each, 4s backoff between attempts. Fast-fails on 4xx (contract issue), retries on 5xx + network errors. Subclasses can override for cheaper/different checks (e.g. Curzon HEADs the API endpoint with a 401-is-healthy contract). Background: Close-Up was failing 33% of runs at 03:17-03:21 UTC because of brief nightly-maintenance windows.
 - **Do not turn fetch/parse exceptions into successful empty results.** A valid zero-screening chain venue must remain present in the returned `Map` with `[]`; a failed venue must be omitted and recorded in `venueErrors`. The shared runner marks any requested venue missing from the result map as failed. Multi-page independent scrapers must throw when any required page fails so partial coverage is not persisted as a successful run.
+- **Time provenance (plan 010, 2026-06-12)**: when a scraper's datetimes come from ISO/API timestamps (not parsed display text), set `RawScreening.timeSource: "iso"`. The validator then treats `suspicious_time_early` (<10:00) as warn-not-reject (ISO times can't have AM/PM errors — Everyman's real 09:00 kids shows were being discarded) and raises the `too_far_future` cap from 90 to 180 days (long-lead event cinema like Met Opera 2026-27 at the chains). Leave text-parsed scrapers unset (treated as `"text"`, full strictness). Currently set by: Curzon (Vista API), Picturehouse (API), Everyman (boxofficeapi), Castle/Castle Sidcup (`data-start-time` attribute via castle-calendar).
+- **Runtime capture (plan 006, 2026-06-12)**: when a source exposes the film's runtime, forward it as `RawScreening.runtime` (minutes) — the TMDB matcher uses it to reject junk stubs and penalize wrong-era matches. Always pass the raw value through `sanitizeRuntime()` (`src/scrapers/utils/metadata-parser.ts`): coerces numeric strings, guards to the 1–600 minute band, returns `undefined` otherwise. Currently emitted by Rio, ICA, Garden Cinema, and Curzon. Caveat: venue runtimes may include event padding (intros/Q&As). Padding within 30 min is tolerated; beyond that the matcher applies a −0.15 confidence penalty, which strong matches (e.g. exact-year classics) usually survive but borderline ones may not. An asymmetric tolerance (venue-above-TMDB is padding, venue-below-TMDB is a wrong-film signal) is a candidate plan-005 scoring follow-up.
+
+## sourceId Schemes (plan 009, 2026-06-12)
+
+`screenings.source_id` is the stable per-row dedup key behind the partial
+unique index `(cinema_id, source_id) WHERE source_id IS NOT NULL`. The
+pipeline is upsert-only — rows that vanish from a source are never deleted —
+so **changing a scraper's sourceId scheme strands every existing row as a
+phantom**. This table is what makes the next scheme change detectable.
+
+Rules:
+- Every scraper must set `sourceId` on **every** emitted `RawScreening` —
+  unconditionally (no regex-miss `undefined` paths).
+- Prefer an upstream booking-system id; otherwise derive a deterministic
+  composite (`{prefix}-{slugify(title)}-{datetime.toISOString()}` using
+  `slugify` from `src/scrapers/utils/url.ts`). Derived ids change when the
+  source retitles or moves a screening — that is expected, and the reconcile
+  sweep cleans the strays.
+- **If you change any scheme below, you MUST update this table and run the
+  reconcile sequence for that cinema in the same session:**
+  scrape venue once → `npm run reconcile:plan -- <cinemaId>` → review →
+  `npm run reconcile:apply -- <cinemaId>`. Otherwise every pre-change row
+  becomes a permanent phantom.
+
+| Scraper (file) | cinema_id(s) | Scheme | Key source |
+|---|---|---|---|
+| Curzon (`chains/curzon.ts`) | `curzon-*` | `curzon-{showtime.id}` | Vista OCAPI showtime id |
+| Picturehouse (`chains/picturehouse.ts`) | `picturehouse-*` | `picturehouse-{venue.id}-{ShowTime.SessionId}` | API SessionId |
+| Everyman (`chains/everyman.ts`) | `everyman-*` | `everyman-{venue.id}-{showtime.id}` | boxofficeapi showtime id |
+| BFI (`cinemas/bfi.ts` → `bfi-pdf/bfi-source-id.ts`) | `bfi-southbank`, `bfi-imax` | `bfi-{cinemaId}-{titleSlug}-{screen}-{ISO}` | derived, path-agnostic across Playwright/PDF (PR #640) |
+| Barbican (`cinemas/barbican.ts`) | `barbican` | `barbican-{YYYY-MM-DD}-{HHMM}-{titleSlug}` | derived |
+| Phoenix (`cinemas/phoenix.ts`) | `phoenix-east-finchley` | `phoenix-{titleSlug}-{ISO}` | derived |
+| Electric (`cinemas/electric-v2.ts`) | `electric-portobello`, `electric-white-city` | `electric-{screeningId}` | site JSON screening key |
+| Lexi (`cinemas/lexi.ts`) | `lexi` | `lexi-{film.ID}-{perf.ID}` | Admit One API ids |
+| Regent Street (`cinemas/regent-street.ts`) | `regent-street` | `regent-street-{showing.id}` | API showing id |
+| Rich Mix (`cinemas/rich-mix-v2.ts`) | `rich-mix` | `richmix-{instanceId\|id}` | Spektrix instance id |
+| JW3 (`cinemas/jw3.ts`) | `jw3` | `jw3-{inst.id}` | API instance id |
+| Castle (`cinemas/castle.ts` → `castle-calendar.ts`) | `castle` | `castle-{perfId}` | Jacro perf id |
+| Castle Sidcup (`cinemas/castle-sidcup.ts` → `castle-calendar.ts`) | `castle-sidcup` | `castle-sidcup-{perfId}` | Jacro perf id |
+| Rio (`cinemas/rio.ts`) | `rio-dalston` | `rio-dalston-{event.ID}-{ISO}` | event id + datetime |
+| Prince Charles (`cinemas/prince-charles.ts`) | `prince-charles` | `{perfId}` (bare digits from `booknow/(\d+)`); fallback `prince-charles-{titleSlug}-{ISO}` | Jacro perf id; derived fallback added 2026-06-12 so sourceId is never undefined. Bare-digit primary kept deliberately — prefixing would strand all existing rows |
+| ICA (`cinemas/ica.ts`) | `ica` | `ica-{titleSlug}-{ISO}` | derived (lowercase, whitespace→dash, punctuation kept) |
+| Genesis (`cinemas/genesis.ts`) | `genesis` | `genesis-{perfCode}` | site perfCode |
+| Peckhamplex (`cinemas/peckhamplex.ts`) | `peckhamplex` | `peckhamplex-{titleSlug}-{ISO}` | derived |
+| Nickel (`cinemas/nickel-v2.ts`) | `the-nickel` | `nickel-{item.id}` | API item id |
+| Garden (`cinemas/garden.ts`) | `garden` | `garden-{slugify(title)}-{ISO}` | derived |
+| Close-Up (`cinemas/close-up.ts`) | `close-up-cinema` | `close-up-{show.id}-{ISO}` (API), `close-up-html-{ISO}-{titleSlug}`, `close-up-search-{ISO}-{titleSlug}` | API id; derived on HTML/search fallback paths |
+| Bertha DocHouse (`cinemas/bertha-dochouse.ts`) | `bertha-dochouse` | `bertha-{ticketId}` | ticket id (`BLO1-XXXXXX`) |
+| Cinema Museum (`cinemas/cinema-museum.ts`) | `cinema-museum` | `cinema-museum-{ev.uid}` | ICS event uid |
+| Ciné Lumière (`cinemas/cine-lumiere.ts`) | `cine-lumiere` | `cine-lumiere-{titleSlug}-{ISO}` | derived (lowercase, whitespace→dash, punctuation kept) |
+| ArtHouse Crouch End (`cinemas/arthouse-crouch-end.ts`) | `arthouse-crouch-end` | `arthouse-{titleSlug}-{ISO}` | derived (lowercase, whitespace→dash, punctuation kept) |
+| Coldharbour Blue (`cinemas/coldharbour-blue.ts`) | `coldharbour-blue` | `coldharbour-{event.id}` | API event id |
+| Olympic (`cinemas/olympic.ts`) | `olympic-studios` | `olympic-{bookingId}-{ISO}` | booking id from URL (`""` when absent; ISO keeps it unique) |
+| David Lean (`cinemas/david-lean.ts`) | `david-lean-cinema` | `david-lean-{titleSlug≤30}-{ISO}` | derived (lowercase, whitespace→dash, punctuation kept) |
+| Riverside (`cinemas/riverside-v2.ts`) | `riverside-studios` | `riverside-{event.id}-{perf.timestamp}` | event id + perf timestamp |
+
+### Phantom reconcile (`src/scripts/reconcile-phantom-screenings.ts`)
+
+Generalized, default-dry sweep for rows the source no longer lists. It
+**supersedes the one-off `src/scripts/_bfi_reconcile.ts`** staging script
+(untracked; delete it when encountered — its logic now lives here,
+parameterized per cinema). Unlike the BFI one-off it does not scrape: run the
+venue's scraper first, then reconcile while the run is < 2h fresh.
+
+- `npm run reconcile:plan -- <cinemaId>` — prints every doomed row; no writes.
+- `npm run reconcile:apply -- <cinemaId>` — deletes the planned rows.
+- Hard guards (all enforced, unit-tested pure functions): single registry-known
+  cinema per invocation; successful `scraper_runs` entry completed < 2h ago
+  AND with a non-zero screening count (an empty "success" scrape is refused,
+  never overridable); candidates limited to `datetime >= now()` AND
+  `scraped_at < run start` AND `datetime <= scrape horizon` (the latest
+  datetime the run actually refreshed — stale rows beyond demonstrated
+  coverage are printed as EXCLUDED, never deleted); re-guarded inside the
+  DELETE; refusal above a 40% deletion cap (`--force-large` overrides with a
+  red warning); batched (100) deletes in a single transaction.
+- Limitation: accepts canonical registry cinema IDs only — rows under legacy
+  cinema IDs are not swept.
 
 ## Health & Flakiness Detection
 The `/scrape` slash command runs three read-only detectors against `scraper_runs`:
@@ -116,6 +194,7 @@ Use this format when recording cinema-specific quirks:
   - **BST timezone (fixed 2026-05-12)**: `schedule.startsAt` is TZ-less. Original `new Date(startsAt)` silently added 1h under `TZ=UTC` during BST. Migrated to `parseUKLocalDateTime`. Duplicate-pair probe confirmed 15 ghost rows existed; cleaned in same change. Same fix class as #484 (Everyman) and #485 (Picturehouse).
   - **Failure handling**: total auth failure throws; failed venue/date API calls are recorded as venue failures rather than successful empty results.
 - Vista site codes: SOH1, MAY1, BLO1, ALD1, VIC1, HOX1, KIN1, RIC1, WIM01, CAM1
+- Metadata: `relatedData.films[].runtimeInMinutes` (integer minutes) is forwarded as `RawScreening.runtime` via `sanitizeRuntime()` (plan 006, 2026-06-12). Year comes from `releaseDate`, director from `castAndCrew` cross-referenced against `relatedData.castAndCrew`.
 - Last verified (2026-03-18): SSR token extraction working, all venues returning data
 
 ### Barbican
@@ -136,6 +215,7 @@ Use this format when recording cinema-specific quirks:
   - **Day range**: The nav shows ~7 days but the `?day=` parameter accepts any future date. We scrape 30 days ahead.
   - **Failure handling**: any failed fetch or parse in the required 30-day window fails the run, preventing a partial scrape from being recorded as success.
   - **Old performances endpoint**: The `/whats-on/event/{nodeId}/performances` page still works but its `datetime` attribute has a misleading `Z` suffix — the values are actually UK local time, not UTC. The old scraper used `new Date(attr)` which was off by 1 hour during BST.
+  - **BBFC certificate in titles**: Raw titles carry a trailing certificate like `"(12A)"`, which the title cleaner strips. Deliberately NOT captured (plan 006 YAGNI decision, 2026-06-12): `RawScreening` has no certificate field, the matcher doesn't consume certificates, and `films.certification` is filled by TMDB enrichment. Revisit only if a consumer lands.
 - Last verified (2026-04-10): Rewrote to use daily listing approach. 9 screenings parsed from April 10 test page, matching website exactly.
 
 ### Castle Cinema (Hackney) and Castle Sidcup
@@ -174,3 +254,81 @@ Use this format when recording cinema-specific quirks:
 - `sourceId`: `jw3-<instance.id>`; poster from `event.imageUrl`; availability from `instance.isOnSale`.
 - Known: NT Live / live broadcasts also carry `attribute_Genre = "Cinema"` and flow through; the
   data-quality pipeline classifies `content_type` downstream.
+
+### Cinema Museum (Kennington, SE11)
+- Scraper: `src/scrapers/cinemas/cinema-museum.ts` (fetch-based iCal, runnable under tsx).
+- Source URL pattern: `https://cinemamuseum.org.uk/schedule/?ical=1` (The Events Calendar WP plugin iCal feed).
+- Date/time format: timezone-aware `DTSTART;TZID=Europe/London`, parsed via `parseVEvents()` → `ukLocalToUTC()`.
+- `sourceId`: `cinema-museum-<UID>`. Excludes `Tours` / `Bazaar(s)` categories.
+- **WAF / User-Agent (UPDATED 2026-06-12 — behaviour INVERTED since the scraper was written):**
+  - The site is behind a SiteGround WAF. Verified live 2026-06-12 against `?ical=1`:
+    - **403** to browser-fingerprint UAs (anything containing `Chrome` or a full desktop UA string).
+    - **403** to the OLD self-identifying UA `Mozilla/5.0 (compatible; pictures-cinema-museum-scraper/1.0; +https://pictures.london)` that this scraper used to send — the WAF now blocks it too. THIS was the breakage.
+    - **200** to plain non-browser calendar-client UAs (`curl/*`, empty UA, `Googlebot`, Node's default fetch UA, and `Google-Calendar-Importer`).
+  - Fix: both `fetchPages()` and `healthCheck()` now send `CALENDAR_CLIENT_USER_AGENT` (`"Google-Calendar-Importer"`, in `src/scrapers/constants.ts`). **Do NOT switch this to a Chrome UA — that is the blocked class.**
+  - Note: the original code comment claimed browser UAs were blocked while the self-id UA was allowed. The first half is still true; the second half is no longer — hence the inverted-behaviour warning.
+- Verified live 2026-06-12: `healthCheck()` true, `scrape()` → 25 screenings, 0 suspect (<09:00 UTC) times. Cross-checked "The Night of the Hunter (1955)" 19:30 BST (→18:30 UTC) against the feed `DTSTART;TZID=Europe/London:20260617T193000`.
+
+### Close-Up Film Centre (Shoreditch) — ⚠️ BLOCKED (interactive Cloudflare Turnstile)
+- Scraper: `src/scrapers/cinemas/close-up.ts` (fetch + Cheerio; embedded `var shows ='[...]'` JSON on the homepage + `/search_film_programmes/?date=DD-MM-YYYY` pages).
+- Date/time format: JSON `show_time` is `"YYYY-MM-DD HH:MM:SS"` (UK local, 24h) → `ukLocalToUTC()`. Search-page date-only values are UTC-midnight → combine with `ukLocalToUTC()` using UTC components.
+- **Status as of 2026-06-12: BLOCKED, scraper left UNCHANGED (fails loudly rather than silently).**
+  - `https://www.closeupfilmcentre.com` and EVERY path probed (`/`, `/search_film_programmes/?date=...`, `/?ical=1`, `/whats_on/?ical=1`, `/feed/`, `/calendar.ics`, `/whatson.ics`, `/events.ics`) return **403 with `cf-mitigated: challenge`** regardless of UA (browser UA and plain UA both blocked). There is NO unprotected iCal endpoint to fall back to.
+  - The challenge is an **interactive Cloudflare Turnstile** ("Verify you are human" checkbox) — confirmed by screenshot — NOT the automatic JS challenge the BFI `createPersistentPage` + `waitForCloudflare` pattern clears. Three attempts failed: (1) headless persistent context (challenge never cleared in 60s); (2) headed persistent context (title stuck on "Just a moment..." for 120s, automated checkbox clicks ignored); (3) warm two-pass headed profile reusing the on-disk `cf_clearance` dir (both passes still "Just a moment..."). rebrowser-playwright's automation fingerprint cannot solve the Turnstile checkbox.
+  - The BFI pattern works because BFI uses the *non-interactive managed challenge*; Close-Up's interactive Turnstile is a different, harder class. Options for a future fix (all require approval / new deps): a CAPTCHA-solving service, a residential-proxy + warmed-cookie pipeline, or Camoufox/Patchright (already noted as candidates in `utils/browser.ts`). STOPPED here per the 3-attempt rule.
+
+### The David Lean Cinema (Croydon Clocktower)
+- Scraper: `src/scrapers/cinemas/david-lean.ts` (Playwright/`rebrowser-playwright`, Divi/WordPress site).
+- Source URL: `https://www.davidleancinema.uk` (homepage carries the full what's-on list).
+- Booking: TicketSolve via `tinyurl`/`ticketsolve` links. Most listing blocks carry their own booking link, so the slider title→URL matcher is a fallback only.
+- Key selectors: listings in `.et_pb_text_inner`; slider booking map from `.et_pb_slide` (`.et_pb_slide_title` + `a.et_pb_more_button`).
+- Date/time format: one film per `.et_pb_text_inner` block; lines are `Title` / `YYYY | Country | NN min` / `<DayName> DD <Month> at <times>` (e.g. `Tues 16 June at 2.30pm and 7.30pm`, sometimes split by a `(HOH)`/`(Relaxed)` parenthetical). Parsed via `parseScreeningDate()` + `parseScreeningTime()` → `combineDateAndTime()`.
+- **Zero-yield bug fixed 2026-06-12 (had NEVER returned a screening):**
+  1. The date/time regex required a bare 3-letter month (`Jun`); the site writes FULL month names (`June`). `Jun` matched inside `June` but the following `\s+at` then failed → no listing ever parsed. Widened the month alternation to a 3-letter prefix + optional trailing letters (`(Jan|...|Dec)[a-z]*`), widened the day-name group (`Tues`/`Weds`/`Thur`/`Thurs` via `\w*`), and capture the rest of the line as the time blob (`[^\n]*`) so multi-time listings and ones interrupted by `(HOH)` are fully captured.
+  2. Listings are read via `innerText` (NOT `textContent`) so the per-line title/metadata/date structure is preserved — `textContent` collapsed everything onto one run (`...105 minFri 12 June...`), breaking title extraction.
+  3. `extractTimes()` strips the detailed `HH.MMam` times from the text BEFORE scanning for bare-hour times; otherwise the bare-hour pattern matched the minute half of a detailed time (`2.00pm` → spurious `00pm`), producing phantom 00:xx / next-day screenings.
+- Year roll-forward guard retained: only bump a parsed date forward a year when it is >180 days in the past (genuine year boundary); recently-past dates stay in the current year and are dropped by the `>= now` filter (prevents the old ~360-day phantom screenings).
+- **Load-bearing format assumption: ONE date per line.** The time blob captures to end-of-line, so a line like "Tues 16 June at 2.30pm and Wed 17 June at 7.30pm" would attribute BOTH times to 16 June and never see the second date. The site doesn't currently do this; if listings change shape, stop the blob at the next day-name token. Regression tests: `david-lean.test.ts`.
+- Verified live 2026-06-12: `scrape()` → 49 screenings (was 0), 0 suspect (<09:00 UTC) times. Cross-checked vs site: "Fairyland" 16 June 2.30pm+7.30pm, "Who Framed Roger Rabbit?" 20 June 11.00am, "The Devil Wears Prada 2" 24 June 5.30pm.
+
+### Rio Cinema (Dalston)
+- Scraper: `src/scrapers/cinemas/rio.ts`
+- Source URL pattern: homepage `https://riocinema.org.uk` (redirects to `/Rio.dll/Home`)
+- Approach: all event data is embedded as JSON in the page — `var Events = {"Events": [...]};` — extracted by bracket-matching (the JSON contains HTML strings, so naive regex slicing breaks).
+- Date/time format: `Performances[].StartDate` = `"YYYY-MM-DD"`, `StartTime` = `"HHMM"` (24-hour, e.g. `"1800"`). Combined via `combineDateAndTime()` on a UTC-midnight date.
+- Metadata per event: `Director` (string), `Year` (string, parsed to int), `RunningTime` (JSON number, minutes — forwarded as `RawScreening.runtime` via `sanitizeRuntime()`, plan 006). RunningTime tolerates string-shaped values defensively.
+- Booking URL: film page `https://riocinema.org.uk/Rio.dll/WhatsOn?f={event.ID}` (stable) — NOT `Performances[].URL` (session params expire).
+- sourceId format: `rio-dalston-{event.ID}-{ISO datetime}`.
+- Known pitfalls:
+  - `RunningTime` is the venue's stated event length: for event screenings (film + Q&A/intro) it can exceed the film's true runtime (e.g. "LITTLE SHOP OF HORRORS + event" = 150 vs the film's 94 — a 56 min gap that exceeds the matcher's 30 min tolerance and triggers the −0.15 penalty; exact-year matches typically survive it). See the shared runtime-capture rule above for the asymmetric-tolerance follow-up idea.
+  - Titles often carry event prefixes ("Classic Matinee:", "Pink Palace:") — handled downstream by title cleaning.
+- Last verified (2026-06-12): live run — 38/38 films emitted runtime, all within 1–600; JAWS=124, RINGU=96 match the venue JSON and canonical runtimes.
+
+### ICA
+- Scraper: `src/scrapers/cinemas/ica.ts`
+- Source URL pattern: listing `https://www.ica.art/films` → per-film detail pages `/films/{slug}` (capped at 50 per run, 3s delay between fetches).
+- Approach: Cheerio over each film detail page.
+- Key selectors:
+  - `span.title` — film title (nested `.tag/.badge/.label/.flag` removed first to avoid concatenation)
+  - `#colophon` — metadata line, format `"<i>Title</i>, dir Director Name, Country Year, Runtime mins."`
+  - `.performance-list .performance` with `.time` (`"04:15 pm"`), `.date` (`"Fri, 19 Dec 2025"`), `.venue`
+- Metadata from `#colophon`: director (`dir X`), year (4-digit), runtime (`"(\d+)\s*mins?"` — forwarded as `RawScreening.runtime` via `sanitizeRuntime()`, plan 006), country.
+- sourceId format: `ica-{slugified title}-{ISO datetime}`.
+- Known pitfalls:
+  - Excluded listing URLs (year archives, `/films/today`, etc.) are filtered in `isExcludedUrl` — keep in sync if ICA adds new non-film listing pages.
+  - One detail-page fetch per film: a full run costs ~50 requests; don't loop live runs.
+- Last verified (2026-06-12): live run — 19/21 films emitted runtime (two had no runtime in colophon), all within 1–600.
+
+### Garden Cinema (Covent Garden)
+- Scraper: `src/scrapers/cinemas/garden.ts`
+- Source URL pattern: homepage `https://thegardencinema.co.uk` (all dates on one page)
+- Approach: Cheerio; `div.date-block[data-date="YYYY-MM-DD"]` → `.films-list__by-date__film` cards → `a.screening` time links (24-hour `"HH:MM"`).
+- Key selectors:
+  - `.films-list__by-date__film__title a` — title (trailing BBFC rating span flattens into the text; stripped end-anchored via `cleanTitle`)
+  - `.films-list__by-date__film__stats` — stats line `"Director, Country, Year, Runtime"` (e.g. `"Greta Gerwig, USA, 2019, 135m."`)
+  - `.films-list__by-date__film__thumb` — poster `src`
+- Metadata from stats line: director (first comma part unless country/year), year (4-digit), runtime (`"135m."`/`"117 mins"` — unit suffix required so the bare year can't match; forwarded as `RawScreening.runtime` via `sanitizeRuntime()`, plan 006).
+- sourceId format: `garden-{slug(title)}-{ISO datetime}`.
+- Known pitfalls:
+  - Rating strip must stay end-anchored (regression: `"What's Up, Doc? U"` → `"What's p, Doc?"` with substring replace).
+- Last verified (2026-06-12): live run — 88/88 films emitted runtime, all within 1–600; His Girl Friday=92 matches canonical.

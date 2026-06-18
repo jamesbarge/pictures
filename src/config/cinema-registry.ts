@@ -1454,6 +1454,23 @@ export function getChainIds(): ChainId[] {
 }
 
 // ============================================================================
+// Venue Language Priors
+// ============================================================================
+
+/**
+ * ISO 639-1 original-language priors for venues that program a specific
+ * national cinema. Used by the TMDB matcher as a small scoring nudge
+ * (plan 005, step 5) — a same-language candidate beats an otherwise-tied
+ * one at these venues.
+ *
+ * Only add venue ids that exist in CINEMA_REGISTRY (tested in
+ * cinema-registry.test.ts).
+ */
+export const VENUE_LANGUAGE_PRIORS: Record<string, string[]> = {
+  "cine-lumiere": ["fr"], // Institut français — predominantly French programming
+};
+
+// ============================================================================
 // Database Seed Functions
 // ============================================================================
 

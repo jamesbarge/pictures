@@ -170,6 +170,23 @@ async function main(): Promise<void> {
         return { ok };
       }),
     );
+
+    // Optional phase: re-match sweep for unmatched films (plan 008).
+    // Default OFF — opt in with SCRAPE_REMATCH_SWEEP=1 once the operator has
+    // reviewed a few manual `npm run rematch:unmatched` dry runs. Capped at
+    // 100 films per run to bound TMDB usage and blast radius.
+    if (process.env.SCRAPE_REMATCH_SWEEP === "1") {
+      phases.push(
+        await runPhase("Rematch sweep (unmatched films, capped)", async () => {
+          const ok = await runNpmScript("rematch:unmatched", ["--execute", "--limit", "100"]);
+          return { ok };
+        }),
+      );
+    } else {
+      console.log(
+        "[scrape-and-enrich] rematch sweep disabled (set SCRAPE_REMATCH_SWEEP=1 to enable)",
+      );
+    }
   } else {
     console.log("[scrape-and-enrich] --skip-enrich: skipping enrichment phases");
   }

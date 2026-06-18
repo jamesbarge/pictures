@@ -8,6 +8,7 @@ import type { RawScreening, ScraperConfig } from "../types";
 import { parseScreeningDate, parseScreeningTime, combineDateAndTime } from "../utils/date-parser";
 import type { CheerioAPI } from "../utils/cheerio-types";
 import { FestivalDetector } from "../festivals/festival-detector";
+import { sanitizeRuntime } from "../utils/metadata-parser";
 
 interface FilmInfo {
   title: string;
@@ -136,7 +137,7 @@ export class ICAScraper extends BaseScraper {
       // Extract runtime: "XX mins"
       const runtimeMatch = colophon.match(/(\d+)\s*mins?\.?/i);
       if (runtimeMatch) {
-        info.runtime = parseInt(runtimeMatch[1], 10);
+        info.runtime = sanitizeRuntime(runtimeMatch[1]);
       }
 
       // Extract country (common patterns)
@@ -199,6 +200,7 @@ export class ICAScraper extends BaseScraper {
           // Pass extracted metadata for better TMDB matching
           year: filmInfo.year,
           director: filmInfo.director,
+          runtime: filmInfo.runtime,
           ...FestivalDetector.detect("ica", filmInfo.title, datetime, bookingBase || fallbackUrl),
         });
       }

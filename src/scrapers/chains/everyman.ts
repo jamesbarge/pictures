@@ -482,6 +482,7 @@ export class EverymanScraper implements ChainScraper {
           screenings.push({
             filmTitle,
             datetime,
+            timeSource: "iso", // boxofficeapi ISO timestamp — no AM/PM parsing involved
             bookingUrl,
             sourceId,
           });

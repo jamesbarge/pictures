@@ -114,3 +114,7 @@ logs/
 # Local QA verification screenshots (not for commit)
 pr646-*.png
 split-header-*.png
+
+# Session scratch / agent handoff notes — never commit
+tasks/todo.md
+tasks/lessons.md

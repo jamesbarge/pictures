@@ -295,6 +295,7 @@ export class PicturehouseScraper implements ChainScraper {
         screenings.push({
           filmTitle: movie.Title,
           datetime,
+          timeSource: "iso", // API ISO timestamp — no AM/PM parsing involved
           screen: showTime.ScreenName,
           format,
           bookingUrl,

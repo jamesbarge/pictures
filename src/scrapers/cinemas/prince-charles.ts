@@ -7,6 +7,7 @@ import { BaseScraper } from "../base";
 import type { RawScreening, ScraperConfig } from "../types";
 import { parseScreeningDate, parseScreeningTime, combineDateAndTime } from "../utils/date-parser";
 import { parseFilmMetadata } from "../utils/metadata-parser";
+import { slugify } from "../utils/url";
 import type { CheerioAPI, CheerioSelection } from "../utils/cheerio-types";
 import { FestivalDetector } from "../festivals/festival-detector";
 
@@ -146,7 +147,13 @@ export class PrinceCharlesScraper extends BaseScraper {
       bookingUrl,
       format,
       eventType,
-      sourceId: bookingUrl.match(/booknow\/(\d+)/)?.[1],
+      // Jacro performance ID from the booking URL — stable across re-scrapes.
+      // Kept un-prefixed to match the scheme of every existing PCC row (a
+      // prefix change would strand them all as phantoms). Falls back to a
+      // deterministic composite so sourceId is never undefined (plan 009).
+      sourceId:
+        bookingUrl.match(/booknow\/(\d+)/)?.[1] ??
+        `prince-charles-${slugify(filmTitle)}-${datetime.toISOString()}`,
       // Pass extracted metadata for better TMDB matching
       year: metadata?.year,
       director: metadata?.director,

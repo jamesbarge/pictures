@@ -95,6 +95,12 @@ export function getBlockedTmdbIds(): Set<number> {
   return ids;
 }
 
+/** TMDB ids recorded as wrong matches; films carrying one need re-matching. */
+export function isBlockedTmdbId(id: number): boolean {
+  loadBlocklist();
+  return wrongIdIndex?.has(id) ?? false;
+}
+
 /**
  * Increment the usage count for a blocklist entry in the learnings JSON.
  * Called when a blocklist entry is actually used to filter a match.

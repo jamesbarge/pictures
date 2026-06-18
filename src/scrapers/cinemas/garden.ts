@@ -18,6 +18,7 @@ import type { RawScreening, ScraperConfig } from "../types";
 import { FestivalDetector } from "../festivals/festival-detector";
 import { combineDateAndTime } from "../utils/date-parser";
 import { normalizeUrl, slugify } from "../utils/url";
+import { sanitizeRuntime } from "../utils/metadata-parser";
 import { escapeRegex } from "@/lib/title-extraction/patterns";
 
 export class GardenCinemaScraper extends BaseScraper {
@@ -84,10 +85,10 @@ export class GardenCinemaScraper extends BaseScraper {
           return;
         }
 
-        // Parse stats for year and director: "Director, Country, Year, Runtime"
-        // Example: "Greta Gerwig, USA, 2019, 135m."
+        // Parse stats for year, director, and runtime:
+        // "Director, Country, Year, Runtime" e.g. "Greta Gerwig, USA, 2019, 135m."
         const stats = $film.find(".films-list__by-date__film__stats").text().trim();
-        const { year, director } = this.parseStats(stats);
+        const { year, director, runtime } = this.parseStats(stats);
 
         // Get poster URL from image
         const posterUrl = $film.find(".films-list__by-date__film__thumb").attr("src") || undefined;
@@ -123,6 +124,7 @@ export class GardenCinemaScraper extends BaseScraper {
             posterUrl: posterUrl ? normalizeUrl(posterUrl, this.config.baseUrl) : undefined,
             year,
             director,
+            runtime,
             ...FestivalDetector.detect("garden", title, datetime, normalizedBookingUrl),
           });
         });
@@ -153,11 +155,11 @@ export class GardenCinemaScraper extends BaseScraper {
   }
 
   /**
-   * Parse stats string to extract year and director
+   * Parse stats string to extract year, director, and runtime
    * Format: "Director, Country, Year, Runtime"
    * Example: "Greta Gerwig, USA, 2019, 135m."
    */
-  private parseStats(stats: string): { year?: number; director?: string } {
+  private parseStats(stats: string): { year?: number; director?: string; runtime?: number } {
     if (!stats) {
       return {};
     }
@@ -166,8 +168,20 @@ export class GardenCinemaScraper extends BaseScraper {
     const yearMatch = stats.match(/\b(19|20)\d{2}\b/);
     const year = yearMatch ? parseInt(yearMatch[0], 10) : undefined;
 
-    // Director is typically the first part before the first comma
     const parts = stats.split(",").map((s) => s.trim());
+
+    // Match runtime from the LAST comma-separated token only (the stats line
+    // ends with the runtime): "135m.", "97 mins", "120 min". The unit suffix
+    // keeps this from colliding with the bare 4-digit year. Bail on hour
+    // formats ("3h 21m") rather than capture the minute component as the
+    // whole runtime.
+    const lastPart = parts[parts.length - 1] ?? "";
+    const runtimeMatch = /\d\s*h\b/i.test(lastPart)
+      ? null
+      : lastPart.match(/\b(\d{1,3})\s*m(?:ins?)?\.?(?=[\s,]|$)/i);
+    const runtime = runtimeMatch ? sanitizeRuntime(runtimeMatch[1]) : undefined;
+
+    // Director is typically the first part before the first comma
     const firstPart = parts[0];
     // First part is typically the director unless it's a country or year
     const director =
@@ -175,7 +189,7 @@ export class GardenCinemaScraper extends BaseScraper {
         ? firstPart
         : undefined;
 
-    return { year, director };
+    return { year, director, runtime };
   }
 
   /**

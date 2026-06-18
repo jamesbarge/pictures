@@ -23,12 +23,20 @@ export interface RawScreening {
   year?: number;
   /** Director name (if available from source) */
   director?: string;
+  /** Film runtime in minutes (if available from source) */
+  runtime?: number;
   /** Slug of the festival this screening belongs to (e.g., "bfi-lff-2025") */
   festivalSlug?: string;
   /** Section within the festival (e.g., "Galas", "Competition") */
   festivalSection?: string;
   /** Ticket availability status from the booking system */
   availabilityStatus?: "available" | "low" | "sold_out" | "returns" | "unknown";
+  /**
+   * How datetime was derived. ISO/API timestamps can't have AM/PM errors,
+   * so the validator relaxes the heuristics that exist to catch text-parsing
+   * mistakes (early-time rejection, 90-day future cap). Unset means "text".
+   */
+  timeSource?: "iso" | "text";
 }
 
 // ============================================================================

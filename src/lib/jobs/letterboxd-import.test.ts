@@ -138,6 +138,80 @@ describe("runLetterboxdImport integrity", () => {
     });
   });
 
+  it("persists the canonical Letterboxd slug + URL when creating a new film", async () => {
+    mocks.selectResults.push([], [canonicalFilm]);
+    mocks.filmReturning.mockResolvedValue([{ id: "candidate-film-id" }]);
+    mocks.getFullFilmData.mockResolvedValue({
+      details: {
+        title: "Existing Film",
+        original_title: "Existing Film",
+        imdb_id: "tt123",
+        runtime: 100,
+        genres: [{ name: "Drama" }],
+        production_countries: [{ iso_3166_1: "GB" }],
+        spoken_languages: [{ iso_639_1: "en" }],
+        overview: "Synopsis",
+        tagline: "Tagline",
+        poster_path: "/poster.jpg",
+        backdrop_path: "/backdrop.jpg",
+        release_date: "2024-01-01",
+        vote_average: 7,
+        popularity: 10,
+      },
+      directors: ["Director"],
+      cast: [],
+      certification: "12",
+    });
+
+    await runLetterboxdImport(payload);
+
+    // Letterboxd's own data-film-slug is the highest-trust identity source
+    expect(mocks.filmValues).toHaveBeenCalledWith(
+      expect.objectContaining({
+        letterboxdSlug: "existing-film",
+        letterboxdUrl: "https://letterboxd.com/film/existing-film/",
+      }),
+    );
+  });
+
+  it("leaves Letterboxd identity null when the entry has no slug", async () => {
+    mocks.selectResults.push([], [canonicalFilm]);
+    mocks.filmReturning.mockResolvedValue([{ id: "candidate-film-id" }]);
+    mocks.getFullFilmData.mockResolvedValue({
+      details: {
+        title: "Existing Film",
+        original_title: "Existing Film",
+        imdb_id: "tt123",
+        runtime: 100,
+        genres: [],
+        production_countries: [],
+        spoken_languages: [],
+        overview: "Synopsis",
+        tagline: "Tagline",
+        poster_path: null,
+        backdrop_path: null,
+        release_date: "2024-01-01",
+        vote_average: 7,
+        popularity: 10,
+      },
+      directors: [],
+      cast: [],
+      certification: null,
+    });
+
+    await runLetterboxdImport({
+      ...payload,
+      entries: [{ title: "Existing Film", year: 2024, slug: "" }],
+    });
+
+    expect(mocks.filmValues).toHaveBeenCalledWith(
+      expect.objectContaining({
+        letterboxdSlug: null,
+        letterboxdUrl: null,
+      }),
+    );
+  });
+
   it("selects the concurrent winner after a conflict-safe film insert", async () => {
     mocks.selectResults.push([], [canonicalFilm]);
     mocks.filmReturning.mockResolvedValue([]);

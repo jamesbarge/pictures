@@ -1,3 +1,93 @@
+## 2026-06-12: Generalized phantom-screening reconcile + sourceId hardening (plan 009)
+**PR**: pending | **Files**: `src/scripts/reconcile-phantom-screenings.ts`, `src/scripts/reconcile-phantom-screenings.test.ts`, `src/scrapers/cinemas/prince-charles.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`, `package.json`
+- New `npm run reconcile:plan -- <cinemaId>` / `reconcile:apply -- <cinemaId>`: generalized, default-dry sweep for upcoming rows the source no longer lists (`scraped_at` < last successful run start). Supersedes the one-off `_bfi_reconcile.ts` staging script.
+- Five hard guards as unit-tested pure functions: single registry-known cinema per invocation; successful scrape completed <2h ago; future-only + stale-only candidates (re-guarded inside the DELETE); 40% deletion cap (`--force-large` override); batched (100) transactional deletes with every doomed row printed first. Plus two non-overridable review-driven guards: empty "success" scrapes are refused outright, and stale rows beyond the run's demonstrated scrape horizon are excluded (printed, never deleted).
+- Prince Charles sourceId can no longer be `undefined` (derived composite fallback when the `booknow/{id}` regex misses; existing bare-digit scheme untouched).
+- SCRAPING_PLAYBOOK.md now documents every scraper's sourceId scheme — the table that makes the next scheme change detectable. Audit finding: contra plan 009's premise, 27/28 registry scrapers already emitted sourceId unconditionally.
+- Rollout (per-venue scrape → reconcile, plan Step 1/3) deliberately NOT run here — code only.
+
+---
+
+## 2026-06-12: Unmatched re-match sweep + preventive blocklist + decoration suffixes (plan 008)
+**PR**: pending | **Files**: `src/scripts/rematch-unmatched-films.ts`, `src/scrapers/utils/film-title-cleaner.ts`, `src/scrapers/utils/film-matching.ts`, `src/lib/tmdb/blocklist.ts`, `src/scripts/run-scrape-and-enrich.ts`, `package.json`
+- New `npm run rematch:unmatched` (default-dry, `--execute`, `--limit N`): retries TMDB matching for unmatched films with upcoming screenings; UPDATE in place (match_strategy='rematch-sweep' + letterboxd /tmdb/{id}) or MERGE into the row that already owns the tmdb_id (transactional repoint-before-delete); suspected non-films flagged only.
+- Derived-year second-chance pass for hint-less classics (Aliens/Adaptation anchors): dominant exact-title candidate supplies a year hint, real matcher must confirm independently at the unchanged 0.6 floor.
+- `initFilmCache` no longer serves blocklisted (known-wrong) TMDB ids via the tmdb-id index; byTitle still serves the row so no duplicate film rows spawn.
+- Cleaner strips `(Subbed)`/`(Dubbed)`/bare `(4K)`, runs suffix strips to fixpoint (stacked decorations), and returns `extractedYear` instead of discarding stripped `(YYYY)`.
+- Optional pipeline phase (`SCRAPE_REMATCH_SWEEP=1`, default off) runs the sweep `--execute --limit 100` after enrichment.
+
+---
+
+## 2026-06-12: Pipeline write-resilience — retry queue, validator provenance, progress-file fix (plan 010)
+**PR**: pending | **Files**: `src/scrapers/pipeline.ts`, `src/scrapers/utils/screening-validator.ts`, `src/scrapers/types.ts`, `src/lib/scrape-progress.ts`, `src/scrapers/chains/curzon.ts`, `src/scrapers/chains/everyman.ts`, `src/scrapers/chains/picturehouse.ts`, `src/scrapers/cinemas/castle-calendar.ts`
+- Connection-timeout `insertScreening` failures are now queued and retried once (serial, 1s gap, cap 50/venue) at end of venue instead of being lost until next week's run — the 2026-06-11 runs dropped 19 screenings at electric-white-city alone. Thunks close over resolved filmIds; no re-matching. Non-connection errors (FK violations) are never retried.
+- `RawScreening.timeSource: "iso"` flags API/ISO timestamps (Curzon, Picturehouse, Everyman, Castle). The validator keeps 09:00 ISO screenings with a warning (Everyman's real kids/early shows — 145 in live data) and raises the future cap to 180 days for ISO (Met Opera/NT Live long-lead bookings; 90 days stays for text-parsed times). Read-only sanity check: ~201 newly admitted screenings (~350 with Curzon estimated), under the 500 STOP threshold.
+- `scrape-progress.json` writes no longer fail under wave concurrency: temp filenames are unique per write (the shared `.tmp` rename race was the real cause of the every-run ENOENT — the mkdir already existed), and the dir memo resets on failure.
+
+---
+
+## 2026-06-12: Letterboxd integrity — no-anchor guard, canonical slug, era-scaled year tolerance
+**PR**: pending | **Files**: `src/db/schema/films.ts`, `src/db/enrich-letterboxd.ts`, `src/agents/fallback-enrichment/index.ts`, `src/lib/jobs/letterboxd-import.ts`, `src/lib/letterboxd-import.ts`, `src/scripts/backfill-letterboxd-slugs.ts`
+- New `films.letterboxd_slug` + `films.letterboxd_enriched_at` columns (migration applied). Letterboxd's canonical slug is now persisted from watchlist imports (`data-film-slug`) and from the post-redirect URL of successful enrichment fetches.
+- Enrichment never guesses slugs for films without a TMDB anchor (a missing link is correct; a wrong link is a bug) and prefers the stored slug over guessing. The fallback agent (all tmdb_id IS NULL films) no longer assigns Letterboxd URLs at all.
+- Watchlist matching: era-scaled year tolerance (<1970 ±3, <2000 ±2, else ±1); ambiguous same-titled entries with no year stay unmatched instead of grabbing the first candidate.
+- Backfill script (default-dry): 1,401 slug-style URLs backfilled; 149 `/tmdb/`-style URLs pending network redirect resolution.
+- Fixes the class of wrong links behind "Doctors Under Attack" → /film/gaza/ and "Nighthawks (1978)" → the 1981 Stallone film.
+
+---
+
+## 2026-06-12: Scrapers capture runtime — Rio, ICA, Garden, Curzon (plan 006)
+**PR**: pending | **Files**: `src/scrapers/cinemas/rio.ts`, `src/scrapers/cinemas/ica.ts`, `src/scrapers/cinemas/garden.ts`, `src/scrapers/chains/curzon.ts`, `src/scrapers/utils/metadata-parser.ts`, `src/lib/tmdb/match.ts`, `src/lib/tmdb/client.ts`, `src/scrapers/utils/film-matching.ts`
+- Four scrapers that already parsed runtime and threw it away now forward it as `RawScreening.runtime`: Rio (embedded JSON `RunningTime`), ICA (`#colophon` text), Garden (stats line "Director, Country, Year, Runtime"), Curzon (Vista OCAPI `runtimeInMinutes`).
+- New shared `sanitizeRuntime()` guard in `metadata-parser.ts`: coerces numeric strings, accepts only the 1–600 minute band.
+- Feeds plan 005's runtime cross-check with real data — junk TMDB stubs can now be rejected for these venues. Live-verified: Rio 38/38, Garden 88/88, ICA 19/21 films emit in-band runtimes.
+- PR #670 follow-up: runtime-verified matches no longer refetch film details (`MatchResult.details` passes through to `getFullFilmData`).
+- Barbican certificate capture (plan step 5) skipped per the plan's YAGNI clause — no consumer exists; decision recorded in the playbook.
+
+---
+
+## 2026-06-12: TMDB matcher — audit trail persisted, year discipline, runtime/director/language signals
+**PR**: pending | **Files**: `src/lib/tmdb/match.ts`, `src/scrapers/utils/film-matching.ts`, `src/scrapers/pipeline.ts`, `src/scrapers/types.ts`, `src/config/cinema-registry.ts`
+## 2026-06-12: Untrack tasks/ session scratch
+**PR**: TBD | **Files**: `.gitignore`, `tasks/todo.md` (untracked)
+- tasks/todo.md was accidentally committed in #670 (agent-worktree `git add -A`); removed from tracking and gitignored — it is per-session scratch.
+
+---
+
+## 2026-06-12: Venue scraper fixes (Cinema Museum, David Lean; Close-Up blocked)
+**PR**: pending | **Files**: `src/scrapers/constants.ts`, `src/scrapers/cinemas/cinema-museum.ts`, `src/scrapers/cinemas/david-lean.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`, `changelogs/2026-06-12-venue-scraper-fixes.md`
+- **Cinema Museum**: SiteGround WAF now 403s both browser UAs and the old self-identifying UA on the iCal feed; switched `fetchPages()` + `healthCheck()` to a generic `CALENDAR_CLIENT_USER_AGENT` ("Google-Calendar-Importer") which gets 200. scrape() → 25 screenings (was failing).
+- **David Lean**: fixed a never-worked extractor — date regex demanded 3-letter months but the site writes full names ("June"); now reads listings via `innerText` and strips detailed times before bare-hour scanning to kill phantom 00:xx screenings. scrape() → 49 screenings (was 0).
+- **Close-Up**: investigated, left UNCHANGED — every endpoint (incl. iCal-style paths) is behind an interactive Cloudflare Turnstile that rebrowser-playwright cannot solve; documented in the playbook, stopped per the 3-attempt rule.
+- Regression tests added per review: david-lean parser fixtures (the never-worked failure mode) + cinema-museum UA pinning on both network paths.
+
+---
+
+## 2026-06-12: TMDB matcher — audit trail persisted, year discipline, runtime/director/language signals
+**PR**: pending | **Files**: `src/lib/tmdb/match.ts`, `src/scrapers/utils/film-matching.ts`, `src/scrapers/pipeline.ts`, `src/scrapers/types.ts`, `src/config/cinema-registry.ts`
+- Fixed the films INSERT silently dropping `matchConfidence`/`matchStrategy`/`matchedAt`/`letterboxdUrl` — only 4.3% of matched films had any audit trail.
+- Current-year hints (screening-year pollution) are stripped before TMDB matching; historical years pass through.
+- New match signals: runtime cross-check (rejects stubs/shorts vs features, −0.15 on >30min mismatch), director credit tie-break (+0.15/−0.1, tie-situations only so typical matches add zero API calls), venue original-language prior (+0.05, Ciné Lumière → fr).
+- Fixes the class of wrong matches behind Joyland → Kansas doc and Dracula → Besson-instead-of-Jude. The 0.6 confidence floor is unchanged.
+- Review hardening: director tie-break no-ops on non-discriminating (dirty/namesake) hints; runtime check survives transient TMDB failures; matchStrategy reflects the hints that actually applied.
+
+---
+
+## 2026-06-12: Scrape circuit breaker and per-venue wall-clock cap
+**PR**: pending | **Files**: `src/lib/jobs/scrape-all.ts`, `src/scrapers/runner-factory.ts`, `src/lib/jobs/scrape-all.test.ts`, `src/scrapers/runner-factory.test.ts`
+- Added a run-level circuit breaker to the scrape orchestrator: after 3 consecutive connection-level scraper failures (override via `SCRAPE_BREAKER_THRESHOLD`) the run aborts, remaining scrapers and enrichment are skipped, and a Telegram alert fires.
+- Added a hard per-venue wall-clock cap (default 10 min, override via `SCRAPE_VENUE_TIMEOUT_MS`) around the entire venue unit — scrape, pipeline phases, retries — so awaits not covered by `withDbTimeout` can no longer wedge the run; chain scrapers get the cap scaled by venue count.
+- Why: on 2026-06-09 a wedged Supabase pooler turned four venue scrapes into 13.4h retry loops and took the production DB offline for 13.7h; on 2026-06-11 two runs hung 50/25 min on inter-phase awaits. A wedged DB now costs minutes, not hours.
+
+---
+
+## 2026-06-12: Scrape accuracy audit — handoff plans 004–010
+**PR**: TBD | **Files**: `plans/HANDOFF-2026-06-11.md`, `plans/004-…010-*.md`, `plans/README.md`
+- Master handoff report + seven self-contained implementation plans from the 2026-06-11 live `/scrape` run and four-way audit (TMDB matching, Letterboxd, scraper metadata, live-DB evidence).
+- Key findings encoded: films INSERT drops match audit trail (4.3% coverage); runtime parsed-then-discarded by 4 scrapers; Letterboxd slug-guessing without TMDB anchor; 392 BFI phantom rows (since swept); double-wedge reproduction of the missing circuit breaker.
+
+---
+
 ## 2026-06-11: Standardized API rate-limit wrapper
 **PR**: #667 | **Files**: `src/lib/rate-limit.ts`, public API route handlers, `src/app/api/travel-times/route.ts`
 - Added a typed `withRateLimit()` route wrapper that centralizes per-IP checks and standardizes 429 responses as `{ error, code: "RATE_LIMITED" }` with retry headers.

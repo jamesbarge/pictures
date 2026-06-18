@@ -83,6 +83,32 @@ const COUNTRIES = [
   "Great Britain",
 ];
 
+/** Sane band for a venue-provided runtime hint, in minutes (plan 006). */
+const MIN_RUNTIME_MINUTES = 1;
+const MAX_RUNTIME_MINUTES = 600;
+
+/**
+ * Sanitize a scraper-extracted runtime before it lands on a RawScreening.
+ *
+ * Accepts numbers or numeric strings (some venue JSON serializes runtime as
+ * a string). Returns the runtime in whole minutes when it falls in the sane
+ * 1–600 band, otherwise undefined — a 0/negative value is a missing field,
+ * and anything above 10 hours is parser noise, not a film.
+ */
+export function sanitizeRuntime(value: unknown): number | undefined {
+  if (value === null || value === undefined) return undefined;
+  const n =
+    typeof value === "number"
+      ? value
+      : typeof value === "string"
+        ? parseInt(value, 10)
+        : NaN;
+  if (!Number.isFinite(n)) return undefined;
+  const minutes = Math.trunc(n);
+  if (minutes < MIN_RUNTIME_MINUTES || minutes > MAX_RUNTIME_MINUTES) return undefined;
+  return minutes;
+}
+
 /**
  * Check if a string is a known country
  */

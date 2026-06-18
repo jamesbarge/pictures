@@ -383,6 +383,14 @@ interface CleanTitleResult {
   cleanedTitle: string;
   strippedPrefix: string | null;
   strippedSuffix: string | null;
+  /**
+   * Year extracted from a stripped trailing "(YYYY)" or from a decoration
+   * suffix like "(2026 Re-release)". A plain trailing release year wins over
+   * a decoration year when both are present. Callers may use it as a TMDB
+   * year hint — subject to the usual year discipline (screening-year
+   * pollution means current/future years must be discarded by the caller).
+   */
+  extractedYear?: number;
 }
 
 /**
@@ -459,13 +467,42 @@ export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
     }
   }
 
-  // Strip trailing year like "(1997)" or "(2026)" — year is used as TMDB hint, not title text
-  cleaned = cleaned.replace(/\s*\(\d{4}\)\s*$/, "").trim();
+  // Strip trailing year like "(1997)" or "(2026)" — captured as a TMDB year
+  // hint instead of silently discarded (plan 008). A plain trailing release
+  // year overwrites a decoration year captured below ("Akira (1988) (2026
+  // Re-release)" should hint 1988, not 2026).
+  let extractedYear: number | undefined;
+  const stripTrailingYear = (input: string): string => {
+    const match = input.match(/\s*\((\d{4})\)\s*$/);
+    if (!match) return input;
+    extractedYear = parseInt(match[1], 10);
+    return input.slice(0, match.index).trim();
+  };
+  cleaned = stripTrailingYear(cleaned);
 
   // Capture state before suffix stripping to detect what was removed
   const beforeSuffixStrip = cleaned;
 
-  cleaned = cleaned
+  // Decoration suffixes stack — "AKIRA (2026 Re-release) (Subbed)" needs one
+  // pass to remove "(Subbed)" and a second for "(2026 Re-release)". Apply the
+  // suffix strips iteratively until fixpoint, max 3 passes (plan 008).
+  for (let pass = 0; pass < 3; pass++) {
+    const beforePass = cleaned;
+
+    // Capture the year inside "(2026 Re-release)"-style decorations as a
+    // year hint before the chain below discards it. `??=` so a plain
+    // trailing release year (stripTrailingYear above/below) wins on collision.
+    // Known limitation (reviewed, accepted): only decorations trailing at the
+    // START of a pass are seen — "Film (2026 Re-release) (PG)" loses the 2026
+    // because one pass strips "(PG)" and "(2026 Re-release)" in a single
+    // chain. Decoration years are almost always current-year and get
+    // discarded by year discipline anyway.
+    const decorationYear = cleaned.match(
+      /\((\d{4})\s+(?:re-?release|restoration|reissue|encore)\)\s*$/i,
+    );
+    if (decorationYear) extractedYear ??= parseInt(decorationYear[1], 10);
+
+    cleaned = cleaned
     // Remove BBFC ratings: (U), (PG), (12), (12A), (15), (18), with optional asterisk
     .replace(/\s*\((U|PG|12A?|15|18)\*?\)\s*$/i, "")
     // Remove bracketed notes like [is a Christmas Movie]
@@ -513,21 +550,32 @@ export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
     .replace(/\s*\((?:world|uk|london|european?|4k\s+restoration)\s+premiere\)\s*$/i, "")
     // Remove standalone "(Sing-Along)" suffix (prefix version already handled above)
     .replace(/\s*\(sing[\s-]*a[\s-]*long\)\s*$/i, "")
+    // Remove "(Subbed)" / "(Dubbed)" language-presentation decorations
+    .replace(/\s*\((?:subbed|dubbed)\)\s*$/i, "")
+    // Remove bare "(4K)" format decoration ("(4K Restoration)" handled above)
+    .replace(/\s*\(4k\)\s*$/i, "")
     // Remove "- Weird Wednesdays" and similar event series suffixes
     .replace(/\s*-\s*weird\s+wednesdays?\s*$/i, "")
     .trim();
 
-  // Apply patrol-learned suffixes after the hand-curated list, since the
-  // hand-curated patterns are tighter and should win on collision.
-  for (const re of LEARNED_SUFFIX_REGEXES) {
-    cleaned = cleaned.replace(re, "").trim();
+    // Apply patrol-learned suffixes after the hand-curated list, since the
+    // hand-curated patterns are tighter and should win on collision.
+    for (const re of LEARNED_SUFFIX_REGEXES) {
+      cleaned = cleaned.replace(re, "").trim();
+    }
+
+    // A stripped decoration can expose a trailing "(YYYY)" that was hidden
+    // mid-string on entry — capture it too.
+    cleaned = stripTrailingYear(cleaned);
+
+    if (cleaned === beforePass) break;
   }
 
   const strippedSuffix = beforeSuffixStrip !== cleaned
     ? beforeSuffixStrip.slice(cleaned.length).trim()
     : null;
 
-  return { cleanedTitle: cleaned, strippedPrefix, strippedSuffix };
+  return { cleanedTitle: cleaned, strippedPrefix, strippedSuffix, extractedYear };
 }
 
 /**

@@ -13,7 +13,7 @@ import { levenshteinDistance } from "@/lib/levenshtein";
 import { loadThresholds } from "@/lib/data-quality/load-thresholds";
 
 import { getTMDBClient } from "./client";
-import type { TMDBSearchResult } from "./types";
+import type { TMDBMovieDetails, TMDBSearchResult } from "./types";
 import { analyzeTitleAmbiguity, hasSufficientMetadata } from "./ambiguity";
 import { getBlockedTmdbIds, checkTitleBlocklist, incrementBlocklistUsage } from "./blocklist";
 
@@ -31,6 +31,17 @@ const YEAR_MISMATCH_PENALTY = -0.1;
 const CLASSIC_YEAR_THRESHOLD = 2000;
 const CLASSIC_YEAR_MISMATCH_TOLERANCE = 5;
 const CLASSIC_CONFIDENCE_FLOOR = 0.85;
+// Runtime cross-check (plan 005, step 3)
+const MIN_RUNTIME_HINT_MINUTES = 40; // ignore short-programme hints
+const STUB_RUNTIME_MAX_MINUTES = 30; // TMDB runtime below this = stub/short
+const FEATURE_RUNTIME_MIN_MINUTES = 60; // venue runtime at/above this = feature
+const RUNTIME_MISMATCH_TOLERANCE_MINUTES = 30;
+const RUNTIME_MISMATCH_PENALTY = 0.15;
+// Director credit tie-break (plan 005, step 4)
+const DIRECTOR_MATCH_BONUS = 0.15;
+const DIRECTOR_MISMATCH_PENALTY = 0.1;
+// Venue original-language prior (plan 005, step 5)
+const VENUE_LANGUAGE_BONUS = 0.05;
 
 /**
  * Get TMDB matching thresholds from the AutoQuality-tuned config.
@@ -51,6 +62,10 @@ function getTmdbThresholds() {
 interface MatchHints {
   year?: number;
   director?: string;
+  /** Film runtime in minutes from the venue (cross-checked against TMDB) */
+  runtime?: number;
+  /** ISO 639-1 language priors for the venue (e.g. ["fr"] for Ciné Lumière) */
+  venueLanguages?: string[];
   /** If true, skip ambiguity checks (for re-processing with known good metadata) */
   skipAmbiguityCheck?: boolean;
 }
@@ -61,6 +76,12 @@ interface MatchResult {
   title: string;
   year: number;
   posterPath: string | null;
+  /**
+   * Full TMDB details, populated only when the runtime cross-check already
+   * fetched them — lets callers (matchAndCreateFromTMDB) skip a duplicate
+   * getFilmDetails call on runtime-verified matches.
+   */
+  details?: TMDBMovieDetails;
 }
 
 /**
@@ -164,19 +185,87 @@ export async function matchFilmToTMDB(
   // Search with year hint if provided
   const searchResults = await client.searchFilms(title, hints?.year);
 
+  let best: MatchResult | null;
   if (searchResults.results.length === 0) {
     // Try without year hint
-    if (hints?.year) {
-      const fallbackResults = await client.searchFilms(title);
-      if (fallbackResults.results.length === 0) {
-        return null;
-      }
-      return findBestMatch(title, fallbackResults.results, hints);
+    if (!hints?.year) {
+      return null;
     }
+    const fallbackResults = await client.searchFilms(title);
+    if (fallbackResults.results.length === 0) {
+      return null;
+    }
+    best = await findBestMatch(title, fallbackResults.results, hints);
+  } else {
+    best = await findBestMatch(title, searchResults.results, hints);
+  }
+
+  return applyRuntimeCrossCheck(best, hints, client);
+}
+
+/**
+ * Cross-check the winning candidate's TMDB runtime against the venue-provided
+ * runtime (plan 005, step 3). Gated on the hint being present and
+ * feature-plausible, so typical matches make zero extra API calls.
+ *
+ * - TMDB runtime missing/tiny vs a feature-length hint → reject (junk stubs
+ *   and shorts have runtime 0/null/<30 on TMDB).
+ * - Runtimes differing by >30 min → −0.15 confidence (e.g. Nosferatu 2024's
+ *   131 min vs the 1922 original's 97 min), re-gated on the floor.
+ */
+async function applyRuntimeCrossCheck(
+  best: MatchResult | null,
+  hints: MatchHints | undefined,
+  client: ReturnType<typeof getTMDBClient>
+): Promise<MatchResult | null> {
+  if (!best || !hints?.runtime || hints.runtime < MIN_RUNTIME_HINT_MINUTES) {
+    return best;
+  }
+
+  // Best-effort, like the director tie-break: a transient TMDB failure must
+  // skip verification and keep the match — throwing here would convert a
+  // successful match into a TMDB-less film row via the pipeline's fallback.
+  let details: Awaited<ReturnType<typeof client.getFilmDetails>>;
+  try {
+    details = await client.getFilmDetails(best.tmdbId);
+  } catch (err) {
+    console.warn(
+      `[tmdb-match] Runtime cross-check skipped for tmdb=${best.tmdbId}: ` +
+        `getFilmDetails failed (${err instanceof Error ? err.message : String(err)})`
+    );
+    return best;
+  }
+  const tmdbRuntime = details.runtime ?? 0;
+
+  // Reuse the fetched details downstream — matchAndCreateFromTMDB would
+  // otherwise refetch them via getFullFilmData.
+  best.details = details;
+
+  // Stub/short vs feature: a candidate with no or tiny runtime cannot be the
+  // feature-length film the venue is showing.
+  if (tmdbRuntime < STUB_RUNTIME_MAX_MINUTES && hints.runtime >= FEATURE_RUNTIME_MIN_MINUTES) {
+    console.log(
+      `[tmdb-match] Rejecting "${best.title}" (tmdb=${best.tmdbId}): ` +
+        `TMDB runtime ${tmdbRuntime}min vs venue runtime ${hints.runtime}min (stub/short vs feature)`
+    );
     return null;
   }
 
-  return findBestMatch(title, searchResults.results, hints);
+  if (tmdbRuntime > 0) {
+    const diff = Math.abs(tmdbRuntime - hints.runtime);
+    if (diff > RUNTIME_MISMATCH_TOLERANCE_MINUTES) {
+      best.confidence = Math.max(0, best.confidence - RUNTIME_MISMATCH_PENALTY);
+    }
+    if (best.confidence < getTmdbThresholds().minMatchConfidence) {
+      console.log(
+        `[tmdb-match] Rejecting "${best.title}" (tmdb=${best.tmdbId}): ` +
+          `runtime mismatch (${tmdbRuntime}min vs ${hints.runtime}min) dropped confidence below floor`
+      );
+      return null;
+    }
+  }
+
+  return best;
 }
 
 /**
@@ -187,12 +276,17 @@ export async function matchFilmToTMDB(
  * - Year match: +0.2 for exact, +0.1 for ±1 year
  * - Popularity: reduced to max 3% to prevent blockbuster bias
  * - Match count penalty: reduces confidence when many films have similar scores
+ * - Director credit tie-break: when >= 2 candidates score within the
+ *   competitor threshold of the best AND a director hint exists, candidates
+ *   the hinted director actually directed get +0.15, others -0.1
+ *   (async only for that tie-only TMDB person lookup — typical matches make
+ *   zero extra API calls)
  */
-function findBestMatch(
+async function findBestMatch(
   searchTitle: string,
   results: TMDBSearchResult[],
   hints?: MatchHints
-): MatchResult | null {
+): Promise<MatchResult | null> {
   // Load AutoQuality-tuned thresholds (cached, near-zero cost)
   const tmdb = getTmdbThresholds();
 
@@ -254,8 +348,16 @@ function findBestMatch(
     // A film with popularity 1000 gets only 3% boost, not 10%
     const popularityBonus = Math.min(result.popularity / POPULARITY_DIVISOR, MAX_POPULARITY_BONUS);
 
+    // Venue language prior (plan 005, step 5): venues that program a
+    // specific national cinema (e.g. Ciné Lumière → fr) nudge same-language
+    // candidates past otherwise-tied ones. Zero API cost.
+    const languageBonus = hints?.venueLanguages?.includes(result.original_language)
+      ? VENUE_LANGUAGE_BONUS
+      : 0;
+
     // Calculate total score
-    const score = titleSimilarity * tmdb.titleSimilarityWeight + yearBonus + popularityBonus;
+    const score =
+      titleSimilarity * tmdb.titleSimilarityWeight + yearBonus + popularityBonus + languageBonus;
 
     scoredResults.push({ result, titleSimilarity, score });
   }
@@ -265,15 +367,74 @@ function findBestMatch(
   // Sort by score descending
   scoredResults.sort((a, b) => b.score - a.score);
 
-  const best = scoredResults[0];
+  let best = scoredResults[0];
 
   // Calculate match count penalty
   // If many films have similar scores, reduce confidence
   // This catches cases like "Ten" where 5 films all score 0.85
-  const competitorThreshold = best.score * tmdb.competitorThresholdRatio;
-  const closeCompetitors = scoredResults.filter(
+  let competitorThreshold = best.score * tmdb.competitorThresholdRatio;
+  let closeCompetitors = scoredResults.filter(
     (r) => r.score >= competitorThreshold
   ).length;
+
+  // Director credit tie-break (plan 005, step 4): only when the title+year
+  // signals genuinely tie (>= 2 close competitors) AND a director hint
+  // exists. Resolves "Dracula" -> Radu Jude's film instead of Besson's
+  // higher-popularity one. The gate keeps the two extra TMDB calls
+  // tie-situations-only.
+  const directorHint = hints?.director?.trim();
+  if (directorHint && closeCompetitors >= 2) {
+    try {
+      const client = getTMDBClient();
+      const directorId = await client.findDirectorId(directorHint);
+      if (directorId) {
+        const credits = await client.getPersonCredits(directorId);
+        const directedIds = new Set(
+          credits.crew.filter((c) => c.job === "Director").map((c) => c.id)
+        );
+        // Only adjust when the resolved director actually directed at least
+        // one close competitor. A dirty hint (misspelling, namesake picked by
+        // findDirectorId) that discriminates nothing must be a no-op:
+        // penalizing every tied candidate both rejects correct matches and
+        // can promote a weaker, never-examined candidate past the tie set.
+        const discriminates = scoredResults.some(
+          (s) => s.score >= competitorThreshold && directedIds.has(s.result.id)
+        );
+        if (discriminates) {
+          for (const scored of scoredResults) {
+            if (scored.score >= competitorThreshold) {
+              scored.score += directedIds.has(scored.result.id)
+                ? DIRECTOR_MATCH_BONUS
+                : -DIRECTOR_MISMATCH_PENALTY;
+            }
+          }
+          scoredResults.sort((a, b) => b.score - a.score);
+          if (scoredResults[0] !== best) {
+            console.log(
+              `[tmdb-match] Director tie-break for "${searchTitle}": ` +
+                `"${directorHint}" credits pick tmdb=${scoredResults[0].result.id} over tmdb=${best.result.id}`
+            );
+          }
+          best = scoredResults[0];
+          competitorThreshold = best.score * tmdb.competitorThresholdRatio;
+          closeCompetitors = scoredResults.filter(
+            (r) => r.score >= competitorThreshold
+          ).length;
+        } else {
+          console.warn(
+            `[tmdb-match] Director hint "${directorHint}" matches no close ` +
+              `candidate for "${searchTitle}" — ignoring (dirty hint or namesake)`
+          );
+        }
+      }
+    } catch (error) {
+      // Director resolution is best-effort — never fail the match over it
+      console.warn(
+        `[tmdb-match] Director credit check failed for "${directorHint}":`,
+        error
+      );
+    }
+  }
 
   let matchCountPenalty = 0;
   if (closeCompetitors >= 4) {

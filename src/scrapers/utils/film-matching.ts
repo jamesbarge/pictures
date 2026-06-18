@@ -16,6 +16,7 @@ import {
   isSimilarityConfigured,
 } from "@/lib/film-similarity";
 import { v4 as uuidv4 } from "uuid";
+import { isBlockedTmdbId } from "@/lib/tmdb/blocklist";
 import { sanitizeDirectors, sanitizeYear } from "./film-write-guards";
 
 type FilmRecord = typeof films.$inferSelect;
@@ -66,6 +67,7 @@ export async function initFilmCache(
     "initFilmCache: select films",
   );
 
+  let blockedCount = 0;
   for (const film of allFilms) {
     const normalized = normalizeTitle(film.title);
     // If duplicate normalized titles exist, keep the one with more data (has TMDB ID)
@@ -73,15 +75,33 @@ export async function initFilmCache(
     if (!existing || (film.tmdbId && !existing.tmdbId)) {
       cache.byTitle.set(normalized, film);
     }
-    // Build TMDB ID index — two films with same TMDB ID are always the same film
+    // Build TMDB ID index — two films with same TMDB ID are always the same film.
+    // Preventive blocklist (plan 008): a film carrying a blocklisted (known
+    // wrong) TMDB id must NOT be reachable through the tmdb-id index, so the
+    // wrong id can't be reused by tmdb-id lookups. Belt-and-braces: the
+    // matcher already filters blocked ids from search results, so this skip
+    // only matters if a blocked id reaches the dedup path some other way.
+    // The byTitle entry above is intentionally kept — skipping it too would
+    // make the same-title path create a duplicate film row per scrape. Row
+    // REPAIR (re-matching to the correct id) is the rematch sweep's job
+    // (rematch-unmatched-films.ts), not this cache's.
     if (film.tmdbId) {
-      cache.byTmdbId.set(film.tmdbId, film);
+      if (isBlockedTmdbId(film.tmdbId)) {
+        blockedCount++;
+      } else {
+        cache.byTmdbId.set(film.tmdbId, film);
+      }
     }
   }
 
   console.log(
     `[Pipeline] Film cache initialized with ${cache.byTitle.size} unique films, ${cache.byTmdbId.size} TMDB IDs (${allFilms.length} total)`,
   );
+  if (blockedCount > 0) {
+    console.log(
+      `[Pipeline] ${blockedCount} cached films carry blocklisted TMDB ids — invisible to tmdb-id lookups; run the rematch sweep to repair the rows`,
+    );
+  }
   return cache;
 }
 
@@ -159,12 +179,38 @@ export async function matchAndCreateFromTMDB(
   matchingTitle: string,
   scraperYear?: number,
   scraperDirector?: string,
-  scraperPosterUrl?: string
+  scraperPosterUrl?: string,
+  scraperRuntime?: number,
+  venueLanguages?: string[]
 ): Promise<string | null> {
+  // Year discipline: many scrapers send the SCREENING year as the film year,
+  // and pipeline.ts also extracts "(YYYY)" from titles — for the current year
+  // those are indistinguishable from screening-year pollution. A wrong
+  // current-year hint gives junk stubs a +0.2/+0.3 exact-year bonus and
+  // SELECTS the wrong film; losing a true hint merely costs a bonus. Same
+  // rule as createFilmWithoutTMDB: only accept years strictly before the
+  // current year (and within sane bounds).
+  const currentYear = new Date().getFullYear();
+  const releaseYearHint =
+    scraperYear && scraperYear >= 1900 && scraperYear < currentYear
+      ? scraperYear
+      : undefined;
+
   const match = await matchFilmToTMDB(matchingTitle, {
-    year: scraperYear,
+    year: releaseYearHint,
     director: scraperDirector,
+    runtime: scraperRuntime,
+    venueLanguages,
   });
+
+  // Audit-trail accuracy: record the strategy that actually applied. After
+  // year-stripping, a current-year film matches with NO year hint — labeling
+  // it "auto-with-year" would be wrong (schema vocabulary: films.ts).
+  const matchStrategy = releaseYearHint
+    ? "auto-with-year"
+    : scraperDirector
+      ? "auto-with-director"
+      : "auto-no-hints";
 
   if (!match) {
     return null;
@@ -188,9 +234,10 @@ export async function matchAndCreateFromTMDB(
     return byTmdbId[0].id;
   }
 
-  // Get full details from TMDB
+  // Get full details from TMDB. When the runtime cross-check already fetched
+  // the details for this match, reuse them instead of refetching.
   const client = getTMDBClient();
-  const details = await client.getFullFilmData(match.tmdbId);
+  const details = await client.getFullFilmData(match.tmdbId, match.details);
 
   // Determine poster URL - try TMDB first, then fallback sources
   let posterUrl = details.details.poster_path
@@ -240,6 +287,13 @@ export async function matchAndCreateFromTMDB(
     decade: guardedYear ? getDecade(guardedYear) : null,
     tmdbRating: details.details.vote_average,
     tmdbPopularity: details.details.popularity,
+    // Match audit trail — must mirror the addToFilmCache call below. These
+    // were silently dropped before plan 005: only 4.3% of matched films had
+    // any recorded confidence.
+    letterboxdUrl: `https://letterboxd.com/tmdb/${match.tmdbId}`,
+    matchConfidence: match.confidence ?? null,
+    matchStrategy,
+    matchedAt: new Date(),
   });
 
   // Add to cache so subsequent lookups in this run find it
@@ -273,8 +327,10 @@ export async function matchAndCreateFromTMDB(
     tmdbPopularity: details.details.popularity,
     letterboxdUrl: `https://letterboxd.com/tmdb/${match.tmdbId}`,
     letterboxdRating: null,
+    letterboxdSlug: null,
+    letterboxdEnrichedAt: null,
     matchConfidence: match.confidence ?? null,
-    matchStrategy: "auto-with-year",
+    matchStrategy,
     matchedAt: new Date(),
     enrichmentStatus: null,
     createdAt: new Date(),
@@ -379,6 +435,8 @@ export async function createFilmWithoutTMDB(
     tmdbPopularity: null,
     letterboxdUrl: null,
     letterboxdRating: null,
+    letterboxdSlug: null,
+    letterboxdEnrichedAt: null,
     matchConfidence: null,
     matchStrategy: null,
     matchedAt: null,
