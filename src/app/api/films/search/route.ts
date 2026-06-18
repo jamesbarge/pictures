@@ -25,7 +25,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { films, screenings, cinemas } from "@/db/schema";
 import { CACHE_5MIN, CACHE_10MIN } from "@/lib/cache-headers";
-import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
+import { RATE_LIMITS, withRateLimit } from "@/lib/rate-limit";
 import type { CinemaAddress } from "@/types/cinema";
 
 const querySchema = z.object({
@@ -52,19 +52,7 @@ function formatCinemaAddress(address: CinemaAddress | null): string | null {
   return parts.length > 0 ? parts.join(", ") : null;
 }
 
-export async function GET(request: NextRequest) {
-  const ip = getClientIP(request);
-  const rateLimitResult = await checkRateLimit(ip, {
-    ...RATE_LIMITS.search,
-    prefix: "search",
-  });
-  if (!rateLimitResult.success) {
-    return NextResponse.json(
-      { error: "Too many requests", results: [], cinemas: [] },
-      { status: 429, headers: { "Retry-After": String(rateLimitResult.resetIn) } }
-    );
-  }
-
+export const GET = withRateLimit(RATE_LIMITS.search, "search")(async (request: NextRequest) => {
   const searchParams = request.nextUrl.searchParams;
   const parseResult = querySchema.safeParse({
     q: searchParams.get("q") || undefined,
@@ -395,4 +383,4 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { checkRateLimit, getClientIP, RATE_LIMITS } from "./rate-limit";
+import { checkRateLimit, getClientIP, RATE_LIMITS, withRateLimit } from "./rate-limit";
 
 // Tests run without UPSTASH_REDIS_REST_URL, so they exercise the in-memory fallback.
 
@@ -98,7 +98,7 @@ describe("getClientIP", () => {
     expect(getClientIP(request)).toBe("unknown");
   });
 
-  it("should prefer x-forwarded-for over other headers", () => {
+  it("should prefer platform-set x-real-ip over spoofable x-forwarded-for", () => {
     const request = new Request("http://example.com", {
       headers: {
         "x-forwarded-for": "10.0.0.1",
@@ -106,7 +106,60 @@ describe("getClientIP", () => {
         "x-real-ip": "10.0.0.3",
       },
     });
-    expect(getClientIP(request)).toBe("10.0.0.1");
+    expect(getClientIP(request)).toBe("10.0.0.3");
+  });
+
+  it("should prefer cf-connecting-ip over x-forwarded-for when x-real-ip is absent", () => {
+    const request = new Request("http://example.com", {
+      headers: {
+        "x-forwarded-for": "10.0.0.1",
+        "cf-connecting-ip": "10.0.0.2",
+      },
+    });
+    expect(getClientIP(request)).toBe("10.0.0.2");
+  });
+});
+
+describe("withRateLimit", () => {
+  it("forwards requests and dynamic route context while under the limit", async () => {
+    const handler = vi.fn(async (_request: Request, context: { id: string }) =>
+      Response.json({ id: context.id }));
+    const wrapped = withRateLimit(
+      { limit: 1, windowSec: 60 },
+      "wrapper-context"
+    )(handler);
+
+    const request = new Request("http://example.com", {
+      headers: { "x-forwarded-for": "203.0.113.10" },
+    });
+    const response = await wrapped(request, { id: "film-1" });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ id: "film-1" });
+    expect(handler).toHaveBeenCalledOnce();
+  });
+
+  it("returns the standard 429 envelope and does not invoke the handler", async () => {
+    const handler = vi.fn(async () => Response.json({ ok: true }));
+    const wrapped = withRateLimit(
+      { limit: 1, windowSec: 60 },
+      "wrapper-block"
+    )(handler);
+    const request = new Request("http://example.com", {
+      headers: { "x-forwarded-for": "203.0.113.11" },
+    });
+
+    await wrapped(request);
+    const response = await wrapped(request);
+
+    expect(response.status).toBe(429);
+    expect(await response.json()).toEqual({
+      error: "Too many requests",
+      code: "RATE_LIMITED",
+    });
+    expect(response.headers.get("Retry-After")).toBe("60");
+    expect(response.headers.get("X-RateLimit-Remaining")).toBe("0");
+    expect(handler).toHaveBeenCalledOnce();
   });
 });
 
@@ -124,5 +177,10 @@ describe("RATE_LIMITS presets", () => {
   it("should have correct sync limits", () => {
     expect(RATE_LIMITS.sync.limit).toBe(10);
     expect(RATE_LIMITS.sync.windowSec).toBe(60);
+  });
+
+  it("should protect paid third-party API endpoints", () => {
+    expect(RATE_LIMITS.paidApi.limit).toBe(20);
+    expect(RATE_LIMITS.paidApi.windowSec).toBe(60);
   });
 });

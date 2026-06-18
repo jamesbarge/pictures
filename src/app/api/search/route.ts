@@ -9,22 +9,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { films, screenings } from "@/db/schema";
 import { CACHE_5MIN } from "@/lib/cache-headers";
-import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
+import { RATE_LIMITS, withRateLimit } from "@/lib/rate-limit";
 
-export async function GET(request: NextRequest) {
-  // Rate limit check
-  const ip = getClientIP(request);
-  const rateLimitResult = await checkRateLimit(ip, { ...RATE_LIMITS.search, prefix: "search-legacy" });
-  if (!rateLimitResult.success) {
-    return NextResponse.json(
-      { error: "Too many requests", films: [] },
-      {
-        status: 429,
-        headers: { "Retry-After": String(rateLimitResult.resetIn) },
-      }
-    );
-  }
-
+export const GET = withRateLimit(RATE_LIMITS.search, "search-legacy")(async (request: NextRequest) => {
   const searchParams = request.nextUrl.searchParams;
   const query = searchParams.get("q");
 
@@ -70,4 +57,4 @@ export async function GET(request: NextRequest) {
       headers: CACHE_5MIN,
     }
   );
-}
+});

@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { handleApiError } from "@/lib/api-errors";
-import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
+import { RATE_LIMITS, withRateLimit } from "@/lib/rate-limit";
 import { getActiveCinemas } from "@/db/repositories/cinema";
 import { CACHE_10MIN } from "@/lib/cache-headers";
 
@@ -15,23 +15,8 @@ const querySchema = z.object({
   features: z.string().max(300).optional(), // comma-separated
 });
 
-export async function GET(request: NextRequest) {
+export const GET = withRateLimit(RATE_LIMITS.public, "cinemas")(async (request: NextRequest) => {
   try {
-    const ip = getClientIP(request);
-    const rateLimitResult = await checkRateLimit(ip, {
-      ...RATE_LIMITS.public,
-      prefix: "cinemas",
-    });
-    if (!rateLimitResult.success) {
-      return NextResponse.json(
-        { error: "Too many requests" },
-        {
-          status: 429,
-          headers: { "Retry-After": String(rateLimitResult.resetIn) },
-        }
-      );
-    }
-
     const searchParams = request.nextUrl.searchParams;
     const parseResult = querySchema.safeParse({
       chain: searchParams.get("chain") || undefined,
@@ -63,4 +48,4 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     return handleApiError(error, "GET /api/cinemas");
   }
-}
+});

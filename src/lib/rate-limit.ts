@@ -14,7 +14,7 @@ import { Redis } from "@upstash/redis";
 // ---------------------------------------------------------------------------
 
 /** Configuration for a rate limit rule applied to an API route. */
-interface RateLimitConfig {
+export interface RateLimitConfig {
   /** Maximum number of requests per window */
   limit: number;
   /** Time window in seconds */
@@ -56,11 +56,16 @@ const redis = hasRedis ? new Redis({ url: redisUrl!, token: redisToken! }) : nul
 const ratelimiters = new Map<string, Ratelimit>();
 
 function getOrCreateRatelimiter(config: RateLimitConfig): Ratelimit {
+  if (!redis) {
+    // checkRateLimit guards this; enforce the invariant here too so a future
+    // direct caller fails loudly instead of constructing a broken Ratelimit.
+    throw new Error("getOrCreateRatelimiter requires a configured Redis client");
+  }
   const key = `${config.prefix ?? ""}:${config.limit}:${config.windowSec}`;
   let rl = ratelimiters.get(key);
   if (!rl) {
     rl = new Ratelimit({
-      redis: redis!,
+      redis,
       limiter: Ratelimit.slidingWindow(config.limit, `${config.windowSec} s`),
       prefix: `rl:${config.prefix ?? "default"}`,
       analytics: false,
@@ -184,25 +189,66 @@ export async function checkRateLimit(
  * Works with Vercel, Cloudflare, and standard proxies.
  */
 export function getClientIP(request: Request): string {
-  // Vercel
-  const forwardedFor = request.headers.get("x-forwarded-for");
-  if (forwardedFor) {
-    return forwardedFor.split(",")[0].trim();
-  }
-
-  // Cloudflare
-  const cfConnectingIP = request.headers.get("cf-connecting-ip");
-  if (cfConnectingIP) {
-    return cfConnectingIP;
-  }
-
-  // Standard
+  // Vercel sets x-real-ip to the verified client IP and strips inbound
+  // values, so it cannot be spoofed through the platform edge. Check it
+  // before x-forwarded-for, whose leftmost entry is client-controlled on
+  // generic proxies.
   const realIP = request.headers.get("x-real-ip");
   if (realIP) {
     return realIP;
   }
 
+  // Cloudflare sets this at its edge and strips inbound values.
+  const cfConnectingIP = request.headers.get("cf-connecting-ip");
+  if (cfConnectingIP) {
+    return cfConnectingIP;
+  }
+
+  // Fallback for other proxies. On Vercel this header is also
+  // platform-sanitized, so the first entry is the real client.
+  const forwardedFor = request.headers.get("x-forwarded-for");
+  if (forwardedFor) {
+    return forwardedFor.split(",")[0].trim();
+  }
+
   return "unknown";
+}
+
+type RouteHandler<R extends Request, A extends unknown[]> = (
+  request: R,
+  ...args: A
+) => Promise<Response>;
+
+/**
+ * Wrap a route handler with a standardized per-IP rate limit.
+ *
+ * The variadic handler signature preserves both static routes and dynamic
+ * routes that receive a Next.js context argument.
+ */
+export function withRateLimit(config: RateLimitConfig, prefix: string) {
+  const prefixedConfig = { ...config, prefix };
+
+  return function wrap<R extends Request, A extends unknown[]>(
+    handler: RouteHandler<R, A>
+  ): RouteHandler<R, A> {
+    return async (request: R, ...args: A): Promise<Response> => {
+      const result = await checkRateLimit(getClientIP(request), prefixedConfig);
+      if (!result.success) {
+        return Response.json(
+          { error: "Too many requests", code: "RATE_LIMITED" },
+          {
+            status: 429,
+            headers: {
+              "Retry-After": String(result.resetIn),
+              "X-RateLimit-Remaining": "0",
+            },
+          }
+        );
+      }
+
+      return handler(request, ...args);
+    };
+  };
 }
 
 /** Preset rate limit configurations for common API route categories. */
@@ -215,4 +261,6 @@ export const RATE_LIMITS = {
   user: { limit: 20, windowSec: 60 },
   // Auth/sync endpoints - strict limits
   sync: { limit: 10, windowSec: 60 },
+  // Endpoints that trigger paid third-party API requests
+  paidApi: { limit: 20, windowSec: 60 },
 } satisfies Record<string, RateLimitConfig>;

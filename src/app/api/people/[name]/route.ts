@@ -14,7 +14,7 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { CACHE_5MIN } from "@/lib/cache-headers";
-import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
+import { RATE_LIMITS, withRateLimit } from "@/lib/rate-limit";
 
 const paramsSchema = z.object({
   name: z.string().min(1).max(200),
@@ -39,23 +39,11 @@ function toRows<T>(result: unknown): T[] {
   return (result as { rows?: T[] }).rows ?? [];
 }
 
-export async function GET(
-  request: NextRequest,
+export const GET = withRateLimit(RATE_LIMITS.public, "people-detail")(async (
+  _request: NextRequest,
   { params }: { params: Promise<{ name: string }> }
-) {
+) => {
   try {
-    const ip = getClientIP(request);
-    const rateLimitResult = await checkRateLimit(ip, {
-      ...RATE_LIMITS.public,
-      prefix: "people-detail",
-    });
-    if (!rateLimitResult.success) {
-      return NextResponse.json(
-        { error: "Too many requests" },
-        { status: 429, headers: { "Retry-After": String(rateLimitResult.resetIn) } }
-      );
-    }
-
     const { name: rawName } = await params;
     const parseResult = paramsSchema.safeParse({ name: rawName });
     if (!parseResult.success) {
@@ -106,4 +94,4 @@ export async function GET(
     console.error("Person detail error:", error);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
-}
+});

@@ -15,29 +15,17 @@
  * hard at the edge (1h) with a long stale-while-revalidate (24h).
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { asc, eq, gte, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { films, screenings } from "@/db/schema";
 import { getActiveCinemas } from "@/db/repositories/cinema";
 import { CACHE_1HOUR } from "@/lib/cache-headers";
-import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
+import { RATE_LIMITS, withRateLimit } from "@/lib/rate-limit";
 import type { CinemaAddress } from "@/types/cinema";
 
-export async function GET(request: NextRequest) {
-  const ip = getClientIP(request);
-  const rateLimitResult = await checkRateLimit(ip, {
-    ...RATE_LIMITS.public,
-    prefix: "search-catalog",
-  });
-  if (!rateLimitResult.success) {
-    return NextResponse.json(
-      { error: "Too many requests", films: [], cinemas: [], people: [] },
-      { status: 429, headers: { "Retry-After": String(rateLimitResult.resetIn) } }
-    );
-  }
-
+export const GET = withRateLimit(RATE_LIMITS.public, "search-catalog")(async () => {
   try {
     const now = new Date();
 
@@ -118,4 +106,4 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
