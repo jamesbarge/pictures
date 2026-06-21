@@ -13,6 +13,11 @@ jobs:
     timeout-minutes: 10
 
     steps:
+      # git fetch/push can stall on HTTP/2 on some networks; pin HTTP/1.1 so any raw
+      # git op (checkout, any future push) can't hang and burn runner minutes.
+      - name: Pin git transport to HTTP/1.1
+        run: git config --global http.version HTTP/1.1
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -66,6 +71,11 @@ jobs:
             echo "DATABASE_URL_TEST is configured"
             echo "skip=false" >> $GITHUB_OUTPUT
           fi
+
+      # Pin HTTP/1.1 for git ops — avoids HTTP/2 fetch stalls (see unit-tests job).
+      - name: Pin git transport to HTTP/1.1
+        if: steps.check-db.outputs.skip != 'true'
+        run: git config --global http.version HTTP/1.1
 
       - name: Checkout repository
         if: steps.check-db.outputs.skip != 'true'

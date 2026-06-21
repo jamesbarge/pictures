@@ -1,3 +1,8 @@
+## 2026-06-21: CI — pin git transport to HTTP/1.1 (defensive)
+**PR**: TBD | **Files**: `.github/workflows/test.yml`, `.github/workflows/social-outreach.yml`
+- Added a `git config --global http.version HTTP/1.1` step before checkout in every CI job that does a git op (unit-tests, e2e-tests, social-outreach). `git fetch/push` can hang on HTTP/2 on some networks; pinning HTTP/1.1 stops a raw git op from stalling and burning runner minutes.
+- **Defensive only**: GitHub-hosted runners don't currently exhibit the stall — this is future-proofing per PIC-16, not a fix for an active CI failure. `post-deploy-verify.yml` left untouched (curl-only, no git). (PIC-16)
+
 ## 2026-06-03: Search — instant, typo-tolerant, in-browser film/cinema/people search
 **PR**: TBD | **Files**: `frontend/src/lib/search/catalog-index-core.ts` (new), `frontend/src/lib/search/catalog-index.svelte.ts` (new), `frontend/src/lib/search/catalog-index.test.ts` (new), `frontend/src/lib/stores/palette.svelte.ts`, `frontend/src/lib/search/result-types.ts`, `frontend/src/lib/components/search/ResultsList.svelte`, `frontend/src/lib/components/search/GlobalCmdkBinding.svelte`, `frontend/tests/command-palette.spec.ts`, `frontend/package.json`
 - ⌘K search is now **instant + typo-tolerant**. The catalog (films-with-a-future-screening + cinemas +
