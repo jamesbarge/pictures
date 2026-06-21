@@ -24,3 +24,8 @@ Thumbs.db
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .env*.local
+
+# Fonts — unreferenced variant that keeps reappearing in the working tree.
+# Not used by any @font-face/preload (app.css uses InterVariable.woff2, the roman).
+# Ignored so the 388 KB file can't be accidentally committed/shipped (PIC-41).
+/static/fonts/InterVariable-Italic.woff2

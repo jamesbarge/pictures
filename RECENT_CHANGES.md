@@ -1,3 +1,8 @@
+## 2026-06-21: Perf — remove + gitignore unreferenced InterVariable-Italic.woff2 (388 KB)
+**PR**: TBD | **Files**: `frontend/.gitignore` (+ deleted untracked `frontend/static/fonts/InterVariable-Italic.woff2`)
+- The 388 KB italic font is **unreferenced** (no `@font-face`/preload — `app.css` uses the roman `InterVariable.woff2`; `rg InterVariable-Italic frontend/` → 0 hits) yet kept reappearing in the working tree as untracked dead weight. The 2026-05-30 perf campaign deleted it once; it came back.
+- Deleted the local file and **gitignored the exact path** so it can't be accidentally committed/shipped again. Since it was never tracked, the committed change is the gitignore guard. Build unaffected (asset was unreferenced). (PIC-41)
+
 ## 2026-06-03: Search — instant, typo-tolerant, in-browser film/cinema/people search
 **PR**: TBD | **Files**: `frontend/src/lib/search/catalog-index-core.ts` (new), `frontend/src/lib/search/catalog-index.svelte.ts` (new), `frontend/src/lib/search/catalog-index.test.ts` (new), `frontend/src/lib/stores/palette.svelte.ts`, `frontend/src/lib/search/result-types.ts`, `frontend/src/lib/components/search/ResultsList.svelte`, `frontend/src/lib/components/search/GlobalCmdkBinding.svelte`, `frontend/tests/command-palette.spec.ts`, `frontend/package.json`
 - ⌘K search is now **instant + typo-tolerant**. The catalog (films-with-a-future-screening + cinemas +
