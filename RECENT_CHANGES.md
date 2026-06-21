@@ -1,3 +1,8 @@
+## 2026-06-21: Docs — recreate tasks/semantic-search-plan.md (lost design record)
+**PR**: TBD | **Files**: `tasks/semantic-search-plan.md` (new)
+- Restores the validated semantic-search design that memory referenced but was missing from the repo: `bge-small-en-v1.5` q8 / 384d, `onnxruntime-node` backend (native x64 prebuilt — the web build needs a browser), added as a **third RRF arm (k=60)** alongside the existing tsvector + trigram fusion in `/api/films/search`.
+- Documents the one open gate (PIC-33: validate `onnxruntime-node` bundle size + cold-start on a Vercel preview deploy) and the implementation sequence (PIC-32 → PIC-33 → PIC-34). Reconstructed from the design record; no runtime code. (PIC-32)
+
 ## 2026-06-03: Search — instant, typo-tolerant, in-browser film/cinema/people search
 **PR**: TBD | **Files**: `frontend/src/lib/search/catalog-index-core.ts` (new), `frontend/src/lib/search/catalog-index.svelte.ts` (new), `frontend/src/lib/search/catalog-index.test.ts` (new), `frontend/src/lib/stores/palette.svelte.ts`, `frontend/src/lib/search/result-types.ts`, `frontend/src/lib/components/search/ResultsList.svelte`, `frontend/src/lib/components/search/GlobalCmdkBinding.svelte`, `frontend/tests/command-palette.spec.ts`, `frontend/package.json`
 - ⌘K search is now **instant + typo-tolerant**. The catalog (films-with-a-future-screening + cinemas +
