@@ -1,3 +1,8 @@
+## 2026-06-21: Test — Curzon healthCheck 401-is-healthy contract
+**PR**: TBD | **Files**: `src/scrapers/chains/curzon.test.ts`
+- The Curzon `healthCheck()` already implements the 401-is-healthy contract (Cloudflare blocks HEAD, so it probes the Vista API; `401` = up-but-needs-auth = healthy; `5xx`/network = down). This adds the missing unit test: 401 → healthy, 2xx → healthy, 5xx → unhealthy, network error → unhealthy. Implementation was already on `main`; this closes the test gap. (PIC-29)
+- CI is the gate — local vitest workers wedge under disk pressure here.
+
 ## 2026-06-03: Search — instant, typo-tolerant, in-browser film/cinema/people search
 **PR**: TBD | **Files**: `frontend/src/lib/search/catalog-index-core.ts` (new), `frontend/src/lib/search/catalog-index.svelte.ts` (new), `frontend/src/lib/search/catalog-index.test.ts` (new), `frontend/src/lib/stores/palette.svelte.ts`, `frontend/src/lib/search/result-types.ts`, `frontend/src/lib/components/search/ResultsList.svelte`, `frontend/src/lib/components/search/GlobalCmdkBinding.svelte`, `frontend/tests/command-palette.spec.ts`, `frontend/package.json`
 - ⌘K search is now **instant + typo-tolerant**. The catalog (films-with-a-future-screening + cinemas +

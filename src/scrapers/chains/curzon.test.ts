@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { CURZON_CONFIG } from "./curzon";
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { CURZON_CONFIG, createCurzonScraper } from "./curzon";
 
 /**
  * Curzon booking URL shape test.
@@ -35,5 +35,45 @@ describe("Curzon booking URL format", () => {
     expect(url).not.toContain("sessionId");
     expect(url).not.toContain("ticketing/seats");
     expect(url).toContain("/films/hoppers/HO00006837/");
+  });
+});
+
+/**
+ * Curzon healthCheck contract: Cloudflare blocks HEAD on www.curzon.com, so the
+ * scraper probes the Vista API instead. A 401 means Cloudflare let the request
+ * through and the API is up (just needs a JWT) → healthy. Only 5xx / network
+ * failures mean the service is actually down. (PIC-29)
+ */
+describe("Curzon healthCheck (401-is-healthy contract)", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const fakeResponse = (status: number, ok: boolean) =>
+    vi.fn(async () => ({ status, ok }) as unknown as Response);
+
+  it("treats 401 (Cloudflare passed, auth required) as healthy", async () => {
+    vi.stubGlobal("fetch", fakeResponse(401, false));
+    expect(await createCurzonScraper().healthCheck()).toBe(true);
+  });
+
+  it("treats a 2xx response as healthy", async () => {
+    vi.stubGlobal("fetch", fakeResponse(200, true));
+    expect(await createCurzonScraper().healthCheck()).toBe(true);
+  });
+
+  it("treats 5xx as unhealthy", async () => {
+    vi.stubGlobal("fetch", fakeResponse(503, false));
+    expect(await createCurzonScraper().healthCheck()).toBe(false);
+  });
+
+  it("treats a network error / timeout as unhealthy", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new Error("ECONNRESET");
+      })
+    );
+    expect(await createCurzonScraper().healthCheck()).toBe(false);
   });
 });
