@@ -1,3 +1,9 @@
+## 2026-06-21: Test — rate-limiter fail-open path (Upstash throws → in-memory)
+**PR**: TBD | **Files**: `src/lib/rate-limit.test.ts`
+- Regression coverage for the 2026-05-30 incident path (fixed in PR #584): when the Upstash backend throws (over-quota / unreachable), `checkRateLimit` must **fail OPEN** via the in-memory limiter rather than propagate a 500 to every DB-backed route.
+- Mocks `@upstash/redis` + `@upstash/ratelimit`, stubs Redis env so the module takes the Upstash path, and asserts: (1) `rl.limit()` rejection → resolves `success:true` + logs "failing open"; (2) the fallback still enforces per-instance limits (fail-open ≠ fail-through); (3) happy path returns the Redis result. (PIC-13)
+- CI is the gate — local vitest workers wedge under disk pressure here.
+
 ## 2026-06-03: Search — instant, typo-tolerant, in-browser film/cinema/people search
 **PR**: TBD | **Files**: `frontend/src/lib/search/catalog-index-core.ts` (new), `frontend/src/lib/search/catalog-index.svelte.ts` (new), `frontend/src/lib/search/catalog-index.test.ts` (new), `frontend/src/lib/stores/palette.svelte.ts`, `frontend/src/lib/search/result-types.ts`, `frontend/src/lib/components/search/ResultsList.svelte`, `frontend/src/lib/components/search/GlobalCmdkBinding.svelte`, `frontend/tests/command-palette.spec.ts`, `frontend/package.json`
 - ⌘K search is now **instant + typo-tolerant**. The catalog (films-with-a-future-screening + cinemas +
