@@ -1,3 +1,9 @@
+## 2026-06-21: Test — Curzon healthCheck 401-is-healthy contract
+**PR**: #720 (supersedes #718) | **Files**: `src/scrapers/chains/curzon.test.ts`
+- The Curzon `healthCheck()` already implements the 401-is-healthy contract (Cloudflare blocks HEAD, so it probes the Vista API; `401` = up-but-needs-auth = healthy; `5xx`/network = down). This adds the missing unit test: 401 → healthy, 2xx → healthy, 5xx → unhealthy, network error → unhealthy. Implementation was already on `main`; this closes the test gap. (PIC-29)
+
+---
+
 ## 2026-06-21: Test — rate-limiter fail-open path (Upstash throws → in-memory)
 **PR**: #719 (supersedes #714) | **Files**: `src/lib/rate-limit.test.ts`
 - Regression coverage for the 2026-05-30 incident path (fixed in PR #584): when the Upstash backend throws (over-quota / unreachable), `checkRateLimit` must **fail OPEN** via the in-memory limiter rather than propagate a 500 to every DB-backed route.
