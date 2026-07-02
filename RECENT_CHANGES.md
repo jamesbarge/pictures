@@ -1,5 +1,5 @@
 ## 2026-06-21: Perf — remove + gitignore unreferenced InterVariable-Italic.woff2 (388 KB)
-**PR**: TBD | **Files**: `frontend/.gitignore` (+ deleted untracked `frontend/static/fonts/InterVariable-Italic.woff2`)
+**PR**: #721 (supersedes #716) | **Files**: `frontend/.gitignore` (+ deleted untracked `frontend/static/fonts/InterVariable-Italic.woff2`)
 - The 388 KB italic font is **unreferenced** (no `@font-face`/preload — `app.css` uses the roman `InterVariable.woff2`; `rg InterVariable-Italic frontend/` → 0 hits) yet kept reappearing in the working tree as untracked dead weight. The 2026-05-30 perf campaign deleted it once; it came back.
 - Deleted the local file and **gitignored the exact path** so it can't be accidentally committed/shipped again. Since it was never tracked, the committed change is the gitignore guard. Build unaffected (asset was unreferenced). (PIC-41)
 

@@ -1,6 +1,6 @@
 # Remove + gitignore unreferenced InterVariable-Italic.woff2
 
-**PR**: TBD
+**PR**: #721 (supersedes #716)
 **Date**: 2026-06-21
 **Issue**: PIC-41
 
