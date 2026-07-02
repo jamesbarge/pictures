@@ -1,5 +1,5 @@
 ## 2026-06-21: Docs — recreate tasks/semantic-search-plan.md (lost design record)
-**PR**: TBD | **Files**: `tasks/semantic-search-plan.md` (new)
+**PR**: #722 (supersedes #717) | **Files**: `tasks/semantic-search-plan.md` (new)
 - Restores the validated semantic-search design that memory referenced but was missing from the repo: `bge-small-en-v1.5` q8 / 384d, `onnxruntime-node` backend (native x64 prebuilt — the web build needs a browser), added as a **third RRF arm (k=60)** alongside the existing tsvector + trigram fusion in `/api/films/search`.
 - Documents the one open gate (PIC-33: validate `onnxruntime-node` bundle size + cold-start on a Vercel preview deploy) and the implementation sequence (PIC-32 → PIC-33 → PIC-34). Reconstructed from the design record; no runtime code. (PIC-32)
 

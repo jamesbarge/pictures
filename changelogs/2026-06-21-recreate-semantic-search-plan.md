@@ -1,6 +1,6 @@
 # Recreate tasks/semantic-search-plan.md
 
-**PR**: TBD
+**PR**: #722 (supersedes #717)
 **Date**: 2026-06-21
 **Issue**: PIC-32
 
