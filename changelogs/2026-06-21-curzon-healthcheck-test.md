@@ -1,6 +1,6 @@
 # Curzon healthCheck unit test (401-is-healthy)
 
-**PR**: #718
+**PR**: #720 (supersedes #718)
 **Date**: 2026-06-21
 **Issue**: PIC-29
 

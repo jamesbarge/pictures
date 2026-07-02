@@ -1,5 +1,5 @@
 ## 2026-06-21: Test — Curzon healthCheck 401-is-healthy contract
-**PR**: #718 | **Files**: `src/scrapers/chains/curzon.test.ts`
+**PR**: #720 (supersedes #718) | **Files**: `src/scrapers/chains/curzon.test.ts`
 - The Curzon `healthCheck()` already implements the 401-is-healthy contract (Cloudflare blocks HEAD, so it probes the Vista API; `401` = up-but-needs-auth = healthy; `5xx`/network = down). This adds the missing unit test: 401 → healthy, 2xx → healthy, 5xx → unhealthy, network error → unhealthy. Implementation was already on `main`; this closes the test gap. (PIC-29)
 
 ---
