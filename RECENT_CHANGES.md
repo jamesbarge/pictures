@@ -1,3 +1,10 @@
+## 2026-06-21: Perf — remove + gitignore unreferenced InterVariable-Italic.woff2 (388 KB)
+**PR**: TBD | **Files**: `frontend/.gitignore` (+ deleted untracked `frontend/static/fonts/InterVariable-Italic.woff2`)
+- The 388 KB italic font is **unreferenced** (no `@font-face`/preload — `app.css` uses the roman `InterVariable.woff2`; `rg InterVariable-Italic frontend/` → 0 hits) yet kept reappearing in the working tree as untracked dead weight. The 2026-05-30 perf campaign deleted it once; it came back.
+- Deleted the local file and **gitignored the exact path** so it can't be accidentally committed/shipped again. Since it was never tracked, the committed change is the gitignore guard. Build unaffected (asset was unreferenced). (PIC-41)
+
+---
+
 ## 2026-06-21: Test — Curzon healthCheck 401-is-healthy contract
 **PR**: #720 (supersedes #718) | **Files**: `src/scrapers/chains/curzon.test.ts`
 - The Curzon `healthCheck()` already implements the 401-is-healthy contract (Cloudflare blocks HEAD, so it probes the Vista API; `401` = up-but-needs-auth = healthy; `5xx`/network = down). This adds the missing unit test: 401 → healthy, 2xx → healthy, 5xx → unhealthy, network error → unhealthy. Implementation was already on `main`; this closes the test gap. (PIC-29)
