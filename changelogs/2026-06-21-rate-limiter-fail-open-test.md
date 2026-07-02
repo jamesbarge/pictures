@@ -1,6 +1,6 @@
 # Rate-limiter fail-open unit tests
 
-**PR**: #714
+**PR**: #719 (supersedes #714)
 **Date**: 2026-06-21
 **Issue**: PIC-13
 

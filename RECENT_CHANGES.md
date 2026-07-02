@@ -1,5 +1,5 @@
 ## 2026-06-21: Test — rate-limiter fail-open path (Upstash throws → in-memory)
-**PR**: #714 | **Files**: `src/lib/rate-limit.test.ts`
+**PR**: #719 (supersedes #714) | **Files**: `src/lib/rate-limit.test.ts`
 - Regression coverage for the 2026-05-30 incident path (fixed in PR #584): when the Upstash backend throws (over-quota / unreachable), `checkRateLimit` must **fail OPEN** via the in-memory limiter rather than propagate a 500 to every DB-backed route.
 - Mocks `@upstash/redis` + `@upstash/ratelimit`, stubs Redis env so the module takes the Upstash path, and asserts: (1) `rl.limit()` rejection → resolves `success:true` + logs "failing open"; (2) the fallback still enforces per-instance limits (fail-open ≠ fail-through); (3) happy path returns the Redis result. (PIC-13)
 - CI is the gate — local vitest workers wedge under disk pressure here.
