@@ -280,17 +280,33 @@ async function mergeDuplicates(
       continue;
     }
 
-    // Execute in a transaction
+    // Execute in a transaction. Wrapped so one bad cluster doesn't abort the
+    // whole pass (seen 2026-07-13: idx_screenings_unique violation).
+    try {
     await db.transaction(async (tx) => {
-      // 1. Move screenings
-      const movedScreenings = await tx
-        .update(screenings)
-        .set({ filmId: primary.id })
-        .where(inArray(screenings.filmId, dupeIds));
-      mergedScreenings += (movedScreenings as unknown as { rowCount?: number }).rowCount ?? 0;
+      const dupeIdsSql = sql.join(dupeIds.map(id => sql`${id}`), sql`, `);
+
+      // 1. Move screenings — guard idx_screenings_unique (film_id, cinema_id,
+      // datetime): when the primary already holds the same slot, the dup's
+      // row IS the same screening (scraped under both spellings with
+      // different sourceIds), so delete it instead of moving.
+      const moved = await tx.execute(sql`
+        UPDATE screenings
+        SET film_id = ${primary.id}
+        WHERE film_id IN (${dupeIdsSql})
+          AND NOT EXISTS (
+            SELECT 1 FROM screenings s2
+            WHERE s2.film_id = ${primary.id}
+              AND s2.cinema_id = screenings.cinema_id
+              AND s2.datetime = screenings.datetime
+          )
+      `);
+      mergedScreenings += (moved as unknown as { count?: number }).count ?? 0;
+      await tx.execute(sql`
+        DELETE FROM screenings WHERE film_id IN (${dupeIdsSql})
+      `);
 
       // 2. Move season_films (handle potential unique constraint conflicts)
-      const dupeIdsSql = sql.join(dupeIds.map(id => sql`${id}`), sql`, `);
       await tx.execute(sql`
         UPDATE season_films
         SET film_id = ${primary.id}
@@ -328,6 +344,9 @@ async function mergeDuplicates(
 
       console.log(`  → Merged and deleted ${dupeIds.length} duplicate(s)`);
     });
+    } catch (error) {
+      console.error(`  ✗ Cluster merge failed for "${primary.title}" — skipping:`, error);
+    }
   }
 
   return { mergedScreenings, deletedFilms };
