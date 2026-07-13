@@ -339,6 +339,35 @@ async function main() {
   const args = process.argv.slice(2);
   const dryRun = !args.includes("--execute");
 
+  // Trigram false positives confirmed by manual review (2026-07-13 dry run):
+  // similar-looking titles that are genuinely DIFFERENT films/events. These
+  // ids are excluded from trigram clustering so they can never be merged.
+  const NEVER_MERGE_FILM_IDS = new Set<string>([
+    "87ca77f0-af66-4a39-b671-9b8e7488e8fd", // Some Like it Swing ≠ Some Like It Hot
+    "c6fc2899-6430-469a-8507-c0d4ebb16033", // England vs Ghana ≠ England vs Argentina
+    "c78e35bf-047a-4f66-b6de-3884e9c2e37f", // World Cup- England vs. Ghana
+    "a85c4d75-52e3-4bf1-b0a9-17035386c920", // England vs Ghana (dup listing)
+    "4c665354-a2c0-42a3-809f-847a46f20154", // 25th Anniversary Screening (generic)
+    "06dc48c1-9659-4ef5-a70e-4b07a5235e66", // Anniversary Screening (generic)
+    "8071134f-0d41-4f5b-a1ae-9d63372a319c", // Brief Encounter + Briefest Encounters (event)
+    "f51191f8-9302-4c20-8004-fa9fd987cb27", // The Traveller ≠ The Time Traveller
+    "32f8a4e6-81f8-4ace-a0c1-c25e2f1cf7eb", // Autumn Tale (Rohmer) ≠ An Autumn's Tale (HK)
+    "bfee36b0-1347-45de-a029-c70ee86385c2", // Black & White ≠ Black Cat, White Cat
+    "ab5e93ae-73b6-4e18-85b5-79acb88b38a5", // Baby Comptines 13/05 (dated session)
+    "172945ed-c8c2-47ed-877e-33c45be5ec07", // Baby Comptines 01/07 (dated session)
+    "4848fed9-08b2-4547-83df-5264a500422e", // Frankenstein's Bride ≠ Young Frankenstein
+    "9bb80e8a-3211-480d-a6d2-2e162834b900", // Nickelfest Day One ≠ Day Two
+    "8020a045-570f-4750-aea2-ba78d5792106", // My Foreign Land ≠ Foreign Lands
+    "a8fb1286-1654-4a12-9425-9b9eb6784658", // Bob: Man of The Angels + Shorts
+    "35a4904d-8215-4d96-a7bf-c9d5d3792fc6", // Man of the Angels ≠ Mother Joan of the Angels
+    "e7132787-7844-450b-8683-28bf1a2dac89", // Member exclusive: The Misfits ≠ The Girls
+    "4081080d-f527-4dc5-8ff9-d70d786b93b5", // Che - Part 2 ≠ Che: Part One
+    "c355ace9-fdcc-4af1-a553-17430472b744", // The Silence ≠ The Eternal Silence
+    "dade4c93-bd57-4d0b-abdd-c1d369dc4a65", // Members' Screening: The Invite ≠ The Odyssey
+    "c024a748-cc27-4d34-b5c0-2873c8867642", // Shrek- Birthday Season ≠ Crash- Birthday Season
+    "3069f0c0-bc0b-4354-9d47-004ab6c1a130", // Short Film Programme (generic container)
+  ]);
+
   if (dryRun) {
     console.log("Running in DRY RUN mode (use --execute to actually merge & delete)\n");
   } else {
@@ -356,6 +385,7 @@ async function main() {
     tmdbHandledIds.add(cluster.primary.id);
     for (const dup of cluster.duplicates) tmdbHandledIds.add(dup.id);
   }
+  for (const id of NEVER_MERGE_FILM_IDS) tmdbHandledIds.add(id);
 
   // Step 2: Find trigram-based duplicates (excluding TMDB-handled)
   console.log("\n=== Finding trigram similarity duplicates ===");
