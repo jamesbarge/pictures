@@ -120,6 +120,12 @@ Never run commands with inline secrets or API keys. Always reference env vars fr
 ## PR Review Gate
 Before creating any PR that touches 3+ files, run the code-reviewer agent on the diff. Report findings before proceeding.
 
+## Issue Tracking (Linear) — workspace pin
+This repo tracks issues in the **Pictures** Linear workspace, via the `mcp__linear-pictures__*` tools.
+- **NEVER** use the global `mcp__plugin_linear_linear__*` tools here — those are authed to the **KareHero** (work) workspace.
+- Before any Linear write (create/update/comment/move), verify the workspace with `mcp__linear-pictures__get_user("me")`; abort if you see KareHero teams (ENG / PD / DES / Brand Design / Marketplace Growth) or `james@karehero.com`.
+- Full conventions (branch naming, PR magic words, lifecycle) in `.claude/rules/linear.md`.
+
 ## Autonomous Systems (AutoResearch)
 AI-driven experiment loops that self-improve data quality overnight. Details in `.claude/rules/data-quality.md`.
 - `/autoscrape` — Detect broken scrapers, run repair experiments, write Obsidian report
@@ -153,3 +159,4 @@ Domain-specific rules are in `.claude/rules/`:
 - `database.md` - Data integrity, storage, cleanup
 - `data-quality.md` - Enrichment strategy, key scripts, AutoResearch
 - `frontend.md` - UI, auth, state management, env vars
+- `linear.md` - Issue tracking; Pictures-workspace pin, working conventions
