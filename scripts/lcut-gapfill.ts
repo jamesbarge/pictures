@@ -398,7 +398,9 @@ async function main() {
   let failed = 0;
   for (const [target, missing] of missingByTarget) {
     console.log(`\n[lcut] Inserting ${missing.length} screenings for ${target}...`);
-    const result = await processScreenings(target, missing);
+    // skipSupersededCleanup: this is a PARTIAL batch — running the pipeline's
+    // superseded-cleanup against it deletes legitimate rows (2026-07-13).
+    const result = await processScreenings(target, missing, { skipSupersededCleanup: true });
     added += result.added + result.updated;
     failed += result.failed + result.rejected;
     if (result.blocked) {

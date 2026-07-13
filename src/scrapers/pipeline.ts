@@ -253,10 +253,17 @@ async function cleanupSupersededScreenings(
  *
  * After processing, superseded same-day screenings (time-shift orphans)
  * are cleaned up via cleanupSupersededScreenings().
+ *
+ * options.skipSupersededCleanup: set for PARTIAL batches (e.g. the L-CUT
+ * gap-fill, which inserts only screenings we're missing). The superseded
+ * cleanup assumes rawScreenings is the venue's COMPLETE current listing —
+ * with a partial batch it deletes legitimate previously-scraped rows within
+ * its 3h same-film window (2026-07-13 incident: 51 rows across 8 venues).
  */
 export async function processScreenings(
   cinemaId: string,
-  rawScreenings: RawScreening[]
+  rawScreenings: RawScreening[],
+  options: { skipSupersededCleanup?: boolean } = {}
 ): Promise<PipelineResult> {
   console.log(`[Pipeline] Processing ${rawScreenings.length} screenings for ${cinemaId}`);
   await stampProgress({ cinemaId, phase: "pipeline-start", startedAt: new Date().toISOString(), meta: { rawCount: rawScreenings.length } });
@@ -448,8 +455,9 @@ export async function processScreenings(
   }
 
   // Clean up superseded same-day screenings (time-shift orphans)
-  // Only runs when the scrape wasn't blocked and produced results
-  if (!result.blocked && result.added + result.updated > 0) {
+  // Only runs when the scrape wasn't blocked and produced results.
+  // Skipped for partial batches — see options.skipSupersededCleanup JSDoc.
+  if (!options.skipSupersededCleanup && !result.blocked && result.added + result.updated > 0) {
     await runPhase(cinemaId, "cleanup-superseded", async () => {
       const cleaned = await cleanupSupersededScreenings(cinemaId, result.scrapedAt);
       if (cleaned > 0) {
