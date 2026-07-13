@@ -15,6 +15,15 @@
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+// Rich Mix v2's parsePages preloads the festival cache (DB hit) — mock it so
+// the Spektrix parsing test below runs without a database.
+vi.mock("../festivals/festival-detector", () => ({
+  FestivalDetector: {
+    preload: vi.fn().mockResolvedValue(undefined),
+    detect: vi.fn().mockReturnValue({}),
+  },
+}));
+
 import { RichMixScraper } from "./rich-mix";
 import { RichMixScraperV2 } from "./rich-mix-v2";
 import { BFIScraper } from "./bfi";
@@ -57,17 +66,37 @@ describe("BST regression: Rich Mix parseDateTime", () => {
   });
 });
 
-describe("BST regression: Rich Mix v2 parseDateTime", () => {
-  const scraper = new RichMixScraperV2() as unknown as PrivDate;
+describe("BST regression: Rich Mix v2 (Spektrix startUtc)", () => {
+  // The 2026-07-13 Spektrix rewrite removed local-time parsing entirely —
+  // instances carry startUtc, so no BST conversion happens in the scraper.
+  // Pin the Z-append behaviour instead (Spektrix omits the trailing Z):
+  // a BST-season UTC timestamp must be stored verbatim, not shifted.
+  const scraper = new RichMixScraperV2() as unknown as {
+    parsePages(pages: string[]): Promise<Array<{ datetime: Date; filmTitle: string }>>;
+  };
 
-  it("BST: 2026-05-26 18:10:00 UK local → 17:10 UTC", () => {
-    expect(scraper.parseDateTime("2026-05-26 18:10:00")?.toISOString())
-      .toBe("2026-05-26T17:10:00.000Z");
-  });
-
-  it("GMT: 2026-01-15 18:10:00 UK local → 18:10 UTC (no offset)", () => {
-    expect(scraper.parseDateTime("2026-01-15 18:10:00")?.toISOString())
-      .toBe("2026-01-15T18:10:00.000Z");
+  it("parses Spektrix startUtc (no trailing Z) as UTC, not local time", async () => {
+    const events = JSON.stringify([
+      {
+        id: "ev1",
+        name: "Test Film (15)",
+        duration: 100,
+        isOnSale: true,
+        attribute_COGEventProgramme: "FILM",
+      },
+    ]);
+    const instances = JSON.stringify([
+      {
+        id: "in1",
+        startUtc: "2027-05-26T17:10:00", // BST-season date; must stay 17:10 UTC
+        cancelled: false,
+        event: { id: "ev1" },
+      },
+    ]);
+    const screenings = await scraper.parsePages([events, instances]);
+    expect(screenings).toHaveLength(1);
+    expect(screenings[0].datetime.toISOString()).toBe("2027-05-26T17:10:00.000Z");
+    expect(screenings[0].filmTitle).toBe("Test Film");
   });
 });
 
