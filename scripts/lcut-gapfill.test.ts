@@ -56,6 +56,7 @@ describe("isCovered", () => {
   const base = new Date("2026-07-16T18:00:00.000Z");
   const probe = {
     normTitle: "vive le punk",
+    gentleTitle: "vive le punk",
     datetime: base,
     sourceId: "lcut-abc123",
   };
@@ -65,6 +66,8 @@ describe("isCovered", () => {
       {
         datetime: new Date(base.getTime() + 15 * 60 * 1000),
         normTitle: "vive le punk",
+        normOriginalTitle: null,
+        gentleTitle: "vive le punk",
         sourceId: "horse-hospital-1",
       },
     ];
@@ -76,6 +79,8 @@ describe("isCovered", () => {
       {
         datetime: new Date(base.getTime() + 45 * 60 * 1000),
         normTitle: "vive le punk",
+        normOriginalTitle: null,
+        gentleTitle: "vive le punk",
         sourceId: "horse-hospital-1",
       },
     ];
@@ -84,7 +89,9 @@ describe("isCovered", () => {
 
   it("not covered when only the time matches but titles differ", () => {
     const existing = [
-      { datetime: base, normTitle: "stalker", sourceId: "x-1" },
+      { datetime: base, normTitle: "stalker",
+        normOriginalTitle: null,
+        gentleTitle: "stalker", sourceId: "x-1" },
     ];
     expect(isCovered(probe, existing)).toBe(false);
   });
@@ -94,6 +101,8 @@ describe("isCovered", () => {
       {
         datetime: new Date(base.getTime() + 6 * 60 * 60 * 1000),
         normTitle: "something else entirely",
+        normOriginalTitle: null,
+        gentleTitle: "something else entirely",
         sourceId: "lcut-abc123",
       },
     ];
@@ -102,5 +111,38 @@ describe("isCovered", () => {
 
   it("not covered when there are no existing screenings", () => {
     expect(isCovered(probe, [])).toBe(false);
+  });
+});
+
+describe("bigramSimilarity via titlesMatch", () => {
+  it("matches British/American spelling variants", () => {
+    expect(titlesMatch("colour of pomegranates", "color of pomegranates")).toBe(true);
+  });
+
+  it("does not match genuinely different titles", () => {
+    expect(titlesMatch("the ascent", "nirvanna the band the show the movie")).toBe(false);
+  });
+});
+
+describe("gentle-normalization fallback (colon titles)", () => {
+  it("covers 'Kingdom of Heaven: Director's Cut' against stored 'Kingdom of Heaven'", () => {
+    // pipeline normalizeTitle mangles the probe to "directors cut"; the
+    // gentle form "kingdom of heaven directors cut" ⊇ "kingdom of heaven"
+    const probe = {
+      normTitle: "directors cut",
+      gentleTitle: "kingdom of heaven directors cut",
+      datetime: new Date("2026-08-05T13:00:00.000Z"),
+      sourceId: "lcut-x",
+    };
+    const existing = [
+      {
+        datetime: new Date("2026-08-05T13:00:00.000Z"),
+        normTitle: "kingdom of heaven",
+        gentleTitle: "kingdom of heaven",
+        normOriginalTitle: null,
+        sourceId: "31627223",
+      },
+    ];
+    expect(isCovered(probe, existing)).toBe(true);
   });
 });

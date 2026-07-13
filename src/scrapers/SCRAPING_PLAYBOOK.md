@@ -75,7 +75,7 @@ Rules:
 | Olympic (`cinemas/olympic.ts`) | `olympic-studios` | `olympic-{bookingId}-{ISO}` | booking id from URL (`""` when absent; ISO keeps it unique) |
 | David Lean (`cinemas/david-lean.ts`) | `david-lean-cinema` | `david-lean-{titleSlug≤30}-{ISO}` | derived (lowercase, whitespace→dash, punctuation kept) |
 | Riverside (`cinemas/riverside-v2.ts`) | `riverside-studios` | `riverside-{event.id}-{perf.timestamp}` | event id + perf timestamp |
-| L-CUT gap-fill (`scripts/lcut-gapfill.ts`) | multiple (real venues, incl. `horse-hospital`, `good-shepherd-studios`, `project-loop`) | `lcut-{lcutMongoId}` | L-CUT API film id (`https://lcutlondon.com/api/films/date/DD-MM-YYYY?page=N`) |
+| L-CUT gap-fill (`scripts/lcut-gapfill.ts`) | multiple (real venues, incl. `the-arzner`, `horse-hospital`, `good-shepherd-studios`, `project-loop`) | `lcut-{lcutMongoId}` | L-CUT API film id (`https://lcutlondon.com/api/films/date/DD-MM-YYYY?page=N`) |
 
 ### Phantom reconcile (`src/scripts/reconcile-phantom-screenings.ts`)
 
@@ -344,8 +344,11 @@ Use this format when recording cinema-specific quirks:
   unauthenticated JSON API: `GET /api/films/date/DD-MM-YYYY?page=N` → `{films, hasMore}`.
   We diff its listings against our DB and insert only missing screenings, attributed to the
   REAL venue via `VENUE_MAP` (never to an "L-CUT" cinema).
-- **Why**: covers occasional venues we don't scrape directly (`horse-hospital`,
+- **Why**: covers venues we don't scrape directly (`the-arzner`, `horse-hospital`,
   `good-shepherd-studios`, `project-loop`) and acts as a coverage benchmark for venues we do.
+- **The Arzner ≠ ArtHouse Crouch End** — it's a distinct LGBTQ+ cinema at 10 Bermondsey
+  Square SE1 3UN (Jacro-style booking at thearzner.com/TheArzner.dll — direct-scraper
+  candidate later). Mapping this wrong would cross-contaminate two venues' programmes.
 - **Run**: dry by default; `--execute` to insert; `--days N` horizon (default 35).
   `npx dotenv -e .env.local -- npx tsx -r tsconfig-paths/register scripts/lcut-gapfill.ts`
 - **Dedup**: skip if same venue has a screening within ±20 min with normalized-title

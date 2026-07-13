@@ -49,7 +49,9 @@ const VENUE_MAP: Record<string, string[]> = {
   "the lexi cinema": ["lexi"],
   "the castle cinema": ["castle"],
   "the rio cinema": ["rio-dalston"],
-  "the arzner": ["arthouse-crouch-end"],
+  // The Arzner is a distinct LGBTQ+ cinema in Bermondsey (NOT ArtHouse Crouch
+  // End — an easy mixup; verified against thearzner.com 2026-07-13)
+  "the arzner": ["the-arzner"],
   "the nickel": ["the-nickel"],
   "phoenix cinema": ["phoenix-east-finchley"],
   "cine lumiere": ["cine-lumiere"],
@@ -142,6 +144,10 @@ async function fetchLcutListings(days: number): Promise<LcutFilm[]> {
 interface ExistingScreening {
   datetime: Date;
   normTitle: string;
+  gentleTitle: string;
+  /** Normalized films.original_title — canonicalization can rename a film
+   * (e.g. "As Aves" → "Breaking and Re-entering"), so match either. */
+  normOriginalTitle: string | null;
   sourceId: string | null;
 }
 
@@ -156,6 +162,7 @@ async function loadExistingScreenings(
       .select({
         datetime: screenings.datetime,
         title: films.title,
+        originalTitle: films.originalTitle,
         sourceId: screenings.sourceId,
       })
       .from(screenings)
@@ -172,6 +179,8 @@ async function loadExistingScreenings(
       rows.map((r) => ({
         datetime: r.datetime,
         normTitle: normalizeTitle(r.title),
+        gentleTitle: gentleNormalize(r.title),
+        normOriginalTitle: r.originalTitle ? normalizeTitle(r.originalTitle) : null,
         sourceId: r.sourceId,
       })),
     );
@@ -179,25 +188,71 @@ async function loadExistingScreenings(
   return byCinema;
 }
 
-/** Loose title equivalence: normalized equality or containment either way. */
+/**
+ * Gentle normalization WITHOUT the pipeline's cleanFilmTitle — that helper
+ * strips "Something:" as an event prefix, which mangles legitimate colon
+ * titles ("Kingdom of Heaven: Director's Cut" → "directors cut"). Compare
+ * under BOTH normalizations and match on either.
+ */
+export function gentleNormalize(title: string): string {
+  return title
+    .normalize("NFKD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/^the\s+/i, "")
+    .replace(/[^\p{L}\p{N}\s]/gu, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Sørensen–Dice bigram similarity on normalized titles (0..1). */
+export function bigramSimilarity(a: string, b: string): number {
+  if (a.length < 2 || b.length < 2) return a === b ? 1 : 0;
+  const grams = (s: string) => {
+    const m = new Map<string, number>();
+    for (let i = 0; i < s.length - 1; i++) {
+      const g = s.slice(i, i + 2);
+      m.set(g, (m.get(g) ?? 0) + 1);
+    }
+    return m;
+  };
+  const ga = grams(a);
+  const gb = grams(b);
+  let overlap = 0;
+  for (const [g, n] of ga) overlap += Math.min(n, gb.get(g) ?? 0);
+  return (2 * overlap) / (a.length - 1 + b.length - 1);
+}
+
+/**
+ * Loose title equivalence: normalized equality, containment either way, or
+ * high bigram similarity (catches spelling variants — "Colour of
+ * Pomegranates" vs "Color of Pomegranates" scored a real duplicate on the
+ * 2026-07-13 dry run).
+ */
 export function titlesMatch(a: string, b: string): boolean {
   if (!a || !b) return false;
   if (a === b) return true;
   // Containment guards: only for reasonably long titles to avoid "It"⊂"It Follows"
   if (a.length >= 6 && b.includes(a)) return true;
   if (b.length >= 6 && a.includes(b)) return true;
-  return false;
+  return bigramSimilarity(a, b) >= 0.85;
 }
 
 export function isCovered(
-  lcut: { normTitle: string; datetime: Date; sourceId: string },
+  lcut: { normTitle: string; gentleTitle: string; datetime: Date; sourceId: string },
   existing: ExistingScreening[],
 ): boolean {
   for (const e of existing) {
     if (e.sourceId === lcut.sourceId) return true;
     const dt = Math.abs(e.datetime.getTime() - lcut.datetime.getTime());
-    if (dt <= DEDUP_WINDOW_MS && titlesMatch(lcut.normTitle, e.normTitle)) {
-      return true;
+    if (dt > DEDUP_WINDOW_MS) continue;
+    const candidates = [e.normTitle, e.gentleTitle, e.normOriginalTitle].filter(
+      (t): t is string => t !== null,
+    );
+    for (const c of candidates) {
+      if (titlesMatch(lcut.normTitle, c) || titlesMatch(lcut.gentleTitle, c)) {
+        return true;
+      }
     }
   }
   return false;
@@ -289,14 +344,27 @@ async function main() {
       }
       const probe = {
         normTitle: normalizeTitle(raw.filmTitle),
+        gentleTitle: gentleNormalize(raw.filmTitle),
         datetime: raw.datetime,
         sourceId: raw.sourceId!,
       };
       if (isCovered(probe, existing)) {
         covered++;
-      } else {
-        missing.push(raw);
+        continue;
       }
+      // Self-dedup: L-CUT itself lists the same screening under variant
+      // titles (e.g. "Backrooms" ×3 at PCC 31 Jul 17:00). Keep the first.
+      const dupOfKept = missing.some(
+        (m) =>
+          Math.abs(m.datetime.getTime() - raw.datetime.getTime()) <= DEDUP_WINDOW_MS &&
+          (titlesMatch(normalizeTitle(m.filmTitle), probe.normTitle) ||
+            titlesMatch(gentleNormalize(m.filmTitle), probe.gentleTitle)),
+      );
+      if (dupOfKept) {
+        covered++;
+        continue;
+      }
+      missing.push(raw);
     }
     report.push({ venue: target, total: rows.length, covered, missing: missing.length });
     if (missing.length > 0) missingByTarget.set(target, missing);

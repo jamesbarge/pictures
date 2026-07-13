@@ -589,7 +589,25 @@ const INDEPENDENT_CINEMAS: CinemaDefinition[] = [
     bookingUrl: "https://thelexicinema.co.uk",
   },
 
-  // Occasional venues sourced via the L-CUT gap-fill (scripts/lcut-gapfill.ts)
+  // Venues sourced via the L-CUT gap-fill (scripts/lcut-gapfill.ts)
+  {
+    id: "the-arzner",
+    name: "The Arzner",
+    shortName: "Arzner",
+    website: "https://thearzner.com",
+    address: { street: "10 Bermondsey Square", area: "Bermondsey", postcode: "SE1 3UN", borough: "Southwark" },
+    coordinates: { lat: 51.4979, lng: -0.0813 },
+    screens: 1,
+    chain: null,
+    scraperType: "api",
+    scraperModule: "external/lcut-gapfill",
+    scraperFactory: "lcutGapfill",
+    active: true,
+    features: ["bar", "community", "accessible"],
+    programmingFocus: ["lgbtqia", "arthouse", "repertory", "events"],
+    description: "London's LGBTQ+ cinema and bar in Bermondsey Square, named after director Dorothy Arzner.",
+    bookingUrl: "https://thearzner.com/TheArzner.dll/Home",
+  },
   {
     id: "horse-hospital",
     name: "The Horse Hospital",
