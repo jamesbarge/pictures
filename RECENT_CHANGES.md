@@ -1,5 +1,5 @@
 ## 2026-06-21: BFI times fix — purge legacy `bfi-changes-` cluster rows
-**PR**: TBD | **Files**: `src/scrapers/SCRAPING_PLAYBOOK.md`, `changelogs/2026-06-21-bfi-legacy-changes-cleanup.md` (data-only fix — no runtime code change)
+**PR**: #723 | **Files**: `src/scrapers/SCRAPING_PLAYBOOK.md`, `changelogs/2026-06-21-bfi-legacy-changes-cleanup.md` (data-only fix — no runtime code change)
 - **Symptom**: BFI Southbank showed ~1h-shifted and duplicated times (e.g. ~12 films all at 19:00/19:05/21:45/21:50) on pictures.london.
 - **Root cause**: live `bfi-changes-` rows from the **pre-#640 programme-changes fallback** (cluster bug: every film in a shared `<p>` inherited every sibling's showtimes). #640 (2026-06-01) already fixed the code — current code emits `bfi-<cinema>-` sourceIds and bounds `getFollowingText` — but the orchestrator that wrote these rows ran a **stale checkout**. The legacy rows were orphaned (upsert keys on `(cinema_id, source_id)`; `cleanup-superseded` doesn't cross schemes), so a fresh scrape couldn't overwrite them.
 - **Fix**: re-ran `npm run scrape:bfi` (Playwright path, 317 Southbank + 133 IMAX correct rows) then deleted **1,054 orphaned `bfi-changes-` rows** (143 future) via psql. DB + prod API now 0 clusters; today's times match bfi.org.uk exactly. Homepage self-heals on ISR (≤1h).

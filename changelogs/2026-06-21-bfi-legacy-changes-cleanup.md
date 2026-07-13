@@ -1,6 +1,6 @@
 # BFI times fix — purge legacy `bfi-changes-` cluster rows
 
-**PR**: TBD
+**PR**: #723
 **Date**: 2026-06-21
 **Type**: Production data fix (no runtime code change — the code bug was already fixed in #640)
 
