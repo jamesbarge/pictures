@@ -1,3 +1,12 @@
+## 2026-07-13: L-CUT ingestion, 4 new venues, full scrape + data-quality pass
+**PR**: TBD | **Files**: `scripts/lcut-gapfill.ts`, `src/config/cinema-registry.ts`, `src/db/seed-cli.ts`, `scripts/cleanup-duplicate-films.ts`, `src/scrapers/utils/film-title-cleaner.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`
+- New L-CUT gap-fill source: diffs lcutlondon.com's public API against our DB, inserts only missing screenings attributed to real venues (`sourceId lcut-{id}`); 222 inserted, 99.3% L-CUT parity
+- 4 new venues: **The Arzner** (Bermondsey LGBTQ+ cinema — NOT ArtHouse Crouch End), The Horse Hospital, Good Shepherd Studios, Project Loop
+- Full scrape: 27/29 scrapers OK, upcoming screenings 6,428 → 10,506 (+4,078); rich-mix + close-up failures tracked
+- Data quality: 126 dupe clusters merged (23 false-positive merges permanently blocked via `NEVER_MERGE_FILM_IDS`), dedup unique-index crash fixed, 18 all-caps titles fixed, colon-title keep-list (JLG/JLG, Bookish)
+
+---
+
 ## 2026-06-21: BFI times fix — purge legacy `bfi-changes-` cluster rows
 **PR**: #723 | **Files**: `src/scrapers/SCRAPING_PLAYBOOK.md`, `changelogs/2026-06-21-bfi-legacy-changes-cleanup.md` (data-only fix — no runtime code change)
 - **Symptom**: BFI Southbank showed ~1h-shifted and duplicated times (e.g. ~12 films all at 19:00/19:05/21:45/21:50) on pictures.london.
