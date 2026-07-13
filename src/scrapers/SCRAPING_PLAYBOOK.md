@@ -55,7 +55,7 @@ Rules:
 | Electric (`cinemas/electric-v2.ts`) | `electric-portobello`, `electric-white-city` | `electric-{screeningId}` | site JSON screening key |
 | Lexi (`cinemas/lexi.ts`) | `lexi` | `lexi-{film.ID}-{perf.ID}` | Admit One API ids |
 | Regent Street (`cinemas/regent-street.ts`) | `regent-street` | `regent-street-{showing.id}` | API showing id |
-| Rich Mix (`cinemas/rich-mix-v2.ts`) | `rich-mix` | `richmix-{instanceId\|id}` | Spektrix instance id |
+| Rich Mix (`cinemas/rich-mix-v2.ts`) | `rich-mix` | `richmix-{inst.id}` | Spektrix v3 API instance id (scheme changed 2026-07-13 with the API rewrite; no reconcile needed — 0 upcoming rows existed, old WP endpoint dead since site restructure) |
 | JW3 (`cinemas/jw3.ts`) | `jw3` | `jw3-{inst.id}` | API instance id |
 | Castle (`cinemas/castle.ts` → `castle-calendar.ts`) | `castle` | `castle-{perfId}` | Jacro perf id |
 | Castle Sidcup (`cinemas/castle-sidcup.ts` → `castle-calendar.ts`) | `castle-sidcup` | `castle-sidcup-{perfId}` | Jacro perf id |
@@ -359,3 +359,22 @@ Use this format when recording cinema-specific quirks:
 - **Pitfalls**: venue names carry emoji/diacritics ("The Arzner 🏳️‍🌈", "Ciné Lumière") —
   normalized before mapping; unmapped venue names are warned loudly, never guessed.
 - **Not scheduled** in the nightly pipeline yet — manual runs while dedup accuracy bakes in.
+
+### Rich Mix — Spektrix v3 API (rewritten 2026-07-13)
+- Old WP JSON endpoint (`/whats-on/cinema/?ajax=1&json=1`) removed in a site restructure
+  (301 → `/cinema/`, params dropped). Scraper now reads the public Spektrix API:
+  `https://system.spektrix.com/richmix/api/v3/events` + `/instances?startFrom=YYYY-MM-DD`.
+- Film events: `attribute_COGEventProgramme === "FILM"` (venue also hosts music/theatre).
+- `startUtc` omits the trailing `Z` — append before `new Date()`. `timeSource: "iso"`.
+- Booking URL: `/cinema/{slugified event name incl. rating}/` (e.g. `toy-story-5-pg/`);
+  trailing slash avoids a 301. `attribute_VENUE` = screen. `duration` = runtime.
+- healthCheck hits the Spektrix events endpoint (the real dependency), not the WP site.
+
+### Close-Up — WAF burst-403s (hardened 2026-07-13)
+- The WAF intermittently 403s bursts of `/search_film_programmes/?date=` requests, then
+  serves the same URLs fine minutes later. Scraper now retries each page (3 attempts,
+  linear backoff) and only weeks 1–4 are load-bearing: far-future page failures shorten
+  the horizon with a warning instead of failing the run (homepage embedded `var shows`
+  JSON covers the current programme regardless).
+- `healthCheck()` overridden to reuse `fetchUrl`'s full browser headers — the BaseScraper
+  UA-only GET gets 403'd even when the real scrape works (known false-negative class).

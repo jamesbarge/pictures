@@ -54,14 +54,41 @@ export class CloseUpCinemaScraper extends BaseScraper {
     delayBetweenRequests: 1000,
   };
 
+  /**
+   * The site's WAF intermittently 403s bursts of requests (2026-07-13: 2/10
+   * search pages failed mid-run, then returned 200 minutes later with the
+   * same headers). Each page gets retries with backoff; only near-term weeks
+   * are load-bearing — far-future failures degrade coverage, not correctness,
+   * and the homepage's embedded shows JSON already covers the current
+   * programme. See SCRAPING_PLAYBOOK.md.
+   */
+  private static readonly REQUIRED_WEEKS = 4;
+
+  private async fetchWithRetry(url: string, attempts = 3, backoffMs = 5_000): Promise<string> {
+    let lastError: unknown;
+    for (let i = 1; i <= attempts; i++) {
+      try {
+        return await this.fetchUrl(url);
+      } catch (error) {
+        lastError = error;
+        if (i < attempts) {
+          console.warn(`[${this.config.cinemaId}] Attempt ${i}/${attempts} failed for ${url} — backing off ${backoffMs * i}ms`);
+          await this.delay(backoffMs * i);
+        }
+      }
+    }
+    throw lastError;
+  }
+
   protected async fetchPages(): Promise<string[]> {
     const pages: string[] = [];
-    const failures: string[] = [];
+    const requiredFailures: string[] = [];
+    const optionalFailures: string[] = [];
 
     // Fetch the homepage first (has JSON data + immediate screenings)
     const homepageUrl = this.config.baseUrl;
     console.log(`[${this.config.cinemaId}] Fetching homepage: ${homepageUrl}`);
-    const homepage = await this.fetchUrl(homepageUrl);
+    const homepage = await this.fetchWithRetry(homepageUrl);
     pages.push(homepage);
 
     // Fetch future weeks using the date search endpoint
@@ -81,21 +108,48 @@ export class CloseUpCinemaScraper extends BaseScraper {
       console.log(`[${this.config.cinemaId}] Fetching week ${week}: ${dateUrl}`);
 
       try {
-        const html = await this.fetchUrl(dateUrl);
+        const html = await this.fetchWithRetry(dateUrl);
         pages.push(html);
-        // Respect rate limiting
         await this.delay(this.config.delayBetweenRequests);
       } catch (error) {
         console.warn(`[${this.config.cinemaId}] Failed to fetch ${dateUrl}:`, error);
-        failures.push(dateUrl);
+        if (week <= CloseUpCinemaScraper.REQUIRED_WEEKS) {
+          requiredFailures.push(dateUrl);
+        } else {
+          optionalFailures.push(dateUrl);
+        }
       }
     }
 
-    if (failures.length > 0) {
-      throw new Error(`Failed to fetch ${failures.length}/${weeksToFetch} Close-Up search pages`);
+    // Near-term pages are required — partial near-term coverage must not be
+    // persisted as a successful run (playbook rule). Far-future pages only
+    // shorten the horizon; the weekly cadence catches those dates next run.
+    if (requiredFailures.length > 0) {
+      throw new Error(
+        `Failed to fetch ${requiredFailures.length} near-term Close-Up search pages (weeks 1-${CloseUpCinemaScraper.REQUIRED_WEEKS})`,
+      );
+    }
+    if (optionalFailures.length > 0) {
+      console.warn(
+        `[${this.config.cinemaId}] ${optionalFailures.length} far-future search pages failed after retries — horizon shortened this run`,
+      );
     }
 
     return pages;
+  }
+
+  /**
+   * BaseScraper.healthCheck sends a UA-only GET, which this WAF 403s even
+   * when the real scrape succeeds (known false-negative pattern — same class
+   * as the 2026-05-27 incident). Reuse fetchUrl's full browser headers.
+   */
+  async healthCheck(): Promise<boolean> {
+    try {
+      await this.fetchWithRetry(this.config.baseUrl, 3, 4_000);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   protected async parsePages(htmlPages: string[]): Promise<RawScreening[]> {

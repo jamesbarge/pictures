@@ -1,3 +1,11 @@
+## 2026-07-13: Rich Mix Spektrix rewrite + Close-Up WAF hardening
+**PR**: TBD | **Files**: `src/scrapers/cinemas/rich-mix-v2.ts`, `src/scrapers/cinemas/close-up.ts`, `scripts/cleanup-duplicate-films.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`
+- Rich Mix scraper rewritten against the public Spektrix v3 API (old WP JSON endpoint removed in site restructure) — 81 screenings restored, times site-verified
+- Close-Up: per-page retries + far-future pages soft-fail + browser-header healthCheck (WAF burst-403s)
+- Dedup merge unique-index fix committed (was missing from #724)
+
+---
+
 ## 2026-07-13: L-CUT ingestion, 4 new venues, full scrape + data-quality pass
 **PR**: TBD | **Files**: `scripts/lcut-gapfill.ts`, `src/config/cinema-registry.ts`, `src/db/seed-cli.ts`, `scripts/cleanup-duplicate-films.ts`, `src/scrapers/utils/film-title-cleaner.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`
 - New L-CUT gap-fill source: diffs lcutlondon.com's public API against our DB, inserts only missing screenings attributed to real venues (`sourceId lcut-{id}`); 222 inserted, 99.3% L-CUT parity

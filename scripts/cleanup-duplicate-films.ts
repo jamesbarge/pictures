@@ -280,47 +280,68 @@ async function mergeDuplicates(
       continue;
     }
 
-    // Execute in a transaction
+    // Execute in a transaction. Wrapped so one bad cluster doesn't abort the
+    // whole pass (seen 2026-07-13: idx_screenings_unique violation).
+    try {
     await db.transaction(async (tx) => {
-      // 1. Move screenings
-      const movedScreenings = await tx
-        .update(screenings)
-        .set({ filmId: primary.id })
-        .where(inArray(screenings.filmId, dupeIds));
-      mergedScreenings += (movedScreenings as unknown as { rowCount?: number }).rowCount ?? 0;
+      // Migrate duplicates ONE AT A TIME so each pass's NOT EXISTS sees the
+      // rows the previous duplicate already moved to the primary. A single
+      // multi-id UPDATE can move two duplicates' rows into the same
+      // (primary, cinema, datetime) / (season, primary) / (user, primary)
+      // slot in one statement — the guard only checks rows that belong to
+      // the primary BEFORE the statement, so dup-vs-dup collisions in 3+-way
+      // clusters would still violate the unique index (code-review finding).
+      for (const dupeId of dupeIds) {
+        // 1. Move screenings — guard idx_screenings_unique (film_id,
+        // cinema_id, datetime): when the primary already holds the slot, the
+        // dup's row IS the same screening (scraped under both spellings with
+        // different sourceIds), so delete it instead of moving.
+        const moved = await tx.execute(sql`
+          UPDATE screenings
+          SET film_id = ${primary.id}
+          WHERE film_id = ${dupeId}
+            AND NOT EXISTS (
+              SELECT 1 FROM screenings s2
+              WHERE s2.film_id = ${primary.id}
+                AND s2.cinema_id = screenings.cinema_id
+                AND s2.datetime = screenings.datetime
+            )
+        `);
+        mergedScreenings += (moved as unknown as { count?: number }).count ?? 0;
+        await tx.execute(sql`
+          DELETE FROM screenings WHERE film_id = ${dupeId}
+        `);
 
-      // 2. Move season_films (handle potential unique constraint conflicts)
-      const dupeIdsSql = sql.join(dupeIds.map(id => sql`${id}`), sql`, `);
-      await tx.execute(sql`
-        UPDATE season_films
-        SET film_id = ${primary.id}
-        WHERE film_id IN (${dupeIdsSql})
-          AND NOT EXISTS (
-            SELECT 1 FROM season_films sf2
-            WHERE sf2.season_id = season_films.season_id
-              AND sf2.film_id = ${primary.id}
-          )
-      `);
-      // Delete any remaining season_films that would conflict
-      await tx.execute(sql`
-        DELETE FROM season_films WHERE film_id IN (${dupeIdsSql})
-      `);
+        // 2. Move season_films (unique on season_id + film_id)
+        await tx.execute(sql`
+          UPDATE season_films
+          SET film_id = ${primary.id}
+          WHERE film_id = ${dupeId}
+            AND NOT EXISTS (
+              SELECT 1 FROM season_films sf2
+              WHERE sf2.season_id = season_films.season_id
+                AND sf2.film_id = ${primary.id}
+            )
+        `);
+        await tx.execute(sql`
+          DELETE FROM season_films WHERE film_id = ${dupeId}
+        `);
 
-      // 3. Move user_film_statuses (handle unique constraint on user_id + film_id)
-      await tx.execute(sql`
-        UPDATE user_film_statuses
-        SET film_id = ${primary.id}
-        WHERE film_id IN (${dupeIdsSql})
-          AND NOT EXISTS (
-            SELECT 1 FROM user_film_statuses ufs2
-            WHERE ufs2.user_id = user_film_statuses.user_id
-              AND ufs2.film_id = ${primary.id}
-          )
-      `);
-      // Delete any remaining that would conflict (user already has a status for primary film)
-      await tx.execute(sql`
-        DELETE FROM user_film_statuses WHERE film_id IN (${dupeIdsSql})
-      `);
+        // 3. Move user_film_statuses (unique on user_id + film_id)
+        await tx.execute(sql`
+          UPDATE user_film_statuses
+          SET film_id = ${primary.id}
+          WHERE film_id = ${dupeId}
+            AND NOT EXISTS (
+              SELECT 1 FROM user_film_statuses ufs2
+              WHERE ufs2.user_id = user_film_statuses.user_id
+                AND ufs2.film_id = ${primary.id}
+            )
+        `);
+        await tx.execute(sql`
+          DELETE FROM user_film_statuses WHERE film_id = ${dupeId}
+        `);
+      }
 
       // 4. Delete duplicate film records
       await tx.delete(films).where(inArray(films.id, dupeIds));
@@ -328,6 +349,9 @@ async function mergeDuplicates(
 
       console.log(`  → Merged and deleted ${dupeIds.length} duplicate(s)`);
     });
+    } catch (error) {
+      console.error(`  ✗ Cluster merge failed for "${primary.title}" — skipping:`, error);
+    }
   }
 
   return { mergedScreenings, deletedFilms };
