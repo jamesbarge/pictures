@@ -1,3 +1,12 @@
+## 2026-06-21: BFI times fix — purge legacy `bfi-changes-` cluster rows
+**PR**: #723 | **Files**: `src/scrapers/SCRAPING_PLAYBOOK.md`, `changelogs/2026-06-21-bfi-legacy-changes-cleanup.md` (data-only fix — no runtime code change)
+- **Symptom**: BFI Southbank showed ~1h-shifted and duplicated times (e.g. ~12 films all at 19:00/19:05/21:45/21:50) on pictures.london.
+- **Root cause**: live `bfi-changes-` rows from the **pre-#640 programme-changes fallback** (cluster bug: every film in a shared `<p>` inherited every sibling's showtimes). #640 (2026-06-01) already fixed the code — current code emits `bfi-<cinema>-` sourceIds and bounds `getFollowingText` — but the orchestrator that wrote these rows ran a **stale checkout**. The legacy rows were orphaned (upsert keys on `(cinema_id, source_id)`; `cleanup-superseded` doesn't cross schemes), so a fresh scrape couldn't overwrite them.
+- **Fix**: re-ran `npm run scrape:bfi` (Playwright path, 317 Southbank + 133 IMAX correct rows) then deleted **1,054 orphaned `bfi-changes-` rows** (143 future) via psql. DB + prod API now 0 clusters; today's times match bfi.org.uk exactly. Homepage self-heals on ISR (≤1h).
+- **Why it matters**: restores the documented "100% Playwright-sourced" BFI state and removes user-visible wrong showtimes. Playbook updated with the recurring-failure runbook.
+
+---
+
 ## 2026-06-21: Docs — recreate tasks/semantic-search-plan.md (lost design record)
 **PR**: #722 (supersedes #717) | **Files**: `tasks/semantic-search-plan.md` (new)
 - Restores the validated semantic-search design that memory referenced but was missing from the repo: `bge-small-en-v1.5` q8 / 384d, `onnxruntime-node` backend (native x64 prebuilt — the web build needs a browser), added as a **third RRF arm (k=60)** alongside the existing tsvector + trigram fusion in `/api/films/search`.
