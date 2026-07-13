@@ -16,10 +16,16 @@
   "British Film Institute"). Rows before 09:00 London are skipped as bad upstream data.
 - sourceId scheme `lcut-{id}`; inserts go through the standard pipeline (title extraction,
   TMDB matching, upsert). Dry-run default; `--execute` to apply; `--days N` horizon.
-- **Run result**: 222 missing screenings inserted across 16 venues. Final parity: 16 of
-  ~2,350 L-CUT listings deliberately left out (stale L-CUT near-dupes 21–40 min from an
-  existing row of the same film). Close-Up's near-term programme backfilled while its
-  scraper is WAF-blocked.
+- **Run result**: 222 missing screenings inserted across 16 venues. Final parity ~99%: 23
+  of ~2,360 L-CUT listings deliberately left out (verified stale L-CUT rows — venue
+  sources disagree; venue wins). Close-Up's near-term programme backfilled while its
+  scraper is WAF-blocked (one site-verified stale Close-Up row deleted in its favour).
+- **Incident (caught by code review, fixed same session)**: routing the partial gap-fill
+  batch through `processScreenings` triggered `cleanupSupersededScreenings` (3h same-film
+  window), deleting 51 legitimate rows across 8 venues. Fixed with a
+  `skipSupersededCleanup` pipeline option; affected venues re-scraped — restore verified
+  (added counts matched deletions) and the re-scrapes' own cleanup then correctly removed
+  the stale L-CUT near-dupes.
 
 ### 4 new venues registered (cinema-registry + seed-cli + DB)
 - **The Arzner** (`the-arzner`) — LGBTQ+ cinema & bar, 10 Bermondsey Square SE1 3UN.
