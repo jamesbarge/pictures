@@ -75,6 +75,7 @@ Rules:
 | Olympic (`cinemas/olympic.ts`) | `olympic-studios` | `olympic-{bookingId}-{ISO}` | booking id from URL (`""` when absent; ISO keeps it unique) |
 | David Lean (`cinemas/david-lean.ts`) | `david-lean-cinema` | `david-lean-{titleSlug≤30}-{ISO}` | derived (lowercase, whitespace→dash, punctuation kept) |
 | Riverside (`cinemas/riverside-v2.ts`) | `riverside-studios` | `riverside-{event.id}-{perf.timestamp}` | event id + perf timestamp |
+| L-CUT gap-fill (`scripts/lcut-gapfill.ts`) | multiple (real venues, incl. `the-arzner`, `horse-hospital`, `good-shepherd-studios`, `project-loop`) | `lcut-{lcutMongoId}` | L-CUT API film id (`https://lcutlondon.com/api/films/date/DD-MM-YYYY?page=N`) |
 
 ### Phantom reconcile (`src/scripts/reconcile-phantom-screenings.ts`)
 
@@ -337,3 +338,24 @@ Use this format when recording cinema-specific quirks:
 - Known pitfalls:
   - Rating strip must stay end-anchored (regression: `"What's Up, Doc? U"` → `"What's p, Doc?"` with substring replace).
 - Last verified (2026-06-12): live run — 88/88 films emitted runtime, all within 1–600; His Girl Friday=92 matches canonical.
+
+### L-CUT gap-fill (`scripts/lcut-gapfill.ts`, 2026-07-13)
+- **What**: L-CUT (https://lcutlondon.com) is a third-party repertory listings guide with an
+  unauthenticated JSON API: `GET /api/films/date/DD-MM-YYYY?page=N` → `{films, hasMore}`.
+  We diff its listings against our DB and insert only missing screenings, attributed to the
+  REAL venue via `VENUE_MAP` (never to an "L-CUT" cinema).
+- **Why**: covers venues we don't scrape directly (`the-arzner`, `horse-hospital`,
+  `good-shepherd-studios`, `project-loop`) and acts as a coverage benchmark for venues we do.
+- **The Arzner ≠ ArtHouse Crouch End** — it's a distinct LGBTQ+ cinema at 10 Bermondsey
+  Square SE1 3UN (Jacro-style booking at thearzner.com/TheArzner.dll — direct-scraper
+  candidate later). Mapping this wrong would cross-contaminate two venues' programmes.
+- **Run**: dry by default; `--execute` to insert; `--days N` horizon (default 35).
+  `npx dotenv -e .env.local -- npx tsx -r tsconfig-paths/register scripts/lcut-gapfill.ts`
+- **Dedup**: skip if same venue has a screening within ±20 min with normalized-title
+  equality/containment, or if `sourceId lcut-{id}` already exists. BFI rows are deduped against
+  BOTH `bfi-southbank` and `bfi-imax` (L-CUT labels both "British Film Institute").
+- **Times**: uses the row's ISO UTC `timestamp` (`timeSource: "iso"`); rows before 09:00
+  London are skipped as bad upstream data (seen: "Blue Heron" @ Phoenix 06:00).
+- **Pitfalls**: venue names carry emoji/diacritics ("The Arzner 🏳️‍🌈", "Ciné Lumière") —
+  normalized before mapping; unmapped venue names are warned loudly, never guessed.
+- **Not scheduled** in the nightly pipeline yet — manual runs while dedup accuracy bakes in.
