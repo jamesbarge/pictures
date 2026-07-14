@@ -1,3 +1,12 @@
+## 2026-07-14: Schedule L-CUT gap-fill + scraper-regression parity monitor (Coverage Phase 1)
+**PR**: TBD | **Files**: `scripts/lcut-gapfill.ts`, `scripts/lcut-gapfill.test.ts`, `src/scrapers/registry.ts`, `src/scripts/run-scrape-and-enrich.ts`, `package.json`, `src/scrapers/SCRAPING_PLAYBOOK.md`, `.claude/commands/scrape.md`
+- L-CUT gap-fill is now a phase ("1b") of the weekly `/scrape` orchestrator — runs after the scrape wave (parity vs fresh data) and before cleanup (inserted rows get enriched). There is no cron in this repo by policy; `/scrape` IS the weekly cadence.
+- **Source-only vs scraped split, derived from the scraper registry** (`getScrapedCinemaIds`): venues with no first-party scraper (Arzner, Horse Hospital, Good Shepherd, Project Loop) are auto-inserted; venues we scrape are **report-only** — a scraped venue >5 missing vs L-CUT fires a warn-level Telegram as a scraper-regression signal. Auto-inserting scraped venues would mask that signal, so we don't. A venue auto-reclassifies when it gains a scraper (e.g. Arzner in Phase 2b).
+- Refactored `scripts/lcut-gapfill.ts` core into an importable `runLcutGapfill()` returning per-venue parity; CLI is a thin wrapper (`npm run lcut:gapfill`, new `--targets id1,id2` flag). Behavior-preserving for manual/supervised use.
+- Skip flags: `--skip-lcut`; auto-skipped under `--skip-scrape`.
+
+---
+
 ## 2026-07-13: Rich Mix Spektrix rewrite + Close-Up WAF hardening
 **PR**: TBD | **Files**: `src/scrapers/cinemas/rich-mix-v2.ts`, `src/scrapers/cinemas/close-up.ts`, `scripts/cleanup-duplicate-films.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`
 - Rich Mix scraper rewritten against the public Spektrix v3 API (old WP JSON endpoint removed in site restructure) — 81 screenings restored, times site-verified
