@@ -389,3 +389,26 @@ Use this format when recording cinema-specific quirks:
   JSON covers the current programme regardless).
 - `healthCheck()` overridden to reuse `fetchUrl`'s full browser headers — the BaseScraper
   UA-only GET gets 403'd even when the real scrape works (known false-negative class).
+
+### INDY Systems platform (`src/scrapers/platforms/indy.ts`, 2026-07-14)
+- **What**: INDY Cinema Group booking platform ("powered by Fandango"). Shared GraphQL
+  client used by multiple London venues. Each venue proxies `/graphql` on its OWN domain.
+- **Direct fetch, no browser**: the endpoint is OPEN — a plain `POST /graphql` with two
+  identifying headers returns showings. No auth token / cookie / CSRF. This replaced the old
+  Regent Street Playwright response-interception (which waited on fragile 20s/3s timers).
+- **Required headers**: `circuit-id`, `site-id` (both mandatory — either alone → `{"error":
+  {"message":"Site not found. (Code: 104)"}}`), plus `client-type: consumer` and
+  `accept: application/graphql-response+json,application/json;q=0.9`.
+- **Query**: `showingsForDate(date: "YYYY-MM-DD", siteIds: [<siteId>])` → `data[]` of
+  `{ id, time (ISO UTC "…Z"), published, past, private, isPreview, screenId, movie{ id, name,
+  urlSlug, duration, rating, releaseDate } }`. Loop dates today…+N (35-day default).
+- **Map**: filmTitle=`movie.name`; datetime=`new Date(time)` (`timeSource:"iso"` — true UTC,
+  no BST mislabel); runtime=`movie.duration`; year=`movie.releaseDate` year;
+  bookingUrl=`{baseUrl}/checkout/showing/{id}`; **sourceId=`{cinemaId}-{showing.id}`**.
+  Keep only `published && !past && !private && !isPreview` future showings; dedupe by id.
+- **Failure semantics**: `postShowingsForDate` retries (3×) then THROWS on HTTP/GraphQL/INDY
+  error — never swallowed as empty success.
+- **Known venues** (`circuit-id`/`site-id`): Regent Street 19/85, Chiswick 56/170. Discover a
+  new venue's ids from the `circuit-id`/`site-id` headers on any `/graphql` request it makes.
+- **NOT INDY**: Phoenix Cinema (East Finchley) is an ASP.NET `.dll` system
+  (`PhoenixCinemaLondon.dll`), despite an old comment claiming otherwise — see cinemas/phoenix.ts.
