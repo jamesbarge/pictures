@@ -1,6 +1,6 @@
 # Savoy JSON adapter — Rio migration + empty-success P0 fix (Coverage Phase 2b, PR 1)
 
-**PR**: TBD
+**PR**: #729
 **Date**: 2026-07-14
 **Plan**: `docs/plans/2026-07-13-coverage-implementation-plan.md` (Phase 2b)
 
