@@ -1,5 +1,5 @@
 ## 2026-07-14: INDY GraphQL adapter — Regent Street direct-fetch migration (Coverage Phase 2a, PR 1)
-**PR**: TBD | **Files**: `src/scrapers/platforms/indy.ts` (new), `src/scrapers/platforms/indy.test.ts` (new), `src/scrapers/cinemas/regent-street.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`
+**PR**: #727 | **Files**: `src/scrapers/platforms/indy.ts` (new), `src/scrapers/platforms/indy.test.ts` (new), `src/scrapers/cinemas/regent-street.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`
 - New shared **INDY Systems GraphQL client** (`platforms/indy.ts`): direct `fetch()` POST to `{venue}/graphql` with `circuit-id`/`site-id` headers — no browser, no auth token. Loops dates today…+35, filters `published && !past && !private && !isPreview`, dedupes by id, throws on HTTP/GraphQL error (never empty-success).
 - **Regent Street migrated** off Playwright response-interception (fragile 20s/3s timers — the P0) to the direct client. sourceId **preserved** (`regent-street-{id}` → no reconcile); booking URL upgraded to `/checkout/showing/{id}`; `timeSource:"iso"`; runtime + year now captured.
 - Live-verified: 25 screenings / 14-day horizon, 0 sub-09:00 times, healthCheck green. Fixture test covers mapping + all filters + throw-on-error.

@@ -1,6 +1,6 @@
 # INDY GraphQL adapter — Regent Street direct-fetch migration (Coverage Phase 2a, PR 1)
 
-**PR**: TBD
+**PR**: #727
 **Date**: 2026-07-14
 **Plan**: `docs/plans/2026-07-13-coverage-implementation-plan.md` (Phase 2a)
 
