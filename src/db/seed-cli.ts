@@ -16,272 +16,17 @@ import { cinemas, films, screenings, festivals } from "./schema";
 import { v4 as uuidv4, v4 } from "uuid";
 import { addDays, setHours, setMinutes } from "date-fns";
 import type { ScreeningFormat, EventType } from "@/types/screening";
+import { sql } from "drizzle-orm";
+import { getCinemasSeedData } from "@/config/cinema-registry";
 
 // ============================================================================
-// Cinema Seed Data
+// Cinema Seed Data — sourced from the cinema registry (single source of truth)
+// via getCinemasSeedData(). The old hand-maintained LONDON_CINEMAS array was
+// removed 2026-07-14: it had drifted to deprecated ids (garden-cinema,
+// genesis-mile-end) with stale addresses, so `db:seed:cinemas` created empty
+// zombie cinemas and left canonical `garden` without coordinates (no map pin).
 // ============================================================================
 
-const LONDON_CINEMAS = [
-  {
-    id: "bfi-southbank",
-    name: "BFI Southbank",
-    shortName: "BFI",
-    chain: "BFI",
-    address: { street: "Belvedere Road", area: "South Bank", postcode: "SE1 8XT", borough: "Lambeth" },
-    coordinates: { lat: 51.5069, lng: -0.1150 },
-    screens: 4,
-    features: ["35mm", "70mm", "bar", "restaurant", "accessible"],
-    programmingFocus: ["repertory", "arthouse", "documentary", "events"],
-    website: "https://whatson.bfi.org.uk",
-    bookingUrl: "https://whatson.bfi.org.uk/Online/",
-    dataSourceType: "scrape" as const,
-    description: "The UK's leading repertory cinema, home to seasons, retrospectives, and restorations.",
-  },
-  {
-    id: "bfi-imax",
-    name: "BFI IMAX",
-    shortName: "IMAX",
-    chain: "BFI",
-    address: { street: "1 Charlie Chaplin Walk", area: "Waterloo", postcode: "SE1 8XR", borough: "Lambeth" },
-    coordinates: { lat: 51.5033, lng: -0.1134 },
-    screens: 1,
-    features: ["imax", "70mm", "accessible"],
-    programmingFocus: ["mainstream", "events", "repertory"],
-    website: "https://whatson.bfi.org.uk",
-    bookingUrl: "https://whatson.bfi.org.uk/Online/",
-    dataSourceType: "scrape" as const,
-    description: "The UK's largest IMAX screen.",
-  },
-  {
-    id: "prince-charles",
-    name: "Prince Charles Cinema",
-    shortName: "PCC",
-    chain: null,
-    address: { street: "7 Leicester Place", area: "Leicester Square", postcode: "WC2H 7BY", borough: "Westminster" },
-    coordinates: { lat: 51.5114, lng: -0.1302 },
-    screens: 2,
-    features: ["35mm", "bar", "accessible"],
-    programmingFocus: ["repertory", "events"],
-    website: "https://princecharlescinema.com",
-    bookingUrl: "https://princecharlescinema.com/whats-on/",
-    dataSourceType: "scrape" as const,
-    description: "London's legendary repertory cinema. Home to sing-alongs, marathons, and the best double bills.",
-  },
-  {
-    id: "ica",
-    name: "ICA Cinema",
-    shortName: "ICA",
-    chain: null,
-    address: { street: "The Mall", area: "St James's", postcode: "SW1Y 5AH", borough: "Westminster" },
-    coordinates: { lat: 51.5063, lng: -0.1310 },
-    screens: 2,
-    features: ["accessible", "bar"],
-    programmingFocus: ["arthouse", "experimental", "documentary"],
-    website: "https://www.ica.art/films",
-    bookingUrl: "https://www.ica.art/films",
-    dataSourceType: "scrape" as const,
-    description: "Institute of Contemporary Arts cinema. Cutting-edge and avant-garde cinema.",
-  },
-  {
-    id: "barbican",
-    name: "Barbican Cinema",
-    shortName: "Barbican",
-    chain: null,
-    address: { street: "Silk Street", area: "Barbican", postcode: "EC2Y 8DS", borough: "City of London" },
-    coordinates: { lat: 51.5200, lng: -0.0935 },
-    screens: 3,
-    features: ["accessible", "bar", "hearing_loop"],
-    programmingFocus: ["arthouse", "repertory", "documentary", "events"],
-    website: "https://www.barbican.org.uk/whats-on/cinema",
-    bookingUrl: "https://www.barbican.org.uk/whats-on/cinema",
-    dataSourceType: "scrape" as const,
-    description: "Part of Europe's largest arts centre. International cinema and director retrospectives.",
-  },
-  {
-    id: "rio-dalston",
-    name: "Rio Cinema",
-    shortName: "Rio",
-    chain: null,
-    address: { street: "107 Kingsland High Street", area: "Dalston", postcode: "E8 2PB", borough: "Hackney" },
-    coordinates: { lat: 51.5485, lng: -0.0755 },
-    screens: 2,
-    features: ["35mm", "bar", "accessible"],
-    programmingFocus: ["repertory", "arthouse", "community"],
-    website: "https://riocinema.org.uk",
-    bookingUrl: "https://riocinema.org.uk/whats-on/",
-    dataSourceType: "scrape" as const,
-    description: "East London's beloved Art Deco cinema.",
-  },
-  {
-    id: "genesis-mile-end",
-    name: "Genesis Cinema",
-    shortName: "Genesis",
-    chain: null,
-    address: { street: "93-95 Mile End Road", area: "Mile End", postcode: "E1 4UJ", borough: "Tower Hamlets" },
-    coordinates: { lat: 51.5232, lng: -0.0408 },
-    screens: 5,
-    features: ["bar", "accessible"],
-    programmingFocus: ["mainstream", "repertory", "arthouse"],
-    website: "https://genesiscinema.co.uk",
-    bookingUrl: "https://genesiscinema.co.uk/whats-on/",
-    dataSourceType: "scrape" as const,
-    description: "Independent East London cinema with eclectic programming.",
-  },
-  {
-    id: "garden-cinema",
-    name: "The Garden Cinema",
-    shortName: "Garden",
-    chain: null,
-    address: { street: "39-41 Golders Green Road", area: "Golders Green", postcode: "NW11 8EE", borough: "Barnet" },
-    coordinates: { lat: 51.5726, lng: -0.1944 },
-    screens: 1,
-    features: ["bar", "accessible", "35mm"],
-    programmingFocus: ["arthouse", "repertory", "documentary"],
-    website: "https://thegardencinema.co.uk",
-    bookingUrl: "https://thegardencinema.co.uk",
-    dataSourceType: "scrape" as const,
-    description: "Beautiful single-screen independent cinema in North London.",
-  },
-  {
-    id: "close-up-cinema",
-    name: "Close-Up Cinema",
-    shortName: "Close-Up",
-    chain: null,
-    address: { street: "97 Sclater Street", area: "Shoreditch", postcode: "E1 6HR", borough: "Tower Hamlets" },
-    coordinates: { lat: 51.5233, lng: -0.0718 },
-    screens: 1,
-    features: ["bar", "accessible"],
-    programmingFocus: ["repertory", "arthouse", "documentary", "events"],
-    website: "https://www.closeupfilmcentre.com",
-    bookingUrl: "https://www.closeupfilmcentre.com",
-    dataSourceType: "scrape" as const,
-    description: "Intimate single-screen cinema in Shoreditch specializing in repertory.",
-  },
-  {
-    id: "cine-lumiere",
-    name: "Cine Lumiere",
-    shortName: "Lumiere",
-    chain: null,
-    address: { street: "17 Queensberry Place", area: "South Kensington", postcode: "SW7 2DT", borough: "Kensington and Chelsea" },
-    coordinates: { lat: 51.4947, lng: -0.1765 },
-    screens: 1,
-    features: ["accessible", "bar"],
-    programmingFocus: ["arthouse", "repertory", "french", "european"],
-    website: "https://www.institut-francais.org.uk/cine-lumiere/",
-    bookingUrl: "https://cinelumiere.savoysystems.co.uk/CineLumiere.dll/",
-    dataSourceType: "scrape" as const,
-    description: "French and European arthouse cinema at Institut Francais.",
-  },
-  {
-    id: "phoenix-east-finchley",
-    name: "Phoenix Cinema",
-    shortName: "Phoenix",
-    chain: null,
-    address: { street: "52 High Rd", area: "East Finchley", postcode: "N2 9PJ", borough: "Barnet" },
-    coordinates: { lat: 51.5871, lng: -0.1642 },
-    screens: 2,
-    features: ["accessible", "bar", "cafe"],
-    programmingFocus: ["repertory", "arthouse", "mainstream", "events"],
-    website: "https://phoenixcinema.co.uk",
-    bookingUrl: "https://phoenixcinema.co.uk/whats-on/",
-    dataSourceType: "scrape" as const,
-    description: "One of the oldest purpose-built cinemas in the UK (1910).",
-  },
-  {
-    // Chiswick has a scraper (auto-creates its identity row on first scrape),
-    // but it's listed here too so `db:seed:cinemas` writes its full metadata —
-    // ensureCinemaExists does NOT persist coordinates, so without this the map
-    // would have no Chiswick pin.
-    id: "chiswick-cinema",
-    name: "The Chiswick Cinema",
-    shortName: "Chiswick",
-    chain: null,
-    address: { street: "94-96 Chiswick High Road", area: "Chiswick", postcode: "W4 1SH", borough: "Hounslow" },
-    coordinates: { lat: 51.4931, lng: -0.251 },
-    screens: 5,
-    features: ["accessible", "bar", "cafe"],
-    programmingFocus: ["mainstream", "arthouse", "events"],
-    website: "https://www.chiswickcinema.co.uk",
-    bookingUrl: "https://www.chiswickcinema.co.uk/whats-on",
-    dataSourceType: "scrape" as const,
-    description: "Boutique five-screen cinema on Chiswick High Road (opened 2021).",
-  },
-  {
-    id: "coldharbour-blue",
-    name: "Coldharbour Blue",
-    shortName: "Coldharbour",
-    chain: null,
-    address: { street: "259-260 Hardess Street", area: "Loughborough Junction", postcode: "SE24 0HN", borough: "Lambeth" },
-    coordinates: { lat: 51.4630, lng: -0.1010 },
-    screens: 1,
-    features: ["bar", "accessible", "community"],
-    programmingFocus: ["arthouse", "repertory", "documentary", "events"],
-    website: "https://www.coldharbourblue.com",
-    bookingUrl: "https://www.coldharbourblue.com/screenings/",
-    dataSourceType: "scrape" as const,
-    description: "Independent cinema in Brixton. New releases, art-house, classics and documentaries.",
-  },
-  {
-    id: "the-arzner",
-    name: "The Arzner",
-    shortName: "Arzner",
-    chain: null,
-    address: { street: "10 Bermondsey Square", area: "Bermondsey", postcode: "SE1 3UN", borough: "Southwark" },
-    coordinates: { lat: 51.4979, lng: -0.0813 },
-    screens: 1,
-    features: ["bar", "community", "accessible"],
-    programmingFocus: ["lgbtqia", "arthouse", "repertory", "events"],
-    website: "https://thearzner.com",
-    bookingUrl: "https://thearzner.com/TheArzner.dll/Home",
-    dataSourceType: "scrape" as const,
-    description: "London's LGBTQ+ cinema and bar in Bermondsey Square, named after director Dorothy Arzner.",
-  },
-  {
-    id: "horse-hospital",
-    name: "The Horse Hospital",
-    shortName: "Horse Hospital",
-    chain: null,
-    address: { street: "Colonnade", area: "Bloomsbury", postcode: "WC1N 1JD", borough: "Camden" },
-    coordinates: { lat: 51.5231, lng: -0.123 },
-    screens: 1,
-    features: ["historic", "community"],
-    programmingFocus: ["experimental", "repertory", "events"],
-    website: "https://www.thehorsehospital.com",
-    bookingUrl: "https://www.thehorsehospital.com/events",
-    dataSourceType: "scrape" as const,
-    description: "Underground arts venue in a Grade II listed stable; experimental film, counterculture and avant-garde programming.",
-  },
-  {
-    id: "good-shepherd-studios",
-    name: "Good Shepherd Studios",
-    shortName: "Good Shepherd",
-    chain: null,
-    address: { street: "15A Davies Lane", area: "Leytonstone", postcode: "E11 3DR", borough: "Waltham Forest" },
-    coordinates: { lat: 51.5648, lng: 0.0132 },
-    screens: 1,
-    features: ["community", "cafe"],
-    programmingFocus: ["community", "repertory", "documentary", "events"],
-    website: "https://www.goodshepherdstudios.com",
-    bookingUrl: "https://www.goodshepherdstudios.com/events",
-    dataSourceType: "scrape" as const,
-    description: "Community and creative space in Leytonstone hosting pop-up cinema and film club screenings.",
-  },
-  {
-    id: "project-loop",
-    name: "Project Loop",
-    shortName: "Project Loop",
-    chain: null,
-    address: { street: "16 Orsman Road", area: "Haggerston", postcode: "N1 5QJ", borough: "Hackney" },
-    coordinates: { lat: 51.5372, lng: -0.0779 },
-    screens: 1,
-    features: ["community"],
-    programmingFocus: ["experimental", "events"],
-    website: "https://www.instagram.com/projectloop.ldn/",
-    bookingUrl: "https://www.instagram.com/projectloop.ldn/",
-    dataSourceType: "scrape" as const,
-    description: "Canal-side project space in Haggerston hosting occasional film programmes and residencies.",
-  },
-];
 
 // ============================================================================
 // Festival Seed Data
@@ -433,10 +178,13 @@ async function seedCinemas(): Promise<number> {
   console.log("  Seeding cinemas...");
   let count = 0;
 
-  for (const cinema of LONDON_CINEMAS) {
+  for (const { active, ...cinema } of getCinemasSeedData()) {
     await db
       .insert(cinemas)
-      .values(cinema)
+      // isActive is set ONLY on INSERT (respects the registry's `active` flag —
+      // e.g. everyman-walthamstow stays inactive) and kept OUT of the update
+      // `set` below, so re-seeding never flips a manually-toggled venue.
+      .values({ ...cinema, isActive: active })
       .onConflictDoUpdate({
         target: cinemas.id,
         set: {
@@ -444,14 +192,20 @@ async function seedCinemas(): Promise<number> {
           shortName: cinema.shortName,
           chain: cinema.chain,
           address: cinema.address,
-          coordinates: cinema.coordinates,
-          screens: cinema.screens,
-          features: cinema.features,
+          // COALESCE only the NULLABLE columns so a null-in-registry value never
+          // blanks existing DB data — the registry has coords for only ~53/71
+          // cinemas, and 11 live-pinned venues (lexi, several Picturehouse/
+          // Everyman) have no registry coords. Registry wins when present; DB
+          // value preserved when the registry is null.
+          coordinates: sql`coalesce(excluded.coordinates, ${cinemas.coordinates})`,
+          screens: sql`coalesce(excluded.screens, ${cinemas.screens})`,
+          description: sql`coalesce(excluded.description, ${cinemas.description})`,
+          // NOT NULL columns — honest overwrite from the registry (source of truth).
           programmingFocus: cinema.programmingFocus,
+          features: cinema.features,
           website: cinema.website,
           bookingUrl: cinema.bookingUrl,
           dataSourceType: cinema.dataSourceType,
-          description: cinema.description,
           updatedAt: new Date(),
         },
       });
@@ -599,7 +353,7 @@ function listOperations(): void {
   console.log(`
 Available seed operations:
 
-  --cinemas     ${LONDON_CINEMAS.length} London cinemas (production data)
+  --cinemas     ${getCinemasSeedData().length} London cinemas (from registry)
   --festivals   ${LONDON_FESTIVALS.length} London festivals (production data)
   --screenings  ${TEST_FILMS.length} test films + random screenings (development only)
 
