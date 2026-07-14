@@ -8,7 +8,7 @@
  * Fans out scrapers in 4 waves using the in-process registry:
  *   1. Chains  (3 scrapers, parallel)
  *   2. Playwright independents (7 scrapers, parallel cap 4)
- *   3. Cheerio / API independents (16 scrapers, parallel cap 4)
+ *   3. Cheerio / API independents (20 scrapers, parallel cap 4)
  *   4. Enrichment — Letterboxd ratings + post-scrape enrichment hooks
  *
  * Replaces the cloud orchestrator's `batch.triggerAndWait` with a local Promise.all-based
@@ -511,7 +511,7 @@ export async function runScrapeAll(): Promise<ScrapeAllResult> {
   // Wave 2: Playwright independents (7 — cap at 4 for memory headroom)
   waveSummaries.push(await runWave("playwright", "Playwright", 4, freshness, countMap, breaker));
 
-  // Wave 3: Cheerio / API independents (16 — cap at 4 to mirror prior chunking)
+  // Wave 3: Cheerio / API independents (20 — cap at 4 to mirror prior chunking)
   waveSummaries.push(await runWave("cheerio", "Cheerio", 4, freshness, countMap, breaker));
 
   // Wave 4: Post-scrape enrichment (Letterboxd ratings). Skipped when the

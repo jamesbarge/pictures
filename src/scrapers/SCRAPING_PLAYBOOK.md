@@ -54,7 +54,8 @@ Rules:
 | Phoenix (`cinemas/phoenix.ts`) | `phoenix-east-finchley` | `phoenix-{titleSlug}-{ISO}` | derived |
 | Electric (`cinemas/electric-v2.ts`) | `electric-portobello`, `electric-white-city` | `electric-{screeningId}` | site JSON screening key |
 | Lexi (`cinemas/lexi.ts`) | `lexi` | `lexi-{film.ID}-{perf.ID}` | Admit One API ids |
-| Regent Street (`cinemas/regent-street.ts`) | `regent-street` | `regent-street-{showing.id}` | API showing id |
+| Regent Street (`cinemas/regent-street.ts` → `platforms/indy.ts`) | `regent-street` | `regent-street-{showing.id}` | INDY GraphQL showing id (circuit 19 / site 85) |
+| Chiswick (`cinemas/chiswick.ts` → `platforms/indy.ts`) | `chiswick-cinema` | `chiswick-cinema-{showing.id}` | INDY GraphQL showing id (circuit 56 / site 170) |
 | Rich Mix (`cinemas/rich-mix-v2.ts`) | `rich-mix` | `richmix-{inst.id}` | Spektrix v3 API instance id (scheme changed 2026-07-13 with the API rewrite; no reconcile needed — 0 upcoming rows existed, old WP endpoint dead since site restructure) |
 | JW3 (`cinemas/jw3.ts`) | `jw3` | `jw3-{inst.id}` | API instance id |
 | Castle (`cinemas/castle.ts` → `castle-calendar.ts`) | `castle` | `castle-{perfId}` | Jacro perf id |

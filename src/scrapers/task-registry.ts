@@ -39,6 +39,7 @@ const INDEPENDENT_TASK_MAP: Record<string, string> = {
   "electric-white-city": "scraper-electric",
   "lexi": "scraper-lexi",
   "regent-street": "scraper-regent-street",
+  "chiswick-cinema": "scraper-chiswick",
   "rich-mix": "scraper-rich-mix",
 };
 
