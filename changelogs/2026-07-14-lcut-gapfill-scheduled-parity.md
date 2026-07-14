@@ -1,6 +1,6 @@
 # Schedule L-CUT gap-fill + scraper-regression parity monitor (Coverage Phase 1)
 
-**PR**: TBD
+**PR**: #726
 **Date**: 2026-07-14
 **Plan**: `docs/plans/2026-07-13-coverage-implementation-plan.md` (Phase 1)
 
