@@ -1,3 +1,11 @@
+## 2026-07-14: Savoy JSON adapter — Rio migration + empty-success P0 fix (Coverage Phase 2b, PR 1)
+**PR**: TBD | **Files**: `src/scrapers/platforms/savoy.ts` (new), `src/scrapers/platforms/savoy.test.ts` (new), `src/scrapers/cinemas/rio.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`
+- New shared **Savoy Systems modern-JSON client** (`platforms/savoy.ts`): brace-matched `var Events` extraction + performance mapping (UK-local HHMM via `combineDateAndTime`, festival detection, optional `TypeDescription==="Film"` filter), per-venue sourceId/booking builders. **Throws on a missing/malformed `var Events` blob — fixes Rio's empty-success P0** (previously returned `[]` silently, masking a broken scrape).
+- **Rio migrated** onto it; sourceId (`rio-dalston-{event.ID}-{ISO}`) + booking URL (`Rio.dll/WhatsOn?f={ID}`) preserved. Live-verified: 57 screenings, schemes intact.
+- **Research correction:** Savoy ships TWO front-ends — modern-JSON (**Rio/Lexi/Arzner**) vs legacy HTML-table (**Ciné Lumière/ArtHouse**, no `var Events` → need a separate parser). Playbook mislabels fixed: Lexi is Savoy (not Admit One), the Arzner is Savoy (not Jacro), Castle is Wagtail+Admit One (not Jacro). Sets up the Lexi migration + Arzner direct scraper (next PRs).
+
+---
+
 ## 2026-07-14: Add The Chiswick Cinema (INDY) + reclassify Regent Street (Coverage Phase 2a, PR 2)
 **PR**: #728 | **Files**: `src/scrapers/cinemas/chiswick.ts` (new), `src/scrapers/cinemas/chiswick.test.ts` (new), `src/config/cinema-registry.ts`, `src/db/seed-cli.ts`, `src/scrapers/registry.ts`, `src/scrapers/task-registry.ts`, `src/lib/jobs/scrape-all.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`
 - New venue **The Chiswick Cinema** (94-96 Chiswick High Rd, W4 1SH) on the shared INDY adapter (circuit 56 / site 170). Registered in cinema-registry + scrapers/registry (cheerio/API wave) + task-registry + `seed-cli LONDON_CINEMAS`. Screening flow auto-creates the identity row on first scrape via `ensureCinemaExists`, but that does NOT persist `coordinates` — so the `seed-cli` entry is required for the map pin + full metadata (`db:seed:cinemas` upserts it). Live-verified: 150 screenings / 10-day, 16 films, 0 sub-09:00 times, correct `chiswick-cinema-{id}` sourceIds + booking URLs.
