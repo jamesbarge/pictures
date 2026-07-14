@@ -1,6 +1,6 @@
 # seed-cli sources cinemas from the registry (fixes Garden map pin, kills zombie cinemas)
 
-**PR**: TBD
+**PR**: #730
 **Date**: 2026-07-14
 
 ## Problem (found during a coverage audit)
