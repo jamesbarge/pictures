@@ -5,162 +5,55 @@
  * Address: 307 Regent Street, London W1B 2HW
  * Website: https://www.regentstreetcinema.com
  *
- * "Birthplace of British cinema" - first cinema screening in 1896
- * Only UK cinema with 16mm/35mm/Super8/4K projection
+ * "Birthplace of British cinema" - first cinema screening in 1896.
+ * Only UK cinema with 16mm/35mm/Super8/4K projection.
  *
- * Uses INDY Systems GraphQL API at /graphql
- * Same platform as Phoenix Cinema
- * Captures data by intercepting GraphQL responses from the page
+ * On the INDY Systems platform — scraped via a DIRECT GraphQL fetch through the
+ * shared client in ../platforms/indy.ts (no browser). This replaced the old
+ * Playwright response-interception that waited on fragile 20s/3s timers.
+ * sourceId scheme unchanged: `regent-street-{showing.id}`.
  */
 
-import { chromium } from "rebrowser-playwright";
-
-import { BOT_USER_AGENT } from "../constants";
-import { checkHealth } from "../utils/health-check";
+import {
+  fetchIndyShowings,
+  checkIndyHealth,
+  type IndyVenue,
+} from "../platforms/indy";
 import type { RawScreening, ScraperConfig, CinemaScraper } from "../types";
 
-const REGENT_STREET_CONFIG: ScraperConfig & { programmeUrl: string } = {
+const REGENT_STREET_VENUE: IndyVenue = {
   cinemaId: "regent-street",
   baseUrl: "https://www.regentstreetcinema.com",
-  programmeUrl: "https://www.regentstreetcinema.com/programme/",
-  requestsPerMinute: 10,
-  delayBetweenRequests: 1500,
+  circuitId: "19",
+  siteId: "85",
 };
 
-// GraphQL response types
-interface RegentStreetMovie {
-  id: string;
-  name: string;
-  abbreviation: string;
-  showingStatus: string;
-  urlSlug?: string;
-}
-
-interface RegentStreetShowing {
-  id: string;
-  time: string; // ISO UTC datetime "2025-12-30T18:30:00Z"
-  published: boolean;
-  past: boolean;
-  screenId: string;
-  movie: RegentStreetMovie;
-}
+const REGENT_STREET_CONFIG: ScraperConfig = {
+  cinemaId: REGENT_STREET_VENUE.cinemaId,
+  baseUrl: REGENT_STREET_VENUE.baseUrl,
+  // Decorative for INDY: the per-date request pacing lives inside
+  // fetchIndyShowings (DEFAULT_REQUEST_DELAY_MS); these are not consumed by the
+  // single-call scrape() path, kept only to satisfy ScraperConfig.
+  requestsPerMinute: 20,
+  delayBetweenRequests: 250,
+};
 
 export class RegentStreetScraper implements CinemaScraper {
   config = REGENT_STREET_CONFIG;
 
   async scrape(): Promise<RawScreening[]> {
-    console.log(`[${this.config.cinemaId}] Starting Regent Street Cinema scrape...`);
-
-    const browser = await chromium.launch({ headless: true });
-    const context = await browser.newContext();
-    const page = await context.newPage();
-
-    const allShowings: RegentStreetShowing[] = [];
-
-    // Track when showings are captured
-    let showingsPromiseResolve: () => void;
-    let showingsCaptured = false;
-    const showingsPromise = new Promise<void>((resolve) => {
-      showingsPromiseResolve = resolve;
-      // Timeout after 20 seconds
-      setTimeout(() => {
-        if (!showingsCaptured) {
-          console.log(`[${this.config.cinemaId}] Showings timeout - proceeding with ${allShowings.length} showings`);
-          resolve();
-        }
-      }, 20000);
-    });
-
-    // Intercept GraphQL responses
-    page.on("response", async (response) => {
-      if (response.url().includes("/graphql")) {
-        try {
-          const text = await response.text();
-          const json = JSON.parse(text);
-
-          // Capture showingsForDate
-          if (json?.data?.showingsForDate?.data) {
-            const showings = json.data.showingsForDate.data as RegentStreetShowing[];
-            allShowings.push(...showings);
-            console.log(`[${this.config.cinemaId}] Captured ${showings.length} showings (total: ${allShowings.length})`);
-
-            // Mark as captured after we have some showings
-            if (!showingsCaptured && allShowings.length > 0) {
-              // Wait a bit more for additional date batches
-              setTimeout(() => {
-                if (!showingsCaptured) {
-                  showingsCaptured = true;
-                  showingsPromiseResolve();
-                }
-              }, 3000);
-            }
-          }
-        } catch {
-          // Not JSON or parse error - ignore
-        }
-      }
-    });
-
-    try {
-      // Visit the programme page
-      console.log(`[${this.config.cinemaId}] Loading programme page...`);
-      await page.goto(this.config.programmeUrl, { waitUntil: "networkidle", timeout: 60000 });
-
-      // Wait for showings to be captured
-      console.log(`[${this.config.cinemaId}] Waiting for showings data...`);
-      await showingsPromise;
-      console.log(`[${this.config.cinemaId}] Showings captured: ${allShowings.length}`);
-
-      const screenings = this.convertShowings(allShowings);
-      console.log(`[${this.config.cinemaId}] Found ${screenings.length} screenings total`);
-      return screenings;
-    } finally {
-      await browser.close();
-    }
-  }
-
-  /**
-   * Convert captured GraphQL showings into RawScreening format.
-   * Deduplicates by ID and filters out unpublished/past showings.
-   */
-  private convertShowings(allShowings: RegentStreetShowing[]): RawScreening[] {
-    const screenings: RawScreening[] = [];
-    const now = new Date();
-    const seenIds = new Set<string>();
-
-    for (const showing of allShowings) {
-      if (seenIds.has(showing.id)) continue;
-      seenIds.add(showing.id);
-
-      if (!showing.published) continue;
-      if (showing.past) continue;
-
-      const datetime = new Date(showing.time);
-      if (isNaN(datetime.getTime())) continue;
-      if (datetime < now) continue;
-
-      const movieSlug = showing.movie.urlSlug || showing.movie.name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-      const bookingUrl = `${this.config.baseUrl}/movie/${movieSlug}`;
-
-      screenings.push({
-        filmTitle: showing.movie.name,
-        datetime,
-        bookingUrl,
-        sourceId: `regent-street-${showing.id}`,
-      });
-    }
-
+    console.log(`[${this.config.cinemaId}] Scraping via INDY GraphQL (direct fetch)...`);
+    const screenings = await fetchIndyShowings(REGENT_STREET_VENUE);
+    console.log(`[${this.config.cinemaId}] Found ${screenings.length} screenings`);
     return screenings;
   }
 
   async healthCheck(): Promise<boolean> {
-    return checkHealth(this.config.baseUrl, {
-      headers: { "User-Agent": BOT_USER_AGENT },
-    });
+    return checkIndyHealth(REGENT_STREET_VENUE);
   }
 }
 
-/** Creates a Regent Street Cinema scraper (Playwright-based, implements CinemaScraper). */
+/** Creates a Regent Street Cinema scraper (INDY direct-fetch, implements CinemaScraper). */
 export function createRegentStreetScraper(): RegentStreetScraper {
   return new RegentStreetScraper();
 }

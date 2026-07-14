@@ -1,3 +1,12 @@
+## 2026-07-14: INDY GraphQL adapter — Regent Street direct-fetch migration (Coverage Phase 2a, PR 1)
+**PR**: TBD | **Files**: `src/scrapers/platforms/indy.ts` (new), `src/scrapers/platforms/indy.test.ts` (new), `src/scrapers/cinemas/regent-street.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`
+- New shared **INDY Systems GraphQL client** (`platforms/indy.ts`): direct `fetch()` POST to `{venue}/graphql` with `circuit-id`/`site-id` headers — no browser, no auth token. Loops dates today…+35, filters `published && !past && !private && !isPreview`, dedupes by id, throws on HTTP/GraphQL error (never empty-success).
+- **Regent Street migrated** off Playwright response-interception (fragile 20s/3s timers — the P0) to the direct client. sourceId **preserved** (`regent-street-{id}` → no reconcile); booking URL upgraded to `/checkout/showing/{id}`; `timeSource:"iso"`; runtime + year now captured.
+- Live-verified: 25 screenings / 14-day horizon, 0 sub-09:00 times, healthCheck green. Fixture test covers mapping + all filters + throw-on-error.
+- Corrects the record: **Phoenix is NOT on INDY** (it's an ASP.NET `.dll` system) — out of the INDY adapter's scope. Sets up Chiswick (PR 2, same platform, ids 56/170).
+
+---
+
 ## 2026-07-14: Schedule L-CUT gap-fill + scraper-regression parity monitor (Coverage Phase 1)
 **PR**: #726 | **Files**: `scripts/lcut-gapfill.ts`, `scripts/lcut-gapfill.test.ts`, `src/scrapers/registry.ts`, `src/scripts/run-scrape-and-enrich.ts`, `package.json`, `src/scrapers/SCRAPING_PLAYBOOK.md`, `.claude/commands/scrape.md`
 - L-CUT gap-fill is now a phase ("1b") of the weekly `/scrape` orchestrator — runs after the scrape wave (parity vs fresh data) and before cleanup (inserted rows get enriched). There is no cron in this repo by policy; `/scrape` IS the weekly cadence.
