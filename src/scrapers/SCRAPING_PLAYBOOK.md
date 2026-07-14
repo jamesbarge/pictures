@@ -358,7 +358,18 @@ Use this format when recording cinema-specific quirks:
   London are skipped as bad upstream data (seen: "Blue Heron" @ Phoenix 06:00).
 - **Pitfalls**: venue names carry emoji/diacritics ("The Arzner 🏳️‍🌈", "Ciné Lumière") —
   normalized before mapping; unmapped venue names are warned loudly, never guessed.
-- **Not scheduled** in the nightly pipeline yet — manual runs while dedup accuracy bakes in.
+- **Scheduled** (2026-07-14) as a phase in the weekly `/scrape` orchestrator
+  (`src/scripts/run-scrape-and-enrich.ts`, "Phase 1b") — runs AFTER the scrape wave (so
+  parity reflects fresh data) and BEFORE cleanup (so inserted rows get enriched). There is
+  no cron in this repo by policy ("nothing runs off the Mac"); `/scrape` IS the weekly
+  cadence. The reusable core is `runLcutGapfill()`; `scripts/lcut-gapfill.ts` is the
+  supervised CLI (`npm run lcut:gapfill`, `--targets id1,id2` to narrow the execute set).
+- **Source-only vs scraped** (the scheduled phase's key rule): venues WITHOUT a first-party
+  scraper (`the-arzner`, `horse-hospital`, `good-shepherd-studios`, `project-loop`) are
+  auto-inserted; venues we DO scrape are **report-only** — a scraped venue >5 missing vs
+  L-CUT is a scraper-regression signal (warn-level Telegram). Auto-inserting scraped venues
+  would mask the regression, so we don't. The split is derived at runtime from the scraper
+  registry (`getScrapedCinemaIds`), so a venue auto-reclassifies when it gains a scraper.
 
 ### Rich Mix — Spektrix v3 API (rewritten 2026-07-13)
 - Old WP JSON endpoint (`/whats-on/cinema/?ajax=1&json=1`) removed in a site restructure

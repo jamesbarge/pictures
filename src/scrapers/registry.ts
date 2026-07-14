@@ -411,6 +411,28 @@ export function getScrapersByWave(wave: ScraperWave): ScraperRegistryEntry[] {
   return SCRAPER_REGISTRY.filter((e) => e.wave === wave);
 }
 
+/**
+ * Every cinema id covered by a registered (non-enrichment) scraper. Used to
+ * classify L-CUT gap-fill venues into "we scrape this ourselves" (report-only,
+ * regression-monitored) vs "source-only" (safe to auto-insert). Deriving this
+ * from the registry means a venue auto-reclassifies the moment it gains a
+ * first-party scraper (e.g. the-arzner in Phase 2b).
+ */
+export function getScrapedCinemaIds(): Set<string> {
+  const ids = new Set<string>();
+  for (const entry of SCRAPER_REGISTRY) {
+    if (entry.wave === "enrichment") continue;
+    const config = entry.buildConfig();
+    if (config.type === "single") {
+      ids.add(config.venue.id);
+    } else {
+      // multi | chain — both expose a venues[] array.
+      config.venues.forEach((v) => ids.add(v.id));
+    }
+  }
+  return ids;
+}
+
 /** Canonical CLI ID derived from the task ID. */
 export function getScraperCliId(entry: ScraperRegistryEntry): string {
   return entry.taskId.replace(/^scraper-chain-/, "").replace(/^scraper-/, "");

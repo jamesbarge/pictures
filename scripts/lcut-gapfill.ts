@@ -13,10 +13,18 @@
  * Each row carries an ISO UTC `timestamp` (no local-time parsing needed) and
  * the venue's real booking URL.
  *
- * Usage:
+ * The core is exposed as `runLcutGapfill()` so the weekly `/scrape` orchestrator
+ * (src/scripts/run-scrape-and-enrich.ts) can run it AFTER the main scrape wave
+ * as both a gap-fill source and a scraper-regression detector. The scheduled
+ * caller only inserts for venues WITHOUT a first-party scraper (source-only)
+ * and treats a high missing-count at a scraped venue as a regression signal —
+ * see classifyLcutTargets / detectLcutRegressions.
+ *
+ * Usage (CLI — supervised; inserts for ALL venues unless --targets narrows it):
  *   npx dotenv -e .env.local -- npx tsx -r tsconfig-paths/register scripts/lcut-gapfill.ts            # dry run (default)
  *   npx dotenv -e .env.local -- npx tsx -r tsconfig-paths/register scripts/lcut-gapfill.ts --execute  # insert missing screenings
- *   ... --days 14   # horizon (default 35)
+ *   ... --days 14                          # horizon (default 35)
+ *   ... --execute --targets the-arzner,horse-hospital   # insert only for these cinema ids
  *
  * sourceId scheme: lcut-{lcutMongoId} — see SCRAPING_PLAYBOOK.md.
  */
@@ -70,6 +78,31 @@ export function normalizeVenueName(name: string): string {
     .replace(/\s+/g, " ")
     .trim()
     .toLowerCase();
+}
+
+/** Distinct insert-target cinema ids (the first id of each VENUE_MAP entry). */
+export function getLcutTargetCinemaIds(): string[] {
+  return [...new Set(Object.values(VENUE_MAP).map((ids) => ids[0]))];
+}
+
+/**
+ * Split L-CUT targets into "source-only" (no first-party scraper — safe to
+ * auto-insert) vs "scraped" (we scrape it ourselves — report-only, monitored
+ * for regressions). `scrapedIds` is the set of cinema ids covered by the
+ * scraper registry (see getScrapedCinemaIds in scrapers/registry.ts). Deriving
+ * the split at runtime means a venue auto-reclassifies the moment it gains a
+ * first-party scraper.
+ */
+export function classifyLcutTargets(scrapedIds: Set<string>): {
+  sourceOnly: Set<string>;
+  scraped: Set<string>;
+} {
+  const sourceOnly = new Set<string>();
+  const scraped = new Set<string>();
+  for (const target of getLcutTargetCinemaIds()) {
+    (scrapedIds.has(target) ? scraped : sourceOnly).add(target);
+  }
+  return { sourceOnly, scraped };
 }
 
 export interface LcutFilm {
@@ -277,25 +310,92 @@ function toRawScreening(f: LcutFilm): RawScreening {
   };
 }
 
-async function main() {
-  const args = process.argv.slice(2);
-  const execute = args.includes("--execute");
-  const daysArg = args.indexOf("--days");
-  const days = daysArg !== -1 ? parseInt(args[daysArg + 1], 10) : 35;
+// ============================================================================
+// Reusable core — used by the CLI (below) and the weekly /scrape orchestrator.
+// ============================================================================
 
-  console.log(`\nL-CUT gap-fill — ${days}-day horizon — ${execute ? "EXECUTE" : "DRY RUN"}\n`);
+/** Per-venue coverage of L-CUT's listings against our DB for a single run. */
+export interface VenueParity {
+  /** Insert-target cinema id (first id of the VENUE_MAP entry). */
+  venue: string;
+  /** Total L-CUT listings mapped to this venue in the horizon. */
+  total: number;
+  /** Listings already present in our DB (deduped). */
+  covered: number;
+  /** Listings we're missing (count). */
+  missing: number;
+  /** The missing rows, ready to insert. */
+  missingRows: RawScreening[];
+  /** added+updated when this venue was executed (0 if report-only). */
+  inserted: number;
+  /** failed+rejected when this venue was executed. */
+  failed: number;
+  /** True if the pipeline diff-check blocked the insert. */
+  blocked: boolean;
+}
 
-  const listings = await fetchLcutListings(days);
-  console.log(`Fetched ${listings.length} L-CUT listings\n`);
+export interface LcutGapfillReport {
+  days: number;
+  executed: boolean;
+  listingCount: number;
+  /** L-CUT venue names we have no mapping for (need adding to VENUE_MAP). */
+  unmapped: Array<{ name: string; count: number }>;
+  /** Per-venue parity, sorted by missing count descending. */
+  venues: VenueParity[];
+  totalMissing: number;
+  totalInserted: number;
+  totalFailed: number;
+}
 
-  // Partition by venue
-  const unmapped = new Map<string, number>();
+export interface RunLcutGapfillOptions {
+  /** Horizon in days (default 35). */
+  days?: number;
+  /** Insert missing screenings (default false = dry run / report only). */
+  execute?: boolean;
+  /**
+   * When executing, only insert for these target cinema ids. Parity is still
+   * computed and returned for EVERY venue. Undefined = insert for all venues
+   * with missing rows. The scheduled caller passes the source-only set so
+   * scraped venues stay report-only (see classifyLcutTargets).
+   */
+  executeTargets?: Set<string>;
+  /** Injectable fetch (tests). Defaults to the real L-CUT API crawl. */
+  fetchListings?: (days: number) => Promise<LcutFilm[]>;
+  /** Injectable DB read (tests). Defaults to loadExistingScreenings. */
+  loadExisting?: (
+    cinemaIds: string[],
+    from: Date,
+    to: Date,
+  ) => Promise<Map<string, ExistingScreening[]>>;
+  log?: (msg: string) => void;
+  warn?: (msg: string) => void;
+}
+
+/**
+ * Fetch L-CUT's listings, diff them against our DB, and (optionally) insert the
+ * screenings we're missing. Returns per-venue parity so callers can both fill
+ * gaps and detect scraper regressions.
+ */
+export async function runLcutGapfill(
+  opts: RunLcutGapfillOptions = {},
+): Promise<LcutGapfillReport> {
+  const days = opts.days ?? 35;
+  const execute = opts.execute ?? false;
+  const log = opts.log ?? ((m: string) => console.log(m));
+  const warn = opts.warn ?? ((m: string) => console.warn(m));
+  const fetchListings = opts.fetchListings ?? fetchLcutListings;
+  const loadExisting = opts.loadExisting ?? loadExistingScreenings;
+
+  const listings = await fetchListings(days);
+
+  // Partition listings by insert-target cinema id.
+  const unmappedCounts = new Map<string, number>();
   const byTarget = new Map<string, LcutFilm[]>();
   const dedupIds = new Set<string>();
   for (const f of listings) {
     const ids = VENUE_MAP[normalizeVenueName(f.cinema)];
     if (!ids) {
-      unmapped.set(f.cinema, (unmapped.get(f.cinema) ?? 0) + 1);
+      unmappedCounts.set(f.cinema, (unmappedCounts.get(f.cinema) ?? 0) + 1);
       continue;
     }
     ids.forEach((id) => dedupIds.add(id));
@@ -303,21 +403,16 @@ async function main() {
     if (!byTarget.has(target)) byTarget.set(target, []);
     byTarget.get(target)!.push(f);
   }
-
-  if (unmapped.size > 0) {
-    console.warn("⚠️  UNMAPPED L-CUT venues (add to VENUE_MAP):");
-    for (const [name, n] of unmapped) console.warn(`   ${n} listing(s) at ${name}`);
-  }
+  const unmapped = [...unmappedCounts].map(([name, count]) => ({ name, count }));
 
   const now = new Date();
   const to = new Date(now.getTime() + (days + 1) * 86_400_000);
-  const existingByCinema = await loadExistingScreenings([...dedupIds], now, to);
+  const existingByCinema = await loadExisting([...dedupIds], now, to);
 
-  // Diff
-  const missingByTarget = new Map<string, RawScreening[]>();
-  const report: Array<{ venue: string; total: number; covered: number; missing: number }> = [];
+  // Diff each venue's listings against the DB → per-venue parity.
+  const venues: VenueParity[] = [];
   for (const [target, rows] of byTarget) {
-    // Dedup against every candidate cinema for this venue name
+    // Dedup against every candidate cinema for this venue name.
     const candidates = Object.values(VENUE_MAP).find((ids) => ids[0] === target) ?? [target];
     const existing = candidates.flatMap((id) => existingByCinema.get(id) ?? []);
     const missing: RawScreening[] = [];
@@ -337,7 +432,7 @@ async function main() {
         10,
       );
       if (londonHour < 9) {
-        console.warn(
+        warn(
           `⚠️  Skipping implausible early screening: ${raw.filmTitle} @ ${f.cinema} ${raw.datetime.toISOString()}`,
         );
         continue;
@@ -366,23 +461,145 @@ async function main() {
       }
       missing.push(raw);
     }
-    report.push({ venue: target, total: rows.length, covered, missing: missing.length });
-    if (missing.length > 0) missingByTarget.set(target, missing);
+    venues.push({
+      venue: target,
+      total: rows.length,
+      covered,
+      missing: missing.length,
+      missingRows: missing,
+      inserted: 0,
+      failed: 0,
+      blocked: false,
+    });
+  }
+  venues.sort((a, b) => b.missing - a.missing);
+
+  let totalInserted = 0;
+  let totalFailed = 0;
+  if (execute) {
+    for (const v of venues) {
+      if (v.missingRows.length === 0) continue;
+      // Report-only for venues excluded from executeTargets (i.e. venues we
+      // scrape ourselves — auto-inserting L-CUT rows there would mask scraper
+      // regressions the parity report is meant to catch).
+      if (opts.executeTargets && !opts.executeTargets.has(v.venue)) continue;
+      log(`[lcut] Inserting ${v.missingRows.length} screenings for ${v.venue}...`);
+      // skipSupersededCleanup: this is a PARTIAL batch — running the pipeline's
+      // superseded-cleanup against it deletes legitimate rows (2026-07-13).
+      const result = await processScreenings(v.venue, v.missingRows, {
+        skipSupersededCleanup: true,
+      });
+      v.inserted = result.added + result.updated;
+      v.failed = result.failed + result.rejected;
+      v.blocked = result.blocked;
+      totalInserted += v.inserted;
+      totalFailed += v.failed;
+      if (result.blocked) {
+        warn(`[lcut] ${v.venue} blocked by diff check — investigate manually`);
+      }
+    }
   }
 
-  // Coverage report
-  report.sort((a, b) => b.missing - a.missing);
-  console.log("\n=== L-CUT coverage report ===");
-  console.log("venue".padEnd(26), "lcut".padStart(5), "covered".padStart(8), "missing".padStart(8));
-  for (const r of report) {
-    console.log(r.venue.padEnd(26), String(r.total).padStart(5), String(r.covered).padStart(8), String(r.missing).padStart(8));
-  }
-  const totalMissing = report.reduce((s, r) => s + r.missing, 0);
-  console.log(`\nTotal missing: ${totalMissing}`);
+  return {
+    days,
+    executed: execute,
+    listingCount: listings.length,
+    unmapped,
+    venues,
+    totalMissing: venues.reduce((s, v) => s + v.missing, 0),
+    totalInserted,
+    totalFailed,
+  };
+}
 
-  for (const [target, missing] of missingByTarget) {
-    console.log(`\n--- ${target}: ${missing.length} missing ---`);
-    for (const m of missing) {
+/** A scraped venue that L-CUT sees more screenings at than we do. */
+export interface RegressionSignal {
+  venue: string;
+  missing: number;
+  total: number;
+  covered: number;
+}
+
+/**
+ * Scraped venues (in `scrapedIds`) whose missing count exceeds `threshold` —
+ * a signal that our own scraper silently dropped screenings a third party
+ * still lists. Source-only venues are excluded (their "missing" is expected
+ * gap-fill work, not a regression).
+ */
+export function detectLcutRegressions(
+  report: LcutGapfillReport,
+  scrapedIds: Set<string>,
+  threshold: number,
+): RegressionSignal[] {
+  return report.venues
+    .filter((v) => scrapedIds.has(v.venue) && v.missing > threshold)
+    .map((v) => ({ venue: v.venue, missing: v.missing, total: v.total, covered: v.covered }))
+    .sort((a, b) => b.missing - a.missing);
+}
+
+/** Render the per-venue coverage table as a printable string. */
+export function formatParityTable(report: LcutGapfillReport): string {
+  const lines: string[] = [];
+  lines.push("=== L-CUT coverage report ===");
+  lines.push(
+    [
+      "venue".padEnd(26),
+      "lcut".padStart(5),
+      "covered".padStart(8),
+      "missing".padStart(8),
+    ].join(" "),
+  );
+  for (const v of report.venues) {
+    lines.push(
+      [
+        v.venue.padEnd(26),
+        String(v.total).padStart(5),
+        String(v.covered).padStart(8),
+        String(v.missing).padStart(8),
+      ].join(" "),
+    );
+  }
+  lines.push(`\nTotal missing: ${report.totalMissing}`);
+  return lines.join("\n");
+}
+
+// ============================================================================
+// CLI wrapper (supervised manual runs).
+// ============================================================================
+
+async function main() {
+  const args = process.argv.slice(2);
+  const execute = args.includes("--execute");
+  const daysArg = args.indexOf("--days");
+  const days = daysArg !== -1 ? parseInt(args[daysArg + 1], 10) : 35;
+  const targetsArg = args.indexOf("--targets");
+  const executeTargets =
+    targetsArg !== -1
+      ? new Set(
+          // `?? ""` guards `--targets` passed as the last arg (no value).
+          (args[targetsArg + 1] ?? "")
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean),
+        )
+      : undefined;
+
+  console.log(`\nL-CUT gap-fill — ${days}-day horizon — ${execute ? "EXECUTE" : "DRY RUN"}\n`);
+
+  const report = await runLcutGapfill({ days, execute, executeTargets });
+  console.log(`Fetched ${report.listingCount} L-CUT listings\n`);
+
+  if (report.unmapped.length > 0) {
+    console.warn("⚠️  UNMAPPED L-CUT venues (add to VENUE_MAP):");
+    for (const u of report.unmapped) console.warn(`   ${u.count} listing(s) at ${u.name}`);
+  }
+
+  console.log("\n" + formatParityTable(report));
+
+  for (const v of report.venues) {
+    if (v.missingRows.length === 0) continue;
+    console.log(`\n--- ${v.venue}: ${v.missingRows.length} missing ---`);
+    for (const m of v.missingRows) {
       console.log(`  ${m.datetime.toISOString()}  ${m.filmTitle}  (${m.sourceId})`);
     }
   }
@@ -392,26 +609,13 @@ async function main() {
     process.exit(0);
   }
 
-  // Execute: run each venue's missing batch through the standard pipeline
-  // (title extraction, TMDB matching, upsert on (cinema, sourceId)).
-  let added = 0;
-  let failed = 0;
-  for (const [target, missing] of missingByTarget) {
-    console.log(`\n[lcut] Inserting ${missing.length} screenings for ${target}...`);
-    // skipSupersededCleanup: this is a PARTIAL batch — running the pipeline's
-    // superseded-cleanup against it deletes legitimate rows (2026-07-13).
-    const result = await processScreenings(target, missing, { skipSupersededCleanup: true });
-    added += result.added + result.updated;
-    failed += result.failed + result.rejected;
-    if (result.blocked) {
-      console.error(`[lcut] ${target} blocked by diff check — investigate manually`);
-    }
-  }
-  console.log(`\nDone. ${added} added/updated, ${failed} failed/rejected.`);
+  console.log(
+    `\nDone. ${report.totalInserted} added/updated, ${report.totalFailed} failed/rejected.`,
+  );
   process.exit(0);
 }
 
-// Only run when executed directly (not when imported by tests)
+// Only run when executed directly (not when imported by tests or the orchestrator)
 if (process.argv[1] && /lcut-gapfill/.test(process.argv[1])) {
   main().catch((error) => {
     console.error("[lcut] FATAL:", error);

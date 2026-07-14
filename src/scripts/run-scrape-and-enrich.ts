@@ -5,6 +5,10 @@
  * Replaces the 4-script manual sequence (`scrape:all` → `cleanup:upcoming`
  * → `audit:films` → `agents:fallback-enrich`) with one ordered run:
  *   1. runScrapeAll()         — fans out 26 scrapers in 4 waves (existing)
+ *   1b. runLcutGapfill()      — weekly L-CUT gap-fill (source-only venues) +
+ *                               scraper-regression parity monitor. Runs AFTER
+ *                               the scrape so parity reflects fresh data, and
+ *                               BEFORE cleanup so inserted rows get enriched.
  *   2. cleanup:upcoming       — title cleanup → TMDB → metadata → Letterboxd
  *   3. audit:films            — validation pass over the cleaned data
  *   4. detectSilentBreakers() — surface cinemas in success+0 state
@@ -21,6 +25,14 @@
 
 import { spawn } from "node:child_process";
 import { runScrapeAll } from "@/lib/jobs/scrape-all";
+import { sendTelegramAlert } from "@/lib/telegram";
+import { getScrapedCinemaIds } from "@/scrapers/registry";
+import {
+  runLcutGapfill,
+  classifyLcutTargets,
+  detectLcutRegressions,
+  formatParityTable,
+} from "../../scripts/lcut-gapfill";
 import {
   detectSilentBreakers,
   formatQuarantineReport,
@@ -38,6 +50,11 @@ import {
 
 const SKIP_SCRAPE = process.argv.includes("--skip-scrape");
 const SKIP_ENRICH = process.argv.includes("--skip-enrich");
+const SKIP_LCUT = process.argv.includes("--skip-lcut");
+
+/** A scraped venue behind L-CUT by more than this many screenings is flagged
+ * as a possible scraper regression (matches Phase 1 of the coverage plan). */
+const LCUT_REGRESSION_THRESHOLD = 5;
 
 interface PhaseResult {
   label: string;
@@ -153,6 +170,66 @@ async function main(): Promise<void> {
     );
   } else {
     console.log("[scrape-and-enrich] --skip-scrape: skipping Phase 1");
+  }
+
+  // Phase 1b: L-CUT gap-fill (source-only insert) + parity regression monitor.
+  // Runs AFTER the scrape (so "missing vs L-CUT" reflects tonight's fresh data,
+  // not a stale DB) and BEFORE cleanup (so inserted rows flow through TMDB /
+  // enrichment like any scraped screening). Skipped when the scrape was skipped
+  // — parity is only meaningful measured against a fresh scrape.
+  if (!SKIP_SCRAPE && !SKIP_LCUT) {
+    phases.push(
+      await runPhase("L-CUT gap-fill (source-only) + parity monitor", async () => {
+        const scrapedIds = getScrapedCinemaIds();
+        const { sourceOnly } = classifyLcutTargets(scrapedIds);
+        // Insert ONLY for venues we don't scrape ourselves; scraped venues stay
+        // report-only so their missing-count remains an honest regression signal.
+        const report = await runLcutGapfill({ execute: true, executeTargets: sourceOnly });
+        console.log("\n" + formatParityTable(report));
+        if (report.unmapped.length > 0) {
+          console.warn("⚠️  UNMAPPED L-CUT venues (add to VENUE_MAP):");
+          for (const u of report.unmapped) console.warn(`   ${u.count} listing(s) at ${u.name}`);
+        }
+
+        const regressions = detectLcutRegressions(report, scrapedIds, LCUT_REGRESSION_THRESHOLD);
+
+        // Surface via the same Telegram path scrape-all uses. Alert whenever
+        // there's something actionable: source-only inserts (usually non-zero,
+        // so this pings most weeks at info level) or a scraped venue behind
+        // L-CUT beyond the threshold (warn level — the regression signal).
+        if (regressions.length > 0 || report.totalInserted > 0) {
+          const parts: string[] = [
+            `Source-only inserted: ${report.totalInserted}` +
+              (report.totalFailed > 0 ? ` (${report.totalFailed} failed)` : ""),
+          ];
+          if (regressions.length > 0) {
+            parts.push(
+              `\nPossible scraper regressions (>${LCUT_REGRESSION_THRESHOLD} missing vs L-CUT):\n` +
+                regressions
+                  .map((r) => `• ${r.venue}: ${r.missing} missing / ${r.total} listed`)
+                  .join("\n"),
+            );
+          }
+          await sendTelegramAlert({
+            title: "L-CUT gap-fill + parity",
+            message: parts.join("\n"),
+            level: regressions.length > 0 ? "warn" : "info",
+          }).catch((err) => console.warn("[lcut] telegram alert failed:", err));
+        }
+
+        // Regressions are warnings, not phase failures — the gap-fill itself
+        // succeeded. A thrown fetch/DB error is caught by runPhase → ok:false.
+        return {
+          ok: true,
+          detail:
+            `${report.totalInserted} inserted (source-only), ` +
+            `${regressions.length} scraped venue(s) >${LCUT_REGRESSION_THRESHOLD} missing` +
+            (report.unmapped.length > 0 ? `, ${report.unmapped.length} unmapped` : ""),
+        };
+      }),
+    );
+  } else if (SKIP_LCUT) {
+    console.log("[scrape-and-enrich] --skip-lcut: skipping L-CUT gap-fill phase");
   }
 
   // Phase 2-3: Enrichment (unless skipped)
