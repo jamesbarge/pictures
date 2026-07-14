@@ -60,6 +60,7 @@ import { createColdharbourBlueScraper } from "@/scrapers/cinemas/coldharbour-blu
 import { createOlympicScraper } from "@/scrapers/cinemas/olympic";
 import { createDavidLeanScraper } from "@/scrapers/cinemas/david-lean";
 import { createRiversideScraperV2 } from "@/scrapers/cinemas/riverside-v2";
+import { createChiswickScraper } from "@/scrapers/cinemas/chiswick";
 
 export type ScraperWave = "chain" | "playwright" | "cheerio" | "enrichment";
 
@@ -157,16 +158,6 @@ const PLAYWRIGHT_ENTRIES: ScraperRegistryEntry[] = [
       type: "single",
       venue: getVenueFromRegistry("lexi"),
       createScraper: () => createLexiScraper(),
-    }),
-  },
-  {
-    taskId: "scraper-regent-street",
-    type: "single",
-    wave: "playwright",
-    buildConfig: (): SingleVenueConfig => ({
-      type: "single",
-      venue: getVenueFromRegistry("regent-street"),
-      createScraper: () => createRegentStreetScraper(),
     }),
   },
   {
@@ -373,6 +364,27 @@ const CHEERIO_ENTRIES: ScraperRegistryEntry[] = [
       type: "single",
       venue: getVenueFromRegistry("riverside-studios"),
       createScraper: () => createRiversideScraperV2(),
+    }),
+  },
+  // INDY platform (direct GraphQL fetch, no browser) — see platforms/indy.ts.
+  {
+    taskId: "scraper-regent-street",
+    type: "single",
+    wave: "cheerio",
+    buildConfig: (): SingleVenueConfig => ({
+      type: "single",
+      venue: getVenueFromRegistry("regent-street"),
+      createScraper: () => createRegentStreetScraper(),
+    }),
+  },
+  {
+    taskId: "scraper-chiswick",
+    type: "single",
+    wave: "cheerio",
+    buildConfig: (): SingleVenueConfig => ({
+      type: "single",
+      venue: getVenueFromRegistry("chiswick-cinema"),
+      createScraper: () => createChiswickScraper(),
     }),
   },
 ];

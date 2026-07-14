@@ -188,6 +188,25 @@ const LONDON_CINEMAS = [
     description: "One of the oldest purpose-built cinemas in the UK (1910).",
   },
   {
+    // Chiswick has a scraper (auto-creates its identity row on first scrape),
+    // but it's listed here too so `db:seed:cinemas` writes its full metadata —
+    // ensureCinemaExists does NOT persist coordinates, so without this the map
+    // would have no Chiswick pin.
+    id: "chiswick-cinema",
+    name: "The Chiswick Cinema",
+    shortName: "Chiswick",
+    chain: null,
+    address: { street: "94-96 Chiswick High Road", area: "Chiswick", postcode: "W4 1SH", borough: "Hounslow" },
+    coordinates: { lat: 51.4931, lng: -0.251 },
+    screens: 5,
+    features: ["accessible", "bar", "cafe"],
+    programmingFocus: ["mainstream", "arthouse", "events"],
+    website: "https://www.chiswickcinema.co.uk",
+    bookingUrl: "https://www.chiswickcinema.co.uk/whats-on",
+    dataSourceType: "scrape" as const,
+    description: "Boutique five-screen cinema on Chiswick High Road (opened 2021).",
+  },
+  {
     id: "coldharbour-blue",
     name: "Coldharbour Blue",
     shortName: "Coldharbour",

@@ -1,3 +1,10 @@
+## 2026-07-14: Add The Chiswick Cinema (INDY) + reclassify Regent Street (Coverage Phase 2a, PR 2)
+**PR**: #728 | **Files**: `src/scrapers/cinemas/chiswick.ts` (new), `src/scrapers/cinemas/chiswick.test.ts` (new), `src/config/cinema-registry.ts`, `src/db/seed-cli.ts`, `src/scrapers/registry.ts`, `src/scrapers/task-registry.ts`, `src/lib/jobs/scrape-all.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`
+- New venue **The Chiswick Cinema** (94-96 Chiswick High Rd, W4 1SH) on the shared INDY adapter (circuit 56 / site 170). Registered in cinema-registry + scrapers/registry (cheerio/API wave) + task-registry + `seed-cli LONDON_CINEMAS`. Screening flow auto-creates the identity row on first scrape via `ensureCinemaExists`, but that does NOT persist `coordinates` — so the `seed-cli` entry is required for the map pin + full metadata (`db:seed:cinemas` upserts it). Live-verified: 150 screenings / 10-day, 16 films, 0 sub-09:00 times, correct `chiswick-cinema-{id}` sourceIds + booking URLs.
+- **Regent Street reclassified** post-migration (PR 1 left-overs): `cinema-registry` scraperType `playwright`→`api`; moved from the Playwright wave to the cheerio/API wave in `scrapers/registry` (it no longer launches a browser).
+
+---
+
 ## 2026-07-14: INDY GraphQL adapter — Regent Street direct-fetch migration (Coverage Phase 2a, PR 1)
 **PR**: #727 | **Files**: `src/scrapers/platforms/indy.ts` (new), `src/scrapers/platforms/indy.test.ts` (new), `src/scrapers/cinemas/regent-street.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`
 - New shared **INDY Systems GraphQL client** (`platforms/indy.ts`): direct `fetch()` POST to `{venue}/graphql` with `circuit-id`/`site-id` headers — no browser, no auth token. Loops dates today…+35, filters `published && !past && !private && !isPreview`, dedupes by id, throws on HTTP/GraphQL error (never empty-success).
