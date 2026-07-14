@@ -1,6 +1,6 @@
 # Add The Chiswick Cinema (INDY) + reclassify Regent Street (Coverage Phase 2a, PR 2)
 
-**PR**: TBD
+**PR**: #728
 **Date**: 2026-07-14
 **Plan**: `docs/plans/2026-07-13-coverage-implementation-plan.md` (Phase 2a)
 
