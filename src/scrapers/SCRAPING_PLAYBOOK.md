@@ -53,14 +53,14 @@ Rules:
 | Barbican (`cinemas/barbican.ts`) | `barbican` | `barbican-{YYYY-MM-DD}-{HHMM}-{titleSlug}` | derived |
 | Phoenix (`cinemas/phoenix.ts`) | `phoenix-east-finchley` | `phoenix-{titleSlug}-{ISO}` | derived |
 | Electric (`cinemas/electric-v2.ts`) | `electric-portobello`, `electric-white-city` | `electric-{screeningId}` | site JSON screening key |
-| Lexi (`cinemas/lexi.ts`) | `lexi` | `lexi-{film.ID}-{perf.ID}` | Admit One API ids |
+| Lexi (`cinemas/lexi.ts`) | `lexi` | `lexi-{film.ID}-{perf.ID}` | Savoy modern-JSON perf ids (NOT Admit One — corrected 2026-07-14) |
 | Regent Street (`cinemas/regent-street.ts` → `platforms/indy.ts`) | `regent-street` | `regent-street-{showing.id}` | INDY GraphQL showing id (circuit 19 / site 85) |
 | Chiswick (`cinemas/chiswick.ts` → `platforms/indy.ts`) | `chiswick-cinema` | `chiswick-cinema-{showing.id}` | INDY GraphQL showing id (circuit 56 / site 170) |
 | Rich Mix (`cinemas/rich-mix-v2.ts`) | `rich-mix` | `richmix-{inst.id}` | Spektrix v3 API instance id (scheme changed 2026-07-13 with the API rewrite; no reconcile needed — 0 upcoming rows existed, old WP endpoint dead since site restructure) |
 | JW3 (`cinemas/jw3.ts`) | `jw3` | `jw3-{inst.id}` | API instance id |
 | Castle (`cinemas/castle.ts` → `castle-calendar.ts`) | `castle` | `castle-{perfId}` | Jacro perf id |
 | Castle Sidcup (`cinemas/castle-sidcup.ts` → `castle-calendar.ts`) | `castle-sidcup` | `castle-sidcup-{perfId}` | Jacro perf id |
-| Rio (`cinemas/rio.ts`) | `rio-dalston` | `rio-dalston-{event.ID}-{ISO}` | event id + datetime |
+| Rio (`cinemas/rio.ts` → `platforms/savoy.ts`) | `rio-dalston` | `rio-dalston-{event.ID}-{ISO}` | Savoy modern-JSON event id + datetime |
 | Prince Charles (`cinemas/prince-charles.ts`) | `prince-charles` | `{perfId}` (bare digits from `booknow/(\d+)`); fallback `prince-charles-{titleSlug}-{ISO}` | Jacro perf id; derived fallback added 2026-06-12 so sourceId is never undefined. Bare-digit primary kept deliberately — prefixing would strand all existing rows |
 | ICA (`cinemas/ica.ts`) | `ica` | `ica-{titleSlug}-{ISO}` | derived (lowercase, whitespace→dash, punctuation kept) |
 | Genesis (`cinemas/genesis.ts`) | `genesis` | `genesis-{perfCode}` | site perfCode |
@@ -413,3 +413,20 @@ Use this format when recording cinema-specific quirks:
   new venue's ids from the `circuit-id`/`site-id` headers on any `/graphql` request it makes.
 - **NOT INDY**: Phoenix Cinema (East Finchley) is an ASP.NET `.dll` system
   (`PhoenixCinemaLondon.dll`), despite an old comment claiming otherwise — see cinemas/phoenix.ts.
+
+### Savoy Systems platform (`src/scrapers/platforms/savoy.ts`, 2026-07-14)
+- **Two DISTINCT front-end templates** — do not conflate them:
+  - **Modern JSON** — homepage (root → `/{Dll}.dll/Home`) embeds `var Events = {"Events":[…]};`.
+    Films carry `Performances[]` with `StartDate` ("YYYY-MM-DD") + `StartTime` ("HHMM", UK-local),
+    `AuditoriumName`, `URL`, and (Lexi/Arzner) `TypeDescription`. Venues: **Rio, Lexi, The Arzner**.
+  - **Legacy HTML-table** — `/{Dll}.dll/` renders server-side `div.programme` / `TcsProgramme_`
+    title links / `td.PeformanceListDate` / `StartTimeAndStatus`, with **NO `var Events`**. Venues:
+    **Ciné Lumière, ArtHouse Crouch End**. These need a SEPARATE table parser (not savoy.ts).
+- **`platforms/savoy.ts`** handles ONLY the modern-JSON template: `extractSavoyEventsJson` (brace-
+  matched blob extraction, THROWS if absent — never empty-as-success) + `parseSavoyEvents` (maps
+  future performances, `combineDateAndTime` for UK-local HHMM, festival detection, optional
+  `filmTypeOnly` filter). Per-venue variation via `SavoyVenue` builders (sourceId, booking URL).
+- **Label corrections (verified live 2026-07-14):** Lexi is Savoy modern-JSON, NOT "Admit One";
+  The Arzner is Savoy modern-JSON (`TheArzner.dll`), NOT "Jacro" — a direct scraper is trivial and
+  is the intended replacement for its L-CUT gap-fill feed; Castle is Wagtail + Admit One, NOT Savoy.
+- **`.dll` name per venue**: Rio→`Rio`, Lexi→`TheLexiCinema`, Arzner→`TheArzner`.
