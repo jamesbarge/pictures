@@ -1573,6 +1573,9 @@ export const VENUE_LANGUAGE_PRIORS: Record<string, string[]> = {
 export function getCinemasSeedData() {
   return CINEMA_REGISTRY.map((cinema) => ({
     id: cinema.id,
+    // Carried through so seed INSERTs respect deliberately-inactive venues
+    // (e.g. everyman-walthamstow) instead of defaulting is_active=true.
+    active: cinema.active,
     name: cinema.name,
     shortName: cinema.shortName,
     chain: cinema.chain,

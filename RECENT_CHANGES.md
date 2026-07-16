@@ -1,3 +1,12 @@
+## 2026-07-14: seed-cli sources cinemas from the registry (fixes Garden map pin, kills zombie cinemas)
+**PR**: #730 | **Files**: `src/db/seed-cli.ts`
+- `seedCinemas()` now seeds from `getCinemasSeedData()` (the cinema registry — single source of truth, 71 cinemas) instead of a stale hand-maintained 16-entry `LONDON_CINEMAS` array that had drifted to **deprecated ids** (`garden-cinema`, `genesis-mile-end`) with a wrong (Golders Green) address. That drift meant `db:seed:cinemas` created empty **zombie cinemas** and left canonical `garden` (200 screenings) with **NULL coordinates → no map pin**.
+- Coordinate/screens/programmingFocus/description upserts now **COALESCE** against the existing row, so the registry's 18 null-coordinate entries can't blank the 11 live-pinned venues (lexi, Picturehouse/Everyman branches) that currently lack registry coords.
+- **Prod remediation (data-only):** re-seeded 71 cinemas (Garden pin restored; verified no pins blanked); deleted 4 orphaned zombie cinema records (`garden-cinema`, `genesis-mile-end`, `nickel`, `olympic`) + 132 stale `nickel` screenings (inactive → already hidden from the site).
+- Surfaced during a coverage audit; the `LONDON_CINEMAS`↔registry drift is the exact "seed-cli doesn't read the registry" hazard, now eliminated.
+
+---
+
 ## 2026-07-14: Savoy JSON adapter — Rio migration + empty-success P0 fix (Coverage Phase 2b, PR 1)
 **PR**: #729 | **Files**: `src/scrapers/platforms/savoy.ts` (new), `src/scrapers/platforms/savoy.test.ts` (new), `src/scrapers/cinemas/rio.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`
 - New shared **Savoy Systems modern-JSON client** (`platforms/savoy.ts`): brace-matched `var Events` extraction + performance mapping (UK-local HHMM via `combineDateAndTime`, festival detection, optional `TypeDescription==="Film"` filter), per-venue sourceId/booking builders. **Throws on a missing/malformed `var Events` blob — fixes Rio's empty-success P0** (previously returned `[]` silently, masking a broken scrape).
