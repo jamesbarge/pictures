@@ -432,22 +432,33 @@ async function main() {
     console.log(`Running phase ${PHASE_FILTER} only\n`);
   }
 
-  // Re-query for each phase in case earlier phases changed data
   const shouldRun = (phase: number) => !PHASE_FILTER || PHASE_FILTER === phase;
 
-  if (shouldRun(1)) {
-    const upcomingFilms = await getUpcomingFilms();
+  // Query the upcoming-films set once, and re-query between phases ONLY when
+  // the previous phase actually wrote something — a phase that changed
+  // nothing (or a dry run) leaves the set identical, so re-reading it is a
+  // wasted full-join scan.
+  let upcomingFilms: FilmRow[] = [];
+  if (shouldRun(1) || shouldRun(2) || shouldRun(3)) {
+    upcomingFilms = await getUpcomingFilms();
     console.log(`Total films with upcoming screenings: ${upcomingFilms.length}`);
-    await phase1TitleCleanup(upcomingFilms);
+  }
+
+  if (shouldRun(1)) {
+    const updated = await phase1TitleCleanup(upcomingFilms);
+    if (updated > 0 && !DRY_RUN && (shouldRun(2) || shouldRun(3))) {
+      upcomingFilms = await getUpcomingFilms();
+    }
   }
 
   if (shouldRun(2)) {
-    const upcomingFilms = await getUpcomingFilms();
-    await phase2TMDBMatching(upcomingFilms);
+    const { matched } = await phase2TMDBMatching(upcomingFilms);
+    if (matched > 0 && !DRY_RUN && shouldRun(3)) {
+      upcomingFilms = await getUpcomingFilms();
+    }
   }
 
   if (shouldRun(3)) {
-    const upcomingFilms = await getUpcomingFilms();
     await phase3FillGaps(upcomingFilms);
   }
 

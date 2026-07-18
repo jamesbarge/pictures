@@ -390,7 +390,12 @@ async function main(): Promise<void> {
     );
     phases.push(
       await runOrSkipPhase("audit", "Audit films (validation pass)", async () => {
-        const ok = await runNpmScript("audit:films");
+        // Opt-in gate (mirrors the SCRAPE_REMATCH_SWEEP pattern): with
+        // SCRAPE_AUDIT_FAIL_THRESHOLD set, the audit exits 1 — failing this
+        // phase — when upcoming-film metadata issues exceed the threshold.
+        // Unset (default) keeps the audit informational.
+        const gate = process.env.SCRAPE_AUDIT_FAIL_THRESHOLD;
+        const ok = await runNpmScript("audit:films", gate ? ["--fail-threshold", gate] : []);
         return { ok };
       }),
     );
