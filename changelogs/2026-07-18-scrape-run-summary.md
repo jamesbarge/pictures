@@ -1,6 +1,6 @@
 # /scrape run-summary JSON + warn states + skill rewrite (/scrape improvements, PR 1)
 
-**PR**: #TBD
+**PR**: #731
 **Date**: 2026-07-18
 
 ## Changes
