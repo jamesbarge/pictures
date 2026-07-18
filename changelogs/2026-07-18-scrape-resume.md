@@ -1,6 +1,6 @@
 # /scrape crash-resume — checkpoint + --resume flag (/scrape improvements, PR 2)
 
-**PR**: #TBD
+**PR**: #732
 **Date**: 2026-07-18
 
 ## Changes
