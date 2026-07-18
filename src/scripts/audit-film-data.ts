@@ -360,6 +360,11 @@ if (process.argv[1]?.includes("audit-film-data")) {
     const args = process.argv.slice(2);
     const jsonMode = args.includes("--json");
     const upcomingOnly = args.includes("--upcoming-only");
+    // Opt-in quality gate: exit 1 when upcoming-film metadata issues exceed
+    // the threshold. Absent flag = current always-exit-0 behavior (the audit
+    // stays informational). Wired from /scrape via SCRAPE_AUDIT_FAIL_THRESHOLD.
+    const thresholdIdx = args.indexOf("--fail-threshold");
+    const failThreshold = thresholdIdx !== -1 ? Number(args[thresholdIdx + 1]) : null;
 
     const result = await auditFilmData(upcomingOnly);
 
@@ -367,6 +372,30 @@ if (process.argv[1]?.includes("audit-film-data")) {
       console.log(JSON.stringify(result, null, 2));
     } else {
       printReport(result);
+    }
+
+    if (failThreshold !== null) {
+      if (!Number.isFinite(failThreshold) || failThreshold < 0) {
+        console.error(`[audit] invalid --fail-threshold value — expected a non-negative number`);
+        process.exit(1);
+      }
+      // Gate on films WITH UPCOMING SCREENINGS only — the user-facing surface.
+      // (Deliberately not gaps.length, which is capped at 200 by default.)
+      const upcomingIssues =
+        result.summary.missingPosterUpcoming +
+        result.summary.missingSynopsisUpcoming +
+        result.summary.missingLetterboxdRatingUpcoming +
+        result.summary.missingTmdbIdUpcoming;
+      if (upcomingIssues > failThreshold) {
+        console.error(
+          `[audit] GATE FAILED: ${upcomingIssues} upcoming-film metadata issues ` +
+            `(poster+synopsis+letterboxd+tmdb) > threshold ${failThreshold}`,
+        );
+        process.exit(1);
+      }
+      console.log(
+        `[audit] gate OK: ${upcomingIssues} upcoming-film metadata issues <= ${failThreshold}`,
+      );
     }
 
     process.exit(0);

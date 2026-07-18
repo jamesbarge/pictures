@@ -106,6 +106,19 @@ const BREAKER_THRESHOLD = (() => {
   return Number.isFinite(parsed) && parsed >= 1 ? Math.floor(parsed) : 3;
 })();
 
+/**
+ * Warn threshold for consecutive failures of ANY type (not just connection).
+ * Deliberately does NOT abort: the fewest-screenings-first ordering
+ * front-loads broken cinemas, so a burst of ordinary failures at run start
+ * is expected — but a long streak (e.g. Cloudflare blocking the host IP)
+ * deserves a mid-run Telegram warn instead of silence until the digest.
+ * Default 6; override via SCRAPE_BREAKER_ANY_THRESHOLD.
+ */
+const BREAKER_ANY_WARN_THRESHOLD = (() => {
+  const parsed = Number(process.env.SCRAPE_BREAKER_ANY_THRESHOLD);
+  return Number.isFinite(parsed) && parsed >= 1 ? Math.floor(parsed) : 6;
+})();
+
 /** Run-scoped circuit breaker shared across all scrape waves. */
 export interface RunBreaker {
   /** True once the breaker has tripped — workers stop pulling new tasks. */
@@ -135,15 +148,32 @@ export interface RunBreaker {
 export function createRunBreaker(
   threshold: number = BREAKER_THRESHOLD,
   onTrip?: (source: string, count: number, lastError: string) => void,
+  anyFailureWarnThreshold: number = BREAKER_ANY_WARN_THRESHOLD,
+  onAnyFailureStreak?: (source: string, count: number, lastError: string) => void,
 ): RunBreaker {
   let consecutive = 0;
   let tripped = false;
+  // Second, softer counter: consecutive failures of ANY type. Fires the
+  // one-shot warn callback and keeps going — never aborts (see
+  // BREAKER_ANY_WARN_THRESHOLD for why aborting here would be wrong).
+  let anyConsecutive = 0;
+  let anyWarned = false;
   return {
     isTripped: () => tripped,
     record(source, outcome) {
       if (outcome.succeeded) {
         consecutive = 0;
+        anyConsecutive = 0;
         return;
+      }
+      anyConsecutive++;
+      if (!anyWarned && anyConsecutive >= anyFailureWarnThreshold) {
+        anyWarned = true;
+        onAnyFailureStreak?.(
+          source,
+          anyConsecutive,
+          outcome.errors?.[0] ?? "scraper returned success=false",
+        );
       }
       const connError = (outcome.errors ?? []).find((e) => isConnectionError(e));
       if (connError === undefined) {
@@ -385,38 +415,58 @@ function entryScreeningCount(
   return lowest === Number.POSITIVE_INFINITY ? 0 : lowest;
 }
 
-/** Fan-out scrapers in a single wave with the given concurrency cap. */
-async function runWave(
-  wave: ScraperWave,
-  label: string,
+/** Human-readable digest labels per registry wave. */
+const WAVE_LABELS: Record<ScraperWave, string> = {
+  chain: "Chains",
+  playwright: "Playwright",
+  cheerio: "Cheerio",
+  enrichment: "Enrichment",
+};
+
+/**
+ * Fan-out scrapers from one or more waves through a SINGLE shared concurrency
+ * pool. Passing multiple waves removes the barrier between them: with
+ * separate waves, one slow Playwright straggler held all 20 Cheerio scrapers
+ * hostage; a shared pool keeps the total concurrency cap identical while
+ * letting fast entries flow. Returns one WaveSummary per input wave so the
+ * Telegram digest shape is unchanged.
+ */
+async function runWaves(
+  waves: ScraperWave[],
+  poolLabel: string,
   concurrency: number,
   freshness: FreshnessMap,
   countMap: ScreeningCountMap,
   breaker: RunBreaker,
   options: ScrapeAllOptions = {},
-): Promise<WaveSummary> {
+): Promise<WaveSummary[]> {
+  const byWave = (w: ScraperWave) => SCRAPER_REGISTRY.filter((e) => e.wave === w);
   if (breaker.isTripped()) {
-    const count = SCRAPER_REGISTRY.filter((e) => e.wave === wave).length;
-    console.log(`[scrape-all] ${label}: skipped (circuit breaker tripped) — ${count} scrapers`);
-    return { label, succeeded: 0, failed: count, total: count };
+    return waves.map((w) => {
+      const count = byWave(w).length;
+      console.log(
+        `[scrape-all] ${WAVE_LABELS[w]}: skipped (circuit breaker tripped) — ${count} scrapers`,
+      );
+      return { label: WAVE_LABELS[w], succeeded: 0, failed: count, total: count };
+    });
   }
   // Resume support: entries that already succeeded in the checkpointed run
   // are counted as pre-succeeded (so digest math stays honest) and not re-run.
   const skipSet = new Set(options.skipTaskIds ?? []);
-  const waveEntries = SCRAPER_REGISTRY.filter((e) => e.wave === wave);
-  const resumeSkipped = waveEntries.filter((e) =>
-    skipSet.has(e.taskId.replace(/^scraper-/, "")),
-  );
+  const allEntries = waves.flatMap(byWave);
+  const resumeSkipped = allEntries.filter((e) => skipSet.has(e.taskId.replace(/^scraper-/, "")));
   if (resumeSkipped.length > 0) {
     console.log(
-      `[scrape-all] ${label}: skipped (resume) — ` +
+      `[scrape-all] ${poolLabel}: skipped (resume) — ` +
         resumeSkipped.map((e) => e.taskId.replace(/^scraper-/, "")).join(", "),
     );
   }
   // Sort by screening count ASC (fewest first — broken scrapers surface fast),
   // staleness ASC as tiebreaker (preserve rotation when counts are equal).
-  // Compute both keys once per entry; sort + log share the results.
-  const ranked = waveEntries
+  // Compute both keys once per entry; sort + log share the results. The sort
+  // spans ALL waves in the pool, so a starved Cheerio venue outranks a
+  // healthy Playwright one.
+  const ranked = allEntries
     .filter((e) => !skipSet.has(e.taskId.replace(/^scraper-/, "")))
     .map((entry) => ({
       entry,
@@ -431,38 +481,44 @@ async function runWave(
         return `${entry.taskId.replace(/^scraper-/, "")}(${count}scr, ${age})`;
       })
       .join(", ");
-    console.log(`[scrape-all] ${label} order (fewest screenings, then stalest): ${orderStr}`);
+    console.log(`[scrape-all] ${poolLabel} order (fewest screenings, then stalest): ${orderStr}`);
   }
   const entries = ranked.map((r) => r.entry);
   const tasks = entries.map(
-    (entry) => () => runScraperEntry(entry, label, breaker, options.onEntryComplete),
+    (entry) => () =>
+      runScraperEntry(entry, WAVE_LABELS[entry.wave], breaker, options.onEntryComplete),
   );
   const settled = await runWithConcurrency(tasks, concurrency, breaker.isTripped);
 
-  let succeeded = resumeSkipped.length;
-  let failed = 0;
+  // Tally per wave so the digest keeps one row per wave.
+  const tally = new Map<ScraperWave, { succeeded: number; failed: number }>(
+    waves.map((w) => [w, { succeeded: 0, failed: 0 }]),
+  );
+  for (const e of resumeSkipped) {
+    tally.get(e.wave)!.succeeded++;
+  }
   for (let i = 0; i < settled.length; i++) {
     const result = settled[i];
-    const taskId = entries[i].taskId;
+    const { taskId, wave } = entries[i];
     if (result.status === "fulfilled" && result.value.succeeded) {
-      succeeded++;
+      tally.get(wave)!.succeeded++;
     } else {
-      failed++;
+      tally.get(wave)!.failed++;
       const reason =
         result.status === "rejected"
           ? result.reason instanceof Error
             ? result.reason.message
             : String(result.reason)
           : (result.value.error ?? "scraper returned success=false");
-      console.log(`[scrape-all] ${label} FAILED: ${taskId} — ${reason}`);
+      console.log(`[scrape-all] ${WAVE_LABELS[wave]} FAILED: ${taskId} — ${reason}`);
     }
   }
 
-  console.log(
-    `[scrape-all] ${label}: ${succeeded} succeeded, ${failed} failed` +
-      (resumeSkipped.length > 0 ? ` (${resumeSkipped.length} skipped via resume)` : ""),
-  );
-  return { label, succeeded, failed, total: waveEntries.length };
+  return waves.map((w) => {
+    const { succeeded, failed } = tally.get(w)!;
+    console.log(`[scrape-all] ${WAVE_LABELS[w]}: ${succeeded} succeeded, ${failed} failed`);
+    return { label: WAVE_LABELS[w], succeeded, failed, total: byWave(w).length };
+  });
 }
 
 /** Run the enrichment wave: Letterboxd ratings + (best-effort) other tasks. */
@@ -521,19 +577,38 @@ export async function runScrapeAll(options: ScrapeAllOptions = {}): Promise<Scra
 
   // Run-level circuit breaker: K consecutive connection failures abort the
   // run in minutes instead of cascading into a multi-hour DB outage.
-  const breaker = createRunBreaker(BREAKER_THRESHOLD, (source, count, lastError) => {
-    console.error(
-      `[scrape-all] CIRCUIT BREAKER TRIPPED after ${count} consecutive connection failures ` +
-        `(last failing cinema: ${source} — ${lastError}). Skipping remaining scrapers.`,
-    );
-    void sendTelegramAlert({
-      title: "Scrape circuit breaker tripped",
-      message:
-        `${count} consecutive connection-level failures — aborting the run.\n` +
-        `Last failing cinema: ${source}\n${lastError}`,
-      level: "error",
-    }).catch(() => {});
-  });
+  const breaker = createRunBreaker(
+    BREAKER_THRESHOLD,
+    (source, count, lastError) => {
+      console.error(
+        `[scrape-all] CIRCUIT BREAKER TRIPPED after ${count} consecutive connection failures ` +
+          `(last failing cinema: ${source} — ${lastError}). Skipping remaining scrapers.`,
+      );
+      void sendTelegramAlert({
+        title: "Scrape circuit breaker tripped",
+        message:
+          `${count} consecutive connection-level failures — aborting the run.\n` +
+          `Last failing cinema: ${source}\n${lastError}`,
+        level: "error",
+      }).catch(() => {});
+    },
+    BREAKER_ANY_WARN_THRESHOLD,
+    (source, count, lastError) => {
+      // One-shot mid-run heads-up; the run continues (see threshold docs).
+      console.warn(
+        `[scrape-all] ${count} consecutive scraper failures of any type ` +
+          `(latest: ${source} — ${lastError}). Possible systemic issue; run continues.`,
+      );
+      void sendTelegramAlert({
+        title: "Scrape failure streak",
+        message:
+          `${count} consecutive scraper failures (any type) — possible systemic issue ` +
+          `(WAF/IP block, site-wide outage). Run continues.\n` +
+          `Latest failing cinema: ${source}\n${lastError}`,
+        level: "warn",
+      }).catch(() => {});
+    },
+  );
 
   // Load sort signals once, up front. Within each wave, entries are sorted
   // fewest-screenings first (broken scrapers surface fast) with staleness as
@@ -543,16 +618,27 @@ export async function runScrapeAll(options: ScrapeAllOptions = {}): Promise<Scra
     loadScreeningCountMap(),
   ]);
 
-  // Wave 1: Chain scrapers (3 — fully parallel)
-  waveSummaries.push(await runWave("chain", "Chains", 4, freshness, countMap, breaker, options));
-
-  // Wave 2: Playwright independents (7 — cap at 4 for memory headroom)
+  // Wave 1: Chain scrapers (3 — fully parallel). Kept as their own pool:
+  // chains are multi-venue giants with scaled wall-clock caps.
   waveSummaries.push(
-    await runWave("playwright", "Playwright", 4, freshness, countMap, breaker, options),
+    ...(await runWaves(["chain"], "Chains", 4, freshness, countMap, breaker, options)),
   );
 
-  // Wave 3: Cheerio / API independents (20 — cap at 4 to mirror prior chunking)
-  waveSummaries.push(await runWave("cheerio", "Cheerio", 4, freshness, countMap, breaker, options));
+  // Waves 2+3: Playwright (7) + Cheerio/API (20) independents share ONE pool
+  // (cap 4 — same ceiling as the old per-wave caps, so memory headroom is
+  // unchanged). Previously the wave barrier let one slow Playwright straggler
+  // block all 20 Cheerio scrapers; the shared pool removes that dead time.
+  waveSummaries.push(
+    ...(await runWaves(
+      ["playwright", "cheerio"],
+      "Independents (Playwright + Cheerio)",
+      4,
+      freshness,
+      countMap,
+      breaker,
+      options,
+    )),
+  );
 
   // Wave 4: Post-scrape enrichment (Letterboxd ratings). Skipped when the
   // breaker tripped — enrichment would only hammer the same wedged DB.

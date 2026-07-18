@@ -73,6 +73,41 @@ describe("createRunBreaker", () => {
 
     expect(breaker.isTripped()).toBe(false);
   });
+
+  it("warns once (never aborts) after N consecutive failures of any type", () => {
+    const onWarn = vi.fn();
+    const breaker = createRunBreaker(3, undefined, 4, onWarn);
+
+    // Mixed failure types — connection counter keeps resetting, but the
+    // any-type streak accumulates.
+    breaker.record("a", { succeeded: false, errors: [SITE_ERROR] });
+    breaker.record("b", { succeeded: false, errors: [CONN_ERROR] });
+    breaker.record("c", { succeeded: false, errors: [SITE_ERROR] });
+    expect(onWarn).not.toHaveBeenCalled();
+
+    breaker.record("d", { succeeded: false, errors: [SITE_ERROR] });
+    expect(onWarn).toHaveBeenCalledTimes(1);
+    expect(onWarn).toHaveBeenCalledWith("d", 4, SITE_ERROR);
+    expect(breaker.isTripped()).toBe(false); // warn ≠ abort
+
+    // One-shot: a longer streak doesn't re-fire.
+    breaker.record("e", { succeeded: false, errors: [SITE_ERROR] });
+    expect(onWarn).toHaveBeenCalledTimes(1);
+  });
+
+  it("resets the any-type streak on success and reports a fallback error message", () => {
+    const onWarn = vi.fn();
+    const breaker = createRunBreaker(3, undefined, 2, onWarn);
+
+    breaker.record("a", { succeeded: false, errors: [SITE_ERROR] });
+    breaker.record("b", { succeeded: true });
+    breaker.record("c", { succeeded: false, errors: [SITE_ERROR] });
+    expect(onWarn).not.toHaveBeenCalled();
+
+    // Failure with no error strings still counts, with a fallback message.
+    breaker.record("d", { succeeded: false });
+    expect(onWarn).toHaveBeenCalledWith("d", 2, "scraper returned success=false");
+  });
 });
 
 describe("breakerOutcomeFor (entry → breaker seam)", () => {
