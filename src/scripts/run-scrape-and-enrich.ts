@@ -21,6 +21,8 @@
  *   npm run scrape:unified                # full run
  *   npm run scrape:unified -- --skip-scrape   # enrichment only (re-run after a manual scrape)
  *   npm run scrape:unified -- --skip-enrich   # scraping only
+ *   npm run scrape:unified -- --resume        # skip work completed by a crashed/failed run
+ *                                             # (same args, <24h old; per-scraper inside Phase 1)
  */
 
 import { spawn } from "node:child_process";
@@ -29,6 +31,14 @@ import { db, withDbTimeout } from "@/db";
 import { screenings } from "@/db/schema";
 import { runScrapeAll } from "@/lib/jobs/scrape-all";
 import { sendTelegramAlert } from "@/lib/telegram";
+import {
+  initCheckpoint,
+  markPhaseComplete,
+  markScrapeEntryComplete,
+  readCheckpoint,
+  clearCheckpoint,
+  honoredPhasePrefix,
+} from "@/lib/scrape-checkpoint";
 import {
   writeRunSummary,
   computeRunStatus,
@@ -62,6 +72,15 @@ import {
 const SKIP_SCRAPE = process.argv.includes("--skip-scrape");
 const SKIP_ENRICH = process.argv.includes("--skip-enrich");
 const SKIP_LCUT = process.argv.includes("--skip-lcut");
+const RESUME = process.argv.includes("--resume");
+
+/**
+ * Phases eligible for checkpoint/resume — the expensive and/or DB-writing
+ * ones. The read-only detector phases (preflight/health/yield-delta) cost
+ * seconds and feed the run summary's health section, so they always re-run:
+ * skipping them on resume would persist a summary with empty health data.
+ */
+const CHECKPOINTABLE = new Set<PhaseId>(["scrape", "lcut", "cleanup", "audit", "rematch"]);
 
 /** A scraped venue behind L-CUT by more than this many screenings is flagged
  * as a possible scraper regression (matches Phase 1 of the coverage plan). */
@@ -173,6 +192,62 @@ async function main(): Promise<void> {
   };
   persistCrashSummary = () => persistSummary("crashed");
 
+  // Resume: only honored behind the explicit --resume flag. readCheckpoint
+  // validates age (<24h) and arg-match; anything invalid falls back to a
+  // full run with a warning.
+  const resumeFrom = RESUME ? await readCheckpoint(summaryArgs) : null;
+  if (RESUME && !resumeFrom) {
+    console.warn(
+      "[scrape-and-enrich] --resume: no valid checkpoint (absent, >24h old, or different args) — running fully.",
+    );
+  } else if (resumeFrom) {
+    console.log(
+      `[scrape-and-enrich] --resume: checkpoint from ${resumeFrom.startedAt} — ` +
+        `${resumeFrom.completedPhases.length} phase(s), ` +
+        `${resumeFrom.completedScrapeEntries.length} scraper(s) already complete.`,
+    );
+  }
+  // Checkpointed phases are only honored as a PREFIX of this run's phase
+  // sequence: the phases form a dependency chain, so a phase "completed" in a
+  // prior run whose upstream phase did NOT complete (e.g. cleanup done but
+  // scrape failed) ran against stale data and must re-run after the upstream
+  // work is redone. The carried-over checkpoint is truncated the same way so
+  // stale completions can't survive into later resumes either.
+  const phaseSequence: PhaseId[] = [];
+  if (!SKIP_SCRAPE) phaseSequence.push("scrape");
+  if (!SKIP_SCRAPE && !SKIP_LCUT) phaseSequence.push("lcut");
+  if (!SKIP_ENRICH) phaseSequence.push("cleanup", "audit");
+  if (!SKIP_ENRICH && process.env.SCRAPE_REMATCH_SWEEP === "1") phaseSequence.push("rematch");
+  const honored = honoredPhasePrefix(phaseSequence, resumeFrom?.completedPhases ?? []);
+  if (resumeFrom && honored.length < resumeFrom.completedPhases.length) {
+    console.log(
+      `[scrape-and-enrich] --resume: honoring only [${honored.join(", ") || "none"}] from the ` +
+        "checkpoint — later completions depend on unfinished earlier phases and will re-run.",
+    );
+  }
+  await initCheckpoint(
+    runId,
+    summaryArgs,
+    resumeFrom ? { ...resumeFrom, completedPhases: honored } : null,
+  );
+  const donePhases = new Set(honored);
+
+  /** runPhase, minus phases already completed in the checkpointed run. */
+  const runOrSkipPhase = async (
+    id: PhaseId,
+    label: string,
+    fn: () => Promise<{ ok: boolean; warn?: boolean; detail?: string }>,
+  ): Promise<SummaryPhase> => {
+    if (donePhases.has(id)) {
+      console.log(`\n━━━ ${label} ━━━`);
+      console.log(`[${label}] skipped (resume — completed in prior run)`);
+      return { id, label, ok: true, durationMin: 0, detail: "skipped (resume)" };
+    }
+    const result = await runPhase(id, label, fn);
+    if (result.ok && CHECKPOINTABLE.has(id)) await markPhaseComplete(id);
+    return result;
+  };
+
   // Phase 0: Pre-flight quarantine — read-only, ~1s. Tells the user which
   // cinemas have been silently broken BEFORE they sit through a 30-60 min
   // /scrape that just re-runs them. Three signals, fully orthogonal:
@@ -222,8 +297,11 @@ async function main(): Promise<void> {
   // Phase 1: Scrape (unless skipped)
   if (!SKIP_SCRAPE) {
     phases.push(
-      await runPhase("scrape", "Scrape (all cinemas, 4 waves)", async () => {
-        const result = await runScrapeAll();
+      await runOrSkipPhase("scrape", "Scrape (all cinemas, 4 waves)", async () => {
+        const result = await runScrapeAll({
+          skipTaskIds: resumeFrom?.completedScrapeEntries,
+          onEntryComplete: markScrapeEntryComplete,
+        });
         const detail =
           `${result.totalSucceeded} ok / ${result.totalFailed} failed across ${result.waves.length} waves` +
           ` (${result.anomalies} anomalies, ${result.zeroCounts} zero-count)`;
@@ -247,7 +325,7 @@ async function main(): Promise<void> {
   // — parity is only meaningful measured against a fresh scrape.
   if (!SKIP_SCRAPE && !SKIP_LCUT) {
     phases.push(
-      await runPhase("lcut", "L-CUT gap-fill (source-only) + parity monitor", async () => {
+      await runOrSkipPhase("lcut", "L-CUT gap-fill (source-only) + parity monitor", async () => {
         const scrapedIds = getScrapedCinemaIds();
         const { sourceOnly } = classifyLcutTargets(scrapedIds);
         // Insert ONLY for venues we don't scrape ourselves; scraped venues stay
@@ -304,14 +382,14 @@ async function main(): Promise<void> {
   // Phase 2-3: Enrichment (unless skipped)
   if (!SKIP_ENRICH) {
     phases.push(
-      await runPhase("cleanup", "Cleanup upcoming films (4 sub-phases)", async () => {
+      await runOrSkipPhase("cleanup", "Cleanup upcoming films (4 sub-phases)", async () => {
         // The unified scrape command is already a live operational workflow.
         const ok = await runNpmScript("cleanup:upcoming", ["--execute"]);
         return { ok };
       }),
     );
     phases.push(
-      await runPhase("audit", "Audit films (validation pass)", async () => {
+      await runOrSkipPhase("audit", "Audit films (validation pass)", async () => {
         const ok = await runNpmScript("audit:films");
         return { ok };
       }),
@@ -323,7 +401,7 @@ async function main(): Promise<void> {
     // 100 films per run to bound TMDB usage and blast radius.
     if (process.env.SCRAPE_REMATCH_SWEEP === "1") {
       phases.push(
-        await runPhase("rematch", "Rematch sweep (unmatched films, capped)", async () => {
+        await runOrSkipPhase("rematch", "Rematch sweep (unmatched films, capped)", async () => {
           const ok = await runNpmScript("rematch:unmatched", ["--execute", "--limit", "100"]);
           return { ok };
         }),
@@ -405,9 +483,13 @@ async function main(): Promise<void> {
   await persistSummary();
 
   if (failedPhases.length > 0) {
+    // Keep the checkpoint: `npm run scrape:unified -- --resume` (same args,
+    // within 24h) retries the failed phase(s) without redoing completed work.
     console.log(`\nACTION REQUIRED: ${failedPhases.length} phase(s) failed.`);
+    console.log("Retry without redoing completed work: npm run scrape:unified -- --resume");
     process.exit(1);
   } else {
+    await clearCheckpoint();
     console.log("\nAll phases OK.");
     process.exit(0);
   }

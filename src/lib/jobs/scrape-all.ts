@@ -233,6 +233,7 @@ async function runScraperEntry(
   entry: ScraperRegistryEntry,
   waveLabel: string,
   breaker?: RunBreaker,
+  onEntryComplete?: (taskId: string) => void | Promise<void>,
 ): Promise<{ succeeded: boolean; error?: string }> {
   const taskId = entry.taskId.replace(/^scraper-/, "");
   const startedAt = new Date();
@@ -269,6 +270,14 @@ async function runScraperEntry(
     // including wall-clock-cap timeouts — are folded into venueResults), so
     // connection errors must be detected from the per-venue error messages.
     breaker?.record(taskId, breakerOutcomeFor(result));
+    if (result.success) {
+      // Checkpoint hook for --resume; a failed hook must not fail the entry.
+      try {
+        await onEntryComplete?.(taskId);
+      } catch (err) {
+        console.warn(`[scrape-all] onEntryComplete(${taskId}) failed:`, err);
+      }
+    }
     return { succeeded: result.success };
   } catch (err) {
     const ms = Date.now() - startedAt.getTime();
@@ -384,16 +393,31 @@ async function runWave(
   freshness: FreshnessMap,
   countMap: ScreeningCountMap,
   breaker: RunBreaker,
+  options: ScrapeAllOptions = {},
 ): Promise<WaveSummary> {
   if (breaker.isTripped()) {
     const count = SCRAPER_REGISTRY.filter((e) => e.wave === wave).length;
     console.log(`[scrape-all] ${label}: skipped (circuit breaker tripped) — ${count} scrapers`);
     return { label, succeeded: 0, failed: count, total: count };
   }
+  // Resume support: entries that already succeeded in the checkpointed run
+  // are counted as pre-succeeded (so digest math stays honest) and not re-run.
+  const skipSet = new Set(options.skipTaskIds ?? []);
+  const waveEntries = SCRAPER_REGISTRY.filter((e) => e.wave === wave);
+  const resumeSkipped = waveEntries.filter((e) =>
+    skipSet.has(e.taskId.replace(/^scraper-/, "")),
+  );
+  if (resumeSkipped.length > 0) {
+    console.log(
+      `[scrape-all] ${label}: skipped (resume) — ` +
+        resumeSkipped.map((e) => e.taskId.replace(/^scraper-/, "")).join(", "),
+    );
+  }
   // Sort by screening count ASC (fewest first — broken scrapers surface fast),
   // staleness ASC as tiebreaker (preserve rotation when counts are equal).
   // Compute both keys once per entry; sort + log share the results.
-  const ranked = SCRAPER_REGISTRY.filter((e) => e.wave === wave)
+  const ranked = waveEntries
+    .filter((e) => !skipSet.has(e.taskId.replace(/^scraper-/, "")))
     .map((entry) => ({
       entry,
       count: entryScreeningCount(entry, countMap),
@@ -410,10 +434,12 @@ async function runWave(
     console.log(`[scrape-all] ${label} order (fewest screenings, then stalest): ${orderStr}`);
   }
   const entries = ranked.map((r) => r.entry);
-  const tasks = entries.map((entry) => () => runScraperEntry(entry, label, breaker));
+  const tasks = entries.map(
+    (entry) => () => runScraperEntry(entry, label, breaker, options.onEntryComplete),
+  );
   const settled = await runWithConcurrency(tasks, concurrency, breaker.isTripped);
 
-  let succeeded = 0;
+  let succeeded = resumeSkipped.length;
   let failed = 0;
   for (let i = 0; i < settled.length; i++) {
     const result = settled[i];
@@ -432,8 +458,11 @@ async function runWave(
     }
   }
 
-  console.log(`[scrape-all] ${label}: ${succeeded} succeeded, ${failed} failed`);
-  return { label, succeeded, failed, total: entries.length };
+  console.log(
+    `[scrape-all] ${label}: ${succeeded} succeeded, ${failed} failed` +
+      (resumeSkipped.length > 0 ? ` (${resumeSkipped.length} skipped via resume)` : ""),
+  );
+  return { label, succeeded, failed, total: waveEntries.length };
 }
 
 /** Run the enrichment wave: Letterboxd ratings + (best-effort) other tasks. */
@@ -469,6 +498,15 @@ export interface ScrapeAllResult {
   zeroCounts: number;
 }
 
+export interface ScrapeAllOptions {
+  /** Normalized taskIds (no `scraper-` prefix) to skip — used by --resume to
+   * avoid re-running scrapers that already succeeded in a crashed run. */
+  skipTaskIds?: string[];
+  /** Invoked after each scraper entry succeeds (normalized taskId) — used by
+   * the checkpoint writer. Errors are caught and logged, never propagated. */
+  onEntryComplete?: (taskId: string) => void | Promise<void>;
+}
+
 /**
  * Pure-Node entry point for the daily scrape orchestrator.
  *
@@ -476,7 +514,7 @@ export interface ScrapeAllResult {
  * the concurrency cap), then records a Telegram digest covering anomalies,
  * failures, and zero-count baselines for the run window.
  */
-export async function runScrapeAll(): Promise<ScrapeAllResult> {
+export async function runScrapeAll(options: ScrapeAllOptions = {}): Promise<ScrapeAllResult> {
   const startTime = Date.now();
   const startedAt = new Date(startTime);
   const waveSummaries: WaveSummary[] = [];
@@ -506,13 +544,15 @@ export async function runScrapeAll(): Promise<ScrapeAllResult> {
   ]);
 
   // Wave 1: Chain scrapers (3 — fully parallel)
-  waveSummaries.push(await runWave("chain", "Chains", 4, freshness, countMap, breaker));
+  waveSummaries.push(await runWave("chain", "Chains", 4, freshness, countMap, breaker, options));
 
   // Wave 2: Playwright independents (7 — cap at 4 for memory headroom)
-  waveSummaries.push(await runWave("playwright", "Playwright", 4, freshness, countMap, breaker));
+  waveSummaries.push(
+    await runWave("playwright", "Playwright", 4, freshness, countMap, breaker, options),
+  );
 
   // Wave 3: Cheerio / API independents (20 — cap at 4 to mirror prior chunking)
-  waveSummaries.push(await runWave("cheerio", "Cheerio", 4, freshness, countMap, breaker));
+  waveSummaries.push(await runWave("cheerio", "Cheerio", 4, freshness, countMap, breaker, options));
 
   // Wave 4: Post-scrape enrichment (Letterboxd ratings). Skipped when the
   // breaker tripped — enrichment would only hammer the same wedged DB.
