@@ -1,3 +1,12 @@
+## 2026-07-18: /scrape speed + robustness — shared independents pool, any-failure warn, audit gate (/scrape improvements, PR 3)
+**PR**: #TBD | **Files**: `src/lib/jobs/scrape-all.ts`, `src/scripts/cleanup-upcoming-films.ts`, `src/scripts/audit-film-data.ts`, `src/scripts/run-scrape-and-enrich.ts`
+- **Waves 2+3 merged into one pool**: Playwright (7) + Cheerio/API (20) independents now share a single concurrency-4 pool instead of running behind a wave barrier — one slow Playwright straggler no longer blocks all 20 Cheerio scrapers. Same concurrency ceiling (memory unchanged); digest still reports one row per wave. Fewest-screenings-first sort now spans the combined set.
+- **Any-failure warn streak**: 6 consecutive scraper failures of ANY type (env `SCRAPE_BREAKER_ANY_THRESHOLD`) fires a one-shot warn-level Telegram ("possible systemic issue") and keeps going. Deliberately does NOT abort — fewest-screenings-first front-loads broken cinemas, so early failure bursts are expected.
+- **Opt-in audit gate**: `audit:films --fail-threshold N` exits 1 when upcoming-film metadata issues (poster+synopsis+letterboxd+tmdb) exceed N; /scrape passes it only when `SCRAPE_AUDIT_FAIL_THRESHOLD` is set (default: informational, as before).
+- **cleanup:upcoming re-query trim**: queries the upcoming-films set once; re-queries between phases only when the previous phase actually wrote changes (and phase-4-only runs no longer query at all).
+
+---
+
 ## 2026-07-18: /scrape crash-resume — checkpoint + --resume flag (/scrape improvements, PR 2)
 **PR**: #732 | **Files**: `src/lib/scrape-checkpoint.ts` (new), `src/lib/scrape-checkpoint.test.ts` (new), `src/scripts/run-scrape-and-enrich.ts`, `src/lib/jobs/scrape-all.ts`
 - New checkpoint file (`tmp/scrape-checkpoint.json`) records completed phases AND completed individual scrapers within Phase 1. `npm run scrape:unified -- --resume` skips them — a crash 40 minutes into a run no longer costs a full re-run.
