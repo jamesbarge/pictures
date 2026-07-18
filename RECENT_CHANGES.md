@@ -1,3 +1,12 @@
+## 2026-07-18: /scrape crash-resume — checkpoint + --resume flag (/scrape improvements, PR 2)
+**PR**: #TBD | **Files**: `src/lib/scrape-checkpoint.ts` (new), `src/lib/scrape-checkpoint.test.ts` (new), `src/scripts/run-scrape-and-enrich.ts`, `src/lib/jobs/scrape-all.ts`
+- New checkpoint file (`tmp/scrape-checkpoint.json`) records completed phases AND completed individual scrapers within Phase 1. `npm run scrape:unified -- --resume` skips them — a crash 40 minutes into a run no longer costs a full re-run.
+- Safety: resume is never automatic (explicit flag only); checkpoints expire after 24h and must match the run's CLI args; completions are honored only as a **prefix of the phase dependency chain** (a "completed" cleanup after a failed scrape re-runs — it enriched stale data); read-only detector phases (preflight/health/yield-delta) always re-run so the run summary's health data stays fresh. Checkpoint cleared on clean exit, kept on failure (so `--resume` = retry only what failed).
+- `runScrapeAll` gains `{ skipTaskIds, onEntryComplete }` — skipped scrapers are counted as pre-succeeded ("skipped (resume)") so wave/digest math stays honest.
+- `/scrape` skill gains a `resume` arg.
+
+---
+
 ## 2026-07-18: /scrape run-summary JSON + warn states + skill rewrite (/scrape improvements, PR 1)
 **PR**: #731 | **Files**: `src/lib/scrape-run-summary.ts` (new), `src/lib/scrape-run-summary.test.ts` (new), `src/scripts/run-scrape-and-enrich.ts`, `src/lib/scrape-quarantine.ts`, `.claude/commands/scrape.md`
 - Orchestrator now persists a machine-readable **run summary** to `tmp/scrape-run-summary.json` on every exit path (ok/failed/**crashed**), with dated history in `tmp/scrape-runs/` (last 20). Includes per-phase results (stable `id`s: preflight/scrape/lcut/cleanup/audit/rematch/health/yield-delta), before/after screening counts, and the full typed detector outputs (silent breakers, flaky, yield drops/deltas, stale, DQS) that were previously formatted-then-discarded.
