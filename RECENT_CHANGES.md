@@ -1,3 +1,12 @@
+## 2026-07-18: /scrape run-summary JSON + warn states + skill rewrite (/scrape improvements, PR 1)
+**PR**: #731 | **Files**: `src/lib/scrape-run-summary.ts` (new), `src/lib/scrape-run-summary.test.ts` (new), `src/scripts/run-scrape-and-enrich.ts`, `src/lib/scrape-quarantine.ts`, `.claude/commands/scrape.md`
+- Orchestrator now persists a machine-readable **run summary** to `tmp/scrape-run-summary.json` on every exit path (ok/failed/**crashed**), with dated history in `tmp/scrape-runs/` (last 20). Includes per-phase results (stable `id`s: preflight/scrape/lcut/cleanup/audit/rematch/health/yield-delta), before/after screening counts, and the full typed detector outputs (silent breakers, flaky, yield drops/deltas, stale, DQS) that were previously formatted-then-discarded.
+- Phases gain a **warn state (⚠)**: `success+0` zero-counts, anomalies, detector hits, L-CUT regressions/unmapped venues now render as ⚠ instead of hiding behind ✓. Exit code unchanged — warnings never fail the run.
+- `/scrape` skill rewritten: reports from the summary JSON (no more hand-rolled DB queries), new **`status`** arg (live progress + stale-heartbeat warning) and **`report`** arg (re-print last summary), new Obsidian run report step (`Pictures/Scrape Runs/YYYY-MM-DD.md`).
+- **Bug fix**: post-run stale-cinema report had *never printed* — postgres.js returns `EXTRACT(EPOCH …)` as a string, so `.toFixed()` threw and the swallow-catch hid it. Coerced to number in `detectStaleCinemas`.
+
+---
+
 ## 2026-07-14: seed-cli sources cinemas from the registry (fixes Garden map pin, kills zombie cinemas)
 **PR**: #730 | **Files**: `src/db/seed-cli.ts`
 - `seedCinemas()` now seeds from `getCinemasSeedData()` (the cinema registry — single source of truth, 71 cinemas) instead of a stale hand-maintained 16-entry `LONDON_CINEMAS` array that had drifted to **deprecated ids** (`garden-cinema`, `genesis-mile-end`) with a wrong (Golders Green) address. That drift meant `db:seed:cinemas` created empty **zombie cinemas** and left canonical `garden` (200 screenings) with **NULL coordinates → no map pin**.

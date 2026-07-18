@@ -24,8 +24,19 @@
  */
 
 import { spawn } from "node:child_process";
+import { sql } from "drizzle-orm";
+import { db, withDbTimeout } from "@/db";
+import { screenings } from "@/db/schema";
 import { runScrapeAll } from "@/lib/jobs/scrape-all";
 import { sendTelegramAlert } from "@/lib/telegram";
+import {
+  writeRunSummary,
+  computeRunStatus,
+  toPersistedStale,
+  type PhaseId,
+  type RunHealth,
+  type SummaryPhase,
+} from "@/lib/scrape-run-summary";
 import { getScrapedCinemaIds } from "@/scrapers/registry";
 import {
   runLcutGapfill,
@@ -56,15 +67,31 @@ const SKIP_LCUT = process.argv.includes("--skip-lcut");
  * as a possible scraper regression (matches Phase 1 of the coverage plan). */
 const LCUT_REGRESSION_THRESHOLD = 5;
 
-interface PhaseResult {
-  label: string;
-  ok: boolean;
-  durationMin: number;
-  detail?: string;
-}
+/** Set once main() has initialized run state, so the fatal handler can still
+ * persist a `status: "crashed"` summary with whatever phases completed. */
+let persistCrashSummary: (() => Promise<void>) | null = null;
 
 function fmtSeconds(ms: number): string {
   return `${Math.round(ms / 1000)}s`;
+}
+
+/** Total screenings count for the before/after delta in the run summary.
+ * Client-side timeout matters here: this also runs on the CRASH path, where a
+ * dropped pooler connection would otherwise hang the query promise forever
+ * and wedge the process instead of exiting (see the 2026-05-07 incident notes
+ * in src/db/index.ts). */
+async function countScreenings(): Promise<number | null> {
+  try {
+    const rows = await withDbTimeout(
+      db.select({ n: sql<number>`count(*)::int` }).from(screenings),
+      10_000,
+      "screenings count",
+    );
+    return rows[0]?.n ?? null;
+  } catch (err) {
+    console.warn("[scrape-and-enrich] screenings count failed:", err);
+    return null;
+  }
 }
 
 /**
@@ -88,20 +115,23 @@ function runNpmScript(scriptName: string, extraArgs: string[] = []): Promise<boo
 }
 
 async function runPhase(
+  id: PhaseId,
   label: string,
-  fn: () => Promise<{ ok: boolean; detail?: string }>,
-): Promise<PhaseResult> {
+  fn: () => Promise<{ ok: boolean; warn?: boolean; detail?: string }>,
+): Promise<SummaryPhase> {
   const start = Date.now();
   console.log(`\n━━━ ${label} ━━━`);
   try {
-    const { ok, detail } = await fn();
+    const { ok, warn, detail } = await fn();
     const durationMin = (Date.now() - start) / 60_000;
-    console.log(`[${label}] ${ok ? "OK" : "FAILED"} — ${fmtSeconds(Date.now() - start)}`);
-    return { label, ok, durationMin, detail };
+    const outcome = ok ? (warn ? "OK (warnings)" : "OK") : "FAILED";
+    console.log(`[${label}] ${outcome} — ${fmtSeconds(Date.now() - start)}`);
+    return { id, label, ok, warn, durationMin, detail };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error(`[${label}] threw: ${message}`);
     return {
+      id,
       label,
       ok: false,
       durationMin: (Date.now() - start) / 60_000,
@@ -112,7 +142,36 @@ async function runPhase(
 
 async function main(): Promise<void> {
   const startedAt = new Date();
-  const phases: PhaseResult[] = [];
+  const runId = `${startedAt.toISOString()}-${process.pid}`;
+  const phases: SummaryPhase[] = [];
+  const health: RunHealth = {
+    silentBreakers: [],
+    flaky: [],
+    yieldDrops: [],
+    yieldDeltas: [],
+    stale: [],
+    dqs: null,
+  };
+  const summaryArgs = { skipScrape: SKIP_SCRAPE, skipEnrich: SKIP_ENRICH, skipLcut: SKIP_LCUT };
+  const screeningsBefore = await countScreenings();
+
+  // Persist the run summary on EVERY exit path (ok / failed / crashed) so
+  // the /scrape skill can report without re-querying the DB. Never throws.
+  const persistSummary = async (status?: "crashed"): Promise<void> => {
+    await writeRunSummary({
+      runId,
+      startedAt: startedAt.toISOString(),
+      finishedAt: new Date().toISOString(),
+      durationMin: (Date.now() - startedAt.getTime()) / 60_000,
+      args: summaryArgs,
+      status: status ?? computeRunStatus(phases),
+      phases,
+      screeningsBefore,
+      screeningsAfter: await countScreenings(),
+      health,
+    });
+  };
+  persistCrashSummary = () => persistSummary("crashed");
 
   // Phase 0: Pre-flight quarantine — read-only, ~1s. Tells the user which
   // cinemas have been silently broken BEFORE they sit through a 30-60 min
@@ -125,7 +184,7 @@ async function main(): Promise<void> {
   // (e.g. PDF parser regression that returns 20 instead of 200 screenings)
   // that look healthy to the other two detectors.
   phases.push(
-    await runPhase("Pre-flight (silent-breaker + flaky + yield-drop check)", async () => {
+    await runPhase("preflight", "Pre-flight (silent-breaker + flaky + yield-drop check)", async () => {
       // Three orthogonal detectors run in parallel.
       const [breakers, flaky, yieldDrops] = await Promise.all([
         detectSilentBreakers(),
@@ -154,6 +213,7 @@ async function main(): Promise<void> {
       }
       return {
         ok: true,
+        warn: breakers.length > 0 || criticalFlaky.length > 0 || yieldDrops.length > 0,
         detail: `${breakers.length} silent / ${criticalFlaky.length} critical / ${flaky.length - criticalFlaky.length} warn / ${yieldDrops.length} yield-drop`,
       };
     }),
@@ -162,10 +222,18 @@ async function main(): Promise<void> {
   // Phase 1: Scrape (unless skipped)
   if (!SKIP_SCRAPE) {
     phases.push(
-      await runPhase("Scrape (all cinemas, 4 waves)", async () => {
+      await runPhase("scrape", "Scrape (all cinemas, 4 waves)", async () => {
         const result = await runScrapeAll();
-        const detail = `${result.totalSucceeded} ok / ${result.totalFailed} failed across ${result.waves.length} waves`;
-        return { ok: result.totalFailed === 0, detail };
+        const detail =
+          `${result.totalSucceeded} ok / ${result.totalFailed} failed across ${result.waves.length} waves` +
+          ` (${result.anomalies} anomalies, ${result.zeroCounts} zero-count)`;
+        // Zero-count "successes" and anomalies are the silent-breaker surface —
+        // don't fail the phase (exit-code contract unchanged) but flag it.
+        return {
+          ok: result.totalFailed === 0,
+          warn: result.zeroCounts > 0 || result.anomalies > 0,
+          detail,
+        };
       }),
     );
   } else {
@@ -179,7 +247,7 @@ async function main(): Promise<void> {
   // — parity is only meaningful measured against a fresh scrape.
   if (!SKIP_SCRAPE && !SKIP_LCUT) {
     phases.push(
-      await runPhase("L-CUT gap-fill (source-only) + parity monitor", async () => {
+      await runPhase("lcut", "L-CUT gap-fill (source-only) + parity monitor", async () => {
         const scrapedIds = getScrapedCinemaIds();
         const { sourceOnly } = classifyLcutTargets(scrapedIds);
         // Insert ONLY for venues we don't scrape ourselves; scraped venues stay
@@ -221,6 +289,7 @@ async function main(): Promise<void> {
         // succeeded. A thrown fetch/DB error is caught by runPhase → ok:false.
         return {
           ok: true,
+          warn: regressions.length > 0 || report.unmapped.length > 0,
           detail:
             `${report.totalInserted} inserted (source-only), ` +
             `${regressions.length} scraped venue(s) >${LCUT_REGRESSION_THRESHOLD} missing` +
@@ -235,14 +304,14 @@ async function main(): Promise<void> {
   // Phase 2-3: Enrichment (unless skipped)
   if (!SKIP_ENRICH) {
     phases.push(
-      await runPhase("Cleanup upcoming films (4 sub-phases)", async () => {
+      await runPhase("cleanup", "Cleanup upcoming films (4 sub-phases)", async () => {
         // The unified scrape command is already a live operational workflow.
         const ok = await runNpmScript("cleanup:upcoming", ["--execute"]);
         return { ok };
       }),
     );
     phases.push(
-      await runPhase("Audit films (validation pass)", async () => {
+      await runPhase("audit", "Audit films (validation pass)", async () => {
         const ok = await runNpmScript("audit:films");
         return { ok };
       }),
@@ -254,7 +323,7 @@ async function main(): Promise<void> {
     // 100 films per run to bound TMDB usage and blast radius.
     if (process.env.SCRAPE_REMATCH_SWEEP === "1") {
       phases.push(
-        await runPhase("Rematch sweep (unmatched films, capped)", async () => {
+        await runPhase("rematch", "Rematch sweep (unmatched films, capped)", async () => {
           const ok = await runNpmScript("rematch:unmatched", ["--execute", "--limit", "100"]);
           return { ok };
         }),
@@ -271,17 +340,21 @@ async function main(): Promise<void> {
   // Phase 4: Quarantine detection (always runs — read-only). Reports all
   // three detectors so post-run state is fully visible.
   phases.push(
-    await runPhase("Health check (silent-breaker + flaky + yield-drop)", async () => {
+    await runPhase("health", "Health check (silent-breaker + flaky + yield-drop)", async () => {
       const [breakers, flaky, yieldDrops] = await Promise.all([
         detectSilentBreakers(),
         detectFlakyCinemas(),
         detectYieldDrop(),
       ]);
+      health.silentBreakers = breakers;
+      health.flaky = flaky;
+      health.yieldDrops = yieldDrops;
       console.log(formatQuarantineReport(breakers));
       console.log(formatFlakyReport(flaky));
       console.log(formatYieldDropReport(yieldDrops));
       return {
         ok: true,
+        warn: breakers.length > 0 || flaky.length > 0 || yieldDrops.length > 0,
         detail: `${breakers.length} broken, ${flaky.length} flaky, ${yieldDrops.length} yield-drop`,
       };
     }),
@@ -291,10 +364,11 @@ async function main(): Promise<void> {
   // "this run vs the 7-day mean" — fires after a single below-baseline run,
   // unlike yield-drop which needs a 25-run window. Read-only.
   phases.push(
-    await runPhase("Per-run delta vs 7-day baseline", async () => {
+    await runPhase("yield-delta", "Per-run delta vs 7-day baseline", async () => {
       const deltas = await detectYieldDeltaSinceBaseline();
+      health.yieldDeltas = deltas;
       console.log(formatYieldDeltaReport(deltas));
-      return { ok: true, detail: `${deltas.length} below baseline` };
+      return { ok: true, warn: deltas.length > 0, detail: `${deltas.length} below baseline` };
     }),
   );
 
@@ -306,7 +380,7 @@ async function main(): Promise<void> {
   console.log(`/scrape unified run — finished in ${totalMin.toFixed(1)} min`);
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
   for (const phase of phases) {
-    const flag = phase.ok ? "✓" : "✗";
+    const flag = phase.ok ? (phase.warn ? "⚠" : "✓") : "✗";
     const detail = phase.detail ? ` — ${phase.detail}` : "";
     console.log(`  ${flag} ${phase.label} (${phase.durationMin.toFixed(1)}min)${detail}`);
   }
@@ -319,12 +393,16 @@ async function main(): Promise<void> {
       detectStaleCinemas(),
       Promise.resolve(readRecentDqs()),
     ]);
+    health.stale = toPersistedStale(stale);
+    health.dqs = dqs;
     console.log(`\n${formatStaleCinemaReport(stale)}`);
     console.log(formatDqsSnapshot(dqs));
   } catch (err) {
     // Never let observability break the pipeline exit code.
     console.warn("[scrape-and-enrich] post-run report skipped:", err);
   }
+
+  await persistSummary();
 
   if (failedPhases.length > 0) {
     console.log(`\nACTION REQUIRED: ${failedPhases.length} phase(s) failed.`);
@@ -335,7 +413,8 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((err) => {
+main().catch(async (err) => {
   console.error("[scrape-and-enrich] fatal:", err);
+  await persistCrashSummary?.().catch(() => {});
   process.exit(1);
 });
