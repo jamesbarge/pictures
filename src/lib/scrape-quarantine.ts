@@ -792,16 +792,19 @@ export async function detectStaleCinemas(options?: {
     ORDER BY hours_since DESC NULLS FIRST
   `);
 
+  // postgres.js returns NUMERIC/EXTRACT results as strings — coerce before
+  // any arithmetic/formatting (`.toFixed` on the raw value threw for months,
+  // silently killing the post-run stale report).
   const list = rows as unknown as Array<{
     cinema_id: string;
     cinema_name: string;
-    hours_since: number | null;
+    hours_since: string | number | null;
   }>;
 
   return list.map((r) => ({
     cinemaId: r.cinema_id,
     cinemaName: r.cinema_name,
-    hoursSinceLastRun: r.hours_since ?? Number.POSITIVE_INFINITY,
+    hoursSinceLastRun: r.hours_since == null ? Number.POSITIVE_INFINITY : Number(r.hours_since),
   }));
 }
 
@@ -810,13 +813,11 @@ export function formatStaleCinemaReport(stale: StaleCinema[]): string {
   if (stale.length === 0) {
     return "All cinemas scraped within the last 24h.";
   }
-  const lines = stale.slice(0, 15).map((s) => {
-    const h =
-      s.hoursSinceLastRun === Number.POSITIVE_INFINITY
-        ? "never run"
-        : `${s.hoursSinceLastRun.toFixed(1)}h`;
-    return `  • ${s.cinemaName}: last run ${h} ago`;
-  });
+  const lines = stale.slice(0, 15).map((s) =>
+    s.hoursSinceLastRun === Number.POSITIVE_INFINITY
+      ? `  • ${s.cinemaName}: never run`
+      : `  • ${s.cinemaName}: last run ${s.hoursSinceLastRun.toFixed(1)}h ago`,
+  );
   const extra = stale.length > 15 ? `\n  … and ${stale.length - 15} more` : "";
   return `Stale cinemas (${stale.length}):\n${lines.join("\n")}${extra}`;
 }
