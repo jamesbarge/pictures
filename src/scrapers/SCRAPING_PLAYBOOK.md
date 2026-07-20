@@ -414,6 +414,27 @@ Use this format when recording cinema-specific quirks:
 - **NOT INDY**: Phoenix Cinema (East Finchley) is an ASP.NET `.dll` system
   (`PhoenixCinemaLondon.dll`), despite an old comment claiming otherwise — see cinemas/phoenix.ts.
 
+### Phoenix Cinema (`cinemas/phoenix.ts`, updated 2026-07-20)
+- **Platform**: ASP.NET/Savoy `.dll` (`PhoenixCinemaLondon.dll`), server-rendered — the full
+  programme and all showtimes are in the initial HTML (no client-side rendering).
+- **URLs**: `programmeUrl` = `/whats-on/` which now **301-redirects** to
+  `/PhoenixCinemaLondon.dll/Home`. Playwright follows the redirect automatically; do not hard-code
+  the `.dll/Home` URL. Film pages are `/PhoenixCinemaLondon.dll/WhatsOn?f={id}`.
+- **CRITICAL — do NOT use `waitUntil: "networkidle"`** (root cause of the 2026-07-18 outage:
+  every `page.goto` timed out at 60s → 3 retries exhausted → `success=false`, ~65 screenings went
+  stale). The site holds analytics/tracking connections open so `networkidle` never fires. Use
+  `waitUntil: "domcontentloaded"` — content is already present.
+- **Programme selectors**: film links from `.film-title` → nearest `a[href*="WhatsOn"]`.
+- **Showtime selectors** (per screening): each `li.performance` (class token `performance`, which
+  does NOT collide with `programme-performances` / `performances`) holds `span.date.column`
+  ("Mon 20 Jul"), `span.perf-time` ("15:15", 24h — no AM/PM), and a booking
+  `a[href^="Booking?"]`. Parser prefers `.perf-time` over the button's inner `.time` span (that
+  one reads "Book Now"). `link.href` resolves to the absolute `.dll/Booking?...` deep-link.
+  A positional date↔time fallback remains for layout drift (booking URL falls back to film page).
+- **FUTURE (robustness)**: the `/Home` page embeds a Savoy modern-JSON `var Events = {…}` blob —
+  Phoenix could migrate to `platforms/savoy.ts` (`extractSavoyEventsJson` + `parseSavoyEvents`,
+  as used by Rio/Lexi/Arzner) and drop the 50+ per-film page navigations entirely.
+
 ### Savoy Systems platform (`src/scrapers/platforms/savoy.ts`, 2026-07-14)
 - **Two DISTINCT front-end templates** — do not conflate them:
   - **Modern JSON** — homepage (root → `/{Dll}.dll/Home`) embeds `var Events = {"Events":[…]};`.

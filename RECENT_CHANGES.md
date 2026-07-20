@@ -1,3 +1,11 @@
+## 2026-07-20: Phoenix scraper outage fix — networkidle never fires
+**PR**: #TBD | **Files**: `src/scrapers/cinemas/phoenix.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`
+- Phoenix failed every run since ~2026-07-18 (`success=false`, all 3 retries): the site keeps analytics connections open so `page.goto(..., networkidle)` never resolves and times out. Switched both navigations to `domcontentloaded` — the site is fully server-rendered ASP.NET/Savoy `.dll`, so all content is in the initial HTML.
+- Showtime extraction upgraded: `.performance` rows now yield clean date/`.perf-time`/booking-deep-link triples (the old selector missed them and the booking-button's inner `.time` span reads "Book Now"). Positional fallback retained.
+- Verified: 56 screenings found (24 added, 32 updated), 72 upcoming in DB, 0 sub-10:00 times, 2 films spot-checked against the live site. Playbook updated (platform notes, redirect, never-networkidle rule, future Savoy-JSON migration path).
+
+---
+
 ## 2026-07-18: /scrape speed + robustness — shared independents pool, any-failure warn, audit gate (/scrape improvements, PR 3)
 **PR**: #733 | **Files**: `src/lib/jobs/scrape-all.ts`, `src/scripts/cleanup-upcoming-films.ts`, `src/scripts/audit-film-data.ts`, `src/scripts/run-scrape-and-enrich.ts`
 - **Waves 2+3 merged into one pool**: Playwright (7) + Cheerio/API (20) independents now share a single concurrency-4 pool instead of running behind a wave barrier — one slow Playwright straggler no longer blocks all 20 Cheerio scrapers. Same concurrency ceiling (memory unchanged); digest still reports one row per wave. Fewest-screenings-first sort now spans the combined set.

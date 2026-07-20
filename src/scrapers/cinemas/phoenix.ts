@@ -40,7 +40,13 @@ export class PhoenixScraper implements CinemaScraper {
     try {
       // Step 1: Get list of films from the programme page
       console.log(`[${this.config.cinemaId}] Loading programme page...`);
-      await page.goto(this.config.programmeUrl, { waitUntil: "networkidle", timeout: 60000 });
+      // NOTE: This is a server-rendered ASP.NET/DLL site (all films + times are in
+      // the initial HTML). Do NOT use waitUntil: "networkidle" — the site keeps
+      // analytics/tracking connections open so networkidle never fires and goto
+      // times out after 60s (this was the cause of the 2026-07-18 outage).
+      // /whats-on/ 301-redirects to /PhoenixCinemaLondon.dll/Home; Playwright
+      // follows the redirect automatically.
+      await page.goto(this.config.programmeUrl, { waitUntil: "domcontentloaded", timeout: 60000 });
       await page.waitForTimeout(3000);
 
       // Extract films from the page
@@ -88,7 +94,7 @@ export class PhoenixScraper implements CinemaScraper {
         try {
           console.log(`[${this.config.cinemaId}] Fetching showtimes for "${film.title}"...`);
 
-          await page.goto(film.pageUrl, { waitUntil: "networkidle", timeout: 30000 });
+          await page.goto(film.pageUrl, { waitUntil: "domcontentloaded", timeout: 30000 });
           await page.waitForTimeout(1500);
 
           // Extract dates and times from the film page
@@ -121,17 +127,25 @@ export class PhoenixScraper implements CinemaScraper {
             // The pattern seems to be dates followed by their times in groups
             // For now, use a simpler approach: pair unique dates with times sequentially
 
-            // Actually look for date-time groups
-            const dateTimeGroups = document.querySelectorAll('[class*="showtime"], [class*="session"], .performance-row, [class*="schedule"]');
+            // Look for date-time groups. The live site renders one
+            // <li class="performance columns is-multiline"> per screening,
+            // each containing a `.date` span ("Mon 20 Jul"), a `.perf-time`
+            // span ("15:15") and a booking <a href="Booking?...">. `.performance`
+            // matches only those <li> rows (not `.programme-performances` /
+            // `.performances`, whose class tokens differ), giving clean triples.
+            const dateTimeGroups = document.querySelectorAll('.performance, [class*="showtime"], [class*="session"], .performance-row, [class*="schedule"]');
 
             if (dateTimeGroups.length > 0) {
               // Parse structured groups
               dateTimeGroups.forEach(group => {
                 const dateEl = group.querySelector('[class*="date"]');
-                const timeEl = group.querySelector('[class*="time"]');
+                // Prefer the real showtime element (.perf-time = "15:15") over the
+                // booking button's inner .time span (which reads "Book Now").
+                const timeEl = group.querySelector('.perf-time') || group.querySelector('[class*="time"]');
                 if (dateEl && timeEl) {
                   const date = dateEl.textContent?.trim() || '';
                   const time = timeEl.textContent?.trim() || '';
+                  // link.href is the resolved absolute URL (includes /PhoenixCinemaLondon.dll/).
                   const link = group.querySelector('a');
                   results.push({
                     date,
