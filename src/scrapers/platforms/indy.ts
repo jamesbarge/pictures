@@ -30,6 +30,15 @@ export interface IndyVenue {
   circuitId: string;
   /** INDY `site-id` header + `siteIds` variable value, e.g. "85". */
   siteId: string;
+  /**
+   * How many days ahead to fetch (overrides DEFAULT_HORIZON_DAYS for this
+   * venue). The loop makes one GraphQL POST per day, so this is the exact
+   * request count. Set it to comfortably exceed a venue's real publication
+   * window — commercial INDY cinemas publish event cinema (opera, repertory,
+   * NT Live) months out, and the default 35 silently truncates their catalog.
+   * e.g. Chiswick publishes ~5 months ahead. Omit for the 35-day default.
+   */
+  horizonDays?: number;
 }
 
 interface IndyMovie {
@@ -184,7 +193,7 @@ export async function fetchIndyShowings(
   venue: IndyVenue,
   opts: FetchIndyOptions = {},
 ): Promise<RawScreening[]> {
-  const days = opts.days ?? DEFAULT_HORIZON_DAYS;
+  const days = opts.days ?? venue.horizonDays ?? DEFAULT_HORIZON_DAYS;
   const fetchFn = opts.fetchImpl ?? fetch;
   const now = opts.now ?? new Date();
   const delayMs = opts.delayMs ?? DEFAULT_REQUEST_DELAY_MS;

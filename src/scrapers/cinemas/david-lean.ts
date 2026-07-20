@@ -29,6 +29,25 @@ const DAVID_LEAN_CONFIG: ScraperConfig = {
   delayBetweenRequests: 1000,
 };
 
+/**
+ * True when a `.et_pb_text_inner` block's text looks like a listing (has a
+ * date AND an "at <time>" showtime) rather than incidental page copy.
+ *
+ * MUST be kept textually identical to the inline check inside `scrape()`'s
+ * `page.evaluate()` callback: that callback runs in the browser context and
+ * can't import this function directly, so the two copies are hand-synced.
+ * This exported copy exists so the regression test can exercise the real
+ * filtering regex (a bare-hour time like "11am" must NOT be dropped — see the
+ * Toy Story 5 case in david-lean.test.ts) instead of asserting against
+ * `parseListingText`, which never runs this filter.
+ */
+export function isListingCandidateText(text: string): boolean {
+  return (
+    /\d{1,2}\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*/i.test(text) &&
+    /at\s+\d{1,2}([.:]\d{2})?\s*(am|pm)/i.test(text)
+  );
+}
+
 export class DavidLeanScraper implements CinemaScraper {
   config = DAVID_LEAN_CONFIG;
 
@@ -86,11 +105,13 @@ export class DavidLeanScraper implements CinemaScraper {
             || el.closest('.et_pb_column')?.querySelector('a[href*="tinyurl"], a[href*="ticketsolve"]')?.getAttribute('href')
             || null;
 
-          // Look for patterns with date/time info. The site writes FULL month
-          // names ("June", "July"), so match a 3-letter prefix followed by any
-          // trailing letters; the "at <time>" check tolerates spaces in "2.00 pm".
-          if (text.match(/\d{1,2}\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*/i) &&
-              text.match(/at\s+\d{1,2}[.:]\d{2}\s*(am|pm)/i)) {
+          // Look for patterns with date/time info — kept in sync with
+          // isListingCandidateText() below (this callback runs inside the
+          // browser via page.evaluate and can't import it directly; the unit
+          // test exercises the exported copy against the same real-world
+          // strings, e.g. the Toy Story 5 bare-hour case).
+          if (/\d{1,2}\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*/i.test(text) &&
+              /at\s+\d{1,2}([.:]\d{2})?\s*(am|pm)/i.test(text)) {
             results.push({ text, link });
           }
         });
@@ -230,7 +251,16 @@ export class DavidLeanScraper implements CinemaScraper {
 
     for (const match of text.matchAll(dateTimePattern)) {
       const [, dayNum, monthName, timeBlob] = match;
-      const times = this.extractTimes(timeBlob);
+
+      // "Special screenings" announcement blocks put an intro SENTENCE on the
+      // first line (e.g. "We have two special screenings in August...") and
+      // embed the real film title AFTER the times on each date line:
+      //   "Wednesday 05 August at 7.00pm - ALL OF US STRANGERS plus Q&A"
+      // When a line carries its own title it wins over the block's first line
+      // (which is the sentence, not a film). Normal film blocks have no " - "
+      // in the time blob and fall back to the block title.
+      const { title: lineTitle, timePart } = this.splitEmbeddedTitle(timeBlob, filmTitle);
+      const times = this.extractTimes(timePart);
 
       for (const time of times) {
         const datetime = this.parseDateTime(dayNum, monthName, time, currentYear);
@@ -251,11 +281,12 @@ export class DavidLeanScraper implements CinemaScraper {
           const adjustedDatetime = daysFromNow < -180 ? addYears(datetime, 1) : datetime;
 
           if (adjustedDatetime >= now) {
+            const cleanedTitle = this.cleanTitle(lineTitle);
             screenings.push({
-              filmTitle: this.cleanTitle(filmTitle),
+              filmTitle: cleanedTitle,
               datetime: adjustedDatetime,
               bookingUrl: bookingUrl || this.config.baseUrl + "/#whatson",
-              sourceId: `david-lean-${filmTitle.toLowerCase().replace(/\s+/g, "-").substring(0, 30)}-${adjustedDatetime.toISOString()}`,
+              sourceId: `david-lean-${cleanedTitle.toLowerCase().replace(/\s+/g, "-").substring(0, 30)}-${adjustedDatetime.toISOString()}`,
             });
           }
         } catch {
@@ -270,6 +301,39 @@ export class DavidLeanScraper implements CinemaScraper {
   private cleanTitle(title: string): string {
     // Remove certificate info like "(Cert 15)"
     return title.replace(/\s*\(Cert\s*\d+A?\)\s*/gi, "").trim();
+  }
+
+  /**
+   * Split a date line's post-"at" blob into its time portion and, when present,
+   * the film title embedded after a " - " separator. The site's "special
+   * screenings" announcement blocks use this shape:
+   *   "7.00pm - ALL OF US STRANGERS plus Q&A"
+   * so the block's first line is an intro sentence rather than a film name.
+   * Returns the block-level fallback title for normal film blocks (no " - ").
+   */
+  private splitEmbeddedTitle(
+    timeBlob: string,
+    fallbackTitle: string
+  ): { title: string; timePart: string } {
+    const sep = timeBlob.indexOf(" - ");
+    if (sep === -1) return { title: fallbackTitle, timePart: timeBlob };
+
+    const timePart = timeBlob.slice(0, sep);
+    // Strip trailing "plus Q&A" / "plus Q & A" annotations from the title.
+    const title = timeBlob
+      .slice(sep + 3)
+      .replace(/\s*plus\s+Q\s*&\s*A.*$/i, "")
+      .trim();
+
+    // Only treat this as an embedded title if the portion before " - " actually
+    // holds a time and we recovered a non-empty title that ISN'T ITSELF a time
+    // — otherwise a normal time-range listing ("10.00am - 12.00pm") would have
+    // its end time misread as the film title, silently dropping the screening.
+    const titleLooksLikeTime = /^\d{1,2}\s*[.:]?\d{0,2}\s*(am|pm)?\s*(\(hoh\))?$/i.test(title);
+    if (!title || !/\d/.test(timePart) || titleLooksLikeTime) {
+      return { title: fallbackTitle, timePart: timeBlob };
+    }
+    return { title, timePart };
   }
 
   private extractTimes(text: string): string[] {

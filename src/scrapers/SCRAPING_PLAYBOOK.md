@@ -200,7 +200,17 @@ Use this format when recording cinema-specific quirks:
   - **healthCheck**: Cloudflare blocks HEAD to `www.curzon.com`; use API endpoint instead (401 = healthy)
   - **BST timezone (fixed 2026-05-12)**: `schedule.startsAt` is TZ-less. Original `new Date(startsAt)` silently added 1h under `TZ=UTC` during BST. Migrated to `parseUKLocalDateTime`. Duplicate-pair probe confirmed 15 ghost rows existed; cleaned in same change. Same fix class as #484 (Everyman) and #485 (Picturehouse).
   - **Failure handling**: total auth failure throws; failed venue/date API calls are recorded as venue failures rather than successful empty results.
-- Vista site codes: SOH1, MAY1, BLO1, ALD1, VIC1, HOX1, KIN1, RIC1, WIM01, CAM1
+  - **"Boutique venue shows only ~2 films live" is NOT under-scraping (audit 2026-07-20):**
+    Mayfair's `curzon.com/venues/mayfair/` day-view surfaces only first-run films ~1 week out
+    and returns "NO SHOWTIMES AVAILABLE" further out, but the Vista API for `MAY1` genuinely
+    publishes event cinema months ahead (Met Opera, Curzon Film 50 season, RBO ballet). Live
+    probe: MAY1 → 57 screenings / 19 films through Nov, matching our DB. All sourceIds are
+    `curzon-MAY1-*` (attribution is correct — the `showtimes/by-business-date?siteIds=MAY1`
+    filter is honoured; showtime ids are venue-prefixed). A verification pass that reads only
+    the venue day-view will mis-flag our correct rows as a stale over-count. Confirm against
+    the API before any cleanup. (Note: `film-screening-dates` is sliced to the first 30
+    programmed dates, so a far-future one-off like a Nov "GIANT – The Play" may not be
+    refreshed every run but remains a valid published screening.)
 - Metadata: `relatedData.films[].runtimeInMinutes` (integer minutes) is forwarded as `RawScreening.runtime` via `sanitizeRuntime()` (plan 006, 2026-06-12). Year comes from `releaseDate`, director from `castAndCrew` cross-referenced against `relatedData.castAndCrew`.
 - Last verified (2026-03-18): SSR token extraction working, all venues returning data
 
@@ -248,6 +258,20 @@ Use this format when recording cinema-specific quirks:
 - Scraper: `src/scrapers/chains/everyman.ts`
 - Notes: Playwright-heavy; more sensitive to markup and client-side app changes.
 - Failure handling: scheduled-movie, movie-detail, and schedule API errors are recorded in `venueErrors`; a valid empty schedule remains a successful `[]` result.
+- **Screen on the Green venue-website slug (fixed 2026-07-20):** the display
+  `website` in `src/config/cinema-registry.ts` was `.../venues-list/x077o-screen-on-the-green`
+  (missing the `everyman-` segment every other Everyman venue has), which 404s. Corrected to
+  `.../venues-list/x077o-everyman-screen-on-the-green`. This is the DISPLAY field only — the
+  scraper itself keys off the boxofficeapi `theaterId` (`X077O` in `THEATER_IDS`), not the
+  website URL, so coverage was never affected. NB `scripts/data-check.ts` builds its Everyman
+  verification URL as `venues-list/${cinema_id.replace("everyman-","")}` which yields a broken
+  slug for ALL Everyman venues (pre-existing, separate from this fix; not the display field).
+- **"Far-out event cinema is real, not stale" (audit 2026-07-20):** the venue's own booking
+  widget only surfaces the immediate ~10-day window ("new films every Tuesday"), but the
+  boxofficeapi genuinely publishes special/event screenings (Mitski, MUBI Secret, anniversary
+  screenings, Q&As) weeks ahead. A live-verification pass that only reads the venue day-view
+  will UNDER-count and mis-flag our correct rows as a stale over-count — confirm against the
+  API (`scrapeVenue`) before deleting. Same pattern as Curzon below.
 
 ### JW3 (Finchley Road)
 - Scraper: `src/scrapers/cinemas/jw3.ts` (fetch-based, no browser — runnable under tsx).
@@ -296,7 +320,26 @@ Use this format when recording cinema-specific quirks:
   3. `extractTimes()` strips the detailed `HH.MMam` times from the text BEFORE scanning for bare-hour times; otherwise the bare-hour pattern matched the minute half of a detailed time (`2.00pm` → spurious `00pm`), producing phantom 00:xx / next-day screenings.
 - Year roll-forward guard retained: only bump a parsed date forward a year when it is >180 days in the past (genuine year boundary); recently-past dates stay in the current year and are dropped by the `>= now` filter (prevents the old ~360-day phantom screenings).
 - **Load-bearing format assumption: ONE date per line.** The time blob captures to end-of-line, so a line like "Tues 16 June at 2.30pm and Wed 17 June at 7.30pm" would attribute BOTH times to 16 June and never see the second date. The site doesn't currently do this; if listings change shape, stop the blob at the next day-name token. Regression tests: `david-lean.test.ts`.
+- **Two coverage/title bugs fixed 2026-07-20 (audit):**
+  1. **Bare-hour times dropped whole blocks.** The DOM-level filter required a
+     time WITH minutes right after "at" (`at\s+\d{1,2}[.:]\d{2}\s*(am|pm)`). A
+     block whose first showtime was a bare hour — e.g. Toy Story 5's
+     `Thurs 20 Aug at 11am, 2.30pm (HOH) and 7.00pm` — never entered the
+     listings and its 3 screenings were silently missed. Minutes are now
+     OPTIONAL in that filter (`at\s+\d{1,2}([.:]\d{2})?\s*(am|pm)`), matching
+     what `parseListingText` and `extractTimes` already tolerate.
+  2. **"Special screenings" announcement blocks captured the intro sentence as
+     the film title.** These blocks put a SENTENCE on line 0 and embed the real
+     title AFTER the times on each date line:
+     `Wednesday 05 August at 7.00pm - ALL OF US STRANGERS plus Q&A`. The parser
+     assumed one film per block (title = line 0) and applied the sentence to
+     every screening (producing "films" titled `We have two special screenings
+     in August which include Q&A's:`). `splitEmbeddedTitle()` now splits the
+     post-"at" blob on the first ` - ` and uses the embedded title (minus a
+     trailing `plus Q&A`) when present; normal blocks with no ` - ` keep the
+     block title. Multiple films per block are therefore supported.
 - Verified live 2026-06-12: `scrape()` → 49 screenings (was 0), 0 suspect (<09:00 UTC) times. Cross-checked vs site: "Fairyland" 16 June 2.30pm+7.30pm, "Who Framed Roger Rabbit?" 20 June 11.00am, "The Devil Wears Prada 2" 24 June 5.30pm.
+- Verified live 2026-07-20: `scrape()` → 42 screenings, 25 titles, Toy Story 5 present (11:00/14:30/19:00 on 20 Aug), special-screening titles resolved (ALL OF US STRANGERS 5 Aug, COME SEE ME IN THE GOOD LIGHT 18 Aug), 0 sentence-titles, 0 sub-10:00 times. DB cleanup removed 2 sentence-title "films" (4 screenings) + 4 stale `00:00` phantom rows (pre-fix `11.00am`→`00am` era; correct 11:00 rows coexisted, so no coverage lost).
 
 ### Rio Cinema (Dalston)
 - Scraper: `src/scrapers/cinemas/rio.ts`
@@ -378,9 +421,31 @@ Use this format when recording cinema-specific quirks:
   `https://system.spektrix.com/richmix/api/v3/events` + `/instances?startFrom=YYYY-MM-DD`.
 - Film events: `attribute_COGEventProgramme === "FILM"` (venue also hosts music/theatre).
 - `startUtc` omits the trailing `Z` — append before `new Date()`. `timeSource: "iso"`.
-- Booking URL: `/cinema/{slugified event name incl. rating}/` (e.g. `toy-story-5-pg/`);
-  trailing slash avoids a 301. `attribute_VENUE` = screen. `duration` = runtime.
-- healthCheck hits the Spektrix events endpoint (the real dependency), not the WP site.
+- **Booking URL: `/book/instance/{numericId}`** where `{numericId}` is the LEADING numeric run
+  of the Spektrix instance id (`1904605ACPR…` → `/book/instance/1904605`). This is the stable
+  per-screening deep link the live `/cinema/` listing itself uses; it always resolves (200).
+  Do NOT guess `/cinema/{slugified event name}/` — that 404'd for a large fraction of the venue
+  (fixed 2026-07-20). Rich Mix sets WP slugs independently of the Spektrix event name and the two
+  disagree on the BBFC rating (`The Odyssey (15)` → WP `the-odyssey-12a`; `Spider-Man: Brand New
+  Day (12A)` → WP `spider-man-brand-new-day-u`), plus Spektrix carries pre-launch staging events
+  (`TEST The Invite`) with no WP page. `attribute_VENUE` = screen. `duration` = runtime.
+- **healthCheck retries 3× (4s backoff)** — the earlier single-shot probe was the root cause of
+  Rich Mix's "critical flaky" status (nearly every ~03:xx-UTC run failed at "site not accessible"
+  when one probe to `system.spektrix.com` blipped — it occasionally serves an HTML error page
+  instead of JSON — even though the venue recovers within seconds; manual daytime runs succeeded).
+  It hits the Spektrix events endpoint (the real dependency), not the WP site.
+
+### Bertha DocHouse — stable booking URL (fixed 2026-07-20)
+- Detail page `https://dochouse.org/event/<slug>/` lists each screening as
+  `<a href="https://www.curzon.com/ticketing/seats/BLO1-XXXXXX">`. That Curzon href is a
+  **transient seat-selection URL** (expires with the checkout session → 404), so it must NOT be
+  persisted as `booking_url`. Keep `BLO1-XXXXXX` only as the `sourceId` (`bertha-{ticketId}`).
+- **Booking URL = the event page itself**, read from its `<link rel="canonical">` / `og:url`
+  meta (present on every event page). This keeps the fix inside BaseScraper's `string[] → string[]`
+  page contract — no need to thread the fetched URL into `parseDetailPage`. Same trap the Curzon
+  chain avoids by linking to the film page, not the `?sessionId` deep link.
+- Known parse gap (pre-existing, unrelated): the time regex `/(\d{1,2}:\d{2})\s*$/` is END-anchored,
+  so anchor text like `"Sun 26th Jul 14:30 Q&A"` is skipped — Q&A screenings are silently dropped.
 
 ### Close-Up — WAF burst-403s (hardened 2026-07-13)
 - The WAF intermittently 403s bursts of `/search_film_programmes/?date=` requests, then
@@ -402,7 +467,16 @@ Use this format when recording cinema-specific quirks:
   `accept: application/graphql-response+json,application/json;q=0.9`.
 - **Query**: `showingsForDate(date: "YYYY-MM-DD", siteIds: [<siteId>])` → `data[]` of
   `{ id, time (ISO UTC "…Z"), published, past, private, isPreview, screenId, movie{ id, name,
-  urlSlug, duration, rating, releaseDate } }`. Loop dates today…+N (35-day default).
+  urlSlug, duration, rating, releaseDate } }`. Loop dates today…+N (one POST per day). The
+  response `{ data, count }` never paginates (verified: `count === data.length` on every date),
+  so a single POST per date is complete.
+- **Horizon** (`IndyVenue.horizonDays`, default `DEFAULT_HORIZON_DAYS`=35): per-venue, since
+  the loop makes ONE POST per day so this is the exact request count. **Set it to exceed a
+  venue's real publication window** — commercial INDY cinemas publish event cinema (opera,
+  NT Live, repertory) months out. **Chiswick=150** (2026-07-20 audit: publishes to ~mid-Dec;
+  the 35-day default captured only 16 of 66 distinct films, dropping the entire Sep+ tail incl.
+  Fargo, Rear Window, Met Opera). Regent Street keeps the 35-day default. When adding an INDY
+  venue, probe how far its `showingsForDate` returns data and set `horizonDays` accordingly.
 - **Map**: filmTitle=`movie.name`; datetime=`new Date(time)` (`timeSource:"iso"` — true UTC,
   no BST mislabel); runtime=`movie.duration`; year=`movie.releaseDate` year;
   bookingUrl=`{baseUrl}/checkout/showing/{id}`; **sourceId=`{cinemaId}-{showing.id}`**.

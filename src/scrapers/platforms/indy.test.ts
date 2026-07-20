@@ -138,6 +138,33 @@ describe("fetchIndyShowings", () => {
     ).rejects.toThrow(/Cannot query field foo/);
   });
 
+  it("uses the venue's horizonDays override when opts.days is omitted", async () => {
+    const VENUE_WITH_HORIZON: IndyVenue = { ...VENUE, horizonDays: 5 };
+    let requestCount = 0;
+    const fetchImpl: IndyFetch = (async () => {
+      requestCount++;
+      return { ok: true, json: async () => ({ data: { showingsForDate: { data: [], count: 0 } } }) } as unknown as Response;
+    }) as IndyFetch;
+
+    // opts.days deliberately omitted — must fall back to venue.horizonDays (5),
+    // not the shared DEFAULT_HORIZON_DAYS (35).
+    await fetchIndyShowings(VENUE_WITH_HORIZON, { now: NOW, fetchImpl, delayMs: 0 });
+
+    expect(requestCount).toBe(5);
+  });
+
+  it("still uses the shared default when a venue has no horizonDays override", async () => {
+    let requestCount = 0;
+    const fetchImpl: IndyFetch = (async () => {
+      requestCount++;
+      return { ok: true, json: async () => ({ data: { showingsForDate: { data: [], count: 0 } } }) } as unknown as Response;
+    }) as IndyFetch;
+
+    await fetchIndyShowings(VENUE, { now: NOW, fetchImpl, delayMs: 0 });
+
+    expect(requestCount).toBe(35);
+  });
+
   it("dedupes a showing id returned under multiple date responses", async () => {
     const s = { id: "500", time: "2026-07-18T20:00:00Z", published: true, past: false, private: false, isPreview: false, screenId: "1", movie };
     // Same showing echoed for every date in the horizon.

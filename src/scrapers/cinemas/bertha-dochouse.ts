@@ -13,6 +13,11 @@
  *     • Contains "Screening times and booking" section
  *     • Each screening is `<a href="https://www.curzon.com/ticketing/seats/BLO1-XXXXXX">Fri 15th May 16:30</a>`
  *     • Ticket ID (BLO1-XXXXXX) is unique per screening — use as `sourceId`
+ *     • That Curzon href is a TRANSIENT seat-selection URL (it 404s once the
+ *       checkout session expires) — do NOT persist it as the booking_url.
+ *       Instead we link to the stable DocHouse event page (its canonical/og:url),
+ *       which lists every showtime + Curzon "book" button. Same trap the Curzon
+ *       chain scraper avoids by linking to the film page, not the deep link.
  *
  * No Cloudflare; server-side rendered HTML; plain Cheerio works.
  */
@@ -147,6 +152,21 @@ export class BerthaDochouseScraper extends BaseScraper {
     const filmTitle = $("h1").first().text().trim();
     if (!filmTitle) return [];
 
+    // Stable booking URL = this DocHouse event page itself (where all showtimes
+    // and Curzon "book" buttons live). The per-screening Curzon href
+    // (/ticketing/seats/BLO1-XXXXXX) is a transient seat-selection URL that
+    // 404s once its checkout session expires, so it must not be persisted.
+    // Every event page carries a canonical/og:url meta pointing at itself; we
+    // read that from the HTML so the fix stays within BaseScraper's
+    // string[] → string[] page contract (no need to thread the fetched URL).
+    const rawEventUrl =
+      $('link[rel="canonical"]').attr("href")?.trim() ||
+      $('meta[property="og:url"]').attr("content")?.trim() ||
+      `${BASE_URL}${LISTING_PATH}`; // defensive: the whats-on listing always resolves
+    // canonical/og:url are normally absolute, but normalize defensively like
+    // every other href in this file in case a page ever emits a relative path.
+    const eventUrl = normalizeUrl(rawEventUrl, BASE_URL);
+
     // Each screening is an <a> whose href points to Curzon's seats endpoint.
     // The anchor text contains the date+time, e.g. "Fri 15th May 16:30".
     $('a[href*="/ticketing/seats/"]').each((_, el) => {
@@ -177,7 +197,7 @@ export class BerthaDochouseScraper extends BaseScraper {
       screenings.push({
         filmTitle,
         datetime,
-        bookingUrl: href.startsWith("http") ? href : normalizeUrl(href, BASE_URL) ?? "",
+        bookingUrl: eventUrl,
         sourceId,
       });
     });
