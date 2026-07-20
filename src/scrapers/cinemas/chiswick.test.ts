@@ -12,6 +12,9 @@ describe("Chiswick venue wiring", () => {
       baseUrl: "https://www.chiswickcinema.co.uk",
       circuitId: "56",
       siteId: "170",
+      // Chiswick publishes ~5 months ahead; the shared INDY 35-day default
+      // was truncating ~83% of its catalog — see platforms/indy.ts.
+      horizonDays: 200,
     });
     expect(createChiswickScraper().config.cinemaId).toBe("chiswick-cinema");
   });
