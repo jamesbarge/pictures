@@ -1,6 +1,6 @@
 # Phoenix scraper outage fix — networkidle never fires
 
-**PR**: #TBD
+**PR**: #734
 **Date**: 2026-07-20
 
 ## Changes
