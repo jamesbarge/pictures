@@ -92,7 +92,7 @@ export class RichMixScraperV2 extends BaseScraper {
       seenIds.add(sourceId);
 
       const title = this.cleanEventName(event.name);
-      const bookingUrl = `${this.config.baseUrl}/cinema/${this.slugifyEventName(event.name)}/`;
+      const bookingUrl = this.buildBookingUrl(inst.id);
 
       screenings.push({
         filmTitle: title,
@@ -119,28 +119,58 @@ export class RichMixScraperV2 extends BaseScraper {
   }
 
   /**
-   * "The Odyssey (12A)" → "the-odyssey-12a" — the site's /cinema/{slug} pages
-   * slugify the full event name INCLUDING the rating (verified 2026-07-13:
-   * richmix.org.uk/cinema/toy-story-5-pg, /cinema/the-invite-18).
+   * Rich Mix's public per-screening booking deep link:
+   *   https://richmix.org.uk/book/instance/{numericId}
+   *
+   * `{numericId}` is the leading numeric run of the Spektrix instance id
+   * (e.g. instance "1904605ACPRGT…" → /book/instance/1904605), verified against
+   * the live /cinema/ listing whose showtime links use exactly this form.
+   *
+   * We previously guessed the WordPress film-page slug by slugifying the event
+   * name (/cinema/{slug}/). That was fundamentally unreliable: Rich Mix sets
+   * those WP slugs independently of the Spektrix event name, and the two even
+   * disagree on the BBFC rating baked into the slug (Spektrix "The Odyssey (15)"
+   * vs WP the-odyssey-12a; "Spider-Man: Brand New Day (12A)" vs WP
+   * spider-man-brand-new-day-u), while Spektrix also carries pre-launch staging
+   * events ("TEST The Invite") that have no WP page at all. The guess therefore
+   * 404'd for a large fraction of the venue. The per-instance deep link is
+   * stable, keyed on data we already hold, and always resolves (HTTP 200).
    */
-  private slugifyEventName(name: string): string {
-    return name
-      .trim()
-      .toLowerCase()
-      .normalize("NFKD")
-      .replace(/[̀-ͯ]/g, "")
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "");
+  private buildBookingUrl(instanceId: string): string {
+    const numericId = instanceId.match(/^\d+/)?.[0];
+    // Defensive: a malformed id must never regress to a guessed 404 — the
+    // /cinema/ listing always resolves. In practice every Spektrix instance id
+    // starts with its numeric web id, so this fallback should not fire.
+    return numericId
+      ? `${this.config.baseUrl}/book/instance/${numericId}`
+      : `${this.config.baseUrl}/cinema/`;
   }
 
-  /** The Spektrix API is the real dependency — health-check it, not the WP site. */
+  /**
+   * The Spektrix API is the real dependency — health-check it, not the WP site.
+   *
+   * Retries with a short backoff (mirrors BaseScraper.healthCheck, which this
+   * override had dropped). The previous single-shot probe was the root cause of
+   * Rich Mix's "critical flaky" status: nearly every scheduled ~03:xx-UTC run
+   * failed at "site not accessible" when one probe to system.spektrix.com
+   * blipped (it occasionally returns an HTML error page instead of JSON), even
+   * though the venue recovers within seconds and every manual daytime run
+   * succeeded. A brief retry rescues those transient windows without masking a
+   * genuine outage — the same fix class as BaseScraper's Close-Up retry.
+   */
   async healthCheck(): Promise<boolean> {
-    try {
-      const body = await this.fetchUrl(`${SPEKTRIX_BASE}/events`);
-      return Array.isArray(JSON.parse(body));
-    } catch {
-      return false;
+    const MAX_ATTEMPTS = 3;
+    const BACKOFF_MS = 4_000;
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      try {
+        const body = await this.fetchUrl(`${SPEKTRIX_BASE}/events`);
+        if (Array.isArray(JSON.parse(body))) return true;
+      } catch {
+        // Network error / non-2xx / non-JSON error page — fall through to retry
+      }
+      if (attempt < MAX_ATTEMPTS) await this.delay(BACKOFF_MS);
     }
+    return false;
   }
 }
 

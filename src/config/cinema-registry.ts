@@ -1306,7 +1306,7 @@ const EVERYMAN_VENUES: CinemaDefinition[] = [
     id: "screen-on-the-green",
     name: "Screen on the Green",
     shortName: "Screen Green",
-    website: "https://www.everymancinema.com/venues-list/x077o-screen-on-the-green",
+    website: "https://www.everymancinema.com/venues-list/x077o-everyman-screen-on-the-green",
     address: { street: "83 Upper Street", area: "Islington", postcode: "N1 0PH", borough: "Islington" },
     coordinates: { lat: 51.5379, lng: -0.1032 },
     screens: 1,

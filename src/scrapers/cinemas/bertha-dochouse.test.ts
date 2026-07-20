@@ -10,6 +10,10 @@ import { BerthaDochouseScraper } from "./bertha-dochouse";
  */
 const DETAIL_FIXTURE = `<!doctype html>
 <html>
+  <head>
+    <link rel="canonical" href="https://dochouse.org/event/our-land/" />
+    <meta property="og:url" content="https://dochouse.org/event/our-land/" />
+  </head>
   <body>
     <main>
       <h1>Our Land</h1>
@@ -53,11 +57,13 @@ describe("BerthaDochouseScraper.parseDetailPage", () => {
     ]);
   });
 
-  it("preserves the Curzon booking URL", () => {
+  it("uses the stable DocHouse event page (canonical) as the booking URL, not the transient Curzon seat link", () => {
     const screenings = scraper.parseDetailPage(DETAIL_FIXTURE, FIXTURE_NOW);
-    expect(screenings[0].bookingUrl).toBe(
-      "https://www.curzon.com/ticketing/seats/BLO1-110048",
-    );
+    // Every screening on a page links to that page's stable event URL; the
+    // per-screening /ticketing/seats/BLO1-XXXXXX href is transient and 404s.
+    for (const s of screenings) {
+      expect(s.bookingUrl).toBe("https://dochouse.org/event/our-land/");
+    }
   });
 
   it("parses the 'Fri 15th May 16:30' anchor text into a UK-local-to-UTC datetime", () => {
