@@ -117,6 +117,20 @@ Production actions (merge to main, deploy, push to prod) require explicit keywor
 ## Inline Secrets
 Never run commands with inline secrets or API keys. Always reference env vars from `.env.local`.
 
+## AI Analysis — Claude Code only, no Gemini
+**Never use the Gemini API (`GEMINI_API_KEY`, `@google/genai`, `src/lib/gemini.ts`) for anything.**
+All AI analysis in this project is done by Claude Code directly — reading the data,
+applying judgement, and writing/executing scripts — not by runtime calls to a
+hosted model.
+
+- Do not add, restore, or "fix" a Gemini key. The key in `.env.local` is dead by intent.
+- Runtime code may gather and report data (scrape pages, hit TMDB, compute metrics);
+  the *interpretation* step belongs in a Claude Code session, per
+  `.claude/rules/data-quality.md` ("Claude Code Direct Enrichment").
+- Deterministic API calls (TMDB, Letterboxd, HTTP checks) are not AI analysis and stay.
+- Applies equally to new features: never propose a hosted LLM call as the fix.
+  See also the no-paid-services rule in memory.
+
 ## PR Review Gate
 Before creating any PR that touches 3+ files, run the code-reviewer agent on the diff. Report findings before proceeding.
 
