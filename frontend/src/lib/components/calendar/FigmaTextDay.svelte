@@ -4,9 +4,12 @@
 	import { formatLabel, type CardFilm, type CardScreening } from './card-shapes';
 
 	let {
-		films
+		films,
+		now
 	}: {
 		films: Array<{ film: CardFilm; screenings: CardScreening[] }>;
+		/** Epoch ms to judge "upcoming" against — see the note in FigmaFilmCard. */
+		now: number;
 	} = $props();
 
 	// Flatten film+screenings into one row per upcoming screening, sorted by time.
@@ -14,7 +17,7 @@
 		const out: Array<{ film: CardFilm; screening: CardScreening }> = [];
 		for (const { film, screenings } of films) {
 			for (const s of screenings) {
-				if (new Date(s.datetime) <= new Date()) continue;
+				if (new Date(s.datetime).getTime() <= now) continue;
 				out.push({ film, screening: s });
 			}
 		}

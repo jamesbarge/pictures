@@ -47,6 +47,11 @@ export const load: PageServerLoad = async ({ fetch, setHeaders }) => {
 	);
 
 	return {
+		// The instant this payload was built. The page is ISR-cached, so the
+		// browser's clock is routinely ahead of it; the client filters expired
+		// screenings against this value until hydration commits so the first
+		// client render matches the server's. See `$lib/hydration-clock`.
+		renderedAt: Date.now(),
 		screenings: data.screenings.map((s) => ({
 			id: s.id,
 			datetime: s.datetime,

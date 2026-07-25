@@ -104,8 +104,16 @@ function parsePoster(
   // Reject empty/placeholder images
   if (!ogImage.includes("ltrbxd.com")) return null;
 
-  // Reject known placeholder patterns
-  if (ogImage.includes("empty-poster") || ogImage.includes("placeholder")) {
+  // Reject known placeholder patterns. `default-share-*.png` is Letterboxd's
+  // generic social card, served from their static bucket when a film has no
+  // artwork — it passes the ltrbxd.com host check above, so without this a
+  // handful of films end up wearing the Letterboxd logo as their poster.
+  if (
+    ogImage.includes("empty-poster") ||
+    ogImage.includes("placeholder") ||
+    ogImage.includes("default-share") ||
+    ogImage.includes("/static/img/")
+  ) {
     return null;
   }
 

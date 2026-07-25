@@ -62,14 +62,20 @@ async function enrichPosters() {
         scraperPosterUrl: film.sourceImageUrl ?? undefined,
       });
 
-      // Update the film with the found poster
-      await db
-        .update(films)
-        .set({
-          posterUrl: result.url,
-          updatedAt: new Date(),
-        })
-        .where(eq(films.id, film.id));
+      // Never persist a generated placeholder. This script selects on
+      // `posterUrl IS NULL OR posterUrl = ''`, so writing the placeholder SVG
+      // would exclude the row from its own query forever — it would never be
+      // revisited once a real poster (or a TMDB id) became available. Every
+      // other caller of findPoster already guards this way; this one didn't.
+      if (result.source !== "placeholder") {
+        await db
+          .update(films)
+          .set({
+            posterUrl: result.url,
+            updatedAt: new Date(),
+          })
+          .where(eq(films.id, film.id));
+      }
 
       // Track stats
       stats[result.source]++;

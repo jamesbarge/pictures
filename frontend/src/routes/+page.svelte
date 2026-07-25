@@ -8,6 +8,7 @@
 	import { webSiteSchema, faqSchema } from '$lib/seo/json-ld';
 	import { filters } from '$lib/stores/filters.svelte';
 	import { today as todayStore } from '$lib/stores/today.svelte';
+	import { hydrationSafeClock } from '$lib/hydration-clock.svelte';
 	import { buildFilmMap } from '$lib/calendar-filter';
 	import { toLondonDateStr, compareFilmsByCalendarPriority } from '$lib/utils';
 	import { toCardScreening } from '$lib/components/calendar/card-shapes';
@@ -35,6 +36,11 @@
 	let MobileFilterSheet =
 		$state<typeof import('$lib/components/filters/MobileFilterSheet.svelte').default | null>(null);
 
+	// Clock for the screening filter below. Reports the instant the ISR-cached
+	// payload was built until hydration commits, so the first client render
+	// matches the server's bucket for bucket — see `$lib/hydration-clock`.
+	const clock = hydrationSafeClock(data.renderedAt);
+
 	// Group screenings by film + apply filters via the pure helper in
 	// `$lib/calendar-filter`. The helper owns the one-sided-range invariant
 	// warning internally — see calendar-filter.ts.
@@ -53,7 +59,7 @@
 				genres: filters.genres,
 				decades: filters.decades
 			},
-			{ today: todayStore.value, now: Date.now() }
+			{ today: clock.today, now: clock.now }
 		)
 	);
 
@@ -285,6 +291,7 @@
 									bookingUrl: s.bookingUrl
 								}))
 							}))}
+							now={clock.now}
 						/>
 					{:else}
 						<div class="film-row">
@@ -299,6 +306,7 @@
 										posterUrl: film.posterUrl
 									}}
 									screenings={screenings.map(toCardScreening)}
+									now={clock.now}
 									priority={di === 0 && fi < 4}
 								/>
 							{/each}

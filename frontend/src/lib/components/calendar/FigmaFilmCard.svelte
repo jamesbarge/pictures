@@ -6,18 +6,27 @@
 	let {
 		film,
 		screenings,
+		now,
 		maxScreenings = 3,
 		priority = false
 	}: {
 		film: CardFilm;
 		screenings: CardScreening[];
+		/**
+		 * Epoch ms to judge "upcoming" against. Required, and deliberately not
+		 * defaulted to `Date.now()`: this card is rendered from ISR-cached HTML,
+		 * so a live clock here would make the first client render disagree with
+		 * the server's and shift the keyed blocks below. Callers pass
+		 * `hydrationSafeClock().now`. See `$lib/hydration-clock`.
+		 */
+		now: number;
 		maxScreenings?: number;
 		priority?: boolean;
 	} = $props();
 
 	const upcoming = $derived.by(() =>
 		screenings
-			.filter((s) => new Date(s.datetime) > new Date())
+			.filter((s) => new Date(s.datetime).getTime() > now)
 			.sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime())
 	);
 
