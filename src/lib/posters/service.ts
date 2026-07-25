@@ -13,7 +13,7 @@
  * - Non-films: Skip film databases, use scraper image directly
  */
 
-import { getTMDBClient } from "@/lib/tmdb";
+import { getTMDBClient, matchFilmToTMDB } from "@/lib/tmdb";
 import { getOMDBClient } from "./omdb";
 import { getFanartClient } from "./fanart";
 import { getPosterPlaceholderUrl } from "./placeholder";
@@ -39,7 +39,7 @@ export class PosterService {
    * For non-films (concerts, events, live broadcasts): Scraper → Placeholder
    */
   async findPoster(params: PosterSearchParams): Promise<PosterResult> {
-    const { title, year, imdbId, tmdbId, scraperPosterUrl, contentType = "film" } = params;
+    const { title, year, imdbId, tmdbId, director, scraperPosterUrl, contentType = "film" } = params;
 
     // Track attempted sources for logging
     const attempted: PosterSource[] = [];
@@ -82,7 +82,7 @@ export class PosterService {
     // 2. Try TMDB by title search
     if (!tmdbId) {
       attempted.push("tmdb");
-      const tmdbPoster = await this.tryTMDBSearch(title, year);
+      const tmdbPoster = await this.tryTMDBSearch(title, year, director);
       if (tmdbPoster) {
         return {
           url: tmdbPoster,
@@ -190,27 +190,46 @@ export class PosterService {
     return null;
   }
 
-  private async tryTMDBSearch(title: string, year?: number): Promise<string | null> {
+  /**
+   * Resolve a poster for a film we have no TMDB id for.
+   *
+   * This must go through `matchFilmToTMDB`, never a bare `/search/movie`.
+   * TMDB orders search results by popularity, not by whether the hit is the
+   * film in front of us, so taking `results[0]` attaches *The Angry Birds
+   * Movie* to "The Birds", *The Silence of the Lambs* to "The Silence" and
+   * *Gumby* to a Tarkovsky 4K restoration — all observed in production.
+   *
+   * Worse, this method only runs *because* the identity matcher already
+   * declined the title (that is why the row has no tmdbId), so the unguarded
+   * search was overruling the exact safeguards — ambiguity gate, title
+   * similarity floor, competitor penalty, TMDB blocklist — that had just
+   * rejected it.
+   *
+   * A poster we cannot attribute is worse than no poster: returning null falls
+   * through to the cinema's own artwork and then the title-card placeholder,
+   * both of which are honest about what they are.
+   */
+  private async tryTMDBSearch(
+    title: string,
+    year?: number,
+    director?: string
+  ): Promise<string | null> {
     try {
-      // First try with original title
-      const results = await this.tmdb.searchFilms(title, year);
-      if (results.results.length > 0) {
-        const best = results.results[0];
-        if (best.poster_path) {
-          return `https://image.tmdb.org/t/p/w500${best.poster_path}`;
-        }
+      // `director` matters: for highly ambiguous titles the matcher's
+      // `hasSufficientMetadata` gate needs a year *and* a director, so passing
+      // it is the difference between a verified poster and none at all.
+      const match = await matchFilmToTMDB(title, { year, director });
+      if (match?.posterPath) {
+        return `https://image.tmdb.org/t/p/w500${match.posterPath}`;
       }
 
-      // If no results, try AI-powered content classification
-      // This extracts the actual film title from event names like "Classic Matinee: Sunset Boulevard"
+      // Event titles bury the real film ("Classic Matinee: Sunset Boulevard").
+      // Retry the cleaned title, through the same verification.
       const classification = await classifyContentCached(title);
       if (classification.cleanTitle !== title && classification.confidence !== "low") {
-        const cleanedResults = await this.tmdb.searchFilms(classification.cleanTitle, year);
-        if (cleanedResults.results.length > 0) {
-          const best = cleanedResults.results[0];
-          if (best.poster_path) {
-            return `https://image.tmdb.org/t/p/w500${best.poster_path}`;
-          }
+        const cleanedMatch = await matchFilmToTMDB(classification.cleanTitle, { year, director });
+        if (cleanedMatch?.posterPath) {
+          return `https://image.tmdb.org/t/p/w500${cleanedMatch.posterPath}`;
         }
       }
     } catch (error) {

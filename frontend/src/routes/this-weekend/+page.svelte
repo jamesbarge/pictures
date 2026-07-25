@@ -3,15 +3,22 @@
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
 	import { formatScreeningDate, toLondonDateStr, groupBy, compareFilmsByCalendarPriority } from '$lib/utils';
 	import { toCardScreening } from '$lib/components/calendar/card-shapes';
+	import { hydrationSafeClock } from '$lib/hydration-clock.svelte';
 
 	let { data } = $props();
 	type LoadedScreening = (typeof data.screenings)[number];
 
+	const clock = hydrationSafeClock(data.renderedAt);
+
 	const dayGroups = $derived.by(() => {
 		// Drop past screenings — ISR caches this page, so filter at render time.
+		// The clock reports the server's instant until hydration commits: live
+		// time on the first client render would drop films the cached HTML
+		// included and shift the keyed {#each}, stranding each card with the
+		// previous film's poster. See `$lib/hydration-clock`.
 		// Decorate each kept screening with its parsed timestamp so subsequent
 		// sorts compare numbers instead of re-parsing the datetime string.
-		const now = Date.now();
+		const now = clock.now;
 		type DecoratedScreening = LoadedScreening & { _ms: number };
 		const kept: DecoratedScreening[] = [];
 		for (const s of data.screenings) {

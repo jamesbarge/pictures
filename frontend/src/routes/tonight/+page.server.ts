@@ -50,6 +50,9 @@ export const load: PageServerLoad = async ({ fetch, setHeaders }) => {
 	);
 
 	return {
+		// Instant this payload was built — the page is ISR-cached, so the client
+		// filters against it until hydration commits. See `$lib/hydration-clock`.
+		renderedAt: Date.now(),
 		screenings: data.screenings.map((s) => ({
 			id: s.id,
 			datetime: s.datetime,

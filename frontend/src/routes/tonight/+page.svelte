@@ -4,12 +4,15 @@
 	import { formatDate, compareFilmsByCalendarPriority } from '$lib/utils';
 	import { toCardScreening } from '$lib/components/calendar/card-shapes';
 	import { trackTonightNoScreenings } from '$lib/analytics/posthog';
+	import { hydrationSafeClock } from '$lib/hydration-clock.svelte';
 	import { onMount } from 'svelte';
 
 	let { data } = $props();
 	type LoadedScreening = (typeof data.screenings)[number];
 
 	const todayLabel = formatDate(new Date());
+
+	const clock = hydrationSafeClock(data.renderedAt);
 
 	const filmMap = $derived.by(() => {
 		type Entry = {
@@ -19,7 +22,11 @@
 		};
 		const map = new Map<string, Entry>();
 		// Drop past screenings — ISR caches this page, so filter at render time.
-		const now = Date.now();
+		// The clock reports the server's instant until hydration commits; live
+		// time on the first client render would shift the keyed {#each} and
+		// strand each card with the previous film's poster. See
+		// `$lib/hydration-clock`.
+		const now = clock.now;
 		for (const s of data.screenings) {
 			if (!s.film) continue;
 			const ms = new Date(s.datetime).getTime();
