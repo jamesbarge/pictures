@@ -1,6 +1,6 @@
 import { test, expect, devices } from '@playwright/test';
 
-const BASE = 'http://localhost:5173';
+import { BASE } from './base-url';
 
 // The FILTERS button wires its onclick (which lazy-imports MobileFilterSheet)
 // only after Svelte hydrates. Clicking before hydration silently drops the

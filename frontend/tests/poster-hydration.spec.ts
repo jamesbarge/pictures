@@ -128,15 +128,43 @@ for (const route of ['/', '/this-weekend']) {
 		}
 
 		expect(after.length, `${route} should still render cards after the skew`).toBeGreaterThan(0);
-		expect(
-			after.length,
-			'precondition: the skew must actually drop cards, otherwise nothing shifts'
-		).toBeLessThan(baseline.length);
 
+		// The precondition is that the keyed {#each} actually *moved*, not that it
+		// got shorter. The listing renders a rolling day window, so expiring the
+		// first day rolls a later day in — and if that day is busier the card count
+		// rises even though every surviving card shifted index. (Measured
+		// 2026-07-26: 60 cards for today -> 67 for tomorrow, all 31 common cards at
+		// a new index.) Asserting on length encoded "tomorrow is quieter than
+		// today", which is a property of London's listings, not of this bug.
 		// A card that lost its poster entirely is also a failure, so compare the
 		// null case rather than filtering it out.
-		const mismatches = after
-			.filter((c) => truth.has(c.id) && truth.get(c.id) !== null)
+		const comparable = after.filter((c) => truth.has(c.id) && truth.get(c.id) !== null);
+
+		// Cards present in *both* renders are the only ones that can strand a
+		// poster. If the two day windows share nothing there is nothing to assert,
+		// and an empty `mismatches` below would pass vacuously — fail loudly
+		// instead, because a silently-vacuous regression test is what let the
+		// original bug reach production.
+		expect(
+			comparable.length,
+			'precondition: need cards common to both renders to compare posters against'
+		).toBeGreaterThan(0);
+
+		// Assert the reconciliation actually happened: at least one surviving card
+		// must sit at a *different index* than it did before. "The id lists differ"
+		// is too weak — a list that only gained entries at the tail satisfies it
+		// while shifting nothing, and the poster check below would then pass having
+		// exercised nothing.
+		const baseIndex = new Map(baseline.map((c, i) => [c.id, i]));
+		const afterIndex = new Map(after.map((c, i) => [c.id, i]));
+		const movedCards = comparable.filter((c) => baseIndex.get(c.id) !== afterIndex.get(c.id));
+		expect(
+			movedCards.length,
+			'precondition: the skew must move surviving cards to new indices, ' +
+				'otherwise the keyed {#each} never reconciles and the bug cannot appear'
+		).toBeGreaterThan(0);
+
+		const mismatches = comparable
 			.map((c) => ({ ...c, expected: truth.get(c.id)!, actual: posterFile(c.src) }))
 			.filter((c) => c.expected !== c.actual);
 
