@@ -1,7 +1,6 @@
 <script lang="ts">
 	import FilmCard from '$lib/components/calendar/FilmCard.svelte';
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
-	import FollowButton from '$lib/components/festivals/FollowButton.svelte';
 	import { groupBy } from '$lib/utils';
 
 	let { data } = $props();
@@ -33,9 +32,6 @@
 			<h1 class="font-display text-2xl font-bold tracking-tight-swiss uppercase">
 				{festival?.name ?? 'Festival'}
 			</h1>
-			{#if festival?.slug}
-				<FollowButton festivalSlug={festival.slug} />
-			{/if}
 		</div>
 		{#if festival?.description}
 			<p class="text-sm text-[var(--color-text-secondary)] mb-6 max-w-[40rem]">{festival.description}</p>

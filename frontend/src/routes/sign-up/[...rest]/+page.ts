@@ -1,7 +1,7 @@
 import { redirect } from '@sveltejs/kit';
 
-// Sign-up is temporarily removed from the site (see sign-in/[...rest]/+page.ts).
-// Redirect any direct navigation home until auth is re-enabled. Revert = delete.
+// There is no auth on pictures.london — see sign-in/[...rest]/+page.ts. The route
+// is retained purely so existing links and bookmarks redirect home instead of 404ing.
 export const load = () => {
 	redirect(307, '/');
 };

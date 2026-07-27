@@ -66,8 +66,6 @@
 		if (decision === 'wait' || decision === lastAppliedDecision) return;
 
 		if (decision === 'enable') {
-			// Don't re-enable if admin was opted out by identifyUser()
-			if (posthogModule?.isAdminOptedOut()) return;
 			posthogLib.opt_in_capturing();
 			posthogLib.set_config({ persistence: 'localStorage+cookie' });
 			posthogLib.startSessionRecording();
