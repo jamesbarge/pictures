@@ -69,10 +69,10 @@ jobs:
       # Vite proxies /api here for the preview server, mirroring the Vercel
       # rewrite in frontend/vercel.json.
       API_PROXY_TARGET: https://api.pictures.london
-      # Baked in at build time via $env/static/public, so they must be defined
-      # or the build fails. Empty disables Clerk and PostHog, which is what we
-      # want for E2E: no auth, no analytics noise.
-      PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.PUBLIC_CLERK_PUBLISHABLE_KEY || '' }}
+      # Baked in at build time via $env/static/public, so it must be defined or
+      # the build fails. Empty disables PostHog, which is what we want for E2E:
+      # no analytics noise. (No Clerk var here — the frontend has no auth; Clerk
+      # lives only in the root Next.js job below.)
       PUBLIC_POSTHOG_KEY: ${{ secrets.PUBLIC_POSTHOG_KEY || '' }}
       PUBLIC_POSTHOG_HOST: ${{ secrets.PUBLIC_POSTHOG_HOST || '' }}
 

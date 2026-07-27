@@ -85,7 +85,7 @@ Format:
 ### Frontend (`frontend/`) — pictures.london
 - SvelteKit 2 + Svelte 5 (runes: `$state`, `$derived`, `$effect`)
 - Tailwind CSS 4 with Swiss brutalist design system
-- svelte-clerk for auth, posthog-js for analytics
+- **No auth** — Clerk was removed 2026-07-27 (see `.claude/rules/frontend.md`); posthog-js for analytics
 - bits-ui, @chenglou/pretext for UI
 - MapLibre GL for cinema map
 - Playwright for E2E tests (82 desktop + 19 mobile)
