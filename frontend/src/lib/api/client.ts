@@ -15,21 +15,13 @@ export class ApiError extends Error {
 
 interface RequestOpts {
 	fetch?: typeof fetch;
-	token?: string;
 	signal?: AbortSignal;
 }
 
-/**
- * Shared header construction for every verb. JSON bodies get `Content-Type:
- * application/json`; DELETE skips it because it has no body. A bearer token is
- * attached only when present — public endpoints stay unauthenticated.
- */
-function buildHeaders(token: string | undefined, jsonBody: boolean): Record<string, string> {
-	const headers: Record<string, string> = {};
-	if (jsonBody) headers['Content-Type'] = 'application/json';
-	if (token) headers['Authorization'] = `Bearer ${token}`;
-	return headers;
-}
+// Every endpoint the frontend calls is public and JSON. There is no bearer-token
+// option because there is no auth on pictures.london — the `token` param and the
+// `apiPut`/`apiDelete` helpers went with Clerk (see the 2026-07-27 changelog).
+const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
 /** Throws `ApiError` on non-2xx, with the body as the message payload. */
 async function ensureOk(res: Response): Promise<void> {
@@ -39,7 +31,7 @@ async function ensureOk(res: Response): Promise<void> {
 export async function apiGet<T>(path: string, opts?: RequestOpts): Promise<T> {
 	const f = opts?.fetch ?? fetch;
 	const res = await f(`${API_BASE}${path}`, {
-		headers: buildHeaders(opts?.token, true),
+		headers: JSON_HEADERS,
 		signal: opts?.signal
 	});
 	await ensureOk(res);
@@ -50,32 +42,10 @@ export async function apiPost<T>(path: string, body: unknown, opts?: RequestOpts
 	const f = opts?.fetch ?? fetch;
 	const res = await f(`${API_BASE}${path}`, {
 		method: 'POST',
-		headers: buildHeaders(opts?.token, true),
+		headers: JSON_HEADERS,
 		body: JSON.stringify(body),
 		signal: opts?.signal
 	});
 	await ensureOk(res);
 	return res.json();
-}
-
-export async function apiPut<T>(path: string, body: unknown, opts?: RequestOpts): Promise<T> {
-	const f = opts?.fetch ?? fetch;
-	const res = await f(`${API_BASE}${path}`, {
-		method: 'PUT',
-		headers: buildHeaders(opts?.token, true),
-		body: JSON.stringify(body),
-		signal: opts?.signal
-	});
-	await ensureOk(res);
-	return res.json();
-}
-
-export async function apiDelete(path: string, opts?: RequestOpts): Promise<void> {
-	const f = opts?.fetch ?? fetch;
-	const res = await f(`${API_BASE}${path}`, {
-		method: 'DELETE',
-		headers: buildHeaders(opts?.token, false),
-		signal: opts?.signal
-	});
-	await ensureOk(res);
 }

@@ -104,6 +104,40 @@ exists.
 **Film status is unchanged for users.** It was always localStorage-first; the server push only
 ran when signed in, which no one was.
 
+## Code-review follow-ups (applied)
+
+A code review of the first commit found four things the removal missed — all **outside** the 18
+files it touched, which is exactly the blind spot svelte-check, vitest, the build and the E2E
+suite share: none of them read prose, markdown instruction files, or unused CI env vars.
+
+1. **`routes/privacy/+page.svelte` misdescribed our data handling** — the live privacy policy still
+   said *"If you sign in, these preferences sync to our servers"* and *"We use essential cookies for
+   authentication"*. Both were false the moment Clerk went. This is the one class of stale content
+   that is a compliance problem rather than a cosmetic one, so it is fixed here: the page now states
+   there are no accounts, that film preferences never leave the device, and that the only cookie is
+   PostHog's, set solely after consent.
+2. **`CookieConsentBanner.svelte`** offered *"REJECT NON-ESSENTIAL"*, implying an essential-cookie set
+   that no longer exists. Now just *"REJECT"*.
+3. **The agent instruction files still documented Clerk as the intended architecture** —
+   `.claude/rules/frontend.md` had a whole `## Auth (Clerk)` section naming `hooks.server.ts` and
+   `useClerkContext()`, and `CLAUDE.md:88` listed `svelte-clerk for auth`. These are loaded as
+   binding instructions every session, so the concrete risk was a future session re-adding
+   `ClerkProvider` and undoing this fix. Both now state there is no auth, and why.
+   (`CLAUDE.md:101` still says Clerk for the **root** app — correct, left alone.)
+4. **`.github/workflows/test.yml`** still injected `PUBLIC_CLERK_PUBLISHABLE_KEY` into the frontend
+   E2E job with the now-false comment *"Empty disables Clerk"*. Removed. The root Next.js job's
+   `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` is untouched.
+5. **`lib/api/client.ts` orphans** — `sync.svelte.ts` and `FollowButton` were the only callers of
+   `apiPut`/`apiDelete` and the only code that ever passed `opts.token`, so the bearer-token branch
+   became unreachable. Removed `token`, `apiPut`, `apiDelete`, and collapsed `buildHeaders` into a
+   `JSON_HEADERS` constant. `apiGet` (7 callers) and `apiPost` (1) are unchanged.
+
+The review independently confirmed the parts I was most unsure of: deleting `hooks.server.ts` strands
+nothing (`/api/*` never reaches the SvelteKit server — dev uses the Vite proxy, prod the
+`frontend/vercel.json` rewrite; and `locals` appears nowhere in `frontend/src`), the inlined layout is
+DOM-order-identical to the parent's production branch, and `posthog.ts` still imports posthog-js
+**type-only**, so the lazy-load constraint holds.
+
 ## Verification
 
 | check | result |
@@ -113,8 +147,14 @@ ran when signed in, which no one was.
 | `npm run build` | clean, adapter-vercel ok |
 | `grep -ri clerk .svelte-kit/output/client/` | **no matches** — Clerk fully absent from the client bundle |
 | `grep -c svelte-clerk package.json package-lock.json` | 0 / 0 |
-| frontend E2E (`E2E_PREVIEW=1`, prod API) | **197 passed, 1 failed, 2 flaky, 6 skipped** |
+| frontend E2E (`E2E_PREVIEW=1`, prod API) | **199 passed, 1 failed, 0 flaky, 6 skipped** |
 | `--grep "sign-in is gone"` | **2 passed** (chromium + mobile-small) |
+
+⚠️ **Rebuild before running the E2E suite locally.** `E2E_PREVIEW=1` makes `vite preview` serve
+`.svelte-kit/output`, so a bundle built from another commit is served silently. Doing exactly that
+produced a webServer crash whose stack referenced the deleted `hooks.server.js` — a stale-bundle
+artefact, not a real failure. This is the hazard #738's changelog flagged when it noted `test:e2e:ci`
+didn't build. After rebuilding: 199 passed, and the 2 "flaky" results seen pre-rebuild disappeared.
 
 The single E2E failure — `poster-hydration.spec.ts` → *"posters stay with their own film across
 hydration: /this-weekend"* — **reproduces identically on `8c9f086e`, the parent commit**

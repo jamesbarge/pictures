@@ -3,7 +3,7 @@
  *
  * IMPORTANT: This module must NOT statically import `posthog-js`. Every
  * component that calls a `track*` helper (homepage cards, filter inputs,
- * sync store) would otherwise pull the ~70KB-gzip library into its chunk
+ * film detail) would otherwise pull the ~70KB-gzip library into its chunk
  * via the static-import graph, defeating the deliberate lazy load in
  * `PostHogProvider.svelte`. We accept the posthog instance via
  * `attachPostHog()` from the provider and buffer calls made before it
