@@ -16,19 +16,10 @@ import { PUBLIC_POSTHOG_KEY } from '$env/static/public';
 
 type PostHogClient = typeof posthog;
 
-// Admin emails excluded from all PostHog tracking
-const ADMIN_EMAILS = ['jdwbarge@gmail.com'];
-
-export function isAdminEmail(email: string | undefined | null): boolean {
-	if (!email) return false;
-	return ADMIN_EMAILS.includes(email.toLowerCase());
-}
-
 // ── Lazy client + pending-call buffer ───────────────────────────
 
 let client: PostHogClient | null = null;
 let initialized = false;
-let adminOptedOut = false;
 
 // Bounded buffer — pre-load track calls (idle-deferred posthog typically
 // arrives within 1-2s). 100 is generous; user can't meaningfully fire more
@@ -43,10 +34,6 @@ function enqueue(fn: (p: PostHogClient) => void): void {
 	}
 	if (pending.length >= MAX_BUFFER) pending.shift();
 	pending.push(fn);
-}
-
-export function isAdminOptedOut() {
-	return adminOptedOut;
 }
 
 /**
@@ -318,60 +305,6 @@ export function trackFilterNoResults(activeFilters: Record<string, unknown>) {
 export function trackTonightNoScreenings() {
 	if (!browser) return;
 	enqueue((p) => p.capture('tonight_no_screenings'));
-}
-
-// ── Sync Events ─────────────────────────────────────────────────
-
-export type SyncSource = 'sign_in' | 'store_change' | 'manual';
-
-export function trackSyncInitiated(source: SyncSource, itemsToSync: number) {
-	if (!browser) return;
-	enqueue((p) => p.capture('sync_initiated', { source, items_to_sync: itemsToSync }));
-}
-
-export function trackSyncCompleted(stats: {
-	durationMs: number;
-	itemsSynced: number;
-	conflictsResolved: number;
-}) {
-	if (!browser) return;
-	enqueue((p) =>
-		p.capture('sync_completed', {
-			duration_ms: stats.durationMs,
-			items_synced: stats.itemsSynced,
-			conflicts_resolved: stats.conflictsResolved
-		})
-	);
-}
-
-export function trackSyncFailed(error: string, phase: string) {
-	if (!browser) return;
-	enqueue((p) => p.capture('sync_failed', { error, phase }));
-}
-
-// ── User Lifecycle ──────────────────────────────────────────────
-
-export function identifyUser(userId: string, properties?: Record<string, unknown>) {
-	if (!browser) return;
-
-	// If admin, opt out entirely to prevent polluting analytics
-	const email = properties?.email as string | undefined;
-	if (isAdminEmail(email)) {
-		adminOptedOut = true;
-		enqueue((p) => {
-			p.opt_out_capturing();
-			p.reset();
-		});
-		return;
-	}
-
-	enqueue((p) => p.identify(userId, properties));
-}
-
-export function resetUser() {
-	if (!browser) return;
-	adminOptedOut = false;
-	enqueue((p) => p.reset());
 }
 
 // ── Error Tracking ──────────────────────────────────────────────

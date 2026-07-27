@@ -1,12 +1,7 @@
-<script lang="ts">
-	import { SignIn } from 'svelte-clerk';
-</script>
-
+<!-- Never rendered: +page.ts always 307-redirects to `/`. SvelteKit still needs a
+     component for the route to resolve, and the route is kept rather than deleted so
+     existing links and bookmarks redirect home instead of 404ing (asserted by
+     tests/mobile.spec.ts "sign-in is gone"). -->
 <svelte:head>
-	<title>Sign In — pictures · london</title>
 	<meta name="robots" content="noindex" />
 </svelte:head>
-
-<div class="flex justify-center py-12">
-	<SignIn />
-</div>
