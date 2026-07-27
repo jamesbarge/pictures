@@ -71,9 +71,29 @@
 		if (decision === 'wait' || decision === lastAppliedDecision) return;
 
 		if (decision === 'enable') {
-			posthogLib.opt_in_capturing();
-			// No-op for a returning consented visitor (init already chose this
-			// store, and posthog-js only rebuilds persistence when the value
+			// Guarded because `opt_in_capturing()` has no already-opted-in check of
+			// its own: it rewrites the consent key and then unconditionally captures
+			// an `$opt_in` event with `send_instantly: true`. `lastAppliedDecision`
+			// is fresh per page load, so the null -> 'enable' transition happens on
+			// EVERY load — which is why `$opt_in` was the project's highest-volume
+			// event (407 in 30 days, one per person per visit). With
+			// `person_profiles: 'always'` each of those is now a billed,
+			// person-processed, un-batched request, so the guard matters more than it
+			// did. The consent key lives in its own store (`__ph_opt_in_out_<token>`,
+			// independent of `persistence`), so it survives across visits and this
+			// stays correct.
+			if (!posthogLib.has_opted_in_capturing()) {
+				posthogLib.opt_in_capturing();
+			}
+			// MUST stay after opt-in. `update_config` calls
+			// `set_disabled(disable_persistence || isDisabled)` before swapping the
+			// store, and `save()` early-returns while disabled even though `remove()`
+			// has already run — so if `opt_out_persistence_by_default` were ever
+			// added (a reasonable-looking GDPR hardening), running this first would
+			// silently destroy first-time-visitor identity, re-breaking exactly what
+			// this file was fixed for.
+			// Otherwise a no-op for a returning consented visitor (init already chose
+			// this store, and posthog-js only rebuilds persistence when the value
 			// actually changes). It matters for a first-time visitor who just
 			// accepted: it promotes the memory-held id into localStorage+cookie,
 			// which is the correct id to persist for them.
@@ -101,9 +121,18 @@
 				console.warn('[posthog] session recording failed to start:', e);
 			}
 		} else {
-			posthogLib.opt_out_capturing();
 			posthogLib.stopSessionRecording();
+			// `reset()` BEFORE `opt_out_capturing()`, not after. `reset()` calls
+			// `consent.reset()`, which *removes* the `__ph_opt_in_out_<token>` key
+			// entirely — so running it second wiped the very rejection
+			// `opt_out_capturing()` had just recorded, leaving the user PENDING rather
+			// than DENIED. `get_explicit_consent_status()` then reported 'pending' for
+			// someone who explicitly rejected, and the rejection was honoured only
+			// because `opt_out_capturing_by_default: true` makes PENDING behave as
+			// denied — making that one flag the only thing standing between "rejected"
+			// and "tracked". This order records the denial durably.
 			posthogLib.reset();
+			posthogLib.opt_out_capturing();
 			lastAppliedDecision = 'disable';
 		}
 	});

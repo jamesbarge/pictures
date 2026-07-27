@@ -36,13 +36,26 @@ only 22 person rows existed project-wide, and `person_id` was merely a UUIDv5 ha
 churning `distinct_id`. Retention/stickiness/lifecycle could not work even with persistence
 fixed. Cost is per tracked person (~900/60d here — immaterial).
 
-## 2. The landing pageview of every visit was silently discarded
+## 2. The landing pageview was discarded on first-decision visits
 
-`PostHogProvider.svelte` called `trackPageview()` inside the loader's `.then()`, while
-`opt_out_capturing_by_default: true` was still in force — so the capture was dropped. It then
-set `lastPath`, and the retry effect only fires when the path **changes**, so a visit that
-never navigated lost its pageview entirely. That is why 407 `$opt_in` events produced only
-134 pageview persons, and why desktop capture read as 13% against mobile's 69%.
+`PostHogProvider.svelte` called `trackPageview()` inside the loader's `.then()`, before the
+consent `$effect` had run `opt_in_capturing()`. It then set `lastPath`, and the retry effect
+only fires when the path **changes** — so a visit that never navigated lost its pageview
+entirely, with no retry.
+
+**Scope correction (code review caught this; the first draft of this changelog was wrong).**
+This did **not** affect "every visit". The consent key `__ph_opt_in_out_<token>` lives in its
+own store, *independent of the `persistence` setting*, so it survived across visits even under
+`memory`. A **returning consented** visitor was therefore already `GRANTED` when the loader
+ran, and their landing pageview *was* captured before this fix. The fault was real but limited
+to visitors whose posthog consent record was still `PENDING` — first-decision visits, and any
+client that discards storage between hits.
+
+Which reframes the headline symptom: the "273 of 407 persons with `$opt_in` but no `$pageview`"
+gap was **mostly the bot fleet** (262 persons, 0 pageviews — see §3), not a universal bug, and
+the "13% desktop vs 69% mobile capture rate" was largely the same fleet. So expect a *modest*
+pageview uplift from this fix, not a tripling. Do not read a small jump as the fix having
+failed to ship.
 
 **Fix:** fire the landing pageview from the consent effect, at the moment capturing is
 actually enabled, guarded on `lastPath === ''` (real pathnames always start with `/`, so it
@@ -132,8 +145,54 @@ Unexpected token ':'` inside posthog's bootstrap, leaving the SDK half-initialis
 capturing nothing.
 
 So the landing-pageview ordering is covered by **code review and the config unit test**, not
-by an executable end-to-end assertion. Confirm it against production once deployed: the
-per-person `$opt_in`-without-`$pageview` gap (273 of 407 persons) should collapse.
+by an executable end-to-end assertion. And note the `$opt_in`-without-`$pageview` ratio is
+**no longer a usable verification signal**: with a stable `distinct_id` every person will have
+both, so it stops being diagnostic either way. Verify instead by watching pageviews per session
+for *new* visitors after the deploy.
+
+⚠️ **The E2E spec does not run in CI at all.** CI sets `PUBLIC_POSTHOG_KEY: ''` on purpose, so
+`initPostHog` returns early and the spec skips — permanently. It is genuine cover locally
+(proven to fail against the old code), but the only enforced CI gate for this change is
+`posthog-config.test.ts`. Making it enforce would mean giving the `frontend-e2e` job a throwaway
+token; not done here because enabling posthog-js across the other ~200 E2E tests risks new
+network flakiness for no benefit to them. Restricted to the `chromium` project and the boot wait
+cut 15s → 8s so the guaranteed skip costs less CI time.
+
+## Code-review follow-ups (applied)
+
+A review that read posthog-js's own source (rather than trusting this description) confirmed the
+two fixes and the Svelte 5 effect scheduling were correct, and found three things worth fixing:
+
+1. **`$opt_in` fired on every page load.** `lastAppliedDecision` is fresh per load, so the
+   `null → 'enable'` transition happens every time, and `opt_in_capturing()` has no
+   already-opted-in guard — it rewrites the consent key and unconditionally captures `$opt_in`
+   with `send_instantly: true`. That is why `$opt_in` was the highest-volume event in the project
+   (407 in 30 days). With `person_profiles: 'always'` each one becomes a **billed,
+   person-processed, un-batched** request, so the cost went up materially. Now guarded with
+   `has_opted_in_capturing()`.
+2. **`reset()` erased the rejection it was meant to record.** The disable branch called
+   `opt_out_capturing()` then `reset()`, and `reset()` → `consent.reset()` *removes* the
+   `__ph_opt_in_out_<token>` key — leaving an explicitly-rejecting user as `PENDING`, not
+   `DENIED`. Rejection was then honoured only because `opt_out_capturing_by_default: true` makes
+   PENDING behave as denied, i.e. one flag was the only thing between "rejected" and "tracked".
+   Order swapped so the denial is recorded durably.
+3. **The pre-consent assertion was weaker than its own message** — it scanned only
+   `localStorage`. Now checks `localStorage`, `sessionStorage` and cookies, and is labelled
+   honestly as a GDPR guard rather than regression cover (it passes against the old code too).
+
+Also documented in code: the `opt_in_capturing()` → `set_config({persistence})` order is
+load-bearing. `update_config` calls `set_disabled(...)` before swapping the store and `save()`
+early-returns while disabled after `remove()` has already run — so adding
+`opt_out_persistence_by_default` later would silently destroy first-time-visitor identity and
+re-break exactly what this change fixes.
+
+Two effects of `person_profiles: 'always'` beyond billing, worth knowing:
+- **`$set_once` / `$initial_*` now ship** for anonymous visitors (`$initial_referrer`,
+  `$initial_utm_*`, …). Good for attribution, but it is new person-attached data.
+- **It is effectively one-way per visitor.** The first person-processed capture writes `$epp`
+  into persistence *and* the cookie, and `_hasPersonProcessing()` is true whenever `$epp` is set
+  — so reverting to `identified_only` will not switch person processing back off for anyone who
+  has already visited. Rollback is not a one-line config revert.
 
 ## Impact
 

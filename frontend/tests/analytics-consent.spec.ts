@@ -16,8 +16,17 @@ import { BASE } from './base-url';
 // CONFIG is covered instead by src/lib/analytics/posthog-config.test.ts, which
 // runs in CI and fails against the old values.
 //
-// SKIPS when PostHog is key-disabled (CI sets PUBLIC_POSTHOG_KEY=''), because
-// initPostHog() returns early and there is no state to inspect.
+// ⚠️ THIS SPEC DOES NOT RUN IN CI, AND SO PROTECTS NOTHING THERE. CI sets
+// `PUBLIC_POSTHOG_KEY: ''` deliberately ("no analytics noise"), which makes
+// initPostHog() return early, so there is no state to inspect and the test skips.
+// It is real cover locally — verified to fail against the old `persistence:
+// 'memory'` init — but the only executable CI gate for this fix is
+// src/lib/analytics/posthog-config.test.ts, which asserts the config object.
+// To make this enforce in CI, give the frontend-e2e job a throwaway PostHog token:
+// the spec asserts only on browser storage and never on ingested events, and
+// `/ingest/*` is unproxied by the preview server, so nothing would reach a real
+// project. Not done here because enabling posthog-js across the other ~200 E2E
+// tests risks new network flakiness for no gain to them.
 
 /** posthog-js stores its state under `ph_<token>_posthog`. */
 async function readPostHogState(page: Page): Promise<{ distinct_id?: string } | null> {
@@ -32,9 +41,13 @@ async function readPostHogState(page: Page): Promise<{ distinct_id?: string } | 
 	});
 }
 
-/** PostHog is idle-deferred (up to 2s); detect it by its own boot traffic. */
+/**
+ * PostHog is idle-deferred (up to 2s); detect it by its own boot traffic.
+ * 8s, not 15: when PostHog is key-disabled this wait is pure dead CI time before
+ * the inevitable skip, and posthog's own ceiling for the deferral is 2s.
+ */
 async function waitForPostHogBoot(hits: string[]): Promise<boolean> {
-	const deadline = Date.now() + 15000;
+	const deadline = Date.now() + 8000;
 	while (Date.now() < deadline) {
 		if (hits.length > 0) return true;
 		await new Promise((r) => setTimeout(r, 200));
@@ -42,12 +55,28 @@ async function waitForPostHogBoot(hits: string[]): Promise<boolean> {
 	return false;
 }
 
+/** Any posthog-owned storage, across all three backends it can write to. */
+async function readAllPostHogStorage(page: Page) {
+	return page.evaluate(() => ({
+		localStorage: Object.keys(localStorage).filter((k) => k.startsWith('ph_')),
+		sessionStorage: Object.keys(sessionStorage).filter((k) => k.startsWith('ph_')),
+		cookies: document.cookie
+			.split(';')
+			.map((c) => c.trim().split('=')[0])
+			.filter((n) => n.startsWith('ph_') || n.startsWith('__ph_'))
+	}));
+}
+
 test.describe('analytics identity', () => {
 	test.setTimeout(120_000);
 
 	test('a returning visitor keeps the same distinct_id, and nothing persists pre-consent', async ({
 		page
-	}) => {
+	}, testInfo) => {
+		// Storage and config behaviour, not rendering — one engine is enough, and it
+		// halves the dead wait when PostHog is key-disabled.
+		test.skip(testInfo.project.name !== 'chromium', 'engine-independent; covered once');
+
 		const hits: string[] = [];
 		page.on('request', (req) => {
 			if (req.url().includes('/ingest/')) hits.push(req.url());
@@ -57,13 +86,17 @@ test.describe('analytics identity', () => {
 		const booted = await waitForPostHogBoot(hits);
 		test.skip(!booted, 'PostHog is not configured in this environment (no PUBLIC_POSTHOG_KEY)');
 
-		// Pre-consent the store is `memory`, so nothing may be written to disk.
+		// Pre-consent the store is `memory`, so nothing may be written to disk. This
+		// checks all three backends posthog can write to, not just localStorage —
+		// note it passes against the OLD code too (which also inited under `memory`),
+		// so it is a GDPR guard, not regression cover. The distinct_id-stability
+		// assertion below is the part that actually pins the bug.
 		const accept = page.getByRole('button', { name: 'ACCEPT ALL' });
 		await expect(accept).toBeVisible();
 		expect(
-			await readPostHogState(page),
+			await readAllPostHogStorage(page),
 			'nothing may be persisted before a consent decision'
-		).toBeNull();
+		).toEqual({ localStorage: [], sessionStorage: [], cookies: [] });
 
 		await accept.click();
 
