@@ -127,7 +127,19 @@ for (const route of ['/', '/this-weekend']) {
 			await stale.close();
 		}
 
-		expect(after.length, `${route} should still render cards after the skew`).toBeGreaterThan(0);
+		// `/` always has cards, so an empty list after the skew is a real failure.
+		// `/this-weekend` renders only the weekend window, so expiring its first day
+		// can legitimately empty it: run on a Monday the window is next Sat+Sun, and
+		// pushing past Saturday's last screening leaves nothing that route will show.
+		// The baseline check above already skips this route when it starts empty —
+		// this is the same "outside its window" condition, just after the skew. Without
+		// it the job fails every Monday on a property of London listings rather than
+		// anything about the hydration bug.
+		if (route === '/') {
+			expect(after.length, `${route} should still render cards after the skew`).toBeGreaterThan(0);
+		} else {
+			test.skip(after.length === 0, `${route} is empty after the skew — outside its window`);
+		}
 
 		// The precondition is that the keyed {#each} actually *moved*, not that it
 		// got shorter. The listing renders a rolling day window, so expiring the

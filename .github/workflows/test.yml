@@ -90,8 +90,18 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # WebKit is REQUIRED, not optional. tests/mobile.spec.ts does
+      # `test.use(devices['iPhone 12 Pro'])`, and that descriptor carries
+      # `defaultBrowserType: 'webkit'`. The `chromium` project pins `browserName`
+      # so it wins there, but `mobile-small` (Galaxy S5) sets no explicit
+      # browserName, so the file-level device wins and those tests resolve to
+      # WebKit. Installing chromium alone failed 31 of them with
+      # "Executable doesn't exist at .../webkit-XXXX/pw_run.sh". Keeping WebKit is
+      # the right call rather than pinning the project to chromium: mobile is ~2/3
+      # of real traffic and iOS Safari dominates it, so this is the engine we most
+      # need covered.
       - name: Install Playwright browsers
-        run: npx playwright install chromium --with-deps
+        run: npx playwright install chromium webkit --with-deps
 
       # `test:e2e:ci` builds first, so `vite preview` can never serve a stale or
       # absent bundle. Keeping the build inside the script means the local and
