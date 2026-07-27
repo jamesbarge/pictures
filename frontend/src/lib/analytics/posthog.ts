@@ -13,6 +13,7 @@
 import type posthog from 'posthog-js';
 import { browser } from '$app/environment';
 import { PUBLIC_POSTHOG_KEY } from '$env/static/public';
+import { buildPostHogConfig } from './posthog-config';
 
 type PostHogClient = typeof posthog;
 
@@ -57,33 +58,16 @@ export function attachPostHog(instance: PostHogClient) {
 /**
  * Initialises posthog-js with our standard config. Called by the provider
  * once the library has been dynamically imported.
+ *
+ * `alreadyConsented` MUST reflect the visitor's PERSISTED consent decision, read
+ * synchronously before init (`cookieConsent.canTrack`). It decides the
+ * persistence backend, and getting it wrong silently destroys returning-visitor
+ * identity — see `buildPostHogConfig` for the full mechanism.
  */
-export function initPostHog(instance: PostHogClient) {
+export function initPostHog(instance: PostHogClient, alreadyConsented: boolean) {
 	if (!browser || initialized || !PUBLIC_POSTHOG_KEY) return;
 
-	instance.init(PUBLIC_POSTHOG_KEY, {
-		api_host: '/ingest',
-		ui_host: 'https://eu.posthog.com',
-		capture_pageview: false, // we track manually on route change
-		capture_pageleave: true,
-		persistence: 'memory', // upgraded to localStorage+cookie after consent
-		cross_subdomain_cookie: false,
-		opt_out_capturing_by_default: true, // GDPR: wait for consent
-		disable_session_recording: true, // enabled after consent
-		session_recording: {
-			maskAllInputs: true,
-			maskTextSelector: '[data-ph-mask]'
-		},
-		autocapture: {
-			dom_event_allowlist: ['click', 'submit', 'change'],
-			element_allowlist: ['button', 'a', 'input', 'select', 'textarea']
-		},
-		// Disabled in favour of the web-vitals reporter at $lib/analytics/web-vitals,
-		// which captures LCP/INP/CLS/TTFB/FCP with route + viewport + connection
-		// dimensions PostHog's built-in flag doesn't expose.
-		capture_performance: false,
-		capture_exceptions: true
-	});
+	instance.init(PUBLIC_POSTHOG_KEY, buildPostHogConfig(alreadyConsented));
 
 	attachPostHog(instance);
 }
