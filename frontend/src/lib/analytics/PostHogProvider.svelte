@@ -22,12 +22,17 @@
 				// Pass the dynamically-loaded posthog instance into the module so
 				// it can flush any track-call buffer accumulated during the idle
 				// deferral. The module itself never statically imports posthog-js.
-				mod.initPostHog(ph.default);
+				// `canTrack` is read synchronously here so init can pick the right
+				// persistence store; passing it in keeps posthog.ts free of any
+				// dependency on the consent store.
+				mod.initPostHog(ph.default, cookieConsent.canTrack);
 				posthogModule = mod;
 				posthogLib = ph.default;
-				// Track initial pageview (deferred)
-				mod.trackPageview(page.url.href);
-				lastPath = page.url.pathname;
+				// NOTE: the landing pageview is deliberately NOT fired here. Capturing
+				// before `opt_in_capturing()` runs is silently discarded, and the
+				// path-change effect below only fires on a CHANGE — so a visit that
+				// never navigated lost its pageview entirely (407 opt-ins, 134
+				// pageview persons). It now fires from the consent effect instead.
 				// Start web-vitals reporting once PostHog is alive. The reporter
 				// is idempotent on subsequent calls.
 				void webVitals.startWebVitals(ph.default);
@@ -67,9 +72,34 @@
 
 		if (decision === 'enable') {
 			posthogLib.opt_in_capturing();
+			// No-op for a returning consented visitor (init already chose this
+			// store, and posthog-js only rebuilds persistence when the value
+			// actually changes). It matters for a first-time visitor who just
+			// accepted: it promotes the memory-held id into localStorage+cookie,
+			// which is the correct id to persist for them.
 			posthogLib.set_config({ persistence: 'localStorage+cookie' });
-			posthogLib.startSessionRecording();
 			lastAppliedDecision = 'enable';
+
+			// The landing pageview, fired only now that capturing is actually on.
+			// `lastPath === ''` means none has been sent yet this page load; real
+			// pathnames always begin with '/', so it can't collide. This also covers
+			// reject-then-accept, and someone who navigates before consenting (the
+			// pageview then correctly records the page they are actually on).
+			if (posthogModule && lastPath === '') {
+				posthogModule.trackPageview(page.url.href);
+				lastPath = page.url.pathname;
+			}
+
+			// LAST, and guarded. Session recording is the least important thing this
+			// effect does and the most likely to throw (it lazy-loads the rrweb
+			// bundle over the network). It used to run before `lastAppliedDecision`
+			// was set, so a throw here would abort the effect and silently disable
+			// BOTH the landing pageview and every path-change pageview after it.
+			try {
+				posthogLib.startSessionRecording();
+			} catch (e) {
+				console.warn('[posthog] session recording failed to start:', e);
+			}
 		} else {
 			posthogLib.opt_out_capturing();
 			posthogLib.stopSessionRecording();
