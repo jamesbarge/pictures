@@ -3,11 +3,8 @@
 	import Header from '$lib/components/layout/Header.svelte';
 	import Footer from '$lib/components/layout/Footer.svelte';
 	import PostHogProvider from '$lib/analytics/PostHogProvider.svelte';
-	import SyncProvider from '$lib/stores/SyncProvider.svelte';
 	import JsonLd from '$lib/seo/JsonLd.svelte';
 	import { organizationSchema } from '$lib/seo/json-ld';
-	import { ClerkProvider } from 'svelte-clerk/client';
-	import { PUBLIC_CLERK_PUBLISHABLE_KEY } from '$env/static/public';
 	import { page } from '$app/state';
 	import { browser } from '$app/environment';
 	import { palette } from '$lib/stores/palette.svelte';
@@ -16,7 +13,6 @@
 	let { data, children } = $props();
 
 	const canonicalUrl = $derived(`https://pictures.london${page.url.pathname}`);
-	const clerkEnabled = !!PUBLIC_CLERK_PUBLISHABLE_KEY && !PUBLIC_CLERK_PUBLISHABLE_KEY.includes('your_');
 
 	// Lazy-mount the command palette: its UI (bits-ui Dialog + ~1500 lines of
 	// row components) never renders on first paint (palette.open starts false),
@@ -51,44 +47,21 @@
 
 <JsonLd data={organizationSchema()} />
 
-{#snippet shell()}
-	<a href="#main-content" class="skip-link">Skip to content</a>
-
-	<div class="min-h-dvh flex flex-col">
-		<Header cinemas={data?.cinemas ?? []} />
-		<main id="main-content" class="flex-1" tabindex="-1">
-			{@render children()}
-		</main>
-		<Footer />
-	</div>
-{/snippet}
-
-<!-- None of these consume Clerk context, so they live outside the conditional.
-     They used to be duplicated across both branches, and the branches drifted:
-     CommandPalette was mounted only when Clerk was configured, so a Clerk-less
-     deploy still bound cmd+k but never rendered the palette — pressing it did
-     nothing. Declaring them once removes the duplication that allowed it.
-
-     NOTE: the Clerk-less branch is still not fully equivalent. Anything calling
-     useClerkContext() throws without a provider, and festivals/FollowButton.svelte
-     does, so /festivals/[slug] crashes when Clerk is unconfigured. Pre-existing
-     and untouched here; see the 2026-07-26 changelog. -->
 <PostHogProvider />
 <GlobalCmdkBinding />
 {#if CommandPalette}
 	<CommandPalette />
 {/if}
 
-{#if clerkEnabled}
-	<ClerkProvider publishableKey={PUBLIC_CLERK_PUBLISHABLE_KEY}>
-		<!-- SyncProvider is the only useClerkContext() consumer mounted here; it
-		     pushes film status to the server when signed in. -->
-		<SyncProvider />
-		{@render shell()}
-	</ClerkProvider>
-{:else}
-	{@render shell()}
-{/if}
+<a href="#main-content" class="skip-link">Skip to content</a>
+
+<div class="min-h-dvh flex flex-col">
+	<Header cinemas={data?.cinemas ?? []} />
+	<main id="main-content" class="flex-1" tabindex="-1">
+		{@render children()}
+	</main>
+	<Footer />
+</div>
 
 <style>
 	/* Main carries the dimmable background so the area below the header tracks

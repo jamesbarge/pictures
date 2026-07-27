@@ -9,13 +9,13 @@
 
 		<div class="prose">
 			<h2>DATA WE COLLECT</h2>
-			<p>We collect minimal data to provide the service: your film preferences (watchlist, not interested) are stored locally in your browser. If you sign in, these preferences sync to our servers.</p>
+			<p>We collect minimal data to provide the service. There are no accounts and no sign-in, so we hold no personal details about you. Your film preferences (watchlist, not interested) stay in your own browser's localStorage and are never sent to us.</p>
 
 			<h2>ANALYTICS</h2>
-			<p>We use PostHog for anonymous usage analytics. No personal data is shared with third parties.</p>
+			<p>We use PostHog for anonymous usage analytics, and only after you accept analytics cookies. No personal data is shared with third parties.</p>
 
 			<h2>COOKIES</h2>
-			<p>We use essential cookies for authentication. The "House Lights" dimmer setting is stored in localStorage.</p>
+			<p>We set no cookies until you accept them. If you do, PostHog sets an analytics cookie so repeat visits are not double-counted; if you decline, none is set. Your "House Lights" dimmer setting, theme and film preferences are stored in localStorage, not cookies, and never leave your device.</p>
 
 			<h2>CONTACT</h2>
 			<p>For privacy questions: <a href="mailto:hello@pictures.london">hello@pictures.london</a></p>

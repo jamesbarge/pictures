@@ -9,8 +9,10 @@
 			We use analytics cookies to understand how you use the site and improve your experience.
 		</p>
 		<div class="consent-actions">
+			<!-- Not "REJECT NON-ESSENTIAL": there are no essential cookies to keep.
+			     Auth was removed, so analytics is the only cookie the site ever sets. -->
 			<button class="consent-btn consent-btn-reject" onclick={() => cookieConsent.reject()}>
-				REJECT NON-ESSENTIAL
+				REJECT
 			</button>
 			<button class="consent-btn consent-btn-accept" onclick={() => cookieConsent.accept()}>
 				ACCEPT ALL

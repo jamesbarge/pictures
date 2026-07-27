@@ -29,11 +29,20 @@
 - Zero border-radius everywhere (Swiss brutalist)
 - Light/dark mode via `data-theme` attribute
 
-## Auth (Clerk)
-- svelte-clerk with conditional ClerkProvider (graceful degradation when unconfigured)
-- `hooks.server.ts` skips Clerk for `/api/` routes and catches handshake failures
-- Auth state: `useClerkContext()` inside ClerkProvider only
-- Env vars: `PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`
+## Auth — there is NONE on pictures.london
+- Clerk was removed from the frontend entirely on 2026-07-27. There is no sign-in, no accounts,
+  no `ClerkProvider`, no `hooks.server.ts`, and no `App.Locals.auth`. Do not re-add any of them.
+- Why: 0 identified users out of 1,492 in 90 days, while production shipped a `pk_test_` dev-instance
+  key that broke clerk-js and caused 68% of all client exceptions. See
+  `changelogs/2026-07-27-remove-clerk-from-frontend.md`.
+- `/sign-in` and `/sign-up` survive **only** as 307 redirects to `/` so old links don't 404
+  (`tests/mobile.spec.ts` asserts this). Their `+page.svelte` files are deliberately empty stubs.
+- Clerk still exists in the **root Next.js app** for admin auth, `/api/webhooks/clerk` and
+  `/api/user`. That is separate and must stay.
+- Film status/watchlist is localStorage-only. `sync-contract.ts` is retained but unused — it
+  documents the wire format if accounts ever return.
+- Re-introducing accounts is a fresh product decision, not a revert: it needs a `pk_live_` key,
+  a signup event in the PostHog taxonomy, and a lazy-loaded provider.
 
 ## Analytics (PostHog)
 - Init in PostHogProvider.svelte (mounted in root layout)
