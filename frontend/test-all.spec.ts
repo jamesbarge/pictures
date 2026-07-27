@@ -1,6 +1,6 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
 
-const BASE = 'http://localhost:5173';
+import { BASE } from './tests/base-url';
 
 // Open a toolbar Dropdown (WHERE / FORMAT / the WHEN custom-date control) and
 // wait for its `role="group"` panel to appear. The Dropdown registers a
@@ -309,8 +309,17 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 				(await page.locator('article.card').filter({ hasText: '35MM' }).count()) > 0;
 			test.skip(!hasAny35mm, 'no 35mm films currently visible on homepage');
 			const allCount = await page.locator('article.card').count();
-			await page.locator('button.chip', { hasText: 'FORMAT' }).click();
-			await page.getByRole('group', { name: 'Format' }).getByRole('checkbox', { name: '35MM' }).click();
+			// Open via the shared helper so a click that lands before the toolbar
+			// hydrates is retried rather than lost.
+			const formatPanel = await openToolbarPanel(
+				page,
+				page.locator('button.chip', { hasText: 'FORMAT' }),
+				'Format'
+			);
+			// Click the visible row, not the checkbox: the input is `.sr-only` and
+			// the painted `.checkbox-box` span intercepts the pointer, so targeting
+			// the input directly can never land. This mirrors the WHERE test above.
+			await formatPanel.locator('.checkbox-row').filter({ hasText: '35MM' }).first().click();
 			await page.waitForTimeout(500);
 			const filteredCount = await page.locator('article.card').count();
 			expect(filteredCount).toBeLessThan(allCount);

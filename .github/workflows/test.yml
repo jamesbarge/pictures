@@ -6,6 +6,14 @@ on:
   pull_request:
     branches: [main]
 
+# The frontend E2E job drives ~200 page loads against the live production API,
+# and those routes are rate limited per client IP. Superseding in-flight runs
+# keeps a busy PR queue from multiplying that load (and the Upstash spend behind
+# it) several-fold.
+concurrency:
+  group: tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   unit-tests:
     name: Unit & Integration Tests
@@ -45,6 +53,83 @@ jobs:
           path: coverage/
           retention-days: 7
 
+  # The suite that covers pictures.london (SvelteKit, frontend/). It drives the
+  # built bundle through `vite preview` and proxies /api to the production API,
+  # so it needs no database and no secrets. Keep this job green.
+  frontend-e2e:
+    name: Frontend E2E (pictures.london)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    env:
+      # Vite proxies /api here for the preview server, mirroring the Vercel
+      # rewrite in frontend/vercel.json.
+      API_PROXY_TARGET: https://api.pictures.london
+      # Baked in at build time via $env/static/public, so they must be defined
+      # or the build fails. Empty disables Clerk and PostHog, which is what we
+      # want for E2E: no auth, no analytics noise.
+      PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.PUBLIC_CLERK_PUBLISHABLE_KEY || '' }}
+      PUBLIC_POSTHOG_KEY: ${{ secrets.PUBLIC_POSTHOG_KEY || '' }}
+      PUBLIC_POSTHOG_HOST: ${{ secrets.PUBLIC_POSTHOG_HOST || '' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      # WebKit is REQUIRED, not optional. tests/mobile.spec.ts does
+      # `test.use(devices['iPhone 12 Pro'])`, and that descriptor carries
+      # `defaultBrowserType: 'webkit'`. The `chromium` project pins `browserName`
+      # so it wins there, but `mobile-small` (Galaxy S5) sets no explicit
+      # browserName, so the file-level device wins and those tests resolve to
+      # WebKit. Installing chromium alone failed 31 of them with
+      # "Executable doesn't exist at .../webkit-XXXX/pw_run.sh". Keeping WebKit is
+      # the right call rather than pinning the project to chromium: mobile is ~2/3
+      # of real traffic and iOS Safari dominates it, so this is the engine we most
+      # need covered.
+      - name: Install Playwright browsers
+        run: npx playwright install chromium webkit --with-deps
+
+      # `test:e2e:ci` builds first, so `vite preview` can never serve a stale or
+      # absent bundle. Keeping the build inside the script means the local and
+      # CI paths are the same command.
+      - name: Build and run E2E tests
+        run: npm run test:e2e:ci
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: frontend-playwright-report
+          # test-results/ carries the traces and failure screenshots; without it
+          # a red build uploads a report with nothing to open.
+          path: |
+            frontend/playwright-report/
+            frontend/test-results/
+          if-no-files-found: warn
+          retention-days: 7
+
+  # Legacy suite: drives the old Next.js UI at localhost:3000, which is not
+  # pictures.london. Left as-is deliberately; it is NOT counted as E2E coverage
+  # by test-summary below.
+  #
+  # The display name stays "E2E Tests" ON PURPOSE: branch protection on main
+  # lists it as a required status check, and GitHub matches those by name, so
+  # renaming it would leave every PR waiting forever on a check that can no
+  # longer report. Rename only in the same change that updates the ruleset.
   e2e-tests:
     name: E2E Tests
     runs-on: ubuntu-latest
@@ -104,7 +189,7 @@ jobs:
       - name: Warn that E2E tests were skipped (no database)
         if: steps.check-db.outputs.skip == 'true'
         run: |
-          echo "::warning title=E2E tests skipped::DATABASE_URL_TEST is not configured in repository secrets, so the Playwright E2E suite did NOT run. Add the DATABASE_URL_TEST secret to enforce E2E coverage on PRs."
+          echo "::notice title=Legacy E2E skipped::DATABASE_URL_TEST is not configured, so the legacy Next.js UI suite did not run. This does not affect coverage of pictures.london — that is the 'Frontend E2E' job, which always runs."
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
@@ -114,29 +199,44 @@ jobs:
           path: playwright-report/
           retention-days: 7
 
-  # Summary job that depends on both unit and E2E tests
+  # Summary job that depends on unit tests and both E2E suites
   test-summary:
     name: Test Summary
     runs-on: ubuntu-latest
-    needs: [unit-tests, e2e-tests]
+    needs: [unit-tests, frontend-e2e, e2e-tests]
     if: always()
 
     steps:
       - name: Check test results
         env:
           UNIT_RESULT: ${{ needs.unit-tests.result }}
-          E2E_RESULT: ${{ needs.e2e-tests.result }}
+          FRONTEND_E2E_RESULT: ${{ needs.frontend-e2e.result }}
+          LEGACY_E2E_RESULT: ${{ needs.e2e-tests.result }}
         run: |
+          failed=0
+
           if [ "$UNIT_RESULT" != "success" ]; then
-            echo "Unit tests failed"
-            exit 1
+            echo "::error title=Unit tests failed::result=$UNIT_RESULT"
+            failed=1
           fi
-          # E2E is optional - allow skipped (no DATABASE_URL_TEST) or success
-          if [ "$E2E_RESULT" != "success" ] && [ "$E2E_RESULT" != "skipped" ]; then
-            echo "E2E tests failed"
-            exit 1
+
+          # The frontend suite covers pictures.london and needs no secret, so a
+          # skip means something is misconfigured — never coverage. Treating a
+          # skipped E2E job as a pass is exactly what let a poster regression
+          # reach production behind a green tick (PR #736).
+          if [ "$FRONTEND_E2E_RESULT" != "success" ]; then
+            echo "::error title=Frontend E2E did not pass::result=$FRONTEND_E2E_RESULT — a skipped or cancelled run counts as a failure here, because this suite requires no secrets."
+            failed=1
           fi
-          if [ "$E2E_RESULT" == "skipped" ]; then
-            echo "::warning title=E2E coverage missing::E2E tests did not run (no DATABASE_URL_TEST configured). Unit tests passed, but the Playwright suite was not exercised."
+
+          # The legacy suite drives the old Next.js UI, not pictures.london. It
+          # stays optional and is deliberately NOT counted as E2E coverage.
+          if [ "$LEGACY_E2E_RESULT" != "success" ] && [ "$LEGACY_E2E_RESULT" != "skipped" ]; then
+            echo "::error title=Legacy E2E failed::result=$LEGACY_E2E_RESULT"
+            failed=1
+          fi
+
+          if [ "$failed" -ne 0 ]; then
+            exit 1
           fi
           echo "All required tests passed!"

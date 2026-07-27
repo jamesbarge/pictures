@@ -63,19 +63,30 @@
 	</div>
 {/snippet}
 
+<!-- None of these consume Clerk context, so they live outside the conditional.
+     They used to be duplicated across both branches, and the branches drifted:
+     CommandPalette was mounted only when Clerk was configured, so a Clerk-less
+     deploy still bound cmd+k but never rendered the palette — pressing it did
+     nothing. Declaring them once removes the duplication that allowed it.
+
+     NOTE: the Clerk-less branch is still not fully equivalent. Anything calling
+     useClerkContext() throws without a provider, and festivals/FollowButton.svelte
+     does, so /festivals/[slug] crashes when Clerk is unconfigured. Pre-existing
+     and untouched here; see the 2026-07-26 changelog. -->
+<PostHogProvider />
+<GlobalCmdkBinding />
+{#if CommandPalette}
+	<CommandPalette />
+{/if}
+
 {#if clerkEnabled}
 	<ClerkProvider publishableKey={PUBLIC_CLERK_PUBLISHABLE_KEY}>
-		<PostHogProvider />
+		<!-- SyncProvider is the only useClerkContext() consumer mounted here; it
+		     pushes film status to the server when signed in. -->
 		<SyncProvider />
-		<GlobalCmdkBinding />
-		{#if CommandPalette}
-			<CommandPalette />
-		{/if}
 		{@render shell()}
 	</ClerkProvider>
 {:else}
-	<PostHogProvider />
-	<GlobalCmdkBinding />
 	{@render shell()}
 {/if}
 

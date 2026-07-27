@@ -32,6 +32,18 @@ export default defineConfig(({ mode }) => {
 					changeOrigin: true
 				}
 			}
+		},
+		// `vite preview` serves the built bundle with no on-demand compilation,
+		// which is what CI runs the E2E suite against. It needs the same /api
+		// proxy as dev, because Vercel's rewrite (frontend/vercel.json) only
+		// exists in production.
+		preview: {
+			proxy: {
+				'/api': {
+					target: env.API_PROXY_TARGET ?? 'http://localhost:3000',
+					changeOrigin: true
+				}
+			}
 		}
 	};
 });

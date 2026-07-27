@@ -1,6 +1,6 @@
 import { test, expect, type BrowserContext } from '@playwright/test';
 
-const BASE = 'http://localhost:5173';
+import { BASE } from './base-url';
 
 // Regression suite locking in this week's hand-fixed redesign bugs (post-#646
 // Spline redesign). Each test reproduces a specific bug that was fixed by hand

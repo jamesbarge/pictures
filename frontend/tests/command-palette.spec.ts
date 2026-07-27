@@ -19,7 +19,7 @@
 
 import { test, expect } from '@playwright/test';
 
-const BASE = 'http://localhost:5173';
+import { BASE } from './base-url';
 
 test.beforeEach(async ({ context }) => {
 	// Pre-reject cookies so the banner doesn't shadow the palette.
