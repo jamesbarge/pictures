@@ -281,6 +281,7 @@ async function phase2TMDBMatching(upcomingFilms: FilmRow[]): Promise<{ matched: 
             : null,
           tmdbRating: details.details.vote_average,
           tmdbPopularity: details.details.popularity,
+          tmdbVoteCount: details.details.vote_count,
           matchConfidence: tmdbMatch.confidence,
           matchStrategy: "cleanup-upcoming",
           matchedAt: new Date(),

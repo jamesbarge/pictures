@@ -6,3 +6,4 @@
 export * from "./screening";
 export * from "./film";
 export * from "./cinema";
+export * from "./sleeper";

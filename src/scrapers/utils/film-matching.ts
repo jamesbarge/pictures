@@ -287,6 +287,7 @@ export async function matchAndCreateFromTMDB(
     decade: guardedYear ? getDecade(guardedYear) : null,
     tmdbRating: details.details.vote_average,
     tmdbPopularity: details.details.popularity,
+    tmdbVoteCount: details.details.vote_count,
     // Match audit trail — must mirror the addToFilmCache call below. These
     // were silently dropped before plan 005: only 4.3% of matched films had
     // any recorded confidence.
@@ -325,6 +326,7 @@ export async function matchAndCreateFromTMDB(
     sourceImageUrl: null,
     tmdbRating: details.details.vote_average,
     tmdbPopularity: details.details.popularity,
+    tmdbVoteCount: details.details.vote_count,
     letterboxdUrl: `https://letterboxd.com/tmdb/${match.tmdbId}`,
     letterboxdRating: null,
     letterboxdSlug: null,
@@ -433,6 +435,7 @@ export async function createFilmWithoutTMDB(
     imdbId: null,
     tmdbRating: null,
     tmdbPopularity: null,
+    tmdbVoteCount: null,
     letterboxdUrl: null,
     letterboxdRating: null,
     letterboxdSlug: null,

@@ -775,4 +775,146 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 			expect(links).toBeGreaterThan(0);
 		});
 	});
+
+	// ═══════════════════════════════════════════════
+	// THE SLEEPER
+	// ═══════════════════════════════════════════════
+	//
+	// These assert INVARIANTS rather than a specific film, because the pick
+	// cannot be mocked from here: /api/screenings and /api/sleepers are fetched
+	// by the SvelteKit *server* load, so `page.route()` never fires. The
+	// selection rule itself is pinned by unit tests in src/lib/sleeper.test.ts.
+
+	test.describe('The Sleeper', () => {
+		test('marks at most one film, and only in the first day section', async ({ page }) => {
+			await page.goto(BASE);
+			await page.locator('section.day .film-row article.card').first().waitFor({ timeout: 15000 });
+
+			// "One pick per day" plus "today only" collapses to: at most one on the page.
+			expect(await page.locator('article.card .rail-sleeper').count()).toBeLessThanOrEqual(1);
+
+			const days = page.locator('section.day');
+			for (let i = 1; i < (await days.count()); i++) {
+				expect(await days.nth(i).locator('.rail-sleeper').count()).toBe(0);
+			}
+		});
+
+		test('never leaks a rating numeral', async ({ page }) => {
+			// Ratings are deliberately spoiler-gated product-wide (see
+			// LetterboxdRatingReveal.svelte). The marker must not undo that, in
+			// its visible text OR its accessible name.
+			await page.goto(BASE);
+			await page.locator('section.day .film-row article.card').first().waitFor({ timeout: 15000 });
+
+			for (const t of await page.locator('.rail-sleeper').allTextContents()) {
+				expect(t).not.toMatch(/\d/);
+			}
+			const labels = await page
+				.locator('article.card:has(.rail-sleeper)')
+				.evaluateAll((els) => els.map((el) => el.getAttribute('aria-label') ?? ''));
+			for (const label of labels) {
+				expect(label).toMatch(/Sleeper/);
+				expect(label).not.toMatch(/\d/);
+			}
+		});
+
+		test('consumes only rail slack, leaving the card grid undisturbed', async ({ page }) => {
+			await page.goto(BASE);
+			await page.locator('section.day .film-row article.card').first().waitFor({ timeout: 15000 });
+
+			const card = page.locator('article.card:has(.rail-sleeper)').first();
+			test.skip((await card.count()) === 0, 'no sleeper pick in the current window');
+
+			// The card module width must be untouched, or fitToFirstRow's day-bar
+			// alignment measurement changes.
+			expect(Math.round((await card.boundingBox())!.width)).toBe(328);
+
+			const marker = card.locator('.rail-sleeper');
+			await expect(marker).toContainText('THE SLEEPER');
+			const mb = (await marker.boundingBox())!;
+			expect(mb.width).toBeLessThanOrEqual(65);
+
+			// Bottom-anchored: flush with the poster's bottom edge.
+			const pb = (await card.locator('.poster').boundingBox())!;
+			expect(Math.abs(mb.y + mb.height - (pb.y + pb.height))).toBeLessThanOrEqual(2);
+		});
+
+		test('the day bar still aligns with the first card row', async ({ page }) => {
+			// Direct regression guard on the fitToFirstRow contract.
+			await page.goto(BASE);
+			await page.locator('section.day .film-row article.card').first().waitFor({ timeout: 15000 });
+
+			const section = page.locator('section.day:has(.rail-sleeper)').first();
+			test.skip((await section.count()) === 0, 'no sleeper pick in the current window');
+
+			const hb = (await section.locator('.day-header').boundingBox())!;
+			const boxes = await section
+				.locator('.film-row > article.card')
+				.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().toJSON()));
+			const top = Math.min(...boxes.map((b) => b.top));
+			const firstRowRight = Math.max(
+				...boxes.filter((b) => Math.abs(b.top - top) < 2).map((b) => b.right)
+			);
+			expect(Math.abs(hb.x + hb.width - firstRowRight)).toBeLessThanOrEqual(2);
+		});
+
+		test('stays legible with the house lights fully dimmed', async ({ page }) => {
+			// Regression guard for the cream-on-cream class of bug: `.more-rail`
+			// uses var(--color-text)/var(--color-cream), which the DimmerDial
+			// collapses to ~1.05:1 because it lerps one token and not the other.
+			// This marker must use hardcoded hex.
+			await page.addInitScript(() => localStorage.setItem('pictures-dimmer', '1'));
+			await page.goto(BASE);
+			await page.locator('section.day .film-row article.card').first().waitFor({ timeout: 15000 });
+
+			// GUARD: prove the dimmer actually engaged before asserting anything.
+			// Without this the test runs at dimmer 0, where the token pair happens
+			// to equal the hardcoded pair — so it would pass against the very CSS
+			// it claims to reject, and prove nothing at all.
+			await expect(async () => {
+				const lerped = await page.evaluate(() => {
+					const main = document.querySelector('main');
+					return main ? getComputedStyle(main).getPropertyValue('--color-text').trim() : '';
+				});
+				expect(lerped).not.toBe('');
+				expect(lerped).not.toBe('#1f1f1f');
+			}).toPass({ timeout: 10000 });
+
+			const marker = page.locator('article.card .rail-sleeper').first();
+			test.skip((await marker.count()) === 0, 'no sleeper pick in the current window');
+
+			const { bg, fg } = await marker.evaluate((el) => {
+				const s = getComputedStyle(el);
+				return { bg: s.backgroundColor, fg: s.color };
+			});
+			expect(bg).toBe('rgb(31, 31, 31)');
+			expect(fg).toBe('rgb(234, 229, 194)');
+		});
+
+		test('survives the switch to TEXT display mode', async ({ page }) => {
+			await page.goto(BASE);
+			await page.locator('section.day .film-row article.card').first().waitFor({ timeout: 15000 });
+			test.skip(
+				(await page.locator('.rail-sleeper').count()) === 0,
+				'no sleeper pick in the current window'
+			);
+
+			// The tab's onclick is wired only after hydration, so a single early
+			// click is silently dropped — same race the filter-sheet helpers
+			// absorb at the top of this file.
+			const tables = page.getByRole('table', { name: 'Screenings list' });
+			await expect(async () => {
+				await page
+					.getByRole('tablist', { name: 'Display mode' })
+					.getByRole('tab', { name: 'TEXT', exact: true })
+					.click();
+				await expect(tables.first()).toBeVisible({ timeout: 2000 });
+			}).toPass({ timeout: 20000 });
+
+			// One chip per day at most — never once per screening of the same film.
+			for (let i = 0; i < (await tables.count()); i++) {
+				expect(await tables.nth(i).locator('.sleeper-tag').count()).toBeLessThanOrEqual(1);
+			}
+		});
+	});
 });

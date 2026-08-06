@@ -418,6 +418,7 @@ async function backfillPosters(): Promise<void> {
                   : film.backdropUrl,
                 tmdbRating: details.details.vote_average,
                 tmdbPopularity: details.details.popularity,
+                tmdbVoteCount: details.details.vote_count,
                 matchStrategy: "backfill-with-year",
                 matchConfidence: match.confidence,
                 matchedAt: new Date(),

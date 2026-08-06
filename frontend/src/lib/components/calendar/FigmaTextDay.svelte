@@ -7,21 +7,32 @@
 		films,
 		now
 	}: {
-		films: Array<{ film: CardFilm; screenings: CardScreening[] }>;
+		films: Array<{ film: CardFilm; screenings: CardScreening[]; sleeper?: boolean }>;
 		/** Epoch ms to judge "upcoming" against — see the note in FigmaFilmCard. */
 		now: number;
 	} = $props();
 
 	// Flatten film+screenings into one row per upcoming screening, sorted by time.
 	const rows = $derived.by(() => {
-		const out: Array<{ film: CardFilm; screening: CardScreening }> = [];
-		for (const { film, screenings } of films) {
+		const out: Array<{ film: CardFilm; screening: CardScreening; sleeper: boolean }> = [];
+		for (const { film, screenings, sleeper } of films) {
 			for (const s of screenings) {
 				if (new Date(s.datetime).getTime() <= now) continue;
-				out.push({ film, screening: s });
+				out.push({ film, screening: s, sleeper: Boolean(sleeper) });
 			}
 		}
 		out.sort((a, b) => new Date(a.screening.datetime).getTime() - new Date(b.screening.datetime).getTime());
+		// This view flattens film grouping away, so THE SLEEPER flag has to ride
+		// per-row — but show it only on the film's earliest remaining screening,
+		// or a film with five showings stamps five chips down the day.
+		// Deterministic: Array.sort is stable and `rows` derives only from props
+		// plus the hydration-safe clock, so server and client first render agree.
+		let marked = false;
+		for (const row of out) {
+			if (!row.sleeper) continue;
+			if (marked) row.sleeper = false;
+			else marked = true;
+		}
 		return out;
 	});
 
@@ -50,7 +61,7 @@
 		<span role="columnheader">CINEMA</span>
 	</div>
 
-	{#each rows as { film, screening } (screening.id)}
+	{#each rows as { film, screening, sleeper } (screening.id)}
 		<a
 			role="row"
 			class="text-row"
@@ -60,7 +71,17 @@
 			onclick={() => clickRow(film, screening)}
 		>
 			<time class="cell time" datetime={screening.datetime}>{formatTime(screening.datetime)}</time>
-			<span class="cell title">{film.title.toUpperCase()}</span>
+			<!-- Chip goes BEFORE the title and inside the existing title cell. That
+			     cell is nowrap/ellipsis, so a trailing chip would be silently clipped
+			     on long titles; and a 7th grid column would mean editing all three
+			     grid-template-columns declarations below. -->
+			<span class="cell title"
+				>{#if sleeper}<span
+						class="sleeper-tag"
+						title="The Sleeper — highly rated, rarely seen. One pick per day."
+					>SLEEPER</span
+					>{/if}{film.title.toUpperCase()}</span
+			>
 			<span class="cell director hide-md">{(film.director ?? '').toUpperCase()}</span>
 			<span class="cell year hide-sm">{film.year ?? ''}</span>
 			<span class="cell format hide-sm">{formatLabel(screening.format)}</span>
@@ -125,6 +146,31 @@
 		font-variant-numeric: tabular-nums;
 	}
 	.cell.title { font-weight: 700; }
+
+	/* THE SLEEPER, text mode. Hardcoded hex for the same reason as
+	   `.rail-sleeper` in FigmaFilmCard: every inverting token pair collapses to
+	   cream-on-cream under [data-theme="dark"] or at the DimmerDial's midpoint.
+	   Abbreviated to SLEEPER because at narrow widths the title shares a
+	   3-column grid and "THE SLEEPER" would eat too much of it; the FAQ entry on
+	   the homepage defines the term. */
+	.sleeper-tag {
+		display: inline-block;
+		margin-right: 6px;
+		padding: 1px 5px;
+		background: #1f1f1f;
+		color: #eae5c2;
+		font-size: 9px;
+		font-weight: 700;
+		letter-spacing: 0.1em;
+		line-height: 1.4;
+		vertical-align: 1px;
+		border-radius: 0;
+	}
+
+	:global([data-theme='dark']) .sleeper-tag {
+		background: #eae5c2;
+		color: #1f1f1f;
+	}
 	.cell.director { color: var(--color-text-tertiary); }
 	.cell.year { color: var(--color-text-tertiary); font-variant-numeric: tabular-nums; }
 	.cell.format { color: var(--color-text-tertiary); font-weight: 300; }
