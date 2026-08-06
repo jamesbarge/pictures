@@ -1,6 +1,6 @@
 # THE SLEEPER — one acclaimed-but-under-seen repertory film per day
 
-**PR**: TBD
+**PR**: #743
 **Date**: 2026-08-06
 
 ## What this adds
