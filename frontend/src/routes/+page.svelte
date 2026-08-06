@@ -221,7 +221,8 @@
 	{ question: 'What is pictures.london?', answer: 'pictures.london is a comprehensive London cinema listings site showing every film screening across independent and chain cinemas, updated daily.' },
 	{ question: 'Which cinemas does pictures.london cover?', answer: 'We cover 57+ London cinemas including BFI Southbank, Prince Charles Cinema, Barbican, ICA, Curzon, Picturehouse, Everyman, and many independent venues.' },
 	{ question: 'Is pictures.london free to use?', answer: 'Yes, pictures.london is completely free. We aggregate screening times and link directly to cinema booking pages.' },
-	{ question: 'Can I import my Letterboxd watchlist?', answer: 'Yes! Visit the Letterboxd Import page, enter your username, and see which films on your watchlist are currently showing in London cinemas.' }
+	{ question: 'Can I import my Letterboxd watchlist?', answer: 'Yes! Visit the Letterboxd Import page, enter your username, and see which films on your watchlist are currently showing in London cinemas.' },
+	{ question: 'What is The Sleeper on pictures.london?', answer: 'The Sleeper is one repertory film each day that is rated highly on Letterboxd but that comparatively few people have seen — worth taking a chance on. Look for the vertical THE SLEEPER marker on the film card.' }
 ])} />
 
 <div class="page-chrome">
@@ -289,7 +290,8 @@
 									cinemaName: s.cinema?.name ?? 'Unknown',
 									format: s.format,
 									bookingUrl: s.bookingUrl
-								}))
+								})),
+								sleeper: di === 0 && data.sleepers[date] === String(film.id)
 							}))}
 							now={clock.now}
 						/>
@@ -308,6 +310,7 @@
 									screenings={screenings.map(toCardScreening)}
 									now={clock.now}
 									priority={di === 0 && fi < 4}
+									sleeper={di === 0 && data.sleepers[date] === String(film.id)}
 								/>
 							{/each}
 						</div>

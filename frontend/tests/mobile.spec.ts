@@ -466,4 +466,28 @@ test.describe('Small Android (360x640)', () => {
 		const overflow = await page.evaluate(() => document.body.scrollWidth > window.innerWidth);
 		expect(overflow).toBe(false);
 	});
+
+	test('THE SLEEPER marker fits the rail without clipping or overflow', async ({ page }) => {
+		// The real mobile risks are the vertical text outgrowing a shorter rail
+		// and the marker pushing the page into horizontal scroll. At 360px the
+		// card goes full-width, so the rail is narrower than desktop's 64px.
+		await page.goto(BASE);
+		await page.locator('section.day .film-row article.card').first().waitFor({ timeout: 15000 });
+
+		const marker = page.locator('article.card .rail-sleeper').first();
+		test.skip((await marker.count()) === 0, 'no sleeper pick in the current window');
+
+		const viewport = await page.evaluate(() => window.innerWidth);
+		const box = (await marker.boundingBox())!;
+		expect(box.x + box.width).toBeLessThanOrEqual(viewport);
+
+		// Vertical writing-mode text must not be cut off by its cell.
+		const clipped = await marker.evaluate((el) => {
+			const t = el.querySelector('.rail-sleeper-text') as HTMLElement;
+			return t.scrollHeight > el.clientHeight + 1 || t.scrollWidth > el.clientWidth + 1;
+		});
+		expect(clipped).toBe(false);
+
+		expect(await page.evaluate(() => document.body.scrollWidth)).toBeLessThanOrEqual(viewport + 1);
+	});
 });

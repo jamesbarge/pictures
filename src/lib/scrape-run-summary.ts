@@ -32,6 +32,7 @@ export type PhaseId =
   | "cleanup"
   | "audit"
   | "rematch"
+  | "sleeper"
   | "health"
   | "yield-delta";
 

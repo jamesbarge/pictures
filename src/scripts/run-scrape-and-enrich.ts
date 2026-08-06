@@ -30,6 +30,7 @@ import { sql } from "drizzle-orm";
 import { db, withDbTimeout } from "@/db";
 import { screenings } from "@/db/schema";
 import { runScrapeAll } from "@/lib/jobs/scrape-all";
+import { refreshSleeperPicks } from "@/db/repositories";
 import { sendTelegramAlert } from "@/lib/telegram";
 import {
   initCheckpoint,
@@ -419,6 +420,72 @@ async function main(): Promise<void> {
   } else {
     console.log("[scrape-and-enrich] --skip-enrich: skipping enrichment phases");
   }
+
+  // Phase 3c: THE SLEEPER — recompute the daily picks for today..+21.
+  //
+  // Always runs, and deliberately registered in NEITHER `CHECKPOINTABLE` nor
+  // `phaseSequence`. Those exist for expensive work you don't want to redo on
+  // --resume; this costs ~2s and is idempotent. More importantly the picks are
+  // a function of BOTH films (changed by cleanup) and screenings (changed by
+  // scrape), so there is no flag combination under which they don't need
+  // refreshing — making it skippable would let a --resume leave picks stale
+  // relative to the very data the resumed run just fixed.
+  //
+  // Placed after the rematch sweep so newly-matched films are eligible
+  // immediately, and before the read-only reporting phases.
+  phases.push(
+    await runPhase("sleeper", "THE SLEEPER (recompute daily picks, 22d horizon)", async () => {
+      const result = await refreshSleeperPicks();
+
+      if (result.declined) {
+        // Writing nothing at all is strictly more severe than a single missing
+        // day, so it alerts too — otherwise the feature could silently go dark
+        // for a whole week while the run still reported green.
+        await sendTelegramAlert({
+          title: "THE SLEEPER: refresh declined, no picks written",
+          message: result.declined,
+          level: "warn",
+        }).catch((err) => console.warn("[sleeper] telegram alert failed:", err));
+        return { ok: true, warn: true, detail: result.declined };
+      }
+
+      if (result.thinDays.length > 0) {
+        console.warn(
+          `[sleeper] ${result.thinDays.length} day(s) with <3 candidates: ` +
+            result.thinDays.map((d) => `${d.date}(${d.candidateCount})`).join(", "),
+        );
+      }
+      if (result.cooldownDegradedDays.length > 0) {
+        console.warn(
+          `[sleeper] cooldown relaxed or waived on: ${result.cooldownDegradedDays.join(", ")}`,
+        );
+      }
+
+      // Only alert for days a user can actually reach. A gap 3 weeks out will
+      // very likely fill in before anyone sees it.
+      if (result.emptyDaysWithin7.length > 0) {
+        await sendTelegramAlert({
+          title: "THE SLEEPER: no pick available",
+          message: `No qualifying repertory film for: ${result.emptyDaysWithin7.join(", ")}`,
+          level: "warn",
+        }).catch((err) => console.warn("[sleeper] telegram alert failed:", err));
+      }
+
+      console.log(
+        `[sleeper] ${result.written} written, ${result.skippedImmutable} frozen (<=7d), ` +
+          `${result.emptyDays.length} empty`,
+      );
+
+      return {
+        ok: true,
+        warn: result.emptyDays.length > 0 || result.cooldownDegradedDays.length > 0,
+        detail:
+          `${result.written} written, ${result.emptyDays.length} empty, ` +
+          `${result.cooldownDegradedDays.length} cooldown-degraded, ` +
+          `${result.skippedImmutable} frozen`,
+      };
+    }),
+  );
 
   // Phase 4: Quarantine detection (always runs — read-only). Reports all
   // three detectors so post-run state is fully visible.
