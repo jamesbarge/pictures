@@ -1,6 +1,6 @@
 # Withhold the superseded-screening DELETE when a venue's writes failed
 
-**PR**: TBD
+**PR**: #742
 **Date**: 2026-08-06
 
 ## Background: what the 2026-08-05 `/scrape` run exposed
@@ -69,9 +69,11 @@ writes fail terminally but never closed the cleanup-on-partial-batch hole behind
 - **JSDoc corrected.** `processScreenings` carried an `IMPORTANT: ... NEVER DELETES existing
   screenings` guarantee that is true of the add/update path but not of the cleanup step immediately
   after it. The invariant was stated on the wrong function; it now says which path it covers.
-- **New test file** `src/scrapers/pipeline-superseded-guard.test.ts`, 11 cases covering the opt-out
-  path, the blocked path, the nothing-written path, updates-only, guard precedence, and the three
-  accidental-partial shapes (one failure, many failures alongside successes, total failure).
+- **New test file** `src/scrapers/pipeline-superseded-guard.test.ts`, 12 cases covering the opt-out
+  path, the blocked path, the nothing-written path, updates-only, guard precedence, the three
+  accidental-partial shapes (one failure, many failures alongside successes, total failure), and the
+  `rejected`-does-not-block decision. Four of the twelve fail against the pre-fix condition; the rest
+  pin pre-existing behaviour.
 
 ## Why `failed` blocks but `rejected` does not
 
@@ -106,20 +108,20 @@ path, and a `shouldSkip` classification. Both `return false`, which is counted a
 `failed` stays 0 while the existing row's `scraped_at` is never bumped. Those rows are therefore
 still DELETE candidates. Residual and out of scope, detailed below.
 
-Two caveats, both established in review:
+Those two paths are narrow, because they need a fresh sibling sharing the *stale* row's `film_id`
+while the batch wrote under the newly-resolved one. The exception is when another group in the same
+batch resolves to that duplicate id, which is the duplicate-film condition dedup exists for. The
+clean fix belongs at the DELETE rather than in this predicate: the query infers batch membership from
+a timestamp when the pipeline already knows the answer. **This change does not close that, and should
+not be read as doing so.**
 
-**`failed > 0` is a conservative trigger, not a proof of completeness.** Two pre-existing paths
-return `false` from `insertScreening` (counted `updated`) without writing anything, leaving
-`scraped_at` stale, which is exactly the row the DELETE targets: the Postgres 23505 catch in the
-update path, and a `shouldSkip` classification from `screening-classification.ts`. Both leave a
-deletion candidate with `failed === 0`. They are narrow, because they need a fresh sibling sharing
-the *stale* row's `film_id` while the batch wrote under the new one. The clean fix belongs at the
-DELETE rather than in this predicate: the query infers batch membership from a timestamp when the
-pipeline already knows the answer. **This change does not close that, and should not be read as
-doing so.**
+Over-counting runs the other way and is harmless: `linkScreeningToFestival` runs *after* a successful
+insert, so a non-connection throw there sends an already-inserted screening to the film-level catch
+as failed, and the cleanup is withheld from a batch that was complete. A lingering orphan rather than
+a deleted screening, which is the safe direction.
 
-**The `rejected` rationale below is right, but for a stronger reason than "we never wanted those
-rows".** `past_screening` is a rejection *error*, and scrapers routinely return today's earlier
+One correction to the section above, established in review. **The `rejected` rationale given there is
+right, but for a stronger reason than "we never wanted those rows".** `past_screening` is a rejection *error*, and scrapers routinely return today's earlier
 showings, so `rejected > 0` on very nearly every run: guarding on it really would disable the
 cleanup for good. And past / too-far-future rejections cannot cause a wrong delete regardless, since
 the DELETE only touches `datetime >= NOW()` and a too-far-future rejection's same-day sibling is
