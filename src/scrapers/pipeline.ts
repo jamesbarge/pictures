@@ -244,6 +244,72 @@ async function cleanupSupersededScreenings(
 }
 
 /**
+ * Decide whether the superseded-cleanup DELETE is safe to run.
+ *
+ * cleanupSupersededScreenings() only deletes an old row when a NEWLY-written row
+ * exists for the same film, same London date, within 3h. That inference is only
+ * sound when the batch just written is the venue's COMPLETE current listing.
+ *
+ * A batch can be incomplete two ways:
+ *   1. By design — the L-CUT gap-fill writes only the screenings we're missing,
+ *      and passes skipSupersededCleanup (2026-07-13 incident: 51 rows, 8 venues).
+ *   2. By accident — writes failed. Under Supabase pooler contention,
+ *      insertScreening times out client-side; the deferred-write retry recovers
+ *      most but not all. A venue that persisted 200 of 217 screenings is a
+ *      partial batch, and if a film had two showings that day inside the 3h
+ *      window with only one insert landing, the old row for the other showing
+ *      gets deleted as "superseded" while its replacement never arrived
+ *      (2026-08-05: rich-mix 17 failed, electric-portobello 14).
+ *
+ * `failed > 0` therefore blocks cleanup. Missing the cleanup is cheap — a few
+ * time-shift orphans linger until the next clean run removes them. Deleting a
+ * valid future screening is not recoverable until the venue is re-scraped, and
+ * violates the "Never Delete Valid Screenings" rule. The asymmetry decides it.
+ *
+ * `rejected` (validation failures) deliberately does NOT block, for two reasons
+ * that matter more than "rejected rows are data we never wanted":
+ *   - `past_screening` is a rejection *error* (screening-validator.ts), and
+ *     scrapers routinely return today's earlier showings, so `rejected > 0` on
+ *     very nearly every run. Guarding on it would disable the cleanup for good.
+ *   - Past and too-far-future rejections cannot cause a wrong delete anyway: the
+ *     DELETE only touches `datetime >= NOW()`, and a too-far-future rejection's
+ *     same-day sibling is rejected too, so no fresh sibling exists to trigger it.
+ * There IS a residual: an AM/PM parsing regression rejected as
+ * `suspicious_time_early` while the same film's other showing writes fresh can
+ * still strand the old correct row. Closing that means gating on rejections
+ * *excluding* `past_screening` and `too_far_future` — deliberately not done here.
+ *
+ * `failed > 0` is a conservative trigger, NOT a proof of completeness. It sees
+ * write failures that THROW. It does not see the two paths where insertScreening
+ * fails by return value — the 23505 catch in the duplicate-update path, and a
+ * `shouldSkip` classification — both of which `return false`, get counted
+ * `updated`, and leave the existing row's `scraped_at` unbumped, i.e. still a
+ * DELETE candidate with `failed === 0`. They need a fresh sibling sharing the
+ * stale row's `film_id`, which usually protects them since refreshed rows carry
+ * the newly-resolved id; the exception is when another group in the same batch
+ * resolves to that duplicate id. Narrow, constructible, pre-existing. The real
+ * fix belongs at the DELETE, which infers batch membership from a timestamp when
+ * the pipeline already knows the answer. Out of scope; do not read this guard as
+ * closing it.
+ *
+ * Over-counting runs the other way and is harmless: linkScreeningToFestival runs
+ * AFTER a successful insert, so a non-connection throw there sends an
+ * already-inserted screening to the film-level catch as failed. Cleanup is then
+ * withheld from a batch that was complete. Safe direction — a lingering orphan
+ * rather than a deleted screening.
+ */
+export function shouldRunSupersededCleanup(
+  result: { added: number; updated: number; failed: number; blocked: boolean },
+  options: { skipSupersededCleanup?: boolean } = {},
+): boolean {
+  if (options.skipSupersededCleanup) return false;
+  if (result.blocked) return false;
+  // Any failed write means we do not hold the venue's complete listing.
+  if (result.failed > 0) return false;
+  return result.added + result.updated > 0;
+}
+
+/**
  * Process raw screenings through the full pipeline
  *
  * IMPORTANT: This function ONLY ADDS or UPDATES screenings.
@@ -259,6 +325,12 @@ async function cleanupSupersededScreenings(
  * cleanup assumes rawScreenings is the venue's COMPLETE current listing —
  * with a partial batch it deletes legitimate previously-scraped rows within
  * its 3h same-film window (2026-07-13 incident: 51 rows across 8 venues).
+ *
+ * Note the "never deletes" guarantee above covers the ADD/UPDATE path only.
+ * cleanupSupersededScreenings() below does delete, and is gated by
+ * shouldRunSupersededCleanup() — which also withholds the DELETE when writes
+ * failed, since that makes the batch accidentally partial in exactly the way
+ * the flag guards against deliberately.
  */
 export async function processScreenings(
   cinemaId: string,
@@ -454,16 +526,23 @@ export async function processScreenings(
     recoveredOnRetry = retryOutcome.recovered;
   }
 
-  // Clean up superseded same-day screenings (time-shift orphans)
-  // Only runs when the scrape wasn't blocked and produced results.
-  // Skipped for partial batches — see options.skipSupersededCleanup JSDoc.
-  if (!options.skipSupersededCleanup && !result.blocked && result.added + result.updated > 0) {
+  // Clean up superseded same-day screenings (time-shift orphans).
+  // Gated by shouldRunSupersededCleanup — see its JSDoc for why a batch with
+  // failed writes must not run the DELETE.
+  if (shouldRunSupersededCleanup(result, options)) {
     await runPhase(cinemaId, "cleanup-superseded", async () => {
       const cleaned = await cleanupSupersededScreenings(cinemaId, result.scrapedAt);
       if (cleaned > 0) {
         console.log(`[Pipeline] Cleaned ${cleaned} superseded same-day screenings`);
       }
     });
+  } else if (result.failed > 0 && !options.skipSupersededCleanup && !result.blocked) {
+    // Never skip silently: a lingering time-shift orphan is otherwise
+    // indistinguishable from a scraper emitting a duplicate screening.
+    console.warn(
+      `[Pipeline] Skipped superseded cleanup for ${cinemaId}: ${result.failed} failed write(s) ` +
+        `mean this batch is not the venue's complete listing. Orphans (if any) persist until a clean run.`,
+    );
   }
 
   // Update cinema's lastScrapedAt
