@@ -90,6 +90,19 @@ export const scraperRuns = pgTable("scraper_runs", {
     duration?: number;
     userAgent?: string;
     proxyUsed?: boolean;
+    /**
+     * Outcome discriminator for run accounting. Classified from the error
+     * string by classifyFailureKind() in src/scrapers/runner-factory.ts:
+     * "db-timeout" = withDbTimeout expiry ("(client-side)"),
+     * "precheck" = health-check gate, "scrape" = everything else.
+     */
+    failureKind?: "precheck" | "db-timeout" | "scrape";
+    /** Screening writes that failed/were dropped this run (pipeline `failed`). */
+    failedWrites?: number;
+    /** Reason the observability diff failed open; the writes still happened. */
+    diffFailed?: string;
+    /** The health-check precheck failed but the scrape ran anyway (warning, not a gate). */
+    precheckFailed?: boolean;
   }>(),
 
   createdAt: timestamp("created_at", { withTimezone: true })

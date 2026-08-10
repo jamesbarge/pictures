@@ -35,6 +35,7 @@
     "packages",
     "frontend",
     "drizzle.config.ts",
+    "tmp",
     "**/* 2.ts",
     "**/* 2.tsx",
     "**/* 2.d.ts",

@@ -371,9 +371,15 @@ export class EverymanScraper implements ChainScraper {
     // Window must comfortably exceed Everyman's publication horizon so that
     // end-of-month dates aren't clipped: a 30-day window run late in a month
     // (e.g. 2026-05-28) stops at ~2026-06-27 and silently misses the final
-    // days of June. 45 days clears any month boundary with margin while still
-    // being a single schedule API call (range width adds no extra requests).
-    const SCHEDULE_WINDOW_DAYS = 45;
+    // days of June. The window was previously 45 days, which was our own cap
+    // rather than the venue's — measured 2026-08-09, the boxofficeapi accepts a
+    // 70-day (and even a 110-day) range in ONE call with no chunking and no
+    // range capping, and payload grows only ~1.3% (King's Cross 53.4KB -> 54.1KB).
+    // 70 days is the target ~2-month horizon. Everyman does publish sparse
+    // advance/event dates further out (to ~2026-11-24, ~107 days), but the tail
+    // beyond 70 days is a handful of rows per venue and is deliberately not
+    // fetched. See SCRAPING_PLAYBOOK.md ("Everyman — schedule window").
+    const SCHEDULE_WINDOW_DAYS = 70;
     const now = new Date();
     const fromDate = format(now, "yyyy-MM-dd'T'HH:mm:ss");
     const toDate = format(addDays(now, SCHEDULE_WINDOW_DAYS), "yyyy-MM-dd'T'23:59:59");

@@ -69,7 +69,14 @@ async function summariseRunsSince(since: Date): Promise<AnomalySummary> {
         count: r.screeningCount ?? 0,
         baseline: r.baselineCount,
       });
-    } else if (r.status === "failed") {
+    } else if (r.status === "failed" || r.status === "partial") {
+      // `partial` (lost writes) reports here rather than nowhere. recordScraperRun
+      // downgrades success/anomaly -> partial when failedWrites > 0 and sets
+      // anomalyDetails.errorMessage to "N screening write(s) failed …", so the
+      // reason below is already populated. Without this branch a venue that lost
+      // 31 writes matches none of the three cases and the digest calls the run
+      // clean — which is exactly the blind spot the partial status was added to
+      // remove.
       failures.push({
         name: r.cinemaName,
         reason:
@@ -88,6 +95,39 @@ interface WaveSummary {
   succeeded: number;
   failed: number;
   total: number;
+}
+
+/**
+ * Open every pool slot with a trivial query before wave 1 starts.
+ *
+ * Measured 2026-08-09 (108 samples): a session's FIRST `initFilmCache` wave ran
+ * 9,870-12,368ms per slot and one wave expired its 15s withDbTimeout on all four
+ * slots simultaneously, while every wave after the pooler had warmed ran
+ * 349-3,791ms. Host load did not explain it — sub-1s waves occurred at 1-min load
+ * 6.6 and the 15s wave at 6.99 — so it is pooler-side connection setup.
+ *
+ * That stall lands exactly on wave 1, where four venue pipelines each build the
+ * film cache for the first time, and each expiry costs 4 retry attempts that
+ * re-scrape the venue's site. Four concurrent `select 1` handshakes were measured
+ * at ~0.7s total, so this is a very cheap premium against losing a whole wave.
+ *
+ * Advisory: a failure here means a slow first wave, not a reason to abort a run.
+ */
+async function warmConnectionPool(): Promise<void> {
+  const slots = Math.max(1, Number(process.env.DB_POOL_MAX ?? 1));
+  const startedAt = Date.now();
+  try {
+    await Promise.all(Array.from({ length: slots }, () => db.execute(sql`select 1`)));
+    console.log(
+      `[scrape-all] warmed ${slots} pool slot(s) in ${Date.now() - startedAt}ms`,
+    );
+  } catch (error) {
+    console.warn(
+      `[scrape-all] pool warm-up failed after ${Date.now() - startedAt}ms ` +
+        `(continuing — first wave may be slow): ` +
+        `${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
 }
 
 // ============================================================================
@@ -240,6 +280,27 @@ export async function runWithConcurrency<T>(
  * that failed AND wrote nothing feed their per-venue error messages to the
  * breaker (where isConnectionError decides if they count).
  *
+ * ONE EXCEPTION, and it is the reason `succeeded` is not simply
+ * `result.success`: a venue whose observability diff failed open. The pipeline
+ * deliberately keeps such a venue successful — its scraped rows are written and
+ * it must not be retried (see the diff call site in src/scrapers/pipeline.ts) —
+ * but the diff's two lookups are this run's pool-starvation canary. They
+ * measure 0.6-1.1s against a 15s withDbTimeout ceiling, 13-100x headroom, so
+ * their expiry never means "the diff was slow", only "the pool is starved".
+ * Before the diff failed open, that expiry produced a failed venue whose error
+ * contained withDbTimeout's "(client-side)" marker and three in a row aborted
+ * the run; failing open silently removed the only automatic abort for a starved
+ * run, which is the shape of the 11-hour zombie the breaker exists to prevent.
+ * So an infrastructure-flavoured diff failure withdraws the DB-is-alive claim
+ * and contributes its reason to `errors` — the venue keeps its data and its
+ * success, the run keeps its canary.
+ *
+ * A diff failure that is NOT infrastructure (a genuine bug in
+ * generateScrapeDiff) is ignored here: it carries no signal about the pool, and
+ * aborting 71 venues over a diff bug would be its own outage. isConnectionError
+ * — the breaker's own predicate — draws that line, so there is no second,
+ * drifting copy of the classification.
+ *
  * Exported for tests: this is the seam between runScraper's results and the
  * run-level circuit breaker.
  */
@@ -247,15 +308,48 @@ export function breakerOutcomeFor(result: {
   success: boolean;
   totalScreeningsAdded: number;
   totalScreeningsUpdated: number;
-  venueResults: Array<{ success: boolean; error?: string }>;
+  venueResults: Array<{ success: boolean; error?: string; diffFailed?: string }>;
 }): { succeeded: boolean; errors: string[] } {
+  const infraDiffFailures = result.venueResults
+    .map((v) => v.diffFailed)
+    .filter((reason): reason is string => !!reason && isConnectionError(reason));
+
+  // The diff is not the only withDbTimeout on the venue path: initFilmCache
+  // (pipeline.ts) sits OUTSIDE the diff's fail-open catch, so its expiry throws
+  // out of processScreenings and 4a's per-venue catch marks just that venue
+  // failed. In a chain the 10 healthy siblings still wrote, so
+  // totalScreeningsAdded > 0 and record() would reset the counter — losing the
+  // starvation signal in precisely the shape that produced the 2026-08-05
+  // cascade. These errors are already in `errors` below; the bug was only that
+  // `succeeded` stayed true and short-circuited the classification.
+  //
+  // Matched on "(client-side)" alone, NOT the whole isConnectionError set: that
+  // predicate also matches "(venue wall-clock cap)", and one slow venue in an
+  // otherwise healthy chain is not evidence the pool is starved.
+  //
+  // The literal is inlined rather than imported from @/db (which exports it as
+  // DB_TIMEOUT_MARKER, the sole producer) because breakerOutcomeFor is a pure
+  // function exported for tests, and the suites that exercise it mock @/db —
+  // importing a constant through that mock resolves to undefined at runtime.
+  const infraVenueFailures = result.venueResults
+    .filter((v) => !v.success && v.error?.includes("(client-side)"))
+    .map((v) => v.error as string);
+
   return {
+    // record() short-circuits on `succeeded` and resets the counter, so a
+    // starved-but-successful venue has to stop claiming success for its
+    // "(client-side)" reason in `errors` to ever be classified.
     succeeded:
-      result.success ||
-      result.totalScreeningsAdded + result.totalScreeningsUpdated > 0,
-    errors: result.venueResults
-      .filter((v) => !v.success && v.error)
-      .map((v) => v.error as string),
+      (result.success ||
+        result.totalScreeningsAdded + result.totalScreeningsUpdated > 0) &&
+      infraDiffFailures.length === 0 &&
+      infraVenueFailures.length === 0,
+    errors: [
+      ...result.venueResults
+        .filter((v) => !v.success && v.error)
+        .map((v) => v.error as string),
+      ...infraDiffFailures,
+    ],
   };
 }
 
@@ -609,6 +703,8 @@ export async function runScrapeAll(options: ScrapeAllOptions = {}): Promise<Scra
       }).catch(() => {});
     },
   );
+
+  await warmConnectionPool();
 
   // Load sort signals once, up front. Within each wave, entries are sorted
   // fewest-screenings first (broken scrapers surface fast) with staleness as

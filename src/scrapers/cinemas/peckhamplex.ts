@@ -5,9 +5,17 @@
  * Website: https://www.peckhamplex.london
  *
  * Scraping approach:
- * 1. Fetch /films/out-now to get list of film URLs
+ * 1. Fetch /films/out-now AND /films/coming-soon to get the list of film URLs
  * 2. For each film page, extract screenings from .book-tickets section
  * 3. Use <time datetime="..."> attributes for reliable datetime parsing
+ *
+ * Why two listings: /films/out-now only ever covers the current programming week
+ * (Fri-Thu, so 1-7 days), while /films/coming-soon carries the dated event-cinema
+ * bookings (opera, NT Live, one-off previews) that run 3-8 weeks out. Coming-soon
+ * is mixed: entries already on sale have a real .book-tickets section with dated
+ * showtimes; entries that are only release announcements have no .book-tickets
+ * section at all and therefore contribute zero screenings, which is correct — we
+ * store screenings, not release dates.
  */
 
 import * as cheerio from "cheerio";
@@ -28,6 +36,20 @@ const PECKHAMPLEX_CONFIG: ScraperConfig = {
   delayBetweenRequests: 2000,
 };
 
+/**
+ * Listing pages that surface film URLs. Neither page is paginated — both render
+ * the complete set in one response.
+ *
+ * `required: true` means a fetch failure aborts the run rather than persisting a
+ * partial batch (same rule as Close-Up's near-term pages). out-now is the whole
+ * near-term schedule, so losing it must fail loudly. coming-soon only extends the
+ * horizon, so a failure there just shortens it for one run.
+ */
+const LISTING_PAGES: ReadonlyArray<{ path: string; required: boolean }> = [
+  { path: "/films/out-now", required: true },
+  { path: "/films/coming-soon", required: false },
+];
+
 // ============================================================================
 // Peckhamplex Scraper Implementation
 // ============================================================================
@@ -41,9 +63,35 @@ export class PeckhamplexScraper implements CinemaScraper {
     try {
       const screenings: RawScreening[] = [];
 
-      // Fetch the films listing page
-      const listingHtml = await this.fetchPage("/films/out-now");
-      const filmUrls = this.extractFilmUrls(listingHtml);
+      // Fetch every films listing page and union the film URLs. A film that
+      // appears on more than one listing is fetched once; sourceId is derived from
+      // title + datetime, so it is identical whichever listing led us there.
+      const filmUrls: string[] = [];
+      const seenFilmUrls = new Set<string>();
+
+      for (const listing of LISTING_PAGES) {
+        let listingHtml: string;
+        try {
+          listingHtml = await this.fetchPage(listing.path);
+        } catch (error) {
+          if (listing.required) throw error;
+          console.warn(
+            `[peckhamplex] Optional listing ${listing.path} failed — horizon shortened this run:`,
+            error
+          );
+          continue;
+        }
+
+        let added = 0;
+        for (const url of this.extractFilmUrls(listingHtml)) {
+          if (seenFilmUrls.has(url)) continue;
+          seenFilmUrls.add(url);
+          filmUrls.push(url);
+          added++;
+        }
+        console.log(`[peckhamplex] ${listing.path}: ${added} new film URLs`);
+        await this.delay();
+      }
 
       console.log(`[peckhamplex] Found ${filmUrls.length} films to scrape`);
 
