@@ -19,7 +19,30 @@ import { v4 as uuidv4 } from "uuid";
 import { isBlockedTmdbId } from "@/lib/tmdb/blocklist";
 import { sanitizeDirectors, sanitizeYear } from "./film-write-guards";
 
-type FilmRecord = typeof films.$inferSelect;
+/**
+ * The cache stores only the columns its consumers actually read, NOT the whole
+ * films row. `SELECT *` pulled 3,456 rows / 5.10 MB per venue, and because
+ * `initFilmCache` runs once per venue for all 71 venues (every venue inside
+ * every chain included), a concurrency-4 wave put four of those on the pooler
+ * at once and the select could exceed its own 15s `withDbTimeout` ceiling —
+ * measured blowing it at 15,001ms with nothing else touching the DB. Each throw
+ * then cost 4 attempts (retryAttempts: 3) that RE-SCRAPE the venue's site.
+ *
+ * The six columns below are the complete read set:
+ *   - `title`    — initFilmCache/addToFilmCache normalize it for the byTitle key
+ *   - `tmdbId`   — byTmdbId index + the "prefer the row with TMDB data" tiebreak
+ *   - `id`       — every caller returns this as the resolved filmId
+ *   - `posterUrl`, `year`, `imdbId` — pipeline.ts getOrCreateFilm's
+ *     tryUpdatePoster backfill for a cached film with no poster
+ *
+ * Adding a consumer that needs another column means adding it to BOTH this Pick
+ * and the select projection in initFilmCache. Correctness beats the byte count:
+ * widen it rather than re-deriving the column from something else.
+ */
+type FilmRecord = Pick<
+  typeof films.$inferSelect,
+  "id" | "title" | "year" | "tmdbId" | "imdbId" | "posterUrl"
+>;
 
 // ============================================================================
 // Film Cache
@@ -61,8 +84,19 @@ export async function initFilmCache(
     normalizeTitle,
   };
 
+  // Projection is deliberately narrow — see the FilmRecord JSDoc above. Keep
+  // this column list and the Pick<> in sync.
   const allFilms = await withDbTimeout(
-    db.select().from(films),
+    db
+      .select({
+        id: films.id,
+        title: films.title,
+        year: films.year,
+        tmdbId: films.tmdbId,
+        imdbId: films.imdbId,
+        posterUrl: films.posterUrl,
+      })
+      .from(films),
     15_000,
     "initFilmCache: select films",
   );
@@ -296,45 +330,15 @@ export async function matchAndCreateFromTMDB(
     matchedAt: new Date(),
   });
 
-  // Add to cache so subsequent lookups in this run find it
+  // Add to cache so subsequent lookups in this run find it. Only the cached
+  // column set — the row we just INSERTed above carries the rest.
   addToFilmCache(cache, {
     id: filmId,
+    title: details.details.title,
+    year: guardedYear,
     tmdbId: match.tmdbId,
     imdbId: details.details.imdb_id,
-    title: details.details.title,
-    originalTitle: details.details.original_title,
-    year: match.year,
-    runtime: details.details.runtime,
-    directors: details.directors,
-    cast: details.cast as FilmRecord["cast"],
-    genres: details.details.genres.map((g) => g.name.toLowerCase()),
-    countries: details.details.production_countries.map((c) => c.iso_3166_1),
-    languages: details.details.spoken_languages.map((l) => l.iso_639_1),
-    certification: details.certification,
-    synopsis: details.details.overview,
-    tagline: details.details.tagline,
     posterUrl,
-    backdropUrl: details.details.backdrop_path
-      ? `https://image.tmdb.org/t/p/w1280${details.details.backdrop_path}`
-      : null,
-    trailerUrl: null,
-    isRepertory: isRepertoryFilm(details.details.release_date),
-    releaseStatus: null,
-    decade: match.year ? getDecade(match.year) : null,
-    contentType: "film",
-    sourceImageUrl: null,
-    tmdbRating: details.details.vote_average,
-    tmdbPopularity: details.details.popularity,
-    letterboxdUrl: `https://letterboxd.com/tmdb/${match.tmdbId}`,
-    letterboxdRating: null,
-    letterboxdSlug: null,
-    letterboxdEnrichedAt: null,
-    matchConfidence: match.confidence ?? null,
-    matchStrategy,
-    matchedAt: new Date(),
-    enrichmentStatus: null,
-    createdAt: new Date(),
-    updatedAt: new Date(),
   });
 
   console.log(`[Pipeline] Created film: ${details.details.title} (${match.year})`);
@@ -406,43 +410,15 @@ export async function createFilmWithoutTMDB(
     languages: [],
   });
 
-  // Add to cache so subsequent lookups in this run find it
+  // Add to cache so subsequent lookups in this run find it. Only the cached
+  // column set — the row we just INSERTed above carries the rest.
   addToFilmCache(cache, {
     id: filmId,
     title: matchingTitle,
-    originalTitle: null,
     year: cleanYear ?? null,
-    runtime: null,
-    directors: cleanedDirector ? [cleanedDirector] : [],
-    cast: [],
-    genres: [],
-    countries: [],
-    languages: [],
-    certification: null,
-    synopsis: null,
-    tagline: null,
-    posterUrl,
-    backdropUrl: null,
-    trailerUrl: null,
-    isRepertory,
-    releaseStatus: null,
-    decade: null,
-    contentType: "film",
-    sourceImageUrl: null,
     tmdbId: null,
     imdbId: null,
-    tmdbRating: null,
-    tmdbPopularity: null,
-    letterboxdUrl: null,
-    letterboxdRating: null,
-    letterboxdSlug: null,
-    letterboxdEnrichedAt: null,
-    matchConfidence: null,
-    matchStrategy: null,
-    matchedAt: null,
-    enrichmentStatus: null,
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    posterUrl,
   });
 
   console.log(`[Pipeline] Created film without TMDB: ${matchingTitle}${posterUrl ? " (with poster)" : ""}`);

@@ -1,7 +1,34 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { parseChangesPage } from "./programme-changes-parser";
 
+/**
+ * Fixed "today" for every fixture below.
+ *
+ * These fixtures carry bare dates with no year ("Fri 9 Aug 11:50"), so
+ * `parseChangesPage` infers the year from the wall clock and
+ * `parseScreeningsFromText` drops anything already past. That made the suite a
+ * date bomb: on 2026-08-11 the "9 Aug" and "10 Aug" fixtures had gone past and
+ * two tests failed, while the third ("30/31 Aug") was still passing and would
+ * have failed on 1 September. Worse, the guard that was supposed to prevent
+ * this — `.replace(/Aug/g, monthAbbrev(futureYear - new Date().getFullYear() > 0
+ * ? 8 : ...))` — could never fire, because that subtraction is always 1, so it
+ * substituted "Aug" for "Aug".
+ *
+ * Pinning the clock makes all three deterministic regardless of when CI runs.
+ * The date is inside August so the BST assertions (14:00 BST = 13:00 UTC) hold,
+ * and early enough in the month that every fixture date is still in the future.
+ */
+const FIXED_NOW = new Date("2026-08-01T09:00:00Z");
+
 describe("parseChangesPage — film text isolation", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(FIXED_NOW);
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("does NOT propagate one film's screening times to sibling films in the same paragraph", () => {
     // Reproduces the production bug observed 2026-05-15: six unrelated films
     // (Rose of Nevada, Surviving Earth, The Christophers, ...) all stored at
@@ -10,7 +37,6 @@ describe("parseChangesPage — film text isolation", () => {
     //
     // Fixture: two films share the same <p>. Only the FIRST has a screening
     // time. The SECOND should produce zero screenings.
-    const futureYear = new Date().getFullYear() + 1;
     const html = `
       <html><body><main>
         <p>
@@ -18,7 +44,7 @@ describe("parseChangesPage — film text isolation", () => {
           <b>Surviving Earth</b> A different film with no times listed yet.
         </p>
       </main></body></html>
-    `.replace(/Aug/g, monthAbbrev(futureYear - new Date().getFullYear() > 0 ? 8 : new Date().getMonth() + 1));
+    `;
 
     const result = parseChangesPage(html);
     const titles = result.changes.map((c) => c.filmTitle);
@@ -73,9 +99,6 @@ describe("parseChangesPage — film text isolation", () => {
   });
 });
 
-// August is BST in the UK. The fixture year is the next August relative to
-// "today" so screenings aren't filtered as past by `parseScreeningsFromText`.
-function monthAbbrev(monthNum1Based: number): string {
-  const m = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  return m[monthNum1Based - 1];
-}
+// `monthAbbrev` was removed with the clock pin above: it existed only to shift
+// the fixture month relative to "today", which the FIXED_NOW system time now
+// makes unnecessary (and which never actually worked — see the note on FIXED_NOW).

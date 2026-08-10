@@ -25,6 +25,39 @@ import { parseUKLocalDateTime } from "../utils/date-parser";
 import { sanitizeRuntime } from "../utils/metadata-parser";
 import type { Page } from "rebrowser-playwright";
 
+/**
+ * Calendar horizon, in days, for the per-venue business-date walk. 70 matches
+ * the other long-window scrapers (barbican, everyman, bfi) and comfortably
+ * covers the ~2 month coverage target. Because Vista publishes only dates that
+ * have something programmed, this is also the per-venue request ceiling: at
+ * most HORIZON_DAYS + 1 showtime calls.
+ */
+const HORIZON_DAYS = 70;
+
+/**
+ * YYYY-MM-DD in Europe/London, `offset` calendar days after `from`'s London
+ * date. Anchors the arithmetic at NOON UTC (12:00/13:00 London — always inside
+ * the same calendar day) so stepping never skips or duplicates a day across a
+ * BST↔GMT transition, the way `+ offset * 86_400_000` from a near-midnight
+ * `now` would (spring-forward's 23-hour day gets jumped clean over).
+ *
+ * NOTE: near-identical local copies live in cinemas/barbican.ts and
+ * platforms/indy.ts. Worth promoting to utils/date-parser.ts and pointing all
+ * three at it, but that is a wider change than the horizon fix this sits in.
+ */
+function londonDateKey(from: Date, offset: number): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/London",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(from);
+  const num = (t: string) => Number(parts.find((p) => p.type === t)!.value);
+  // Date.UTC normalizes day-of-month overflow (e.g. day 32 → next month).
+  const anchored = new Date(Date.UTC(num("year"), num("month") - 1, num("day") + offset, 12));
+  return anchored.toISOString().slice(0, 10);
+}
+
 // ============================================================================
 // Curzon Venue Configurations
 // chainVenueId is the Vista API site code (e.g., "SOH1" for Soho)
@@ -357,14 +390,26 @@ export class CurzonScraper implements ChainScraper {
       return [];
     }
 
-    console.log(`[curzon] ${venue.name}: ${dates.length} dates to fetch`);
-
-    // Fetch showtimes for the next 30 published dates. The Vista API returns
-    // a list of business dates with screenings, not consecutive calendar
-    // days — taking the first N entries is a horizon on "days with anything
-    // programmed", which suits Curzon's release-driven schedule. 30 covers
-    // their typical 4-8 week publication window.
-    const datesToFetch = dates.slice(0, 30);
+    // Fetch every published business date inside a CALENDAR horizon.
+    //
+    // This was `dates.slice(0, 30)` — a cap on the NUMBER of published dates —
+    // and that made the horizon depend inversely on how busy a venue is. Vista
+    // returns only dates with something programmed, so a venue screening
+    // something nearly every day spends its 30 entries in ~30 days, while a
+    // venue whose list is mostly sparse advance-sale opera dates spreads 30
+    // entries across a year. Measured 2026-08-09: Bloomsbury publishes 58 dates
+    // and we stopped at day 38, dropping 12 screenings inside the next 60 days
+    // (NT Live, Met Opera, DocHouse strands), while Mayfair reached day 167. The
+    // busiest venue got the shortest horizon — the exact opposite of intent.
+    //
+    // Filtering by date is also self-bounding: at most HORIZON_DAYS + 1 requests
+    // per venue, versus a count cap that says nothing about calendar reach.
+    const cutoff = londonDateKey(new Date(), HORIZON_DAYS);
+    const datesToFetch = dates.filter((d) => d <= cutoff);
+    console.log(
+      `[curzon] ${venue.name}: ${dates.length} dates published, ` +
+        `${datesToFetch.length} within ${HORIZON_DAYS}d (to ${cutoff})`,
+    );
     const failedDates: string[] = [];
 
     for (const date of datesToFetch) {

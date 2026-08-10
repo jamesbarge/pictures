@@ -224,12 +224,27 @@ export abstract class BaseScraper implements CinemaScraper {
   /**
    * Health check — verify the website is accessible.
    *
+   * ADVISORY ONLY. The runner logs a failure and scrapes anyway
+   * (runner-factory.ts, runSingleVenue) — it must never be the reason a venue
+   * is skipped. It used to abort the scrape while being *stricter* than the
+   * work it gated: 10s and a UA-only GET against fetchUrl's 30s and full
+   * browser headers. Measured on 2026-08-05, Close-Up's homepage returns 200 in
+   * 1.9-6.5s sequentially but breaches 10s under the 4-way concurrency the
+   * nightly run uses, and header shape made no difference (UA-only, full
+   * headers and no UA all returned 200). So the timeout and headers below now
+   * match fetchUrl exactly — the precheck can no longer fail where the real
+   * request would succeed.
+   *
    * Retries with a short backoff: a single failing GET turned out to be the
    * root cause of the May 2026 Close-Up "33% failure rate" pattern. All 3
    * failures fell in the 03:17-03:21 UTC window and the site recovered within
-   * seconds — every other run that day succeeded. A brief retry rescues those
-   * cases without masking genuine outages: 3 attempts × 10s timeout × 4s gap
-   * caps total cost at ~38s per cinema, only on the unhealthy path.
+   * seconds — every other run that day succeeded. Worst case on the unhealthy
+   * path is 3 attempts × 30s timeout × 4s gap ≈ 98s, and that is paid at most
+   * ONCE per venue per run: runSingleVenue probes outside its retry loop, so a
+   * host that black-holes packets can no longer spend ~400s here and blow the
+   * venue wall-clock cap. The internal retry stays because runScraperForYield
+   * still treats a `false` as a hard veto, and a spurious veto there scores an
+   * AutoScrape candidate config at zero yield.
    *
    * Subclasses may still override to provide cheaper or different checks
    * (e.g. Curzon HEADs the API endpoint with a 401-is-healthy contract).
@@ -242,11 +257,15 @@ export abstract class BaseScraper implements CinemaScraper {
       try {
         const response = await fetch(this.config.baseUrl, {
           method: "GET",
+          // Same headers as fetchUrl: the gate must not be less browser-like
+          // than the request it gates.
           headers: {
             "User-Agent": CHROME_USER_AGENT_FULL,
+            Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-GB,en;q=0.9",
           },
           redirect: "follow",
-          signal: AbortSignal.timeout(10_000),
+          signal: AbortSignal.timeout(30_000),
         });
         if (response.ok) return true;
         // 4xx/5xx — only worth retrying transient 5xx; bail fast on 4xx

@@ -84,6 +84,20 @@ interface VenueResult {
   durationMs: number;
   error?: string;
   retryCount: number;
+  /**
+   * Reason the observability diff failed open, when it did
+   * (PipelineResult.diffFailed). The venue is still `success: true` and still
+   * wrote its rows — this is a degradation marker, not a failure, and must
+   * never cause a retry.
+   *
+   * Carried out of the runner because it is the only remaining channel for one
+   * specific infrastructure signal: the diff's two lookups are the run's
+   * pool-starvation canary (0.6-1.1s measured against a 15s withDbTimeout
+   * ceiling), and before the diff failed open their expiry surfaced as a failed
+   * venue whose `error` contained "(client-side)", which fed the run-level
+   * circuit breaker. See breakerOutcomeFor in src/lib/jobs/scrape-all.ts.
+   */
+  diffFailed?: string;
 }
 
 export interface RunnerResult {
@@ -234,6 +248,27 @@ function detectAnomaly(
   };
 }
 
+/**
+ * Classify a run's error string into the failure taxonomy stored in
+ * `scraper_runs.metadata.failureKind`.
+ *
+ * The two specific kinds have unique markers, so the order below matters:
+ *   - "(client-side)" is only ever appended by withDbTimeout (src/db/index.ts),
+ *     i.e. infrastructure — the scrape may well have worked.
+ *   - "Health check failed" is only ever the precheck gate.
+ * Everything else is the scraper or the venue's site: "scrape".
+ *
+ * Exported for tests and for anything reading run history back.
+ */
+export function classifyFailureKind(
+  error: string | undefined,
+): "precheck" | "db-timeout" | "scrape" | undefined {
+  if (!error) return undefined;
+  if (error.includes("(client-side)")) return "db-timeout";
+  if (error.includes("Health check failed")) return "precheck";
+  return "scrape";
+}
+
 async function recordScraperRun(params: {
   cinemaId: string;
   startedAt: Date;
@@ -241,11 +276,18 @@ async function recordScraperRun(params: {
   screeningCount: number;
   durationMs: number;
   error?: string;
+  /** Screening writes that failed or were dropped (pipeline `failed`). */
+  failedWrites?: number;
+  /** Reason the observability diff failed open, if it did. */
+  diffFailed?: string;
+  /** The health-check precheck failed but we ran the scrape anyway. */
+  precheckFailed?: boolean;
 }): Promise<void> {
   if (!isDatabaseAvailable) return;
 
   try {
     const baseline = await getBaseline(params.cinemaId);
+    const failedWrites = params.failedWrites ?? 0;
     let status = params.status;
     let anomalyType: "low_count" | "zero_results" | "error" | "high_count" | undefined;
     let anomalyDetails: { expectedRange?: { min: number; max: number }; percentChange?: number; errorMessage?: string } | undefined;
@@ -260,11 +302,27 @@ async function recordScraperRun(params: {
       }
     }
 
+    // A venue that lost screening writes persisted an INCOMPLETE listing, so it
+    // must not read as a clean success — that asymmetry (lost writes recorded
+    // "success", a precheck abort recorded "failed") is what made the 2026-08-05
+    // run's 31 dropped writes leave no trace. "partial" is an existing
+    // scraper_run_status value, so no migration is needed.
+    if (failedWrites > 0 && (status === "success" || status === "anomaly")) {
+      status = "partial";
+      anomalyType = anomalyType ?? "error";
+      anomalyDetails = {
+        ...anomalyDetails,
+        errorMessage: `${failedWrites} screening write(s) failed — partial listing persisted`,
+      };
+    }
+
     // Record error message in anomaly details for failed runs
     if (params.status === "failed" && params.error) {
       anomalyType = "error";
       anomalyDetails = { errorMessage: params.error };
     }
+
+    const failureKind = classifyFailureKind(params.error);
 
     await db.insert(scraperRuns).values({
       cinemaId: params.cinemaId,
@@ -275,7 +333,13 @@ async function recordScraperRun(params: {
       baselineCount: baseline?.count ?? null,
       anomalyType,
       anomalyDetails,
-      metadata: { duration: params.durationMs },
+      metadata: {
+        duration: params.durationMs,
+        ...(failureKind ? { failureKind } : {}),
+        ...(failedWrites > 0 ? { failedWrites } : {}),
+        ...(params.diffFailed ? { diffFailed: params.diffFailed } : {}),
+        ...(params.precheckFailed ? { precheckFailed: true } : {}),
+      },
     });
   } catch (err) {
     log({
@@ -416,14 +480,58 @@ async function runSingleVenue(
   let retryCount = 0;
   let lastError: Error | null = null;
 
+  // Health-check precheck — DIAGNOSTIC ONLY, never an abort, and run exactly
+  // ONCE per venue per run.
+  //
+  // It used to throw, which killed the scrape before it started. The gate
+  // was both stricter and less browser-like than the work it gated (10s
+  // UA-only vs fetchUrl's 30s + full headers, now aligned in base.ts), and
+  // it false-negatives under the 4-way concurrency the nightly run uses:
+  // Close-Up's homepage returns 200 in 1.9-6.5s sequentially but breaches
+  // 10s in a concurrent burst. Six of 31 registry entries carry
+  // healthCheck() overrides that exist only to defeat it. Keep the signal,
+  // drop the veto: if the site really is down, the scraper's own error is
+  // the honest one to report.
+  //
+  // It sits OUTSIDE the retry loop deliberately. An advisory probe has no
+  // reason to re-run, and re-probing every attempt made a host that
+  // black-holes packets cost `retryAttempts + 1` prechecks — 4 × ~98s, since
+  // BaseScraper.healthCheck retries internally (3 × 30s + 2 × 4s). That
+  // ~400s of probing pushed the venue past VENUE_TIMEOUT_MS, so it failed
+  // with "(venue wall-clock cap)" — which isConnectionError DOES match —
+  // rather than a site error, which it deliberately does not. Three such
+  // venues in a row tripped the run-level circuit breaker (scrape-all.ts) and
+  // aborted every remaining scraper plus the enrichment phases, and
+  // fewest-screenings-first wave ordering front-loads exactly those thin,
+  // flaky venues. Nothing here can throw, so hoisting it above the loop is
+  // safe: the inner catch absorbs a throwing override.
+  let precheckFailed = false;
+  try {
+    precheckFailed = !(await scraper.healthCheck());
+  } catch (healthError) {
+    precheckFailed = true;
+    log({
+      level: "warn",
+      event: "healthcheck_threw",
+      data: {
+        venueId: venue.id,
+        error: healthError instanceof Error ? healthError.message : String(healthError),
+      },
+    });
+  }
+  if (precheckFailed) {
+    log({
+      level: "warn",
+      event: "healthcheck_warning",
+      data: {
+        venueId: venue.id,
+        note: "precheck did not return OK — scraping anyway, its own error will surface if the site is down",
+      },
+    });
+  }
+
   while (retryCount <= options.retryAttempts) {
     try {
-      // Health check
-      const isHealthy = await scraper.healthCheck();
-      if (!isHealthy) {
-        throw new Error("Health check failed - site not accessible");
-      }
-
       log({
         level: "info",
         event: "scrape_started",
@@ -442,6 +550,7 @@ async function runSingleVenue(
       // Process/save
       let added = 0, updated = 0, failed = 0;
       let blocked = false;
+      let diffFailed: string | undefined;
 
       if (screenings.length > 0) {
         if (options.useValidation) {
@@ -450,10 +559,12 @@ async function runSingleVenue(
           updated = result.updated;
           failed = result.failed;
           blocked = result.blocked;
+          diffFailed = result.diffFailed;
         } else {
           const result = await saveScreenings(venue.id, screenings);
           added = result.added;
           blocked = result.blocked;
+          diffFailed = result.diffFailed;
         }
       }
 
@@ -473,6 +584,10 @@ async function runSingleVenue(
           screeningCount: screenings.length,
           durationMs,
           error: "scrape_blocked_by_diff_check",
+          // No failedWrites here: a blocked scrape attempted no writes at all
+          // (the pipeline counts the whole batch `failed`), and conflating that
+          // with lost writes would make metadata.failedWrites unusable.
+          precheckFailed,
         }));
         return {
           venueId: venue.id,
@@ -504,13 +619,18 @@ async function runSingleVenue(
         },
       });
 
-      // Record successful scraper run (fire-and-forget)
+      // Record the scraper run (fire-and-forget). recordScraperRun downgrades
+      // "success" to "partial" when failedWrites > 0 — a venue that lost writes
+      // persisted an incomplete listing and must not read as a clean success.
       pushPendingRecord(recordScraperRun({
         cinemaId: venue.id,
         startedAt: new Date(startTime),
         status: "success",
         screeningCount: screenings.length,
         durationMs,
+        failedWrites: failed,
+        diffFailed,
+        precheckFailed,
       }));
 
       return {
@@ -523,6 +643,9 @@ async function runSingleVenue(
         screeningsFailed: failed,
         durationMs,
         retryCount,
+        // Degradation marker only — success stays true and the rows stay
+        // written. The breaker reads it; nothing retries on it.
+        diffFailed,
       };
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
@@ -561,7 +684,9 @@ async function runSingleVenue(
     },
   });
 
-  // Record failed scraper run (fire-and-forget)
+  // Record failed scraper run (fire-and-forget). metadata.failureKind is
+  // classified from lastError, so "lost writes" and "the DB timed out" and
+  // "the site broke" stop looking alike in run history.
   pushPendingRecord(recordScraperRun({
     cinemaId: venue.id,
     startedAt: new Date(startTime),
@@ -569,6 +694,7 @@ async function runSingleVenue(
     screeningCount: 0,
     durationMs,
     error: lastError?.message,
+    precheckFailed,
   }));
 
   return {
@@ -751,18 +877,36 @@ async function runScraperInner(
           const venueStartTime = Date.now();
           let added = 0, updated = 0, failed = 0;
           let venueBlocked = false;
+          let diffFailed: string | undefined;
+          let pipelineError: string | undefined;
 
           if (screenings.length > 0) {
-            if (options.useValidation) {
-              const pipelineResult = await processScreenings(venueId, screenings);
-              added = pipelineResult.added;
-              updated = pipelineResult.updated;
-              failed = pipelineResult.failed;
-              venueBlocked = pipelineResult.blocked;
-            } else {
-              const pipelineResult = await saveScreenings(venueId, screenings);
-              added = pipelineResult.added;
-              venueBlocked = pipelineResult.blocked;
+            // Per-venue try: one venue's pipeline failure must not abort its
+            // siblings. This block used to sit bare inside the chain's single
+            // try below, so a single venue's DB timeout marked ALL venues in the
+            // chain failed with that venue's error message (2026-08-05: 11
+            // Picturehouse venues killed by one venue's diff timeout).
+            try {
+              if (options.useValidation) {
+                const pipelineResult = await processScreenings(venueId, screenings);
+                added = pipelineResult.added;
+                updated = pipelineResult.updated;
+                failed = pipelineResult.failed;
+                venueBlocked = pipelineResult.blocked;
+                diffFailed = pipelineResult.diffFailed;
+              } else {
+                const pipelineResult = await saveScreenings(venueId, screenings);
+                added = pipelineResult.added;
+                venueBlocked = pipelineResult.blocked;
+                diffFailed = pipelineResult.diffFailed;
+              }
+            } catch (pipeErr) {
+              pipelineError = pipeErr instanceof Error ? pipeErr.message : String(pipeErr);
+              log({
+                level: "error",
+                event: "venue_pipeline_failed",
+                data: { venueId, screeningsFound: screenings.length, error: pipelineError },
+              });
             }
           }
 
@@ -774,27 +918,38 @@ async function runScraperInner(
             });
           }
 
-          // Record chain per-venue scraper run (fire-and-forget)
+          const venueError = pipelineError ?? (venueBlocked ? "scrape_blocked_by_diff_check" : undefined);
+
+          // Record chain per-venue scraper run (fire-and-forget). recordScraperRun
+          // downgrades "success" to "partial" when failedWrites > 0.
           pushPendingRecord(recordScraperRun({
             cinemaId: venueId,
             startedAt: new Date(venueStartTime),
-            status: venueBlocked ? "failed" : "success",
+            status: venueError ? "failed" : "success",
             screeningCount: screenings.length,
             durationMs: Date.now() - venueStartTime,
-            error: venueBlocked ? "scrape_blocked_by_diff_check" : undefined,
+            error: venueError,
+            // A blocked scrape attempted no writes, so its whole-batch `failed`
+            // count is not "lost writes" — see the single-venue path.
+            failedWrites: venueBlocked ? 0 : failed,
+            diffFailed,
           }));
 
           venueResults.push({
             venueId,
             venueName: venue.name,
-            success: !venueBlocked,
+            success: !venueError,
             screeningsFound: screenings.length,
-            screeningsAdded: venueBlocked ? 0 : added,
-            screeningsUpdated: venueBlocked ? 0 : updated,
+            screeningsAdded: venueError ? 0 : added,
+            screeningsUpdated: venueError ? 0 : updated,
             screeningsFailed: failed,
             durationMs: Date.now() - venueStartTime,
-            error: venueBlocked ? "scrape_blocked_by_diff_check" : undefined,
+            error: venueError,
             retryCount: 0,
+            // Degradation marker only — see the single-venue path. In the chain
+            // shape this matters most: one starved venue's diff timeout is the
+            // whole run's canary even though its 10 siblings wrote fine.
+            diffFailed,
           });
         }
       } catch (error) {

@@ -48,6 +48,12 @@ interface PipelineResult {
   rejected: number;  // Validation failures
   blocked: boolean;  // True when scrape was blocked by diff check
   scrapedAt: Date;
+  /**
+   * Set when the observability diff failed open (see the diff call site in
+   * processScreenings). The screenings were still written; the run just has no
+   * diff. Surfaced by the runner into scraper_runs.metadata.diffFailed.
+   */
+  diffFailed?: string;
 }
 
 // ============================================================================
@@ -356,10 +362,27 @@ export async function processScreenings(
   // Wrapped in runPhase: between this and initFilmCache below was the
   // dead zone where /scrape silently hung for 87 minutes on 2026-05-07.
   // We now log start/done + duration and stamp tmp/scrape-progress.json.
+  //
+  // FAILS OPEN. The diff is an observability guard, not a data dependency: its
+  // two withDbTimeout'd lookups expire at 15s, and under pooler contention that
+  // throw used to propagate out of processScreenings. runSingleVenue then
+  // retried the ENTIRE venue including the scrape (2026-08-05: Phoenix logged
+  // "Found 16 films" and discarded all 16, three times), and in the chain path
+  // it escaped the per-venue loop and failed every sibling venue with one
+  // venue's error message (all 11 Picturehouse venues). A diff failure now
+  // degrades to "no diff this run" — the already-scraped rows still get written
+  // and the reason is reported on the result as diffFailed.
+  let diffFailed: string | undefined;
   const diffReport = await runPhase(cinemaId, "diff", () =>
     generateScrapeDiff(cinemaId, screeningsToProcess),
-  );
-  if (diffReport.hasIssues) {
+  ).catch((err: unknown) => {
+    diffFailed = err instanceof Error ? err.message : String(err);
+    console.warn(
+      `[Pipeline] Diff unavailable for ${cinemaId} — continuing without it (writes proceed): ${diffFailed}`,
+    );
+    return null;
+  });
+  if (diffReport?.hasIssues) {
     printDiffReport(diffReport);
 
     // Block scrape if it looks like the scraper is broken
@@ -391,6 +414,7 @@ export async function processScreenings(
     rejected: rejectedScreenings.length,
     blocked: false,
     scrapedAt: new Date(),
+    diffFailed,
   };
 
   // Extract film titles for event-style names
@@ -529,7 +553,14 @@ export async function processScreenings(
   // Clean up superseded same-day screenings (time-shift orphans).
   // Gated by shouldRunSupersededCleanup — see its JSDoc for why a batch with
   // failed writes must not run the DELETE.
-  if (shouldRunSupersededCleanup(result, options)) {
+  //
+  // A diff that failed open counts as "cannot vouch for this batch": the diff is
+  // the only check that would have blocked a scraper returning a drastically
+  // reduced listing, and without it a same-film showing that vanished from the
+  // listing could be deleted as superseded. Withhold the DELETE for the same
+  // reason a deliberately partial batch does.
+  const cleanupOptions = diffFailed ? { ...options, skipSupersededCleanup: true } : options;
+  if (shouldRunSupersededCleanup(result, cleanupOptions)) {
     await runPhase(cinemaId, "cleanup-superseded", async () => {
       const cleaned = await cleanupSupersededScreenings(cinemaId, result.scrapedAt);
       if (cleaned > 0) {
@@ -542,6 +573,12 @@ export async function processScreenings(
     console.warn(
       `[Pipeline] Skipped superseded cleanup for ${cinemaId}: ${result.failed} failed write(s) ` +
         `mean this batch is not the venue's complete listing. Orphans (if any) persist until a clean run.`,
+    );
+  } else if (diffFailed && !options.skipSupersededCleanup && !result.blocked) {
+    console.warn(
+      `[Pipeline] Skipped superseded cleanup for ${cinemaId}: the diff failed open ` +
+        `(${diffFailed}), so this batch was never compared against existing rows. ` +
+        `Orphans (if any) persist until a clean run.`,
     );
   }
 

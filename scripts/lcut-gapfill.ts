@@ -68,6 +68,11 @@ const VENUE_MAP: Record<string, string[]> = {
   "the horse hospital": ["horse-hospital"],
   "good shepherd studios": ["good-shepherd-studios"],
   "project loop": ["project-loop"],
+  "deptford cinema": ["deptford-cinema"],
+  "ibraaz": ["ibraaz"],
+  "metroland studios": ["metroland-studios"],
+  // L-CUT spells it "Set Social"; the venue's own styling is "SET Social".
+  "set social": ["set-social-peckham"],
 };
 
 export function normalizeVenueName(name: string): string {

@@ -30,6 +30,7 @@ import {
 } from "./lcut-gapfill";
 import { processScreenings } from "@/scrapers/pipeline";
 import { getScrapedCinemaIds } from "@/scrapers/registry";
+import { getCinemaById } from "@/config/cinema-registry";
 
 describe("normalizeVenueName", () => {
   it("strips the pride flag emoji from The Arzner", () => {
@@ -161,7 +162,7 @@ describe("gentle-normalization fallback (colon titles)", () => {
 
 describe("classifyLcutTargets", () => {
   it("splits targets into source-only vs scraped by the registry set", () => {
-    // Everything we scrape ourselves EXCEPT the four source-only venues.
+    // Everything we scrape ourselves EXCEPT the eight source-only venues.
     const scrapedIds = new Set([
       "prince-charles",
       "bfi-southbank",
@@ -180,9 +181,13 @@ describe("classifyLcutTargets", () => {
     ]);
     const { sourceOnly, scraped } = classifyLcutTargets(scrapedIds);
     expect([...sourceOnly].sort()).toEqual([
+      "deptford-cinema",
       "good-shepherd-studios",
       "horse-hospital",
+      "ibraaz",
+      "metroland-studios",
       "project-loop",
+      "set-social-peckham",
       "the-arzner",
     ]);
     // Venues with a first-party scraper are report-only, not source-only.
@@ -205,14 +210,30 @@ describe("registry ↔ VENUE_MAP integration (guards cinema-id drift)", () => {
   // silently reclassify a scraped venue as source-only — auto-inserting L-CUT
   // rows into a venue we already scrape AND dropping its regression signal.
   // These tests run the REAL registry so that drift becomes a red build.
-  it("real registry yields exactly the 4 known source-only venues", () => {
+  it("real registry yields exactly the 8 known source-only venues", () => {
     const { sourceOnly } = classifyLcutTargets(getScrapedCinemaIds());
     expect([...sourceOnly].sort()).toEqual([
+      "deptford-cinema",
       "good-shepherd-studios",
       "horse-hospital",
+      "ibraaz",
+      "metroland-studios",
       "project-loop",
+      "set-social-peckham",
       "the-arzner",
     ]);
+  });
+
+  // Every source-only target must exist in the registry, or processScreenings
+  // fails the cinema_id FK at insert time and the gap-fill silently loses the
+  // venue's rows. Cheap guard for the VENUE_MAP-without-registry-entry mistake.
+  it("every source-only target resolves to a registry cinema", () => {
+    const { sourceOnly } = classifyLcutTargets(getScrapedCinemaIds());
+    for (const id of sourceOnly) {
+      const cinema = getCinemaById(id);
+      expect(cinema, `no registry entry for source-only target: ${id}`).toBeDefined();
+      expect(cinema?.active, `source-only target is inactive: ${id}`).toBe(true);
+    }
   });
 
   it("every VENUE_MAP target is classified (none falls through)", () => {

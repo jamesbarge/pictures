@@ -27,7 +27,12 @@ vi.mock("./pipeline", () => ({
   ensureCinemaExists: vi.fn(async () => {}),
 }));
 
-import { isConnectionError, runScraper, type MultiVenueConfig } from "./runner-factory";
+import {
+  isConnectionError,
+  runScraper,
+  type MultiVenueConfig,
+  type SingleVenueConfig,
+} from "./runner-factory";
 import type { CinemaScraper } from "./types";
 
 describe("isConnectionError", () => {
@@ -71,6 +76,88 @@ describe("isConnectionError", () => {
     expect(isConnectionError("ETIMEDOUT: socket timeout")).toBe(false);
     expect(isConnectionError("no showtimes found")).toBe(false);
     expect(isConnectionError(undefined)).toBe(false);
+  });
+});
+
+describe("health-check precheck (advisory, once per venue)", () => {
+  /**
+   * The precheck is advisory, so it has no reason to run more than once. When
+   * it sat inside the retry loop, a host that black-holes packets paid
+   * `retryAttempts + 1` prechecks — 4 × ~98s, since BaseScraper.healthCheck
+   * retries internally (3 × 30s + 2 × 4s). That ~400s pushed the venue past
+   * VENUE_TIMEOUT_MS, so it failed with "(venue wall-clock cap)", which
+   * isConnectionError DOES match — and three such venues in a row tripped the
+   * run-level breaker and aborted the rest of the run plus enrichment.
+   */
+  it(
+    "probes once even when the venue exhausts all its retries",
+    async () => {
+      const healthCheck = vi.fn(async () => false);
+      const scrape = vi.fn(async (): Promise<never> => {
+        throw new Error("page.goto: Timeout 30000ms exceeded");
+      });
+      const scraper = { healthCheck, scrape } as unknown as CinemaScraper;
+
+      const config: SingleVenueConfig = {
+        type: "single",
+        venue: { id: "black-hole-venue", name: "Black Hole", shortName: "bh" },
+        createScraper: () => scraper,
+      };
+
+      const result = await runScraper(config, { useValidation: true, retryAttempts: 3 });
+
+      expect(healthCheck).toHaveBeenCalledTimes(1);
+      expect(scrape).toHaveBeenCalledTimes(4);
+      expect(result.venueResults[0]).toMatchObject({
+        venueId: "black-hole-venue",
+        success: false,
+        retryCount: 3,
+      });
+      // The venue reports the scraper's own error, which isConnectionError
+      // deliberately does not match, so the breaker counter still resets.
+      expect(result.venueResults[0].error).toBe("page.goto: Timeout 30000ms exceeded");
+      expect(isConnectionError(new Error(result.venueResults[0].error!))).toBe(false);
+    },
+    // Real timers: three jittered backoffs (1s/2s/4s × 0.5-1.5) ≈ 10.5s worst case.
+    30_000,
+  );
+
+  it("scrapes anyway when the precheck fails — the veto stays advisory", async () => {
+    const healthCheck = vi.fn(async () => false);
+    const scrape = vi.fn(async () => []);
+    const scraper = { healthCheck, scrape } as unknown as CinemaScraper;
+
+    const config: SingleVenueConfig = {
+      type: "single",
+      venue: { id: "waf-403-venue", name: "WAF 403", shortName: "waf" },
+      createScraper: () => scraper,
+    };
+
+    const result = await runScraper(config, { useValidation: true });
+
+    expect(healthCheck).toHaveBeenCalledTimes(1);
+    expect(scrape).toHaveBeenCalledTimes(1);
+    expect(result.venueResults[0]).toMatchObject({ venueId: "waf-403-venue", success: true });
+  });
+
+  it("a throwing healthCheck() override neither aborts the venue nor re-probes", async () => {
+    const healthCheck = vi.fn(async (): Promise<never> => {
+      throw new Error("boom in override");
+    });
+    const scrape = vi.fn(async () => []);
+    const scraper = { healthCheck, scrape } as unknown as CinemaScraper;
+
+    const config: SingleVenueConfig = {
+      type: "single",
+      venue: { id: "throwing-health-venue", name: "Throwing", shortName: "th" },
+      createScraper: () => scraper,
+    };
+
+    const result = await runScraper(config, { useValidation: true });
+
+    expect(healthCheck).toHaveBeenCalledTimes(1);
+    expect(scrape).toHaveBeenCalledTimes(1);
+    expect(result.venueResults[0]).toMatchObject({ venueId: "throwing-health-venue", success: true });
   });
 });
 

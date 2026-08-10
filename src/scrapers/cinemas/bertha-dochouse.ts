@@ -179,13 +179,18 @@ export class BerthaDochouseScraper extends BaseScraper {
       const text = $a.text().trim().replace(/\s+/g, " ");
       if (!text) return;
 
-      // Anchor text is "<weekday> <day><suffix> <month> <HH>:<MM>".
-      // parseScreeningDate handles the date prefix; parseScreeningTime takes
-      // the trailing HH:MM. We split on the last space-then-digit-pair.
-      const timeMatch = text.match(/(\d{1,2}:\d{2})\s*$/);
+      // Anchor text is "<weekday> <day><suffix> <month> <HH>:<MM>" and MAY carry
+      // a trailing strand/label: "Q&A", "Intro", "Summer Sessions".
+      // Split on the FIRST HH:MM rather than anchoring the match to end-of-text.
+      // The date prefix never contains a colon-time, so the first match is
+      // always the showtime and whatever follows is a label we don't need.
+      // Anchoring to the end silently dropped every labelled showtime — 34 of
+      // 122 anchors on 2026-08-09, which was the entire September/October tail
+      // (see SCRAPING_PLAYBOOK.md).
+      const timeMatch = text.match(/^(.*?)(\d{1,2}:\d{2})(?!\d)/);
       if (!timeMatch) return;
-      const timeStr = timeMatch[1];
-      const dateStr = text.slice(0, text.length - timeStr.length).trim();
+      const dateStr = timeMatch[1].trim();
+      const timeStr = timeMatch[2];
 
       const datePart = parseScreeningDate(dateStr, now);
       const timePart = parseScreeningTime(timeStr);

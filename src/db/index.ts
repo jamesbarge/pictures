@@ -82,10 +82,33 @@ export type Database = typeof db;
  * existing 57014 (query_canceled) catch path.
  *
  * Note: this stops *waiting* on the promise; the underlying socket is still
- * held by postgres-js until its own cleanup runs. That's acceptable here
- * because `max: 1` means at most one stuck conn, and `max_lifetime: 30min`
- * eventually rotates it.
+ * held by postgres-js until its own cleanup runs. The cost of that depends on
+ * why the call was slow (verified against postgres 3.4.9 in node_modules):
+ *   - Merely slow query: the reply eventually arrives, the conn returns to the
+ *     pool, nothing is lost. This is the common case.
+ *   - Genuinely wedged conn (pooler dropped the TCP peer): the query never
+ *     settles, so the conn stays out of rotation. `max_lifetime` does NOT
+ *     reclaim it — postgres-js `end()` skips `terminate()` while a query is in
+ *     flight and moves the conn to its `ended` queue, permanently. What does
+ *     recover it is TCP keepalive (`keep_alive: 60` → probes start after 60s
+ *     idle) failing and destroying the socket.
+ * So a wedged conn costs one of `max` slots for minutes, not one rotation —
+ * and the pool cannot grow to compensate: postgres-js allocates exactly `max`
+ * Connection objects up front. Size `max` (DB_POOL_MAX) with headroom above
+ * the scrape wave's concurrency so a few expiries can't starve the pool; three
+ * such expiries against `max: 3` is what cascaded on 2026-08-05.
  */
+/**
+ * Suffix appended to every withDbTimeout rejection, and the only place this
+ * string is produced. It is load-bearing as a *discriminator*: a failure message
+ * ending in it is always a client-side expiry here (i.e. infrastructure), never
+ * Postgres rejecting a query and never a scraper fault. `classifyFailureKind`
+ * and `isConnectionError` in src/scrapers/runner-factory.ts, and
+ * `breakerOutcomeFor` in src/lib/jobs/scrape-all.ts, all branch on it — so it is
+ * exported rather than re-typed, to stop the copies drifting apart.
+ */
+export const DB_TIMEOUT_MARKER = "(client-side)";
+
 export function withDbTimeout<T>(
   p: Promise<T>,
   ms = 10_000,
@@ -94,7 +117,7 @@ export function withDbTimeout<T>(
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_, reject) => {
     timer = setTimeout(
-      () => reject(new Error(`${label} timeout after ${ms}ms (client-side)`)),
+      () => reject(new Error(`${label} timeout after ${ms}ms ${DB_TIMEOUT_MARKER}`)),
       ms,
     );
   });
