@@ -1,6 +1,6 @@
 # Screening writes now survive a season-link timeout
 
-**PR**: TBD
+**PR**: #746
 **Date**: 2026-08-26
 
 ## Background
