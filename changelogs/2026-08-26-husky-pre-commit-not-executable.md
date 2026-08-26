@@ -1,6 +1,6 @@
 # Restore the pre-commit eslint hook
 
-**PR**: TBD
+**PR**: #747
 **Date**: 2026-08-26
 
 ## Changes

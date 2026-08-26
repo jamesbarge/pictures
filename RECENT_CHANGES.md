@@ -1,5 +1,5 @@
 ## 2026-08-26: Restore the pre-commit eslint hook
-**PR**: TBD | **Files**: `.husky/pre-commit`
+**PR**: #747 | **Files**: `.husky/pre-commit`
 - `.husky/pre-commit` was tracked at mode `100644`, so git skipped it on every commit and printed `hook was ignored because it's not set as executable`. `lint-staged` is configured (`*.{ts,tsx}` -> `eslint --fix`) and both husky and lint-staged are installed, so the gate existed on paper and never ran for anyone who cloned the repo.
 - Mode changed to `100755` via `git update-index --chmod=+x`, which is the part that travels to other clones. A local `chmod` alone would have fixed only this machine.
 - Verified by committing with the hook in place: lint-staged runs and the git hint is gone.
