@@ -1,3 +1,11 @@
+## 2026-08-26: Restore the pre-commit eslint hook
+**PR**: TBD | **Files**: `.husky/pre-commit`
+- `.husky/pre-commit` was tracked at mode `100644`, so git skipped it on every commit and printed `hook was ignored because it's not set as executable`. `lint-staged` is configured (`*.{ts,tsx}` -> `eslint --fix`) and both husky and lint-staged are installed, so the gate existed on paper and never ran for anyone who cloned the repo.
+- Mode changed to `100755` via `git update-index --chmod=+x`, which is the part that travels to other clones. A local `chmod` alone would have fixed only this machine.
+- Verified by committing with the hook in place: lint-staged runs and the git hint is gone.
+
+---
+
 ## 2026-08-10: Full 2-month scrape — killed two rogue cloud schedulers, fixed 7 coverage bugs, +19% screenings
 **PR**: TBD | **Files**: `src/scrapers/chains/curzon.ts`, `src/scrapers/chains/everyman.ts`, `src/scrapers/cinemas/barbican.ts`, `src/scrapers/cinemas/peckhamplex.ts`, `src/scrapers/cinemas/phoenix.ts`, `src/scrapers/cinemas/bertha-dochouse.ts`, `src/scrapers/cinemas/close-up.ts`, `src/scrapers/runner-factory.ts`, `src/scrapers/pipeline.ts`, `src/scrapers/base.ts`, `src/scrapers/utils/film-matching.ts`, `src/lib/jobs/scrape-all.ts`, `src/lib/scrape-quarantine.ts`, `src/db/index.ts`, `src/db/schema/admin.ts`, `src/config/cinema-registry.ts`, `scripts/lcut-gapfill.ts`, `tsconfig.json`, `src/scrapers/SCRAPING_PLAYBOOK.md`
 - **Result: 6,431 → 7,649 upcoming screenings (+19%), 0 true duplicates, 0 venues regressed, 30/31 registry entries succeeding.** 43 venues now hold ≥50 days of listings; one venue is under 14 days and it is at its site's published limit. Zero `(client-side)` timeouts, zero deferred-write failures, zero circuit-breaker trips — the 2026-08-05 cascade did not recur.
