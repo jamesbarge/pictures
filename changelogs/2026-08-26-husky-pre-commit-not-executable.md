@@ -38,5 +38,45 @@ copy; `git update-index --chmod=+x` records `100755` so other clones get it too.
 
 ## Verification
 - `git ls-files -s .husky/pre-commit` reports `100755`.
-- Committing on this branch runs lint-staged, and git commits cleanly with the
-  "hook was ignored" hint gone.
+- Staging a `.ts` file with an eslint error and committing: the hook runs
+  `eslint --fix`, reports `Parsing error: Expression expected`, reverts to the
+  original state and refuses the commit. HEAD is unchanged. The gate has teeth.
+- Staging a clean `.ts` file and committing: `eslint --fix` completes and the
+  commit lands.
+- A conflicted merge, resolved and committed without `--no-verify`: lint-staged
+  runs through it and the merge commit lands. lint-staged handles this case
+  itself, backing up and restoring `MERGE_HEAD`, `MERGE_MODE` and `MERGE_MSG`.
+
+An earlier revision of this note claimed only that "lint-staged runs and the git
+hint is gone". That was true and it proved very little, because the commit it
+was based on staged no `.ts` files, so lint-staged exited before reaching the
+stash path where the real work happens.
+
+## A stale lock made this look broken
+
+Worth recording, because the symptom is opaque and the cause is not in this
+diff. On the machine where the hook was first enabled, every commit staging a
+`.ts` file failed with:
+
+```
+✖ lint-staged failed due to a git error.
+```
+
+lint-staged isolates staged content by stashing the working tree, via
+`git stash create` then `git stash store`. The store failed:
+
+```
+error: update_ref failed for ref 'refs/stash': cannot lock ref 'refs/stash':
+Unable to create '.git/refs/stash.lock': File exists.
+```
+
+`.git/refs/stash.lock` was over a month old, left behind by a git process that
+crashed mid-stash, along with two `.git/index.stash.<pid>.lock` files from dead
+PIDs. Git's own advice is to delete such a file, and removing all three restored
+`git stash store`. The nine existing stashes were unaffected, verified by
+comparing `git stash list` before and after.
+
+This is local repository state, so it travels with nobody. It is recorded here
+because a newly-enabled pre-commit hook is exactly when a long-dormant stale
+lock surfaces, and "failed due to a git error" gives no clue on its own. Run
+`git stash create && git stash store -m probe <sha>` to see the real message.
