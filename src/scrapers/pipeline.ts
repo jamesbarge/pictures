@@ -120,6 +120,43 @@ export async function attemptScreeningWrite(
 }
 
 /**
+ * Link a film to its seasons, best-effort. Never throws.
+ *
+ * Season membership is cosmetic enrichment, so it must not be able to veto the
+ * screening writes that are the whole point of the film loop. Until 2026-08-25
+ * this call sat *ahead* of the insert loop inside the film-level try: a 10s
+ * client-side timeout here (`linkFilmToMatchingSeasons: … (client-side)`, thrown
+ * by withDbTimeout under pool contention) jumped straight to the film-level
+ * catch, which counted the film's entire screening list as `failed` and moved
+ * on. Those screenings were never inserted and never reached
+ * attemptScreeningWrite, so the deferred-write retry pass could not recover
+ * them either. That run lost 44 films this way, and drove the failed-write
+ * counts (curzon-camden 224, everyman-hampstead 107/107) that in turn suppress
+ * superseded cleanup via shouldRunSupersededCleanup.
+ *
+ * Two guards, deliberately both: this helper swallows the error, AND the call
+ * site sits after the insert loop so `settled` already equals the batch length
+ * if anything did escape.
+ *
+ * Exported for tests.
+ */
+export async function linkSeasonsBestEffort(
+  filmId: string,
+  filmTitle: string,
+): Promise<number> {
+  try {
+    return await withDbTimeout(
+      linkFilmToMatchingSeasons(filmId, filmTitle),
+      10_000,
+      `linkFilmToMatchingSeasons: ${filmTitle}`,
+    );
+  } catch (error) {
+    console.warn(`[Pipeline] Season linking skipped for "${filmTitle}":`, error);
+    return 0;
+  }
+}
+
+/**
  * Cumulative wall-clock budget for the retry pass. Plan 001's per-venue cap
  * is 10 minutes for scrape + pipeline + retries; an unbounded retry pass
  * against a still-wedged pool (50 writes x ~16s each) would blow it, turning
@@ -495,14 +532,6 @@ export async function processScreenings(
             continue;
           }
 
-          // Link film to any matching seasons
-          // This ensures films are associated with seasons as soon as they're scraped
-          await withDbTimeout(
-            linkFilmToMatchingSeasons(filmId, firstScreening.filmTitle),
-            10_000,
-            `linkFilmToMatchingSeasons: ${firstScreening.filmTitle}`,
-          );
-
           // Insert screenings (normalize timestamps to zero seconds/ms).
           // 15s ceiling per screening: covers checkForDuplicate + insert/update.
           // Connection-shaped failures are deferred for an end-of-venue retry
@@ -525,6 +554,9 @@ export async function processScreenings(
             // "deferred" outcomes are counted after the retry pass below.
             settled++;
           }
+
+          // Enrichment, so it runs AFTER the writes and cannot fail the film.
+          await linkSeasonsBestEffort(filmId, firstScreening.filmTitle);
         } catch (error) {
           console.error(`[Pipeline] Error processing film "${normalizedTitle}":`, error);
           result.failed += filmScreenings.length - settled;
