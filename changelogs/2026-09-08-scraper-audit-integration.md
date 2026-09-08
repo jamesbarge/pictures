@@ -1,7 +1,7 @@
 # Scraper audit integration candidate
 
 **Date:** 2026-09-08
-**PR:** Publication pending; not merged or deployed
+**PR:** [#748](https://github.com/jamesbarge/pictures/pull/748); not merged or deployed
 **Branch:** `fix/scraper-audit-safeguards`
 **PR base:** `defc0ae3` (current `origin/main` at preparation)
 **Reviewed integration base:** `d5028a1896e5edd7c5d428fad1722b8257064b32`
