@@ -849,3 +849,13 @@ none was judged to pay for itself at ~12-20 screenings a year.
 - **Verification without touching the DB:** instantiate `createPeckhamplexScraper()` and call
   `scrape()` under `DATABASE_URL=disabled` — it returns `RawScreening[]` and performs no writes.
 - Last verified (live): 2026-08-09.
+
+## 2026-09-08 audit integration: shared safeguards
+
+- The screening pipeline resolves known cinema aliases and rejects unknown IDs before writes. Standalone Close-Up/Olympic IDs are canonical; metadata consolidation remains deferred.
+- Superseded same-day proximity matches are **report-only**. The pipeline counts and retains candidates; no automatic deletion is available through this path. Existing `skipSupersededCleanup` still suppresses the diagnostic for partial batches. A clean write batch is not proof of complete source capture.
+- Candidate counts are logged when nonzero and returned as `PipelineResult.supersededCandidates`. An unavailable report is `undefined`, not zero; reporting is best-effort and has a client-side 10-second ceiling. No row identities are captured by this count-only diagnostic.
+- Validator hour/date policy uses Europe/London, not the host timezone. Bare 1–9-hour PM interpretation (including zero-padded inputs), early-time rejection, and 90/180-day horizons are unchanged pending source-aware design.
+- Source excerpts live in `utils/fixtures/time-source-2026-09-08.json`. Ciné Lumière's captured `08:00` is marked Closed for Booking. PCC's captured times include AM/PM; Genesis uses 24-hour booking text; DocHouse's small sample contains afternoon/evening times. These are source observations, not evidence of stored production rows or universal historical formats.
+
+---

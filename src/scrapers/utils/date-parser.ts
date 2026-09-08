@@ -64,6 +64,61 @@ export function ukLocalToUTC(year: number, month: number, day: number, hours: nu
 }
 
 /**
+ * Read a UTC instant's clock fields as they appear in Europe/London,
+ * independent of the host timezone.
+ *
+ * Hosts can use different timezones, while cinema policy (opening hours,
+ * holiday closures) is expressed in London local time. Reading `getHours()` off
+ * a Date answers "what hour is this on the host clock", which is a different
+ * question and gives a different answer for most of the year.
+ *
+ * `month` is 0-indexed, matching ukLocalToUTC() and isUKSummerTime() above.
+ *
+ * Uses Intl (IANA-backed) because the BST arithmetic above runs the opposite
+ * direction: UK-local components in, UTC instant out.
+ *
+ * Requires a valid Date. Intl throws RangeError on an invalid time value, so
+ * callers must screen with isNaN(date.getTime()) first, as validateScreening does.
+ */
+const londonPartsFormatter = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Europe/London",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  // h23 keeps midnight as hour 0. Some ICU versions report it as 24 under
+  // hour12: false, which silently breaks hour-range comparisons.
+  hourCycle: "h23",
+});
+
+export function londonParts(date: Date): {
+  year: number;
+  month: number;
+  day: number;
+  hours: number;
+  minutes: number;
+} {
+  const parts = londonPartsFormatter.formatToParts(date);
+  const field = (type: Intl.DateTimeFormatPartTypes): number => {
+    const part = parts.find((candidate) => candidate.type === type);
+    // Unreachable with the options above. Throwing keeps it that way: an
+    // optional chain here would yield NaN, and NaN < MIN_SCREENING_HOUR is
+    // false, so a missing part would silently accept every screening.
+    if (!part) throw new Error(`londonParts: Intl returned no "${type}" part`);
+    return Number(part.value);
+  };
+
+  return {
+    year: field("year"),
+    month: field("month") - 1,
+    day: field("day"),
+    hours: field("hour"),
+    minutes: field("minute"),
+  };
+}
+
+/**
  * Parse an ISO-like datetime string that represents UK local time.
  *
  * IMPORTANT: Use this when an API returns "2025-12-27T20:30" meaning UK local time

@@ -1,4 +1,8 @@
 /**
+ * Historical deletion-guard rationale follows. The guard now gates only a
+ * read-only candidate report; none of these eligibility cases permits DELETE.
+ * Its name/options remain compatible with partial-batch callers.
+ *
  * Superseded-cleanup guard for accidentally-partial batches.
  *
  * cleanupSupersededScreenings() deletes a previously-scraped screening when a

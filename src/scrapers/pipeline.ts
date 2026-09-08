@@ -15,7 +15,7 @@ import { linkFilmToMatchingSeasons } from "./seasons/season-linker";
 import { isConnectionError } from "./runner-factory";
 
 import { runPhase, stampProgress } from "@/lib/scrape-progress";
-import { VENUE_LANGUAGE_PRIORS } from "@/config/cinema-registry";
+import { VENUE_LANGUAGE_PRIORS, resolveCinemaId } from "@/config/cinema-registry";
 
 // Extracted utility modules
 import {
@@ -54,6 +54,8 @@ interface PipelineResult {
    * diff. Surfaced by the runner into scraper_runs.metadata.diffFailed.
    */
   diffFailed?: string;
+  /** Proximity matches retained for review, never deleted automatically. */
+  supersededCandidates?: number;
 }
 
 // ============================================================================
@@ -252,23 +254,19 @@ function normalizeTimestamp(datetime: Date): Date {
 }
 
 /**
- * Remove "superseded" screenings after a scrape run.
- *
- * When a cinema updates a showtime between scraper runs (e.g., 18:15 → 19:15),
- * the pipeline creates a new screening at the new time but never removes the old.
- * This function finds screenings that were NOT refreshed in this run but have a
- * "sibling" (same film, same date, within 3h) that WAS refreshed — these are
- * time-shift orphans.
- *
- * Safety: only deletes future screenings, only when a current sibling exists,
- * and the 3h window preserves legitimate matinee+evening pairs (4h+ apart).
+ * Report possible superseded screenings without deleting them.
+ * A nearby refreshed showing does not establish replacement or cancellation:
+ * an incomplete fetch can omit a legitimate same-film showing 2h30m away.
+ * This is the historical proximity predicate, retained as a diagnostic only.
+ * It counts candidate rows, not sibling pairs. No runtime opt-in to deletion.
  */
-async function cleanupSupersededScreenings(
+export async function reportSupersededScreeningCandidates(
   cinemaId: string,
   scrapedAt: Date
-): Promise<number> {
-  const result = await db.execute(sql`
-    DELETE FROM screenings s
+): Promise<number | undefined> {
+  try {
+    const result = await withDbTimeout(db.execute(sql`
+    SELECT COUNT(*)::integer AS count FROM screenings s
     WHERE s.cinema_id = ${cinemaId}
       AND s.scraped_at < ${scrapedAt.toISOString()}::timestamptz
       AND s.datetime >= NOW()
@@ -281,65 +279,32 @@ async function cleanupSupersededScreenings(
           AND ABS(EXTRACT(EPOCH FROM s2.datetime - s.datetime)) < 10800
           AND s2.id != s.id
       )
-  `);
-  // postgres.js returns array-like result with .count for DML statements
-  return (result as unknown as { count: number }).count ?? 0;
+    `), 10_000, `superseded-candidates:${cinemaId}`);
+    const count = (result as unknown as Array<{ count: number }>)[0]?.count;
+    if (typeof count !== "number" || !Number.isInteger(count) || count < 0) {
+      throw new Error("Candidate count query returned no valid count");
+    }
+    if (count > 0) {
+      console.warn(
+        `[Pipeline] Retained ${count} possible superseded screening(s) for ${cinemaId}; ` +
+          `proximity is not replacement evidence. No screenings deleted.`,
+      );
+    }
+    return count;
+  } catch (error) {
+    // A diagnostic failure must not turn already-persisted screenings into a
+    // failed write batch. Unknown is distinct from zero candidates.
+    console.warn(`[Pipeline] Superseded-candidate report unavailable for ${cinemaId}:`, error);
+    return undefined;
+  }
 }
 
 /**
- * Decide whether the superseded-cleanup DELETE is safe to run.
- *
- * cleanupSupersededScreenings() only deletes an old row when a NEWLY-written row
- * exists for the same film, same London date, within 3h. That inference is only
- * sound when the batch just written is the venue's COMPLETE current listing.
- *
- * A batch can be incomplete two ways:
- *   1. By design — the L-CUT gap-fill writes only the screenings we're missing,
- *      and passes skipSupersededCleanup (2026-07-13 incident: 51 rows, 8 venues).
- *   2. By accident — writes failed. Under Supabase pooler contention,
- *      insertScreening times out client-side; the deferred-write retry recovers
- *      most but not all. A venue that persisted 200 of 217 screenings is a
- *      partial batch, and if a film had two showings that day inside the 3h
- *      window with only one insert landing, the old row for the other showing
- *      gets deleted as "superseded" while its replacement never arrived
- *      (2026-08-05: rich-mix 17 failed, electric-portobello 14).
- *
- * `failed > 0` therefore blocks cleanup. Missing the cleanup is cheap — a few
- * time-shift orphans linger until the next clean run removes them. Deleting a
- * valid future screening is not recoverable until the venue is re-scraped, and
- * violates the "Never Delete Valid Screenings" rule. The asymmetry decides it.
- *
- * `rejected` (validation failures) deliberately does NOT block, for two reasons
- * that matter more than "rejected rows are data we never wanted":
- *   - `past_screening` is a rejection *error* (screening-validator.ts), and
- *     scrapers routinely return today's earlier showings, so `rejected > 0` on
- *     very nearly every run. Guarding on it would disable the cleanup for good.
- *   - Past and too-far-future rejections cannot cause a wrong delete anyway: the
- *     DELETE only touches `datetime >= NOW()`, and a too-far-future rejection's
- *     same-day sibling is rejected too, so no fresh sibling exists to trigger it.
- * There IS a residual: an AM/PM parsing regression rejected as
- * `suspicious_time_early` while the same film's other showing writes fresh can
- * still strand the old correct row. Closing that means gating on rejections
- * *excluding* `past_screening` and `too_far_future` — deliberately not done here.
- *
- * `failed > 0` is a conservative trigger, NOT a proof of completeness. It sees
- * write failures that THROW. It does not see the two paths where insertScreening
- * fails by return value — the 23505 catch in the duplicate-update path, and a
- * `shouldSkip` classification — both of which `return false`, get counted
- * `updated`, and leave the existing row's `scraped_at` unbumped, i.e. still a
- * DELETE candidate with `failed === 0`. They need a fresh sibling sharing the
- * stale row's `film_id`, which usually protects them since refreshed rows carry
- * the newly-resolved id; the exception is when another group in the same batch
- * resolves to that duplicate id. Narrow, constructible, pre-existing. The real
- * fix belongs at the DELETE, which infers batch membership from a timestamp when
- * the pipeline already knows the answer. Out of scope; do not read this guard as
- * closing it.
- *
- * Over-counting runs the other way and is harmless: linkScreeningToFestival runs
- * AFTER a successful insert, so a non-connection throw there sends an
- * already-inserted screening to the film-level catch as failed. Cleanup is then
- * withheld from a batch that was complete. Safe direction — a lingering orphan
- * rather than a deleted screening.
+ * Eligibility guard for the report-only superseded-candidate diagnostic.
+ * The historical name and skipSupersededCleanup option remain for callers.
+ * Failed writes, blocked/empty batches and deliberately partial L-CUT batches
+ * do not produce a meaningful proximity report. Passing this guard is NOT
+ * evidence of complete source capture and never authorizes deletion.
  */
 export function shouldRunSupersededCleanup(
   result: { added: number; updated: number; failed: number; blocked: boolean },
@@ -353,33 +318,22 @@ export function shouldRunSupersededCleanup(
 }
 
 /**
- * Process raw screenings through the full pipeline
- *
- * IMPORTANT: This function ONLY ADDS or UPDATES screenings.
- * It NEVER DELETES existing screenings. If a scraper returns fewer
- * results than before, existing screenings are preserved.
- * See CLAUDE.md for the "Never Delete Valid Screenings" rule.
- *
- * After processing, superseded same-day screenings (time-shift orphans)
- * are cleaned up via cleanupSupersededScreenings().
- *
- * options.skipSupersededCleanup: set for PARTIAL batches (e.g. the L-CUT
- * gap-fill, which inserts only screenings we're missing). The superseded
- * cleanup assumes rawScreenings is the venue's COMPLETE current listing —
- * with a partial batch it deletes legitimate previously-scraped rows within
- * its 3h same-film window (2026-07-13 incident: 51 rows across 8 venues).
- *
- * Note the "never deletes" guarantee above covers the ADD/UPDATE path only.
- * cleanupSupersededScreenings() below does delete, and is gated by
- * shouldRunSupersededCleanup() — which also withholds the DELETE when writes
- * failed, since that makes the batch accidentally partial in exactly the way
- * the flag guards against deliberately.
+ * Normalize, enrich and persist screenings by adding/updating only.
+ * Possible same-day replacements are counted for review, never deleted on
+ * proximity alone. skipSupersededCleanup suppresses that report for partial
+ * batches such as L-CUT supplementary writes; it cannot enable deletion.
  */
 export async function processScreenings(
-  cinemaId: string,
+  rawCinemaId: string,
   rawScreenings: RawScreening[],
   options: { skipSupersededCleanup?: boolean } = {}
 ): Promise<PipelineResult> {
+  // Canonicalise before anything is written. Callers reach this function from
+  // the registry-driven waves, the standalone run-*.ts runners, the L-CUT
+  // gap-fill and the festival ingester, and only one of them used to
+  // canonicalise. Resolving here means a legacy alias can never become a
+  // second venue, and an unregistered ID fails loudly instead of silently.
+  const cinemaId = resolveCinemaId(rawCinemaId);
   console.log(`[Pipeline] Processing ${rawScreenings.length} screenings for ${cinemaId}`);
   await stampProgress({ cinemaId, phase: "pipeline-start", startedAt: new Date().toISOString(), meta: { rawCount: rawScreenings.length } });
 
@@ -582,35 +536,24 @@ export async function processScreenings(
     recoveredOnRetry = retryOutcome.recovered;
   }
 
-  // Clean up superseded same-day screenings (time-shift orphans).
-  // Gated by shouldRunSupersededCleanup — see its JSDoc for why a batch with
-  // failed writes must not run the DELETE.
-  //
-  // A diff that failed open counts as "cannot vouch for this batch": the diff is
-  // the only check that would have blocked a scraper returning a drastically
-  // reduced listing, and without it a same-film showing that vanished from the
-  // listing could be deleted as superseded. Withhold the DELETE for the same
-  // reason a deliberately partial batch does.
+  // Report proximity candidates only. Even a clean write batch cannot prove
+  // the source capture was complete, so this path never deletes screenings.
   const cleanupOptions = diffFailed ? { ...options, skipSupersededCleanup: true } : options;
   if (shouldRunSupersededCleanup(result, cleanupOptions)) {
-    await runPhase(cinemaId, "cleanup-superseded", async () => {
-      const cleaned = await cleanupSupersededScreenings(cinemaId, result.scrapedAt);
-      if (cleaned > 0) {
-        console.log(`[Pipeline] Cleaned ${cleaned} superseded same-day screenings`);
-      }
+    await runPhase(cinemaId, "report-superseded-candidates", async () => {
+      result.supersededCandidates = await reportSupersededScreeningCandidates(cinemaId, result.scrapedAt);
     });
   } else if (result.failed > 0 && !options.skipSupersededCleanup && !result.blocked) {
     // Never skip silently: a lingering time-shift orphan is otherwise
     // indistinguishable from a scraper emitting a duplicate screening.
     console.warn(
-      `[Pipeline] Skipped superseded cleanup for ${cinemaId}: ${result.failed} failed write(s) ` +
-        `mean this batch is not the venue's complete listing. Orphans (if any) persist until a clean run.`,
+      `[Pipeline] Skipped superseded-candidate report for ${cinemaId}: ${result.failed} failed write(s). No screenings deleted.`,
     );
   } else if (diffFailed && !options.skipSupersededCleanup && !result.blocked) {
     console.warn(
-      `[Pipeline] Skipped superseded cleanup for ${cinemaId}: the diff failed open ` +
+      `[Pipeline] Skipped superseded-candidate report for ${cinemaId}: the diff failed open ` +
         `(${diffFailed}), so this batch was never compared against existing rows. ` +
-        `Orphans (if any) persist until a clean run.`,
+        `No screenings deleted.`,
     );
   }
 
@@ -1043,10 +986,15 @@ interface CinemaInput {
  * Ensure a cinema exists in the database, create if not
  */
 export async function ensureCinemaExists(cinema: CinemaInput): Promise<void> {
+  // Resolve first: this function INSERTs a new `cinemas` row for whatever ID
+  // it is handed, so it is the last place a legacy or invented ID can become
+  // a venue of its own.
+  const cinemaId = resolveCinemaId(cinema.id);
+
   const existing = await db
     .select()
     .from(cinemas)
-    .where(eq(cinemas.id, cinema.id))
+    .where(eq(cinemas.id, cinemaId))
     .limit(1);
 
   if (existing.length > 0) {
@@ -1071,13 +1019,13 @@ export async function ensureCinemaExists(cinema: CinemaInput): Promise<void> {
         isActive: true,
         updatedAt: new Date(),
       })
-      .where(eq(cinemas.id, cinema.id));
+      .where(eq(cinemas.id, cinemaId));
     return;
   }
 
   // Create new cinema
   await db.insert(cinemas).values({
-    id: cinema.id,
+    id: cinemaId,
     name: cinema.name,
     shortName: cinema.shortName,
     chain: cinema.chain,

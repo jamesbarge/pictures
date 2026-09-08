@@ -726,6 +726,34 @@ const DEFAULT_OPTIONS: Required<RunnerOptions> = {
 /**
  * Run a scraper configuration with unified error handling and logging
  */
+/**
+ * Record a venue that could not be initialised, so it counts as a failure
+ * instead of vanishing.
+ *
+ * `ensureCinemaExists` runs outside the per-venue try in every branch. Letting
+ * it throw unwinds to the outer catch with `venueResults` still empty, and an
+ * empty result set used to aggregate to `success: true` and exit 0. In the
+ * chain branch that silently skipped every remaining venue.
+ */
+function venueInitFailure(
+  venue: { id: string; name: string },
+  startTime: number,
+  error: unknown,
+): VenueResult {
+  return {
+    venueId: venue.id,
+    venueName: venue.name,
+    success: false,
+    screeningsFound: 0,
+    screeningsAdded: 0,
+    screeningsUpdated: 0,
+    screeningsFailed: 0,
+    durationMs: Date.now() - startTime,
+    error: error instanceof Error ? error.message : String(error),
+    retryCount: 0,
+  };
+}
+
 export async function runScraper(
   config: ScraperRunnerConfig,
   userOptions: RunnerOptions = {}
@@ -763,15 +791,39 @@ async function runScraperInner(
   try {
     if (config.type === "single") {
       // Single venue - simple case
-      await ensureCinemaExists({
-        id: config.venue.id,
-        name: config.venue.name,
-        shortName: config.venue.shortName,
-        chain: config.venue.chain,
-        website: config.venue.website ?? "",
-        address: config.venue.address,
-        features: config.venue.features,
-      });
+      try {
+        await ensureCinemaExists({
+          id: config.venue.id,
+          name: config.venue.name,
+          shortName: config.venue.shortName,
+          chain: config.venue.chain,
+          website: config.venue.website ?? "",
+          address: config.venue.address,
+          features: config.venue.features,
+        });
+      } catch (initError) {
+        const failed = venueInitFailure(config.venue, Date.now(), initError);
+        log({
+          level: "error",
+          event: "venue_init_failed",
+          data: { venueId: config.venue.id, error: failed.error },
+        });
+        // Same best-effort record the multi and chain branches write, so a
+        // venue that only ever runs standalone is still visible to
+        // detectSilentBreakers and detectStaleCinemas. recordScraperRun
+        // returns early when the DB is unavailable and swallows its own
+        // errors, so this can leave no row and must not change the outcome.
+        pushPendingRecord(recordScraperRun({
+          cinemaId: config.venue.id,
+          startedAt: new Date(),
+          status: "failed",
+          screeningCount: 0,
+          durationMs: 0,
+          error: failed.error,
+        }));
+        venueResults.push(failed);
+        throw initError;
+      }
 
       const scraper = config.createScraper();
       const result = await runVenueWithCap(config.venue, () =>
@@ -786,15 +838,35 @@ async function runScraperInner(
         : config.venues;
 
       for (const venue of venuesToScrape) {
-        await ensureCinemaExists({
-          id: venue.id,
-          name: venue.name,
-          shortName: venue.shortName,
-          chain: venue.chain,
-          website: venue.website ?? "",
-          address: venue.address,
-          features: venue.features,
-        });
+        try {
+          await ensureCinemaExists({
+            id: venue.id,
+            name: venue.name,
+            shortName: venue.shortName,
+            chain: venue.chain,
+            website: venue.website ?? "",
+            address: venue.address,
+            features: venue.features,
+          });
+        } catch (initError) {
+          const failed = venueInitFailure(venue, Date.now(), initError);
+          log({
+            level: "error",
+            event: "venue_init_failed",
+            data: { venueId: venue.id, error: failed.error },
+          });
+          pushPendingRecord(recordScraperRun({
+            cinemaId: venue.id,
+            startedAt: new Date(),
+            status: "failed",
+            screeningCount: 0,
+            durationMs: 0,
+            error: failed.error,
+          }));
+          venueResults.push(failed);
+          if (!options.continueOnError) break;
+          continue;
+        }
 
         const scraper = config.createScraper(venue.id);
         const result = await runVenueWithCap(venue, () =>
@@ -814,53 +886,216 @@ async function runScraperInner(
         ? options.venueIds
         : config.getActiveVenueIds?.() ?? config.venues.map((v) => v.id);
 
-      const venuesToScrape = config.venues.filter((v) => activeVenueIds.includes(v.id));
+      let venuesToScrape = config.venues.filter((v) => activeVenueIds.includes(v.id));
 
-      // Ensure all venues exist
+      // Ensure all venues exist. One venue that cannot be initialised must
+      // cost that venue, not the whole chain.
+      //
+      // `chain` stays the display name ("Curzon"): that is what cinemas.chain
+      // has always held, what src/db/schema/cinemas.ts documents, and what the
+      // three chain run-*.ts runners still write. Nothing reads this column
+      // back through getCinemasByChain, so switching it to the registry's
+      // lowercase key would only split the column between entry points.
+      const initFailedVenueIds = new Set<string>();
       for (const venue of venuesToScrape) {
-        await ensureCinemaExists({
-          id: venue.id,
-          name: venue.name,
-          shortName: venue.shortName,
-          chain: config.chainName,
-          website: venue.website ?? "",
-          address: venue.address,
-          features: venue.features,
-        });
+        try {
+          await ensureCinemaExists({
+            id: venue.id,
+            name: venue.name,
+            shortName: venue.shortName,
+            chain: config.chainName,
+            website: venue.website ?? "",
+            address: venue.address,
+            features: venue.features,
+          });
+        } catch (initError) {
+          const failed = venueInitFailure(venue, Date.now(), initError);
+          log({
+            level: "error",
+            event: "venue_init_failed",
+            data: { venueId: venue.id, chain: config.chainName, error: failed.error },
+          });
+          pushPendingRecord(recordScraperRun({
+            cinemaId: venue.id,
+            startedAt: new Date(),
+            status: "failed",
+            screeningCount: 0,
+            durationMs: 0,
+            error: failed.error,
+          }));
+          venueResults.push(failed);
+          initFailedVenueIds.add(venue.id);
+        }
+      }
+      if (initFailedVenueIds.size > 0) {
+        venuesToScrape = venuesToScrape.filter((v) => !initFailedVenueIds.has(v.id));
       }
 
-      // Create chain scraper and scrape all venues at once
-      const chainScraper = config.createScraper();
-      const startTime = Date.now();
+      // Only ask the scraper for venues that actually have a cinemas row. The
+      // filtered list is also what the results loop below iterates, so passing
+      // the unfiltered activeVenueIds meant the scraper did work for a venue
+      // whose row could not be ensured and the result was then discarded.
+      const scrapeVenueIds = venuesToScrape.map((v) => v.id);
 
-      try {
-        // Chain scrapers fetch every venue in one call, so the wall-clock
-        // cap scales with venue count (e.g. Curzon ~15 venues). A timeout
-        // rejects into the catch below, which marks all venues failed.
-        const chainCapMs = VENUE_TIMEOUT_MS * Math.max(1, venuesToScrape.length);
-        const results = await withWallClockCap(
-          chainScraper.scrapeVenues(activeVenueIds),
-          chainCapMs,
-          `chain ${config.chainName}`,
-        );
+      if (scrapeVenueIds.length === 0) {
+        // Every venue failed to initialise. Their failure results are already
+        // recorded; building a chain scraper to ask it for nothing would only
+        // risk a network round trip and a misleading log line.
+        log({
+          level: "error",
+          event: "chain_scrape_skipped",
+          data: {
+            chain: config.chainName,
+            reason: "no venue could be initialised",
+            venueCount: initFailedVenueIds.size,
+          },
+        });
+      } else {
+        // Create chain scraper and scrape all venues at once
+        const chainScraper = config.createScraper();
+        const startTime = Date.now();
 
-        // Process every requested venue so omitted results become explicit failures.
-        for (const venue of venuesToScrape) {
-          const venueId = venue.id;
-          const screenings = results.get(venueId);
-          if (!screenings) {
-            const error = chainScraper.venueErrors?.get(venueId)
-              ?? `Chain scraper returned no result for requested venue ${venueId}`;
+        try {
+          // Chain scrapers fetch every venue in one call, so the wall-clock
+          // cap scales with venue count (e.g. Curzon ~15 venues). A timeout
+          // rejects into the catch below, which marks all venues failed.
+          const chainCapMs = VENUE_TIMEOUT_MS * Math.max(1, venuesToScrape.length);
+          const results = await withWallClockCap(
+            chainScraper.scrapeVenues(scrapeVenueIds),
+            chainCapMs,
+            `chain ${config.chainName}`,
+          );
+
+          // Process every requested venue so omitted results become explicit failures.
+          for (const venue of venuesToScrape) {
+            const venueId = venue.id;
+            const screenings = results.get(venueId);
+            if (!screenings) {
+              const error = chainScraper.venueErrors?.get(venueId)
+                ?? `Chain scraper returned no result for requested venue ${venueId}`;
+              pushPendingRecord(recordScraperRun({
+                cinemaId: venueId,
+                startedAt: new Date(startTime),
+                status: "failed",
+                screeningCount: 0,
+                durationMs: Date.now() - startTime,
+                error,
+              }));
+              venueResults.push({
+                venueId,
+                venueName: venue.name,
+                success: false,
+                screeningsFound: 0,
+                screeningsAdded: 0,
+                screeningsUpdated: 0,
+                screeningsFailed: 0,
+                durationMs: Date.now() - startTime,
+                error,
+                retryCount: 0,
+              });
+              continue;
+            }
+
+            const venueStartTime = Date.now();
+            let added = 0, updated = 0, failed = 0;
+            let venueBlocked = false;
+            let diffFailed: string | undefined;
+            let pipelineError: string | undefined;
+
+            if (screenings.length > 0) {
+              // Per-venue try: one venue's pipeline failure must not abort its
+              // siblings. This block used to sit bare inside the chain's single
+              // try below, so a single venue's DB timeout marked ALL venues in the
+              // chain failed with that venue's error message (2026-08-05: 11
+              // Picturehouse venues killed by one venue's diff timeout).
+              try {
+                if (options.useValidation) {
+                  const pipelineResult = await processScreenings(venueId, screenings);
+                  added = pipelineResult.added;
+                  updated = pipelineResult.updated;
+                  failed = pipelineResult.failed;
+                  venueBlocked = pipelineResult.blocked;
+                  diffFailed = pipelineResult.diffFailed;
+                } else {
+                  const pipelineResult = await saveScreenings(venueId, screenings);
+                  added = pipelineResult.added;
+                  venueBlocked = pipelineResult.blocked;
+                  diffFailed = pipelineResult.diffFailed;
+                }
+              } catch (pipeErr) {
+                pipelineError = pipeErr instanceof Error ? pipeErr.message : String(pipeErr);
+                log({
+                  level: "error",
+                  event: "venue_pipeline_failed",
+                  data: { venueId, screeningsFound: screenings.length, error: pipelineError },
+                });
+              }
+            }
+
+            if (venueBlocked) {
+              log({
+                level: "warn",
+                event: "venue_blocked",
+                data: { venueId, screeningsFound: screenings.length },
+              });
+            }
+
+            const venueError = pipelineError ?? (venueBlocked ? "scrape_blocked_by_diff_check" : undefined);
+
+            // Record chain per-venue scraper run (fire-and-forget). recordScraperRun
+            // downgrades "success" to "partial" when failedWrites > 0.
             pushPendingRecord(recordScraperRun({
               cinemaId: venueId,
+              startedAt: new Date(venueStartTime),
+              status: venueError ? "failed" : "success",
+              screeningCount: screenings.length,
+              durationMs: Date.now() - venueStartTime,
+              error: venueError,
+              // A blocked scrape attempted no writes, so its whole-batch `failed`
+              // count is not "lost writes" — see the single-venue path.
+              failedWrites: venueBlocked ? 0 : failed,
+              diffFailed,
+            }));
+
+            venueResults.push({
+              venueId,
+              venueName: venue.name,
+              success: !venueError,
+              screeningsFound: screenings.length,
+              screeningsAdded: venueError ? 0 : added,
+              screeningsUpdated: venueError ? 0 : updated,
+              screeningsFailed: failed,
+              durationMs: Date.now() - venueStartTime,
+              error: venueError,
+              retryCount: 0,
+              // Degradation marker only — see the single-venue path. In the chain
+              // shape this matters most: one starved venue's diff timeout is the
+              // whole run's canary even though its 10 siblings wrote fine.
+              diffFailed,
+            });
+          }
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          log({
+            level: "error",
+            event: "chain_scrape_failed",
+            data: { chain: config.chainName, error: errorMessage },
+          });
+
+          // Mark all venues as failed
+          for (const venue of venuesToScrape) {
+            // Record chain failure per-venue (fire-and-forget)
+            pushPendingRecord(recordScraperRun({
+              cinemaId: venue.id,
               startedAt: new Date(startTime),
               status: "failed",
               screeningCount: 0,
               durationMs: Date.now() - startTime,
-              error,
+              error: errorMessage,
             }));
+
             venueResults.push({
-              venueId,
+              venueId: venue.id,
               venueName: venue.name,
               success: false,
               screeningsFound: 0,
@@ -868,122 +1103,10 @@ async function runScraperInner(
               screeningsUpdated: 0,
               screeningsFailed: 0,
               durationMs: Date.now() - startTime,
-              error,
+              error: errorMessage,
               retryCount: 0,
             });
-            continue;
           }
-
-          const venueStartTime = Date.now();
-          let added = 0, updated = 0, failed = 0;
-          let venueBlocked = false;
-          let diffFailed: string | undefined;
-          let pipelineError: string | undefined;
-
-          if (screenings.length > 0) {
-            // Per-venue try: one venue's pipeline failure must not abort its
-            // siblings. This block used to sit bare inside the chain's single
-            // try below, so a single venue's DB timeout marked ALL venues in the
-            // chain failed with that venue's error message (2026-08-05: 11
-            // Picturehouse venues killed by one venue's diff timeout).
-            try {
-              if (options.useValidation) {
-                const pipelineResult = await processScreenings(venueId, screenings);
-                added = pipelineResult.added;
-                updated = pipelineResult.updated;
-                failed = pipelineResult.failed;
-                venueBlocked = pipelineResult.blocked;
-                diffFailed = pipelineResult.diffFailed;
-              } else {
-                const pipelineResult = await saveScreenings(venueId, screenings);
-                added = pipelineResult.added;
-                venueBlocked = pipelineResult.blocked;
-                diffFailed = pipelineResult.diffFailed;
-              }
-            } catch (pipeErr) {
-              pipelineError = pipeErr instanceof Error ? pipeErr.message : String(pipeErr);
-              log({
-                level: "error",
-                event: "venue_pipeline_failed",
-                data: { venueId, screeningsFound: screenings.length, error: pipelineError },
-              });
-            }
-          }
-
-          if (venueBlocked) {
-            log({
-              level: "warn",
-              event: "venue_blocked",
-              data: { venueId, screeningsFound: screenings.length },
-            });
-          }
-
-          const venueError = pipelineError ?? (venueBlocked ? "scrape_blocked_by_diff_check" : undefined);
-
-          // Record chain per-venue scraper run (fire-and-forget). recordScraperRun
-          // downgrades "success" to "partial" when failedWrites > 0.
-          pushPendingRecord(recordScraperRun({
-            cinemaId: venueId,
-            startedAt: new Date(venueStartTime),
-            status: venueError ? "failed" : "success",
-            screeningCount: screenings.length,
-            durationMs: Date.now() - venueStartTime,
-            error: venueError,
-            // A blocked scrape attempted no writes, so its whole-batch `failed`
-            // count is not "lost writes" — see the single-venue path.
-            failedWrites: venueBlocked ? 0 : failed,
-            diffFailed,
-          }));
-
-          venueResults.push({
-            venueId,
-            venueName: venue.name,
-            success: !venueError,
-            screeningsFound: screenings.length,
-            screeningsAdded: venueError ? 0 : added,
-            screeningsUpdated: venueError ? 0 : updated,
-            screeningsFailed: failed,
-            durationMs: Date.now() - venueStartTime,
-            error: venueError,
-            retryCount: 0,
-            // Degradation marker only — see the single-venue path. In the chain
-            // shape this matters most: one starved venue's diff timeout is the
-            // whole run's canary even though its 10 siblings wrote fine.
-            diffFailed,
-          });
-        }
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        log({
-          level: "error",
-          event: "chain_scrape_failed",
-          data: { chain: config.chainName, error: errorMessage },
-        });
-
-        // Mark all venues as failed
-        for (const venue of venuesToScrape) {
-          // Record chain failure per-venue (fire-and-forget)
-          pushPendingRecord(recordScraperRun({
-            cinemaId: venue.id,
-            startedAt: new Date(startTime),
-            status: "failed",
-            screeningCount: 0,
-            durationMs: Date.now() - startTime,
-            error: errorMessage,
-          }));
-
-          venueResults.push({
-            venueId: venue.id,
-            venueName: venue.name,
-            success: false,
-            screeningsFound: 0,
-            screeningsAdded: 0,
-            screeningsUpdated: 0,
-            screeningsFailed: 0,
-            durationMs: Date.now() - startTime,
-            error: errorMessage,
-            retryCount: 0,
-          });
         }
       }
     }
@@ -1000,7 +1123,10 @@ async function runScraperInner(
 
   // Aggregate results
   const result: RunnerResult = {
-    success: venueResults.every((r) => r.success),
+    // An empty result set is a failure, not a vacuous success. `[].every(...)`
+    // is true, so a throw before any venue ran used to exit 0 and be
+    // checkpointed as done by --resume.
+    success: venueResults.length > 0 && venueResults.every((r) => r.success),
     startedAt,
     completedAt,
     durationMs,

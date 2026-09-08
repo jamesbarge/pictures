@@ -1,3 +1,14 @@
+## 2026-09-08: Scraper audit integration candidate — identity, failure reporting and non-destructive diagnostics
+**PR**: Not opened | **Files**: `src/scrapers/pipeline.ts`, `src/scrapers/runner-factory.ts`, `scripts/lcut-gapfill.ts`, `src/scripts/run-scrape-and-enrich.ts`, `src/config/cinema-registry.ts`, admin screening routes, time utilities and regression tests
+- Canonicalize known venue aliases at screening/venue write boundaries; record initialization failures and exclude failed venues from chain scraping. Run recording remains best-effort.
+- Report failed/rejected L-CUT writes as an unsuccessful phase, preserving existing checkpoint and final-status propagation.
+- Read validator hours and calendar dates in Europe/London regardless of host timezone. The shared bare-time PM assumption and early-time acceptance policy are deliberately unchanged.
+- Replace proximity-based future-screening deletion with a read-only candidate count. A nearby refreshed showing is not proof of replacement/cancellation; diagnostic failures do not fail successful writes.
+- Integrates selected C1/C2/C3 work, excluding runner metadata consolidation, seed changes, data repairs and unresolved source-time interpretation. Captured source excerpts are now offline fixtures; they do not establish production persistence.
+- Local candidate only: no production database access, merge, push or deployment. Scope, verification and remaining release gates: `changelogs/2026-09-08-scraper-audit-integration.md`.
+
+---
+
 ## 2026-08-26: Screening writes now survive a season-link timeout
 **PR**: #746 | **Files**: `src/scrapers/pipeline.ts`, `src/scrapers/pipeline-season-link.test.ts`
 - **`linkFilmToMatchingSeasons` sat ahead of the screening insert loop, inside the film-level try.** A 10s `withDbTimeout` rejection there jumped straight to the film-level catch, which ran `result.failed += filmScreenings.length - settled` with `settled` still 0, so the film's entire screening list was counted failed and never inserted. The writes never reached `attemptScreeningWrite`, so the deferred-write retry pass could not recover them either.

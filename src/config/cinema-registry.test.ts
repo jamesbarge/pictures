@@ -14,6 +14,7 @@ import {
   getLegacyIdMappings,
   getPlaywrightCinemas,
   isLegacyId,
+  resolveCinemaId,
   VENUE_LANGUAGE_PRIORS,
 } from "./cinema-registry";
 
@@ -190,5 +191,28 @@ describe("VENUE_LANGUAGE_PRIORS", () => {
         expect(lang).toMatch(/^[a-z]{2}$/);
       }
     }
+  });
+});
+
+describe("resolveCinemaId", () => {
+  it("returns a canonical ID unchanged", () => {
+    expect(resolveCinemaId("bfi-southbank")).toBe("bfi-southbank");
+  });
+
+  it("resolves the Nickel legacy alias that produced 56 duplicate screenings", () => {
+    // 2026-09-08 audit: `nickel` and `the-nickel` both held the same 56 rows.
+    expect(resolveCinemaId("nickel")).toBe("the-nickel");
+  });
+
+  it("resolves every declared legacy ID to its canonical ID", () => {
+    for (const [legacyId, canonicalId] of getLegacyIdMappings()) {
+      expect(resolveCinemaId(legacyId)).toBe(canonicalId);
+    }
+  });
+
+  it("throws for an ID that is in neither the canonical nor the legacy set", () => {
+    // getCanonicalId() passes unknown IDs straight through, which is how an
+    // unregistered ID reached ensureCinemaExists and minted an orphan venue.
+    expect(() => resolveCinemaId("totally-made-up")).toThrow(/not in the cinema registry/i);
   });
 });

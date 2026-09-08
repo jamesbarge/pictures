@@ -18,7 +18,12 @@ vi.mock("@/scrapers/pipeline", () => ({
   saveScreenings: vi.fn().mockResolvedValue({ added: 0, updated: 0, failed: 0 }),
 }));
 
-import { scrapeEventiveFestival, EVENTIVE_FESTIVALS } from "./eventive-scraper";
+import {
+  scrapeEventiveFestival,
+  scrapeActiveEventiveFestivals,
+  EVENTIVE_FESTIVALS,
+} from "./eventive-scraper";
+import { saveScreenings } from "@/scrapers/pipeline";
 import { getFilms, getEvents, discoverEventBucket } from "./eventive-client";
 
 const mockFilms = [
@@ -229,5 +234,42 @@ describe("scrapeEventiveFestival", () => {
     await expect(
       scrapeEventiveFestival("frightfest", 2026)
     ).rejects.toThrow("503");
+  });
+});
+
+describe("scrapeActiveEventiveFestivals venue identity", () => {
+  /**
+   * The save loop validated with `getCinemaById(cinemaId)`, which resolves
+   * legacy aliases and returns the canonical record, then persisted the *raw*
+   * mapping key. A legacy ID therefore passed the guard and was written
+   * verbatim, which is how a second `cinemas` row gets minted for one venue
+   * (see the `nickel` / `the-nickel` split in the 2026-09-08 audit).
+   */
+  it("saves under the canonical cinema ID when the mapping holds a legacy alias", async () => {
+    // FrightFest's watch window is August (typicalMonths [7]); pin the clock so
+    // this does not silently stop exercising the loop in another month.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-15T12:00:00Z"));
+
+    const frightfest = EVENTIVE_FESTIVALS.find((f) => f.slugBase === "frightfest")!;
+    const originalMapping = frightfest.venueMapping["Prince Charles Cinema"];
+    // "nickel" is a real legacy alias of the canonical "the-nickel".
+    frightfest.venueMapping["Prince Charles Cinema"] = "nickel";
+
+    try {
+      vi.mocked(discoverEventBucket).mockResolvedValue("bucket123");
+      vi.mocked(getFilms).mockResolvedValue(mockFilms as never);
+      vi.mocked(getEvents).mockResolvedValue(mockEvents as never);
+      vi.mocked(saveScreenings).mockClear();
+
+      await scrapeActiveEventiveFestivals();
+
+      const savedCinemaIds = vi.mocked(saveScreenings).mock.calls.map((c) => c[0]);
+      expect(savedCinemaIds).toContain("the-nickel");
+      expect(savedCinemaIds).not.toContain("nickel");
+    } finally {
+      frightfest.venueMapping["Prince Charles Cinema"] = originalMapping;
+      vi.useRealTimers();
+    }
   });
 });
