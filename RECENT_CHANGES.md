@@ -5,6 +5,7 @@
 - Read validator hours and calendar dates in Europe/London regardless of host timezone. The shared bare-time PM assumption and early-time acceptance policy are deliberately unchanged.
 - Replace proximity-based future-screening deletion with a read-only candidate count. A nearby refreshed showing is not proof of replacement/cancellation; diagnostic failures do not fail successful writes.
 - Integrates selected C1/C2/C3 work, excluding runner metadata consolidation, seed changes, data repairs and unresolved source-time interpretation. Captured source excerpts are now offline fixtures; they do not establish production persistence.
+- Independent review of the combined implementation found no introduced runtime blockers; its one combined-count documentation correction is applied.
 - Local candidate only: no production database access, merge, push or deployment. Scope, verification and remaining release gates: `changelogs/2026-09-08-scraper-audit-integration.md`.
 
 ---

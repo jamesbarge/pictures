@@ -9,7 +9,7 @@
 
 1. Strict canonical cinema-ID resolution at `processScreenings` and `ensureCinemaExists`; canonical IDs in admin screening writes and Eventive persistence. Correct the two known standalone alias IDs without changing their venue metadata. Add the three missing task-map entries.
 2. Explicit initialization failures in single, multi and chain runners. Chain fetches receive only successfully initialized IDs and are not constructed when none remain. Empty results cannot report success. Failed run records are attempted best-effort, not guaranteed.
-3. L-CUT outcome derives from failed/rejected counts rather than hardcoded success. Detail separates added and updated counts; failure-only outcomes enter the existing warning path. Existing summary/checkpoint functions receive the outcome. Later-phase continuation and the actual process exit are inspected, not covered by an end-to-end orchestrator test.
+3. L-CUT outcome derives from failed/rejected counts rather than hardcoded success. Detail labels the combined added/updated count accurately; failure-only outcomes enter the existing warning path. Existing summary/checkpoint functions receive the outcome. Later-phase continuation and the actual process exit are inspected, not covered by an end-to-end orchestrator test.
 4. C1's London-clock helper and validator changes only. Padded-time interpretation changes are excluded. Existing PM assumptions, early-hour acceptance/rejection and horizon policy remain unchanged.
 5. The former superseded-screening DELETE is replaced by a read-only COUNT using the same proximity predicate. Nonzero counts are logged and returned on the pipeline result; no delete opt-in exists. Partial/blocked/failed-write batches still skip the diagnostic. Report errors yield an unavailable count and a warning, not a failed screening write. The client-side 10-second ceiling does not cancel an already-issued server query.
 6. Offline source excerpts with capture URLs/timestamps and original-response hashes, plus query-contract, pipeline orchestration and time regression tests.
@@ -59,4 +59,8 @@ C1 was rechecked during integration at the user's request: clean at `2ddb88ec`; 
 
 ## Release gates
 
-This candidate is not deployed. Before a PR touching these files, perform the project-required independent code review; before shipping obtain explicit deployment approval. Review the report-only cleanup tradeoff. Existing data repairs require a separate bounded preview and approval, not a broad seed or reconciliation command.
+Independent read-only code review of `d5028a18..f40b0088` completed: no introduced runtime blocker found. The sole P3 finding was the combined-count wording above, now corrected. Review covered caller compatibility, initialization failures, L-CUT status/checkpoint flow, read-only diagnostics, London validation and test evidence. No extra service access or full test rerun was performed for review.
+
+A constructor throwing after an earlier successful venue in a multi-runner can still leave the aggregate successful; this predates the candidate. The initialization/empty-result fixes must not be described as eliminating every false-success path.
+
+This candidate is not deployed. PR publication is authorized; merge/deployment still requires explicit approval. The report-only cleanup retention tradeoff and separate data-repair needs remain. Do not run a broad seed or reconciliation command as part of release.
