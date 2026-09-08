@@ -60,8 +60,9 @@ check that could not have worked.
 - `target_url` is no longer used. A resolve step maps the environment to its
   public endpoint: frontend to `https://pictures.london`, filmcal2 to
   `https://api.pictures.london/api/cinemas`. Both measured at HTTP 200.
-- An unmapped environment fails the job with an actionable `::error::` rather
-  than testing something arbitrary.
+- Unsupported environments are skipped by the job-level allowlist. An
+  allowlisted environment without a URL mapping fails with an actionable
+  `::error::` rather than testing something arbitrary.
 
 `/api/cinemas` is the backend target because the only `/health` routes on that
 app live under `/api/admin` and are Clerk-gated, so none can serve as an
@@ -93,3 +94,13 @@ GitHub's expression evaluator was not run, and no GitHub event fired.
 - The smoke test is a single unauthenticated GET returning 2xx. It does not
   assert page content, and `https://pictures.london` follows a redirect to
   `https://www.pictures.london/`.
+- Public endpoint availability does not attest that the endpoint is serving
+  the exact commit associated with the triggering deployment.
+
+## Independent review
+
+Independent review found no introduced runtime/security blockers. Its P3
+documentation finding (unknown environments skip the job rather than fail its
+resolver) is corrected above. YAML parsing, both shell blocks' syntax, and
+diff whitespace checks passed. The primary reviewer also independently ran
+the five-case resolver check successfully; no live deployment event was fired.
