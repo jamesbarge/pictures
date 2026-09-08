@@ -1,9 +1,10 @@
 # Scraper audit integration candidate
 
 **Date:** 2026-09-08
-**PR:** Not opened; local development candidate only
-**Branch:** `fix/scraper-audit-integration`
-**Base:** `d5028a1896e5edd7c5d428fad1722b8257064b32`
+**PR:** Publication pending; not merged or deployed
+**Branch:** `fix/scraper-audit-safeguards`
+**PR base:** `defc0ae3` (current `origin/main` at preparation)
+**Reviewed integration base:** `d5028a1896e5edd7c5d428fad1722b8257064b32`
 
 ## Included
 
@@ -26,7 +27,7 @@ This is a count-only diagnostic, not a durable per-row replacement audit. No SQL
 - C1's change interpreting zero-padded bare times as morning. Its `08:00` source example is Closed for Booking; it proves source representation, not an accepted or persisted production row. Several original trace dates were illustrative. Fixtures do not preserve those as observed screening dates.
 - Missing cinema parent rows, existing Nickel duplicates, wrong film matches, historical Peckhamplex row recovery, Close-Up blocking and unknown-writer identification. No production data was queried or repaired.
 - L-CUT's combined failed/rejected semantics and blocked-batch double counting remain documented limitations; missing cinema records fail only when eligible writes are attempted.
-- No new dependencies, database services, network capture, full scrape, merge, push, PR or deployment.
+- No new dependencies, database services, network source capture, full scrape, merge or deployment. Publishing this feature branch and opening its PR are separately authorized.
 
 ## Source branches preserved
 
@@ -37,7 +38,7 @@ This is a count-only diagnostic, not a durable per-row replacement audit. No SQL
 | C3 L-CUT reporting | `d45afce8` | Runtime changes and relevant tests |
 | C3 cleanup tests | `a03d2c1d` | Query-contract coverage adapted to report-only behavior |
 
-The original source worktrees are unchanged. The integration starts from the current root base, not from an agent's older base. L-CUT test import and changelog conflicts were resolved locally; final consolidated release notes replace the broader source-branch claims.
+The original source-agent worktrees are unchanged. The reviewed integration remains on `fix/scraper-audit-integration`. The publication branch was recreated from current main because unrelated hook PR #747 remains open. Only the scraper candidate and review documentation were applied; a changelog-only conflict was resolved without importing the hook entry. All `src/`, `scripts/`, package and lockfile contents match the tested/reviewed `f40b0088` tree exactly. No hook changes are included in this PR.
 
 ## Verification
 
