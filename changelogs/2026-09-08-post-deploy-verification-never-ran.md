@@ -1,6 +1,6 @@
 # Post-deploy verification never ran, and would have passed against a login page
 
-**PR**: (pending)
+**PR**: #749
 **Date**: 2026-09-08
 
 ## Two defects, both silent
