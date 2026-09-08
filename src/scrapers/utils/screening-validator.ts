@@ -10,6 +10,7 @@
  * - Suspicious patterns (Christmas Day, etc.)
  */
 
+import { londonParts } from "./date-parser";
 import type { RawScreening } from "../types";
 
 /**
@@ -93,7 +94,14 @@ function validateScreening(screening: RawScreening): ValidationResult {
     errors.push("invalid_datetime: Datetime is invalid or missing");
   } else {
     const now = new Date();
-    const hour = datetime.getHours();
+
+    // Cinema policy (opening hours, holiday closures) is expressed in London
+    // local time, so read the instant's London clock fields explicitly. Reading
+    // getHours()/getMonth()/getDate() gave the host's answer instead, so the
+    // same screening was rejected under TZ=UTC (CI, cron, Vercel) and accepted
+    // under TZ=Europe/London.
+    const london = londonParts(datetime);
+    const hour = london.hours;
     const daysDiff = Math.floor((datetime.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
     // Check if in the past
@@ -126,8 +134,8 @@ function validateScreening(screening: RawScreening): ValidationResult {
     }
 
     // Check closed dates
-    const month = datetime.getMonth() + 1;
-    const day = datetime.getDate();
+    const month = london.month + 1;
+    const day = london.day;
 
     for (const closed of CLOSED_DATES) {
       if (month === closed.month && day === closed.day) {

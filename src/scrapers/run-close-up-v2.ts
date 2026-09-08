@@ -8,7 +8,7 @@ import { createCloseUpCinemaScraper } from "./cinemas/close-up";
 const config: SingleVenueConfig = {
   type: "single",
   venue: {
-    id: "close-up",
+    id: "close-up-cinema",
     name: "Close-Up Film Centre",
     shortName: "Close-Up",
     website: "https://www.closeupfilmcentre.com",

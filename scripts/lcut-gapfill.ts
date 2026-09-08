@@ -48,7 +48,7 @@ const DEDUP_WINDOW_MS = 20 * 60 * 1000; // ±20 minutes
  * row must also dedup against IMAX).
  * Keys are normalized via normalizeVenueName (lowercase, emoji stripped).
  */
-const VENUE_MAP: Record<string, string[]> = {
+export const VENUE_MAP: Record<string, string[]> = {
   "prince charles cinema": ["prince-charles"],
   "british film institute": ["bfi-southbank", "bfi-imax"],
   "institute of contemporary arts": ["ica"],
@@ -540,6 +540,67 @@ export function detectLcutRegressions(
     .filter((v) => scrapedIds.has(v.venue) && v.missing > threshold)
     .map((v) => ({ venue: v.venue, missing: v.missing, total: v.total, covered: v.covered }))
     .sort((a, b) => b.missing - a.missing);
+}
+
+/** The `/scrape` workflow's phase result for the L-CUT gap-fill phase. */
+export interface LcutPhaseOutcome {
+  ok: boolean;
+  warn: boolean;
+  detail: string;
+}
+
+/**
+ * Derive the /scrape phase result from a gap-fill report.
+ *
+ * `ok` is false whenever a supplementary write did not land. The phase used to
+ * hardcode `ok: true` and print `totalInserted` alone, so the 2026-09-08 run
+ * reported "98 inserted (source-only)" as a clean phase while two writes had
+ * dropped their screenings to foreign-key violations (metroland-studios,
+ * deptford-cinema, neither of which has a cinema row).
+ *
+ * Coverage regressions and unmapped L-CUT venue names stay warnings. The
+ * gap-fill itself did its job in both cases. Both are signals about our own
+ * scrapers and about VENUE_MAP.
+ *
+ * A batch blocked by the pipeline's diff check also fails the phase, because
+ * that branch returns `failed: rawScreenings.length` and runLcutGapfill never
+ * calls processScreenings with an empty batch. `VenueParity.blocked` itself
+ * stays unread here, so the detail says "failed/rejected" where "blocked"
+ * would read better.
+ *
+ * Counter caveat: `report.totalFailed` sums each venue's `result.failed +
+ * result.rejected` (see VenueParity.failed), so it mixes writes that threw with
+ * rows the screening validator refused, hence the "failed/rejected" label
+ * matching the CLI footer. In this path the mix is thin. runLcutGapfill already
+ * drops past screenings and anything before 09:00 London, and L-CUT rows carry
+ * `timeSource: "iso"` inside a 35-day horizon, so `past_screening`,
+ * `suspicious_time_early` and `too_far_future` cannot normally fire. What
+ * remains is `title_too_short` / `title_too_long` on a third-party feed we do
+ * not control, plus a past-screening race: `now` is captured before the execute
+ * loop, so the window is the loop's whole duration: seconds per venue for the
+ * diff and initFilmCache.
+ *
+ * Know the cost before leaning on that: one routine rejection now fails a
+ * 30-60 minute run, exits 1 and holds the checkpoint. shouldRunSupersededCleanup
+ * (src/scrapers/pipeline.ts) makes the opposite call for the same counter and
+ * says why. Splitting `VenueParity.failed` into `writeFailed` and `rejected`,
+ * gating `ok` on the former and folding the latter into `warn`, removes the
+ * caveat entirely. That is a product-policy call, deliberately left to the human.
+ */
+export function summarizeLcutPhase(
+  report: LcutGapfillReport,
+  regressions: RegressionSignal[],
+  threshold: number,
+): LcutPhaseOutcome {
+  const parts = [`${report.totalInserted} added/updated (source-only)`];
+  if (report.totalFailed > 0) parts.push(`${report.totalFailed} failed/rejected`);
+  parts.push(`${regressions.length} scraped venue(s) >${threshold} missing`);
+  if (report.unmapped.length > 0) parts.push(`${report.unmapped.length} unmapped`);
+  return {
+    ok: report.totalFailed === 0,
+    warn: regressions.length > 0 || report.unmapped.length > 0,
+    detail: parts.join(", "),
+  };
 }
 
 /** Render the per-venue coverage table as a printable string. */

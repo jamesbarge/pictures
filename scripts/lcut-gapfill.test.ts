@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // The script imports the pipeline (which pulls in the DB client); mock the
 // heavy modules so the pure helpers can be tested without a connection.
@@ -25,12 +25,24 @@ import {
   detectLcutRegressions,
   runLcutGapfill,
   getLcutTargetCinemaIds,
+  summarizeLcutPhase,
   type LcutFilm,
   type LcutGapfillReport,
+  VENUE_MAP,
+  type RegressionSignal,
 } from "./lcut-gapfill";
 import { processScreenings } from "@/scrapers/pipeline";
 import { getScrapedCinemaIds } from "@/scrapers/registry";
 import { getCinemaById } from "@/config/cinema-registry";
+import {
+  CINEMA_REGISTRY,
+  getCinemasSeedData,
+  resolveCinemaId,
+} from "@/config/cinema-registry";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { computeRunStatus, type PhaseId, type SummaryPhase } from "@/lib/scrape-run-summary";
+import { honoredPhasePrefix } from "@/lib/scrape-checkpoint";
 
 describe("normalizeVenueName", () => {
   it("strips the pride flag emoji from The Arzner", () => {
@@ -274,6 +286,12 @@ describe("detectLcutRegressions", () => {
 });
 
 describe("runLcutGapfill (executeTargets filtering)", () => {
+  // Each case sets its own processScreenings implementation; reset between them
+  // so an appended case can never inherit a previous one's failing pipeline.
+  beforeEach(() => {
+    vi.mocked(processScreenings).mockReset();
+  });
+
   const DAY = 86_400_000;
   function future(daysOut: number, hourZ = 15): string {
     const d = new Date(Date.now() + daysOut * DAY);
@@ -347,5 +365,287 @@ describe("runLcutGapfill (executeTargets filtering)", () => {
       expect.any(Array),
       { skipSupersededCleanup: true },
     );
+  });
+
+  // Wiring guard: a pipeline write error must reach report.totalFailed, which
+  // is what summarizeLcutPhase gates the phase on. The 2026-09-08 shape: most
+  // venues fine, two single-screening venues losing their write to a
+  // foreign-key violation because no cinema row exists.
+  it("carries per-venue write failures through to totalFailed and fails the phase", async () => {
+    const listings: LcutFilm[] = [
+      mkFilm("a1", "The Arzner 🏳️‍🌈", "Paris Is Burning", 3),
+      mkFilm("m1", "Metroland Studios", "Day Shall Dawn", 6),
+      mkFilm("d1", "Deptford Cinema", "Daisies", 19),
+    ];
+    const BROKEN = new Set(["metroland-studios", "deptford-cinema"]);
+
+    vi.mocked(processScreenings).mockImplementation(
+      async (cinemaId: string, rows: unknown[]) => ({
+        cinemaId,
+        added: BROKEN.has(cinemaId) ? 0 : rows.length,
+        updated: 0,
+        failed: BROKEN.has(cinemaId) ? rows.length : 0,
+        rejected: 0,
+        blocked: false,
+        scrapedAt: new Date(),
+      }),
+    );
+
+    const report = await runLcutGapfill({
+      execute: true,
+      executeTargets: new Set(["the-arzner", "metroland-studios", "deptford-cinema"]),
+      fetchListings: async () => listings,
+      loadExisting: async () => new Map(),
+      log: () => {},
+      warn: () => {},
+    });
+
+    expect(report.totalInserted).toBe(1);
+    expect(report.totalFailed).toBe(2);
+    const out = summarizeLcutPhase(report, [], 5);
+    expect(out.ok).toBe(false);
+    expect(out.detail).toContain("2 failed/rejected");
+  });
+
+  // A diff-check block also fails the phase, because the pipeline's blocked
+  // branch returns `failed: rawScreenings.length` (pipeline.ts) and
+  // runLcutGapfill never calls it with an empty batch. So `blocked` needs no
+  // separate gate in summarizeLcutPhase. The behaviour is incidental to that
+  // return shape, so pin it here.
+  it("fails the phase when a venue's batch was blocked by the diff check", async () => {
+    vi.mocked(processScreenings).mockImplementation(
+      async (cinemaId: string, rows: unknown[]) => ({
+        cinemaId,
+        added: 0,
+        updated: 0,
+        failed: rows.length,
+        rejected: 0,
+        blocked: true,
+        scrapedAt: new Date(),
+      }),
+    );
+
+    const report = await runLcutGapfill({
+      execute: true,
+      executeTargets: new Set(["the-arzner"]),
+      fetchListings: async () => [mkFilm("a1", "The Arzner 🏳️‍🌈", "Paris Is Burning", 3)],
+      loadExisting: async () => new Map(),
+      log: () => {},
+      warn: () => {},
+    });
+
+    expect(report.venues[0].blocked).toBe(true);
+    expect(report.totalInserted).toBe(0);
+    expect(report.totalFailed).toBe(1);
+    expect(summarizeLcutPhase(report, [], 5).ok).toBe(false);
+  });
+});
+
+describe("summarizeLcutPhase", () => {
+  const report = (over: Partial<LcutGapfillReport> = {}): LcutGapfillReport => ({
+    days: 35,
+    executed: true,
+    listingCount: 0,
+    unmapped: [],
+    venues: [],
+    totalMissing: 0,
+    totalInserted: 0,
+    totalFailed: 0,
+    ...over,
+  });
+  const regression = (venue: string, missing: number): RegressionSignal => ({
+    venue,
+    missing,
+    total: missing,
+    covered: 0,
+  });
+
+  it("succeeds when every write landed", () => {
+    const out = summarizeLcutPhase(report({ totalInserted: 98 }), [], 5);
+    expect(out.ok).toBe(true);
+    expect(out.warn).toBe(false);
+  });
+
+  it("says added/updated, never inserted", () => {
+    const out = summarizeLcutPhase(report({ totalInserted: 98 }), [], 5);
+    expect(out.detail).toContain("98 added/updated");
+    expect(out.detail).not.toContain("inserted");
+  });
+
+  it("fails the phase on the baseline mix of 98 writes and 2 failures", () => {
+    const out = summarizeLcutPhase(report({ totalInserted: 98, totalFailed: 2 }), [], 5);
+    expect(out.ok).toBe(false);
+    expect(out.detail).toContain("98 added/updated");
+    expect(out.detail).toContain("2 failed/rejected");
+  });
+
+  it("fails the phase when nothing landed at all", () => {
+    const out = summarizeLcutPhase(report({ totalInserted: 0, totalFailed: 2 }), [], 5);
+    expect(out.ok).toBe(false);
+    expect(out.detail).toContain("0 added/updated");
+    expect(out.detail).toContain("2 failed/rejected");
+  });
+
+  it("succeeds quietly when there was no gap to fill", () => {
+    const out = summarizeLcutPhase(report(), [], 5);
+    expect(out.ok).toBe(true);
+    expect(out.warn).toBe(false);
+    expect(out.detail).not.toContain("failed/rejected");
+  });
+
+  it("keeps coverage regressions and unmapped venues as warnings, not failures", () => {
+    const out = summarizeLcutPhase(
+      report({ totalInserted: 98, unmapped: [{ name: "Some New Venue", count: 38 }] }),
+      [regression("ica", 8), regression("rio-dalston", 6)],
+      5,
+    );
+    expect(out.ok).toBe(true);
+    expect(out.warn).toBe(true);
+    expect(out.detail).toContain("2 scraped venue(s) >5 missing");
+    expect(out.detail).toContain("1 unmapped");
+  });
+
+  it("reports a write failure alongside coverage warnings", () => {
+    const out = summarizeLcutPhase(
+      report({ totalInserted: 98, totalFailed: 2, unmapped: [{ name: "X", count: 1 }] }),
+      [regression("ica", 8)],
+      5,
+    );
+    expect(out.ok).toBe(false);
+    expect(out.warn).toBe(true);
+    expect(out.detail).toContain("2 failed/rejected");
+    expect(out.detail).toContain("1 scraped venue(s) >5 missing");
+  });
+});
+
+describe("L-CUT write failures propagate to the run outcome", () => {
+  const phase = (id: PhaseId, ok: boolean, warn?: boolean): SummaryPhase => ({
+    id,
+    label: id,
+    ok,
+    warn,
+    durationMin: 1,
+  });
+
+  it("marks the whole run failed when the L-CUT phase failed", () => {
+    const out = summarizeLcutPhase(
+      {
+        days: 35,
+        executed: true,
+        listingCount: 0,
+        unmapped: [],
+        venues: [],
+        totalMissing: 0,
+        totalInserted: 98,
+        totalFailed: 2,
+      },
+      [],
+      5,
+    );
+    // Later independent phases still run and still record their own success.
+    const phases = [
+      phase("preflight", true),
+      phase("scrape", true),
+      phase("lcut", out.ok, out.warn),
+      phase("cleanup", true),
+      phase("audit", true),
+    ];
+    expect(computeRunStatus(phases)).toBe("failed");
+  });
+
+  it("does not treat later phases as resumable when lcut was never checkpointed", () => {
+    // markPhaseComplete is gated on result.ok, so a failed lcut is absent from
+    // the checkpoint, so the phases after it must re-run.
+    const sequence: PhaseId[] = ["scrape", "lcut", "cleanup", "audit"];
+    expect(honoredPhasePrefix(sequence, ["scrape", "cleanup", "audit"])).toEqual(["scrape"]);
+  });
+
+  it("still resumes past lcut when it succeeded", () => {
+    const sequence: PhaseId[] = ["scrape", "lcut", "cleanup", "audit"];
+    expect(honoredPhasePrefix(sequence, ["scrape", "lcut", "cleanup"])).toEqual([
+      "scrape",
+      "lcut",
+      "cleanup",
+    ]);
+  });
+});
+
+/**
+ * VENUE_MAP is hand-maintained here rather than derived from the cinema
+ * registry, and its first ID per entry is the insert target passed straight to
+ * `processScreenings` with no canonicalisation of its own. A legacy or
+ * misspelled ID here would write screenings onto the wrong venue identity.
+ */
+describe("VENUE_MAP", () => {
+  it("maps every L-CUT venue name to canonical registry IDs", () => {
+    const canonicalIds = new Set(CINEMA_REGISTRY.map((c) => c.id));
+
+    for (const [venueName, ids] of Object.entries(VENUE_MAP)) {
+      expect(ids.length, `"${venueName}" maps to no cinema ID`).toBeGreaterThan(0);
+      for (const id of ids) {
+        expect(
+          canonicalIds.has(id),
+          `L-CUT venue "${venueName}" maps to "${id}", which is not a canonical ` +
+            `ID in src/config/cinema-registry.ts.`,
+        ).toBe(true);
+      }
+    }
+  });
+
+  it("uses each insert-target cinema ID for at most one L-CUT venue name", () => {
+    const targets = Object.values(VENUE_MAP).map((ids) => ids[0]);
+    expect(targets.length).toBe(new Set(targets).size);
+  });
+});
+
+/**
+ * Source-only venues need a `cinemas` row before L-CUT can insert anything.
+ *
+ * The 2026-09-08 baseline showed failed screening writes for
+ * `metroland-studios` and `deptford-cinema`. Both are canonical registry IDs,
+ * so this is NOT an identity problem and the canonicalisation added at the
+ * pipeline write boundary does nothing for it: `screenings.cinema_id` is a
+ * foreign key to `cinemas.id`, and the L-CUT gap-fill calls
+ * `processScreenings` directly without ever calling `ensureCinemaExists`.
+ *
+ * The parent row is a precondition, satisfied by `npm run db:seed:cinemas`.
+ * These tests pin both halves of that statement.
+ */
+describe("source-only venues need a cinemas row first", () => {
+  const SOURCE_ONLY = [
+    "metroland-studios",
+    "deptford-cinema",
+    "ibraaz",
+    "set-social-peckham",
+  ];
+
+  it("treats these as valid canonical IDs, so a failed write is a missing row", () => {
+    for (const id of SOURCE_ONLY) {
+      expect(resolveCinemaId(id), `${id} should resolve to itself`).toBe(id);
+    }
+  });
+
+  it("includes them in the cinema seed data, so db:seed:cinemas creates them", () => {
+    const seededIds = new Set(getCinemasSeedData().map((c) => c.id));
+    for (const id of SOURCE_ONLY) {
+      expect(
+        seededIds.has(id),
+        `${id} is missing from getCinemasSeedData(), so npm run db:seed:cinemas ` +
+          `would not create its cinemas row and L-CUT inserts would keep failing ` +
+          `the screenings.cinema_id foreign key.`,
+      ).toBe(true);
+    }
+  });
+
+  it("does not create the parent row itself — the L-CUT path never calls ensureCinemaExists", () => {
+    const source = readFileSync(
+      join(__dirname, "lcut-gapfill.ts"),
+      "utf-8",
+    );
+    // Documents the precondition rather than asserting it should change:
+    // making the gap-fill self-sufficient is a separate decision, because
+    // ensureCinemaExists also re-asserts isActive: true on every call.
+    expect(source).toContain("processScreenings(");
+    expect(source).not.toContain("ensureCinemaExists");
   });
 });

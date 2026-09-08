@@ -32,8 +32,10 @@ import {
   runScraper,
   type MultiVenueConfig,
   type SingleVenueConfig,
+  type ChainConfig,
 } from "./runner-factory";
-import type { CinemaScraper } from "./types";
+import type { CinemaScraper, ChainScraper } from "./types";
+import { ensureCinemaExists } from "./pipeline";
 
 describe("isConnectionError", () => {
   it("classifies DB connection/pooler failures as connection errors", () => {
@@ -199,5 +201,149 @@ describe("per-venue wall-clock cap", () => {
     // The wedged venue did not block the rest of the run.
     expect(result.venueResults[1]).toMatchObject({ venueId: "healthy-venue", success: true });
     expect(result.success).toBe(false);
+  });
+});
+
+/**
+ * A run that produced no venue results at all must not report success.
+ *
+ * `ensureCinemaExists` is called outside the per-venue try in all three
+ * branches, so a throw there unwinds to the outer catch, which logs
+ * `runner_error` and falls through with `venueResults` still empty.
+ * `[].every(...)` is `true`, so the run used to report `success: true`,
+ * `totalVenuesFailed: 0`, exit code 0. `scrape-all.ts` then printed `ok`,
+ * counted a breaker success, and checkpointed the entry as done for `--resume`,
+ * while no `scraper_runs` row existed for any venue.
+ *
+ * In the chain branch that meant one bad venue silently skipped all ~15 Curzon
+ * venues and still reported clean. A total loss reported green is worse than
+ * the silent bad write this work set out to remove.
+ */
+describe("empty run results", () => {
+  it("reports failure when ensureCinemaExists throws for a single venue", async () => {
+    vi.mocked(ensureCinemaExists).mockRejectedValueOnce(
+      new Error('Cinema "made-up" is not in the cinema registry'),
+    );
+
+    const scrape = vi.fn(async () => []);
+    const config: SingleVenueConfig = {
+      type: "single",
+      venue: { id: "made-up", name: "Made Up", shortName: "mu" },
+      createScraper: () => ({ scrape }) as unknown as CinemaScraper,
+    };
+
+    const result = await runScraper(config, { useValidation: true });
+
+    expect(result.success).toBe(false);
+    expect(result.totalVenuesFailed).toBe(1);
+    expect(result.venueResults[0]).toMatchObject({ venueId: "made-up", success: false });
+    expect(result.venueResults[0].error).toMatch(/not in the cinema registry/);
+    expect(scrape).not.toHaveBeenCalled();
+  });
+
+  it("keeps a chain running when one venue's cinema row cannot be ensured", async () => {
+    // The chain branch ensures every venue up front, in a bare loop. One bad
+    // venue must cost that venue, not the other fourteen.
+    vi.mocked(ensureCinemaExists).mockImplementation(async (cinema) => {
+      if (cinema.id === "chain-bad") throw new Error("not in the cinema registry");
+    });
+
+    const scrapeVenue = vi.fn(async () => []);
+    const config: MultiVenueConfig = {
+      type: "multi",
+      venues: [
+        { id: "chain-good", name: "Good", shortName: "g" },
+        { id: "chain-bad", name: "Bad", shortName: "b" },
+      ],
+      createScraper: () => ({ scrape: scrapeVenue }) as unknown as CinemaScraper,
+    };
+
+    const result = await runScraper(config, { useValidation: true, continueOnError: true });
+
+    expect(result.success).toBe(false);
+    expect(result.venueResults.map((r) => r.venueId).sort()).toEqual([
+      "chain-bad",
+      "chain-good",
+    ]);
+    expect(result.venueResults.find((r) => r.venueId === "chain-bad")!.success).toBe(false);
+    expect(result.venueResults.find((r) => r.venueId === "chain-good")!.success).toBe(true);
+
+    vi.mocked(ensureCinemaExists).mockImplementation(async () => {});
+  });
+});
+
+/**
+ * A chain venue whose cinema row could not be ensured must not be handed to
+ * the chain scraper.
+ *
+ * The chain branch filters `venuesToScrape` after initialisation, but the
+ * scrape call was still passing the unfiltered `activeVenueIds`. The scraper
+ * therefore did work for a venue with no `cinemas` row, and any screenings it
+ * returned were discarded by the results loop, which iterates the filtered
+ * list. With every venue failing, the scraper was still constructed and
+ * invoked with the full list.
+ */
+describe("chain venue initialisation failures", () => {
+  const chainScraperFor = (scrapeVenues: ReturnType<typeof vi.fn>) =>
+    ({
+      scrapeVenues,
+      scrapeAll: vi.fn(),
+      scrapeVenue: vi.fn(),
+      healthCheck: vi.fn(async () => true),
+      venueErrors: new Map<string, string>(),
+    }) as unknown as ChainScraper;
+
+  const chainConfig = (createScraper: () => ChainScraper): ChainConfig => ({
+    type: "chain",
+    chainName: "Testchain",
+    venues: [
+      { id: "chain-ok", name: "Ok Venue", shortName: "ok" },
+      { id: "chain-broken", name: "Broken Venue", shortName: "broken" },
+    ],
+    createScraper,
+    getActiveVenueIds: () => ["chain-ok", "chain-broken"],
+  });
+
+  afterEach(() => {
+    vi.mocked(ensureCinemaExists).mockImplementation(async () => {});
+  });
+
+  it("scrapes only the venues that initialised", async () => {
+    vi.mocked(ensureCinemaExists).mockImplementation(async (cinema) => {
+      if (cinema.id === "chain-broken") throw new Error("not in the cinema registry");
+    });
+
+    const scrapeVenues = vi.fn(async () => new Map([["chain-ok", []]]));
+    const result = await runScraper(chainConfig(() => chainScraperFor(scrapeVenues)), {
+      useValidation: true,
+    });
+
+    expect(scrapeVenues).toHaveBeenCalledTimes(1);
+    expect(scrapeVenues).toHaveBeenCalledWith(["chain-ok"]);
+
+    expect(result.success).toBe(false);
+    expect(result.venueResults.find((r) => r.venueId === "chain-broken")!.success).toBe(false);
+    expect(result.venueResults.find((r) => r.venueId === "chain-ok")!.success).toBe(true);
+  });
+
+  it("never builds or calls the scraper when every venue fails to initialise", async () => {
+    vi.mocked(ensureCinemaExists).mockImplementation(async () => {
+      throw new Error("not in the cinema registry");
+    });
+
+    const scrapeVenues = vi.fn(async () => new Map());
+    const createScraper = vi.fn(() => chainScraperFor(scrapeVenues));
+
+    const result = await runScraper(chainConfig(createScraper), { useValidation: true });
+
+    expect(createScraper).not.toHaveBeenCalled();
+    expect(scrapeVenues).not.toHaveBeenCalled();
+
+    expect(result.success).toBe(false);
+    expect(result.totalVenuesFailed).toBe(2);
+    expect(result.venueResults.map((r) => r.venueId).sort()).toEqual([
+      "chain-broken",
+      "chain-ok",
+    ]);
   });
 });

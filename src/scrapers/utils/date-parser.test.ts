@@ -8,6 +8,7 @@ import {
   isUKSummerTime,
   ukLocalToUTC,
   parseUKLocalDateTime,
+  londonParts,
 } from "./date-parser";
 
 describe("lastSundayOfMonth", () => {
@@ -356,5 +357,50 @@ describe("parseDateTime", () => {
 
   it("should return null for unparseable strings", () => {
     expect(parseDateTime("invalid")).toBeNull();
+  });
+});
+
+describe("londonParts", () => {
+  // These assert on fixed UTC instants, so they hold under any host TZ.
+  it("should read a summer instant as London local time (BST, UTC+1)", () => {
+    expect(londonParts(new Date("2026-09-09T09:00:00Z"))).toEqual({
+      year: 2026,
+      month: 8, // 0-indexed: September
+      day: 9,
+      hours: 10,
+      minutes: 0,
+    });
+  });
+
+  it("should read a winter instant as London local time (GMT, UTC+0)", () => {
+    expect(londonParts(new Date("2027-01-14T09:00:00Z"))).toEqual({
+      year: 2027,
+      month: 0, // January
+      day: 14,
+      hours: 9,
+      minutes: 0,
+    });
+  });
+
+  it("should roll the London calendar date when BST crosses midnight", () => {
+    // 23:30 UTC on 14 July is already 00:30 on the 15th in London
+    expect(londonParts(new Date("2026-07-14T23:30:00Z"))).toEqual({
+      year: 2026,
+      month: 6, // July
+      day: 15,
+      hours: 0,
+      minutes: 30,
+    });
+  });
+
+  it("should report London midnight as hour 0, never hour 24", () => {
+    // Guards the hourCycle: "h23" option — some ICU versions return 24 for
+    // midnight under hour12: false, which would break hour-range checks.
+    expect(londonParts(new Date("2026-12-25T00:00:00Z")).hours).toBe(0);
+  });
+
+  it("should agree with ukLocalToUTC round-tripping a BST screening time", () => {
+    const instant = ukLocalToUTC(2026, 6, 14, 18, 10);
+    expect(londonParts(instant)).toMatchObject({ day: 14, hours: 18, minutes: 10 });
   });
 });

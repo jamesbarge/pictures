@@ -211,7 +211,10 @@ export async function scrapeActiveEventiveFestivals(): Promise<TaggingResult[]> 
         const cinema = getCinemaById(cinemaId);
         if (!cinema) continue;
 
-        const result = await saveScreenings(cinemaId, cinemaScreenings);
+        // Persist cinema.id, not the mapping key: getCinemaById resolves legacy
+        // aliases and returns the canonical record, so the raw key could carry a
+        // legacy ID past this guard and be written verbatim.
+        const result = await saveScreenings(cinema.id, cinemaScreenings);
         totalSaved += result.added + result.updated;
       }
 

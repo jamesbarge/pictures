@@ -1,0 +1,109 @@
+{
+  "note": "First-party excerpts, not complete screening records. Dates are not inferred. The 08:00 -> 20:00 case characterizes unchanged legacy policy, not correct interpretation or a production write.",
+  "cases": [
+    {
+      "venue": "cine-lumiere",
+      "url": "https://cinelumiere.savoysystems.co.uk/CineLumiere.dll/",
+      "capturedAtUTC": "2026-09-08T13:17:51.389Z",
+      "rawResponseSha256": "9bd06a47bdeec14008481ab69eac9cf46710df32630754e965c57fda266ece1b",
+      "excerpt": "<a class=\"Button\" href=\"https://cinelumiere.savoysystems.co.uk/CineLumiere.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_600.TcsWebTab_601.TcsPerformance_6688772.TcsSection_6930861\" title=\"Click to Book\">08:00</a>",
+      "context": "08:00 (Closed for Booking)",
+      "parserInput": "08:00",
+      "currentPolicyResult": {
+        "hours": 20,
+        "minutes": 0
+      }
+    },
+    {
+      "venue": "cine-lumiere",
+      "url": "https://cinelumiere.savoysystems.co.uk/CineLumiere.dll/",
+      "capturedAtUTC": "2026-09-08T13:17:51.389Z",
+      "rawResponseSha256": "9bd06a47bdeec14008481ab69eac9cf46710df32630754e965c57fda266ece1b",
+      "excerpt": "<a class=\"Button\" href=\"https://cinelumiere.savoysystems.co.uk/CineLumiere.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_600.TcsWebTab_601.TcsPerformance_6978538.TcsSection_3841519\" title=\"Click to Book\">15:45</a>",
+      "context": "15:45",
+      "parserInput": "15:45",
+      "currentPolicyResult": {
+        "hours": 15,
+        "minutes": 45
+      }
+    },
+    {
+      "venue": "bertha-dochouse",
+      "url": "https://dochouse.org/event/a-free-daughter-of-free-kyrgyzstan/",
+      "capturedAtUTC": "2026-09-08T13:21:14.511Z",
+      "rawResponseSha256": "9bfb7362913ef67ab23a2ecc524c15151940c5970e3a3a329fdac368877453af",
+      "excerpt": "<a href=\"https://www.curzon.com/ticketing/seats/BLO1-112578\" class=\"trigger-pop \" aria-label=\"Open ticket redirect and mailing list modal. Ticket date Tue 8th Sep 15:00\" target=\"_blank\">\n                                                                                                                    \n                                                            <div class=\"event-date \">\n                                                                <div class=\"date-time\">\n                                                                    <span class=\"date elza-narrow text-uppercase fs-20 cl-w fw-bl\">\n                                                                        Tue 8th Sep\n                                                                    </span>\n                                                                    <span class=\"time cl-w fw-sb\">\n                                                                        15:00\n                                                                    </span>\n                                                                </div>\n                                                                <div class=\"event-type cl-w fw-m\">\n                                                                    \n                                                                </div>\n                                                            </div>\n\n                                                                                                                                                                                                </a>",
+      "context": "Tue 8th Sep 15:00",
+      "parserInput": "15:00",
+      "currentPolicyResult": {
+        "hours": 15,
+        "minutes": 0
+      }
+    },
+    {
+      "venue": "bertha-dochouse",
+      "url": "https://dochouse.org/event/a-free-daughter-of-free-kyrgyzstan/",
+      "capturedAtUTC": "2026-09-08T13:21:14.511Z",
+      "rawResponseSha256": "9bfb7362913ef67ab23a2ecc524c15151940c5970e3a3a329fdac368877453af",
+      "excerpt": "<a href=\"https://www.curzon.com/ticketing/seats/BLO1-112579\" class=\"trigger-pop \" aria-label=\"Open ticket redirect and mailing list modal. Ticket date Thu 10th Sep 18:20\" target=\"_blank\">\n                                                                                                                    \n                                                            <div class=\"event-date \">\n                                                                <div class=\"date-time\">\n                                                                    <span class=\"date elza-narrow text-uppercase fs-20 cl-w fw-bl\">\n                                                                        Thu 10th Sep\n                                                                    </span>\n                                                                    <span class=\"time cl-w fw-sb\">\n                                                                        18:20\n                                                                    </span>\n                                                                </div>\n                                                                <div class=\"event-type cl-w fw-m\">\n                                                                    \n                                                                </div>\n                                                            </div>\n\n                                                                                                                                                                                                </a>",
+      "context": "Thu 10th Sep 18:20",
+      "parserInput": "18:20",
+      "currentPolicyResult": {
+        "hours": 18,
+        "minutes": 20
+      }
+    },
+    {
+      "venue": "prince-charles",
+      "url": "https://princecharlescinema.com/whats-on/",
+      "capturedAtUTC": "2026-09-08T13:17:56.739Z",
+      "rawResponseSha256": "86704be3b26ac0672e0ed497a5588110977de97577b37dfd9019b3b6667e930f",
+      "excerpt": "<span class=\"time\">10:00 am</span>",
+      "context": "10:00 am",
+      "parserInput": "10:00 am",
+      "currentPolicyResult": {
+        "hours": 10,
+        "minutes": 0
+      }
+    },
+    {
+      "venue": "prince-charles",
+      "url": "https://princecharlescinema.com/whats-on/",
+      "capturedAtUTC": "2026-09-08T13:17:56.739Z",
+      "rawResponseSha256": "86704be3b26ac0672e0ed497a5588110977de97577b37dfd9019b3b6667e930f",
+      "excerpt": "<span class=\"time\">3:15 pm</span>",
+      "context": "3:15 pm",
+      "parserInput": "3:15 pm",
+      "currentPolicyResult": {
+        "hours": 15,
+        "minutes": 15
+      }
+    },
+    {
+      "venue": "genesis",
+      "url": "https://genesiscinema.co.uk/whats-on/",
+      "capturedAtUTC": "2026-09-08T13:17:59.221Z",
+      "rawResponseSha256": "7d89f7ce2c02d4932a34ff27697d1033ac42f6da767f15f55488fcdcdc8d9aca",
+      "excerpt": "<a class=\"block btn-primary font-body text-center  perfButton content-center align-middle\" href=\"https://genesis.admit-one.co.uk/seats/?perfCode=13206\" style=\"display:inherit;\">\n                        <span class=\" text-black bg-gray-100 border-primary border-solid border-2\">\n                                                    </span>                    \n                        <span class=\"px-3 py-3 lg:py-1 rounded-xl border-primary border-solid border-2\">                 \n                            12:40                        </span>\n                    </a>",
+      "context": "12:40",
+      "parserInput": "12:40",
+      "currentPolicyResult": {
+        "hours": 12,
+        "minutes": 40
+      }
+    },
+    {
+      "venue": "genesis",
+      "url": "https://genesiscinema.co.uk/whats-on/",
+      "capturedAtUTC": "2026-09-08T13:17:59.221Z",
+      "rawResponseSha256": "7d89f7ce2c02d4932a34ff27697d1033ac42f6da767f15f55488fcdcdc8d9aca",
+      "excerpt": "<a class=\"block btn-primary font-body text-center  perfButton content-center align-middle\" href=\"https://genesis.admit-one.co.uk/seats/?perfCode=13046\" style=\"display:inherit;\">\n                        <span class=\" text-black bg-gray-100 border-primary border-solid border-2\">\n                                                    </span>                    \n                        <span class=\"px-3 py-3 lg:py-1 rounded-xl border-primary border-solid border-2\">                 \n                            16:00                        </span>\n                    </a>",
+      "context": "16:00",
+      "parserInput": "16:00",
+      "currentPolicyResult": {
+        "hours": 16,
+        "minutes": 0
+      }
+    }
+  ]
+}

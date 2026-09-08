@@ -1525,6 +1525,26 @@ export function getCanonicalId(id: string): string {
 }
 
 /**
+ * Resolve any cinema ID to its canonical form, rejecting IDs the registry
+ * does not know.
+ *
+ * `getCanonicalId` passes an unrecognised ID straight through, which is how an
+ * unregistered ID reached `ensureCinemaExists` and minted an orphan `cinemas`
+ * row. The 2026-09-08 audit found `nickel` and `the-nickel` both active and
+ * both holding the same 56 upcoming screenings. Persistence needs the strict
+ * form so a legacy or invented ID fails loudly instead of becoming a venue.
+ */
+export function resolveCinemaId(id: string): string {
+  const canonicalId = legacyIdToCanonical.get(id);
+  if (canonicalId) return canonicalId;
+  if (cinemaById.has(id)) return id;
+  throw new Error(
+    `Cinema "${id}" is not in the cinema registry (src/config/cinema-registry.ts). ` +
+      `Add it there, or use its canonical ID.`,
+  );
+}
+
+/**
  * Check if an ID is a legacy ID
  */
 export function isLegacyId(id: string): boolean {
