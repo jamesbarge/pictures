@@ -104,3 +104,37 @@ documentation finding (unknown environments skip the job rather than fail its
 resolver) is corrected above. YAML parsing, both shell blocks' syntax, and
 diff whitespace checks passed. The primary reviewer also independently ran
 the five-case resolver check successfully; no live deployment event was fired.
+
+## Follow-up: the blocking search E2E assertion
+
+PR CI initially failed the existing `search matches film titles` case on both
+projects. It compared filtered card count with the initial visible count, but
+the homepage selects whole date groups until at least 24 cards are present.
+Filtering can expose additional days and therefore more cards. A local synthetic
+API reproduced the unchanged test's failure on both projects: 25 initial cards,
+35 legitimate matches across two days after searching for `the`.
+
+The test now requires a nonexistent query to produce zero cards and the empty
+state, a loaded film's lowercased title to bring that film back, and clearing a
+second empty-result query to restore it again. It uses retrying assertions, not
+a 400ms delay or count comparison. The mobile-small project runs this case at
+its actual viewport rather than the surrounding spec's desktop override.
+
+Independent review found the first clear assertion could pass while the same
+film remained visible under a stale positive filter. The final sequence clears
+from an explicitly empty result set, addressing that finding. The clear-button
+UI is not tested by this change; clearing means editing the search input empty.
+No application source, API, package version or database behaviour changed.
+
+Follow-up verification on 2026-09-08:
+
+- Final synthetic search case: 6/6 passed (three desktop and three actual-mobile
+  runs). Temporarily suppressing input events made the case fail at the expected
+  zero-card assertion (25 retained); that mutation was removed before final runs.
+- Full production-build frontend E2E suite against the public read-only API:
+  197 passed, 11 skipped, no failures (2.8 minutes), using installed Node 22.22.2.
+- Frontend unit tests: 92 passed across 10 files. Svelte checking: zero errors,
+  four existing initial-value capture warnings. Targeted ESLint and diff checks
+  passed. No dependency versions or lockfiles changed.
+- Independent final review found no remaining blockers. The workflow trigger
+  still requires a real production deployment to establish end-to-end operation.
