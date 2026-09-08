@@ -5,17 +5,57 @@ on:
 
 jobs:
   verify:
-    if: github.event.deployment_status.state == 'success' && github.event.deployment_status.environment == 'Production'
+    # Vercel names each environment "<Target> – <project>", with an EN DASH
+    # (U+2013). The previous `environment == 'Production'` therefore matched
+    # only the legacy unsuffixed environment, which last deployed 2026-04-06
+    # and whose final status was a failure. Every live production deploy since
+    # has been "Production – frontend", so this job silently never ran.
+    #
+    # Explicit allowlist rather than startsWith/contains on "Production": a
+    # substring match would enrol any future production-ish environment before
+    # anyone had decided what URL it should be smoke-tested against, and the
+    # mapping step below would then fail the job.
+    if: >-
+      github.event.deployment_status.state == 'success' &&
+      (github.event.deployment_status.environment == 'Production – frontend' ||
+       github.event.deployment_status.environment == 'Production – filmcal2')
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
     steps:
-      - name: Smoke-test production homepage
+      - name: Resolve the public endpoint for this environment
+        id: target
         env:
-          DEPLOY_URL: ${{ github.event.deployment_status.target_url }}
+          DEPLOY_ENV: ${{ github.event.deployment_status.environment }}
         run: |
-          # Prefer the freshly-deployed URL; fall back to the apex domain.
-          TARGET="${DEPLOY_URL:-https://pictures.london}"
+          set -euo pipefail
+          # deployment_status.target_url is NOT the application URL. It is the
+          # immutable per-deployment Vercel alias, e.g.
+          # https://frontend-ocq1zresk-jamesbarges-projects.vercel.app, and
+          # Vercel Deployment Protection redirects it to
+          # https://vercel.com/login, which answers HTTP 200. Curling it would
+          # have smoke-tested the Vercel sign-in page and passed. Map the
+          # environment to its public endpoint instead.
+          case "$DEPLOY_ENV" in
+            "Production – frontend")
+              TARGET="https://pictures.london" ;;
+            "Production – filmcal2")
+              # Public unauthenticated read endpoint. The only /health routes on
+              # this app live under /api/admin and are Clerk-gated, so they
+              # cannot serve as an anonymous smoke test.
+              TARGET="https://api.pictures.london/api/cinemas" ;;
+            *)
+              echo "::error::Unmapped production environment '$DEPLOY_ENV' — add it to this case or to the job's if: condition."
+              exit 1 ;;
+          esac
+          echo "target=$TARGET" >> "$GITHUB_OUTPUT"
+          echo "Resolved $DEPLOY_ENV -> $TARGET"
+
+      - name: Smoke-test the deployed endpoint
+        env:
+          TARGET: ${{ steps.target.outputs.target }}
+        run: |
+          set -euo pipefail
           echo "Verifying $TARGET ..."
           curl --fail --show-error --silent --location \
             --retry 3 --retry-delay 5 --max-time 30 \

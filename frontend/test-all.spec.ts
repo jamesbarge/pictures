@@ -325,15 +325,40 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 			expect(filteredCount).toBeLessThan(allCount);
 		});
 
-		test('search matches film titles', async ({ page }) => {
-			await page.setViewportSize({ width: 1440, height: 900 });
+		test('search matches film titles', async ({ page }, testInfo) => {
+			// Unlike the desktop-toolbar tests above, exercise this input at the
+			// mobile project's real viewport as well as the desktop viewport.
+			if (testInfo.project.use.viewport) await page.setViewportSize(testInfo.project.use.viewport);
 			await page.goto(BASE);
-			await page.waitForSelector('article.card', { timeout: 10000 });
-			const allCount = await page.locator('article.card').count();
-			await page.getByRole('searchbox', { name: 'Search films, directors, cast' }).fill('the');
-			await page.waitForTimeout(400);
-			const filteredCount = await page.locator('article.card').count();
-			expect(filteredCount).toBeLessThanOrEqual(allCount);
+			const cards = page.getByRole('article');
+			await expect(cards.first()).toBeVisible();
+			const title = await cards.first().getAttribute('aria-label');
+			expect(title, 'a loaded film provides the positive search case').toBeTruthy();
+			const matchingFilm = page.getByRole('article', { name: title!, exact: true }).first();
+			const search = page.getByRole('searchbox', { name: 'Search films, directors, cast' });
+			const noMatch = '__pictures_e2e_nonexistent_film__';
+
+			// Filtering can ADD visible cards: the rolling calendar includes more
+			// whole days until it reaches its minimum-card target. Check search
+			// semantics instead of comparing counts across different date windows.
+			// First prove filtering runs (a no-op search must fail this assertion).
+			await expect(async () => {
+				await search.fill(noMatch);
+				await expect(cards).toHaveCount(0, { timeout: 1000 });
+			}).toPass({ timeout: 8000 });
+			await expect(page.getByRole('heading', { name: 'No screenings found', exact: true })).toBeVisible();
+
+			// An always-empty search must fail here. Use a real loaded title so
+			// the assertion does not depend on a particular film being programmed.
+			await search.fill(title!.toLowerCase());
+			await expect(matchingFilm).toBeVisible();
+			// Clear from an empty result set: the positive result already being
+			// visible would not prove that clearing actually restores anything.
+			await search.fill(noMatch);
+			await expect(cards).toHaveCount(0);
+			await search.fill('');
+			await expect(search).toHaveValue('');
+			await expect(matchingFilm).toBeVisible();
 		});
 
 		test('search matches cinema names', async ({ page }) => {
