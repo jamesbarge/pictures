@@ -19,18 +19,21 @@ Bounded read-only capture of the venue's public Spektrix v3 API, 2026-09-09
 | Observation | Result |
 |---|---|
 | `/events` | 200, 354 events, **262 tagged FILM** |
-| `/instances?startFrom=2026-09-09` | 200, **12 future instances total** |
+| `/instances?startFrom=2026-09-09` | 200, **12 instances in the response** |
 | …of those, on a FILM event | **1** (9 LIVE, 2 CE) |
 | `&startTo=+60d` added | identical 12 |
-| Pagination | none — no `Link`/`Content-Range`, `content-length` = body |
+| Pagination headers | none — `content-length` = body, so the **response body is complete**. Spektrix's pagination/limit contract was **not** verified against vendor docs, so the inventory is not proven exhaustive. |
 | Re-check 11 minutes later | **byte-identical** (same sha256) |
 | 6 sampled FILM events via `/events/{id}/instances` | **zero** future instances each |
 | Newest film instance in that sample | **2026-08-27** |
+| **Independent check** — `sitemap.xml` (CMS route, not the API), regenerated 2026-09-09T20:15:49+01:00 | 53 URLs, exactly **one** `/cinema/<detail>` page: `premiere-we-set-the-house-on-fire`, the same film; plus 7 `/live-events/` pages |
 
 ## What this does and does not establish
 
 **Establishes:** the source state on 2026-09-09, and the parser's behaviour on
-that exact input (now pinned by fixtures and tests).
+that exact input (now pinned by fixtures and tests). The independent sitemap
+check adds that the venue's own CMS publishes one cinema detail page, so the
+website is not advertising a film programme this API route is missing.
 
 **Does not establish:**
 
@@ -79,9 +82,11 @@ after.
 
 ## Limitations
 
-- The venue's `/cinema/` page is client-rendered through Spektrix web components
-  and server-returns no showtimes, so it could not independently corroborate the
-  denominator without a browser.
+- The venue's `/cinema/` listing page is client-rendered through Spektrix web
+  components and server-returns no showtimes, so it could not be counted directly
+  without a browser. The sitemap was used instead.
+- Spektrix's v3 pagination/limit contract was not verified against vendor
+  documentation. A complete HTTP body can still be a truncated or filtered view.
 - Six FILM events were sampled, not all 262.
 - The committed events fixture is reduced to 40 of 354 (31 FILM) to keep the
   387 KB response out of the repo; the sha256 of the full body is recorded.

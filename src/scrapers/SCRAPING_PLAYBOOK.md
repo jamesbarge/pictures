@@ -629,13 +629,23 @@ none was judged to pay for itself at ~12-20 screenings a year.
   It hits the Spektrix events endpoint (the real dependency), not the WP site.
 - **A 2026-09-09 read-only capture of what the source held.** The 2026-09-08 baseline parsed ONE
   screening; one parsed screening identifies no layer on its own. Captured that day:
-  `/instances?startFrom=2026-09-09` returned **12 future instances in total** — no pagination
+  `/instances?startFrom=2026-09-09` returned **12 instances in its response** — no pagination
   headers, `content-length` equal to the body, `&startTo=+60d` returned the identical 12, and a
   re-check 11 minutes later was byte-identical — of which exactly **one** sat on a FILM event
   (9 LIVE, 2 CE). `/events` carried **354 events, 262 FILM**. Six sampled FILM events (The
   Odyssey, Spider-Man: Brand New Day, Wuthering Heights and three others, all `isOnSale`) each
   returned **zero** future instances via `/events/{id}/instances`; the newest film instance in
   that sample was **2026-08-27**.
+- **The response was complete; the inventory is not proven exhaustive.** Absent `Link` /
+  `Content-Range` plus a matching `content-length` shows we received the whole HTTP body for
+  that query. It does **not** show the body is the venue's exhaustive future inventory —
+  Spektrix's v3 pagination/limit contract was **not** verified against vendor documentation.
+- **Independent discovery check (route not the Spektrix API).** `robots.txt` allows it;
+  `sitemap.xml`, regenerated `2026-09-09T20:15:49+01:00`, carries 53 URLs and exactly **one**
+  `/cinema/<detail>` page — `premiere-we-set-the-house-on-fire`, the same single film the API
+  returned — plus 7 `/live-events/<detail>` pages, consistent with the API's 9 LIVE instances.
+  So the venue's own CMS is not advertising a film programme this API route is missing. It does
+  not prove no other route exists anywhere.
 - **What that does and does not show.** It records the source state on 2026-09-09 and the
   parser's behaviour on it. It does **not** show what the source held on 2026-09-08 — that
   payload was never captured — so it cannot establish whether the baseline run's extraction was

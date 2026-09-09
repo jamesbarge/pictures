@@ -19,12 +19,26 @@
    "reduction": "none \u2014 complete response body"
   }
  ],
- "note": "No pagination headers were returned (no Link / Content-Range); content-length equalled the body, so instances.json is the venue's COMPLETE future instance set at capture time.",
+ "note": "No pagination headers were returned (no Link / Content-Range) and content-length equalled the body, so instances.json is the COMPLETE RESPONSE BODY that endpoint returned for that query. That is an HTTP-level fact only. It does NOT establish that the response is the venue's exhaustive future inventory: the Spektrix v3 pagination/limit contract was NOT verified against vendor documentation, and an endpoint can return a complete body that is itself a truncated or filtered view.",
  "scopeLimit": "A 2026-09-09 observation. It does NOT establish what the source held on 2026-09-08, so it cannot show the baseline run's extraction was correct or incorrect. It also does not establish a CAUSE for the low film denominator: an unpublished calendar, a changed publishing route, or a discovery fault reachable another way all look the same from here. Why film instances stop at 2026-08-27 is unresolved.",
  "sampling": {
   "filmEventsSampledViaPerEventEndpoint": 6,
   "filmEventsTotal": 262,
   "eachReturnedFutureInstances": 0,
   "newestFilmInstanceInSample": "2026-08-27T18:45:00"
+ },
+ "paginationContractVerified": false,
+ "independentDiscoveryCheck": {
+  "why": "Six per-event API samples cannot rule out the venue having moved its film programme to a different publishing route. This check uses a route independent of the Spektrix API.",
+  "url": "https://richmix.org.uk/sitemap.xml",
+  "status": 200,
+  "bytes": 22581,
+  "sha256": "52f1b562845ded54d3097c1255a892e5d1240c1b0753347e8175ef65db5a8a12",
+  "fetchedAtUTC": "2026-09-09T20:16Z",
+  "robots": "https://richmix.org.uk/robots.txt allows this path (disallows only /cpresources/, /vendor/, /.env, /cache/)",
+  "sitemapGeneratedAt": "2026-09-09T20:15:49+01:00 (minutes before capture, so current)",
+  "result": "53 URLs. Exactly ONE /cinema/<detail> page: https://richmix.org.uk/cinema/premiere-we-set-the-house-on-fire \u2014 the same single film the Spektrix API returned. Also 7 /live-events/<detail> pages, consistent with the API's 9 LIVE instances.",
+  "establishes": "The venue's own CMS publishes one cinema detail page, so the website is not advertising a film programme that our API route is missing.",
+  "doesNotEstablish": "That no other publishing route exists anywhere, nor any cause. The /cinema/ listing page itself is client-rendered via Spektrix web components and server-returns no showtimes, so it could not be counted directly without a browser."
  }
 }
