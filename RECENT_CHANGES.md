@@ -1,3 +1,12 @@
+## 2026-09-09: Fix yearless same-day dates being inferred a year ahead
+**PR**: #750 | **Files**: `src/scrapers/utils/date-parser.ts`, `src/scrapers/utils/date-parser.test.ts`, `src/scrapers/cinemas/prince-charles-capture-replay.test.ts`
+- `parseScreeningDate()` compared the reference *instant* with the parsed day's UTC midnight, so from 00:00 onwards *today* looked past and a yearless listing rolled to next year. At `2026-09-09T16:00Z`, "Wednesday 9th September" resolved to 2027 while "Thursday 10th September" resolved correctly; New Year's Eve jumped a full year.
+- The 90-day horizon then rejected those rows as `too_far_future`, so today's screenings vanished instead of showing a wrong date.
+- Now compares calendar days in Europe/London via `londonParts()`, host-TZ independent. Genuinely past days still roll forward; explicit years, meridiem policy and horizon constants are untouched.
+- Covered by 19 regression cases plus a captured-source replay of real PCC markup through the real scraper (clock pinned, network and DB mocked), asserting exact London/UTC instants and source-grounded film/booking tuples.
+
+---
+
 ## 2026-09-08: Post-deploy verification never ran, and would have passed against a login page
 **PR**: #749 | **Files**: `.github/workflows/post-deploy-verify.yml`, `frontend/test-all.spec.ts`
 - **The gate never matched.** It required `deployment_status.environment == 'Production'`, but Vercel names environments `<Target> – <project>` with an EN DASH (U+2013). Across all 2,747 deployments the API reports six environment names; the live one is `Production – frontend` (266, last 2026-09-08). Plain `Production` (595) last deployed 2026-04-06 and its final status was a failure, so the job had not run on a real production deploy for months.
