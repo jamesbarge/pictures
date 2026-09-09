@@ -1,6 +1,6 @@
 # Rich Mix: what the source held on 2026-09-09, and stage counts to read it by
 
-**PR**: (pending)
+**PR**: #751
 **Date**: 2026-09-09
 
 ## The question
