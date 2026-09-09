@@ -207,6 +207,11 @@ export async function scrapeActiveEventiveFestivals(): Promise<TaggingResult[]> 
       }
 
       let totalSaved = 0;
+      // Every screening this ingester writes carries a festivalSlug, so this is
+      // the path where a festival-link failure is most likely. Reported rather
+      // than folded into totalSaved: the screening rows landed, and the link
+      // failing is a separate fact that must not read as a clean ingest.
+      let totalPostWriteFailures = 0;
       for (const [cinemaId, cinemaScreenings] of byCinema) {
         const cinema = getCinemaById(cinemaId);
         if (!cinema) continue;
@@ -216,6 +221,15 @@ export async function scrapeActiveEventiveFestivals(): Promise<TaggingResult[]> 
         // legacy ID past this guard and be written verbatim.
         const result = await saveScreenings(cinema.id, cinemaScreenings);
         totalSaved += result.added + result.updated;
+        totalPostWriteFailures += result.postWriteFailures;
+      }
+
+      if (totalPostWriteFailures > 0) {
+        console.warn(
+          `[Eventive] ${config.slugBase}: ${totalPostWriteFailures} screening(s) ` +
+            `persisted but their festival link failed — the rows are stored and ` +
+            `untagged`
+        );
       }
 
       results.push({
@@ -224,6 +238,7 @@ export async function scrapeActiveEventiveFestivals(): Promise<TaggingResult[]> 
         screeningsChecked: screenings.length,
         screeningsTagged: totalSaved,
         alreadyTagged: 0,
+        postWriteFailures: totalPostWriteFailures,
       });
     } catch (error) {
       console.error(

@@ -11,6 +11,12 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import type { CinemaScraper, ChainScraper, RawScreening } from "./types";
 import { processScreenings, saveScreenings, ensureCinemaExists } from "./pipeline";
+import {
+  asPreFilterSource,
+  buildAccounting,
+  reportAccounting,
+  type ScreeningAccounting,
+} from "./utils/screening-accounting-report";
 import { db, isDatabaseAvailable } from "../db";
 import { scraperRuns, cinemaBaselines } from "../db/schema/admin";
 import { eq } from "drizzle-orm";
@@ -81,9 +87,22 @@ interface VenueResult {
   screeningsAdded: number;
   screeningsUpdated: number;
   screeningsFailed: number;
+  /**
+   * Screenings that persisted but whose follow-up work failed (today: festival
+   * linking). Never folded into `screeningsFailed`: the rows are in the table,
+   * so counting them as failed writes would overstate loss and would suppress
+   * the superseded report for the wrong reason. Carried here so a festival
+   * failure cannot read as a clean venue.
+   */
+  screeningsPostWriteFailures: number;
   durationMs: number;
   error?: string;
   retryCount: number;
+  /**
+   * Stage-by-stage screening accounting for this venue, when the seams could
+   * establish it. Absent means not measured, never "no loss".
+   */
+  accounting?: ScreeningAccounting;
   /**
    * Reason the observability diff failed open, when it did
    * (PipelineResult.diffFailed). The venue is still `success: true` and still
@@ -278,6 +297,16 @@ async function recordScraperRun(params: {
   error?: string;
   /** Screening writes that failed or were dropped (pipeline `failed`). */
   failedWrites?: number;
+  /**
+   * Screenings that persisted but whose follow-up work failed (pipeline
+   * `postWriteFailures`). Recorded separately from `failedWrites` because the
+   * rows landed; it still downgrades the run, since before the accounting
+   * patch a festival-link failure surfaced as failed writes and this must not
+   * become the run that reads green.
+   */
+  postWriteFailures?: number;
+  /** Stage accounting, stored verbatim under metadata.accounting. */
+  accounting?: ScreeningAccounting;
   /** Reason the observability diff failed open, if it did. */
   diffFailed?: string;
   /** The health-check precheck failed but we ran the scrape anyway. */
@@ -288,6 +317,7 @@ async function recordScraperRun(params: {
   try {
     const baseline = await getBaseline(params.cinemaId);
     const failedWrites = params.failedWrites ?? 0;
+    const postWriteFailures = params.postWriteFailures ?? 0;
     let status = params.status;
     let anomalyType: "low_count" | "zero_results" | "error" | "high_count" | undefined;
     let anomalyDetails: { expectedRange?: { min: number; max: number }; percentChange?: number; errorMessage?: string } | undefined;
@@ -316,6 +346,35 @@ async function recordScraperRun(params: {
       };
     }
 
+    // A post-write failure also downgrades, with its own message. The listing
+    // itself is complete — the rows are in the table — but its follow-up work
+    // is not, so the two must stay legible apart. Downgrading at all is the
+    // conservative choice: until the accounting patch a festival-link failure
+    // propagated into the film-level catch and arrived here as failedWrites,
+    // which already produced "partial". Leaving it "success" would have made a
+    // previously visible failure disappear.
+    // "partial" is included deliberately: the failed-writes branch above may
+    // have just set it, and a venue with both kinds of failure must report
+    // both. Without it the join below could never concatenate anything.
+    if (
+      postWriteFailures > 0 &&
+      (status === "success" || status === "anomaly" || status === "partial")
+    ) {
+      status = "partial";
+      anomalyType = anomalyType ?? "error";
+      anomalyDetails = {
+        ...anomalyDetails,
+        errorMessage:
+          [
+            anomalyDetails?.errorMessage,
+            `${postWriteFailures} post-write failure(s) — screenings persisted, ` +
+              `follow-up work (festival linking) did not`,
+          ]
+            .filter(Boolean)
+            .join("; "),
+      };
+    }
+
     // Record error message in anomaly details for failed runs
     if (params.status === "failed" && params.error) {
       anomalyType = "error";
@@ -337,8 +396,10 @@ async function recordScraperRun(params: {
         duration: params.durationMs,
         ...(failureKind ? { failureKind } : {}),
         ...(failedWrites > 0 ? { failedWrites } : {}),
+        ...(postWriteFailures > 0 ? { postWriteFailures } : {}),
         ...(params.diffFailed ? { diffFailed: params.diffFailed } : {}),
         ...(params.precheckFailed ? { precheckFailed: true } : {}),
+        ...(params.accounting ? { accounting: params.accounting } : {}),
       },
     });
   } catch (err) {
@@ -460,6 +521,11 @@ async function runVenueWithCap(
       screeningsAdded: 0,
       screeningsUpdated: 0,
       screeningsFailed: 0,
+      // Zero as a compatibility value, NOT a measurement. This path is
+      // reached without a pipeline result, and where a pipeline did run
+      // and throw it may have written rows before doing so, so the true
+      // count is unavailable rather than zero.
+      screeningsPostWriteFailures: 0,
       durationMs,
       error: message,
       retryCount: 0,
@@ -548,25 +614,39 @@ async function runSingleVenue(
       });
 
       // Process/save
-      let added = 0, updated = 0, failed = 0;
+      let added = 0, updated = 0, failed = 0, postWriteFailures = 0;
       let blocked = false;
       let diffFailed: string | undefined;
+      let pipelineResult: Awaited<ReturnType<typeof processScreenings>> | null = null;
 
       if (screenings.length > 0) {
-        if (options.useValidation) {
-          const result = await processScreenings(venue.id, screenings);
-          added = result.added;
-          updated = result.updated;
-          failed = result.failed;
-          blocked = result.blocked;
-          diffFailed = result.diffFailed;
-        } else {
-          const result = await saveScreenings(venue.id, screenings);
-          added = result.added;
-          blocked = result.blocked;
-          diffFailed = result.diffFailed;
-        }
+        // Both branches now read the same fields. The saveScreenings branch
+        // used to copy only `added` and drop `updated` and `failed`, so any
+        // venue running with useValidation:false reported zero updates and
+        // zero failed writes however many there were, taking
+        // metadata.failedWrites down with it.
+        pipelineResult = options.useValidation
+          ? await processScreenings(venue.id, screenings)
+          : await saveScreenings(venue.id, screenings);
+        added = pipelineResult.added;
+        updated = pipelineResult.updated;
+        failed = pipelineResult.failed;
+        postWriteFailures = pipelineResult.postWriteFailures;
+        blocked = pipelineResult.blocked;
+        diffFailed = pipelineResult.diffFailed;
       }
+
+      // Stage accounting. Pre-filter counts come off the scraper instance when
+      // it extends BaseScraper; otherwise they stay explicitly unavailable.
+      const preFilterSource = asPreFilterSource(scraper);
+      const accounting = reportAccounting(
+        buildAccounting({
+          cinemaId: venue.id,
+          preFilter: preFilterSource?.getPreFilterReport() ?? null,
+          fetchedPayloads: preFilterSource?.getFetchedPayloadCount() ?? null,
+          pipeline: pipelineResult,
+        })
+      );
 
       // Blocked scrapes are NOT retryable — the diff check detected
       // suspicious data, so retrying would just get blocked again
@@ -584,6 +664,7 @@ async function runSingleVenue(
           screeningCount: screenings.length,
           durationMs,
           error: "scrape_blocked_by_diff_check",
+          accounting,
           // No failedWrites here: a blocked scrape attempted no writes at all
           // (the pipeline counts the whole batch `failed`), and conflating that
           // with lost writes would make metadata.failedWrites unusable.
@@ -597,6 +678,10 @@ async function runSingleVenue(
           screeningsAdded: 0,
           screeningsUpdated: 0,
           screeningsFailed: failed,
+          // A blocked batch never wrote a row, so it can have no post-write
+          // failures. Reported explicitly rather than omitted.
+          screeningsPostWriteFailures: 0,
+          accounting,
           durationMs,
           error: "scrape_blocked_by_diff_check",
           retryCount,
@@ -614,8 +699,10 @@ async function runSingleVenue(
           added,
           updated,
           failed,
+          postWriteFailures,
           durationMs,
           retryCount,
+          accounting,
         },
       });
 
@@ -629,8 +716,10 @@ async function runSingleVenue(
         screeningCount: screenings.length,
         durationMs,
         failedWrites: failed,
+        postWriteFailures,
         diffFailed,
         precheckFailed,
+        accounting,
       }));
 
       return {
@@ -641,8 +730,10 @@ async function runSingleVenue(
         screeningsAdded: added,
         screeningsUpdated: updated,
         screeningsFailed: failed,
+        screeningsPostWriteFailures: postWriteFailures,
         durationMs,
         retryCount,
+        accounting,
         // Degradation marker only — success stays true and the rows stay
         // written. The breaker reads it; nothing retries on it.
         diffFailed,
@@ -705,6 +796,11 @@ async function runSingleVenue(
     screeningsAdded: 0,
     screeningsUpdated: 0,
     screeningsFailed: 0,
+    // Zero as a compatibility value, NOT a measurement. This path is
+    // reached without a pipeline result, and where a pipeline did run
+    // and throw it may have written rows before doing so, so the true
+    // count is unavailable rather than zero.
+    screeningsPostWriteFailures: 0,
     durationMs,
     error: lastError?.message,
     retryCount: retryCount - 1,
@@ -748,6 +844,11 @@ function venueInitFailure(
     screeningsAdded: 0,
     screeningsUpdated: 0,
     screeningsFailed: 0,
+    // Zero as a compatibility value, NOT a measurement. This path is
+    // reached without a pipeline result, and where a pipeline did run
+    // and throw it may have written rows before doing so, so the true
+    // count is unavailable rather than zero.
+    screeningsPostWriteFailures: 0,
     durationMs: Date.now() - startTime,
     error: error instanceof Error ? error.message : String(error),
     retryCount: 0,
@@ -989,6 +1090,11 @@ async function runScraperInner(
                 screeningsAdded: 0,
                 screeningsUpdated: 0,
                 screeningsFailed: 0,
+                // Zero as a compatibility value, NOT a measurement. This path is
+                // reached without a pipeline result, and where a pipeline did run
+                // and throw it may have written rows before doing so, so the true
+                // count is unavailable rather than zero.
+                screeningsPostWriteFailures: 0,
                 durationMs: Date.now() - startTime,
                 error,
                 retryCount: 0,
@@ -997,7 +1103,7 @@ async function runScraperInner(
             }
 
             const venueStartTime = Date.now();
-            let added = 0, updated = 0, failed = 0;
+            let added = 0, updated = 0, failed = 0, postWriteFailures = 0;
             let venueBlocked = false;
             let diffFailed: string | undefined;
             let pipelineError: string | undefined;
@@ -1009,19 +1115,21 @@ async function runScraperInner(
               // chain failed with that venue's error message (2026-08-05: 11
               // Picturehouse venues killed by one venue's diff timeout).
               try {
-                if (options.useValidation) {
-                  const pipelineResult = await processScreenings(venueId, screenings);
-                  added = pipelineResult.added;
-                  updated = pipelineResult.updated;
-                  failed = pipelineResult.failed;
-                  venueBlocked = pipelineResult.blocked;
-                  diffFailed = pipelineResult.diffFailed;
-                } else {
-                  const pipelineResult = await saveScreenings(venueId, screenings);
-                  added = pipelineResult.added;
-                  venueBlocked = pipelineResult.blocked;
-                  diffFailed = pipelineResult.diffFailed;
-                }
+                // Both branches read the same fields. The saveScreenings
+                // branch used to copy only `added`, so a chain venue running
+                // with useValidation:false reported zero updates and zero
+                // failed writes however many there were, taking
+                // metadata.failedWrites down with it — the same defect the
+                // single-venue path carried.
+                const pipelineResult = options.useValidation
+                  ? await processScreenings(venueId, screenings)
+                  : await saveScreenings(venueId, screenings);
+                added = pipelineResult.added;
+                updated = pipelineResult.updated;
+                failed = pipelineResult.failed;
+                postWriteFailures = pipelineResult.postWriteFailures;
+                venueBlocked = pipelineResult.blocked;
+                diffFailed = pipelineResult.diffFailed;
               } catch (pipeErr) {
                 pipelineError = pipeErr instanceof Error ? pipeErr.message : String(pipeErr);
                 log({
@@ -1042,6 +1150,17 @@ async function runScraperInner(
 
             const venueError = pipelineError ?? (venueBlocked ? "scrape_blocked_by_diff_check" : undefined);
 
+            // NOTE: no stage accounting is built here. `buildAccounting` and
+            // `reportAccounting` are wired in runSingleVenue only, so chain
+            // venues (Curzon, Picturehouse, Everyman) log no `[Accounting]`
+            // line and store no `metadata.accounting`. Nothing blocks it —
+            // `accepted`, `write`, `rejected` and `postWriteFailures` are all
+            // on pipelineResult above, and per-venue `parsed`/`preFiltered`/
+            // `fetchedPayloads` are genuinely unavailable for a chain (one
+            // validate() covers every venue), which is what UNAVAILABLE is
+            // for. Left out of this patch to keep its scope; the docs state
+            // the single-venue-only limit rather than implying coverage.
+
             // Record chain per-venue scraper run (fire-and-forget). recordScraperRun
             // downgrades "success" to "partial" when failedWrites > 0.
             pushPendingRecord(recordScraperRun({
@@ -1054,6 +1173,7 @@ async function runScraperInner(
               // A blocked scrape attempted no writes, so its whole-batch `failed`
               // count is not "lost writes" — see the single-venue path.
               failedWrites: venueBlocked ? 0 : failed,
+              postWriteFailures,
               diffFailed,
             }));
 
@@ -1065,6 +1185,7 @@ async function runScraperInner(
               screeningsAdded: venueError ? 0 : added,
               screeningsUpdated: venueError ? 0 : updated,
               screeningsFailed: failed,
+              screeningsPostWriteFailures: postWriteFailures,
               durationMs: Date.now() - venueStartTime,
               error: venueError,
               retryCount: 0,
@@ -1102,6 +1223,11 @@ async function runScraperInner(
               screeningsAdded: 0,
               screeningsUpdated: 0,
               screeningsFailed: 0,
+              // Zero as a compatibility value, NOT a measurement. This path is
+              // reached without a pipeline result, and where a pipeline did run
+              // and throw it may have written rows before doing so, so the true
+              // count is unavailable rather than zero.
+              screeningsPostWriteFailures: 0,
               durationMs: Date.now() - startTime,
               error: errorMessage,
               retryCount: 0,

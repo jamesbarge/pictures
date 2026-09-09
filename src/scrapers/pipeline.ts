@@ -32,6 +32,11 @@ import {
   classifyScreening,
   checkForDuplicate,
 } from "./utils/screening-classification";
+import {
+  emptyWriteOutcomeCounts,
+  type ScreeningWriteOutcome,
+  type WriteOutcomeCounts,
+} from "./utils/screening-accounting";
 
 // Import for local use + re-export for external consumers
 import { cleanFilmTitle, extractEnglishFromBracket } from "./utils/film-title-cleaner";
@@ -40,12 +45,64 @@ export { cleanFilmTitle } from "./utils/film-title-cleaner";
 // Agent imports - conditionally used when ENABLE_AGENTS=true
 const AGENTS_ENABLED = process.env.ENABLE_AGENTS === "true";
 
-interface PipelineResult {
+export interface PipelineResult {
   cinemaId: string;
+  /**
+   * LEGACY ALIAS: `added` is `write.upserted`, i.e. the count of
+   * INSERT ... ON CONFLICT statements that ran. It has never distinguished a
+   * fresh insert from a conflict update. Prefer `write` for new readers.
+   *
+   * NOT bit-for-bit identical to the pre-accounting value in one case. A
+   * festival-link failure used to propagate out of `insertScreening` into the
+   * film-level catch, which counted that film's whole remaining batch `failed`
+   * and abandoned it; the rows already written were reported as losses. That
+   * throw is now caught at the link (see the festival block in
+   * `insertScreening`), so the film's remaining screenings are written and
+   * counted, and the link failure is reported separately on
+   * `postWriteFailures`. For a venue with `festivalSlug` screenings and a
+   * failing link, `added` is therefore higher and `failed` lower than before,
+   * deliberately: the old numbers described writes that had in fact landed.
+   */
   added: number;
+  /**
+   * LEGACY ALIAS: `write.updated + write.unchanged`. It has always merged "an
+   * existing row was updated" with "the duplicate check said skip". Prefer
+   * `write` for new readers.
+   */
   updated: number;
   failed: number;
   rejected: number;  // Validation failures
+  /**
+   * Candidates handed to the write loop, counted at the loop's input before
+   * any film is processed. Zero for a blocked batch, which never reached the
+   * loop.
+   *
+   * Measured here rather than recomputed from `write` on purpose. It is the
+   * independent side of the write-conservation equation in
+   * `checkAccounting`, so a candidate that reaches no write outcome at all —
+   * a missed branch, an early `continue` — surfaces as a conservation failure
+   * instead of quietly agreeing with itself.
+   */
+  accepted: number;
+  /**
+   * Validation rejection counts keyed by the *message prefix* that
+   * `validateScreenings` produces (`error.split(":")[0]`), not by a closed set
+   * of codes. Unlike `PreFilterReason` these keys are not a union and can
+   * change when a validator message is reworded, so do not build a dashboard
+   * on them without pinning them first.
+   *
+   * One screening can carry several validation errors, so this tally is a sum
+   * over errors and is `>= rejected`.
+   */
+  rejectedByReason: Record<string, number>;
+  /** Precise per-candidate write outcomes. See screening-accounting.ts. */
+  write: WriteOutcomeCounts;
+  /**
+   * A row was persisted but its follow-up work failed (today: festival
+   * linking). Distinct from `failed`, which means the screening did not
+   * persist.
+   */
+  postWriteFailures: number;
   blocked: boolean;  // True when scrape was blocked by diff check
   scrapedAt: Date;
   /**
@@ -79,15 +136,13 @@ const MAX_DEFERRED_WRITES_PER_VENUE = 50;
 export interface DeferredWrite {
   /** Log label, e.g. "insertScreening: castle/castle-123" */
   label: string;
-  /** Re-runs the prepared insert. Resolves true if a new row was added. */
-  run: () => Promise<boolean>;
+  /** Re-runs the prepared insert, resolving to its write outcome. */
+  run: () => Promise<ScreeningWriteOutcome>;
 }
 
 interface RetryOutcome {
   recovered: number;
-  added: number;
-  updated: number;
-  failed: number;
+  write: WriteOutcomeCounts;
 }
 
 /**
@@ -101,12 +156,12 @@ interface RetryOutcome {
  */
 export async function attemptScreeningWrite(
   label: string,
-  run: () => Promise<boolean>,
+  run: () => Promise<ScreeningWriteOutcome>,
   deferred: DeferredWrite[],
   maxDeferred = MAX_DEFERRED_WRITES_PER_VENUE,
-): Promise<"added" | "updated" | "deferred" | "dropped"> {
+): Promise<ScreeningWriteOutcome | "deferred" | "dropped"> {
   try {
-    return (await run()) ? "added" : "updated";
+    return await run();
   } catch (error) {
     if (!isConnectionError(error)) throw error;
     if (deferred.length >= maxDeferred) {
@@ -159,6 +214,57 @@ export async function linkSeasonsBestEffort(
 }
 
 /**
+ * Link a screening to its festival, best-effort. Never throws.
+ *
+ * DELIBERATE BEHAVIOUR CHANGE, made 2026-09-09 with the loss accounting. The
+ * screening row is committed before this runs, so a link failure is a
+ * post-write failure and not a failed persistence.
+ *
+ * It used to propagate out of `insertScreening`. `attemptScreeningWrite`
+ * rethrows anything that is not connection-shaped, so the throw reached the
+ * film-level catch, which added the film's ENTIRE remaining screening list to
+ * `failed` and abandoned it. Two things were wrong with that: the rows already
+ * written were counted as losses, and the untouched remainder of the film was
+ * never attempted at all. Both fed `shouldRunSupersededCleanup`, so one
+ * festival link could suppress a venue's superseded report.
+ *
+ * The consequence to own: the remaining screenings of that film are now
+ * written, so `added` runs higher and `failed` lower than before this change
+ * for a venue with a failing festival link. The old numbers described writes
+ * that had in fact landed. The failure is not swallowed — it is reported on
+ * `PipelineResult.postWriteFailures`, carried through the runner and
+ * `scripts/lcut-gapfill.ts`, and still refuses the superseded report.
+ *
+ * `link` is injectable so tests can exercise the failure path without a DB.
+ * Exported for tests.
+ */
+export async function linkFestivalBestEffort(
+  filmId: string,
+  cinemaId: string,
+  screening: RawScreening,
+  onPostWriteFailure?: (error: unknown) => void,
+  link: (
+    filmId: string,
+    cinemaId: string,
+    screening: RawScreening,
+  ) => Promise<void> = linkScreeningToFestival,
+): Promise<"linked" | "not_applicable" | "failed"> {
+  if (!screening.festivalSlug) return "not_applicable";
+  try {
+    await link(filmId, cinemaId, screening);
+    return "linked";
+  } catch (error) {
+    console.warn(
+      `[Pipeline] Festival link failed after write for ` +
+        `${cinemaId}/${screening.sourceId ?? "<nosrc>"} (row persisted):`,
+      error
+    );
+    onPostWriteFailure?.(error);
+    return "failed";
+  }
+}
+
+/**
  * Cumulative wall-clock budget for the retry pass. Plan 001's per-venue cap
  * is 10 minutes for scrape + pipeline + retries; an unbounded retry pass
  * against a still-wedged pool (50 writes x ~16s each) would blow it, turning
@@ -185,13 +291,13 @@ export async function retryDeferredWrites(
   gapMs = 1_000,
   budgetMs = RETRY_BUDGET_MS,
 ): Promise<RetryOutcome> {
-  const outcome: RetryOutcome = { recovered: 0, added: 0, updated: 0, failed: 0 };
+  const outcome: RetryOutcome = { recovered: 0, write: emptyWriteOutcomeCounts() };
   console.log(`[Pipeline] Retrying ${deferred.length} deferred writes (serial, ${gapMs}ms gap)`);
   const startedAt = Date.now();
   for (let i = 0; i < deferred.length; i++) {
     if (Date.now() - startedAt >= budgetMs) {
       const remaining = deferred.length - i;
-      outcome.failed += remaining;
+      outcome.write.failed += remaining;
       console.error(
         `[Pipeline] Retry budget (${budgetMs}ms) exhausted — pool still unhealthy; ${remaining} deferred writes not retried this run`
       );
@@ -200,18 +306,14 @@ export async function retryDeferredWrites(
     const write = deferred[i];
     await new Promise((resolve) => setTimeout(resolve, gapMs)); // let the pool breathe
     try {
-      if (await write.run()) {
-        outcome.added++;
-      } else {
-        outcome.updated++;
-      }
+      outcome.write[await write.run()]++;
       outcome.recovered++;
     } catch (error) {
-      outcome.failed++;
+      outcome.write.failed++;
       console.error(`[Pipeline] Deferred write failed on retry (final this run): ${write.label}:`, error);
     }
   }
-  console.log(`[Pipeline] Deferred-write retry: ${outcome.recovered} recovered, ${outcome.failed} failed`);
+  console.log(`[Pipeline] Deferred-write retry: ${outcome.recovered} recovered, ${outcome.write.failed} failed`);
   return outcome;
 }
 
@@ -307,13 +409,25 @@ export async function reportSupersededScreeningCandidates(
  * evidence of complete source capture and never authorizes deletion.
  */
 export function shouldRunSupersededCleanup(
-  result: { added: number; updated: number; failed: number; blocked: boolean },
+  result: {
+    added: number;
+    updated: number;
+    failed: number;
+    blocked: boolean;
+    postWriteFailures?: number;
+  },
   options: { skipSupersededCleanup?: boolean } = {},
 ): boolean {
   if (options.skipSupersededCleanup) return false;
   if (result.blocked) return false;
   // Any failed write means we do not hold the venue's complete listing.
   if (result.failed > 0) return false;
+  // Post-write failures are no longer counted as failed writes (the row did
+  // persist), so they are refused here explicitly. Without this, separating
+  // the two counters would have quietly *enabled* the report on runs that
+  // previously suppressed it — a cleanup-behaviour change this patch declines
+  // to make.
+  if ((result.postWriteFailures ?? 0) > 0) return false;
   return result.added + result.updated > 0;
 }
 
@@ -385,6 +499,15 @@ export async function processScreenings(
         updated: 0,
         failed: rawScreenings.length,
         rejected: rejectedScreenings.length,
+        rejectedByReason: summary.errorsByType,
+        // A blocked batch was validated and then refused, so it reached the
+        // write loop with nothing.
+        accepted: 0,
+        // A blocked batch attempted no writes. `failed` carries the whole
+        // batch for backwards compatibility; the precise counters stay zero so
+        // a blocked venue can never be added into a run's write totals.
+        write: emptyWriteOutcomeCounts(),
+        postWriteFailures: 0,
         blocked: true,
         scrapedAt: new Date(),
       };
@@ -397,12 +520,22 @@ export async function processScreenings(
     initFilmCache(normalizeTitle),
   );
 
+  const write = emptyWriteOutcomeCounts();
+  let postWriteFailures = 0;
   const result: PipelineResult = {
     cinemaId,
     added: 0,
     updated: 0,
     failed: 0,
     rejected: rejectedScreenings.length,
+    rejectedByReason: summary.errorsByType,
+    // The write loop's input, captured before the film loop runs. Every one of
+    // these candidates is pushed into exactly one `screeningsByFilm` group
+    // below, so the groups' total length is this number and each group member
+    // must reach exactly one write bucket.
+    accepted: screeningsToProcess.length,
+    write,
+    postWriteFailures: 0,
     blocked: false,
     scrapedAt: new Date(),
     diffFailed,
@@ -482,7 +615,7 @@ export async function processScreenings(
 
           if (!filmId) {
             console.warn(`[Pipeline] Could not create film: ${firstScreening.filmTitle}`);
-            result.failed += filmScreenings.length;
+            write.failed += filmScreenings.length;
             continue;
           }
 
@@ -495,15 +628,21 @@ export async function processScreenings(
             const label = `insertScreening: ${cinemaId}/${normalizedScreening.sourceId ?? "<nosrc>"}`;
             const status = await attemptScreeningWrite(
               label,
-              () => withDbTimeout(insertScreening(filmId, cinemaId, normalizedScreening), 15_000, label),
+              () =>
+                withDbTimeout(
+                  insertScreening(filmId, cinemaId, normalizedScreening, () => {
+                    postWriteFailures++;
+                  }),
+                  15_000,
+                  label,
+                ),
               deferredWrites,
             );
-            if (status === "added") {
-              result.added++;
-            } else if (status === "updated") {
-              result.updated++;
-            } else if (status === "dropped") {
-              result.failed++;
+            if (status === "dropped") {
+              write.failed++;
+            } else if (status !== "deferred") {
+              // "upserted" | "updated" | "unchanged"
+              write[status]++;
             }
             // "deferred" outcomes are counted after the retry pass below.
             settled++;
@@ -513,7 +652,7 @@ export async function processScreenings(
           await linkSeasonsBestEffort(filmId, firstScreening.filmTitle);
         } catch (error) {
           console.error(`[Pipeline] Error processing film "${normalizedTitle}":`, error);
-          result.failed += filmScreenings.length - settled;
+          write.failed += filmScreenings.length - settled;
         }
       }
     },
@@ -530,11 +669,24 @@ export async function processScreenings(
       () => retryDeferredWrites(deferredWrites),
       { deferred: deferredWrites.length },
     );
-    result.added += retryOutcome.added;
-    result.updated += retryOutcome.updated;
-    result.failed += retryOutcome.failed;
+    write.upserted += retryOutcome.write.upserted;
+    write.updated += retryOutcome.write.updated;
+    write.unchanged += retryOutcome.write.unchanged;
+    write.failed += retryOutcome.write.failed;
     recoveredOnRetry = retryOutcome.recovered;
   }
+
+  // Project the precise write outcomes onto the legacy aliases before anything
+  // reads them, so shouldRunSupersededCleanup and every external consumer keep
+  // working off the fields they already read.
+  //
+  // These are the pre-accounting values in every case except one: a venue whose
+  // festival link fails now reports the screenings it actually wrote instead of
+  // counting that film's remainder as `failed`. See PipelineResult.added.
+  result.added = write.upserted;
+  result.updated = write.updated + write.unchanged;
+  result.failed = write.failed;
+  result.postWriteFailures = postWriteFailures;
 
   // Report proximity candidates only. Even a clean write batch cannot prove
   // the source capture was complete, so this path never deletes screenings.
@@ -548,6 +700,16 @@ export async function processScreenings(
     // indistinguishable from a scraper emitting a duplicate screening.
     console.warn(
       `[Pipeline] Skipped superseded-candidate report for ${cinemaId}: ${result.failed} failed write(s). No screenings deleted.`,
+    );
+  } else if (postWriteFailures > 0 && !options.skipSupersededCleanup && !result.blocked) {
+    // Same rule as the failed-write branch above, for the counter this patch
+    // introduced. Without it a venue with a failing festival link and zero
+    // failed writes took the skip silently, which is the one shape the new
+    // counter created.
+    console.warn(
+      `[Pipeline] Skipped superseded-candidate report for ${cinemaId}: ` +
+        `${postWriteFailures} screening(s) persisted but their follow-up work ` +
+        `failed. No screenings deleted.`,
     );
   } else if (diffFailed && !options.skipSupersededCleanup && !result.blocked) {
     console.warn(
@@ -564,7 +726,9 @@ export async function processScreenings(
     .where(eq(cinemas.id, cinemaId));
 
   console.log(
-    `[Pipeline] Complete: ${result.added} added, ${result.updated} updated, ${result.failed} failed` +
+    `[Pipeline] Complete: ${write.upserted} upserted (insert vs update not ` +
+      `established), ${write.updated} updated, ${write.unchanged} unchanged, ` +
+      `${write.failed} failed, ${postWriteFailures} post-write failure(s)` +
       (recoveredOnRetry > 0 ? ` (${recoveredOnRetry} recovered on retry)` : "")
   );
 
@@ -762,8 +926,9 @@ async function getOrCreateFilm(
 async function insertScreening(
   filmId: string,
   cinemaId: string,
-  screening: RawScreening
-): Promise<boolean> {
+  screening: RawScreening,
+  onPostWriteFailure?: (error: unknown) => void
+): Promise<ScreeningWriteOutcome> {
   // Classify screening metadata (event type, format, accessibility)
   const metadata = await classifyScreening(screening);
 
@@ -779,7 +944,7 @@ async function insertScreening(
   );
 
   if (shouldSkip) {
-    return false;
+    return "unchanged";
   }
 
   if (duplicate) {
@@ -840,12 +1005,14 @@ async function insertScreening(
             `(${cinemaId}/${screening.sourceId ?? "<nosrc>"}@${screening.datetime.toISOString()}): ` +
             `film_id flip ${duplicate.filmId} -> ${filmId} would violate (film_id, cinema_id, datetime) unique index.`
         );
-        return false;
+        // The row was left exactly as it was, so this is unchanged rather than
+        // a successful update. Both used to report `false`.
+        return "unchanged";
       }
       throw err;
     }
 
-    return false; // Updated, not added
+    return "updated";
   }
 
   // Insert new screening with conflict handling for race conditions.
@@ -911,12 +1078,11 @@ async function insertScreening(
     });
   }
 
-  // Handle festival linking
-  if (screening.festivalSlug) {
-    await linkScreeningToFestival(filmId, cinemaId, screening);
-  }
+  // Handle festival linking. The row above is already committed, so a failure
+  // here is a post-write failure and must not be reported as a lost write.
+  await linkFestivalBestEffort(filmId, cinemaId, screening, onPostWriteFailure);
 
-  return true; // Added
+  return "upserted";
 }
 
 /**

@@ -335,6 +335,14 @@ export interface VenueParity {
   inserted: number;
   /** failed+rejected when this venue was executed. */
   failed: number;
+  /**
+   * Screenings that persisted but whose follow-up work failed (pipeline
+   * `postWriteFailures`). Kept out of `failed` because the rows landed, and
+   * reported because it must not vanish: before the accounting patch a
+   * festival-link failure propagated into the pipeline's film-level catch and
+   * arrived here inside `result.failed`.
+   */
+  postWriteFailures: number;
   /** True if the pipeline diff-check blocked the insert. */
   blocked: boolean;
 }
@@ -350,6 +358,11 @@ export interface LcutGapfillReport {
   totalMissing: number;
   totalInserted: number;
   totalFailed: number;
+  /**
+   * Screenings that persisted but whose follow-up work failed, summed across
+   * executed venues. Distinct from `totalFailed`: these rows are in the table.
+   */
+  totalPostWriteFailures: number;
 }
 
 export interface RunLcutGapfillOptions {
@@ -474,6 +487,7 @@ export async function runLcutGapfill(
       missingRows: missing,
       inserted: 0,
       failed: 0,
+      postWriteFailures: 0,
       blocked: false,
     });
   }
@@ -481,6 +495,7 @@ export async function runLcutGapfill(
 
   let totalInserted = 0;
   let totalFailed = 0;
+  let totalPostWriteFailures = 0;
   if (execute) {
     for (const v of venues) {
       if (v.missingRows.length === 0) continue;
@@ -496,9 +511,11 @@ export async function runLcutGapfill(
       });
       v.inserted = result.added + result.updated;
       v.failed = result.failed + result.rejected;
+      v.postWriteFailures = result.postWriteFailures;
       v.blocked = result.blocked;
       totalInserted += v.inserted;
       totalFailed += v.failed;
+      totalPostWriteFailures += v.postWriteFailures;
       if (result.blocked) {
         warn(`[lcut] ${v.venue} blocked by diff check — investigate manually`);
       }
@@ -514,6 +531,7 @@ export async function runLcutGapfill(
     totalMissing: venues.reduce((s, v) => s + v.missing, 0),
     totalInserted,
     totalFailed,
+    totalPostWriteFailures,
   };
 }
 
@@ -580,6 +598,14 @@ export interface LcutPhaseOutcome {
  * loop, so the window is the loop's whole duration: seconds per venue for the
  * diff and initFilmCache.
  *
+ * `report.totalPostWriteFailures` fails the phase too, on the same reasoning
+ * rather than a new policy: until the accounting patch a festival-link failure
+ * propagated into the pipeline's film-level catch and landed in
+ * `result.failed`, so it already failed this phase. Counting it separately
+ * keeps the rows it wrote out of the loss column without making the failure
+ * itself disappear. L-CUT rows carry no `festivalSlug` today, so in this path
+ * the counter is structurally zero.
+ *
  * Know the cost before leaning on that: one routine rejection now fails a
  * 30-60 minute run, exits 1 and holds the checkpoint. shouldRunSupersededCleanup
  * (src/scrapers/pipeline.ts) makes the opposite call for the same counter and
@@ -594,10 +620,13 @@ export function summarizeLcutPhase(
 ): LcutPhaseOutcome {
   const parts = [`${report.totalInserted} added/updated (source-only)`];
   if (report.totalFailed > 0) parts.push(`${report.totalFailed} failed/rejected`);
+  if (report.totalPostWriteFailures > 0) {
+    parts.push(`${report.totalPostWriteFailures} post-write failure(s)`);
+  }
   parts.push(`${regressions.length} scraped venue(s) >${threshold} missing`);
   if (report.unmapped.length > 0) parts.push(`${report.unmapped.length} unmapped`);
   return {
-    ok: report.totalFailed === 0,
+    ok: report.totalFailed === 0 && report.totalPostWriteFailures === 0,
     warn: regressions.length > 0 || report.unmapped.length > 0,
     detail: parts.join(", "),
   };
@@ -676,7 +705,12 @@ async function main() {
   }
 
   console.log(
-    `\nDone. ${report.totalInserted} added/updated, ${report.totalFailed} failed/rejected.`,
+    `\nDone. ${report.totalInserted} added/updated, ${report.totalFailed} failed/rejected` +
+      (report.totalPostWriteFailures > 0
+        ? `, ${report.totalPostWriteFailures} post-write failure(s) ` +
+          `(screenings persisted, follow-up work did not)`
+        : "") +
+      `.`,
   );
   process.exit(0);
 }
