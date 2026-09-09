@@ -1,0 +1,57 @@
+{
+ "source": "Rich Mix public Spektrix v3 API (no credentials, no auth headers)",
+ "capturedAtUTC": "2026-09-09T19:42:02Z",
+ "requests": [
+  {
+   "url": "https://system.spektrix.com/richmix/api/v3/events",
+   "status": 200,
+   "bytes": 387363,
+   "sha256": "0a583346d67c2a7d68893b8faf783a945826f8f48092656064551d1f9b6e4a98",
+   "storedAs": "events.subset.json",
+   "reduction": "REDUCED from 354 events (262 FILM) to 40 (31 FILM): every event referenced by a future instance, plus 30 FILM controls that have no future instance. The subset preserves the shape that matters \u2014 a populated film catalogue against an almost empty film calendar. sha256 above is of the FULL 387 KB response, not committed."
+  },
+  {
+   "url": "https://system.spektrix.com/richmix/api/v3/instances?startFrom=2026-09-09",
+   "status": 200,
+   "bytes": 6950,
+   "sha256": "26bdb201524f0f586d499174249884a41dac5218758c41d0576bad8100dd63be",
+   "storedAs": "instances.json",
+   "reduction": "No records removed; JSON pretty-printed for the fixture. bytes and sha256 above describe the original compact response. Compact serialization of the fixture reproduces that original hash.",
+   "storedFixtureBytes": 7959,
+   "storedFixtureSha256": "897050d8298e6a16f2cdc65da19745134a17e35191d9ac54d13d2c6cab819800"
+  }
+ ],
+ "note": "instances.json is the complete response body that endpoint returned for that query. The endpoint's contract is established from vendor documentation (see endpointContract), which documents v3/instances as returning all instances matching the query with no pagination mechanism. Absent Link/Content-Range headers and a matching content-length corroborate that we received the whole body; on their own they would prove only that.",
+ "scopeLimit": "A 2026-09-09 observation. It does NOT establish what the source held on 2026-09-08, so it cannot show the baseline run's extraction was correct or incorrect. It also does not establish a cause for the low film denominator. The latest instance among six sampled catalogue films was 2026-08-27; a different FILM event in the captured instances response has a 2026-09-09 screening.",
+ "sampling": {
+  "filmEventsSampledViaPerEventEndpoint": 6,
+  "filmEventsTotal": 262,
+  "eachReturnedFutureInstances": 0,
+  "newestFilmInstanceInSample": "2026-08-27T18:45:00"
+ },
+ "paginationContractVerified": "yes, against vendor documentation (no pagination mechanism documented); not verified by measurement",
+ "independentDiscoveryCheck": {
+  "why": "Six per-event API samples cannot rule out the venue having moved its film programme to a different publishing route. This check uses a route independent of the Spektrix API.",
+  "url": "https://richmix.org.uk/sitemap.xml",
+  "status": 200,
+  "bytes": 22581,
+  "sha256": "52f1b562845ded54d3097c1255a892e5d1240c1b0753347e8175ef65db5a8a12",
+  "fetchedAtUTC": "2026-09-09T20:16Z",
+  "robots": "https://richmix.org.uk/robots.txt allows this path (disallows only /cpresources/, /vendor/, /.env, /cache/)",
+  "sitemapGeneratedAt": "2026-09-09T20:15:49+01:00 (19:15:49Z, approximately one hour before the recorded fetch)",
+  "result": "53 URLs. Exactly ONE /cinema/<detail> page: https://richmix.org.uk/cinema/premiere-we-set-the-house-on-fire \u2014 the same single film the Spektrix API returned. Also 7 /live-events/<detail> pages, consistent with the API's 9 LIVE instances.",
+  "establishes": "The venue's sitemap listed one cinema detail page at capture time, corroborating the single film the API returned.",
+  "doesNotEstablish": "That the website is not advertising a programme the API misses. A sitemap is a CMS-generated index and need not enumerate everything a site publishes \u2014 sections can be omitted, stale, or rendered without dedicated detail pages. This is corroboration from a second route, not proof of absence. The /cinema/ listing page is client-rendered via Spektrix web components and server-returns no showtimes, so it could not be counted directly without a browser. No cause is established and no other publishing route is ruled out."
+ },
+ "endpointContract": {
+  "source": [
+   "https://integrate.spektrix.com/docs/apieventfiltering",
+   "https://integrate.spektrix.com/docs/API3"
+  ],
+  "readDateUTC": "2026-09-09",
+  "summary": "The vendor describes v3/instances as a collection of instances filtered by supported query parameters and recommends bounded dates to limit response size. Supported filters include startFrom, startTo, eventName and event/instance attributes.",
+  "reading": "The collection endpoint is documented to return ALL instances matching the query, with no pagination mechanism described \u2014 the stated caveat is response SIZE, not truncation. So `?startFrom=<today>` is documented to return every future instance. This, not the absence of Link/Content-Range headers, is what establishes the contract; the header observation is corroboration only.",
+  "perEventNote": "Our /events/{id}/instances probes passed no parameters, so they returned each event's full instance history (108 and 123 rows, all past), which is what we observed. Note the docs use a different parameter form elsewhere, v3/events?instanceStart_from/instanceStart_to.",
+  "residual": "Documentation is a vendor statement, not a measurement. It is a materially better basis than header absence, and it is still not a proof about this tenant's data."
+ }
+}
