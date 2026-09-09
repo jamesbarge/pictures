@@ -1,6 +1,6 @@
 # Honest screening-loss accounting
 
-**PR**: TBD (local branch `fix/screening-loss-accounting`, not pushed)
+**PR**: #752
 **Date**: 2026-09-09
 **Base**: `f9725cd683f6741caf64c6cfd2d7b918abb0bf35` (`origin/main`, #749)
 
@@ -181,7 +181,7 @@ the superseded report.
 
 | Check | Result |
 |---|---|
-| `npx vitest run --pool=threads` | 141 files, all passed |
+| `npx vitest run --pool=threads` | 142 files, 2131 tests passed before current-main integration |
 | `npx tsc --noEmit -p tsconfig.json` | clean |
 | `npm run lint` | 0 errors, 61 pre-existing warnings, none in changed files |
 
