@@ -1,3 +1,13 @@
+## 2026-09-09: Rich Mix — source observation and stage counts, no fault found
+**PR**: (pending) | **Files**: `src/scrapers/cinemas/rich-mix-v2.ts`, `src/scrapers/cinemas/rich-mix-v2.test.ts`, `src/scrapers/cinemas/__fixtures__/rich-mix/*`, `src/scrapers/SCRAPING_PLAYBOOK.md`
+- The 2026-09-08 baseline parsed **one** screening for Rich Mix. A bounded read-only capture of the venue's public Spektrix v3 API recorded what the source held on **2026-09-09**: `/instances?startFrom=2026-09-09` returned **12 future instances in total**, exactly **one** on a FILM event (9 LIVE, 2 CE). No pagination headers, `content-length` = body, `&startTo=+60d` returned the identical 12, and a re-check 11 minutes later was byte-identical. `/events` carried **354 events, 262 FILM**. Six sampled FILM events each returned **zero** future instances; the newest in that sample was **2026-08-27**.
+- **What it does not establish:** anything about the 2026-09-08 run — that payload was never captured, so this cannot show the baseline extraction was right or wrong — and no cause for the low denominator. An unpublished calendar, a changed publishing route or a discovery fault elsewhere all look the same from here. **Why film instances stop at 27 August is unresolved.**
+- **No extraction fault was demonstrated, so none was fixed.** An earlier draft added a `LOW FILM COVERAGE` warning with 10/5/25% thresholds; that was invented policy endorsing an unverified cause, and it was removed rather than defended.
+- Change is stage counts only, with **no effect on which screenings are emitted**: `parsePages` now logs `P future instances (Q on film events)` alongside the existing catalogue counts, so the next reader can see where the funnel narrows. The counts assert no cause.
+- 9 new tests replay the real captured responses through the **production** `parsePages`, asserting the exact tuple, non-film exclusion, past-instance dropping, omitted-`Z` handling, malformed/empty/orphan/cancelled inputs, and that `console.warn` stays unused. The stage-count test fails on the pre-change scraper.
+
+---
+
 ## 2026-09-08: Post-deploy verification never ran, and would have passed against a login page
 **PR**: #749 | **Files**: `.github/workflows/post-deploy-verify.yml`, `frontend/test-all.spec.ts`
 - **The gate never matched.** It required `deployment_status.environment == 'Production'`, but Vercel names environments `<Target> – <project>` with an EN DASH (U+2013). Across all 2,747 deployments the API reports six environment names; the live one is `Production – frontend` (266, last 2026-09-08). Plain `Production` (595) last deployed 2026-04-06 and its final status was a failure, so the job had not run on a real production deploy for months.

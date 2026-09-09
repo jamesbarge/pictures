@@ -627,6 +627,31 @@ none was judged to pay for itself at ~12-20 screenings a year.
   when one probe to `system.spektrix.com` blipped — it occasionally serves an HTML error page
   instead of JSON — even though the venue recovers within seconds; manual daytime runs succeeded).
   It hits the Spektrix events endpoint (the real dependency), not the WP site.
+- **A 2026-09-09 read-only capture of what the source held.** The 2026-09-08 baseline parsed ONE
+  screening; one parsed screening identifies no layer on its own. Captured that day:
+  `/instances?startFrom=2026-09-09` returned **12 future instances in total** — no pagination
+  headers, `content-length` equal to the body, `&startTo=+60d` returned the identical 12, and a
+  re-check 11 minutes later was byte-identical — of which exactly **one** sat on a FILM event
+  (9 LIVE, 2 CE). `/events` carried **354 events, 262 FILM**. Six sampled FILM events (The
+  Odyssey, Spider-Man: Brand New Day, Wuthering Heights and three others, all `isOnSale`) each
+  returned **zero** future instances via `/events/{id}/instances`; the newest film instance in
+  that sample was **2026-08-27**.
+- **What that does and does not show.** It records the source state on 2026-09-09 and the
+  parser's behaviour on it. It does **not** show what the source held on 2026-09-08 — that
+  payload was never captured — so it cannot establish whether the baseline run's extraction was
+  right or wrong. Nor does a low denominator by itself establish a cause: an unpublished
+  calendar, a changed publishing route and a discovery fault elsewhere would all look like this
+  from here. **Why film instances stop at 2026-08-27 is unresolved.**
+- No extraction fault was demonstrated, so none was fixed and no detection heuristic was added.
+  `parsePages` logs stage counts only — `N events (M film), P future instances (Q on film
+  events)` — so the next reader can see where the funnel narrows without re-deriving it. The
+  counts assert no cause and change nothing about which screenings are emitted.
+- Offline replay fixture: `src/scrapers/cinemas/__fixtures__/rich-mix/` (the real 2026-09-09
+  responses with URLs, status, byte counts and sha256 in `PROVENANCE.json`; events reduced to 40
+  of 354, instances complete). `rich-mix-v2.test.ts` replays them through the production
+  `parsePages`, never a copy.
+- `/events/{id}/instances` returns one event's full instance history — the endpoint that settled
+  the per-film question here, and the one to reach for next time.
 
 ### Bertha DocHouse — stable booking URL (fixed 2026-07-20)
 - Detail page `https://dochouse.org/event/<slug>/` lists each screening as

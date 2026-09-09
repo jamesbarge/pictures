@@ -1,0 +1,30 @@
+{
+ "source": "Rich Mix public Spektrix v3 API (no credentials, no auth headers)",
+ "capturedAtUTC": "2026-09-09T19:42:02Z",
+ "requests": [
+  {
+   "url": "https://system.spektrix.com/richmix/api/v3/events",
+   "status": 200,
+   "bytes": 387363,
+   "sha256": "0a583346d67c2a7d68893b8faf783a945826f8f48092656064551d1f9b6e4a98",
+   "storedAs": "events.subset.json",
+   "reduction": "REDUCED from 354 events (262 FILM) to 40 (31 FILM): every event referenced by a future instance, plus 30 FILM controls that have no future instance. The subset preserves the shape that matters \u2014 a populated film catalogue against an almost empty film calendar. sha256 above is of the FULL 387 KB response, not committed."
+  },
+  {
+   "url": "https://system.spektrix.com/richmix/api/v3/instances?startFrom=2026-09-09",
+   "status": 200,
+   "bytes": 6950,
+   "sha256": "26bdb201524f0f586d499174249884a41dac5218758c41d0576bad8100dd63be",
+   "storedAs": "instances.json",
+   "reduction": "none \u2014 complete response body"
+  }
+ ],
+ "note": "No pagination headers were returned (no Link / Content-Range); content-length equalled the body, so instances.json is the venue's COMPLETE future instance set at capture time.",
+ "scopeLimit": "A 2026-09-09 observation. It does NOT establish what the source held on 2026-09-08, so it cannot show the baseline run's extraction was correct or incorrect. It also does not establish a CAUSE for the low film denominator: an unpublished calendar, a changed publishing route, or a discovery fault reachable another way all look the same from here. Why film instances stop at 2026-08-27 is unresolved.",
+ "sampling": {
+  "filmEventsSampledViaPerEventEndpoint": 6,
+  "filmEventsTotal": 262,
+  "eachReturnedFutureInstances": 0,
+  "newestFilmInstanceInSample": "2026-08-27T18:45:00"
+ }
+}
