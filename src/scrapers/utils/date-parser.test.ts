@@ -404,3 +404,146 @@ describe("londonParts", () => {
     expect(londonParts(instant)).toMatchObject({ day: 14, hours: 18, minutes: 10 });
   });
 });
+
+// =============================================================================
+// Yearless calendar-day inference (Europe/London)
+//
+// A listing with no year ("Wednesday 9th September") must be resolved against
+// today's LONDON CALENDAR DAY, not against the reference instant. Comparing an
+// instant with the parsed day's UTC midnight makes *today* look past for the
+// whole day after 00:00, so today's screenings were inferred a year ahead and
+// then discarded by the horizon.
+//
+// The pre-existing contract for genuinely past days ("assume next year") is
+// deliberately preserved; only same-day is corrected.
+// =============================================================================
+
+describe("parseScreeningDate: yearless dates resolve against the London calendar day", () => {
+  // 17:00 London (BST) on Wednesday 9 September 2026 — the reported reference.
+  const AFTERNOON = new Date("2026-09-09T16:00:00Z");
+
+  it("keeps TODAY in the current year when the reference is later in the day", () => {
+    const result = parseScreeningDate("Wednesday 9th September", AFTERNOON);
+    expect(result?.toISOString()).toBe("2026-09-09T00:00:00.000Z");
+  });
+
+  it("keeps TODAY in the current year before any performance time", () => {
+    const result = parseScreeningDate("Wednesday 9th September", new Date("2026-09-09T06:00:00Z"));
+    expect(result?.toISOString()).toBe("2026-09-09T00:00:00.000Z");
+  });
+
+  it("keeps TODAY in the current year late in the London evening", () => {
+    const result = parseScreeningDate("Wednesday 9th September", new Date("2026-09-09T22:30:00Z"));
+    expect(result?.toISOString()).toBe("2026-09-09T00:00:00.000Z");
+  });
+
+  it("still resolves tomorrow to the current year", () => {
+    expect(parseScreeningDate("Thursday 10th September", AFTERNOON)?.toISOString())
+      .toBe("2026-09-10T00:00:00.000Z");
+  });
+
+  it("still rolls a genuinely past day to next year (pre-existing contract)", () => {
+    expect(parseScreeningDate("Tuesday 8th September", AFTERNOON)?.toISOString())
+      .toBe("2027-09-08T00:00:00.000Z");
+  });
+
+  it("still resolves ordinary future dates in the current year", () => {
+    expect(parseScreeningDate("Friday 19th December", AFTERNOON)?.toISOString())
+      .toBe("2026-12-19T00:00:00.000Z");
+  });
+
+  describe("London-vs-UTC day boundary", () => {
+    // 23:30 UTC on 30 June is already 00:30 on 1 July in London (BST).
+    const JUST_AFTER_LONDON_MIDNIGHT = new Date("2026-06-30T23:30:00Z");
+
+    it("treats the London day as today, not the UTC day", () => {
+      expect(parseScreeningDate("Wednesday 1st July", JUST_AFTER_LONDON_MIDNIGHT)?.toISOString())
+        .toBe("2026-07-01T00:00:00.000Z");
+    });
+
+    it("treats the previous London day as past", () => {
+      expect(parseScreeningDate("Tuesday 30th June", JUST_AFTER_LONDON_MIDNIGHT)?.toISOString())
+        .toBe("2027-06-30T00:00:00.000Z");
+    });
+  });
+
+  describe("year-end rollover", () => {
+    const NYE = new Date("2026-12-31T20:00:00Z");
+
+    it("keeps New Year's Eve in the current year", () => {
+      expect(parseScreeningDate("Thursday 31st December", NYE)?.toISOString())
+        .toBe("2026-12-31T00:00:00.000Z");
+    });
+
+    it("rolls 1 January into the next year", () => {
+      expect(parseScreeningDate("Friday 1st January", NYE)?.toISOString())
+        .toBe("2027-01-01T00:00:00.000Z");
+    });
+  });
+
+  describe("leap day", () => {
+    it("resolves 29 February in a leap year", () => {
+      expect(parseScreeningDate("29 February", new Date("2028-02-01T12:00:00Z"))?.toISOString())
+        .toBe("2028-02-29T00:00:00.000Z");
+    });
+
+    it("documents Date.UTC overflow for 29 February in a non-leap year", () => {
+      // Pre-existing behaviour, unchanged by the calendar-day fix: Date.UTC
+      // rolls 2027-02-29 to 2027-03-01. Pinned so a future change is deliberate.
+      expect(parseScreeningDate("29 February", new Date("2027-02-01T12:00:00Z"))?.toISOString())
+        .toBe("2027-03-01T00:00:00.000Z");
+    });
+  });
+
+  describe("year rollover uses UTC calendar arithmetic, not local-time addYears", () => {
+    // Reachable case: "29 March" read on 1 June is a past day, so it rolls.
+    // date-fns addYears() works in LOCAL time, so under TZ=Europe/London it
+    // produced 2027-03-28T23:00:00Z — combineDateAndTime() reads UTC components,
+    // so the screening landed on 28 March. Must hold under every host TZ.
+    const JUNE = new Date("2026-06-01T12:00:00Z");
+
+    it("rolls 29 March across the BST boundary without losing a day", () => {
+      const result = parseScreeningDate("Sunday 29th March", JUNE);
+      expect(result?.toISOString()).toBe("2027-03-29T00:00:00.000Z");
+      expect(result?.getUTCDate()).toBe(29);
+    });
+
+    it("rolls 25 October across the GMT boundary without gaining a day", () => {
+      const result = parseScreeningDate("Sunday 25th October", JUNE);
+      expect(result?.toISOString()).toBe("2026-10-25T00:00:00.000Z");
+      expect(result?.getUTCDate()).toBe(25);
+    });
+
+    it("clamps a real leap day to 28 February when rolling (date-fns parity)", () => {
+      // 2028 is a leap year, so "29 February" is VALID and 2028-02-29 is past
+      // relative to 2028-03-01, so it rolls. 2029 is not a leap year: the
+      // pre-existing contract clamps to 28 Feb rather than spilling into March.
+      const result = parseScreeningDate("29 February", new Date("2028-03-01T12:00:00Z"));
+      expect(result?.toISOString()).toBe("2029-02-28T00:00:00.000Z");
+    });
+
+    it("keeps the already-overflowed non-leap 29 February distinct", () => {
+      // Here Date.UTC has already overflowed 2027-02-29 to 2027-03-01 before any
+      // rollover, so this is a March date and the clamp is not involved.
+      const result = parseScreeningDate("29 February", new Date("2027-06-01T12:00:00Z"));
+      expect(result?.toISOString()).toBe("2028-03-01T00:00:00.000Z");
+    });
+
+    it("keeps the rolled value at UTC midnight", () => {
+      const result = parseScreeningDate("Sunday 29th March", JUNE);
+      expect(result?.getUTCHours()).toBe(0);
+      expect(result?.getUTCMinutes()).toBe(0);
+    });
+  });
+
+  it("does not require a valid reference when the year is explicit", () => {
+    // londonParts() throws on an invalid Date; an explicit year must not consult it.
+    expect(parseScreeningDate("Sun 22 Dec 2025", new Date(NaN))?.toISOString())
+      .toBe("2025-12-22T00:00:00.000Z");
+  });
+
+  it("still honours an explicit year over any inference", () => {
+    expect(parseScreeningDate("Wednesday 9th September 2025", AFTERNOON)?.toISOString())
+      .toBe("2025-09-09T00:00:00.000Z");
+  });
+});
