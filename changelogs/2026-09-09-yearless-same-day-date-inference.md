@@ -1,6 +1,6 @@
 # Yearless same-day dates were inferred a year ahead
 
-**PR**: pending
+**PR**: #750
 **Date**: 2026-09-09
 **Base**: `f9725cd683f6741caf64c6cfd2d7b918abb0bf35`
 

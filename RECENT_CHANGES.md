@@ -1,5 +1,5 @@
 ## 2026-09-09: Fix yearless same-day dates being inferred a year ahead
-**PR**: pending | **Files**: `src/scrapers/utils/date-parser.ts`, `src/scrapers/utils/date-parser.test.ts`, `src/scrapers/cinemas/prince-charles-capture-replay.test.ts`
+**PR**: #750 | **Files**: `src/scrapers/utils/date-parser.ts`, `src/scrapers/utils/date-parser.test.ts`, `src/scrapers/cinemas/prince-charles-capture-replay.test.ts`
 - `parseScreeningDate()` compared the reference *instant* with the parsed day's UTC midnight, so from 00:00 onwards *today* looked past and a yearless listing rolled to next year. At `2026-09-09T16:00Z`, "Wednesday 9th September" resolved to 2027 while "Thursday 10th September" resolved correctly; New Year's Eve jumped a full year.
 - The 90-day horizon then rejected those rows as `too_far_future`, so today's screenings vanished instead of showing a wrong date.
 - Now compares calendar days in Europe/London via `londonParts()`, host-TZ independent. Genuinely past days still roll forward; explicit years, meridiem policy and horizon constants are untouched.
