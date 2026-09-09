@@ -636,16 +636,27 @@ none was judged to pay for itself at ~12-20 screenings a year.
   Odyssey, Spider-Man: Brand New Day, Wuthering Heights and three others, all `isOnSale`) each
   returned **zero** future instances via `/events/{id}/instances`; the newest film instance in
   that sample was **2026-08-27**.
-- **The response was complete; the inventory is not proven exhaustive.** Absent `Link` /
-  `Content-Range` plus a matching `content-length` shows we received the whole HTTP body for
-  that query. It does **not** show the body is the venue's exhaustive future inventory —
-  Spektrix's v3 pagination/limit contract was **not** verified against vendor documentation.
+- **Endpoint contract, from the vendor docs — not from missing headers.**
+  [apieventfiltering](https://integrate.spektrix.com/docs/apieventfiltering) states of
+  `v3/instances`: *"It is also possible to retrieve all instances. The response for this API call
+  can become very large, so it is best to use it only in combination with the URI Parameters
+  below"* (`startFrom`, `startTo`, `eventName`, `attribute_*`, `eventattribute_*`), and
+  [API3](https://integrate.spektrix.com/docs/API3) describes collection resources as exposing all
+  of a resource type subject to the query. No pagination mechanism is documented; the stated
+  caveat is response **size**, not truncation. So `?startFrom=<today>` is documented to return
+  every future instance. Absent `Link`/`Content-Range` and a matching `content-length` only
+  corroborate that the body arrived whole — on their own they would prove nothing about
+  exhaustiveness. Documentation is a vendor statement, not a measurement of this tenant's data.
+  Our `/events/{id}/instances` probes passed no parameters and so returned each event's full
+  history, which matches what we saw.
 - **Independent discovery check (route not the Spektrix API).** `robots.txt` allows it;
   `sitemap.xml`, regenerated `2026-09-09T20:15:49+01:00`, carries 53 URLs and exactly **one**
   `/cinema/<detail>` page — `premiere-we-set-the-house-on-fire`, the same single film the API
   returned — plus 7 `/live-events/<detail>` pages, consistent with the API's 9 LIVE instances.
-  So the venue's own CMS is not advertising a film programme this API route is missing. It does
-  not prove no other route exists anywhere.
+  Read this as **corroboration from a second route**, nothing stronger: a sitemap is a
+  CMS-generated index and need not enumerate everything a site publishes, so it cannot prove the
+  website is not advertising a programme the API misses. No other route is ruled out and no
+  cause is established.
 - **What that does and does not show.** It records the source state on 2026-09-09 and the
   parser's behaviour on it. It does **not** show what the source held on 2026-09-08 — that
   payload was never captured — so it cannot establish whether the baseline run's extraction was

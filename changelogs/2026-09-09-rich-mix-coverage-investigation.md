@@ -22,7 +22,7 @@ Bounded read-only capture of the venue's public Spektrix v3 API, 2026-09-09
 | `/instances?startFrom=2026-09-09` | 200, **12 instances in the response** |
 | …of those, on a FILM event | **1** (9 LIVE, 2 CE) |
 | `&startTo=+60d` added | identical 12 |
-| Pagination headers | none — `content-length` = body, so the **response body is complete**. Spektrix's pagination/limit contract was **not** verified against vendor docs, so the inventory is not proven exhaustive. |
+| Endpoint contract | Vendor docs ([apieventfiltering](https://integrate.spektrix.com/docs/apieventfiltering), [API3](https://integrate.spektrix.com/docs/API3)) document `v3/instances` as retrieving **all** instances matching the query, with **no pagination mechanism** — the caveat is response size. Absent `Link`/`Content-Range` and matching `content-length` corroborate that the body arrived whole. |
 | Re-check 11 minutes later | **byte-identical** (same sha256) |
 | 6 sampled FILM events via `/events/{id}/instances` | **zero** future instances each |
 | Newest film instance in that sample | **2026-08-27** |
@@ -31,9 +31,10 @@ Bounded read-only capture of the venue's public Spektrix v3 API, 2026-09-09
 ## What this does and does not establish
 
 **Establishes:** the source state on 2026-09-09, and the parser's behaviour on
-that exact input (now pinned by fixtures and tests). The independent sitemap
-check adds that the venue's own CMS publishes one cinema detail page, so the
-website is not advertising a film programme this API route is missing.
+that exact input (now pinned by fixtures and tests). The endpoint's contract is
+established from vendor documentation rather than inferred from missing headers.
+The sitemap check **corroborates** the count from a second route: it listed one
+cinema detail page at capture time.
 
 **Does not establish:**
 
@@ -85,8 +86,11 @@ after.
 - The venue's `/cinema/` listing page is client-rendered through Spektrix web
   components and server-returns no showtimes, so it could not be counted directly
   without a browser. The sitemap was used instead.
-- Spektrix's v3 pagination/limit contract was not verified against vendor
-  documentation. A complete HTTP body can still be a truncated or filtered view.
+- The endpoint contract rests on vendor documentation, which is a statement
+  rather than a measurement of this tenant's data.
+- The sitemap **cannot** prove the website is not advertising a programme the API
+  misses. It is a CMS-generated index that need not enumerate everything a site
+  publishes; sections can be omitted, stale, or rendered without detail pages.
 - Six FILM events were sampled, not all 262.
 - The committed events fixture is reduced to 40 of 354 (31 FILM) to keep the
   387 KB response out of the repo; the sha256 of the full body is recorded.
