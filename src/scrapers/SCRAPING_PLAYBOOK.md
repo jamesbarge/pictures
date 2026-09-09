@@ -15,6 +15,8 @@ Update this playbook whenever you:
 - Treat times before `10:00` as likely parse errors and log warnings.
 - Use `src/scrapers/utils/date-parser.ts` for shared parsing behavior.
 - Dates passed to `combineDateAndTime()` must be UTC-midnight dates from `parseScreeningDate()` or `Date.UTC(...)`; `date-fns/parse()` returns runtime-local midnight and can shift the screening to the previous day when `combineDateAndTime()` reads UTC components.
+- **Yearless dates resolve against today's Europe/London calendar DAY, not the reference instant** (fixed 2026-09-09). `parseScreeningDate("Wednesday 9th September")` keeps the current year all day; only a genuinely earlier calendar day rolls to next year. The old check compared the reference instant with the parsed day's UTC midnight, so from 00:00 onwards *today* looked past: a listing read at 17:00 on 9 September resolved to 2027 and the 90-day horizon then discarded that day's screenings. Worst at New Year's Eve, which jumped a full year. If you add a date format, route it through `parseScreeningDate()` rather than re-deriving a default year from `referenceDate.getFullYear()` — that is host-TZ dependent.
+
 - **Never use `new Date(year, month, day, hours, minutes)` to construct screening datetimes.** That ctor interprets numeric args as the runtime's local timezone, which silently produces +1h offsets during BST when the scraper runs under `TZ=UTC` (cron, CI, container). Always call `ukLocalToUTC(...)` from `utils/date-parser.ts` — it builds UTC explicitly and applies BST. Same goes for `parseUKLocalDateTime()` for ISO-like strings without a timezone suffix.
 - After fixing time parsing bugs, verify and clean bad historical screenings (`00:00-09:59`) only when confirmed wrong.
 - **`BaseScraper.healthCheck()` retries** (2026-05-15): 3 attempts, 10s timeout each, 4s backoff between attempts. Fast-fails on 4xx (contract issue), retries on 5xx + network errors. Subclasses can override for cheaper/different checks (e.g. Curzon HEADs the API endpoint with a 401-is-healthy contract). Background: Close-Up was failing 33% of runs at 03:17-03:21 UTC because of brief nightly-maintenance windows.
@@ -627,6 +629,52 @@ none was judged to pay for itself at ~12-20 screenings a year.
   when one probe to `system.spektrix.com` blipped — it occasionally serves an HTML error page
   instead of JSON — even though the venue recovers within seconds; manual daytime runs succeeded).
   It hits the Spektrix events endpoint (the real dependency), not the WP site.
+- **A 2026-09-09 read-only capture of what the source held.** The 2026-09-08 baseline parsed ONE
+  screening; one parsed screening identifies no layer on its own. Captured that day:
+  `/instances?startFrom=2026-09-09` returned **12 instances in its response** — no pagination
+  headers, `content-length` equal to the body, `&startTo=+60d` returned the identical 12, and a
+  re-check 11 minutes later was byte-identical — of which exactly **one** sat on a FILM event
+  (9 LIVE, 2 CE). `/events` carried **354 events, 262 FILM**. Six sampled FILM events (The
+  Odyssey, Spider-Man: Brand New Day, Wuthering Heights and three others, all `isOnSale`) each
+  returned **zero** future instances via `/events/{id}/instances`; the newest film instance in
+  that sample was **2026-08-27**.
+- **Endpoint contract, from the vendor docs — not from missing headers.**
+  [apieventfiltering](https://integrate.spektrix.com/docs/apieventfiltering) describes
+  `v3/instances` as a collection query and recommends bounded date filters to limit response
+  size (`startFrom`, `startTo`, `eventName`, `attribute_*`, `eventattribute_*`), and
+  [API3](https://integrate.spektrix.com/docs/API3) describes collection resources as exposing all
+  of a resource type subject to the query. No pagination mechanism is documented; the stated
+  caveat is response **size**, not truncation. So `?startFrom=<today>` is documented to return
+  every future instance. Absent `Link`/`Content-Range` and a matching `content-length` only
+  corroborate that the body arrived whole — on their own they would prove nothing about
+  exhaustiveness. Documentation is a vendor statement, not a measurement of this tenant's data.
+  Our `/events/{id}/instances` probes passed no parameters and so returned each event's full
+  history, which matches what we saw.
+- **Independent discovery check (route not the Spektrix API).** `robots.txt` allows it;
+  `sitemap.xml`, regenerated `2026-09-09T20:15:49+01:00`, carries 53 URLs and exactly **one**
+  `/cinema/<detail>` page — `premiere-we-set-the-house-on-fire`, the same single film the API
+  returned — plus 7 `/live-events/<detail>` pages, consistent with the API's 9 LIVE instances.
+  Read this as **corroboration from a second route**, nothing stronger: a sitemap is a
+  CMS-generated index and need not enumerate everything a site publishes, so it cannot prove the
+  website is not advertising a programme the API misses. No other route is ruled out and no
+  cause is established.
+- **What that does and does not show.** It records the source state on 2026-09-09 and the
+  parser's behaviour on it. It does **not** show what the source held on 2026-09-08 — that
+  payload was never captured — so it cannot establish whether the baseline run's extraction was
+  right or wrong. Nor does a low denominator by itself establish a cause: an unpublished
+  calendar, a changed publishing route and a discovery fault elsewhere would all look like this
+  from here. The latest instance among six sampled catalogue films was 2026-08-27,
+  not a venue-wide cutoff: the response also includes a different film on 2026-09-09.
+- No extraction fault was demonstrated, so none was fixed and no detection heuristic was added.
+  `parsePages` logs stage counts only — `N events (M film), P future instances (Q on film
+  events)` — so the next reader can see where the funnel narrows without re-deriving it. The
+  counts assert no cause and change nothing about which screenings are emitted.
+- Offline replay fixture: `src/scrapers/cinemas/__fixtures__/rich-mix/` (the real 2026-09-09
+  responses with URLs, status, byte counts and sha256 in `PROVENANCE.json`; events reduced to 40
+  of 354, instances complete). `rich-mix-v2.test.ts` replays them through the production
+  `parsePages`, never a copy.
+- `/events/{id}/instances` returns one event's full instance history — the endpoint that settled
+  the per-film question here, and the one to reach for next time.
 
 ### Bertha DocHouse — stable booking URL (fixed 2026-07-20)
 - Detail page `https://dochouse.org/event/<slug>/` lists each screening as

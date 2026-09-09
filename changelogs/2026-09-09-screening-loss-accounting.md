@@ -71,7 +71,7 @@ counts.
 | `upserted` | The `INSERT ... ON CONFLICT DO UPDATE` ran. Insert vs update not established. |
 | `updated` | An `UPDATE ... WHERE id = ?` completed on a row `checkForDuplicate` had identified. |
 | `unchanged` | The duplicate check said skip, or a 23505 collision left the row untouched. |
-| `failed` | The candidate did not persist. Wider than its name — see below. |
+| `failed` | Candidate processing did not reach a confirmed successful outcome; this does not prove no row persisted. See below. |
 
 `failed` means **"the write outcome could not be established"**. It is a
 compatibility counter and two stronger readings are unsupported.

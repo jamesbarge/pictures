@@ -7,8 +7,6 @@
  * (last Sunday of March 01:00 UTC through last Sunday of October 01:00 UTC).
  */
 
-import { addYears, isAfter } from "date-fns";
-
 /**
  * Find the last Sunday of a given month (0-indexed).
  * Used to compute BST start (March) and end (October) boundaries.
@@ -137,6 +135,21 @@ export function parseUKLocalDateTime(isoString: string): Date {
   return ukLocalToUTC(year, month - 1, day, hours, minutes);
 }
 
+/** A calendar day, month 0-indexed, as returned by londonParts(). */
+interface CalendarDay {
+  year: number;
+  month: number;
+  day: number;
+}
+
+/** Is `a` strictly earlier than `b` on the calendar? Order-only, no instants. */
+function isBeforeLondonDay(a: CalendarDay, b: CalendarDay): boolean {
+  return (
+    a.year * 10000 + a.month * 100 + a.day <
+    b.year * 10000 + b.month * 100 + b.day
+  );
+}
+
 /**
  * Parse a date string in various UK cinema formats
  * Examples:
@@ -175,7 +188,13 @@ export function parseScreeningDate(dateStr: string, referenceDate = new Date()):
 
     // Check if year is included
     const yearMatch = cleaned.match(/(\d{4})/);
-    const year = yearMatch ? parseInt(yearMatch[1], 10) : referenceDate.getFullYear();
+    // Default the year from the reference instant's LONDON calendar day, so the
+    // inference does not depend on the host timezone (scrapers and CI run UTC).
+    // Resolved lazily: an explicit year needs no reference at all, and
+    // londonParts() throws on an invalid Date.
+    let londonToday: CalendarDay | undefined;
+    const today = (): CalendarDay => (londonToday ??= londonParts(referenceDate));
+    const year = yearMatch ? parseInt(yearMatch[1], 10) : today().year;
 
     const monthMap: Record<string, number> = {
       jan: 0, january: 0,
@@ -197,9 +216,32 @@ export function parseScreeningDate(dateStr: string, referenceDate = new Date()):
 
     let parsed = new Date(Date.UTC(year, month, day));
 
-    // If no year was specified and the date is in the past, assume next year
-    if (!yearMatch && isAfter(referenceDate, parsed)) {
-      parsed = addYears(parsed, 1);
+    // If no year was specified and the date is in the past, assume next year.
+    //
+    // Compare CALENDAR DAYS in Europe/London, not instants. The old check
+    // compared the reference instant against the parsed day's UTC midnight, so
+    // for the whole of today after 00:00 today looked past: a listing for
+    // "Wednesday 9th September" read at 17:00 on 9 September resolved to the
+    // following year, and the horizon then discarded that day's screenings
+    // (worst at New Year's Eve, which jumped a full year). Same-day is now
+    // kept; a genuinely earlier day still rolls forward, as before.
+    if (!yearMatch && isBeforeLondonDay({ year, month, day }, today())) {
+      // Roll with UTC calendar arithmetic. date-fns addYears() works in LOCAL
+      // time, so across a DST boundary it moves the UTC day: under
+      // TZ=Europe/London it turned 2026-03-29T00:00Z into 2027-03-28T23:00Z,
+      // and combineDateAndTime() reads UTC components, so the screening landed
+      // on the wrong day. Deriving from `parsed` keeps the pre-existing
+      // Date.UTC overflow behaviour for 29 February.
+      const rolledYear = parsed.getUTCFullYear() + 1;
+      const rolledMonth = parsed.getUTCMonth();
+      // Clamp to the last day of the target month, matching date-fns addYears:
+      // a real 29 February rolls to 28 February, it does not spill into March.
+      // (Distinct from an already-invalid "29 February" in a non-leap year,
+      // which Date.UTC has by then overflowed to 1 March above.)
+      const lastDayOfMonth = new Date(Date.UTC(rolledYear, rolledMonth + 1, 0)).getUTCDate();
+      parsed = new Date(
+        Date.UTC(rolledYear, rolledMonth, Math.min(parsed.getUTCDate(), lastDayOfMonth)),
+      );
     }
 
     return parsed;
