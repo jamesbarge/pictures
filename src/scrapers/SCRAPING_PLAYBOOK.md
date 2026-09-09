@@ -637,10 +637,9 @@ none was judged to pay for itself at ~12-20 screenings a year.
   returned **zero** future instances via `/events/{id}/instances`; the newest film instance in
   that sample was **2026-08-27**.
 - **Endpoint contract, from the vendor docs — not from missing headers.**
-  [apieventfiltering](https://integrate.spektrix.com/docs/apieventfiltering) states of
-  `v3/instances`: *"It is also possible to retrieve all instances. The response for this API call
-  can become very large, so it is best to use it only in combination with the URI Parameters
-  below"* (`startFrom`, `startTo`, `eventName`, `attribute_*`, `eventattribute_*`), and
+  [apieventfiltering](https://integrate.spektrix.com/docs/apieventfiltering) describes
+  `v3/instances` as a collection query and recommends bounded date filters to limit response
+  size (`startFrom`, `startTo`, `eventName`, `attribute_*`, `eventattribute_*`), and
   [API3](https://integrate.spektrix.com/docs/API3) describes collection resources as exposing all
   of a resource type subject to the query. No pagination mechanism is documented; the stated
   caveat is response **size**, not truncation. So `?startFrom=<today>` is documented to return
@@ -662,7 +661,8 @@ none was judged to pay for itself at ~12-20 screenings a year.
   payload was never captured — so it cannot establish whether the baseline run's extraction was
   right or wrong. Nor does a low denominator by itself establish a cause: an unpublished
   calendar, a changed publishing route and a discovery fault elsewhere would all look like this
-  from here. **Why film instances stop at 2026-08-27 is unresolved.**
+  from here. The latest instance among six sampled catalogue films was 2026-08-27,
+  not a venue-wide cutoff: the response also includes a different film on 2026-09-09.
 - No extraction fault was demonstrated, so none was fixed and no detection heuristic was added.
   `parsePages` logs stage counts only — `N events (M film), P future instances (Q on film
   events)` — so the next reader can see where the funnel narrows without re-deriving it. The

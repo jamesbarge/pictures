@@ -44,8 +44,9 @@ cinema detail page at capture time.
   unsupported and is withdrawn.
 - **A cause for the low denominator.** An unpublished calendar, a changed
   publishing route, or a discovery fault reachable another way would all look
-  identical from this vantage point. **Why film instances stop at 2026-08-27 is
-  unresolved.**
+  identical from this vantage point. The latest instance among the **six sampled
+  catalogue films** was 2026-08-27; this is not a venue-wide cutoff, since the
+  captured response includes a different film screening on 2026-09-09.
 
 **No extraction fault was demonstrated, so none was fixed.** An earlier draft
 added a `LOW FILM COVERAGE` warning with 10/5/25% thresholds. That was invented
@@ -58,10 +59,12 @@ nobody had verified — and it has been removed rather than defended.
 screenings are emitted, and no new heuristic.**
 
 `parsePages` previously logged `N events (M film), P future instances`. It now
-also reports the overlap that actually becomes screenings:
+also reports the overlap passed to subsequent screening filters:
 `P future instances (Q on film events)`. Three numbers, three stages —
 catalogue, calendar, overlap — so the next reader can see where the funnel
-narrows without re-deriving it. They assert no cause.
+narrows without re-deriving it. Cancelled, past, invalid-date and duplicate
+instances can still be excluded after this count; it is not the emitted count.
+The counts assert no cause.
 
 ## Tests
 

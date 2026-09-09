@@ -72,8 +72,8 @@ export class RichMixScraperV2 extends BaseScraper {
     // Stage counts, reported neutrally. A run that yields very few screenings
     // is ambiguous from the outside: it looks the same whether the parser is
     // dropping rows or the venue published little. These three numbers separate
-    // the stages — catalogue size, calendar size, and the overlap that actually
-    // becomes screenings — so the next reader can see WHERE the funnel narrows
+    // the stages — catalogue size, calendar size, and the overlap passed to
+    // subsequent screening filters — so the next reader can see WHERE the funnel narrows
     // without re-deriving it. They assert no cause.
     const instancesOnFilmEvents = instances.filter((i) =>
       filmEvents.has(i.event?.id),
