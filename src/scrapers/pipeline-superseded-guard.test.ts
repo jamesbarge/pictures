@@ -52,6 +52,32 @@ describe("shouldRunSupersededCleanup", () => {
     });
   });
 
+  describe("post-write failures", () => {
+    // Separating postWriteFailures out of `failed` must not quietly ENABLE the
+    // report where the merged counter used to suppress it. Before the loss
+    // accounting a festival-link failure propagated into the film-level catch
+    // and inflated `failed`, so this batch could not have reached the report.
+    // The guard refuses on the new counter for the same reason.
+    it("does not run when a row persisted but its follow-up work failed", () => {
+      expect(
+        shouldRunSupersededCleanup(
+          { added: 120, updated: 30, failed: 0, blocked: false, postWriteFailures: 1 },
+          {},
+        ),
+      ).toBe(false);
+    });
+
+    it("still runs when the counter is present and zero", () => {
+      expect(
+        shouldRunSupersededCleanup({ ...cleanResult, postWriteFailures: 0 }, {}),
+      ).toBe(true);
+    });
+
+    it("treats an absent counter as zero so old callers are unaffected", () => {
+      expect(shouldRunSupersededCleanup(cleanResult, {})).toBe(true);
+    });
+  });
+
   describe("partial by accident — the 2026-08-05 hole", () => {
     it("does not run when any write failed, even alongside many successes", () => {
       // rich-mix shape: most screenings landed, 17 timed out terminally.

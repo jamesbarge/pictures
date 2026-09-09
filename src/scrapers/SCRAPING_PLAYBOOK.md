@@ -859,3 +859,141 @@ none was judged to pay for itself at ~12-20 screenings a year.
 - Source excerpts live in `utils/fixtures/time-source-2026-09-08.json`. Ciné Lumière's captured `08:00` is marked Closed for Booking. PCC's captured times include AM/PM; Genesis uses 24-hour booking text; DocHouse's small sample contains afternoon/evening times. These are source observations, not evidence of stored production rows or universal historical formats.
 
 ---
+
+## 2026-09-09 screening-loss accounting: counted units and stage boundaries
+
+Every stage reports in one unit and every unknown is `"unavailable"`. An unmeasured
+count is never written as zero. Types and conservation live in
+`utils/screening-accounting.ts`; assembly across the runner seam lives in
+`utils/screening-accounting-report.ts`.
+
+**Where it is wired today: `runSingleVenue` only.** Single-venue scrapes log an
+`[Accounting]` line and store the record under `scraper_runs.metadata.accounting`.
+The chain per-venue path (Curzon, Picturehouse, Everyman) does **not** — it threads
+`postWriteFailures` but builds no accounting, so those venues have no accounting line
+and no stored record. Nothing prevents it; it is simply not wired yet. Per-venue
+`parsed`, `preFiltered` and `fetchedPayloads` would be `"unavailable"` for a chain
+anyway, since one `validate()` covers every venue in it.
+
+**Counted unit.** One screening candidate — a single `RawScreening` as emitted by a
+scraper. The same unit flows through every stage except fetch, whose unit is a payload.
+
+**Stage boundaries.**
+
+| Stage | Field | Source |
+|---|---|---|
+| fetch | `fetchedPayloads` | `BaseScraper.getFetchedPayloadCount()` |
+| parse | `parsed` | `BaseScraper.getPreFilterReport().parsed` |
+| pre-filter | `preFiltered`, `preFilteredByReason` | `BaseScraper.validate()` |
+| validate | `validationRejected`, `validationRejectedByReason` | `validateScreenings` |
+| accept | `accepted` | `PipelineResult.accepted` |
+| write | `write.{upserted,updated,unchanged,failed}` | the pipeline write loop |
+| post-write | `postWriteFailures` | `PipelineResult.postWriteFailures` |
+
+**`fetchedPayloads` is not a request count.** It is the length of the `string[]` that
+`fetchPages()` returns. A subclass hitting a bundled JSON API, or concatenating a
+paginated fetch before returning, makes several HTTP calls per entry. HTTP request
+volume is not measured anywhere.
+
+**Pre-filter reason codes** (`PreFilterReason`, one per dropped candidate, evaluated
+in this order): `missing_title`, `invalid_datetime`, `past_screening`,
+`missing_booking_url`, `duplicate_source_id`, plus `subclass_filter`. The filter
+predicates, their order and the surviving set are unchanged from before the
+accounting; only the tally is new.
+
+`subclass_filter` covers drops the base class cannot name. `validate()` is
+overridable and three scrapers call `super.validate()` and then filter again —
+`nickel-v2.ts` drops `MYSTERY MOVIE` titles, `genesis-v2.ts` and `lexi-v2.ts` repeat
+the sourceId dedup (a no-op). `scrape()` reconciles the report against what
+`validate()` actually returned and attributes any shortfall here, so a Nickel batch
+of one mystery screening reports `accepted: 0` instead of claiming it kept a
+candidate that never left the scraper. An override returning MORE than the base
+filter kept cannot be described by the report at all, so it goes `"unavailable"`.
+**If you add a `validate()` override that drops rows, you need no extra work** — the
+reconciliation is automatic. Do not update the counts by hand.
+A scraper implementing `CinemaScraper` without extending `BaseScraper` (for example
+`cinemas/the-nickel.ts`) reports `parsed`, `preFiltered` and `fetchedPayloads` as
+`"unavailable"`. Detection is duck-typed in `asPreFilterSource`.
+
+**Write outcomes.** `upserted` means the `INSERT ... ON CONFLICT DO UPDATE` statement
+ran; Postgres inserted or updated and the statement does not say which, so
+`insertUpdateAttribution` is permanently `"unavailable"`. `updated` means an
+`UPDATE ... WHERE id = ?` completed on a row `checkForDuplicate` had just identified.
+`unchanged` means the duplicate check said skip, or a 23505 collision left the row
+untouched.
+
+`failed` means **"write outcome could not be established"**. It is a compatibility
+counter, and two stronger readings are unsupported.
+
+It does **not** prove no row persisted. `withDbTimeout` is a `Promise.race` and does
+not cancel, so a statement abandoned at the 15s ceiling can commit afterwards; the
+same note on `retryDeferredWrites` records that a late original insert makes the
+retry hit the unique index and "fail" while the row is in the table. The legacy zero
+counters on the runner's exception and cap paths carry the same caveat: zero there is
+a compatibility value, not evidence that nothing was written.
+
+It is also wider than a write failure. Three paths feed it — the write threw or was
+dropped for a full deferred queue; `getOrCreateFilm` returned no id, so the whole
+film group is charged without a write being attempted (a film-resolution loss, for
+instance broken TMDB matching); or the film-level catch charged the batch remainder,
+screenings abandoned before being attempted. So a venue whose title matching is
+broken reports its loss here and can be misread as a persistence problem. Splitting
+out `filmUnresolved` and `abandoned` is the honest fix and both are already distinct
+code paths; it is a known follow-up.
+
+**No write bucket proves a row reached the table.** Neither statement carries
+`RETURNING` or reads a row count, so a row deleted concurrently between
+`checkForDuplicate` and the `UPDATE` yields zero affected rows and still completes.
+`affectedRowAttribution` is therefore permanently `"unavailable"` and the helper is
+named `completedWrites`, not `persistedWrites`. Establishing the true count needs a
+`RETURNING` on both production write statements.
+
+**Conservation.** `checkAccounting` verifies each boundary and **skips rather than
+fails** when an input is `"unavailable"` — an unknown count cannot disprove
+conservation, and failing on it would push callers back to fabricating zeros.
+`accepted` is measured at the write loop's input, independently of the buckets, so a
+candidate that reaches no write outcome is reported instead of cancelling out. A
+blocked batch is validated and then refused: it reports `accepted: 0`, no completed
+or unchanged writes, and boundary 2 relaxes to "survivors cover the validation
+rejections".
+
+**Post-write failures are not lost writes.** A festival-link failure happens after
+the row is committed, so it is counted on `postWriteFailures`, never in
+`write.failed`. It is carried through `VenueResult.screeningsPostWriteFailures`,
+`scraper_runs.metadata.postWriteFailures`, `scripts/lcut-gapfill.ts` and the runner
+summaries, and it still refuses the superseded-candidate report via
+`shouldRunSupersededCleanup`.
+
+The only current producer is `festivals/eventive-scraper.ts`: it is the sole
+place a `RawScreening` gets a `festivalSlug`, so today the counter is
+structurally zero on every other path, including every registry venue scrape and
+the L-CUT gap-fill. It is threaded through those paths anyway because the
+contract is about the post-write stage, not about festivals specifically.
+
+It reaches the **per-venue** layer only. `RunnerResult` has no run-level total, the
+`runner_completed` log omits it, and `VenueResult.success` stays `true`, so
+`tmp/scrape-run-summary.json` still shows a clean run. Read it from
+`scraper_runs.metadata.postWriteFailures`, the `venue_completed` log, or the
+per-venue `partial` status until a run-level rollup exists.
+
+Known race: `withDbTimeout` is a `Promise.race` and does not cancel, so an abandoned
+`insertScreening` keeps running and can report a post-write failure after the
+pipeline has projected its counters (reported as zero) or just before the deferred
+retry re-runs the write (which returns `unchanged`, excluded from `completedWrites`,
+so the `postWriteFailures > completedWrites` check fires with no underlying error).
+Closing either needs real cancellation.
+
+**Deliberate behaviour change.** A festival-link failure used to propagate out of
+`insertScreening` into the film-level catch, which counted that film's entire
+remaining screening list as `failed` and abandoned it. `linkFestivalBestEffort` now
+swallows and reports it, so the film's remaining screenings are written and counted.
+For a venue with a failing festival link, `added` runs higher and `failed` lower than
+before this change. The old numbers described writes that had in fact landed.
+
+**Supplementary batches.** `supplementary: true` marks a deliberately partial batch
+(L-CUT gap-fill and similar), whose counts must not be added into a full run's
+totals. **It is a marker awaiting a consumer**: nothing sets it outside tests today
+— `scripts/lcut-gapfill.ts` does not call `buildAccounting` at all — and nothing
+enforces the exclusion. Treat it as documentation, not as a guarantee.
+
+---
