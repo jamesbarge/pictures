@@ -40,7 +40,7 @@ The default year also came from `referenceDate.getFullYear()`, which is host-tim
   components, so a rolled 29 March screening landed on **28 March**. Rollover is now UTC calendar
   arithmetic, clamped to the last day of the target month so date-fns' leap behaviour is preserved
   (a real 2028-02-29 still rolls to 2029-02-**28**, not into March). The `date-fns` import is gone.
-- `src/scrapers/utils/date-parser.test.ts`: 13 regression cases — same-day before/after performance
+- `src/scrapers/utils/date-parser.test.ts`: 19 regression cases — same-day before/after performance
   time and late evening, London-vs-UTC day boundary, tomorrow, genuinely-past rollover, ordinary
   future dates, year-end (NYE and 1 Jan), leap day in and out of a leap year, explicit-year override.
 - `src/scrapers/cinemas/prince-charles-capture-replay.test.ts` + fixture
@@ -54,7 +54,8 @@ The default year also came from `referenceDate.getFullYear()`, which is host-tim
 - Meridiem policy (`parseScreeningTime`'s 1-9 → PM assumption) and the horizon constants.
 - `Date.UTC` overflow for an already-invalid 29 February in a non-leap year (it becomes 1 March
   before any rollover) — pinned by a test, and kept distinct from the valid-leap-day clamp above.
-- Parsing stays separate from past-screening filtering; no stale date is presented as future.
+- Parsing stays separate from past-screening filtering. The existing inference for earlier
+  yearless calendar dates remains next year; this patch does not resolve stale source dates.
 
 ## Verification
 

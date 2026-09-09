@@ -31,8 +31,8 @@ const FIXTURE = readFileSync(
 );
 /** The instant the fixture was captured: 17:30 London (BST) on Wed 9 Sep 2026. */
 const CAPTURED_AT = new Date("2026-09-09T16:30:07Z");
-/** The film in the extracted block, read from the fixture itself below. */
-let CAPTURE_FILM = "";
+/** Literal title in the captured source, independent of the parser output. */
+const CAPTURE_FILM = "Angel's Egg";
 
 const originalFetch = globalThis.fetch;
 
@@ -49,9 +49,6 @@ describe("PCC captured-source replay (real parser, pinned clock, mocked network)
     ) as unknown as typeof fetch;
 
     screenings = await createPrinceCharlesScraper().scrape();
-    // Take the title from the parse itself rather than restating it, so the
-    // tuple assertions still catch a film/instant mismatch across rows.
-    CAPTURE_FILM = screenings[0].filmTitle;
   }, 30_000);
 
   afterAll(() => {

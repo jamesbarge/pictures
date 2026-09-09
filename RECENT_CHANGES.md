@@ -3,7 +3,7 @@
 - `parseScreeningDate()` compared the reference *instant* with the parsed day's UTC midnight, so from 00:00 onwards *today* looked past and a yearless listing rolled to next year. At `2026-09-09T16:00Z`, "Wednesday 9th September" resolved to 2027 while "Thursday 10th September" resolved correctly; New Year's Eve jumped a full year.
 - The 90-day horizon then rejected those rows as `too_far_future`, so today's screenings vanished instead of showing a wrong date.
 - Now compares calendar days in Europe/London via `londonParts()`, host-TZ independent. Genuinely past days still roll forward; explicit years, meridiem policy and horizon constants are untouched.
-- Covered by 13 regression cases plus a captured-source replay of real PCC markup through the real scraper (clock pinned, network and DB mocked), asserting exact London/UTC instants.
+- Covered by 19 regression cases plus a captured-source replay of real PCC markup through the real scraper (clock pinned, network and DB mocked), asserting exact London/UTC instants and source-grounded film/booking tuples.
 
 ---
 

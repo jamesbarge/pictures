@@ -509,8 +509,8 @@ describe("parseScreeningDate: yearless dates resolve against the London calendar
     });
 
     it("rolls 25 October across the GMT boundary without gaining a day", () => {
-      const result = parseScreeningDate("Sunday 25th October", JUNE);
-      expect(result?.toISOString()).toBe("2026-10-25T00:00:00.000Z");
+      const result = parseScreeningDate("Sunday 25th October", new Date("2026-11-01T12:00:00Z"));
+      expect(result?.toISOString()).toBe("2027-10-25T00:00:00.000Z");
       expect(result?.getUTCDate()).toBe(25);
     });
 
