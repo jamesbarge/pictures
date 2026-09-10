@@ -5,6 +5,13 @@
 
 ---
 
+## 2026-09-10: Include five scraped venues in L-CUT parity monitoring
+**PR**: pending | **Files**: `scripts/lcut-gapfill.ts`, `scripts/lcut-gapfill.test.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`
+- Map observed L-CUT labels for Genesis Cinema, Bertha DocHouse, Coldharbour Blue, Peckhamplex and BFI IMAX to their canonical registry IDs.
+- All five remain report-only in the scheduled workflow; the eight source-only automatic write targets are unchanged. Regression tests exercise actual orchestration with mocked external boundaries and assert zero write-pipeline calls.
+
+---
+
 ## 2026-09-09: Honest screening-loss accounting
 **PR**: #752 | **Files**: `src/scrapers/utils/screening-accounting.ts`, `src/scrapers/utils/screening-accounting-report.ts`, `src/scrapers/base.ts`, `src/scrapers/pipeline.ts`, `src/scrapers/runner-factory.ts`, `scripts/lcut-gapfill.ts`, `src/scrapers/festivals/eventive-scraper.ts`, `src/scrapers/festivals/types.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`, 7 test files
 - **Two of the three numbers a scrape reported were wrong.** `insertScreening` returned a bare boolean: `true` meant "the `INSERT ... ON CONFLICT DO UPDATE` statement ran" (an insert *or* an update) and was counted `added`; `false` meant either "an existing row was updated in place" or "the duplicate check said skip", and both were counted `updated`. Separately, `BaseScraper.validate()` dropped candidates before the pipeline counted anything, with no reason and no total, so nothing could say how much of a venue's published listing was kept.

@@ -179,6 +179,10 @@ describe("classifyLcutTargets", () => {
       "prince-charles",
       "bfi-southbank",
       "bfi-imax",
+      "genesis",
+      "bertha-dochouse",
+      "coldharbour-blue",
+      "peckhamplex",
       "ica",
       "garden",
       "barbican",
@@ -217,6 +221,20 @@ describe("classifyLcutTargets", () => {
 });
 
 describe("registry ↔ VENUE_MAP integration (guards cinema-id drift)", () => {
+  it.each([
+    ["Genesis Cinema", "genesis"],
+    ["Bertha DocHouse", "bertha-dochouse"],
+    ["Coldharbour Blue", "coldharbour-blue"],
+    ["Peckhamplex", "peckhamplex"],
+    ["BFI IMAX", "bfi-imax"],
+  ])("recognizes captured L-CUT name %s as report-only %s", (name, id) => {
+    expect(VENUE_MAP[normalizeVenueName(name)]).toEqual([id]);
+    expect(getCinemaById(id)?.active).toBe(true);
+    const { sourceOnly, scraped } = classifyLcutTargets(getScrapedCinemaIds());
+    expect(scraped.has(id)).toBe(true);
+    expect(sourceOnly.has(id)).toBe(false);
+  });
+
   // The whole auto-insert path is safe only while registry cinema IDs match
   // VENUE_MAP target IDs. A registry rename (e.g. rio-dalston → rio) would
   // silently reclassify a scraped venue as source-only — auto-inserting L-CUT
@@ -313,6 +331,26 @@ describe("runLcutGapfill (executeTargets filtering)", () => {
       showtime: "",
     };
   }
+
+  it("reports the five newly mapped scraped venues without calling the write pipeline", async () => {
+    const names = ["Genesis Cinema", "Bertha DocHouse", "Coldharbour Blue", "Peckhamplex", "BFI IMAX"];
+    const report = await runLcutGapfill({
+      execute: true,
+      executeTargets: classifyLcutTargets(getScrapedCinemaIds()).sourceOnly,
+      fetchListings: async () => names.map((name, i) => mkFilm(`mapped-${i}`, name, `Film ${i}`, 3)),
+      loadExisting: async () => new Map(),
+      log: () => {},
+      warn: () => {},
+    });
+    expect(report.venues.map((venue) => venue.venue).sort()).toEqual(
+      ["genesis", "bertha-dochouse", "coldharbour-blue", "peckhamplex", "bfi-imax"].sort(),
+    );
+    for (const venue of report.venues) {
+      expect(venue).toMatchObject({ total: 1, missing: 1, inserted: 0, failed: 0 });
+    }
+    expect(report.totalInserted).toBe(0);
+    expect(processScreenings).not.toHaveBeenCalled();
+  });
 
   it("inserts only source-only targets but reports parity for every venue", async () => {
     const listings: LcutFilm[] = [
