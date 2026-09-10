@@ -1099,3 +1099,95 @@ totals. **It is a marker awaiting a consumer**: nothing sets it outside tests to
 enforces the exclusion. Treat it as documentation, not as a guarantee.
 
 ---
+
+## 2026-09-10 sequel-safe film identity: trailing-number discrimination
+
+Trigram similarity and TMDB's title scoring both read a film and its sequel as
+near-identical. In the 2026-09-09 full run `"Practical Magic 2"` was accepted as
+`"Practical Magic"` at 89% in **36** logged matches, and
+`"Mockingjay - Part 2"` as `"Mockingjay - Part 1"` at 80%. Two guards now sit on
+the two matching paths, both comparing the number a title carries rather than
+raising any threshold.
+
+**The helper** lives in `src/lib/title-patterns.ts` (DB-free, so both matchers
+can share it without pulling Drizzle into `src/lib/tmdb/match.ts`):
+
+| Function | Answers |
+|---|---|
+| `sequelMarkerOf(title)` | which instalment this is, or null |
+| `trailingNumberOf(title)` | the number that identifies the title, instalment or not |
+| `disagreesOnTrailingNumber(a, b)` | whether two titles disagree about it |
+
+The two readings are deliberately separate. `Blade Runner 2049` has **no
+instalment marker** — nothing should ever call it the 2049th Blade Runner — but
+2049 still identifies it, so `trailingNumberOf` reports it and identity
+comparison uses that. Comparison is on **values**, so `Halloween II` and
+`Halloween 2` agree, as do `Blade Runner 2049` and
+`BLADE RUNNER 2049 (4K Restoration)`.
+
+**Supported forms.** Arabic numerals; Roman numerals I-XXX (canonical
+round-trip only, so `MIX` and `LIV` are not numbers); instalment words
+`part`, `pt`, `vol`, `volume`, `chapter`, `episode`, `ep`, `book`, `series`,
+`season`, `day`, each optionally followed by a spelled-out `one`-`twenty`
+(`Dune: Part Two`); four-digit years as identity numbers but never as
+instalments. Trailing bracketed decoration is peeled first, so
+`Toy Story 5 (BIA)` and `Sing 2 (Sing-Along)` still read 5 and 2.
+
+**Intentionally unsupported, and why.** A number needs a base title in front of
+it, so `X` (2022), `M` (1931), `1917` and a bare `II` carry none — they are
+titles, not numbered things. A trailing explicit date carries none either, which
+leaves the run's `Baby Comptines 07/10/2026` family (9 distinct wrong merges,
+differing only by date) to whatever guard handles dated instances; those are
+real merges but they are not sequels. Word numerals without an instalment word
+are not read, so a bare `Two` is invisible. Month-differing titles
+(`… Quarterly Meeting September 2026` vs `… June 2026`) both read 2026 and agree,
+so the guard is silent there.
+
+**Known imprecision.** A title whose last token is a single Roman letter reads
+as a number, so `Malcolm X` reports 10 and `Who Am I` reports 1. The outcome
+stays conservative — such a title only ever fails to match a candidate whose
+number differs, and a true variant keeps the same trailing letter — but the
+number itself is meaningless.
+
+**Where the guards sit.**
+
+1. `findMatchingFilm` (`src/lib/film-similarity.ts`) rejects a disagreeing
+   candidate **before** the year window, because the year window needs a year on
+   both sides and could not see this at all: 27 of the 36 acceptances logged no
+   year rejection, and the other 9 came on the line immediately after the 1998
+   row was rejected on year. The films table holds a second row of the same
+   title with a NULL year, which the window cannot judge, and that is a
+   plausible explanation for those 9 — the log does not name the row it
+   accepted, so which row each took is not established. Rejection `continue`s,
+   so a correct later candidate is still reached.
+2. `findBestMatch` (`src/lib/tmdb/match.ts`) filters candidate **fields** before
+   scoring. Guarding only the DB path would have moved the wrong match here
+   rather than removed it, since `getOrCreateFilm` hands TMDB the very title the
+   DB guard just refused, and `calculateSimilarity` awards a containment bonus
+   (`0.8 + shorter/longer * 0.2`) that scores a base title ~0.976 against its
+   own sequel.
+
+**Field eligibility in the TMDB path** — a candidate offers `title` and
+`original_title`, and each is admitted or refused **whole**:
+
+- empty, or empty once normalized, is not evidence. `calculateSimilarity` treats
+  an empty normalized string as contained in everything and returns its 0.8
+  floor, so a non-Latin original like `魔法` (non-empty raw, empty normalized)
+  would otherwise clear `minTitleSimilarity` and supply a spurious
+  agreement;
+- a field whose number disagrees with the search title is refused, and its
+  similarity is not used in any path. Judging identity on one field and
+  similarity on the other accepted candidates that were wrong on every field
+  individually — an unrelated `title` lending "carries no number, nothing
+  conflicts" while a conflicting `original_title` lent all the similarity.
+
+The similarity score is then the max over eligible fields only. A candidate with
+no eligible field is skipped.
+
+**Not addressed here.** The films table holds duplicate rows that this guard
+does not clean up: two `Practical Magic` (1998 and year-NULL), two
+`Selected 16`, two `Toy Story 5`. Existing rows already pointed at a wrong film
+stay wrong — repair belongs to the rematch sweep
+(`scripts/rematch-unmatched-films.ts`), not to the matcher.
+
+---
