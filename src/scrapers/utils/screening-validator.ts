@@ -109,17 +109,30 @@ function validateScreening(screening: RawScreening): ValidationResult {
       errors.push("past_screening: Screening is in the past");
     }
 
-    // Time-provenance awareness (plan 010): the early-time guard exists to
-    // catch AM/PM *text-parsing* errors. ISO/API timestamps can't have those,
-    // so a 09:00 from an API (Everyman kids/early shows) is kept with a
-    // warning instead of rejected. Text-parsed times are rejected as before.
+    // Time-provenance awareness (plan 010, extended 2026-09-10).
+    //
+    // These are two SEPARATE questions and were previously answered by one flag:
+    //
+    //   1. Can this clock carry an AM/PM error? Only text parsing can. An ISO
+    //      instant cannot, and neither can a machine-readable local clock in an
+    //      established 24-hour format — BFI AudienceView publishes a zero-padded
+    //      HH:MM column whose observed hours run to 23:xx, so "09:00" there is
+    //      unambiguously morning. Both keep sub-10:00 times with a warning.
+    //   2. How far ahead may this source legitimately publish? That depends on
+    //      the venue's programming, NOT on the clock format. Only `iso` raises
+    //      the cap, and only because the chains' API feeds genuinely carry
+    //      long-lead event cinema. A local 24-hour clock says nothing about
+    //      horizon, so it must NOT extend it.
+    //
+    // Conflating them would silently push BFI's horizon from 90 to 180 days.
     const isoSourced = screening.timeSource === "iso";
+    const clockIsUnambiguous = isoSourced || screening.timeSource === "local-24h";
 
     // Check time of day
     if (hour < MIN_SCREENING_HOUR) {
       const message = `suspicious_time_early: Screening at ${hour}:00 is before ${MIN_SCREENING_HOUR}:00 AM`;
-      if (isoSourced) {
-        warnings.push(`${message} (kept: ISO-sourced time)`);
+      if (clockIsUnambiguous) {
+        warnings.push(`${message} (kept: ${screening.timeSource}-sourced time, no AM/PM ambiguity)`);
       } else {
         errors.push(message);
       }
@@ -127,7 +140,8 @@ function validateScreening(screening: RawScreening): ValidationResult {
       warnings.push(`late_screening: Screening starts at ${hour}:00 (after ${MAX_SCREENING_HOUR}:00)`);
     }
 
-    // Check date range (looser cap for ISO-sourced times — see constants)
+    // Check date range. Deliberately keyed on `isoSourced` alone, not on
+    // `clockIsUnambiguous`: clock format is not evidence about horizon.
     const maxDaysInFuture = isoSourced ? MAX_DAYS_IN_FUTURE_ISO : MAX_DAYS_IN_FUTURE;
     if (daysDiff > maxDaysInFuture) {
       errors.push(`too_far_future: Screening is ${daysDiff} days in future (max ${maxDaysInFuture})`);

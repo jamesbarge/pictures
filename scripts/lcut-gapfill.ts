@@ -51,6 +51,13 @@ const DEDUP_WINDOW_MS = 20 * 60 * 1000; // ±20 minutes
 export const VENUE_MAP: Record<string, string[]> = {
   "prince charles cinema": ["prince-charles"],
   "british film institute": ["bfi-southbank", "bfi-imax"],
+  // Explicit names observed in the 2026-09-09 run. These have first-party
+  // scrapers, so the scheduled classifier monitors parity without inserting.
+  "bfi imax": ["bfi-imax"],
+  "genesis cinema": ["genesis"],
+  "bertha dochouse": ["bertha-dochouse"],
+  "coldharbour blue": ["coldharbour-blue"],
+  "peckhamplex": ["peckhamplex"],
   "institute of contemporary arts": ["ica"],
   "the garden cinema": ["garden"],
   "barbican centre": ["barbican"],

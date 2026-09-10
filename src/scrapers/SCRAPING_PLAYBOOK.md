@@ -10,6 +10,9 @@ Update this playbook whenever you:
 - Discover a recurring site-specific failure mode
 
 ## Shared Rules
+- **Resume is not necessarily a one-venue retry**: after a failed scrape phase, only completed scraper entries can be skipped. Checkpointed L-CUT/cleanup/audit phases are honored only as a contiguous prefix of completed phases; if scrape did not complete, these downstream phases rerun. The September 9 checkpoint records L-CUT/cleanup/audit but not scrape, so `--resume` does not mean "only Close-Up runs." Checkpoint age/argument validation can instead trigger a full run. Inspect the checkpoint and startup messages before choosing a retry; do not retry a known source block merely to make the run green.
+- **Scrape diff is a comparison, not a mutation ledger** (2026-09-10): `scrape-diff.ts` compares trimmed/lowercased film titles plus UTC instants within the next 30 days. Its unmatched incoming/existing rows do not prove inserts, cancellations or deletions. Raw scraper titles can differ from enriched DB titles, including unsafe sequel matches; inspect identities before drawing conclusions. `scraped_at` means last refresh, not creation. The `RECENTLY_REFRESHED_NOT_MATCHED` warning replaces the misleading `RECENTLY_ADDED_THEN_REMOVED`; null refresh timestamps are unknown, not recent. Legacy result fields `added`/`removed` remain comparison-only. Empty-capture blocking and matching behavior are unchanged.
+- **L-CUT parity aliases** (2026-09-10): observed labels `Genesis Cinema`, `Bertha DocHouse`, `Coldharbour Blue`, `Peckhamplex` and `BFI IMAX` resolve to their canonical first-party scraper IDs. The scheduled gap-fill's eight source-only write targets are unchanged; these five are parity/report-only. Keep the real-registry classification and no-write orchestration tests when adding aliases. Supervised CLI `--execute` without `--targets` remains broader and is not a safe verification command.
 - Always capture full time strings including AM/PM context.
 - If a time is `1-9` with no AM/PM, default to PM.
 - Treat times before `10:00` as likely parse errors and log warnings.
@@ -21,7 +24,7 @@ Update this playbook whenever you:
 - After fixing time parsing bugs, verify and clean bad historical screenings (`00:00-09:59`) only when confirmed wrong.
 - **`BaseScraper.healthCheck()` retries** (2026-05-15): 3 attempts, 10s timeout each, 4s backoff between attempts. Fast-fails on 4xx (contract issue), retries on 5xx + network errors. Subclasses can override for cheaper/different checks (e.g. Curzon HEADs the API endpoint with a 401-is-healthy contract). Background: Close-Up was failing 33% of runs at 03:17-03:21 UTC because of brief nightly-maintenance windows.
 - **Do not turn fetch/parse exceptions into successful empty results.** A valid zero-screening chain venue must remain present in the returned `Map` with `[]`; a failed venue must be omitted and recorded in `venueErrors`. The shared runner marks any requested venue missing from the result map as failed. Multi-page independent scrapers must throw when any required page fails so partial coverage is not persisted as a successful run.
-- **Time provenance (plan 010, 2026-06-12)**: when a scraper's datetimes come from ISO/API timestamps (not parsed display text), set `RawScreening.timeSource: "iso"`. The validator then treats `suspicious_time_early` (<10:00) as warn-not-reject (ISO times can't have AM/PM errors — Everyman's real 09:00 kids shows were being discarded) and raises the `too_far_future` cap from 90 to 180 days (long-lead event cinema like Met Opera 2026-27 at the chains). Leave text-parsed scrapers unset (treated as `"text"`, full strictness). Currently set by: Curzon (Vista API), Picturehouse (API), Everyman (boxofficeapi), Castle/Castle Sidcup (`data-start-time` attribute via castle-calendar).
+- **Time provenance (plan 010, 2026-06-12; extended 2026-09-10)**: `RawScreening.timeSource` tells the validator what kind of clock it is looking at. It answers TWO separate questions and they must not be conflated. **(1) Can this clock carry an AM/PM error?** Only text parsing can, so both `"iso"` and `"local-24h"` turn `suspicious_time_early` (<10:00) into warn-not-reject. **(2) How far ahead may this source publish?** That is a property of the venue's programming, not of the clock format, so **only `"iso"`** raises `too_far_future` from 90 to 180 days — the chains' API feeds genuinely carry long-lead event cinema (Met Opera 2026-27). `"local-24h"` keeps 90. Unset means `"text"`: full strictness, because a bare 1-9 hour may really be PM. `"iso"` set by: Curzon (Vista API), Picturehouse (API), Everyman (boxofficeapi), Rich Mix (Spektrix `startUtc`), Castle/Castle Sidcup (`data-start-time`), INDY. `"local-24h"` set by: **BFI IMAX only** — its structured clock column, gated per-venue on `clockFormatVerified` and per-field on an anchored range check. **BFI Southbank is NOT set**: its format is unverified (Cloudflare blocked two captures on 2026-09-10). See the BFI section. **Never label a local wall clock `"iso"` to get past an early-time rejection — that silently doubles the venue's date horizon.**
 - **Runtime capture (plan 006, 2026-06-12)**: when a source exposes the film's runtime, forward it as `RawScreening.runtime` (minutes) — the TMDB matcher uses it to reject junk stubs and penalize wrong-era matches. Always pass the raw value through `sanitizeRuntime()` (`src/scrapers/utils/metadata-parser.ts`): coerces numeric strings, guards to the 1–600 minute band, returns `undefined` otherwise. Currently emitted by Rio, ICA, Garden Cinema, and Curzon. Caveat: venue runtimes may include event padding (intros/Q&As). Padding within 30 min is tolerated; beyond that the matcher applies a −0.15 confidence penalty, which strong matches (e.g. exact-year classics) usually survive but borderline ones may not. An asymmetric tolerance (venue-above-TMDB is padding, venue-below-TMDB is a wrong-film signal) is a candidate plan-005 scoring follow-up.
 
 ## sourceId Schemes (plan 009, 2026-06-12)
@@ -676,6 +679,43 @@ none was judged to pay for itself at ~12-20 screenings a year.
 - `/events/{id}/instances` returns one event's full instance history — the endpoint that settled
   the per-film question here, and the one to reach for next time.
 
+### BFI IMAX — structured clock provenance (2026-09-10). Southbank NOT included.
+- **Scope: IMAX only.** `mapRows` is shared by both BFI venues, but only IMAX's clock format has
+  been captured. Southbank keeps full text strictness and earns no provenance.
+- `mapRows` reads AudienceView's embedded `searchResults` array. Column **[8] is a zero-padded
+  24-hour LOCAL wall clock** (`"09:00"`, `"20:30"`); [9]/[10]/[11] are day / 0-indexed month /
+  year, fed to `ukLocalToUTC`. Column [7] is the display string
+  (`"Saturday 12 September 2026 09:00"`) and is only a fallback.
+- **Format evidence (bounded read-only capture, 2026-09-10, HTTP 200, full-page sha256 in
+  `src/scrapers/cinemas/__fixtures__/bfi/PROVENANCE.json`).** Across all 91 IMAX rows the hour
+  histogram was `{9:12, 10:6, 11:3, 13:13, 14:8, 15:1, 17:17, 18:5, 19:2, 20:19, 21:2, 22:1,
+  23:2}`. Hours up to **23** occur, so a 12-hour clock is excluded; sub-ten values are written
+  `09:00`, never `9:00`; no am/pm text appears in the column. **`09:00` here is unambiguously
+  morning.**
+- **Why this mattered.** The 2026-09-09 run found 91 IMAX rows and rejected **12** — every one
+  "The Odyssey" at hour 9 — as `suspicious_time_early`
+  (`scrape-full-20260909-221554.log:6845-6857`, `Total: 91 | Valid: 79 | Rejected: 12`). Those
+  are consistent with the validator rejecting genuine morning shows, given the next-day
+  format evidence; the historical response was not captured, so their correctness is inferred.
+- The structured path sets **`timeSource: "local-24h"`** behind **two** gates, so those screenings
+  are kept with a warning:
+  1. **Per-venue** — `BFIVenueConfig.clockFormatVerified`, set for **IMAX only**. `mapRows` is
+     shared, and evidence from one venue's feed is not evidence about the other's. Two bounded
+     Southbank captures on 2026-09-10 hit Cloudflare (HTTP 403, "Just a moment...", no
+     `searchResults`), so **Southbank keeps full strictness** until a capture succeeds.
+  2. **Per-field** — `isUnambiguous24hClock()`, anchored and range-checked
+     (`^([01]\d|2[0-3]):([0-5]\d)$`). The datetime parse still uses the original unanchored
+     prefix regex `^(\d{1,2}):(\d{2})`, which also matches `"09:00 PM"` (really 21:00) and
+     `"29:99"` — awarding provenance on that would trust the very AM/PM error the guard exists to
+     catch. Parsing and mapper output cardinality are unchanged; the provenance changes which
+     early mapped rows pass downstream validation.
+- The display-text fallback deliberately sets **nothing** and keeps full strictness.
+- **Do NOT change this to `"iso"`.** It is a local wall clock, not an instant, and `"iso"` would
+  also lift BFI's `too_far_future` cap from 90 to 180 days — a horizon change nobody has evidence
+  for. Regression tests in `bfi-time-provenance.test.ts` pin the 90-day cap for `local-24h`.
+- Today's capture establishes the source **format**, a stable property of the feed. It does not
+  establish the contents of any past run, so it cannot prove which 12 records were rejected then.
+
 ### Bertha DocHouse — stable booking URL (fixed 2026-07-20)
 - Detail page `https://dochouse.org/event/<slug>/` lists each screening as
   `<a href="https://www.curzon.com/ticketing/seats/BLO1-XXXXXX">`. That Curzon href is a
@@ -874,6 +914,20 @@ none was judged to pay for itself at ~12-20 screenings a year.
   also unions film URLs through a `Set` before fetching, so a film on both listings costs one
   request, and `validate()` still dedupes on `sourceId` as a backstop. Verified: 0 duplicate
   sourceIds across the combined run.
+- **Time provenance (verified 2026-09-10, regression-tested):** the `time[datetime]` attribute is
+  London local with no zone designator, and on every captured showtime it agrees with the visible
+  clock and with the button's analytics label (`'... : Thursday 10th September 2026 at 16:45'`).
+  `parseDateTime` → `ukLocalToUTC` therefore stores 16:45 local as `15:45Z` in BST and `16:45Z` in
+  GMT; `sourceId` embeds that UTC ISO. `cinemas/peckhamplex.test.ts` pins this through `scrape()`
+  with fixtures reduced from a real capture (`__fixtures__/peckhamplex/PROVENANCE.json`) and a
+  pinned clock (the GMT fixture is synthetic: real markup, December dates). On 2026-09-10, 20
+  production rows (Spider-Man, Tony) were verified one hour later than the captured clock for the
+  same film, date and Veezi purchase id, carrying a last-refresh `scraped_at` of ~06:06Z (a
+  timestamp cohort, not an identified process) with no `scraper_runs` entry for that time; the 09-08 and
+  09-09 diffs showed the same one-hour pattern against the same-day rescrape. The writer's origin is
+  **unresolved** and out of scope for scraper work. Do not "fix" the conversion to match such rows,
+  and treat a same-film-same-date one-hour diff pair at this venue as a provenance question, not a
+  rekey.
 - **Known pitfalls:**
   - **Dead film pages 200 and render the listing.** Retired `/film/{slug}` URLs (e.g. the 6
     `tfff-*` festival slugs linked from `/the-final-film-festival`) return HTTP 200 but serve the
@@ -1043,5 +1097,97 @@ before this change. The old numbers described writes that had in fact landed.
 totals. **It is a marker awaiting a consumer**: nothing sets it outside tests today
 — `scripts/lcut-gapfill.ts` does not call `buildAccounting` at all — and nothing
 enforces the exclusion. Treat it as documentation, not as a guarantee.
+
+---
+
+## 2026-09-10 sequel-safe film identity: trailing-number discrimination
+
+Trigram similarity and TMDB's title scoring both read a film and its sequel as
+near-identical. In the 2026-09-09 full run `"Practical Magic 2"` was accepted as
+`"Practical Magic"` at 89% in **36** logged matches, and
+`"Mockingjay - Part 2"` as `"Mockingjay - Part 1"` at 80%. Two guards now sit on
+the two matching paths, both comparing the number a title carries rather than
+raising any threshold.
+
+**The helper** lives in `src/lib/title-patterns.ts` (DB-free, so both matchers
+can share it without pulling Drizzle into `src/lib/tmdb/match.ts`):
+
+| Function | Answers |
+|---|---|
+| `sequelMarkerOf(title)` | which instalment this is, or null |
+| `trailingNumberOf(title)` | the number that identifies the title, instalment or not |
+| `disagreesOnTrailingNumber(a, b)` | whether two titles disagree about it |
+
+The two readings are deliberately separate. `Blade Runner 2049` has **no
+instalment marker** — nothing should ever call it the 2049th Blade Runner — but
+2049 still identifies it, so `trailingNumberOf` reports it and identity
+comparison uses that. Comparison is on **values**, so `Halloween II` and
+`Halloween 2` agree, as do `Blade Runner 2049` and
+`BLADE RUNNER 2049 (4K Restoration)`.
+
+**Supported forms.** Arabic numerals; Roman numerals I-XXX (canonical
+round-trip only, so `MIX` and `LIV` are not numbers); instalment words
+`part`, `pt`, `vol`, `volume`, `chapter`, `episode`, `ep`, `book`, `series`,
+`season`, `day`, each optionally followed by a spelled-out `one`-`twenty`
+(`Dune: Part Two`); four-digit years as identity numbers but never as
+instalments. Trailing bracketed decoration is peeled first, so
+`Toy Story 5 (BIA)` and `Sing 2 (Sing-Along)` still read 5 and 2.
+
+**Intentionally unsupported, and why.** A number needs a base title in front of
+it, so `X` (2022), `M` (1931), `1917` and a bare `II` carry none — they are
+titles, not numbered things. A trailing explicit date carries none either, which
+leaves the run's `Baby Comptines 07/10/2026` family (9 distinct wrong merges,
+differing only by date) to whatever guard handles dated instances; those are
+real merges but they are not sequels. Word numerals without an instalment word
+are not read, so a bare `Two` is invisible. Month-differing titles
+(`… Quarterly Meeting September 2026` vs `… June 2026`) both read 2026 and agree,
+so the guard is silent there.
+
+**Known imprecision.** A title whose last token is a single Roman letter reads
+as a number, so `Malcolm X` reports 10 and `Who Am I` reports 1. The outcome
+stays conservative — such a title only ever fails to match a candidate whose
+number differs, and a true variant keeps the same trailing letter — but the
+number itself is meaningless.
+
+**Where the guards sit.**
+
+1. `findMatchingFilm` (`src/lib/film-similarity.ts`) rejects a disagreeing
+   candidate **before** the year window, because the year window needs a year on
+   both sides and could not see this at all: 27 of the 36 acceptances logged no
+   year rejection, and the other 9 came on the line immediately after the 1998
+   row was rejected on year. The films table holds a second row of the same
+   title with a NULL year, which the window cannot judge, and that is a
+   plausible explanation for those 9 — the log does not name the row it
+   accepted, so which row each took is not established. Rejection `continue`s,
+   so a correct later candidate is still reached.
+2. `findBestMatch` (`src/lib/tmdb/match.ts`) filters candidate **fields** before
+   scoring. Guarding only the DB path would have moved the wrong match here
+   rather than removed it, since `getOrCreateFilm` hands TMDB the very title the
+   DB guard just refused, and `calculateSimilarity` awards a containment bonus
+   (`0.8 + shorter/longer * 0.2`) that scores a base title ~0.976 against its
+   own sequel.
+
+**Field eligibility in the TMDB path** — a candidate offers `title` and
+`original_title`, and each is admitted or refused **whole**:
+
+- empty, or empty once normalized, is not evidence. `calculateSimilarity` treats
+  an empty normalized string as contained in everything and returns its 0.8
+  floor, so a non-Latin original like `魔法` (non-empty raw, empty normalized)
+  would otherwise clear `minTitleSimilarity` and supply a spurious
+  agreement;
+- a field whose number disagrees with the search title is refused, and its
+  similarity is not used in any path. Judging identity on one field and
+  similarity on the other accepted candidates that were wrong on every field
+  individually — an unrelated `title` lending "carries no number, nothing
+  conflicts" while a conflicting `original_title` lent all the similarity.
+
+The similarity score is then the max over eligible fields only. A candidate with
+no eligible field is skipped.
+
+**Not addressed here.** The films table holds duplicate rows that this guard
+does not clean up: two `Practical Magic` (1998 and year-NULL), two
+`Selected 16`, two `Toy Story 5`. Existing rows already pointed at a wrong film
+stay wrong — repair belongs to the rematch sweep
+(`scripts/rematch-unmatched-films.ts`), not to the matcher.
 
 ---
