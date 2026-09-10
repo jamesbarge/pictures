@@ -2,8 +2,8 @@
  * Scrape Diff Report
  *
  * Compares new scrape data against existing database records to show:
- * - New screenings being added
- * - Screenings that will be removed (no longer on source)
+ * - Incoming/existing title + UTC instant keys without a counterpart
+ * - Differences that may reflect capture gaps, title matching, or time changes
  * - Changes in screening counts
  * - Suspicious patterns (sudden drops, holiday screenings, etc.)
  */
@@ -19,7 +19,7 @@ interface ScrapeDiffReport {
   cinemaName: string;
   timestamp: Date;
 
-  // Counts
+  // Comparison counts, NOT write/deletion counts. Legacy field names retained.
   existingCount: number;
   newCount: number;
   addedCount: number;
@@ -28,7 +28,7 @@ interface ScrapeDiffReport {
 
   // Details
   added: Array<{ title: string; datetime: Date }>;
-  removed: Array<{ title: string; datetime: Date; daysSinceScraped: number }>;
+  removed: Array<{ title: string; datetime: Date; daysSinceScraped: number | null }>;
 
   // Warnings
   warnings: string[];
@@ -106,7 +106,7 @@ export async function generateScrapeDiff(
 
   // Find added and removed screenings
   const added: Array<{ title: string; datetime: Date }> = [];
-  const removed: Array<{ title: string; datetime: Date; daysSinceScraped: number }> = [];
+  const removed: ScrapeDiffReport["removed"] = [];
 
   // New screenings not in existing
   for (const s of newScreenings) {
@@ -123,7 +123,7 @@ export async function generateScrapeDiff(
     if (!newSet.has(key)) {
       const daysSinceScraped = data.scrapedAt
         ? Math.floor((now.getTime() - data.scrapedAt.getTime()) / (1000 * 60 * 60 * 24))
-        : 0;
+        : null;
       removed.push({
         title: data.title,
         datetime: data.datetime,
@@ -141,14 +141,14 @@ export async function generateScrapeDiff(
     removed.length > existingScreenings.length * LARGE_DROP_THRESHOLD
   ) {
     warnings.push(
-      `LARGE_DROP: ${removed.length}/${existingScreenings.length} screenings removed (${Math.round((removed.length / existingScreenings.length) * 100)}%) - possible scraper issue`
+      `LARGE_DROP: ${removed.length}/${existingScreenings.length} existing screenings have no title/time match (${Math.round((removed.length / existingScreenings.length) * 100)}%) - possible capture or film-matching issue`
     );
   }
 
-  // Warning: All screenings removed (scraper likely broken)
+  // Warning: Empty comparison-window capture (scraper may be broken)
   if (existingScreenings.length > 0 && newSet.size === 0) {
     warnings.push(
-      `SCRAPER_BROKEN: All ${existingScreenings.length} screenings would be removed - scraper may have failed`
+      `SCRAPER_BROKEN: No incoming screenings in the comparison window against ${existingScreenings.length} existing screenings - scraper may have failed`
     );
   }
 
@@ -157,15 +157,15 @@ export async function generateScrapeDiff(
     const month = s.datetime.getMonth() + 1;
     const day = s.datetime.getDate();
     if (month === 12 && day === 25) {
-      warnings.push(`HOLIDAY: New screening on Christmas Day: ${s.title}`);
+      warnings.push(`HOLIDAY: Unmatched incoming screening on Christmas Day: ${s.title}`);
     }
   }
 
-  // Warning: Recently added screenings being removed
+  // scrapedAt records last refresh, not creation. An unmatched key is not a deletion.
   for (const s of removed) {
-    if (s.daysSinceScraped <= 1) {
+    if (s.daysSinceScraped !== null && s.daysSinceScraped >= 0 && s.daysSinceScraped <= 1) {
       warnings.push(
-        `RECENTLY_ADDED_THEN_REMOVED: "${s.title}" was added ${s.daysSinceScraped} days ago and is now gone`
+        `RECENTLY_REFRESHED_NOT_MATCHED: "${s.title}" was last refreshed ${s.daysSinceScraped} days ago and has no title/time match in this scrape`
       );
     }
   }
@@ -194,13 +194,15 @@ export async function generateScrapeDiff(
 export function printDiffReport(report: ScrapeDiffReport): void {
   console.log(`\n=== ${report.cinemaName} Scrape Diff ===`);
   console.log(`Timestamp: ${format(report.timestamp, "yyyy-MM-dd HH:mm:ss")}`);
+  console.log(`Comparison: title + UTC instant, next ${MAX_DAYS_IN_FUTURE_FOR_COMPARISON} days; not a write/deletion audit`);
+  console.log("Title normalization or incorrect film matching can also produce differences.");
   console.log(`Existing: ${report.existingCount} | New: ${report.newCount}`);
   console.log(
-    `Added: ${report.addedCount} | Removed: ${report.removedCount} | Unchanged: ${report.unchangedCount}`
+    `Unmatched incoming: ${report.addedCount} | Unmatched existing: ${report.removedCount} | Matched: ${report.unchangedCount}`
   );
 
   if (report.added.length > 0) {
-    console.log("\nADDED:");
+    console.log("\nUNMATCHED INCOMING:");
     for (const s of report.added.slice(0, 10)) {
       console.log(`  + ${s.title} @ ${format(s.datetime, "EEE d MMM HH:mm")}`);
     }
@@ -210,9 +212,10 @@ export function printDiffReport(report: ScrapeDiffReport): void {
   }
 
   if (report.removed.length > 0) {
-    console.log("\nREMOVED:");
+    console.log("\nUNMATCHED EXISTING (not confirmed cancellations):");
     for (const s of report.removed.slice(0, 10)) {
-      const recentFlag = s.daysSinceScraped <= 1 ? " [RECENT!]" : "";
+      const recentFlag = s.daysSinceScraped !== null && s.daysSinceScraped >= 0 && s.daysSinceScraped <= 1
+        ? " [RECENT REFRESH]" : "";
       console.log(
         `  - ${s.title} @ ${format(s.datetime, "EEE d MMM HH:mm")}${recentFlag}`
       );
@@ -236,7 +239,7 @@ export function printDiffReport(report: ScrapeDiffReport): void {
  * Check if diff report indicates serious issues that should block the scrape
  */
 export function shouldBlockScrape(report: ScrapeDiffReport): boolean {
-  // Block if it looks like the scraper is broken (all screenings removed)
+  // Preserve the existing block signal for an empty comparison-window capture.
   const hasBrokenScraperWarning = report.warnings.some((w) =>
     w.startsWith("SCRAPER_BROKEN")
   );

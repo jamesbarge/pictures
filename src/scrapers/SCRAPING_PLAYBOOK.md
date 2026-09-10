@@ -10,6 +10,8 @@ Update this playbook whenever you:
 - Discover a recurring site-specific failure mode
 
 ## Shared Rules
+- **Resume is not necessarily a one-venue retry**: after a failed scrape phase, only completed scraper entries can be skipped. Checkpointed L-CUT/cleanup/audit phases are honored only as a contiguous prefix of completed phases; if scrape did not complete, these downstream phases rerun. The September 9 checkpoint records L-CUT/cleanup/audit but not scrape, so `--resume` does not mean "only Close-Up runs." Checkpoint age/argument validation can instead trigger a full run. Inspect the checkpoint and startup messages before choosing a retry; do not retry a known source block merely to make the run green.
+- **Scrape diff is a comparison, not a mutation ledger** (2026-09-10): `scrape-diff.ts` compares trimmed/lowercased film titles plus UTC instants within the next 30 days. Its unmatched incoming/existing rows do not prove inserts, cancellations or deletions. Raw scraper titles can differ from enriched DB titles, including unsafe sequel matches; inspect identities before drawing conclusions. `scraped_at` means last refresh, not creation. The `RECENTLY_REFRESHED_NOT_MATCHED` warning replaces the misleading `RECENTLY_ADDED_THEN_REMOVED`; null refresh timestamps are unknown, not recent. Legacy result fields `added`/`removed` remain comparison-only. Empty-capture blocking and matching behavior are unchanged.
 - Always capture full time strings including AM/PM context.
 - If a time is `1-9` with no AM/PM, default to PM.
 - Treat times before `10:00` as likely parse errors and log warnings.
