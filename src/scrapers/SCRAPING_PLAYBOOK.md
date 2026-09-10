@@ -920,11 +920,13 @@ none was judged to pay for itself at ~12-20 screenings a year.
   `parseDateTime` → `ukLocalToUTC` therefore stores 16:45 local as `15:45Z` in BST and `16:45Z` in
   GMT; `sourceId` embeds that UTC ISO. `cinemas/peckhamplex.test.ts` pins this through `scrape()`
   with fixtures reduced from a real capture (`__fixtures__/peckhamplex/PROVENANCE.json`) and a
-  pinned clock. Rows shaped `2026-09-10T16:45:00Z` (the attribute read as UTC, rendering one hour
-  late in BST) were found in production on 2026-09-08/09/10 with no `scraper_runs` entry, written
-  around 06:06Z, alongside this scraper's correct rows. Their origin is **not established** and is
-  out of scope for scraper work; do not "fix" the conversion to match them, and treat a
-  same-film-same-date one-hour diff pair at this venue as a provenance question, not a rekey.
+  pinned clock (the GMT fixture is synthetic: real markup, December dates). On 2026-09-10, 20
+  production rows (Spider-Man, Tony) were verified one hour later than the captured clock for the
+  same film, date and Veezi purchase id, written ~06:06Z with no `scraper_runs` entry; the 09-08 and
+  09-09 diffs showed the same one-hour pattern against the same-day rescrape. The writer's origin is
+  **unresolved** and out of scope for scraper work. Do not "fix" the conversion to match such rows,
+  and treat a same-film-same-date one-hour diff pair at this venue as a provenance question, not a
+  rekey.
 - **Known pitfalls:**
   - **Dead film pages 200 and render the listing.** Retired `/film/{slug}` URLs (e.g. the 6
     `tfff-*` festival slugs linked from `/the-final-film-festival`) return HTTP 200 but serve the

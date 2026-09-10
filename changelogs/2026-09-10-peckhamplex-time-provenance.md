@@ -18,10 +18,11 @@ source-id rekey. The earlier audit (2026-09-08) had already withdrawn the "stale
   BST, rendering 16:45 BST. That is what the 2026-09-09 run wrote. `sourceId` embeds that instant;
   0 current rows have a `source_id` ISO that differs from their stored `datetime`.
 - **One-hour-late rows**: read-only DB at 08:07Z shows Spider-Man Thu 10 Sep stored as
-  `2026-09-10T16:45:00Z` (17:45 BST), `scraped_at` 06:06Z, no `scraper_runs` row. If the source clock
-  at 06:06Z matched the 08:04Z capture, that value is the attribute read as UTC. That is a
-  hypothesis: no 06:06Z source capture or execution provenance exists, and the current code would
-  produce the same row if the source itself showed 17:45 at that moment.
+  `2026-09-10T16:45:00Z` (17:45 BST) with `booking_url` purchase id 83098, `scraped_at` 06:06Z, no
+  `scraper_runs` row. The captured page has purchase id 83098 at 16:45. If the source clock at 06:06Z
+  matched the 08:04Z capture, the stored value is the attribute read as UTC. That is a hypothesis: no
+  06:06Z source capture or execution provenance exists, and the current code would produce the same
+  row if the source itself showed 17:45 at that moment.
 
 ## Changes
 - `src/scrapers/cinemas/peckhamplex.test.ts` (new): 4 tests through `PeckhamplexScraper.scrape()`
@@ -29,8 +30,9 @@ source-id rekey. The earlier audit (2026-09-08) had already withdrawn the "stale
   still runs). Asserts BST and GMT conversions, `sourceId` embedding, host-TZ independence and the
   listing → film-page fetch sequence.
 - `src/scrapers/cinemas/__fixtures__/peckhamplex/` (new): film page reduced from the real capture
-  (markup verbatim inside `.book-tickets`), a GMT variant with dates moved to December (synthetic
-  dates, same structure), two listing stubs, and `PROVENANCE.json`.
+  (markup verbatim inside `.book-tickets`), a **synthetic** GMT variant (same markup, dates moved to
+  December 2026; labelled synthetic in the file header, `PROVENANCE.json` and the test name), two
+  listing stubs, and `PROVENANCE.json`.
 - `src/scrapers/SCRAPING_PLAYBOOK.md`: time-provenance note under the Peckhamplex section.
 - `src/scrapers/cinemas/peckhamplex.ts`: **unchanged**. No conversion change is justified by source
   evidence; changing it would make the scraper disagree with the source.
@@ -40,16 +42,20 @@ source-id rekey. The earlier audit (2026-09-08) had already withdrawn the "stale
   host-local `new Date(y, m, d, h, mi)` conversion on a UTC host (`16:45Z`) and passes under
   `ukLocalToUTC` on both UTC and London hosts (demonstrated with a one-off script, recorded in the
   worktree handoff).
-- Tested: targeted test 4/4 (host TZ and `TZ=UTC`); `npm run test:run -- --pool=threads --maxWorkers=2`
+- Tested: targeted test 4/4 under `TZ=UTC` and under `TZ=Europe/London` (explicit runs, exit 0 each); `npm run test:run -- --pool=threads --maxWorkers=2`
   145 files / 2166 tests, exit 0; `npm run lint` 0 errors (61 pre-existing warnings); `npx tsc --noEmit`
   exit 0.
-- Inspected only: the 06:06Z writer's scope (13 cinemas, 1,916 rows, 06:01–06:06Z) from
-  `screenings.scraped_at`; other venues' times not examined.
+- Inspected only: `screenings.scraped_at` shows writes to 13 cinemas in the same 06:01–06:06Z
+  window; other venues' times not examined and no claim is made about them.
 
 ## Impact
 - No production write, no migration, no dependency, no scrape run.
-- 87 Peckhamplex rows for the 15 out-now films currently carry `scraped_at` 06:06Z. 20 of them
-  (Spider-Man ×10, Tony ×10) are verified one hour late against captured pages; the other 67 are
-  **not verified** (their films were not captured). Whether yesterday's correct rows were deleted or
-  replaced is **not established** (row ids were not captured beforehand). A preview-only list with
-  exact ids and stored/source instants is in the worktree handoff. Restoration is a separate decision.
+- 87 Peckhamplex rows currently carry `scraped_at` 2026-09-10 06:06Z with no `scraper_runs` entry.
+  **20 of them are verified one hour late** against captured pages: same film, same London date,
+  the captured showtime sits at exactly stored−1h, its Veezi purchase id equals the row's stored
+  `booking_url` purchase id, and the stored clock is absent from the page (Spider-Man ×10, Tony ×10).
+  The **other 67 are unverified**: their films were not captured. Which films or listings the 06:06Z
+  write covered beyond those two is not claimed. Whether yesterday's correct rows were deleted or
+  replaced is **not established** (row ids were not captured beforehand). The writer's origin is
+  **unresolved** and out of scope. A preview-only list with exact ids, stored and source instants and
+  purchase ids is in the worktree handoff. Restoration is a separate decision.

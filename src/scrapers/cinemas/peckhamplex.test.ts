@@ -9,7 +9,7 @@
  * These tests pin the contract through the production seam
  * (`PeckhamplexScraper.scrape()` with `fetch` stubbed):
  *   - BST date: 16:45 local  -> 15:45Z
- *   - GMT date: 16:45 local  -> 16:45Z
+ *   - GMT date: 16:45 local  -> 16:45Z (synthetic fixture: real markup, December dates)
  *   - sourceId embeds the stored UTC instant
  *
  * Storing the attribute as if it were UTC (`2026-09-10T16:45:00Z`) renders as
@@ -94,7 +94,7 @@ describe("PeckhamplexScraper — <time datetime> is London local time", () => {
     expect(screenings.map((s) => s.datetime.toISOString())).not.toContain("2026-09-10T16:45:00.000Z");
   });
 
-  it("GMT: stores 16:45 local as 16:45Z (no offset outside summer time)", async () => {
+  it("GMT (synthetic December dates, real markup): stores 16:45 local as 16:45Z", async () => {
     stubFetch(FILM_GMT);
     const screenings = await scraperWithoutDelays().scrape();
 
@@ -110,8 +110,8 @@ describe("PeckhamplexScraper — <time datetime> is London local time", () => {
 
   it("result does not depend on the host timezone", async () => {
     // ukLocalToUTC builds the instant from components, so TZ must be irrelevant.
-    // Vitest runs with the host's TZ; assert the same instants that a UTC host
-    // and a London host would both produce.
+    // This file is run under TZ=UTC and TZ=Europe/London explicitly (see the
+    // changelog); a single-host run alone does not establish independence.
     stubFetch(FILM_BST);
     const [first] = await scraperWithoutDelays().scrape();
     expect(first.datetime.getTime()).toBe(Date.UTC(2026, 8, 10, 15, 45));
