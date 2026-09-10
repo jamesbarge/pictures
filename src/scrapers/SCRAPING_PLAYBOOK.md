@@ -914,6 +914,17 @@ none was judged to pay for itself at ~12-20 screenings a year.
   also unions film URLs through a `Set` before fetching, so a film on both listings costs one
   request, and `validate()` still dedupes on `sourceId` as a backstop. Verified: 0 duplicate
   sourceIds across the combined run.
+- **Time provenance (verified 2026-09-10, regression-tested):** the `time[datetime]` attribute is
+  London local with no zone designator, and on every captured showtime it agrees with the visible
+  clock and with the button's analytics label (`'... : Thursday 10th September 2026 at 16:45'`).
+  `parseDateTime` → `ukLocalToUTC` therefore stores 16:45 local as `15:45Z` in BST and `16:45Z` in
+  GMT; `sourceId` embeds that UTC ISO. `cinemas/peckhamplex.test.ts` pins this through `scrape()`
+  with fixtures reduced from a real capture (`__fixtures__/peckhamplex/PROVENANCE.json`) and a
+  pinned clock. Rows shaped `2026-09-10T16:45:00Z` (the attribute read as UTC, rendering one hour
+  late in BST) were found in production on 2026-09-08/09/10 with no `scraper_runs` entry, written
+  around 06:06Z, alongside this scraper's correct rows. Their origin is **not established** and is
+  out of scope for scraper work; do not "fix" the conversion to match them, and treat a
+  same-film-same-date one-hour diff pair at this venue as a provenance question, not a rekey.
 - **Known pitfalls:**
   - **Dead film pages 200 and render the listing.** Retired `/film/{slug}` URLs (e.g. the 6
     `tfff-*` festival slugs linked from `/the-final-film-festival`) return HTTP 200 but serve the

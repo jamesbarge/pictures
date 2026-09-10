@@ -1,0 +1,29 @@
+{
+  "venue": "peckhamplex",
+  "capturedBy": "C1 (fix/peckhamplex-time-provenance), read-only HTTP GET",
+  "captures": [
+    {
+      "file": "film-spider-man-bst.html",
+      "source": "https://www.peckhamplex.london/film/spider-man-brand-new-day",
+      "capturedAt": "2026-09-10T08:04:04Z",
+      "sha256OfFullPage": "950111c2a0de92db3abd027d626be8eeffdfe1536f89cc5ec7dbc456e41b2afe",
+      "reduction": "Kept <h1> (set to the film title as the page renders it) and the .book-tickets block for Thu 10 Sep and Sat 12 Sep only; markup inside those blocks is verbatim, including onclick analytics labels and Veezi hrefs.",
+      "observed": "On every showtime the <time datetime> attribute, the visible clock text and the analytics label '... at HH:MM' agree. The attribute carries no zone designator; the clock is London local."
+    },
+    {
+      "file": "film-spider-man-gmt.html",
+      "source": "derived from film-spider-man-bst.html",
+      "reduction": "Identical structure with dates moved from September to December 2026 so the same markup exercises the GMT branch. Dates are synthetic; the venue publishes local clock in both seasons.",
+      "observed": "n/a (synthetic dates)"
+    },
+    {
+      "file": "listing-out-now.html",
+      "source": "shape of https://www.peckhamplex.london/films/out-now (captured 2026-09-10T08:04:02Z, sha256 9457bcc379f9d024e83d558a7f62a06459052721bc33dd1899df0585d5acc339); reduced to one film link"
+    },
+    {
+      "file": "listing-empty.html",
+      "source": "synthetic empty /films/coming-soon"
+    }
+  ],
+  "fullCaptures": "worktree tmp/c1-peckhamplex/captures/ (not committed)"
+}

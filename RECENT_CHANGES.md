@@ -23,6 +23,14 @@
 
 ---
 
+## 2026-09-10: Peckhamplex time provenance — regression test, no conversion change
+**PR**: pending (branch `fix/peckhamplex-time-provenance`) | **Files**: `src/scrapers/cinemas/peckhamplex.test.ts`, `src/scrapers/cinemas/__fixtures__/peckhamplex/*`, `src/scrapers/SCRAPING_PLAYBOOK.md`
+- Investigated the one-hour same-film/same-date pairs in the 2026-09-09 Peckhamplex scrape diff. Captured source pages (URL, UTC time, sha256) show the `time[datetime]` attribute, the visible clock and the analytics label agree on every showtime; the value is London local. The scraper's `ukLocalToUTC` conversion matches the source, so **no scraper change is made**.
+- Added a fixture regression test through `PeckhamplexScraper.scrape()` (fetch stubbed, clock pinned) asserting 16:45 local → `15:45Z` in BST and `16:45Z` in GMT, sourceId embedding, and host-timezone independence. The pinned expectation fails under the pre-2026-05-11 host-local `new Date(...)` conversion on a UTC host.
+- Production rows shaped like the attribute read as UTC (one hour late in BST) exist for 15 out-now films, written ~06:06Z with no `scraper_runs` row; 20 of them (Spider-Man, Tony) are verified one hour late against captured pages. Origin not established and out of scope. Preview-only affected-row list in the worktree handoff; nothing restored or deleted.
+
+---
+
 ## 2026-09-09: Honest screening-loss accounting
 **PR**: #752 | **Files**: `src/scrapers/utils/screening-accounting.ts`, `src/scrapers/utils/screening-accounting-report.ts`, `src/scrapers/base.ts`, `src/scrapers/pipeline.ts`, `src/scrapers/runner-factory.ts`, `scripts/lcut-gapfill.ts`, `src/scrapers/festivals/eventive-scraper.ts`, `src/scrapers/festivals/types.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`, 7 test files
 - **Two of the three numbers a scrape reported were wrong.** `insertScreening` returned a bare boolean: `true` meant "the `INSERT ... ON CONFLICT DO UPDATE` statement ran" (an insert *or* an update) and was counted `added`; `false` meant either "an existing row was updated in place" or "the duplicate check said skip", and both were counted `updated`. Separately, `BaseScraper.validate()` dropped candidates before the pipeline counted anything, with no reason and no total, so nothing could say how much of a venue's published listing was kept.
