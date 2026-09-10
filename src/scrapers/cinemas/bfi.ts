@@ -57,6 +57,16 @@ interface BFIVenueConfig {
   baseUrl: string;
   /** article_search_id GUID for the date-range search. */
   searchId: string;
+  /**
+   * Has this venue's clock column [8] been VERIFIED as an unambiguous 24-hour
+   * wall clock by captured evidence? Only then may a row earn
+   * `timeSource: "local-24h"` and keep a sub-10:00 time.
+   *
+   * `mapRows` is shared by both venues, so this must be per-venue: evidence
+   * from one venue's feed is not evidence about the other's, even on the same
+   * platform. Default (absent) = unverified = full text strictness.
+   */
+  clockFormatVerified?: true;
 }
 
 const VENUES: Record<string, BFIVenueConfig> = {
@@ -66,6 +76,13 @@ const VENUES: Record<string, BFIVenueConfig> = {
     searchVenueName: "BFI Southbank",
     baseUrl: "https://whatson.bfi.org.uk/Online",
     searchId: "25E7EA2E-291F-44F9-8EBC-E560154FDAEB",
+    // clockFormatVerified deliberately UNSET. Two bounded capture attempts on
+    // 2026-09-10 were served Cloudflare's "Just a moment..." interstitial
+    // (HTTP 403, no searchResults array), so Southbank's clock format is NOT
+    // established. It very likely matches IMAX — same AudienceView platform —
+    // but "likely" is not evidence, and awarding provenance on a guess would
+    // trust an unverified clock. Southbank keeps its existing strict
+    // behaviour until a capture succeeds.
   },
   "bfi-imax": {
     id: "bfi-imax",
@@ -75,6 +92,9 @@ const VENUES: Record<string, BFIVenueConfig> = {
     searchVenueName: "IMAX",
     baseUrl: "https://whatson.bfi.org.uk/imax/Online",
     searchId: "49C49C83-6BA0-420C-A784-9B485E36E2E0",
+    // Verified 2026-09-10 by bounded read-only capture of all 91 rows — see
+    // isUnambiguous24hClock and __fixtures__/bfi/PROVENANCE.json.
+    clockFormatVerified: true,
   },
 };
 
@@ -101,6 +121,30 @@ const MAX_SEARCH_ATTEMPTS = 3;
 const RETRY_BACKOFF_MS = [10_000, 30_000];
 
 // `SearchRow` + `parseSearchResultsArray` now live in ./bfi-parse (imported above).
+/**
+ * Is this field a complete, in-range 24-hour wall clock?
+ *
+ * AudienceView column [8] is a zero-padded 24-hour local clock. Verified by
+ * bounded read-only capture 2026-09-10 across all 91 BFI IMAX rows: the hour
+ * histogram was {9:12,10:6,11:3,13:13,14:8,15:1,17:17,18:5,19:2,20:19,21:2,
+ * 22:1,23:2}, so hours reach 23 and a 12-hour reading is excluded; sub-ten
+ * values are written "09:00" and never "9:00"; no am/pm text appears. Evidence
+ * and the full-page sha256 are in __fixtures__/bfi/PROVENANCE.json.
+ *
+ * The check is deliberately stricter than the parse. It is ANCHORED at both
+ * ends and range-checked, so a meridiem suffix ("09:00 PM" — really 21:00) or
+ * an impossible clock ("29:99") earns no provenance and keeps full text
+ * strictness. Awarding "local-24h" on a loose prefix match would trust exactly
+ * the AM/PM error the early-time guard exists to catch.
+ *
+ * Scope: the evidence above is BFI IMAX only. Southbank is gated separately by
+ * BFIVenueConfig.clockFormatVerified and does not currently earn provenance.
+ */
+export function isUnambiguous24hClock(value: string): boolean {
+  const m = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(value.trim());
+  return m !== null;
+}
+
 
 export class BFIScraper {
   private venue: BFIVenueConfig;
@@ -290,9 +334,29 @@ export class BFIScraper {
       const timeStr = str(row[8]); // "14:50"
 
       let datetime: Date | null = null;
+      // Provenance: only the STRUCTURED clock column earns "local-24h". The
+      // display-text fallback below is text parsing and keeps full strictness.
+      let timeSource: RawScreening["timeSource"];
       const tm = timeStr.match(/^(\d{1,2}):(\d{2})/);
       if (year && tm && Number.isFinite(day) && Number.isFinite(month)) {
         datetime = ukLocalToUTC(year, month, day, parseInt(tm[1], 10), parseInt(tm[2], 10));
+        // Provenance is awarded ONLY on a strictly validated clock, never on
+        // the prefix match above. `/^(\d{1,2}):(\d{2})/` is unanchored and
+        // range-free, so it also matches "09:00 PM" (which is 21:00, not 09:00)
+        // and "29:99". Either would be silently trusted as an unambiguous
+        // morning time. `isUnambiguous24hClock` demands the WHOLE field be
+        // HH:MM with hour 0-23 and minute 0-59; anything else falls back to
+        // text strictness. The parse above is deliberately left unchanged, so
+        // mapRows still emits the same rows with the same datetimes — its
+        // cardinality does not move. What DOES change is downstream: a row
+        // carrying this provenance is no longer rejected by the validator's
+        // early-time guard. That acceptance change is the point of the fix,
+        // not a side effect.
+        // Both gates must hold: this venue's format is verified by capture,
+        // AND this particular field is a complete in-range 24-hour clock.
+        if (this.venue.clockFormatVerified && isUnambiguous24hClock(timeStr)) {
+          timeSource = "local-24h";
+        }
       } else {
         // Fallback: parse the full start_date string [7] "Saturday 30 May 2026 14:50"
         datetime = this.parseBFIDateTime(str(row[7]));
@@ -331,6 +395,7 @@ export class BFIScraper {
       screenings.push({
         filmTitle: cleanTitle,
         datetime,
+        timeSource,
         screen,
         bookingUrl,
         eventType,
