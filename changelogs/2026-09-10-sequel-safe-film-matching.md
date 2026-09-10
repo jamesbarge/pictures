@@ -1,6 +1,6 @@
 # Sequel-safe film identity
 
-**PR**: TBD (local branch `fix/sequel-safe-film-matching`, not pushed)
+**PR**: #753 (source branch `fix/sequel-safe-film-matching`)
 **Date**: 2026-09-10
 **Base**: `eae19e933ffcb462787d1eb0a3b02dc9bb5c4865` (`main`, #752)
 

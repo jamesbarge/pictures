@@ -1,6 +1,6 @@
 # Scrape diff evidence wording
 
-**PR**: pending
+**PR**: #753
 **Date**: 2026-09-10
 
 ## Changes

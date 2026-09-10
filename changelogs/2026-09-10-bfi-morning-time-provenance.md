@@ -3,7 +3,7 @@
 **Scope: BFI IMAX only.** `mapRows` is shared by both BFI venues; only IMAX's
 clock format was captured, so **Southbank is unchanged and still fully strict**.
 
-**PR**: (pending)
+**PR**: #753
 **Date**: 2026-09-10
 
 ## The loss

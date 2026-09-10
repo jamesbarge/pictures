@@ -1,6 +1,6 @@
 # L-CUT scraped venue aliases
 
-**PR**: pending
+**PR**: #753
 **Date**: 2026-09-10
 
 ## Changes

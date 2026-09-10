@@ -1,6 +1,6 @@
 # Peckhamplex time provenance — regression test, no conversion change
 
-**PR**: pending (branch `fix/peckhamplex-time-provenance`, base `eae19e93`)
+**PR**: #753 (source branch `fix/peckhamplex-time-provenance`, base `eae19e93`)
 **Date**: 2026-09-10
 
 ## Context

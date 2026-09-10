@@ -1,19 +1,19 @@
 ## 2026-09-10: Scrape diff reports evidence, not assumed deletions
-**PR**: pending | **Files**: `src/scrapers/utils/scrape-diff.ts`, `src/scrapers/utils/scrape-diff.test.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`
+**PR**: #753 | **Files**: `src/scrapers/utils/scrape-diff.ts`, `src/scrapers/utils/scrape-diff.test.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`
 - Label title/time differences as unmatched incoming/existing records, not completed inserts or removals. Title normalization and incorrect film matches can produce differences without changed source times.
 - Describe `scraped_at` as last refresh, not creation; unknown refresh timestamps no longer imply a recent refresh. Matching keys, comparison horizon and empty-capture blocking signal are unchanged.
 
 ---
 
 ## 2026-09-10: Include five scraped venues in L-CUT parity monitoring
-**PR**: pending | **Files**: `scripts/lcut-gapfill.ts`, `scripts/lcut-gapfill.test.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`
+**PR**: #753 | **Files**: `scripts/lcut-gapfill.ts`, `scripts/lcut-gapfill.test.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`
 - Map observed L-CUT labels for Genesis Cinema, Bertha DocHouse, Coldharbour Blue, Peckhamplex and BFI IMAX to their canonical registry IDs.
 - All five remain report-only in the scheduled workflow; the eight source-only automatic write targets are unchanged. Regression tests exercise actual orchestration with mocked external boundaries and assert zero write-pipeline calls.
 
 ---
 
 ## 2026-09-10: BFI **IMAX** morning screenings — separate "unambiguous clock" from "longer horizon" (Southbank unchanged)
-**PR**: (pending) | **Files**: `src/scrapers/cinemas/bfi.ts`, `src/scrapers/utils/screening-validator.ts`, `src/scrapers/types.ts`, `src/scrapers/cinemas/bfi-time-provenance.test.ts`, `src/scrapers/cinemas/__fixtures__/bfi/*`, `src/scrapers/SCRAPING_PLAYBOOK.md`
+**PR**: #753 | **Files**: `src/scrapers/cinemas/bfi.ts`, `src/scrapers/utils/screening-validator.ts`, `src/scrapers/types.ts`, `src/scrapers/cinemas/bfi-time-provenance.test.ts`, `src/scrapers/cinemas/__fixtures__/bfi/*`, `src/scrapers/SCRAPING_PLAYBOOK.md`
 - The 2026-09-09 run found 91 BFI IMAX rows and rejected **12** — all "The Odyssey" at hour 9 — as `suspicious_time_early` (`scrape-full-20260909-221554.log:6845-6857`, `Total: 91 | Valid: 79 | Rejected: 12`).
 - **Format established before any change.** A bounded read-only capture (2026-09-10, HTTP 200, full-page sha256 recorded) shows AudienceView column [8] is a zero-padded 24-hour local clock: hour histogram across all 91 rows `{9:12,10:6,11:3,13:13,14:8,15:1,17:17,18:5,19:2,20:19,21:2,22:1,23:2}`. Hours reach **23**, sub-ten values are written `09:00` never `9:00`, and no am/pm text appears — so a 12-hour reading is excluded and `09:00` is unambiguously morning in this capture. This supports, but does not prove, the inference that the previous day's 12 early-time rejections were false positives.
 - **The policy boundary.** `timeSource: "iso"` was doing two unrelated jobs: keep sub-10:00 times, *and* raise the future cap 90→180 days. Labelling BFI `"iso"` would have silently doubled its date horizon on no evidence. New third value **`"local-24h"`** (a machine-readable *local* wall clock) keeps the early-hour trust and leaves the horizon at **90**; only `"iso"` still extends to 180. Clock format is evidence about AM/PM ambiguity, not about how far ahead a venue publishes.
@@ -24,7 +24,7 @@
 ---
 
 ## 2026-09-10: Peckhamplex time provenance — regression test, no conversion change
-**PR**: pending (branch `fix/peckhamplex-time-provenance`) | **Files**: `src/scrapers/cinemas/peckhamplex.test.ts`, `src/scrapers/cinemas/__fixtures__/peckhamplex/*`, `src/scrapers/SCRAPING_PLAYBOOK.md`
+**PR**: #753 (source branch `fix/peckhamplex-time-provenance`) | **Files**: `src/scrapers/cinemas/peckhamplex.test.ts`, `src/scrapers/cinemas/__fixtures__/peckhamplex/*`, `src/scrapers/SCRAPING_PLAYBOOK.md`
 - Investigated the one-hour same-film/same-date pairs in the 2026-09-09 Peckhamplex scrape diff. Captured source pages (URL, UTC time, sha256) show the `time[datetime]` attribute, the visible clock and the analytics label agree on every showtime; the value is London local. The scraper's `ukLocalToUTC` conversion matches the source, so **no scraper change is made**.
 - Added a fixture regression test through `PeckhamplexScraper.scrape()` (fetch stubbed, clock pinned) asserting 16:45 local → `15:45Z` in BST and `16:45Z` in GMT, sourceId embedding, and host-timezone independence. The pinned expectation fails under the pre-2026-05-11 host-local `new Date(...)` conversion on a UTC host.
 - 87 production Peckhamplex rows carry a last-refresh `scraped_at` of ~06:06Z on 2026-09-10 (a timestamp cohort; it does not identify the process or whether the rows were inserted then), with no `scraper_runs` row for that time. 20 are verified one hour late against captured pages (same film, date, and Veezi purchase id as the showtime one hour earlier); the other 67 are unverified. Origin unresolved and out of scope. Preview-only affected-row list in the worktree handoff; nothing restored or deleted.
@@ -33,7 +33,7 @@
 
 ## 2026-09-10: Sequel-safe film identity
 
-**PR**: TBD (local branch, not pushed) | **Files**: `src/lib/title-patterns.ts`, `src/lib/film-similarity.ts`, `src/lib/tmdb/match.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`, 3 new test files
+**PR**: #753 | **Files**: `src/lib/title-patterns.ts`, `src/lib/film-similarity.ts`, `src/lib/tmdb/match.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`, 3 new test files
 - **Neither title-matching path could tell a film from its sequel.** In the 2026-09-09 full run `"Practical Magic 2"` was accepted as `"Practical Magic"` at 89% in **36** logged matches (the run also logged 9 year-window rejections of the same title, but each is immediately followed by an acceptance, so those 9 are inside the 36, not additional). Also found by scanning all 84 distinct matches: `"Mockingjay - Part 2"` → `"Part 1"` (80%), `"The Bill Reunion 17"` → `"…16"` (82%), `"Satyajit Ray Short Film Competition"` → `"… Part 1"` (85%). These are match events, not screening counts.
 - **The year window could not see it.** `violatesYearWindow` needs a year on both sides. Read-only row evidence shows **two** rows titled `Practical Magic` at 89% — `5560542a` (1998, 676 screenings/29 cinemas) and `81fa3c8d` (year NULL, 217 screenings/10 cinemas) — so 27 acceptances logged no rejection at all and the other 9 came on the line immediately after the 1998 one was refused — a NULL-year row being one the window cannot judge is a plausible explanation, but the log names only the candidate's title, so which row each acceptance took is not established, and these figures are today's snapshot.
 - **A shared, DB-free helper** in the existing `src/lib/title-patterns.ts`, so `src/lib/tmdb/match.ts` can use it without pulling Drizzle in: `sequelMarkerOf` (which instalment), `trailingNumberOf` (the number that identifies the title, instalment or not) and `disagreesOnTrailingNumber`. Kept separate deliberately — `Blade Runner 2049` has no instalment marker, because nothing should call it the 2049th Blade Runner, but 2049 still identifies it, so it is still distinguished from `Blade Runner`. Comparison is on values, so `Halloween II` = `Halloween 2` and `Blade Runner 2049` = `BLADE RUNNER 2049 (4K Restoration)`.
