@@ -18,8 +18,8 @@ source-id rekey. The earlier audit (2026-09-08) had already withdrawn the "stale
   BST, rendering 16:45 BST. That is what the 2026-09-09 run wrote. `sourceId` embeds that instant;
   0 current rows have a `source_id` ISO that differs from their stored `datetime`.
 - **One-hour-late rows**: read-only DB at 08:07Z shows Spider-Man Thu 10 Sep stored as
-  `2026-09-10T16:45:00Z` (17:45 BST) with `booking_url` purchase id 83098, `scraped_at` 06:06Z, no
-  `scraper_runs` row. The captured page has purchase id 83098 at 16:45. If the source clock at 06:06Z
+  `2026-09-10T16:45:00Z` (17:45 BST) with `booking_url` purchase id 83098 and a last-refresh
+  `scraped_at` of 06:06Z; no `scraper_runs` row exists for that time. The captured page has purchase id 83098 at 16:45. If the source clock at 06:06Z
   matched the 08:04Z capture, the stored value is the attribute read as UTC. That is a hypothesis: no
   06:06Z source capture or execution provenance exists, and the current code would produce the same
   row if the source itself showed 17:45 at that moment.
@@ -45,17 +45,20 @@ source-id rekey. The earlier audit (2026-09-08) had already withdrawn the "stale
 - Tested: targeted test 4/4 under `TZ=UTC` and under `TZ=Europe/London` (explicit runs, exit 0 each); `npm run test:run -- --pool=threads --maxWorkers=2`
   145 files / 2166 tests, exit 0; `npm run lint` 0 errors (61 pre-existing warnings); `npx tsc --noEmit`
   exit 0.
-- Inspected only: `screenings.scraped_at` shows writes to 13 cinemas in the same 06:01–06:06Z
-  window; other venues' times not examined and no claim is made about them.
+- Inspected only: rows at 13 cinemas share a `scraped_at` in the same 06:01–06:06Z window (a
+  refresh-timestamp cohort, not an identified process); other venues' times not examined and no
+  claim is made about them.
 
 ## Impact
 - No production write, no migration, no dependency, no scrape run.
-- 87 Peckhamplex rows currently carry `scraped_at` 2026-09-10 06:06Z with no `scraper_runs` entry.
-  **20 of them are verified one hour late** against captured pages: same film, same London date,
+- 87 Peckhamplex rows currently carry a `scraped_at` (last-refresh timestamp) of 2026-09-10 06:06Z,
+  and no `scraper_runs` entry exists for that time. `scraped_at` identifies a refresh cohort only: it
+  does not identify the process, whether the row was inserted then, or when its `datetime` last
+  changed. **20 of that cohort are verified one hour late** against captured pages: same film, same London date,
   the captured showtime sits at exactly stored−1h, its Veezi purchase id equals the row's stored
   `booking_url` purchase id, and the stored clock is absent from the page (Spider-Man ×10, Tony ×10).
-  The **other 67 are unverified**: their films were not captured. Which films or listings the 06:06Z
-  write covered beyond those two is not claimed. Whether yesterday's correct rows were deleted or
+  The **other 67 are unverified**: their films were not captured. Nothing is claimed about what the
+  06:06Z refresh covered beyond those two films. Whether yesterday's correct rows were deleted or
   replaced is **not established** (row ids were not captured beforehand). The writer's origin is
   **unresolved** and out of scope. A preview-only list with exact ids, stored and source instants and
   purchase ids is in the worktree handoff. Restoration is a separate decision.

@@ -922,7 +922,8 @@ none was judged to pay for itself at ~12-20 screenings a year.
   with fixtures reduced from a real capture (`__fixtures__/peckhamplex/PROVENANCE.json`) and a
   pinned clock (the GMT fixture is synthetic: real markup, December dates). On 2026-09-10, 20
   production rows (Spider-Man, Tony) were verified one hour later than the captured clock for the
-  same film, date and Veezi purchase id, written ~06:06Z with no `scraper_runs` entry; the 09-08 and
+  same film, date and Veezi purchase id, carrying a last-refresh `scraped_at` of ~06:06Z (a
+  timestamp cohort, not an identified process) with no `scraper_runs` entry for that time; the 09-08 and
   09-09 diffs showed the same one-hour pattern against the same-day rescrape. The writer's origin is
   **unresolved** and out of scope for scraper work. Do not "fix" the conversion to match such rows,
   and treat a same-film-same-date one-hour diff pair at this venue as a provenance question, not a
