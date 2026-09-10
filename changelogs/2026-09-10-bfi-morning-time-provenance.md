@@ -29,7 +29,8 @@ histogram across all 91 rows:
 Hours run to **23**, so a 12-hour clock is excluded. Sub-ten values are written
 `09:00`, never `9:00`. No am/pm text appears in the column. Column [7]
 corroborates: `"Saturday 12 September 2026 09:00"`. **`09:00` at this source is
-unambiguously morning**, and the 12 rejections were false positives.
+unambiguously morning** in this capture. This supports the inference that the previous
+run's early-time rejections were false positives; it does not establish those historical rows.
 
 **Scope limit:** this fixes the source's *format*, a stable property of the
 feed. It does **not** establish the contents of the 2026-09-09 run, so it cannot
@@ -99,8 +100,8 @@ repaired, backfilled or deleted.
 Plus, after review: 14 cases on the strict clock gate (`"09:00 PM"`, `"09:00pm"`,
 `"9:00"`, `"29:99"`, `"24:00"`, `"09:60"`, `"09:00:00"`, trailing prose, empty —
 all refused; `"00:00"`/`"09:00"`/`"23:59"` accepted), two driving production
-`mapRows` to show a suffixed or impossible clock earns no provenance and is
-**still rejected**, and two pinning that Southbank gets no provenance while the
+`mapRows` to show suffixed and impossible clocks earn no provenance (the suffixed-clock
+case also asserts downstream rejection), and two pinning that Southbank gets no provenance while the
 identical IMAX row does. **31 tests total.**
 
 Three of the original 13 were verified to fail before the change. Reverting the
@@ -108,5 +109,9 @@ strict gate to the loose prefix regex fails **10** of the 31, so the gate bites.
 
 ## Verification
 
-`npx vitest run` on validator + BFI + INDY: 45 passed, exit 0.
+Earlier targeted run on validator + BFI + INDY: 45 passed, exit 0, before the additional review cases.
+Final `npm run test:run -- --maxWorkers=2`: 145 files / 2193 tests passed, exit 0.
+Final BFI-focused runs under both `TZ=UTC` and `TZ=Europe/London`: 31/31 passed in each,
+exit 0; independently repeated by the code reviewer. The first UTC review run failed two
+test fixtures because they used runtime-local `setHours`; the fixtures now use `ukLocalToUTC`.
 `npx tsc --noEmit`: exit 0. `npm run lint`: exit 0 (61 pre-existing warnings, 0 errors).

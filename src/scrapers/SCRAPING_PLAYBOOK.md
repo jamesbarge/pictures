@@ -695,7 +695,8 @@ none was judged to pay for itself at ~12-20 screenings a year.
 - **Why this mattered.** The 2026-09-09 run found 91 IMAX rows and rejected **12** — every one
   "The Odyssey" at hour 9 — as `suspicious_time_early`
   (`scrape-full-20260909-221554.log:6845-6857`, `Total: 91 | Valid: 79 | Rejected: 12`). Those
-  were false positives against this source.
+  are consistent with the validator rejecting genuine morning shows, given the next-day
+  format evidence; the historical response was not captured, so their correctness is inferred.
 - The structured path sets **`timeSource: "local-24h"`** behind **two** gates, so those screenings
   are kept with a warning:
   1. **Per-venue** — `BFIVenueConfig.clockFormatVerified`, set for **IMAX only**. `mapRows` is
@@ -706,7 +707,8 @@ none was judged to pay for itself at ~12-20 screenings a year.
      (`^([01]\d|2[0-3]):([0-5]\d)$`). The datetime parse still uses the original unanchored
      prefix regex `^(\d{1,2}):(\d{2})`, which also matches `"09:00 PM"` (really 21:00) and
      `"29:99"` — awarding provenance on that would trust the very AM/PM error the guard exists to
-     catch. The parse is unchanged, so this decides provenance only, never acceptance.
+     catch. Parsing and mapper output cardinality are unchanged; the provenance changes which
+     early mapped rows pass downstream validation.
 - The display-text fallback deliberately sets **nothing** and keeps full strictness.
 - **Do NOT change this to `"iso"`.** It is a local wall clock, not an instant, and `"iso"` would
   also lift BFI's `too_far_future` cap from 90 to 180 days — a horizon change nobody has evidence
