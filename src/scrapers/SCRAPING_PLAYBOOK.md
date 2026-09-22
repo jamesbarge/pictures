@@ -72,7 +72,7 @@ Rules:
 | Peckhamplex (`cinemas/peckhamplex.ts`) | `peckhamplex` | `peckhamplex-{titleSlug}-{ISO}` | derived; identical whether the film came from `/films/out-now` or `/films/coming-soon`, so the two listings cannot double-insert |
 | Nickel (`cinemas/nickel-v2.ts`) | `the-nickel` | `nickel-{item.id}` | API item id |
 | Garden (`cinemas/garden.ts`) | `garden` | `garden-{slugify(title)}-{ISO}` | derived |
-| Close-Up (`cinemas/close-up.ts`) | `close-up-cinema` | `close-up-{show.id}-{ISO}` (API), `close-up-html-{ISO}-{titleSlug}`, `close-up-search-{ISO}-{titleSlug}` | API id; derived on HTML/search fallback paths |
+| Close-Up (`cinemas/close-up.ts`) | `close-up-cinema` | `close-up-{show.id}-{ISO}` (embedded JSON), `close-up-search-{ISO}-{titleSlug}` | JSON show id; derived on the search-page path. `close-up-html-*` was retired 2026-09-20 — the homepage listing is a title lookup now, not a screening source. |
 | Bertha DocHouse (`cinemas/bertha-dochouse.ts`) | `bertha-dochouse` | `bertha-{ticketId}` | ticket id (`BLO1-XXXXXX`) |
 | Cinema Museum (`cinemas/cinema-museum.ts`) | `cinema-museum` | `cinema-museum-{ev.uid}` | ICS event uid |
 | Ciné Lumière (`cinemas/cine-lumiere.ts`) | `cine-lumiere` | `cine-lumiere-{titleSlug}-{ISO}` | derived (lowercase, whitespace→dash, punctuation kept) |
@@ -394,19 +394,40 @@ Use this format when recording cinema-specific quirks:
   - Note: the original code comment claimed browser UAs were blocked while the self-id UA was allowed. The first half is still true; the second half is no longer — hence the inverted-behaviour warning.
 - Verified live 2026-06-12: `healthCheck()` true, `scrape()` → 25 screenings, 0 suspect (<09:00 UTC) times. Cross-checked "The Night of the Hunter (1955)" 19:30 BST (→18:30 UTC) against the feed `DTSTART;TZID=Europe/London:20260617T193000`.
 
-### Close-Up Film Centre (Shoreditch) — ⚠️ BLOCKED (interactive Cloudflare Turnstile)
+### Close-Up Film Centre (Shoreditch) — ⚠️ INTERMITTENTLY BLOCKED (Cloudflare challenge, ~19-min windows)
 - Scraper: `src/scrapers/cinemas/close-up.ts` (fetch + Cheerio; embedded `var shows ='[...]'` JSON on the homepage + `/search_film_programmes/?date=DD-MM-YYYY` pages).
 - Date/time format: JSON `show_time` is `"YYYY-MM-DD HH:MM:SS"` (UK local, 24h) → `ukLocalToUTC()`. Search-page date-only values are UTC-midnight → combine with `ukLocalToUTC()` using UTC components.
 - **Status as of 2026-06-12: BLOCKED, scraper left UNCHANGED (fails loudly rather than silently).**
   - `https://www.closeupfilmcentre.com` and EVERY path probed (`/`, `/search_film_programmes/?date=...`, `/?ical=1`, `/whats_on/?ical=1`, `/feed/`, `/calendar.ics`, `/whatson.ics`, `/events.ics`) return **403 with `cf-mitigated: challenge`** regardless of UA (browser UA and plain UA both blocked). There is NO unprotected iCal endpoint to fall back to.
   - The challenge is an **interactive Cloudflare Turnstile** ("Verify you are human" checkbox) — confirmed by screenshot — NOT the automatic JS challenge the BFI `createPersistentPage` + `waitForCloudflare` pattern clears. Three attempts failed: (1) headless persistent context (challenge never cleared in 60s); (2) headed persistent context (title stuck on "Just a moment..." for 120s, automated checkbox clicks ignored); (3) warm two-pass headed profile reusing the on-disk `cf_clearance` dir (both passes still "Just a moment..."). rebrowser-playwright's automation fingerprint cannot solve the Turnstile checkbox.
   - The BFI pattern works because BFI uses the *non-interactive managed challenge*; Close-Up's interactive Turnstile is a different, harder class. Options for a future fix (all require approval / new deps): a CAPTCHA-solving service, a residential-proxy + warmed-cookie pipeline, or Camoufox/Patchright (already noted as candidates in `utils/browser.ts`). STOPPED here per the 3-attempt rule.
-- **The protection is a TOGGLE the venue flips, not a one-way door (established 2026-08-09).**
-  Timeline: BLOCKED 2026-06-12 → **OFF** 2026-08-05 (a measurement that session recorded three
-  header shapes all returning 200 with no `cf-mitigated`, which is why the scraper still uses plain
-  fetch) → **ON again 2026-08-09 19:26Z**, still on at 21:0xZ. Coverage in the DB stops at
-  2026-08-31 with `scraped_at` from the last unblocked run. So: the venue is not permanently lost,
-  and the scraper is not broken. Expect this to flip again.
+- **⚠️ CORRECTED 2026-09-20 — it is not a day-scale toggle, it is a ~19-minute window.** Earlier
+  sessions only ever sampled it once or twice per day, so day-scale flips were all they could see,
+  and "wait for the venue to flip it back off" became the standing advice. Continuous polling
+  (20s, then 60s) on 2026-09-20 shows it cycling several times an hour:
+
+  | time (UTC) | result |
+  |---|---|
+  | 16:17:54 | nightly `/scrape` run → **403**, venue recorded failed, 0 screenings |
+  | 16:36:44 | single GET → **200** |
+  | 16:38–16:39 | full 11-page scrape → **200 × 11**, 28 raw screenings |
+  | 16:41:00 → 16:59:12 | **403** on every one of 57 consecutive polls |
+  | 17:00:18 onward | **200**, and a full scrape succeeded again at 17:05 (23 screenings) |
+
+  Two ~19-minute blocks inside one hour, each clearing on its own. **A retry 20-30 minutes after a
+  403 is the single highest-value change available for this venue** — far more than anything that
+  can be done inside the scraper. That belongs to the scheduler/runner, not this file.
+- **Do not re-test the request shape. It was re-measured 2026-09-20 DURING a live block** and every
+  variant failed inside the same minute: current scraper headers, Chrome 131 UA, Chrome 120/131 +
+  `Sec-CH-UA*` client hints + `Sec-Fetch-*` + `Upgrade-Insecure-Requests`, Googlebot UA, and no
+  headers at all → **all 403**. `createPersistentPage()` + `waitForCloudflare()` sat on
+  `"Just a moment..."` for 60s **headless and headed**. The mitigation is IP/session-scoped; nothing
+  we send changes it. (This also supersedes the "richer headers for Close-Up's `healthCheck()`"
+  remedy some notes still carry — the override was already removed 2026-08-09 for this reason.)
+- Historic timeline, for context: BLOCKED 2026-06-12 → **OFF** 2026-08-05 → **ON** 2026-08-09 →
+  403 on the nightly runs of 2026-09-08, 09-09 and 09-20 (`scraper_runs`, all
+  `precheckFailed: true`, all 78.5-79.6s). The venue is not permanently lost and the scraper is
+  not broken.
 - **Re-measured 2026-08-09 (~21:00Z), all four probes 403 `cf-mitigated: challenge`, `server: cloudflare`:**
   1. Plain fetch, exact `fetchUrl` headers → **403**, `title="Just a moment..."`, 5.7KB.
   2. Plain fetch on `/search_film_programmes/?date=…` → **403**, same shape.
@@ -437,12 +458,89 @@ Use this format when recording cinema-specific quirks:
   scraper as a regression signal instead. Wiring a "first-party scraper is hard-blocked → promote to
   source-only" path is the fix worth doing; it is out of scope here (it touches `scripts/lcut-gapfill.ts`
   and the pipeline, not this scraper).
-- **Current failure behaviour (correct, leave it):** the homepage is fetched first and outside any
-  per-week `try`, so a block throws before any screening is produced — a partial batch can never reach
-  `processScreenings`, so superseded-cleanup cannot delete the venue's existing rows. Measured
-  2026-08-09: `scrape()` throws after 18.6s / 3 requests, 0 screenings.
-  The thrown message now names the Turnstile blocker and points here, because a bare
-  `HTTP 403: Forbidden` was misread as a transient WAF blip twice (2026-06-12, 2026-08-09).
+- **Failure behaviour:** the homepage is fetched first and outside any per-week `try`, so a block
+  throws before any screening is produced — a partial batch can never reach `processScreenings`, so
+  superseded-cleanup cannot delete the venue's existing rows. Keep that property.
+- **Blocked runs no longer hammer the WAF (2026-09-20).** `scrape()` used to throw after 18.6s /
+  3 requests *per attempt*, and `runSingleVenue` re-attempts a failed venue `retryAttempts + 1` = 4
+  times against the same scraper instance: **13 requests over ~79s**, which is exactly the
+  78.5-79.6s recorded on every blocked run. None could ever have succeeded — the block outlasts the
+  whole budget by an order of magnitude. `CloseUpCinemaScraper` now recognises the challenge
+  (`HTTP 403` from this host is always `cf-mitigated: challenge`), fails on the FIRST request
+  instead of retrying, and latches `challengeSeen` so the runner's remaining three attempts return
+  without touching the network. One request, sub-second, same honest failure.
+- **Parsing rules (fixed 2026-09-20; before/after measured on identical saved pages, 23 → 19 rows,
+  4 bad rows removed and 0 real screenings lost):**
+  - The embedded `var shows` JSON is served on **every** page, not just the homepage, and it is the
+    authority for title, start time and booking link (`blink` → TicketSource). It is read from all
+    pages now.
+  - The homepage's `.inner_block_3 h2 a` list is **not** a screening source. It is hand-written copy
+    that contradicts the booking system ("Tue 22 September, 4pm" vs `show_time` 16:30), abbreviates
+    titles ("One Minute Vol 1" vs "One Minute Volume 1", "Last Things" vs "Beyond Human Time: Last
+    Things") and links the film page rather than the booking page. It is read **only** as a
+    start-instant → title lookup, which is the one thing it is needed for: the site does emit
+    `"title": null` in the JSON (id 59730, "Alice Doesn't Live Here Anymore", 2026-09-26) and those
+    shows are otherwise dropped.
+  - **Dedupe on the start instant alone.** Close-Up is single-screen, so two entries at the same
+    minute are always one screening described twice. Keying on title as well let every spelling
+    variant through as its own row.
+  - **Year inference goes through `parseScreeningDate()`.** The local copy compared the parsed day's
+    UTC midnight against `now`, so from 00:00 onwards *today* read as past and tonight's screening
+    rolled a full year forward — "Sun 20 September, 6pm" resolved to `2027-09-20T17:00Z`. Same
+    defect as #750; this scraper had its own copy of it.
+- **Coverage: the sweep steps ONE DAY, and its length is derived, not guessed (fixed 2026-09-21).**
+  `/search_film_programmes/?date=DD-MM-YYYY` returns a single day. The old loop stepped 7 days for
+  10 iterations, so past the JSON window it saw about one day in seven. Measured baseline on
+  2026-09-21: 11 requests sampling 28-09, 05-10, 12-10, 19-10, 26-10, then 02-11 … 30-11 — and the
+  last five of those fell beyond the venue's actual horizon, so half the search budget could not
+  return anything.
+
+  Three bounds replace the fixed loop count:
+  1. **Start** at the last day the homepage's `var shows` JSON already covers. The array is ordered
+     and complete up to its final entry (verified: its four 27 September shows are exactly the four
+     the 27 September search page lists), so earlier days need no request. That last day IS swept,
+     because a truncated array could cut a day in half.
+  2. **Stop** at the horizon `/film_programmes/` advertises. Every programme heading in
+     `.inner_block_3 h2 a` ends with its final screening date ("3 - 31 October 2026: Winter Sleep",
+     "26 September 2026: Against all Odds: Albuquerque"), so the maximum across the index is the
+     real horizon. One request buys it: on 2026-09-21 it read 31 October, i.e. +40 days. The index
+     page is fetched for the horizon ONLY and is deliberately kept out of the pages handed to
+     `parsePages` (it carries no `date=` param and no timed spans, so it would be inert, but keeping
+     it out means `extractPageDate` can never latch onto one of its programme dates).
+  3. **Cap** at `MAX_SEARCH_REQUESTS = 45` regardless, so a misreported horizon cannot become
+     hundreds of requests. `FALLBACK_HORIZON_DAYS = 42` applies when the index is unreadable.
+  4. **Give up early** after `MAX_EMPTY_DAY_STREAK = 5` consecutive listing-free days. ⚠️ This
+     threshold must NOT be lowered towards 1. Close-Up goes dark on scattered SINGLE days — 6, 15,
+     23 and 29 October 2026 all returned zero listings inside a programme running to 31 October, and
+     the longest consecutive run measured was one day — so stopping on the first empty day would
+     have truncated at 6 October and lost **34 of 59** screenings. With the published horizon in
+     hand the streak never fires; it earns its keep only when the index is unreadable and the
+     42-day fallback overshoots a short programme (measured: 38 requests → 9 in that case).
+
+  **Result, measured live 2026-09-21: 11 requests → 33, and 24 screenings → 59** across 35 distinct
+  days, contiguous 22 September to 31 October. Of the 32 days past the JSON boundary the old loop
+  reached 4; the sweep reaches all 32.
+- **A challenge part-way through the sweep KEEPS what has been fetched (do not "fix" this to
+  throw).** The sweep is ~33 requests over ~114s and a block lasts ~19-27 minutes, so interruption
+  is routine: on 2026-09-21 a window opened at 10:00:23 and closed during request 10 of 33. Throwing
+  there discarded 9 good pages AND the homepage JSON for zero screenings. It is safe to keep them
+  because near-term coverage comes from the JSON (request #1, covering everything up to the sweep
+  start) and because **nothing downstream deletes on a partial batch** —
+  `reportSupersededScreeningCandidates` is a `SELECT COUNT(*)` with "No runtime opt-in to deletion"
+  (`pipeline.ts:359`) and `pipeline.ts` contains no DELETE at all. A challenge on the programme
+  index likewise keeps the homepage and skips the sweep, since the index request doubles as a probe.
+  Non-challenge failures keep the old required/optional split: the first `REQUIRED_DAYS = 14` of the
+  sweep must succeed or the run fails, later days only shorten the horizon.
+- **⚠️ The venue publishes am/pm typos, and we drop those screenings rather than guess.** Found
+  2026-09-21 once daily sweeping made the whole programme visible: `26-10-2026` renders
+  `04:30 am : Winter Sleep` (a 196-minute film) and `27-10-2026` renders
+  `08:15 am : Khrustalyov, My Car!`. Both are confirmed on the programme pages, and Khrustalyov's
+  own page lists `8:15 pm / 8:15 pm / 8:15 am`, so the third is plainly meant to be pm. The scraper
+  parses them faithfully and `screening-validator.ts` then rejects both as `suspicious_time_early`
+  errors, because Close-Up sets no `timeSource` so `clockIsUnambiguous` is false. Verified: 2
+  rejected, a 20:15 control kept. Net effect is 57 of 59 rows persisted. **Do not add an
+  "am must mean pm" correction** — overriding an explicit AM/PM marker is exactly the guesswork the
+  time-parsing rules forbid, and one missing row beats a wrong one.
 - **`healthCheck()` override removed 2026-08-09.** Both halves of its rationale had become false:
   `BaseScraper.healthCheck` now sends `fetchUrl`'s exact headers with the same 30s timeout, and a 403
   here is a *real* block, not a false negative. It also had nothing left to defend — the
@@ -678,6 +776,29 @@ none was judged to pay for itself at ~12-20 screenings a year.
   `parsePages`, never a copy.
 - `/events/{id}/instances` returns one event's full instance history — the endpoint that settled
   the per-film question here, and the one to reach for next time.
+- **CAUSE ESTABLISHED 2026-09-20: the venue paused its cinema programme. Scraper deactivated.**
+  The 2026-09-09 capture above recorded the shape without a cause. The cause is that Rich Mix
+  stopped programming film on **2026-08-27** for an 18-month, £2.2m Arts Council-funded
+  redevelopment, reopening the cinema in **autumn 2027** (Time Out 2026-09-17; Tower Hamlets
+  Slice; the venue's own capital-investment news post).
+  Measured 2026-09-20: `v3/instances?startFrom=2026-06-01&startTo=2026-12-31` returned 811
+  instances, 689 on FILM events, distributed Jun 258 / Jul 239 / Aug 191 / **Sep 1** — holding
+  7-8/day until 2026-08-27, then one on Aug 28, one on Sep 9, zero after. That cliff reproduces
+  the health check's numbers exactly: a 67.6 baseline is ~8-9 forward days at 7-8/day.
+  `?startFrom=2026-09-20` returned 11 instances, **0 on FILM** (9 LIVE, 2 CE), and
+  `richmix.org.uk/cinema/` server-renders "There are no films coming soon".
+  **The decisive control**: the same endpoint returns current, correct *non-film* inventory that
+  the CMS sitemap independently corroborates (Dance Umbrella 24 Oct, Irene Taylor Trust 22 Oct in
+  both). That rules out a dead tenant, a moved route and a discovery fault. Only film is absent.
+  The `bec5d63b` stage counts did their job here: they pin the funnel to "calendar has no film
+  instances" instead of "parser is dropping rows".
+  Registry `active` set to **false** (`src/config/cinema-registry.ts`), which drops it from the
+  scrape roster and `src/lib/scraper-health/index.ts`. The frontend map is unaffected (that reads
+  the DB cinema row). **REVIEW 2026-08**: flip back to true and confirm film instances returned.
+  Nothing re-checks the venue while the flag is false.
+  Sitemap now carries one `/cinema/` page, `into-film-festival-2026` (9 free schools-only
+  screenings 17-19 Nov booked via Into Film, not Spektrix), so expect L-CUT rather than the
+  scraper to surface anything in that window.
 
 ### BFI IMAX — structured clock provenance (2026-09-10). Southbank NOT included.
 - **Scope: IMAX only.** `mapRows` is shared by both BFI venues, but only IMAX's clock format has

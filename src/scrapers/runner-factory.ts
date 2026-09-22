@@ -10,6 +10,7 @@
 
 import { AsyncLocalStorage } from "node:async_hooks";
 import type { CinemaScraper, ChainScraper, RawScreening } from "./types";
+import { SCRAPER_CHALLENGE_MARKER } from "./types";
 import { processScreenings, saveScreenings, ensureCinemaExists } from "./pipeline";
 import {
   asPreFilterSource,
@@ -429,6 +430,15 @@ async function recordScraperRun(params: {
  * only on the Postgres ports (5432 direct / 6543 pooler), not a website's
  * 80/443.
  */
+/**
+ * True when a scraper failed because the venue's anti-bot protection was in an
+ * active block, as opposed to anything we can fix by changing the request.
+ */
+export function isChallengeError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return msg.includes(SCRAPER_CHALLENGE_MARKER);
+}
+
 export function isConnectionError(err: unknown): boolean {
   const msg = (err instanceof Error ? err.message : String(err)).toLowerCase();
   return (
