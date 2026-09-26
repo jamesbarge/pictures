@@ -1,6 +1,6 @@
 # Offline TypeSafe review tools (draft, policy decision pending)
 
-**PR**: TBD
+**PR**: #756
 **Date**: 2026-09-26
 
 ## Changes
