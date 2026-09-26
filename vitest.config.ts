@@ -9,7 +9,9 @@ export default defineConfig({
     // Include both .ts and .tsx test files
     include: ["src/**/*.test.ts", "src/**/*.test.tsx", "scripts/**/*.test.ts"],
     // Exclude E2E tests (those are run by Playwright)
-    exclude: ["e2e/**", "node_modules/**"],
+    // scripts/typesafe-experiments has its own node-only config (it imports the
+    // frontend palette, which needs frontend deps); see its README.
+    exclude: ["e2e/**", "node_modules/**", "scripts/typesafe-experiments/**"],
     // Setup files run before each test file
     setupFiles: ["./src/test/setup.ts"],
     // Coverage configuration

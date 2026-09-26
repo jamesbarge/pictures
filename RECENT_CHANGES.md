@@ -1,3 +1,10 @@
+## 2026-09-26: Offline TypeSafe review tools (draft, policy decision pending)
+**PR**: TBD | **Files**: `scripts/typesafe-experiments/*`, `scripts/dedup-judgement/*`, `tsconfig.json`, `vitest.config.ts`
+- Lands the title/discovery experiment harness and a read-only duplicate-film judgement harness that share one validated, budget-capped, cached TypeSafe client with a pinned model.
+- Nothing runs in production and nothing writes to the database. Merging needs a `CLAUDE.md` carve-out for offline reviewer tools.
+
+---
+
 ## 2026-09-10: Scrape diff reports evidence, not assumed deletions
 **PR**: #753 | **Files**: `src/scrapers/utils/scrape-diff.ts`, `src/scrapers/utils/scrape-diff.test.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`
 - Label title/time differences as unmatched incoming/existing records, not completed inserts or removals. Title normalization and incorrect film matches can produce differences without changed source times.
