@@ -10,6 +10,10 @@
  *   npx tsx --env-file=.env.local scripts/dedup-judgement/run.ts --band=automerge --limit=40
  *   npx tsx --env-file=.env.local scripts/dedup-judgement/run.ts --band=undecidable --print-request
  *
+ * Cost: the automerge and wide bands self-join `films` with similarity() and
+ * no trigram index on `films.title`, about 70s at ~4.6k films (2026-09-26).
+ * The frozen snapshot means each band pays that once.
+ *
  * Bands
  *   undecidable  identical titles the year window rejects or cannot judge.
  *                These are the pairs the current rules provably cannot decide.
@@ -20,15 +24,21 @@
  * Without TYPESAFE_API_KEY the harness runs in preview mode: it builds every
  * request, reports the baseline decisions and token estimate, and prints one
  * full request body so the questions can be reviewed before any key is spent.
- * `--replay` rebuilds a report from cached responses with no key and no network.
+ * `--replay` rebuilds a report from cached responses with no key, no network
+ * and no DB connection.
+ *
+ * The pair list is frozen to runs/pairs-<band>-<limit>.json on first load and
+ * reused afterwards, because screening counts and venues move with every scrape
+ * and are part of the request state, so a fresh pull would change every cache
+ * key. Pass `--refresh` to pull the pairs from the DB again.
  *
  * Calls go through the experiment harness's TypeSafeClient: pinned model,
  * validated responses, a persistent $5-capped budget ledger, bounded retries,
  * and a cache under scripts/dedup-judgement/runs/ (gitignored).
  */
 
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { db } from "../../src/db";
 import { sql } from "drizzle-orm";
 import { TypeSafeClient } from "../typesafe-experiments/api";
 import { buildRequest, type CandidatePair, type FilmSide } from "./questions";
@@ -41,7 +51,8 @@ import {
 
 // The shared client's documented concurrency ceiling for experiments.
 const CONCURRENCY = 4;
-const CACHE_DIR = join(__dirname, "runs", "cache");
+const RUNS_DIR = join(__dirname, "runs");
+const CACHE_DIR = join(RUNS_DIR, "cache");
 
 type Band = "undecidable" | "automerge" | "wide";
 
@@ -50,6 +61,7 @@ interface Args {
   limit: number;
   printRequest: boolean;
   replay: boolean;
+  refresh: boolean;
 }
 
 function parseArgs(argv: string[]): Args {
@@ -64,6 +76,7 @@ function parseArgs(argv: string[]): Args {
     limit: Number(get("limit") ?? 60),
     printRequest: argv.includes("--print-request"),
     replay: argv.includes("--replay"),
+    refresh: argv.includes("--refresh"),
   };
 }
 
@@ -85,6 +98,8 @@ function bandPredicate(band: Band) {
 }
 
 async function loadPairs(band: Band, limit: number): Promise<CandidatePair[]> {
+  // Imported lazily so --replay from a snapshot never opens a DB connection.
+  const { db } = await import("../../src/db");
   const rows = await db.execute(sql`
     WITH venue_rollup AS (
       SELECT s.film_id, array_agg(DISTINCT c.name) AS venues, count(*)::int AS screening_count
@@ -104,7 +119,7 @@ async function loadPairs(band: Band, limit: number): Promise<CandidatePair[]> {
     LEFT JOIN venue_rollup v1 ON v1.film_id = f1.id
     LEFT JOIN venue_rollup v2 ON v2.film_id = f2.id
     WHERE ${bandPredicate(band)}
-    ORDER BY sim DESC, f1.title
+    ORDER BY sim DESC, f1.title, f1.id, f2.id
     LIMIT ${limit}
   `);
 
@@ -163,7 +178,18 @@ async function main() {
   const args = parseArgs(process.argv.slice(2));
   const apiKey = process.env.TYPESAFE_API_KEY;
 
-  const pairs = await loadPairs(args.band, args.limit);
+  const snapshot = join(RUNS_DIR, `pairs-${args.band}-${args.limit}.json`);
+  let pairs: CandidatePair[];
+  if (existsSync(snapshot) && !args.refresh) {
+    pairs = JSON.parse(readFileSync(snapshot, "utf8")) as CandidatePair[];
+    console.log(`\nUsing frozen pairs from ${snapshot} (--refresh to re-pull)`);
+  } else if (args.replay) {
+    throw new Error(`--replay needs a frozen pair list at ${snapshot}; run once without --replay first.`);
+  } else {
+    pairs = await loadPairs(args.band, args.limit);
+    mkdirSync(RUNS_DIR, { recursive: true });
+    writeFileSync(snapshot, JSON.stringify(pairs, null, 2));
+  }
   console.log(`\nBand "${args.band}": ${pairs.length} candidate pairs\n`);
 
   if (args.printRequest && pairs.length) {
