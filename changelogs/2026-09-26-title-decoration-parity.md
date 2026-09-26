@@ -1,6 +1,6 @@
 # Title decoration and wrapper parity across both title paths
 
-**PR**: TBD
+**PR**: #755
 **Date**: 2026-09-26
 
 ## Changes
