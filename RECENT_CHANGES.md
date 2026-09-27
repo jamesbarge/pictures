@@ -1,7 +1,7 @@
-## 2026-09-26: Offline TypeSafe review tools (draft, policy decision pending)
+## 2026-09-26: Offline TypeSafe review tools
 **PR**: #756 | **Files**: `scripts/typesafe-experiments/*`, `scripts/dedup-judgement/*`, `tsconfig.json`, `vitest.config.ts`
 - Lands the title/discovery experiment harness and a read-only duplicate-film judgement harness that share one validated, budget-capped, cached TypeSafe client with a pinned model.
-- Nothing runs in production and nothing writes to the database. Merging needs a `CLAUDE.md` carve-out for offline reviewer tools.
+- Nothing runs in production and nothing writes to the database. `CLAUDE.md` gains an approved exception for offline, read-only reviewer tools.
 
 ---
 

@@ -1,4 +1,4 @@
-# Offline TypeSafe review tools (draft, policy decision pending)
+# Offline TypeSafe review tools
 
 **PR**: #756
 **Date**: 2026-09-26
@@ -13,4 +13,4 @@
 ## Impact
 - Nothing runs in production. Neither tool writes to the database, and neither adds a dependency.
 - A live call requires `TYPESAFE_API_KEY`. Without it both tools run in preview mode. Preview on 2026-09-26 found 49 undecidable pairs (about 68k input tokens, roughly $0.003 live) and 114 automerge-band pairs (about 154k tokens, roughly $0.007).
-- `CLAUDE.md` currently bans hosted-model analysis. Merging this PR needs an explicit carve-out for offline, read-only, reviewer-assisted tools, or the PR should stay a draft.
+- Adds a `CLAUDE.md` exception (approved 2026-09-27) for offline, read-only, reviewer-assisted TypeSafe tools under `scripts/`. Runtime and production code stay free of TypeSafe calls.
