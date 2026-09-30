@@ -1,3 +1,10 @@
+## 2026-09-26: Offline TypeSafe review tools
+**PR**: #756 | **Files**: `scripts/typesafe-experiments/*`, `scripts/dedup-judgement/*`, `tsconfig.json`, `vitest.config.ts`
+- Lands the title/discovery experiment harness and a read-only duplicate-film judgement harness that share one validated, budget-capped, cached TypeSafe client with a pinned model.
+- Nothing runs in production and nothing writes to the database. `CLAUDE.md` gains an approved exception for offline, read-only reviewer tools.
+
+---
+
 ## 2026-09-26: Title decoration and wrapper parity across both title paths
 **PR**: #755 | **Files**: `src/lib/title-extraction/patterns.ts`, `src/lib/title-extraction/pattern-extractor.ts`, `src/scrapers/utils/film-title-cleaner.ts`, tests, `src/scrapers/SCRAPING_PLAYBOOK.md`
 - Both title paths now remove `(London Premiere + Q&A)`, `(VHS Screening)` and `(B&W)` as whole units and share reviewed wrappers (`Relaxed Screening:`, `Senior Community Cinema:`, Cine-Real, LAFS, Funeral Parade, including quoted forms). The scraper keeps `Mission: Impossible` intact.
