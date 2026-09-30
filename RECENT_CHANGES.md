@@ -1,3 +1,10 @@
+## 2026-06-21: CI — pin git transport to HTTP/1.1 (defensive)
+**PR**: #745 | **Files**: `.github/workflows/test.yml`, `.github/workflows/social-outreach.yml`
+- Added a `git config --global http.version HTTP/1.1` step before checkout in every CI job that does a git op (unit-tests, e2e-tests, social-outreach). `git fetch/push` can hang on HTTP/2 on some networks; pinning HTTP/1.1 stops a raw git op from stalling and burning runner minutes.
+- **Defensive only**: GitHub-hosted runners don't currently exhibit the stall, so this future-proofs per PIC-16 rather than fixing an active CI failure. `post-deploy-verify.yml` left untouched (curl-only, no git). (PIC-16)
+
+---
+
 ## 2026-09-26: Offline TypeSafe review tools
 **PR**: #756 | **Files**: `scripts/typesafe-experiments/*`, `scripts/dedup-judgement/*`, `tsconfig.json`, `vitest.config.ts`
 - Lands the title/discovery experiment harness and a read-only duplicate-film judgement harness that share one validated, budget-capped, cached TypeSafe client with a pinned model.
