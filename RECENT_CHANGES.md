@@ -1,3 +1,10 @@
+## 2026-09-26: Title decoration and wrapper parity across both title paths
+**PR**: #755 | **Files**: `src/lib/title-extraction/patterns.ts`, `src/lib/title-extraction/pattern-extractor.ts`, `src/scrapers/utils/film-title-cleaner.ts`, tests, `src/scrapers/SCRAPING_PLAYBOOK.md`
+- Both title paths now remove `(London Premiere + Q&A)`, `(VHS Screening)` and `(B&W)` as whole units and share reviewed wrappers (`Relaxed Screening:`, `Senior Community Cinema:`, Cine-Real, LAFS, Funeral Parade, including quoted forms). The scraper keeps `Mission: Impossible` intact.
+- `Quiz Show`, `Official Competition` and `BFI Flare: Moonlight` stay films; real quiz and competition events still flag. Over 4,637 production titles, 28 sync and 11 scraper outputs change, all correct strips.
+
+---
+
 ## 2026-09-10: Scrape diff reports evidence, not assumed deletions
 **PR**: #753 | **Files**: `src/scrapers/utils/scrape-diff.ts`, `src/scrapers/utils/scrape-diff.test.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`
 - Label title/time differences as unmatched incoming/existing records, not completed inserts or removals. Title normalization and incorrect film matches can produce differences without changed source times.

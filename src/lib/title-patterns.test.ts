@@ -158,6 +158,16 @@ describe("cleanBasicCruft", () => {
   it("is idempotent on already-clean titles", () => {
     expect(cleanBasicCruft("Citizen Kane")).toBe("Citizen Kane");
   });
+
+  it("strips a complete premiere + Q&A decoration without leaving a bracket", () => {
+    expect(cleanBasicCruft("Casablanca (London Premiere + Q&A)")).toBe("Casablanca");
+    expect(cleanBasicCruft("Casablanca (UK Premiere + Q&amp;A)")).toBe("Casablanca");
+  });
+
+  it("strips VHS and B&W format decorations", () => {
+    expect(cleanBasicCruft("Casablanca (VHS Screening)")).toBe("Casablanca");
+    expect(cleanBasicCruft("Casablanca (B&W)")).toBe("Casablanca");
+  });
 });
 
 describe("decodeHtmlEntities", () => {

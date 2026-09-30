@@ -127,6 +127,131 @@ describe("extractFilmTitleSync", () => {
     });
   });
 
+  // Cases from the 2026-09-21 TypeSafe title experiment. The sync path keeps
+  // release years in the title; the scraper cleaner moves them to
+  // `extractedYear` instead (see film-title-cleaner.test.ts).
+  describe("complete terminal decorations", () => {
+    const cases: Array<[string, string]> = [
+      ["Casablanca (London Premiere + Q&A)", "Casablanca"],
+      ["2001: A Space Odyssey (UK Premiere + Q&A)", "2001: A Space Odyssey"],
+      ["Casablanca (London Premiere + Q&amp;A)", "Casablanca"],
+      ["Casablanca (UK Premiere)", "Casablanca"],
+      ["Casablanca (World Premiere)", "Casablanca"],
+      ["Casablanca (VHS SCREENING)", "Casablanca"],
+      ["One Man's Seduction (vhs Screening)", "One Man's Seduction"],
+      ["Casablanca (B&W)", "Casablanca"],
+      // Stacking works when the inner decoration is checked later in the list
+      ["Casablanca (35mm) (UK Premiere + Q&A)", "Casablanca"],
+      ["Casablanca (4K Restoration) (London Premiere)", "Casablanca"],
+      ["Casablanca (London Premiere + Q&A with director)", "Casablanca"],
+      ["Casablanca (VHS) (B&W)", "Casablanca"],
+      ["Casablanca (B&W) (VHS)", "Casablanca"],
+    ];
+
+    for (const [input, expected] of cases) {
+      it(`"${input}" → "${expected}"`, () => {
+        const result = extractFilmTitleSync(input);
+        expect(result.extractedTitle).toBe(expected);
+        expect(result.extractedTitle).not.toMatch(/\([^)]*$/);
+        expect(extractFilmTitleSync(result.extractedTitle).extractedTitle).toBe(expected);
+      });
+    }
+
+    const preserved = [
+      "Daisies (Sedmikrásky)",
+      "A Star Is Born (1954)",
+      "Mission: Impossible",
+      "2001: A Space Odyssey",
+      "The Godfather Part II",
+      "Premiere",
+    ];
+
+    for (const title of preserved) {
+      it(`preserves "${title}"`, () => {
+        const result = extractFilmTitleSync(title);
+        expect(result.extractedTitle).toBe(title);
+        expect(result.extractionMethod).toBe("none");
+      });
+    }
+  });
+
+  describe("reviewed wrapper prefixes", () => {
+    const cases: Array<[string, string]> = [
+      ["Relaxed Screening: My Father's Shadow", "My Father's Shadow"],
+      ["relaxed screening: My Father's Shadow", "My Father's Shadow"],
+      ["Relaxed Screening: Spider-Man: Brand New Day", "Spider-Man: Brand New Day"],
+      ["Senior Community Cinema: Daisies (Sedmikrásky)", "Daisies (Sedmikrásky)"],
+      ["Senior Community Cinema x The Old Ways: Casablanca", "Casablanca"],
+      ["Cine-Real presents: 2001: A Space Odyssey", "2001: A Space Odyssey"],
+      ["Cine-real presents: Jaws", "Jaws"],
+      ["LAFS PRESENTS: Daisies (Sedmikrásky)", "Daisies (Sedmikrásky)"],
+      ["Funeral Parade presents The Godfather Part II", "The Godfather Part II"],
+      ['Funeral Parade presents "The Long Day Closes"', "The Long Day Closes"],
+      ["Funeral Parade presents 'Paris Is Burning'", "Paris Is Burning"],
+      ["Funeral Parade presents “The Skin I Live In”", "The Skin I Live In"],
+      ["Funeral Parade presents &quot;An Actor&#39;s Revenge&quot;", "An Actor's Revenge"],
+    ];
+
+    for (const [input, expected] of cases) {
+      it(`"${input}" → "${expected}"`, () => {
+        const result = extractFilmTitleSync(input);
+        expect(result.extractedTitle).toBe(expected);
+        expect(result.isNonFilm).toBe(false);
+        expect(extractFilmTitleSync(result.extractedTitle).extractedTitle).toBe(expected);
+      });
+    }
+
+    it("keeps the film name that shares its first words with a wrapper", () => {
+      expect(extractFilmTitleSync("Funeral Parade of Roses").extractedTitle).toBe(
+        "Funeral Parade of Roses",
+      );
+    });
+  });
+
+  describe("keyword collisions with real film titles", () => {
+    it("treats Quiz Show as a film", () => {
+      const result = extractFilmTitleSync("Quiz Show");
+      expect(result.isNonFilm).toBe(false);
+      expect(result.extractedTitle).toBe("Quiz Show");
+    });
+
+    it("treats Official Competition as a film", () => {
+      const result = extractFilmTitleSync("Official Competition");
+      expect(result.isNonFilm).toBe(false);
+      expect(result.extractedTitle).toBe("Official Competition");
+    });
+
+    it("treats a BFI Flare single film as a film, not a compilation", () => {
+      const result = extractFilmTitleSync("BFI Flare: Moonlight");
+      expect(result.extractedTitle).toBe("Moonlight");
+      expect(result.isCompilation).toBe(false);
+      expect(result.isNonFilm).toBe(false);
+    });
+
+    it("treats an LFF single film as a film, not a compilation", () => {
+      const result = extractFilmTitleSync("LFF: Hamnet");
+      expect(result.extractedTitle).toBe("Hamnet");
+      expect(result.isCompilation).toBe(false);
+    });
+
+    const events = [
+      "Film Quiz Night",
+      "TCC Film Quiz",
+      "BFI Member Quiz",
+      "The Big Ritzy Quiz",
+      "Cinema Reading Group",
+      "Comedy: Stand-Up Special",
+      "Satyajit Ray Short Film Competition",
+      "LIFF 2026 Short Film Competition",
+    ];
+
+    for (const title of events) {
+      it(`still flags "${title}" as a non-film event`, () => {
+        expect(extractFilmTitleSync(title).isNonFilm).toBe(true);
+      });
+    }
+  });
+
   describe("clean titles (no extraction needed)", () => {
     it("should return clean titles unchanged", () => {
       const result = extractFilmTitleSync("Aguirre, Wrath of God");
