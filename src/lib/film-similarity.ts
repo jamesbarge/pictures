@@ -13,6 +13,16 @@
 
 import { db } from "@/db";
 import { sql } from "drizzle-orm";
+import {
+  disagreesOnTrailingNumber,
+  sequelMarkerOf,
+  trailingNumberOf,
+} from "./title-patterns";
+
+// Re-exported so the trigram matcher stays the one-stop import for callers that
+// already depend on it. The implementation lives in title-patterns.ts, which is
+// DB-free, so src/lib/tmdb/match.ts can share it without pulling in Drizzle.
+export { disagreesOnTrailingNumber, sequelMarkerOf, trailingNumberOf };
 
 /** Lower bound for considering a film at all — below this, never propose. */
 const MINIMUM_THRESHOLD = 0.25;
@@ -129,6 +139,21 @@ export async function findMatchingFilm(
   for (const candidate of candidates) {
     // Length-aware trigram threshold
     if (candidate.similarity < threshold) continue;
+
+    // Number rejection. Placed before the year window because it needs no year
+    // on either side, which is what the year window could not manage: of the
+    // run's 36 accepted "Practical Magic 2" matches, 27 logged no year
+    // rejection at all, and the other 9 came on the line immediately after the
+    // window had rejected the 1998 row. The films table holds a second row of
+    // the same title with a NULL year, which the window cannot judge — a
+    // plausible explanation for those 9, though the log names only the
+    // candidate's title, so the row each took is not established.
+    if (disagreesOnTrailingNumber(title, candidate.title)) {
+      console.log(
+        `[FilmSimilarity] Title number mismatch — rejecting "${title}" (${trailingNumberOf(title) ?? "none"}) vs "${candidate.title}" (${trailingNumberOf(candidate.title) ?? "none"})`
+      );
+      continue;
+    }
 
     // Year-delta rejection (both sides have a year and delta > 5)
     if (violatesYearWindow(year, candidate.year)) {

@@ -295,3 +295,51 @@ describe("Admin Screenings API", () => {
     });
   });
 });
+
+/**
+ * Venue identity on the admin write paths.
+ *
+ * These routes validated `cinemaId` against the `cinemas` TABLE rather than
+ * the registry, then persisted the value verbatim. With an orphan legacy row
+ * present (the 2026-09-08 audit found `nickel` alive alongside `the-nickel`),
+ * an admin create or edit could keep writing screenings onto the alias.
+ */
+describe("Admin screenings API canonicalises cinemaId", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(currentUser).mockResolvedValue({
+      emailAddresses: [
+        { emailAddress: "jdwbarge@gmail.com", verification: { status: "verified" } },
+      ],
+    } as never);
+    vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as never);
+  });
+
+  afterEach(() => {
+    vi.resetModules();
+  });
+
+  it("POST stores the canonical ID when given a legacy alias", async () => {
+    const { POST } = await import("./route");
+
+    mockSelect.mockResolvedValueOnce([{ id: "film-1" }]); // film exists
+    mockSelect.mockResolvedValueOnce([{ id: "the-nickel" }]); // cinema exists
+    mockInsert.mockResolvedValueOnce(undefined);
+
+    const request = new Request("http://localhost/api/admin/screenings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        filmId: "film-1",
+        cinemaId: "nickel",
+        datetime: "2026-09-15T19:00:00Z",
+        bookingUrl: "https://book.thenickel.co.uk/screening/1",
+      }),
+    });
+
+    await POST(request, {});
+
+    expect(mockInsert).toHaveBeenCalledTimes(1);
+    expect(mockInsert.mock.calls[0][0].cinemaId).toBe("the-nickel");
+  });
+});

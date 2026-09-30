@@ -53,6 +53,7 @@ import {
   classifyLcutTargets,
   detectLcutRegressions,
   formatParityTable,
+  summarizeLcutPhase,
 } from "../../scripts/lcut-gapfill";
 import {
   detectSilentBreakers,
@@ -343,10 +344,12 @@ async function main(): Promise<void> {
         // there's something actionable: source-only inserts (usually non-zero,
         // so this pings most weeks at info level) or a scraped venue behind
         // L-CUT beyond the threshold (warn level — the regression signal).
-        if (regressions.length > 0 || report.totalInserted > 0) {
+        // totalFailed is in the gate so a run whose ONLY outcome was failed
+        // writes still alerts. Without it, 0 inserted + 0 regressions is silent.
+        if (regressions.length > 0 || report.totalInserted > 0 || report.totalFailed > 0) {
           const parts: string[] = [
-            `Source-only inserted: ${report.totalInserted}` +
-              (report.totalFailed > 0 ? ` (${report.totalFailed} failed)` : ""),
+            `Source-only added/updated: ${report.totalInserted}` +
+              (report.totalFailed > 0 ? ` (${report.totalFailed} failed/rejected)` : ""),
           ];
           if (regressions.length > 0) {
             parts.push(
@@ -359,20 +362,15 @@ async function main(): Promise<void> {
           await sendTelegramAlert({
             title: "L-CUT gap-fill + parity",
             message: parts.join("\n"),
-            level: regressions.length > 0 ? "warn" : "info",
+            level: report.totalFailed > 0 || regressions.length > 0 ? "warn" : "info",
           }).catch((err) => console.warn("[lcut] telegram alert failed:", err));
         }
 
-        // Regressions are warnings, not phase failures — the gap-fill itself
-        // succeeded. A thrown fetch/DB error is caught by runPhase → ok:false.
-        return {
-          ok: true,
-          warn: regressions.length > 0 || report.unmapped.length > 0,
-          detail:
-            `${report.totalInserted} inserted (source-only), ` +
-            `${regressions.length} scraped venue(s) >${LCUT_REGRESSION_THRESHOLD} missing` +
-            (report.unmapped.length > 0 ? `, ${report.unmapped.length} unmapped` : ""),
-        };
+        // Regressions and unmapped venues are warnings, because the gap-fill
+        // itself succeeded. Writes that did not land are failures: see
+        // summarizeLcutPhase for the ok/warn split and the failed/rejected
+        // counter caveat. A thrown fetch/DB error is caught by runPhase → ok:false.
+        return summarizeLcutPhase(report, regressions, LCUT_REGRESSION_THRESHOLD);
       }),
     );
   } else if (SKIP_LCUT) {

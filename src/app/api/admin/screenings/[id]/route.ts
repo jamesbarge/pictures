@@ -8,6 +8,7 @@ import { withAdminAuth } from "@/lib/auth";
 import { db } from "@/db";
 import { screenings, films, cinemas } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { getCanonicalId } from "@/config/cinema-registry";
 import { z } from "zod";
 import { BadRequestError, handleApiError } from "@/lib/api-errors";
 
@@ -73,12 +74,18 @@ export const PUT = withAdminAuth<RouteParams>(async (request, _admin, { params }
       }
     }
 
+    // Resolve legacy aliases before the row is written. Validation is against
+    // the `cinemas` table, so while an orphan alias row exists (the 2026-09-08
+    // audit found `nickel` active alongside `the-nickel`) an edit would
+    // otherwise be able to move a screening onto the alias.
+    const canonicalCinemaId = body.cinemaId ? getCanonicalId(body.cinemaId) : undefined;
+
     // Validate cinemaId if provided
-    if (body.cinemaId) {
+    if (canonicalCinemaId) {
       const [cinema] = await db
         .select({ id: cinemas.id })
         .from(cinemas)
-        .where(eq(cinemas.id, body.cinemaId))
+        .where(eq(cinemas.id, canonicalCinemaId))
         .limit(1);
 
       if (!cinema) {
@@ -92,7 +99,7 @@ export const PUT = withAdminAuth<RouteParams>(async (request, _admin, { params }
     };
 
     if (body.filmId) updateData.filmId = body.filmId;
-    if (body.cinemaId) updateData.cinemaId = body.cinemaId;
+    if (canonicalCinemaId) updateData.cinemaId = canonicalCinemaId;
     if (body.datetime) updateData.datetime = new Date(body.datetime);
     if (body.bookingUrl !== undefined) updateData.bookingUrl = body.bookingUrl;
     if (body.format !== undefined) updateData.format = body.format;

@@ -8,6 +8,7 @@ import { db } from "@/db";
 import { screenings, films, cinemas } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
+import { getCanonicalId } from "@/config/cinema-registry";
 import type { ScreeningFormat, EventType } from "@/types/screening";
 
 interface CreateScreeningBody {
@@ -45,11 +46,17 @@ export const POST = withAdminAuth(async (request) => {
       return Response.json({ error: "Film not found" }, { status: 404 });
     }
 
+    // Resolve legacy aliases before the row is written. Validation below is
+    // against the `cinemas` table, so while an orphan alias row exists (the
+    // 2026-09-08 audit found `nickel` active alongside `the-nickel`) an admin
+    // create would otherwise keep writing screenings onto the alias.
+    const canonicalCinemaId = getCanonicalId(cinemaId);
+
     // Validate cinema exists
     const [cinema] = await db
       .select({ id: cinemas.id })
       .from(cinemas)
-      .where(eq(cinemas.id, cinemaId))
+      .where(eq(cinemas.id, canonicalCinemaId))
       .limit(1);
 
     if (!cinema) {
@@ -67,7 +74,7 @@ export const POST = withAdminAuth(async (request) => {
     await db.insert(screenings).values({
       id: screeningId,
       filmId,
-      cinemaId,
+      cinemaId: canonicalCinemaId,
       datetime: screeningDate,
       bookingUrl,
       format: (format || null) as ScreeningFormat | null,

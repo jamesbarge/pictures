@@ -13,12 +13,34 @@ vi.mock("./eventive-client", () => ({
   discoverEventBucket: vi.fn(),
 }));
 
-// Mock the pipeline (don't actually save to DB)
+// Mock the pipeline (don't actually save to DB).
+//
+// The stub carries the FULL PipelineResult shape on purpose. It is inside a
+// vi.mock factory, so TypeScript does not check it against the real return
+// type, and a partial stub silently turned the ingester's
+// `total += result.postWriteFailures` into NaN.
 vi.mock("@/scrapers/pipeline", () => ({
-  saveScreenings: vi.fn().mockResolvedValue({ added: 0, updated: 0, failed: 0 }),
+  saveScreenings: vi.fn().mockResolvedValue({
+    cinemaId: "the-nickel",
+    added: 0,
+    updated: 0,
+    failed: 0,
+    rejected: 0,
+    rejectedByReason: {},
+    accepted: 0,
+    write: { upserted: 0, updated: 0, unchanged: 0, failed: 0 },
+    postWriteFailures: 0,
+    blocked: false,
+    scrapedAt: new Date("2026-08-15T12:00:00Z"),
+  }),
 }));
 
-import { scrapeEventiveFestival, EVENTIVE_FESTIVALS } from "./eventive-scraper";
+import {
+  scrapeEventiveFestival,
+  scrapeActiveEventiveFestivals,
+  EVENTIVE_FESTIVALS,
+} from "./eventive-scraper";
+import { saveScreenings } from "@/scrapers/pipeline";
 import { getFilms, getEvents, discoverEventBucket } from "./eventive-client";
 
 const mockFilms = [
@@ -229,5 +251,89 @@ describe("scrapeEventiveFestival", () => {
     await expect(
       scrapeEventiveFestival("frightfest", 2026)
     ).rejects.toThrow("503");
+  });
+});
+
+describe("scrapeActiveEventiveFestivals venue identity", () => {
+  /**
+   * The save loop validated with `getCinemaById(cinemaId)`, which resolves
+   * legacy aliases and returns the canonical record, then persisted the *raw*
+   * mapping key. A legacy ID therefore passed the guard and was written
+   * verbatim, which is how a second `cinemas` row gets minted for one venue
+   * (see the `nickel` / `the-nickel` split in the 2026-09-08 audit).
+   */
+  it("saves under the canonical cinema ID when the mapping holds a legacy alias", async () => {
+    // FrightFest's watch window is August (typicalMonths [7]); pin the clock so
+    // this does not silently stop exercising the loop in another month.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-15T12:00:00Z"));
+
+    const frightfest = EVENTIVE_FESTIVALS.find((f) => f.slugBase === "frightfest")!;
+    const originalMapping = frightfest.venueMapping["Prince Charles Cinema"];
+    // "nickel" is a real legacy alias of the canonical "the-nickel".
+    frightfest.venueMapping["Prince Charles Cinema"] = "nickel";
+
+    try {
+      vi.mocked(discoverEventBucket).mockResolvedValue("bucket123");
+      vi.mocked(getFilms).mockResolvedValue(mockFilms as never);
+      vi.mocked(getEvents).mockResolvedValue(mockEvents as never);
+      vi.mocked(saveScreenings).mockClear();
+
+      await scrapeActiveEventiveFestivals();
+
+      const savedCinemaIds = vi.mocked(saveScreenings).mock.calls.map((c) => c[0]);
+      expect(savedCinemaIds).toContain("the-nickel");
+      expect(savedCinemaIds).not.toContain("nickel");
+    } finally {
+      frightfest.venueMapping["Prince Charles Cinema"] = originalMapping;
+      vi.useRealTimers();
+    }
+  });
+
+  it("reports screenings whose festival link failed after they persisted", async () => {
+    // This ingester is the only producer of festivalSlug screenings, so it is
+    // the one place a post-write failure can actually occur. It must reach the
+    // result rather than be absorbed into the tagged count: the rows are
+    // stored, and their link is missing.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-15T12:00:00Z"));
+
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      vi.mocked(discoverEventBucket).mockResolvedValue("bucket123");
+      vi.mocked(getFilms).mockResolvedValue(mockFilms as never);
+      vi.mocked(getEvents).mockResolvedValue(mockEvents as never);
+      vi.mocked(saveScreenings).mockResolvedValue({
+        cinemaId: "the-nickel",
+        added: 3,
+        updated: 0,
+        failed: 0,
+        rejected: 0,
+        rejectedByReason: {},
+        accepted: 3,
+        write: { upserted: 3, updated: 0, unchanged: 0, failed: 0 },
+        postWriteFailures: 2,
+        blocked: false,
+        scrapedAt: new Date("2026-08-15T12:00:00Z"),
+      });
+
+      const results = await scrapeActiveEventiveFestivals();
+      const withWrites = results.filter((r) => r.screeningsTagged > 0);
+
+      expect(withWrites.length).toBeGreaterThan(0);
+      for (const result of withWrites) {
+        // Two per saveScreenings call, so a whole number and never NaN.
+        expect(Number.isInteger(result.postWriteFailures)).toBe(true);
+        expect(result.postWriteFailures).toBeGreaterThan(0);
+        // The rows still count as written — the failure is not a lost write.
+        expect(result.screeningsTagged).toBeGreaterThan(0);
+      }
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("persisted but their festival link failed"),
+      );
+    } finally {
+      warn.mockRestore();
+      vi.useRealTimers();
+    }
   });
 });

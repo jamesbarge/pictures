@@ -1,17 +1,37 @@
-import { describe, it, expect } from "vitest";
+import { afterEach, describe, it, expect, vi } from "vitest";
 import {
   sanitizeScreening,
   validateScreenings,
 } from "./screening-validator";
+import { londonParts, ukLocalToUTC } from "./date-parser";
 import type { RawScreening } from "../types";
 
+/**
+ * The London calendar date N days from now.
+ *
+ * Fixtures below express screening times as London local hours, because that is
+ * what the validator's opening-hours policy is written in. Building them with
+ * setHours() would express them in the host timezone instead, which is how the
+ * pre-fix suite managed to agree with a host-local getHours() under every TZ
+ * and so could never catch a timezone bug.
+ */
+function londonDayOffset(daysOut: number): { year: number; month: number; day: number } {
+  const { year, month, day } = londonParts(new Date());
+  // Date.UTC normalises month/day overflow for large offsets (e.g. 200 days).
+  const rolled = new Date(Date.UTC(year, month, day + daysOut));
+  return {
+    year: rolled.getUTCFullYear(),
+    month: rolled.getUTCMonth(),
+    day: rolled.getUTCDate(),
+  };
+}
+
 function makeScreening(overrides: Partial<RawScreening> = {}): RawScreening {
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  tomorrow.setHours(14, 0, 0, 0); // 2 PM — always within valid screening hours
+  const { year, month, day } = londonDayOffset(1);
   return {
     filmTitle: "Test Film",
-    datetime: tomorrow,
+    // Tomorrow, 14:00 London — always within valid screening hours
+    datetime: ukLocalToUTC(year, month, day, 14, 0),
     bookingUrl: "https://example.com/book",
     ...overrides,
   };
@@ -111,12 +131,10 @@ describe("validateScreenings sanitization", () => {
 // instead of 90.
 // =============================================================================
 
-/** A screening N days out at the given local hour. */
+/** A screening N days out at the given London local hour. */
 function makeFutureScreening(daysOut: number, hour: number, overrides: Partial<RawScreening> = {}): RawScreening {
-  const datetime = new Date();
-  datetime.setDate(datetime.getDate() + daysOut);
-  datetime.setHours(hour, 0, 0, 0);
-  return makeScreening({ datetime, ...overrides });
+  const { year, month, day } = londonDayOffset(daysOut);
+  return makeScreening({ datetime: ukLocalToUTC(year, month, day, hour, 0), ...overrides });
 }
 
 describe("time-provenance: suspicious_time_early", () => {
@@ -171,5 +189,112 @@ describe("time-provenance: too_far_future", () => {
     const { rejectedScreenings } = validateScreenings([screening]);
     expect(rejectedScreenings).toHaveLength(1);
     expect(rejectedScreenings[0].errors[0]).toContain("max 180");
+  });
+});
+
+// =============================================================================
+// Timezone independence
+//
+// Cinema opening hours are a London-local policy, so the verdict on a given
+// instant must be the same whether the process runs under TZ=UTC (CI, cron,
+// Vercel) or TZ=Europe/London (dev machines). Each case pins the clock so the
+// fixed instants stay clear of the past_screening and too_far_future caps.
+//
+// Which cases actually guard the bug: only the two BST cases. In winter London
+// is UTC, so the GMT and Christmas Day cases agree with a host-local read under
+// both TZ=UTC and TZ=Europe/London, and can only fail on a host west of UTC.
+// December makes a London-versus-UTC discriminator impossible by construction,
+// so treat those two as policy pins and the BST pair as the regression guard.
+// =============================================================================
+
+describe("timezone independence: London-local screening hours", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function pinClock(now: string): void {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(now));
+  }
+
+  describe("summer (BST, London is UTC+1)", () => {
+    it("accepts 09:00 UTC, which is 10:00 in London", () => {
+      pinClock("2026-09-08T12:00:00Z");
+      const screening = makeScreening({
+        datetime: new Date("2026-09-09T09:00:00Z"),
+        timeSource: "text",
+      });
+
+      const { validScreenings, rejectedScreenings } = validateScreenings([screening]);
+
+      expect(rejectedScreenings).toHaveLength(0);
+      expect(validScreenings).toHaveLength(1);
+    });
+
+    it("rejects 08:30 UTC, which is 09:30 in London", () => {
+      pinClock("2026-09-08T12:00:00Z");
+      const screening = makeScreening({
+        datetime: new Date("2026-09-09T08:30:00Z"),
+        timeSource: "text",
+      });
+
+      const { rejectedScreenings, summary } = validateScreenings([screening]);
+
+      expect(rejectedScreenings).toHaveLength(1);
+      expect(summary.errorsByType["suspicious_time_early"]).toBe(1);
+    });
+  });
+
+  describe("winter (GMT, London is UTC+0)", () => {
+    it("rejects 09:00 UTC, which is also 09:00 in London", () => {
+      pinClock("2027-01-13T12:00:00Z");
+      const screening = makeScreening({
+        datetime: new Date("2027-01-14T09:00:00Z"),
+        timeSource: "text",
+      });
+
+      const { rejectedScreenings, summary } = validateScreenings([screening]);
+
+      expect(rejectedScreenings).toHaveLength(1);
+      expect(summary.errorsByType["suspicious_time_early"]).toBe(1);
+    });
+
+    it("accepts 10:00 UTC, which is 10:00 in London", () => {
+      pinClock("2027-01-13T12:00:00Z");
+      const screening = makeScreening({
+        datetime: new Date("2027-01-14T10:00:00Z"),
+        timeSource: "text",
+      });
+
+      const { validScreenings, rejectedScreenings } = validateScreenings([screening]);
+
+      expect(rejectedScreenings).toHaveLength(0);
+      expect(validScreenings).toHaveLength(1);
+    });
+  });
+
+  it("reports the London hour in the rejection message, not the host hour", () => {
+    pinClock("2026-09-08T12:00:00Z");
+    const screening = makeScreening({
+      datetime: new Date("2026-09-09T08:30:00Z"), // 09:30 London
+      timeSource: "text",
+    });
+
+    const { rejectedScreenings } = validateScreenings([screening]);
+
+    expect(rejectedScreenings[0].errors[0]).toContain("Screening at 9:00");
+  });
+
+  it("uses the London calendar date for the Christmas Day warning", () => {
+    pinClock("2026-12-24T12:00:00Z");
+    // 00:30 UTC on the 25th is 00:30 on the 25th in London (GMT)
+    const screening = makeScreening({
+      datetime: new Date("2026-12-25T00:30:00Z"),
+      timeSource: "iso",
+    });
+
+    const { summary } = validateScreenings([screening]);
+
+    expect(summary.warningsByType["holiday_screening"]).toBe(1);
   });
 });

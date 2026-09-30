@@ -1,4 +1,8 @@
 /**
+ * Historical deletion-guard rationale follows. The guard now gates only a
+ * read-only candidate report; none of these eligibility cases permits DELETE.
+ * Its name/options remain compatible with partial-batch callers.
+ *
  * Superseded-cleanup guard for accidentally-partial batches.
  *
  * cleanupSupersededScreenings() deletes a previously-scraped screening when a
@@ -45,6 +49,32 @@ describe("shouldRunSupersededCleanup", () => {
   describe("partial by design", () => {
     it("does not run when the caller opts out (L-CUT gap-fill)", () => {
       expect(shouldRunSupersededCleanup(cleanResult, { skipSupersededCleanup: true })).toBe(false);
+    });
+  });
+
+  describe("post-write failures", () => {
+    // Separating postWriteFailures out of `failed` must not quietly ENABLE the
+    // report where the merged counter used to suppress it. Before the loss
+    // accounting a festival-link failure propagated into the film-level catch
+    // and inflated `failed`, so this batch could not have reached the report.
+    // The guard refuses on the new counter for the same reason.
+    it("does not run when a row persisted but its follow-up work failed", () => {
+      expect(
+        shouldRunSupersededCleanup(
+          { added: 120, updated: 30, failed: 0, blocked: false, postWriteFailures: 1 },
+          {},
+        ),
+      ).toBe(false);
+    });
+
+    it("still runs when the counter is present and zero", () => {
+      expect(
+        shouldRunSupersededCleanup({ ...cleanResult, postWriteFailures: 0 }, {}),
+      ).toBe(true);
+    });
+
+    it("treats an absent counter as zero so old callers are unaffected", () => {
+      expect(shouldRunSupersededCleanup(cleanResult, {})).toBe(true);
     });
   });
 

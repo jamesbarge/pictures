@@ -8,6 +8,7 @@ import { readFile } from "fs/promises";
 import { join } from "path";
 import type { RawScreening, ScraperConfig, CinemaScraper } from "./types";
 import { CHROME_USER_AGENT_FULL } from "./constants";
+import type { PreFilterReason, PreFilterReport } from "./utils/screening-accounting";
 
 /**
  * Runtime config overlay for AutoScrape experiments.
@@ -38,17 +39,38 @@ export abstract class BaseScraper implements CinemaScraper {
   protected configOverlay: ConfigOverlay | null = null;
 
   /**
+   * Pre-filter accounting for the most recent `scrape()`.
+   *
+   * `validate()` below drops candidates before the pipeline ever sees them, so
+   * without this the loss is invisible to every downstream report. Recorded
+   * here rather than returned so `scrape()` keeps its `RawScreening[]`
+   * signature and every existing caller and subclass is unaffected.
+   *
+   * Null until a scrape has run. Reset at the start of each scrape so a stale
+   * report from a previous run can never be attributed to this one.
+   */
+  private preFilterReport: PreFilterReport | null = null;
+  private fetchedPayloadCount: number | null = null;
+
+  /**
    * Main scrape method - template method pattern
    */
   async scrape(): Promise<RawScreening[]> {
     console.log(`[${this.config.cinemaId}] Starting scrape...`);
+    this.preFilterReport = null;
+    this.fetchedPayloadCount = null;
 
     try {
       await this.loadConfigOverlay();
       await this.initialize();
       const pages = await this.fetchPages();
+      this.fetchedPayloadCount = pages.length;
       const screenings = await this.parsePages(pages);
       const validated = this.validate(screenings);
+      // `validate()` is overridable and three subclasses call super and then
+      // filter further, so the report recorded inside the base implementation
+      // can describe a larger surviving set than the one actually returned.
+      this.reconcilePreFilterReport(validated.length);
       await this.cleanup();
 
       console.log(`[${this.config.cinemaId}] Found ${validated.length} valid screenings`);
@@ -57,6 +79,69 @@ export abstract class BaseScraper implements CinemaScraper {
       console.error(`[${this.config.cinemaId}] Scrape failed:`, error);
       throw error;
     }
+  }
+
+  /**
+   * Bring the pre-filter report into line with what `validate()` returned.
+   *
+   * `BaseScraper.validate` records its report from its own predicates, but the
+   * method is overridable: `nickel-v2.ts`, `genesis-v2.ts` and `lexi-v2.ts` all
+   * call `super.validate()` and then filter the result again. Nickel's override
+   * drops `MYSTERY MOVIE` titles, so a batch of one mystery screening reported
+   * `parsed: 1, accepted: 1, rejected: 0` while `scrape()` returned nothing and
+   * the pipeline accepted nothing — a conservation failure that was an
+   * accounting artefact rather than a real one.
+   *
+   * The surviving set is passed through untouched; only the counts move. The
+   * shortfall is attributed to `subclass_filter`, which names the fact honestly
+   * without the base class pretending to know the subclass's reason. An
+   * override that returns MORE than the base filter kept cannot be described by
+   * this report at all, so the report becomes unavailable rather than wrong.
+   */
+  private reconcilePreFilterReport(survivorCount: number): void {
+    const report = this.preFilterReport;
+    if (!report || report.accepted === survivorCount) return;
+
+    const droppedBySubclass = report.accepted - survivorCount;
+    if (droppedBySubclass < 0) {
+      console.warn(
+        `[${this.config.cinemaId}] validate() returned ${survivorCount} screenings, ` +
+          `more than the ${report.accepted} the base filter kept. Pre-filter counts ` +
+          `are unavailable for this run.`,
+      );
+      this.preFilterReport = null;
+      return;
+    }
+
+    this.preFilterReport = {
+      parsed: report.parsed,
+      accepted: survivorCount,
+      rejected: report.parsed - survivorCount,
+      byReason: { ...report.byReason, subclass_filter: droppedBySubclass },
+    };
+  }
+
+  /**
+   * Pre-filter counts from the last `scrape()`, or null if none has completed
+   * its validate step. Callers must treat null as "not measured", never as
+   * zero loss.
+   */
+  getPreFilterReport(): PreFilterReport | null {
+    return this.preFilterReport;
+  }
+
+  /**
+   * Payloads returned by the last `scrape()`'s `fetchPages()`, or null if not
+   * measured.
+   *
+   * A payload is one entry of the `string[]` that `fetchPages()` returns, which
+   * is **not** an HTTP request count: subclasses that hit a bundled JSON API,
+   * or that concatenate a paginated fetch before returning, make several calls
+   * per entry. Named for the unit it actually counts so no reader mistakes it
+   * for request volume.
+   */
+  getFetchedPayloadCount(): number | null {
+    return this.fetchedPayloadCount;
   }
 
   /**
@@ -80,39 +165,67 @@ export abstract class BaseScraper implements CinemaScraper {
   protected async cleanup(): Promise<void> {}
 
   /**
-   * Validate and filter screenings
+   * Validate and filter screenings.
+   *
+   * The predicates, their order and the surviving set are unchanged. The only
+   * addition is a tally of *why* each drop happened, recorded on the instance
+   * and read back by the runner via `getPreFilterReport()`. Every candidate is
+   * attributed to exactly one reason (the first that matches), so
+   * `parsed = accepted + rejected` holds by construction.
    */
   protected validate(screenings: RawScreening[]): RawScreening[] {
     const now = new Date();
     const seen = new Set<string>();
+    const byReason: Partial<Record<PreFilterReason, number>> = {};
+    const drop = (reason: PreFilterReason): false => {
+      byReason[reason] = (byReason[reason] ?? 0) + 1;
+      return false;
+    };
 
-    return screenings.filter((s) => {
+    const accepted = screenings.filter((s) => {
       // Must have title
       if (!s.filmTitle || s.filmTitle.trim() === "") {
-        return false;
+        return drop("missing_title");
       }
 
       // Must have valid datetime in the future
       if (!s.datetime || isNaN(s.datetime.getTime())) {
-        return false;
+        return drop("invalid_datetime");
       }
       if (s.datetime < now) {
-        return false;
+        return drop("past_screening");
       }
 
       // Must have booking URL
       if (!s.bookingUrl || s.bookingUrl.trim() === "") {
-        return false;
+        return drop("missing_booking_url");
       }
 
       // Deduplicate by sourceId
       if (s.sourceId && seen.has(s.sourceId)) {
-        return false;
+        return drop("duplicate_source_id");
       }
       if (s.sourceId) seen.add(s.sourceId);
 
       return true;
     });
+
+    this.preFilterReport = {
+      parsed: screenings.length,
+      accepted: accepted.length,
+      rejected: screenings.length - accepted.length,
+      byReason,
+    };
+
+    if (this.preFilterReport.rejected > 0) {
+      console.warn(
+        `[${this.config.cinemaId}] Pre-filter dropped ` +
+          `${this.preFilterReport.rejected} of ${screenings.length} parsed ` +
+          `screening(s): ${JSON.stringify(byReason)}`
+      );
+    }
+
+    return accepted;
   }
 
   /**

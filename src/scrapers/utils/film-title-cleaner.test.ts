@@ -600,3 +600,107 @@ describe("fixpoint cap boundary (plan 008)", () => {
     expect(cleanFilmTitle("AKIRA (2026 Re-release) (Subbed) (4K)")).toBe("AKIRA");
   });
 });
+
+// Cases from the 2026-09-21 TypeSafe title experiment. Contract difference
+// from `extractFilmTitleSync`: this cleaner moves a trailing release year into
+// `extractedYear` (plan 008) instead of keeping it in the title.
+describe("complete terminal decorations", () => {
+  const cases: Array<{ input: string; cleaned: string; suffix?: string }> = [
+    { input: "Casablanca (London Premiere + Q&A)", cleaned: "Casablanca", suffix: "(London Premiere + Q&A)" },
+    { input: "2001: A Space Odyssey (UK Premiere + Q&A)", cleaned: "2001: A Space Odyssey" },
+    { input: "Casablanca (London Premiere + Q&amp;A)", cleaned: "Casablanca" },
+    { input: "Casablanca (UK Premiere)", cleaned: "Casablanca" },
+    { input: "Casablanca (World Premiere)", cleaned: "Casablanca" },
+    { input: "Casablanca (VHS SCREENING)", cleaned: "Casablanca" },
+    { input: "One Man's Seduction (vhs Screening)", cleaned: "One Man's Seduction" },
+    { input: "Casablanca (B&W)", cleaned: "Casablanca" },
+    // Stacked decorations resolve through the fixpoint loop
+    { input: "Casablanca (B&W) (VHS Screening)", cleaned: "Casablanca" },
+    // "(35mm)" has no rule in this cleaner (only "(on 35mm)" and "- 35mm"), so
+    // the stacked case uses a decoration this path already strips.
+    { input: "Casablanca (4K Restoration) (UK Premiere + Q&A)", cleaned: "Casablanca" },
+    { input: "Casablanca (UK Premiere + Q&A) (PG)", cleaned: "Casablanca" },
+    { input: "Casablanca (London Premiere + Q&A with director)", cleaned: "Casablanca" },
+    { input: "Casablanca (VHS) (B&W)", cleaned: "Casablanca" },
+  ];
+
+  for (const { input, cleaned, suffix } of cases) {
+    it(`"${input}" → "${cleaned}"`, () => {
+      const result = cleanFilmTitleWithMetadata(input);
+      expect(result.cleanedTitle).toBe(cleaned);
+      expect(result.cleanedTitle).not.toMatch(/\([^)]*$/);
+      if (suffix) expect(result.strippedSuffix).toBe(suffix);
+      expect(cleanFilmTitle(result.cleanedTitle)).toBe(cleaned);
+    });
+  }
+
+  it("keeps a release year as a hint rather than in the title", () => {
+    const result = cleanFilmTitleWithMetadata("A Star Is Born (1954)");
+    expect(result.cleanedTitle).toBe("A Star Is Born");
+    expect(result.extractedYear).toBe(1954);
+  });
+
+  const preserved = [
+    "Daisies (Sedmikrásky)",
+    "Mission: Impossible",
+    "Mission: Impossible - Fallout",
+    "2001: A Space Odyssey",
+    "The Godfather Part II",
+    "Rocky II",
+  ];
+
+  for (const title of preserved) {
+    it(`preserves "${title}"`, () => {
+      expect(cleanFilmTitle(title)).toBe(title);
+    });
+  }
+});
+
+describe("reviewed wrapper prefixes", () => {
+  const cases: Array<{ input: string; cleaned: string; prefix: string }> = [
+    { input: "Relaxed Screening: My Father's Shadow", cleaned: "My Father's Shadow", prefix: "Relaxed Screening" },
+    { input: "relaxed screening: My Father's Shadow", cleaned: "My Father's Shadow", prefix: "relaxed screening" },
+    { input: "Relaxed Screening: Spider-Man: Brand New Day", cleaned: "Spider-Man: Brand New Day", prefix: "Relaxed Screening" },
+    { input: "Senior Community Cinema: Daisies (Sedmikrásky)", cleaned: "Daisies (Sedmikrásky)", prefix: "Senior Community Cinema" },
+    { input: "Senior Community Cinema x The Old Ways: Casablanca", cleaned: "Casablanca", prefix: "Senior Community Cinema x The Old Ways" },
+    { input: "Senior Community Cinema: The Old Ways: A Century in Sound", cleaned: "The Old Ways: A Century in Sound", prefix: "Senior Community Cinema" },
+    { input: "Cine-Real presents: 2001: A Space Odyssey", cleaned: "2001: A Space Odyssey", prefix: "Cine-Real presents" },
+    { input: "LAFS PRESENTS: Daisies (Sedmikrásky)", cleaned: "Daisies (Sedmikrásky)", prefix: "LAFS PRESENTS" },
+    { input: "Funeral Parade presents The Godfather Part II", cleaned: "The Godfather Part II", prefix: "Funeral Parade presents" },
+    { input: 'Funeral Parade presents "The Long Day Closes"', cleaned: "The Long Day Closes", prefix: "Funeral Parade presents" },
+    { input: "Funeral Parade presents 'Paris Is Burning'", cleaned: "Paris Is Burning", prefix: "Funeral Parade presents" },
+    { input: "Funeral Parade presents “The Skin I Live In”", cleaned: "The Skin I Live In", prefix: "Funeral Parade presents" },
+    { input: "Funeral Parade presents &quot;An Actor&#39;s Revenge&quot;", cleaned: "An Actor's Revenge", prefix: "Funeral Parade presents" },
+  ];
+
+  for (const { input, cleaned, prefix } of cases) {
+    it(`"${input}" → "${cleaned}"`, () => {
+      const result = cleanFilmTitleWithMetadata(input);
+      expect(result.cleanedTitle).toBe(cleaned);
+      expect(result.strippedPrefix).toBe(prefix);
+      expect(cleanFilmTitle(result.cleanedTitle)).toBe(cleaned);
+    });
+  }
+
+  it("keeps quotes that belong to the title when no wrapper was stripped", () => {
+    expect(cleanFilmTitle('"Wonderful" Life')).toBe('"Wonderful" Life');
+  });
+
+  it("only unwraps quotes after a reviewed wrapper", () => {
+    expect(cleanFilmTitle('Kids Club: "Weird" Science "Two"')).toBe('"Weird" Science "Two"');
+  });
+
+  it("leaves a quoted double bill intact", () => {
+    expect(cleanFilmTitle('Funeral Parade presents "Paris Is Burning" + "Tongues Untied"')).toBe(
+      '"Paris Is Burning" + "Tongues Untied"',
+    );
+  });
+
+  it("still strips a short event prefix that begins with Mission", () => {
+    expect(cleanFilmTitle("Mission Club: Casablanca")).toBe("Casablanca");
+  });
+
+  it("keeps the film name that shares its first words with a wrapper", () => {
+    expect(cleanFilmTitle("Funeral Parade of Roses")).toBe("Funeral Parade of Roses");
+  });
+});
