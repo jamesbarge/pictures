@@ -38,14 +38,15 @@ afterEach(() => {
 describe("attemptScreeningWrite", () => {
   it("returns added/updated on success without touching the queue", async () => {
     const deferred: DeferredWrite[] = [];
-    expect(await attemptScreeningWrite("w1", async () => true, deferred)).toBe("added");
-    expect(await attemptScreeningWrite("w2", async () => false, deferred)).toBe("updated");
+    expect(await attemptScreeningWrite("w1", async () => "upserted", deferred)).toBe("upserted");
+    expect(await attemptScreeningWrite("w2", async () => "updated", deferred)).toBe("updated");
+    expect(await attemptScreeningWrite("w3", async () => "unchanged", deferred)).toBe("unchanged");
     expect(deferred).toHaveLength(0);
   });
 
   it("defers connection-timeout failures with the runnable thunk", async () => {
     const deferred: DeferredWrite[] = [];
-    const run = vi.fn().mockRejectedValueOnce(connectionTimeoutError()).mockResolvedValueOnce(true);
+    const run = vi.fn().mockRejectedValueOnce(connectionTimeoutError()).mockResolvedValueOnce("upserted");
 
     const status = await attemptScreeningWrite("insertScreening: castle/castle-123", run, deferred);
 
@@ -79,21 +80,21 @@ describe("retryDeferredWrites", () => {
   it("recovers a write that fails once then succeeds", async () => {
     const deferred: DeferredWrite[] = [];
     // Fails the first (film-loop) attempt, succeeds on the retry pass.
-    const run = vi.fn().mockRejectedValueOnce(connectionTimeoutError()).mockResolvedValueOnce(true);
+    const run = vi.fn().mockRejectedValueOnce(connectionTimeoutError()).mockResolvedValueOnce("upserted");
     await attemptScreeningWrite("w", run, deferred);
 
     const outcome = await retryDeferredWrites(deferred, 0);
 
-    expect(outcome).toEqual({ recovered: 1, added: 1, updated: 0, failed: 0 });
+    expect(outcome).toEqual({ recovered: 1, write: { upserted: 1, updated: 0, unchanged: 0, failed: 0 } });
     expect(run).toHaveBeenCalledTimes(2);
   });
 
   it("counts a recovered update (duplicate row refreshed) as updated", async () => {
-    const deferred: DeferredWrite[] = [{ label: "w", run: async () => false }];
+    const deferred: DeferredWrite[] = [{ label: "w", run: async () => "updated" as const }];
 
     const outcome = await retryDeferredWrites(deferred, 0);
 
-    expect(outcome).toEqual({ recovered: 1, added: 0, updated: 1, failed: 0 });
+    expect(outcome).toEqual({ recovered: 1, write: { upserted: 0, updated: 1, unchanged: 0, failed: 0 } });
   });
 
   it("a twice-failing write lands in failed — second failure is final this run", async () => {
@@ -103,7 +104,7 @@ describe("retryDeferredWrites", () => {
 
     const outcome = await retryDeferredWrites(deferred, 0);
 
-    expect(outcome).toEqual({ recovered: 0, added: 0, updated: 0, failed: 1 });
+    expect(outcome).toEqual({ recovered: 0, write: { upserted: 0, updated: 0, unchanged: 0, failed: 1 } });
     expect(run).toHaveBeenCalledTimes(2); // once in the loop, once on retry — no third attempt
   });
 
@@ -113,7 +114,7 @@ describe("retryDeferredWrites", () => {
       label,
       run: async () => {
         order.push(label);
-        return true;
+        return "upserted" as const;
       },
     }));
 
@@ -125,20 +126,20 @@ describe("retryDeferredWrites", () => {
 
   it("one retry failure does not stop the rest of the queue", async () => {
     const deferred: DeferredWrite[] = [
-      { label: "ok-1", run: async () => true },
+      { label: "ok-1", run: async () => "upserted" as const },
       { label: "bad", run: () => Promise.reject(connectionTimeoutError()) },
-      { label: "ok-2", run: async () => true },
+      { label: "ok-2", run: async () => "upserted" as const },
     ];
 
     const outcome = await retryDeferredWrites(deferred, 0);
 
-    expect(outcome).toEqual({ recovered: 2, added: 2, updated: 0, failed: 1 });
+    expect(outcome).toEqual({ recovered: 2, write: { upserted: 2, updated: 0, unchanged: 0, failed: 1 } });
   });
 
   it("stops retrying when the time budget is exhausted, counting the rest as failed", async () => {
     // Budget 0 → exhausted before the first attempt; no thunk may run. This
     // bounds the retry pass under plan 001's 10-minute venue wall-clock cap.
-    const run = vi.fn().mockResolvedValue(true);
+    const run = vi.fn().mockResolvedValue("upserted");
     const deferred: DeferredWrite[] = [
       { label: "w1", run },
       { label: "w2", run },
@@ -147,15 +148,15 @@ describe("retryDeferredWrites", () => {
 
     const outcome = await retryDeferredWrites(deferred, 0, 0);
 
-    expect(outcome).toEqual({ recovered: 0, added: 0, updated: 0, failed: 3 });
+    expect(outcome).toEqual({ recovered: 0, write: { upserted: 0, updated: 0, unchanged: 0, failed: 3 } });
     expect(run).not.toHaveBeenCalled();
   });
 
   it("budget exhaustion mid-queue keeps earlier recoveries", async () => {
     const slow = vi.fn().mockImplementation(
-      () => new Promise<boolean>((resolve) => setTimeout(() => resolve(true), 30)),
+      () => new Promise<"upserted">((resolve) => setTimeout(() => resolve("upserted"), 30)),
     );
-    const never = vi.fn().mockResolvedValue(true);
+    const never = vi.fn().mockResolvedValue("upserted");
     const deferred: DeferredWrite[] = [
       { label: "slow", run: slow },
       { label: "skipped", run: never },
@@ -165,7 +166,7 @@ describe("retryDeferredWrites", () => {
     // recovers; by the second iteration the budget is spent.
     const outcome = await retryDeferredWrites(deferred, 0, 10);
 
-    expect(outcome).toEqual({ recovered: 1, added: 1, updated: 0, failed: 1 });
+    expect(outcome).toEqual({ recovered: 1, write: { upserted: 1, updated: 0, unchanged: 0, failed: 1 } });
     expect(never).not.toHaveBeenCalled();
   });
 });

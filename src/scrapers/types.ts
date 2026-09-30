@@ -32,11 +32,23 @@ export interface RawScreening {
   /** Ticket availability status from the booking system */
   availabilityStatus?: "available" | "low" | "sold_out" | "returns" | "unknown";
   /**
-   * How datetime was derived. ISO/API timestamps can't have AM/PM errors,
-   * so the validator relaxes the heuristics that exist to catch text-parsing
-   * mistakes (early-time rejection, 90-day future cap). Unset means "text".
+   * How datetime was derived. The validator's early-time and future-horizon
+   * heuristics exist to catch text-parsing mistakes, so a provenance that
+   * cannot make those mistakes relaxes them. Unset means "text".
+   *
+   * - `"iso"` — an ISO/API instant. Cannot carry an AM/PM error, and the
+   *   source is an absolute timestamp, so BOTH heuristics relax: sub-10:00
+   *   times are kept with a warning AND the future cap rises 90 → 180 days
+   *   (long-lead event cinema at the chains).
+   * - `"local-24h"` — a machine-readable LOCAL wall clock in an established
+   *   24-hour format (e.g. BFI AudienceView's zero-padded `HH:MM` column).
+   *   It cannot carry an AM/PM error either, so sub-10:00 times are kept with
+   *   a warning — but it is not an absolute instant and says nothing about how
+   *   far ahead the venue publishes, so the future cap stays at 90 days.
+   * - `"text"` (or unset) — parsed from display text. Full strictness: a bare
+   *   1-9 hour may really be PM, so early times are rejected.
    */
-  timeSource?: "iso" | "text";
+  timeSource?: "iso" | "text" | "local-24h";
 }
 
 // ============================================================================

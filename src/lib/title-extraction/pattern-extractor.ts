@@ -16,6 +16,8 @@ import {
   TITLE_SUFFIXES,
   NON_FILM_PATTERNS,
   PRESENTS_PATTERN,
+  REVIEWED_WRAPPER_PREFIXES,
+  stripTerminalDecorations,
   SINGALONG_PATTERN,
   DOUBLE_FEATURE_PATTERN,
   FESTIVAL_PREFIXES,
@@ -99,8 +101,17 @@ export function extractFilmTitleSync(title: string): PatternExtractionResult {
     confidence = SINGALONG_CONFIDENCE;
   }
 
+  // Reviewed wrappers (shared with the scraper cleaner) run before the literal
+  // colon-separated list, which then only handles the remaining prefixes.
+  const wrapper = REVIEWED_WRAPPER_PREFIXES.find((pattern) => pattern.test(extracted));
+  if (wrapper) {
+    extracted = extracted.replace(wrapper, "");
+    method = method === "none" ? "prefix_removal" : method + "+prefix_removal";
+    confidence = Math.min(confidence, PREFIX_MAX_CONFIDENCE);
+  }
+
   // Check for event prefixes (colon-separated)
-  for (const prefix of EVENT_PREFIXES) {
+  for (const prefix of wrapper ? [] : EVENT_PREFIXES) {
     const prefixPattern = new RegExp(`^${escapeRegex(prefix)}:\\s*`, "i");
     if (prefixPattern.test(extracted)) {
       // Check if this is a festival compilation
@@ -119,6 +130,14 @@ export function extractFilmTitleSync(title: string): PatternExtractionResult {
       if (!isCompilation) confidence = Math.min(confidence, PREFIX_MAX_CONFIDENCE);
       break;
     }
+  }
+
+  // Complete decorations first, looped so stacking order does not matter
+  const undecorated = stripTerminalDecorations(extracted);
+  if (undecorated !== extracted) {
+    extracted = undecorated;
+    method = method === "none" ? "suffix_removal" : method + "+suffix_removal";
+    confidence = Math.min(confidence, SUFFIX_MAX_CONFIDENCE);
   }
 
   // Apply suffix removals

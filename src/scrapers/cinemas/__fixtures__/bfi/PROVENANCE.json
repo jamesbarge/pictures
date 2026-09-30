@@ -1,0 +1,47 @@
+{
+ "source": "BFI IMAX AudienceView embedded `searchResults` array (public listing, no credentials)",
+ "url": "https://whatson.bfi.org.uk/imax/Online/default.asp?doWork::WScontent::search=1&BOparam::WScontent::search::article_search_id=49C49C83-6BA0-420C-A784-9B485E36E2E0&BOset::WScontent::SearchCriteria::search_from=10/09/2026&BOset::WScontent::SearchCriteria::search_to=19/11/2026&BOset::WScontent::SearchResultsInfo::page_size=2000",
+ "capturedAtUTC": "2026-09-10T08:04:30.103Z",
+ "httpStatus": 200,
+ "fullPageBytes": 473889,
+ "fullPageSha256": "f7b2f20ef9222f581fb4f4f93b8cc16f0d2acdb08064020fd6267758ae15f741",
+ "rowsInFullResponse": 91,
+ "rowsStored": 16,
+ "reduction": "REDUCED from 91 rows to 16: all 12 rows whose clock column [8] begins '09:', plus 4 later-clock controls. Full page not committed.",
+ "clockFormatEvidence": {
+  "column": "row[8]",
+  "hourHistogramAcrossAll91Rows": {
+   "9": 12,
+   "10": 6,
+   "11": 3,
+   "13": 13,
+   "14": 8,
+   "15": 1,
+   "17": 17,
+   "18": 5,
+   "19": 2,
+   "20": 19,
+   "21": 2,
+   "22": 1,
+   "23": 2
+  },
+  "maxHourObserved": 23,
+  "zeroPadded": true,
+  "sampleBelow10": [
+   "09:00",
+   "09:15",
+   "09:30",
+   "09:45"
+  ],
+  "anyAmPmText": false,
+  "corroboratingColumn7Example": "Saturday 12 September 2026 09:00",
+  "conclusion": "Zero-padded 24-hour clock. Hours 13,14,15,17,18,19,20,21,22,23 all occur, so a 12-hour clock is excluded; values below 10 are written '09:00', never '9:00'; no am/pm text appears. '09:00' at this source is unambiguously 09:00 local.",
+  "provenanceGate": "Provenance is awarded by isUnambiguous24hClock(), which is ANCHORED at both ends and range-checked (^([01]\\\\d|2[0-3]):([0-5]\\\\d)$). The datetime parse still uses the original unanchored prefix regex and is unchanged, so this decides provenance only and never which rows are accepted. The prefix regex alone would match '09:00 PM' (really 21:00) and '29:99'."
+ },
+ "scopeLimit": "A 2026-09-10 observation. It establishes the source's clock FORMAT, which is a stable property of the feed. It does NOT establish the contents of the 2026-09-09 run, so it cannot prove which 12 records were rejected that day.",
+ "venueScope": {
+  "verified": "bfi-imax only",
+  "southbank": "NOT verified. Two bounded capture attempts on 2026-09-10 were served Cloudflare's 'Just a moment...' interstitial (HTTP 403, 30,479 and 30,607 bytes, no searchResults array). mapRows is shared by both venues, so provenance is gated per-venue on BFIVenueConfig.clockFormatVerified, which is set for IMAX only. Southbank keeps its existing strict behaviour. It very likely shares the format \u2014 same AudienceView platform \u2014 but that is an expectation, not evidence.",
+  "captureAttemptsUsed": 2
+ }
+}

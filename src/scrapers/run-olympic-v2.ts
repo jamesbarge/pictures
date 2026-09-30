@@ -8,7 +8,7 @@ import { createOlympicScraper } from "./cinemas/olympic";
 const config: SingleVenueConfig = {
   type: "single",
   venue: {
-    id: "olympic",
+    id: "olympic-studios",
     name: "Olympic Cinema",
     shortName: "Olympic",
     website: "https://www.olympiccinema.com",
