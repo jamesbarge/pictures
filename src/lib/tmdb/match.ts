@@ -10,6 +10,7 @@
  */
 
 import { levenshteinDistance } from "@/lib/levenshtein";
+import { disagreesOnTrailingNumber, trailingNumberOf } from "@/lib/title-patterns";
 import { loadThresholds } from "@/lib/data-quality/load-thresholds";
 
 import { getTMDBClient } from "./client";
@@ -315,10 +316,40 @@ async function findBestMatch(
   }> = [];
 
   for (const result of filtered.slice(0, MAX_SEARCH_CANDIDATES)) {
-    // Calculate title similarity
+    // Field eligibility is decided BEFORE scoring, and scoring may only use
+    // fields that passed.
+    //
+    // A candidate offers two titles. Judging identity on one and similarity on
+    // the other lets an unrelated `title` lend "carries no number, so nothing
+    // conflicts" while a conflicting `original_title` lends all the similarity
+    // — a candidate wrong on every field taken alone, accepted on the
+    // combination. So each field is admitted or refused whole, and a refused
+    // field's similarity is not used in any path.
+    //
+    // A field is evidence only if it survives the production normalizer with
+    // something left. `calculateSimilarity` treats an empty normalized string
+    // as contained in everything and returns its 0.8 containment floor, so a
+    // non-Latin original like "魔法" — non-empty raw, empty once normalized —
+    // would otherwise clear minTitleSimilarity and supply a spurious
+    // absent-number agreement. Reusing the module's own normalizer rather than
+    // re-deriving emptiness keeps the two in step.
+    const eligibleTitles = [result.title, result.original_title]
+      .map((field) => field?.trim() ?? "")
+      .filter((field) => field !== "" && normalizeTitle(field) !== "")
+      .filter((field) => !disagreesOnTrailingNumber(searchTitle, field));
+
+    if (eligibleTitles.length === 0) {
+      console.log(
+        `[TMDB] No identity-consistent title — skipping "${result.title}" ` +
+          `(${trailingNumberOf(result.title) ?? "none"}) for "${searchTitle}" ` +
+          `(${trailingNumberOf(searchTitle) ?? "none"})`
+      );
+      continue;
+    }
+
+    // Calculate title similarity, from eligible fields only
     const titleSimilarity = Math.max(
-      calculateSimilarity(searchTitle, result.title),
-      calculateSimilarity(searchTitle, result.original_title)
+      ...eligibleTitles.map((field) => calculateSimilarity(searchTitle, field))
     );
 
     // Skip if title similarity too low

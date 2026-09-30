@@ -131,6 +131,16 @@ hosted model.
 - Applies equally to new features: never propose a hosted LLM call as the fix.
   See also the no-paid-services rule in memory.
 
+### Exception: offline TypeSafe review tools (approved 2026-09-27)
+Offline, read-only, reviewer-assisted tools under `scripts/` may call TypeSafe (`TYPESAFE_API_KEY`).
+- Call through `scripts/typesafe-experiments/api.ts` (`TypeSafeClient`): pinned model, validated
+  responses, the $5 budget ledger, the response cache and `--replay`.
+- The output is a report. No model output reaches the database without a person reviewing it or a
+  deterministic gate measured on our own labelled data.
+- Runtime and production code (`src/`, `frontend/`, API routes, scrapers, scheduled jobs) stay
+  free of TypeSafe calls.
+- Current tools: `scripts/typesafe-experiments/` and `scripts/dedup-judgement/`.
+
 ## PR Review Gate
 Before creating any PR that touches 3+ files, run the code-reviewer agent on the diff. Report findings before proceeding.
 

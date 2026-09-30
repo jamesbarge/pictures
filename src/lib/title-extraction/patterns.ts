@@ -68,6 +68,30 @@ export const EVENT_PREFIXES = [
 ] as const;
 
 /**
+ * Reviewed wrapper prefixes, shared by the sync extractor and the scraper
+ * cleaner. Each is anchored to a named strand so the rest of the title,
+ * including its own colons, survives intact. Presenter forms accept a colon
+ * or a plain space; the others require a colon.
+ */
+export const REVIEWED_WRAPPER_PREFIXES: RegExp[] = [
+  /^relaxed\s+screening\s*:\s*/i,
+  /^senior\s+community\s+cinema(?:\s+x\s+[^:]+?)?\s*:\s*/i,
+  /^cine[\s-]?real\s+presents?(?:\s*:\s*|\s+)/i,
+  /^lafs\s+presents?(?:\s*:\s*|\s+)/i,
+  /^funeral\s+parade\s+presents?(?:\s*:\s*|\s+)/i,
+];
+
+/**
+ * Remove one pair of quotes that wraps the whole title, e.g. after "X presents".
+ * A title with further quotes inside ("A" + "B") is left alone.
+ */
+export function unwrapQuotedTitle(title: string): string {
+  const match = title.match(/^["\u201C]([^"\u201C\u201D]+)["\u201D]$|^['\u2018]([^'\u2018\u2019]+)['\u2019]$/);
+  if (!match) return title;
+  return (match[1] ?? match[2]).trim();
+}
+
+/**
  * Event prefix patterns used by the AI extractor's `isLikelyCleanTitle` heuristic.
  * These regex patterns detect titles that need extraction (return false from the clean-title check).
  */
@@ -100,10 +124,38 @@ export const EVENT_PREFIX_PATTERNS: RegExp[] = [
 ];
 
 /**
+ * Complete terminal decorations, shared by the sync extractor and the scraper
+ * cleaner. Each one removes a whole bracketed group, so it must run before the
+ * generic "+ Q&A" strip: that strip would otherwise cut "(London Premiere + Q&A)"
+ * at the plus sign and leave "Casablanca (London Premiere".
+ */
+export const TERMINAL_DECORATION_SUFFIXES: RegExp[] = [
+  /\s*\((?:world|uk|london|european?)\s+premiere(?:\s*\+\s*q\s*&(?:amp;)?\s*a\b[^)]*)?\)\s*$/i,
+  /\s*\(vhs(?:\s+screening)?\)\s*$/i,
+  /\s*\(b\s*&(?:amp;)?\s*w\)\s*$/i,
+];
+
+/**
+ * Strip terminal decorations until none is left, so "(VHS) (B&W)" and
+ * "(B&W) (VHS)" resolve the same way regardless of list order.
+ */
+export function stripTerminalDecorations(title: string): string {
+  let current = title.trim();
+  for (let pass = 0; pass < TERMINAL_DECORATION_SUFFIXES.length; pass++) {
+    const next = TERMINAL_DECORATION_SUFFIXES.reduce((acc, re) => acc.replace(re, ""), current).trim();
+    if (next === current) break;
+    current = next;
+  }
+  return current;
+}
+
+/**
  * Suffixes to strip from film titles (format markers, Q&A, etc.).
  * Used by the pattern extractor for sync cleanup.
  */
 export const TITLE_SUFFIXES: RegExp[] = [
+  ...TERMINAL_DECORATION_SUFFIXES,
+
   // Q&A and intro
   /\s*\+\s*Q&(?:amp;)?A.*$/i,
   /\s*\+\s*Intro.*$/i,
@@ -199,12 +251,13 @@ export const VERSION_SUFFIX_PATTERNS: RegExp[] = [
  * When matched, the title should be flagged as non-film and skipped for TMDB matching.
  */
 export const NON_FILM_PATTERNS: RegExp[] = [
-  /\bQuiz\b/i,
+  // Lookarounds exempt real film titles: "Quiz Show" (1994), "Official Competition" (2021)
+  /\bQuiz\b(?!\s+Show\b)/i,
   /\bReading\s+[Gg]roup\b/i,
   /\bCafé\s+Philo\b/i,
   /\bCafe\s+Philo\b/i,
   /\bCafés\s+philo\b/i,
-  /\bCompetition\b/i,
+  /(?<!\bOfficial\s)\bCompetition\b/i,
   /\bStory\s+Time\b/i,
   /\bBaby\s+Comptines\b/i,
   /\bLanguage\s+Activity\b/i,
@@ -222,8 +275,8 @@ export const NON_FILM_PATTERNS: RegExp[] = [
   /\bAnimated\s+Shorts\s+for\b/i,
 ];
 
-/** Pattern for "Presenter presents "Film Title"" */
-export const PRESENTS_PATTERN = /^.+\s+presents?\s+[""\u201C](.+)[""\u201D]$/i;
+/** Pattern for "Presenter presents "Film Title"" (double, single or curly quotes) */
+export const PRESENTS_PATTERN = /^.+\s+presents?\s+["'\u201C\u2018](.+)["'\u201D\u2019]$/i;
 
 /** Pattern for "Sing-A-Long-A Film Title" */
 export const SINGALONG_PATTERN = /^Sing-?A-?Long-?A?\s+(.+)$/i;
@@ -231,8 +284,13 @@ export const SINGALONG_PATTERN = /^Sing-?A-?Long-?A?\s+(.+)$/i;
 /** Pattern for extracting the first film from double features */
 export const DOUBLE_FEATURE_PATTERN = /^(.+?)\s*\+\s*.+$/;
 
-/** Festival prefixes that indicate compilations (low confidence for single-film matching) */
-export const FESTIVAL_PREFIXES = ["LSFF", "LFF", "BFI FLARE"];
+/**
+ * Festival prefixes whose brand itself names a shorts programme (London Short
+ * Film Festival). Feature festivals such as LFF and BFI Flare are absent on
+ * purpose: "BFI Flare: Moonlight" is one film, and festival branding alone is
+ * no evidence of a compilation.
+ */
+export const FESTIVAL_PREFIXES = ["LSFF"];
 
 /** Live broadcast prefixes (NT Live, Met Opera, etc.) */
 export const LIVE_BROADCAST_KEYWORDS = [

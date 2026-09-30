@@ -90,6 +90,25 @@ describe("BerthaDochouseScraper.parseDetailPage", () => {
     expect(scraper.parseDetailPage(fixture, FIXTURE_NOW)).toEqual([]);
   });
 
+  it("captures showtimes whose anchor text carries a trailing strand label", () => {
+    // Regression (2026-08-09): DocHouse appends strand/event labels after the
+    // time — "Summer Sessions", "Q&A", "Intro". The old end-anchored regex
+    // /(\d{1,2}:\d{2})\s*$/ silently dropped every one of them: 34 of 122
+    // anchors on the live site, which was the whole Sep–Oct tail.
+    const fixture = `
+      <h1>Labelled Doc</h1>
+      <a href="https://www.curzon.com/ticketing/seats/BLO1-111845">Sun 30th Aug 18:30 Summer Sessions</a>
+      <a href="https://www.curzon.com/ticketing/seats/BLO1-111996">Wed 21st Oct 18:20 Q&amp;A</a>
+      <a href="https://www.curzon.com/ticketing/seats/BLO1-112339">Wed 12th Aug 21:00 Intro</a>
+    `;
+    const out = scraper.parseDetailPage(fixture, FIXTURE_NOW);
+    expect(out.map((s) => s.datetime.toISOString())).toEqual([
+      "2026-08-30T17:30:00.000Z", // 18:30 BST
+      "2026-10-21T17:20:00.000Z", // 18:20 BST
+      "2026-08-12T20:00:00.000Z", // 21:00 BST
+    ]);
+  });
+
   it("returns [] when an anchor has no parseable time", () => {
     const fixture = `
       <h1>Untitled Doc</h1>

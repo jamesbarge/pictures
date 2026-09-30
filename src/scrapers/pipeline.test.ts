@@ -466,3 +466,16 @@ describe("cleanFilmTitle — event prefixes", () => {
     });
   });
 });
+
+describe("normalizeTitle — complete terminal decorations", () => {
+  it("collapses premiere + Q&A and format decorations onto the bare title", () => {
+    const bare = normalizeTitle("Casablanca");
+    expect(normalizeTitle("Casablanca (London Premiere + Q&A)")).toBe(bare);
+    expect(normalizeTitle("Casablanca (VHS Screening)")).toBe(bare);
+    expect(normalizeTitle("Relaxed Screening: Casablanca")).toBe(bare);
+  });
+
+  it("keeps meaningful colons in the normalized key", () => {
+    expect(normalizeTitle("Mission: Impossible")).not.toBe(normalizeTitle("Impossible"));
+  });
+});

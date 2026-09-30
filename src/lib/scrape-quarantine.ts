@@ -217,6 +217,26 @@ export interface FlakyThresholds {
   minRuns: number;
   /** lookback: how many of the most recent runs to inspect. */
   lookback: number;
+  /**
+   * Only consider runs started within this many days. Without an age bound,
+   * `lookback` alone is a *count* window, and for a low-volume cinema that
+   * count spans its entire lifetime — so failures fixed months ago never age
+   * out. Cinema Museum read 38% flaky (warn) off three failures from
+   * 2026-06-08 to 06-11 that were fixed on 06-12 by PR #671, because those
+   * were 3 of its only 8 lifetime runs. Measured 2026-08-09: its 3 runs inside
+   * a 30-day window are all healthy successes (21/28/27 screenings), so the
+   * age bound clears it.
+   *
+   * Applied inside the ranking CTE so `ROW_NUMBER()` ranks only in-window
+   * rows. Filtering after the window function would let ancient runs consume
+   * `lookback` slots and starve the recent ones.
+   *
+   * Note this makes the window `min(lookback, runs in the last maxAgeDays)`,
+   * so `minRuns` now also acts as a recency gate: a cinema with fewer than
+   * `minRuns` runs in the window is reported as not-flaky rather than judged
+   * on stale history.
+   */
+  maxAgeDays: number;
   /** Empty-success ratio that triggers a `warn` severity. */
   emptyRatioWarn: number;
   /** Empty-success ratio that triggers a `critical` severity. */
@@ -242,6 +262,7 @@ export interface FlakyThresholds {
 export const DEFAULT_FLAKY_THRESHOLDS: FlakyThresholds = {
   minRuns: 4,
   lookback: 10,
+  maxAgeDays: 30,
   emptyRatioWarn: 0.3,
   emptyRatioCritical: 0.5,
   failedRatioWarn: 0.3,
@@ -346,6 +367,10 @@ export function analyzeRunsForFlakiness(
  * Performance: collapses the per-cinema fetch into a single windowed query
  * (ROW_NUMBER() OVER (PARTITION BY cinema_id ORDER BY started_at DESC) <=
  * lookback). Going from 60 round-trips to 1 cuts pre-flight from ~2s to <100ms.
+ *
+ * The `maxAgeDays` cut lives in the CTE's WHERE clause, which Postgres applies
+ * *before* the window function, so out-of-window runs never get an `rn` at all
+ * and cannot consume a `lookback` slot.
  */
 export async function detectFlakyCinemas(
   thresholds: FlakyThresholds = DEFAULT_FLAKY_THRESHOLDS,
@@ -361,6 +386,7 @@ export async function detectFlakyCinemas(
       FROM scraper_runs r
       JOIN cinemas c ON c.id = r.cinema_id
       WHERE c.is_active = true
+        AND r.started_at >= NOW() - make_interval(days => ${thresholds.maxAgeDays})
     )
     SELECT
       ranked.cinema_id,

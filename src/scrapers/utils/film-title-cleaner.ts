@@ -9,6 +9,12 @@
  * The lib module's patterns are used by the AI title extractor for heuristic checks;
  * these patterns are used by the pipeline's own regex-based fallback cleaner.
  * Both serve the same goal (stripping event wrappers) but operate in different contexts.
+ * The exception is the small reviewed set both paths share:
+ * `REVIEWED_WRAPPER_PREFIXES` and `TERMINAL_DECORATION_SUFFIXES`.
+ *
+ * Contract difference from `extractFilmTitleSync`: this cleaner moves a trailing
+ * release year such as "(1954)" into `extractedYear`, while the sync extractor
+ * keeps it in the title.
  *
  * Two of the strip lists are extended at module init from `.claude/data-check-learnings.json`
  * (gitignored — only present in dev). `/data-check` writes recurring patrol fixes there;
@@ -18,7 +24,12 @@
 
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { decodeHtmlEntities } from "@/lib/title-patterns";
+import {
+  decodeHtmlEntities,
+  REVIEWED_WRAPPER_PREFIXES,
+  stripTerminalDecorations,
+  unwrapQuotedTitle,
+} from "@/lib/title-patterns";
 
 // ---------- Learnings loader (declared FIRST so it's available at the module
 // init of EVENT_PREFIXES below) -------------------------------------------------
@@ -105,6 +116,10 @@ function loadLearnedSuffixRegexes(): RegExp[] {
  * These are screening event names, not part of the film title itself.
  */
 export const EVENT_PREFIXES = [
+  // Reviewed wrappers shared with the sync extractor (relaxed and senior
+  // community screenings, Cine-Real, LAFS, Funeral Parade)
+  ...REVIEWED_WRAPPER_PREFIXES,
+
   // Kids/Family events
   /^saturday\s+morning\s+picture\s+club[:\s]+/i,
   /^kids['\s]*club[:\s]+/i,
@@ -210,9 +225,7 @@ export const EVENT_PREFIXES = [
   // Community / cultural screening series
   /^screen\s+cuba\s+presents?[:\s]+/i,
   /^shasha\s+movies?\s+presents?[:\s]+/i,
-  /^lafs\s+presents?[:\s]+/i,
   /^lost\s+reels[:\s]+/i,
-  /^funeral\s+parade\s+presents?[:\s]+/i,
   /^queer\s+east\s+presents?[:\s]+/i,
   /^girls?\s+in\s+film\s+presents?[:\s]+/i,
   /^east\s+london\s+doc\s+club[:\s]+/i,
@@ -265,7 +278,6 @@ export const EVENT_PREFIXES = [
   // Castle Cinema family \u2014 recurring catches across cycles 15-17.
   // Patrol noted these are the largest single source of cinema-prefix
   // duplicates in the entire DB. Patterns confirmed by 6+ merges each.
-  /^cine[\s-]?real\s+presents?[:\s]+/i,
   /^club\s+room[:\s]+/i,
   /^camp\s+classics\s+presents?[:\s]+/i,
   /^better\s+than\s+nothing\s+presents?[:\s]+/i,
@@ -415,6 +427,8 @@ export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
     if (match) {
       strippedPrefix = match[0].replace(/[:\s]+$/, "").trim();
       cleaned = cleaned.replace(prefix, "").trim();
+      // "Funeral Parade presents "The Long Day Closes"" leaves the quotes behind
+      if (REVIEWED_WRAPPER_PREFIXES.includes(prefix)) cleaned = unwrapQuotedTitle(cleaned);
       break;
     }
   }
@@ -440,7 +454,7 @@ export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
     const afterColon = colonMatch[2].trim();
 
     // Check if before-colon looks like a film series/franchise (keep these intact)
-    const isFilmSeries = /^(star\s+wars|indiana\s+jones|harry\s+potter|lord\s+of\s+the\s+rings|mission\s+impossible|pirates\s+of\s+the\s+caribbean|fast\s+(&|and)\s+furious|jurassic\s+(park|world)|the\s+matrix|batman|spider[\s-]?man|x[\s-]?men|avengers|guardians\s+of\s+the\s+galaxy|toy\s+story|shrek|finding\s+(nemo|dory)|the\s+dark\s+knight|alien|terminator|mad\s+max|back\s+to\s+the\s+future|die\s+hard|lethal\s+weapon|home\s+alone|rocky|rambo|the\s+godfather|twin\s+peaks|blade\s+runner|john\s+wick|planet\s+of\s+the\s+apes|dune|jlg\s*\/?\s*jlg|bookish)/i.test(beforeColon);
+    const isFilmSeries = /^(star\s+wars|indiana\s+jones|harry\s+potter|lord\s+of\s+the\s+rings|mission(?:\s+impossible|$)|pirates\s+of\s+the\s+caribbean|fast\s+(&|and)\s+furious|jurassic\s+(park|world)|the\s+matrix|batman|spider[\s-]?man|x[\s-]?men|avengers|guardians\s+of\s+the\s+galaxy|toy\s+story|shrek|finding\s+(nemo|dory)|the\s+dark\s+knight|alien|terminator|mad\s+max|back\s+to\s+the\s+future|die\s+hard|lethal\s+weapon|home\s+alone|rocky|rambo|the\s+godfather|twin\s+peaks|blade\s+runner|john\s+wick|planet\s+of\s+the\s+apes|dune|jlg\s*\/?\s*jlg|bookish)/i.test(beforeColon);
 
     // Check if before-colon is a known event-type word pattern
     const isEventPattern = /^(season|series|part|episode|chapter|vol(ume)?|act|double\s+feature|marathon|retrospective|tribute|celebration|anniversary|special|presents?|screening|showing|feature)/i.test(beforeColon);
@@ -502,13 +516,15 @@ export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
     );
     if (decorationYear) extractedYear ??= parseInt(decorationYear[1], 10);
 
-    cleaned = cleaned
+    cleaned = stripTerminalDecorations(cleaned
     // Remove BBFC ratings: (U), (PG), (12), (12A), (15), (18), with optional asterisk
     .replace(/\s*\((U|PG|12A?|15|18)\*?\)\s*$/i, "")
     // Remove bracketed notes like [is a Christmas Movie]
     .replace(/\s*\[.*?\]\s*$/g, "")
     // Remove trailing "- 35mm", "- 70mm" format notes (already captured as format)
-    .replace(/\s*-\s*(35mm|70mm|4k|imax)\s*$/i, "")
+    .replace(/\s*-\s*(35mm|70mm|4k|imax)\s*$/i, ""))
+    // Complete decorations such as "(London Premiere + Q&A)" are stripped
+    // above, before the "+ Q&A" rules below can cut them at the plus sign.
     // Remove duration-prefixed event suffixes: "(60 mins) + Panel" — must come before Q&A strip
     .replace(/\s*\(\d+\s*mins?\)\s*\+.*$/i, "")
     // Remove complex event suffixes: "+ Live Recording of PPF Podcast...", "+ Panel hosted by..."

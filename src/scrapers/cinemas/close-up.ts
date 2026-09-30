@@ -13,6 +13,14 @@
  * - show_time is in format "YYYY-MM-DD HH:MM:SS" (24-hour, already parsed)
  * - blink contains the TicketSource booking URL
  * - film_url contains the internal film page path
+ *
+ * ⚠️ ACCESS: this site's Cloudflare protection is toggled on and off by the
+ * venue. When it is ON, every path returns 403 with `cf-mitigated: challenge`
+ * and an INTERACTIVE Turnstile ("Verify you are human") — which no fetch header
+ * shape and no stealth browser path in `utils/browser.ts` can clear. Measured ON
+ * 2026-06-12, OFF 2026-08-05, ON again 2026-08-09. A 403 here is therefore a
+ * real block, not a false negative: fail loudly and wait for it to flip back.
+ * Do NOT add a browser dependency or a paid proxy. See SCRAPING_PLAYBOOK.md.
  */
 
 import * as cheerio from "cheerio";
@@ -85,10 +93,30 @@ export class CloseUpCinemaScraper extends BaseScraper {
     const requiredFailures: string[] = [];
     const optionalFailures: string[] = [];
 
-    // Fetch the homepage first (has JSON data + immediate screenings)
+    // Fetch the homepage first (has JSON data + immediate screenings).
+    // A 403 here is load-bearing diagnostic information: it means Cloudflare's
+    // interactive Turnstile is switched back on, not that a burst tripped the
+    // WAF. Say so, or the next reader spends an hour re-deriving it (a bare
+    // "HTTP 403: Forbidden" was read as a transient blip twice: 2026-06-12 and
+    // 2026-08-09).
     const homepageUrl = this.config.baseUrl;
     console.log(`[${this.config.cinemaId}] Fetching homepage: ${homepageUrl}`);
-    const homepage = await this.fetchWithRetry(homepageUrl);
+    let homepage: string;
+    try {
+      homepage = await this.fetchWithRetry(homepageUrl);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (message.includes("403")) {
+        throw new Error(
+          `Close-Up homepage returned 403 on every attempt (${message}). This venue's Cloudflare ` +
+            `protection is toggled on and off; when ON it serves an INTERACTIVE Turnstile that no ` +
+            `header shape and no stealth browser path clears (re-verified 2026-08-09). Nothing to fix ` +
+            `in this scraper — it stays blocked until the venue flips it back off. Do NOT add a ` +
+            `browser dependency or a paid proxy. See SCRAPING_PLAYBOOK.md → "Close-Up Film Centre".`,
+        );
+      }
+      throw error;
+    }
     pages.push(homepage);
 
     // Fetch future weeks using the date search endpoint
@@ -138,20 +166,14 @@ export class CloseUpCinemaScraper extends BaseScraper {
     return pages;
   }
 
-  /**
-   * BaseScraper.healthCheck sends a UA-only GET, which this WAF 403s even
-   * when the real scrape succeeds (known false-negative pattern — same class
-   * as the 2026-05-27 incident). Reuse fetchUrl's full browser headers.
-   */
-  async healthCheck(): Promise<boolean> {
-    try {
-      await this.fetchWithRetry(this.config.baseUrl, 3, 4_000);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
+  // healthCheck() is deliberately NOT overridden (override removed 2026-08-09).
+  // Both halves of its old rationale are now false: BaseScraper.healthCheck
+  // sends fetchUrl's exact headers with the same 30s timeout, and a 403 here is
+  // a real block, not a false negative — the header shape never mattered, the
+  // Turnstile does. It also had nothing left to protect: the precheck in
+  // runner-factory is advisory-only and can no longer veto a scrape. All it
+  // bought was 3 doomed attempts and 12s of backoff on a 403 that base
+  // fast-fails in one request (measured 16.4s/3 requests → 0.2s/1 on 2026-08-09).
   protected async parsePages(htmlPages: string[]): Promise<RawScreening[]> {
     await FestivalDetector.preload();
     const screenings: RawScreening[] = [];

@@ -153,6 +153,50 @@ describe("breakerOutcomeFor (entry → breaker seam)", () => {
     breaker.record("a", outcome);
     expect(breaker.isTripped()).toBe(false);
   });
+
+  // The diff fails open (the venue keeps its data and is never retried), so
+  // "(client-side)" no longer reaches the breaker via a failed venue's `error`.
+  // Without these two, that fail-open silently removes the pool-starvation
+  // abort and a starved run grinds through all 71 venues writing partials.
+  it("counts a '(client-side)' diff failure on a SUCCESSFUL venue toward the breaker", () => {
+    const diffTimeout =
+      "generateScrapeDiff: cinema lookup (phoenix) timeout after 15000ms (client-side)";
+    const degraded = {
+      success: true,
+      totalScreeningsAdded: 16,
+      totalScreeningsUpdated: 104,
+      venueResults: [{ success: true, diffFailed: diffTimeout }],
+    };
+
+    // succeeded must be false or record() short-circuits and RESETS the counter.
+    expect(breakerOutcomeFor(degraded)).toEqual({
+      succeeded: false,
+      errors: [diffTimeout],
+    });
+
+    const breaker = createRunBreaker(3);
+    breaker.record("phoenix", breakerOutcomeFor(degraded));
+    breaker.record("rio-dalston", breakerOutcomeFor(degraded));
+    expect(breaker.isTripped()).toBe(false);
+    breaker.record("garden-cinema", breakerOutcomeFor(degraded));
+    expect(breaker.isTripped()).toBe(true);
+  });
+
+  it("does not let a non-infrastructure diff failure trip the breaker", () => {
+    const outcome = breakerOutcomeFor({
+      success: true,
+      totalScreeningsAdded: 16,
+      totalScreeningsUpdated: 104,
+      venueResults: [
+        { success: true, diffFailed: "Cannot read properties of undefined (reading 'filmTitle')" },
+      ],
+    });
+    expect(outcome).toEqual({ succeeded: true, errors: [] });
+
+    const breaker = createRunBreaker(1);
+    breaker.record("a", outcome);
+    expect(breaker.isTripped()).toBe(false);
+  });
 });
 
 describe("runWithConcurrency with a breaker", () => {

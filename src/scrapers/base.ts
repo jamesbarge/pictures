@@ -8,6 +8,7 @@ import { readFile } from "fs/promises";
 import { join } from "path";
 import type { RawScreening, ScraperConfig, CinemaScraper } from "./types";
 import { CHROME_USER_AGENT_FULL } from "./constants";
+import type { PreFilterReason, PreFilterReport } from "./utils/screening-accounting";
 
 /**
  * Runtime config overlay for AutoScrape experiments.
@@ -38,17 +39,38 @@ export abstract class BaseScraper implements CinemaScraper {
   protected configOverlay: ConfigOverlay | null = null;
 
   /**
+   * Pre-filter accounting for the most recent `scrape()`.
+   *
+   * `validate()` below drops candidates before the pipeline ever sees them, so
+   * without this the loss is invisible to every downstream report. Recorded
+   * here rather than returned so `scrape()` keeps its `RawScreening[]`
+   * signature and every existing caller and subclass is unaffected.
+   *
+   * Null until a scrape has run. Reset at the start of each scrape so a stale
+   * report from a previous run can never be attributed to this one.
+   */
+  private preFilterReport: PreFilterReport | null = null;
+  private fetchedPayloadCount: number | null = null;
+
+  /**
    * Main scrape method - template method pattern
    */
   async scrape(): Promise<RawScreening[]> {
     console.log(`[${this.config.cinemaId}] Starting scrape...`);
+    this.preFilterReport = null;
+    this.fetchedPayloadCount = null;
 
     try {
       await this.loadConfigOverlay();
       await this.initialize();
       const pages = await this.fetchPages();
+      this.fetchedPayloadCount = pages.length;
       const screenings = await this.parsePages(pages);
       const validated = this.validate(screenings);
+      // `validate()` is overridable and three subclasses call super and then
+      // filter further, so the report recorded inside the base implementation
+      // can describe a larger surviving set than the one actually returned.
+      this.reconcilePreFilterReport(validated.length);
       await this.cleanup();
 
       console.log(`[${this.config.cinemaId}] Found ${validated.length} valid screenings`);
@@ -57,6 +79,69 @@ export abstract class BaseScraper implements CinemaScraper {
       console.error(`[${this.config.cinemaId}] Scrape failed:`, error);
       throw error;
     }
+  }
+
+  /**
+   * Bring the pre-filter report into line with what `validate()` returned.
+   *
+   * `BaseScraper.validate` records its report from its own predicates, but the
+   * method is overridable: `nickel-v2.ts`, `genesis-v2.ts` and `lexi-v2.ts` all
+   * call `super.validate()` and then filter the result again. Nickel's override
+   * drops `MYSTERY MOVIE` titles, so a batch of one mystery screening reported
+   * `parsed: 1, accepted: 1, rejected: 0` while `scrape()` returned nothing and
+   * the pipeline accepted nothing — a conservation failure that was an
+   * accounting artefact rather than a real one.
+   *
+   * The surviving set is passed through untouched; only the counts move. The
+   * shortfall is attributed to `subclass_filter`, which names the fact honestly
+   * without the base class pretending to know the subclass's reason. An
+   * override that returns MORE than the base filter kept cannot be described by
+   * this report at all, so the report becomes unavailable rather than wrong.
+   */
+  private reconcilePreFilterReport(survivorCount: number): void {
+    const report = this.preFilterReport;
+    if (!report || report.accepted === survivorCount) return;
+
+    const droppedBySubclass = report.accepted - survivorCount;
+    if (droppedBySubclass < 0) {
+      console.warn(
+        `[${this.config.cinemaId}] validate() returned ${survivorCount} screenings, ` +
+          `more than the ${report.accepted} the base filter kept. Pre-filter counts ` +
+          `are unavailable for this run.`,
+      );
+      this.preFilterReport = null;
+      return;
+    }
+
+    this.preFilterReport = {
+      parsed: report.parsed,
+      accepted: survivorCount,
+      rejected: report.parsed - survivorCount,
+      byReason: { ...report.byReason, subclass_filter: droppedBySubclass },
+    };
+  }
+
+  /**
+   * Pre-filter counts from the last `scrape()`, or null if none has completed
+   * its validate step. Callers must treat null as "not measured", never as
+   * zero loss.
+   */
+  getPreFilterReport(): PreFilterReport | null {
+    return this.preFilterReport;
+  }
+
+  /**
+   * Payloads returned by the last `scrape()`'s `fetchPages()`, or null if not
+   * measured.
+   *
+   * A payload is one entry of the `string[]` that `fetchPages()` returns, which
+   * is **not** an HTTP request count: subclasses that hit a bundled JSON API,
+   * or that concatenate a paginated fetch before returning, make several calls
+   * per entry. Named for the unit it actually counts so no reader mistakes it
+   * for request volume.
+   */
+  getFetchedPayloadCount(): number | null {
+    return this.fetchedPayloadCount;
   }
 
   /**
@@ -80,39 +165,67 @@ export abstract class BaseScraper implements CinemaScraper {
   protected async cleanup(): Promise<void> {}
 
   /**
-   * Validate and filter screenings
+   * Validate and filter screenings.
+   *
+   * The predicates, their order and the surviving set are unchanged. The only
+   * addition is a tally of *why* each drop happened, recorded on the instance
+   * and read back by the runner via `getPreFilterReport()`. Every candidate is
+   * attributed to exactly one reason (the first that matches), so
+   * `parsed = accepted + rejected` holds by construction.
    */
   protected validate(screenings: RawScreening[]): RawScreening[] {
     const now = new Date();
     const seen = new Set<string>();
+    const byReason: Partial<Record<PreFilterReason, number>> = {};
+    const drop = (reason: PreFilterReason): false => {
+      byReason[reason] = (byReason[reason] ?? 0) + 1;
+      return false;
+    };
 
-    return screenings.filter((s) => {
+    const accepted = screenings.filter((s) => {
       // Must have title
       if (!s.filmTitle || s.filmTitle.trim() === "") {
-        return false;
+        return drop("missing_title");
       }
 
       // Must have valid datetime in the future
       if (!s.datetime || isNaN(s.datetime.getTime())) {
-        return false;
+        return drop("invalid_datetime");
       }
       if (s.datetime < now) {
-        return false;
+        return drop("past_screening");
       }
 
       // Must have booking URL
       if (!s.bookingUrl || s.bookingUrl.trim() === "") {
-        return false;
+        return drop("missing_booking_url");
       }
 
       // Deduplicate by sourceId
       if (s.sourceId && seen.has(s.sourceId)) {
-        return false;
+        return drop("duplicate_source_id");
       }
       if (s.sourceId) seen.add(s.sourceId);
 
       return true;
     });
+
+    this.preFilterReport = {
+      parsed: screenings.length,
+      accepted: accepted.length,
+      rejected: screenings.length - accepted.length,
+      byReason,
+    };
+
+    if (this.preFilterReport.rejected > 0) {
+      console.warn(
+        `[${this.config.cinemaId}] Pre-filter dropped ` +
+          `${this.preFilterReport.rejected} of ${screenings.length} parsed ` +
+          `screening(s): ${JSON.stringify(byReason)}`
+      );
+    }
+
+    return accepted;
   }
 
   /**
@@ -224,12 +337,27 @@ export abstract class BaseScraper implements CinemaScraper {
   /**
    * Health check — verify the website is accessible.
    *
+   * ADVISORY ONLY. The runner logs a failure and scrapes anyway
+   * (runner-factory.ts, runSingleVenue) — it must never be the reason a venue
+   * is skipped. It used to abort the scrape while being *stricter* than the
+   * work it gated: 10s and a UA-only GET against fetchUrl's 30s and full
+   * browser headers. Measured on 2026-08-05, Close-Up's homepage returns 200 in
+   * 1.9-6.5s sequentially but breaches 10s under the 4-way concurrency the
+   * nightly run uses, and header shape made no difference (UA-only, full
+   * headers and no UA all returned 200). So the timeout and headers below now
+   * match fetchUrl exactly — the precheck can no longer fail where the real
+   * request would succeed.
+   *
    * Retries with a short backoff: a single failing GET turned out to be the
    * root cause of the May 2026 Close-Up "33% failure rate" pattern. All 3
    * failures fell in the 03:17-03:21 UTC window and the site recovered within
-   * seconds — every other run that day succeeded. A brief retry rescues those
-   * cases without masking genuine outages: 3 attempts × 10s timeout × 4s gap
-   * caps total cost at ~38s per cinema, only on the unhealthy path.
+   * seconds — every other run that day succeeded. Worst case on the unhealthy
+   * path is 3 attempts × 30s timeout × 4s gap ≈ 98s, and that is paid at most
+   * ONCE per venue per run: runSingleVenue probes outside its retry loop, so a
+   * host that black-holes packets can no longer spend ~400s here and blow the
+   * venue wall-clock cap. The internal retry stays because runScraperForYield
+   * still treats a `false` as a hard veto, and a spurious veto there scores an
+   * AutoScrape candidate config at zero yield.
    *
    * Subclasses may still override to provide cheaper or different checks
    * (e.g. Curzon HEADs the API endpoint with a 401-is-healthy contract).
@@ -242,11 +370,15 @@ export abstract class BaseScraper implements CinemaScraper {
       try {
         const response = await fetch(this.config.baseUrl, {
           method: "GET",
+          // Same headers as fetchUrl: the gate must not be less browser-like
+          // than the request it gates.
           headers: {
             "User-Agent": CHROME_USER_AGENT_FULL,
+            Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-GB,en;q=0.9",
           },
           redirect: "follow",
-          signal: AbortSignal.timeout(10_000),
+          signal: AbortSignal.timeout(30_000),
         });
         if (response.ok) return true;
         // 4xx/5xx — only worth retrying transient 5xx; bail fast on 4xx

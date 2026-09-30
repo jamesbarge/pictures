@@ -291,3 +291,32 @@ describe("Admin Screenings API", () => {
     });
   });
 });
+
+/**
+ * Venue identity on the admin edit path.
+ *
+ * PUT validated `cinemaId` against the `cinemas` TABLE rather than the
+ * registry and then wrote the value verbatim, so while an orphan alias row
+ * exists (`nickel` alongside `the-nickel`, 2026-09-08 audit) an edit could
+ * move a screening onto the alias.
+ */
+describe("PUT canonicalises cinemaId", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(currentUser).mockResolvedValue({
+      emailAddresses: [
+        { emailAddress: "jdwbarge@gmail.com", verification: { status: "verified" } },
+      ],
+    } as never);
+    vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as never);
+    mockLimit.mockResolvedValue([{ id: "test-screening-id" }]);
+  });
+
+  it("stores the canonical ID when given a legacy alias", async () => {
+    await PUT(createRequest({ cinemaId: "nickel" }), createParams());
+
+    const setMock = (db as unknown as { set: ReturnType<typeof vi.fn> }).set;
+    expect(setMock).toHaveBeenCalled();
+    expect(setMock.mock.calls[0][0].cinemaId).toBe("the-nickel");
+  });
+});

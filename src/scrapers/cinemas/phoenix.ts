@@ -128,28 +128,70 @@ export class PhoenixScraper implements CinemaScraper {
             // For now, use a simpler approach: pair unique dates with times sequentially
 
             // Look for date-time groups. The live site renders one
-            // <li class="performance columns is-multiline"> per screening,
-            // each containing a `.date` span ("Mon 20 Jul"), a `.perf-time`
-            // span ("15:15") and a booking <a href="Booking?...">. `.performance`
-            // matches only those <li> rows (not `.programme-performances` /
-            // `.performances`, whose class tokens differ), giving clean triples.
+            // <li class="performance columns is-multiline"> per DATE — not per
+            // screening — and a date with two showings puts both inside it:
+            //   <span class="date column is-12">Sat 29 Aug</span>
+            //   <div class="column">
+            //     <span class="perf-time">17:30</span>
+            //     <a class="button booking" href="Booking?...TcsPerformance_604101...">
+            //     <span class="perf-time">20:00</span>
+            //     <a class="button booking" href="Booking?...TcsPerformance_604099...">
+            //   </div>
+            // `.performance` matches only those <li> rows (not
+            // `.programme-performances` / `.performances`, whose class tokens
+            // differ, nor the `day-has-performance` calendar cells).
             const dateTimeGroups = document.querySelectorAll('.performance, [class*="showtime"], [class*="session"], .performance-row, [class*="schedule"]');
 
             if (dateTimeGroups.length > 0) {
               // Parse structured groups
               dateTimeGroups.forEach(group => {
                 const dateEl = group.querySelector('[class*="date"]');
-                // Prefer the real showtime element (.perf-time = "15:15") over the
-                // booking button's inner .time span (which reads "Book Now").
-                const timeEl = group.querySelector('.perf-time') || group.querySelector('[class*="time"]');
-                if (dateEl && timeEl) {
-                  const date = dateEl.textContent?.trim() || '';
-                  const time = timeEl.textContent?.trim() || '';
-                  // link.href is the resolved absolute URL (includes /PhoenixCinemaLondon.dll/).
+                if (!dateEl) return;
+                const date = dateEl.textContent?.trim() || '';
+
+                // Walk EVERY .perf-time in the row, not just the first. Each one
+                // is followed by its own booking <a>, so pair a time with the
+                // next anchor sibling. Using querySelector('.perf-time') here
+                // (as this did until 2026-08-09) kept only the first showing of
+                // each day and silently dropped 10 of Phoenix's 66 published
+                // screenings — every second-and-later showtime on a busy date.
+                const timeEls = group.querySelectorAll('.perf-time');
+                if (timeEls.length > 0) {
+                  timeEls.forEach(timeEl => {
+                    // Stop at the next .perf-time as well as at the anchor. A
+                    // sold-out showing renders a "Sold out" span instead of its
+                    // own booking <a>, so an unbounded walk would run past the
+                    // following .perf-time and attach THAT showtime's ticket URL
+                    // to this one — sending the user to the wrong performance.
+                    // Better to store no bookingUrl than a confidently wrong one.
+                    let node: Element | null = timeEl.nextElementSibling;
+                    while (node && node.tagName !== 'A') {
+                      if (node.classList.contains('perf-time')) {
+                        node = null;
+                        break;
+                      }
+                      node = node.nextElementSibling;
+                    }
+                    results.push({
+                      date,
+                      time: timeEl.textContent?.trim() || '',
+                      // .href is the resolved absolute URL (includes /PhoenixCinemaLondon.dll/).
+                      bookingUrl: node ? (node as HTMLAnchorElement).href : undefined
+                    });
+                  });
+                  return;
+                }
+
+                // Fallback for the looser selectors above, which may use a
+                // different time class. Never matches the booking button's own
+                // .time span on this site, because that path needs .perf-time
+                // to be absent.
+                const timeEl = group.querySelector('[class*="time"]');
+                if (timeEl) {
                   const link = group.querySelector('a');
                   results.push({
                     date,
-                    time,
+                    time: timeEl.textContent?.trim() || '',
                     bookingUrl: link?.href
                   });
                 }

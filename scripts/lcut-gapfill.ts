@@ -48,9 +48,16 @@ const DEDUP_WINDOW_MS = 20 * 60 * 1000; // ±20 minutes
  * row must also dedup against IMAX).
  * Keys are normalized via normalizeVenueName (lowercase, emoji stripped).
  */
-const VENUE_MAP: Record<string, string[]> = {
+export const VENUE_MAP: Record<string, string[]> = {
   "prince charles cinema": ["prince-charles"],
   "british film institute": ["bfi-southbank", "bfi-imax"],
+  // Explicit names observed in the 2026-09-09 run. These have first-party
+  // scrapers, so the scheduled classifier monitors parity without inserting.
+  "bfi imax": ["bfi-imax"],
+  "genesis cinema": ["genesis"],
+  "bertha dochouse": ["bertha-dochouse"],
+  "coldharbour blue": ["coldharbour-blue"],
+  "peckhamplex": ["peckhamplex"],
   "institute of contemporary arts": ["ica"],
   "the garden cinema": ["garden"],
   "barbican centre": ["barbican"],
@@ -68,6 +75,11 @@ const VENUE_MAP: Record<string, string[]> = {
   "the horse hospital": ["horse-hospital"],
   "good shepherd studios": ["good-shepherd-studios"],
   "project loop": ["project-loop"],
+  "deptford cinema": ["deptford-cinema"],
+  "ibraaz": ["ibraaz"],
+  "metroland studios": ["metroland-studios"],
+  // L-CUT spells it "Set Social"; the venue's own styling is "SET Social".
+  "set social": ["set-social-peckham"],
 };
 
 export function normalizeVenueName(name: string): string {
@@ -330,6 +342,14 @@ export interface VenueParity {
   inserted: number;
   /** failed+rejected when this venue was executed. */
   failed: number;
+  /**
+   * Screenings that persisted but whose follow-up work failed (pipeline
+   * `postWriteFailures`). Kept out of `failed` because the rows landed, and
+   * reported because it must not vanish: before the accounting patch a
+   * festival-link failure propagated into the pipeline's film-level catch and
+   * arrived here inside `result.failed`.
+   */
+  postWriteFailures: number;
   /** True if the pipeline diff-check blocked the insert. */
   blocked: boolean;
 }
@@ -345,6 +365,11 @@ export interface LcutGapfillReport {
   totalMissing: number;
   totalInserted: number;
   totalFailed: number;
+  /**
+   * Screenings that persisted but whose follow-up work failed, summed across
+   * executed venues. Distinct from `totalFailed`: these rows are in the table.
+   */
+  totalPostWriteFailures: number;
 }
 
 export interface RunLcutGapfillOptions {
@@ -469,6 +494,7 @@ export async function runLcutGapfill(
       missingRows: missing,
       inserted: 0,
       failed: 0,
+      postWriteFailures: 0,
       blocked: false,
     });
   }
@@ -476,6 +502,7 @@ export async function runLcutGapfill(
 
   let totalInserted = 0;
   let totalFailed = 0;
+  let totalPostWriteFailures = 0;
   if (execute) {
     for (const v of venues) {
       if (v.missingRows.length === 0) continue;
@@ -491,9 +518,11 @@ export async function runLcutGapfill(
       });
       v.inserted = result.added + result.updated;
       v.failed = result.failed + result.rejected;
+      v.postWriteFailures = result.postWriteFailures;
       v.blocked = result.blocked;
       totalInserted += v.inserted;
       totalFailed += v.failed;
+      totalPostWriteFailures += v.postWriteFailures;
       if (result.blocked) {
         warn(`[lcut] ${v.venue} blocked by diff check — investigate manually`);
       }
@@ -509,6 +538,7 @@ export async function runLcutGapfill(
     totalMissing: venues.reduce((s, v) => s + v.missing, 0),
     totalInserted,
     totalFailed,
+    totalPostWriteFailures,
   };
 }
 
@@ -535,6 +565,78 @@ export function detectLcutRegressions(
     .filter((v) => scrapedIds.has(v.venue) && v.missing > threshold)
     .map((v) => ({ venue: v.venue, missing: v.missing, total: v.total, covered: v.covered }))
     .sort((a, b) => b.missing - a.missing);
+}
+
+/** The `/scrape` workflow's phase result for the L-CUT gap-fill phase. */
+export interface LcutPhaseOutcome {
+  ok: boolean;
+  warn: boolean;
+  detail: string;
+}
+
+/**
+ * Derive the /scrape phase result from a gap-fill report.
+ *
+ * `ok` is false whenever a supplementary write did not land. The phase used to
+ * hardcode `ok: true` and print `totalInserted` alone, so the 2026-09-08 run
+ * reported "98 inserted (source-only)" as a clean phase while two writes had
+ * dropped their screenings to foreign-key violations (metroland-studios,
+ * deptford-cinema, neither of which has a cinema row).
+ *
+ * Coverage regressions and unmapped L-CUT venue names stay warnings. The
+ * gap-fill itself did its job in both cases. Both are signals about our own
+ * scrapers and about VENUE_MAP.
+ *
+ * A batch blocked by the pipeline's diff check also fails the phase, because
+ * that branch returns `failed: rawScreenings.length` and runLcutGapfill never
+ * calls processScreenings with an empty batch. `VenueParity.blocked` itself
+ * stays unread here, so the detail says "failed/rejected" where "blocked"
+ * would read better.
+ *
+ * Counter caveat: `report.totalFailed` sums each venue's `result.failed +
+ * result.rejected` (see VenueParity.failed), so it mixes writes that threw with
+ * rows the screening validator refused, hence the "failed/rejected" label
+ * matching the CLI footer. In this path the mix is thin. runLcutGapfill already
+ * drops past screenings and anything before 09:00 London, and L-CUT rows carry
+ * `timeSource: "iso"` inside a 35-day horizon, so `past_screening`,
+ * `suspicious_time_early` and `too_far_future` cannot normally fire. What
+ * remains is `title_too_short` / `title_too_long` on a third-party feed we do
+ * not control, plus a past-screening race: `now` is captured before the execute
+ * loop, so the window is the loop's whole duration: seconds per venue for the
+ * diff and initFilmCache.
+ *
+ * `report.totalPostWriteFailures` fails the phase too, on the same reasoning
+ * rather than a new policy: until the accounting patch a festival-link failure
+ * propagated into the pipeline's film-level catch and landed in
+ * `result.failed`, so it already failed this phase. Counting it separately
+ * keeps the rows it wrote out of the loss column without making the failure
+ * itself disappear. L-CUT rows carry no `festivalSlug` today, so in this path
+ * the counter is structurally zero.
+ *
+ * Know the cost before leaning on that: one routine rejection now fails a
+ * 30-60 minute run, exits 1 and holds the checkpoint. shouldRunSupersededCleanup
+ * (src/scrapers/pipeline.ts) makes the opposite call for the same counter and
+ * says why. Splitting `VenueParity.failed` into `writeFailed` and `rejected`,
+ * gating `ok` on the former and folding the latter into `warn`, removes the
+ * caveat entirely. That is a product-policy call, deliberately left to the human.
+ */
+export function summarizeLcutPhase(
+  report: LcutGapfillReport,
+  regressions: RegressionSignal[],
+  threshold: number,
+): LcutPhaseOutcome {
+  const parts = [`${report.totalInserted} added/updated (source-only)`];
+  if (report.totalFailed > 0) parts.push(`${report.totalFailed} failed/rejected`);
+  if (report.totalPostWriteFailures > 0) {
+    parts.push(`${report.totalPostWriteFailures} post-write failure(s)`);
+  }
+  parts.push(`${regressions.length} scraped venue(s) >${threshold} missing`);
+  if (report.unmapped.length > 0) parts.push(`${report.unmapped.length} unmapped`);
+  return {
+    ok: report.totalFailed === 0 && report.totalPostWriteFailures === 0,
+    warn: regressions.length > 0 || report.unmapped.length > 0,
+    detail: parts.join(", "),
+  };
 }
 
 /** Render the per-venue coverage table as a printable string. */
@@ -610,7 +712,12 @@ async function main() {
   }
 
   console.log(
-    `\nDone. ${report.totalInserted} added/updated, ${report.totalFailed} failed/rejected.`,
+    `\nDone. ${report.totalInserted} added/updated, ${report.totalFailed} failed/rejected` +
+      (report.totalPostWriteFailures > 0
+        ? `, ${report.totalPostWriteFailures} post-write failure(s) ` +
+          `(screenings persisted, follow-up work did not)`
+        : "") +
+      `.`,
   );
   process.exit(0);
 }
