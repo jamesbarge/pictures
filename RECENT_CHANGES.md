@@ -1,3 +1,12 @@
+## 2026-08-26: Restore the pre-commit eslint hook
+**PR**: #747 | **Files**: `.husky/pre-commit`
+- `.husky/pre-commit` was tracked at mode `100644`, so git skipped it on every commit and printed `hook was ignored because it's not set as executable`. `lint-staged` is configured (`*.{ts,tsx}` -> `eslint --fix`) and both husky and lint-staged are installed, so the gate existed on paper and never ran for anyone who cloned the repo.
+- Mode changed to `100755` via `git update-index --chmod=+x`, which is the part that travels to other clones. A local `chmod` alone would have fixed only this machine.
+- Verified three ways: a staged `.ts` with an eslint error is rejected and HEAD stays put; a clean `.ts` commits; a conflicted merge resolved without `--no-verify` runs lint-staged and lands. (An earlier draft claimed only that the hook "runs", based on a commit that staged no `.ts` files and so never reached the stash path.)
+- Separately, a month-old stale `.git/refs/stash.lock` plus two dead `index.stash.<pid>.lock` files were making every `.ts` commit fail with the opaque `lint-staged failed due to a git error`. `git stash store` could not lock `refs/stash`. Removing the three locks fixed it; all 9 existing stashes verified intact. That is local repo state and ships with nobody, recorded because enabling a hook is when such a lock surfaces.
+
+---
+
 ## 2026-06-21: CI — pin git transport to HTTP/1.1 (defensive)
 **PR**: #745 | **Files**: `.github/workflows/test.yml`, `.github/workflows/social-outreach.yml`
 - Added a `git config --global http.version HTTP/1.1` step before checkout in every CI job that does a git op (unit-tests, e2e-tests, social-outreach). `git fetch/push` can hang on HTTP/2 on some networks; pinning HTTP/1.1 stops a raw git op from stalling and burning runner minutes.
