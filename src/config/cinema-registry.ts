@@ -365,7 +365,24 @@ const INDEPENDENT_CINEMAS: CinemaDefinition[] = [
     scraperType: "cheerio",
     scraperModule: "cinemas/rich-mix-v2",
     scraperFactory: "createRichMixScraperV2",
-    active: true,
+    // Deactivated 2026-09-20: Rich Mix paused its entire cinema programme on
+    // 2026-08-27 for an 18-month, £2.2m Arts Council-funded redevelopment and
+    // reopens the cinema in autumn 2027. The scraper is healthy — verified the
+    // same Spektrix endpoint still returns current non-film inventory (9 LIVE
+    // events forward), while film instances stop dead after 2026-08-27, and
+    // richmix.org.uk/cinema/ itself renders "There are no films coming soon".
+    // Left active it reported a CRITICAL yield drop (6.6 vs 67.6 baseline) on
+    // every run, which trains us to ignore the health report.
+    // What this flag now does, since scrape-all.ts also honours it: the venue
+    // drops out of BOTH the scrape roster and scraper-health. Until 2026-09-22
+    // it only reached the health check, so a deactivated venue kept being
+    // scraped nightly and kept writing scraper_runs rows that surfaced as
+    // zero-count anomalies.
+    // REVIEW 2026-08 to catch the reopening: flip back to true and confirm the
+    // Spektrix film instances have returned. Nothing re-checks this venue while
+    // it is false. The frontend map is unaffected (it reads the DB cinema row,
+    // not this flag).
+    active: false,
     features: ["arts-centre", "community", "accessible"],
     programmingFocus: ["world-cinema", "documentary", "arthouse"],
     description: "Arts centre with world cinema focus.",

@@ -145,3 +145,22 @@ export interface ChainScraper {
   /** Health check */
   healthCheck(): Promise<boolean>;
 }
+
+/**
+ * Suffix appended to every anti-bot-challenge rejection, and the only place this
+ * string is produced. Same discriminator pattern as DB_TIMEOUT_MARKER in
+ * src/db/index.ts: a message ending in it is always a venue-side WAF mitigation,
+ * never a scraper fault and never an infrastructure problem.
+ *
+ * Such a block clears on the venue's own schedule, so the correct response is to
+ * re-attempt the venue later rather than harder. `isChallengeError` in
+ * runner-factory.ts is the sole reader; scrape-all.ts uses it to queue a deferred
+ * retry. Deliberately NOT matched by `isConnectionError`: a challenge must not
+ * count toward the run circuit breaker, which exists for wedged DB connections
+ * and would otherwise skip every remaining scraper because one venue's WAF
+ * happened to be in a block.
+ *
+ * It lives here rather than in runner-factory so a scraper can throw it without
+ * importing the pipeline and db that runner-factory pulls in.
+ */
+export const SCRAPER_CHALLENGE_MARKER = "(anti-bot challenge)";
