@@ -171,6 +171,7 @@ async function main() {
             : null,
           tmdbRating: details.details.vote_average,
           tmdbPopularity: details.details.popularity,
+          tmdbVoteCount: details.details.vote_count,
           matchConfidence: tmdbMatch.confidence,
           matchStrategy: "auto-enrichment-upcoming",
           matchedAt: new Date(),

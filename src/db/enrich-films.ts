@@ -64,6 +64,7 @@ async function enrichFilms() {
             : film.backdropUrl,
           tmdbRating: details.details.vote_average,
           tmdbPopularity: details.details.popularity,
+          tmdbVoteCount: details.details.vote_count,
           updatedAt: new Date(),
         })
         .where(eq(films.id, film.id));

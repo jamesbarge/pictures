@@ -400,6 +400,7 @@ async function phase3TmdbMatch(
               : film.backdropUrl,
             tmdbRating: details.details.vote_average,
             tmdbPopularity: details.details.popularity,
+            tmdbVoteCount: details.details.vote_count,
             matchStrategy: "poster-audit-match",
             matchConfidence: match.confidence,
             matchedAt: new Date(),

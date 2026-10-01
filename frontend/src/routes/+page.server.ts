@@ -33,6 +33,21 @@ interface ScreeningsResponse {
 	meta: { total: number; startDate: string; endDate: string };
 }
 
+interface SleepersResponse {
+	/** London date "YYYY-MM-DD" -> that day's pick. */
+	picks: Record<
+		string,
+		{
+			filmId: string;
+			score: number;
+			letterboxdRating: number;
+			tmdbVoteCount: number;
+			source: 'precomputed' | 'fallback';
+		}
+	>;
+	meta: { from: string; to: string; algoVersion: number; fallbackCount: number };
+}
+
 export const load: PageServerLoad = async ({ fetch, setHeaders }) => {
 	setHeaders({ 'cache-control': 'public, s-maxage=3600, stale-while-revalidate=86400' });
 
@@ -41,10 +56,20 @@ export const load: PageServerLoad = async ({ fetch, setHeaders }) => {
 	// LCP path. Films further out are still reachable via /search and date filters.
 	const end = new Date();
 	end.setDate(end.getDate() + 14);
-	const data = await apiFetch<ScreeningsResponse>(
-		`/api/screenings?endDate=${end.toISOString()}`,
-		fetch
-	);
+
+	// THE SLEEPER rides along in parallel — one extra round trip on the LCP path
+	// would be a real cost, concurrency makes it free.
+	//
+	// The .catch is on the INDIVIDUAL promise, not around Promise.all:
+	// Promise.all rejects on first rejection, so an unguarded sleepers 500 would
+	// take the entire homepage to the error page over a decorative marker.
+	const [data, sleepers] = await Promise.all([
+		apiFetch<ScreeningsResponse>(`/api/screenings?endDate=${end.toISOString()}`, fetch),
+		apiFetch<SleepersResponse>('/api/sleepers?days=14', fetch).catch((err) => {
+			console.warn('[home] sleepers fetch failed; rendering without marker', err);
+			return null;
+		})
+	]);
 
 	return {
 		// The instant this payload was built. The page is ISR-cached, so the
@@ -52,6 +77,19 @@ export const load: PageServerLoad = async ({ fetch, setHeaders }) => {
 		// screenings against this value until hydration commits so the first
 		// client render matches the server's. See `$lib/hydration-clock`.
 		renderedAt: Date.now(),
+		// THE SLEEPER: London date -> filmId, covering the whole 14-day window
+		// rather than just today.
+		//
+		// Covering the window is what makes ISR staleness a non-issue by
+		// construction instead of by mitigation: HTML built at 23:30 (and served
+		// stale for up to a day) still holds the correct entry for whatever day
+		// the client resolves as first-visible, so nothing on the render path
+		// consults a clock. That matters specifically here — a server/client
+		// first-render divergence on this page previously stranded every card on
+		// the wrong poster (PR #736).
+		sleepers: Object.fromEntries(
+			Object.entries(sleepers?.picks ?? {}).map(([date, pick]) => [date, pick.filmId])
+		) as Record<string, string>,
 		screenings: data.screenings.map((s) => ({
 			id: s.id,
 			datetime: s.datetime,

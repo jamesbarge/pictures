@@ -27,6 +27,9 @@ export * from "./health-snapshots";
 // BFI import run tracking
 export * from "./bfi-import-runs";
 
+// THE SLEEPER — one acclaimed-but-under-seen repertory film per London day
+export * from "./daily-picks";
+
 // Append-only audit log for enrichment corrections (replaces
 // self-modifying .claude/data-check-learnings.json — see
 // Pictures/Research/scraping-rethink-2026-05/06-enrichment.md)

@@ -328,6 +328,7 @@ async function executeUpdate(action: UpdateAction): Promise<void> {
       decade: guardedYear ? getDecade(guardedYear) : null,
       tmdbRating: details.details.vote_average,
       tmdbPopularity: details.details.popularity,
+      tmdbVoteCount: details.details.vote_count,
       // Audit trail + Letterboxd anchor, consistent with the pipeline path.
       letterboxdUrl: `https://letterboxd.com/tmdb/${action.tmdbId}`,
       matchConfidence: action.confidence,

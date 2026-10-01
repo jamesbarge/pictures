@@ -72,6 +72,10 @@ export const films = pgTable("films", {
   // External ratings
   tmdbRating: real("tmdb_rating"),
   tmdbPopularity: real("tmdb_popularity"),
+  // Cumulative TMDB vote count — the obscurity signal for THE SLEEPER.
+  // Distinct from tmdbPopularity, which is a decaying trending score and so
+  // cannot tell an under-seen classic apart from a forgotten dud.
+  tmdbVoteCount: integer("tmdb_vote_count"),
   letterboxdUrl: text("letterboxd_url"),
   letterboxdRating: real("letterboxd_rating"), // 0-5 scale
   // Letterboxd's canonical film slug (e.g. "nighthawks-1978"). Highest-trust

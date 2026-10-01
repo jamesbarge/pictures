@@ -178,6 +178,7 @@ async function cleanup() {
             decade: match.year ? getDecade(match.year) : film.decade,
             tmdbRating: details.details.vote_average,
             tmdbPopularity: details.details.popularity,
+            tmdbVoteCount: details.details.vote_count,
             updatedAt: new Date(),
           })
           .where(eq(films.id, film.id));

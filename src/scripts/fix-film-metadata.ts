@@ -27,6 +27,7 @@ interface TMDBMovie {
   poster_path: string | null;
   backdrop_path: string | null;
   vote_average: number;
+  vote_count: number;
   popularity: number;
   genres: Array<{ id: number; name: string }>;
   production_countries: Array<{ iso_3166_1: string; name: string }>;
@@ -89,6 +90,7 @@ async function fetchAndUpdateFilm(
       backdrop_url = ${backdropUrl},
       tmdb_rating = ${data.vote_average},
       tmdb_popularity = ${data.popularity},
+      tmdb_vote_count = ${data.vote_count},
       updated_at = NOW()
     WHERE tmdb_id = ${tmdbId}
   `;

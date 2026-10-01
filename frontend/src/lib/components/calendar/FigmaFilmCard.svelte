@@ -8,7 +8,8 @@
 		screenings,
 		now,
 		maxScreenings = 3,
-		priority = false
+		priority = false,
+		sleeper = false
 	}: {
 		film: CardFilm;
 		screenings: CardScreening[];
@@ -22,6 +23,19 @@
 		now: number;
 		maxScreenings?: number;
 		priority?: boolean;
+		/**
+		 * THE SLEEPER marker — one acclaimed-but-under-seen repertory film per
+		 * London day.
+		 *
+		 * A per-(day, film) render decision supplied by the parent, exactly like
+		 * `priority`, and deliberately NOT a field on `CardFilm`: the same film
+		 * is the sleeper on one day and not on another, and `CardFilm` is shared
+		 * by three components.
+		 *
+		 * Must never be derived from a clock on this side — it comes from the
+		 * server payload. See the note on `now` above.
+		 */
+		sleeper?: boolean;
 	} = $props();
 
 	const upcoming = $derived.by(() =>
@@ -70,7 +84,19 @@
 	}
 </script>
 
-<article class="card" aria-label={film.title}>
+<!--
+	The SLEEPER explanation lives on the <article>, not inside .rail. `.poster-row`
+	is an <a> whose accessible name is computed from its subtree, so an sr-only
+	string in the rail would append to the LINK name and read as
+	"1975 KUBRICK THE SLEEPER HIGHLY RATED RARELY SEEN". Hoisting it here keeps
+	link names clean and states it once, in the right place.
+	No numeral in the wording: ratings are deliberately spoiler-gated product-wide
+	(see LetterboxdRatingReveal.svelte) and the marker must not leak one.
+-->
+<article
+	class="card"
+	aria-label={sleeper ? `${film.title} — The Sleeper: highly rated, rarely seen` : film.title}
+>
 	<a href="/film/{film.id}" class="poster-row">
 		<div class="poster">
 			{#if film.posterUrl}
@@ -99,6 +125,26 @@
 			{#each distinctFormats as fmt (fmt)}
 				<div class="rail-cell rail-format">{fmt}</div>
 			{/each}
+			{#if sleeper}
+				<!-- A <div>, not an <a> like .more-rail: .rail already sits inside
+				     <a class="poster-row"> and nested anchors are invalid HTML. -->
+				<!--
+					aria-hidden on the CELL, not just the text. `.rail` sits inside
+					<a class="poster-row">, whose accessible name is computed from its
+					subtree — and name-from-content can fall back to a `title` on an
+					otherwise-empty element, which would append this sentence to the
+					LINK's name. That is the exact leak the article-level aria-label
+					exists to avoid. Hiding the cell keeps `title` as a pointer-only
+					affordance; AT users get the explanation once, on the <article>.
+				-->
+				<div
+					class="rail-cell rail-sleeper"
+					aria-hidden="true"
+					title="The Sleeper — highly rated, rarely seen. One pick per day."
+				>
+					<span class="rail-sleeper-text">THE SLEEPER</span>
+				</div>
+			{/if}
 		</div>
 	</a>
 
@@ -246,6 +292,67 @@
 		font-weight: 300;
 		font-size: 14px;
 		letter-spacing: 0;
+	}
+
+	/* ── THE SLEEPER ──────────────────────────────────────────────────────────
+	   Bottom-anchored inverted block filling the dead space below the
+	   year/director/format cells. The rail is 396px tall (it stretches to the
+	   poster) while those cells sum to at most ~130px, so `margin-top: auto`
+	   consumes slack ONLY: card width and height are unchanged, and
+	   `fitToFirstRow` in +page.svelte — which measures `:scope > .card` to align
+	   the black day bar with the card row — is therefore undisturbed.
+
+	   Colours are hardcoded hex, matching `.day-header` in +page.svelte, and
+	   deliberately NOT tokenised the way `.more-rail` below is. Every inverting
+	   token pair collapses somewhere:
+	     - var(--color-text) on var(--color-cream) is cream-on-cream under
+	       [data-theme="dark"], where both resolve to #eae5c2;
+	     - the DimmerDial lerps --color-text toward cream but leaves
+	       --color-cream fixed, ending at ~1.05:1 contrast;
+	     - --color-screening-bg/-text invert together and so cross at t≈0.5.
+	   `.more-rail` has this bug today; do not copy it. */
+	.rail-sleeper {
+		margin-top: auto;
+		align-items: center;
+		justify-content: center;
+		padding: 10px 4px;
+		background: #1f1f1f;
+		color: #eae5c2;
+		border-top: 1px solid var(--color-border);
+		border-bottom: none;
+	}
+
+	.rail-sleeper-text {
+		/* Reads bottom-to-top, the same construction as .more-count/.more-label
+		   below — already proven on WebKit, which the mobile suite runs. */
+		writing-mode: vertical-rl;
+		transform: rotate(180deg);
+		font-family: var(--font-sans);
+		font-weight: 700;
+		font-size: 12px;
+		line-height: 1;
+		letter-spacing: 0.14em;
+		text-transform: uppercase;
+		white-space: nowrap;
+	}
+
+	/* Dark theme sets a #1a1a1a page surface, against which a #1f1f1f block
+	   reads as a hole rather than a mark. Flip the pair so it stays a block. */
+	:global([data-theme='dark']) .rail-sleeper {
+		background: #eae5c2;
+		color: #1f1f1f;
+	}
+
+	/* Very narrow viewports: the poster (and so the rail) gets short enough
+	   that 120px of vertical type crowds the cells above. Tighten, never clip. */
+	@media (max-width: 359px) {
+		.rail-sleeper {
+			padding: 6px 4px;
+		}
+		.rail-sleeper-text {
+			font-size: 10px;
+			letter-spacing: 0.08em;
+		}
 	}
 
 	/* Title */
