@@ -24,7 +24,8 @@ import { cinemas } from "@/db/schema/cinemas";
 import { screenings } from "@/db/schema/screenings";
 import { sendTelegramAlert } from "@/lib/telegram";
 import { stampProgress } from "@/lib/scrape-progress";
-import { runScraper, isConnectionError } from "@/scrapers/runner-factory";
+import { runScraper, isConnectionError, isChallengeError } from "@/scrapers/runner-factory";
+import { getCinemaById } from "@/config/cinema-registry";
 import {
   SCRAPER_REGISTRY,
   type ScraperRegistryEntry,
@@ -95,7 +96,24 @@ interface WaveSummary {
   succeeded: number;
   failed: number;
   total: number;
+  /**
+   * Free text for rows that are a correction rather than a wave. The challenge
+   * retry reports through this with zero counts, so it cannot inflate the
+   * venue arithmetic while still appearing in the digest.
+   */
+  note?: string;
 }
+
+/**
+ * Concurrency ceiling shared by every scrape wave.
+ *
+ * `DB_POOL_MAX` must be sized ABOVE this (see src/db/index.ts): postgres-js
+ * allocates exactly `max` Connection objects up front and a wedged conn holds
+ * its slot for minutes, so a pool merely equal to this leaves no headroom.
+ * Kept as one constant because the two call sites previously repeated `4` as a
+ * literal with nothing tying it to the pool size.
+ */
+const WAVE_CONCURRENCY = 4;
 
 /**
  * Open every pool slot with a trivial query before wave 1 starts.
@@ -115,6 +133,16 @@ interface WaveSummary {
  */
 async function warmConnectionPool(): Promise<void> {
   const slots = Math.max(1, Number(process.env.DB_POOL_MAX ?? 1));
+  if (slots <= WAVE_CONCURRENCY) {
+    console.warn(
+      `[scrape-all] DB_POOL_MAX=${slots} leaves no headroom above wave concurrency ` +
+        `${WAVE_CONCURRENCY}. Venues then queue on connection acquisition and can blow ` +
+        `their wall-clock cap; isConnectionError counts a cap expiry as a connection ` +
+        `failure, so three of them trip the run breaker and every remaining scraper is ` +
+        `skipped without being attempted. Measured 2026-09-20: 25 of 31 venues lost, ` +
+        `electric 852s -> 6.4s once the pool was raised. Set DB_POOL_MAX=8 in .env.local.`,
+    );
+  }
   const startedAt = Date.now();
   try {
     await Promise.all(Array.from({ length: slots }, () => db.execute(sql`select 1`)));
@@ -402,7 +430,17 @@ async function runScraperEntry(
         console.warn(`[scrape-all] onEntryComplete(${taskId}) failed:`, err);
       }
     }
-    return { succeeded: result.success };
+    // Surface the per-venue error text. `runScraper` never throws for a scrape
+    // failure — every error, including wall-clock-cap timeouts, is folded into
+    // venueResults — so without this the caller only ever sees the generic
+    // "scraper returned success=false" and cannot tell an anti-bot challenge
+    // from a parser fault. Joined rather than first-only so a chain with one
+    // blocked venue among healthy siblings still reports the block.
+    const venueErrors = result.venueResults
+      .filter((v) => !v.success && v.error)
+      .map((v) => v.error)
+      .join("; ");
+    return { succeeded: result.success, error: venueErrors || undefined };
   } catch (err) {
     const ms = Date.now() - startedAt.getTime();
     const message = err instanceof Error ? err.message : String(err);
@@ -509,6 +547,40 @@ function entryScreeningCount(
   return lowest === Number.POSITIVE_INFINITY ? 0 : lowest;
 }
 
+/**
+ * True when every venue a registry entry would scrape is deactivated in the
+ * cinema registry.
+ *
+ * Chains already honour the flag — `buildChainConfig` resolves venues through
+ * `getActiveCinemasByChain` (src/scrapers/utils/venue-from-registry.ts), which
+ * is why an inactive Everyman venue drops out without disabling the chain. The
+ * single- and multi-venue paths call `getVenueFromRegistry`, which does not
+ * filter, so `active: false` on one of those venues previously stopped only the
+ * health check while the nightly scrape kept running and kept writing
+ * `scraper_runs` rows that surface as zero-count anomalies.
+ *
+ * Chain entries are never skipped here: they self-filter per venue, and one
+ * deactivated venue must not silence its healthy siblings.
+ */
+function entryIsFullyDeactivated(entry: ScraperRegistryEntry): boolean {
+  if (entry.type === "chain") return false;
+  try {
+    const config = entry.buildConfig();
+    const venues =
+      config.type === "single"
+        ? [config.venue]
+        : config.type === "multi"
+          ? config.venues
+          : [];
+    if (venues.length === 0) return false;
+    return venues.every((v) => getCinemaById(v.id)?.active === false);
+  } catch {
+    // A config that cannot be built is a separate failure worth surfacing in
+    // the run itself; never let it silently drop a venue from the roster.
+    return false;
+  }
+}
+
 /** Human-readable digest labels per registry wave. */
 const WAVE_LABELS: Record<ScraperWave, string> = {
   chain: "Chains",
@@ -533,6 +605,7 @@ async function runWaves(
   countMap: ScreeningCountMap,
   breaker: RunBreaker,
   options: ScrapeAllOptions = {},
+  challengeQueue?: ChallengedEntry[],
 ): Promise<WaveSummary[]> {
   const byWave = (w: ScraperWave) => SCRAPER_REGISTRY.filter((e) => e.wave === w);
   if (breaker.isTripped()) {
@@ -547,7 +620,16 @@ async function runWaves(
   // Resume support: entries that already succeeded in the checkpointed run
   // are counted as pre-succeeded (so digest math stays honest) and not re-run.
   const skipSet = new Set(options.skipTaskIds ?? []);
-  const allEntries = waves.flatMap(byWave);
+  const allEntriesIncludingInactive = waves.flatMap(byWave);
+  const deactivated = allEntriesIncludingInactive.filter(entryIsFullyDeactivated);
+  if (deactivated.length > 0) {
+    console.log(
+      `[scrape-all] ${poolLabel}: skipped (deactivated in cinema registry) — ` +
+        deactivated.map((e) => e.taskId.replace(/^scraper-/, "")).join(", "),
+    );
+  }
+  const deactivatedIds = new Set(deactivated.map((e) => e.taskId));
+  const allEntries = allEntriesIncludingInactive.filter((e) => !deactivatedIds.has(e.taskId));
   const resumeSkipped = allEntries.filter((e) => skipSet.has(e.taskId.replace(/^scraper-/, "")));
   if (resumeSkipped.length > 0) {
     console.log(
@@ -605,14 +687,135 @@ async function runWaves(
             : String(result.reason)
           : (result.value.error ?? "scraper returned success=false");
       console.log(`[scrape-all] ${WAVE_LABELS[wave]} FAILED: ${taskId} — ${reason}`);
+      // An anti-bot block clears on the venue's schedule, so this one failure
+      // class is worth re-attempting later in the same run.
+      if (challengeQueue && isChallengeError(reason)) {
+        challengeQueue.push({ entry: entries[i], failedAt: Date.now() });
+      }
     }
   }
 
   return waves.map((w) => {
     const { succeeded, failed } = tally.get(w)!;
     console.log(`[scrape-all] ${WAVE_LABELS[w]}: ${succeeded} succeeded, ${failed} failed`);
-    return { label: WAVE_LABELS[w], succeeded, failed, total: byWave(w).length };
+    return {
+      label: WAVE_LABELS[w],
+      succeeded,
+      failed,
+      total: byWave(w).filter((e) => !deactivatedIds.has(e.taskId)).length,
+    };
   });
+}
+
+/**
+ * A venue that failed because its anti-bot protection was in an active block.
+ * `failedAt` is when the failure landed, so the deferred retry can measure the
+ * wait from the block itself rather than from the end of the run.
+ */
+interface ChallengedEntry {
+  entry: ScraperRegistryEntry;
+  failedAt: number;
+}
+
+/**
+ * How long a venue's anti-bot block must have been given to clear before we
+ * re-attempt it. Measured on Close-Up 2026-09-20/21: blocks ran ~19 minutes
+ * (16:41-16:59 UTC, 57 consecutive 403s) and ~27 minutes (09:33-09:59, 53
+ * consecutive 403s), each clearing on its own without any change to our
+ * request. 20 minutes is past the shorter block and most of the longer one.
+ */
+const CHALLENGE_RETRY_DELAY_MS = 20 * 60_000;
+
+/**
+ * Ceiling on how long the retry phase will sit waiting for that delay to
+ * elapse. The scrape waves normally take ~20 minutes, so a venue blocked early
+ * has usually already served its wait by the time the waves finish and this
+ * sleeps for nothing. The cap stops a fast run (resume, or `--only`) from
+ * stalling on a single venue.
+ */
+const CHALLENGE_RETRY_MAX_WAIT_MS = 8 * 60_000;
+
+/**
+ * Re-attempt venues whose scrape failed on an anti-bot challenge, once, after
+ * the block has had time to clear.
+ *
+ * Why this exists: a challenge is the one failure class where the identical
+ * request succeeds later untouched. Close-Up failed on all three recorded
+ * nights (2026-09-08, 09-09, 09-20) purely because the nightly run landed
+ * inside a block; a retry 20-30 minutes later would have collected it every
+ * time. Retrying *harder* is useless and counterproductive — the pre-fix
+ * scraper fired 13 requests over 79s into a live mitigation and none could
+ * have succeeded.
+ *
+ * Deliberately one attempt: if the block outlasts a 20-minute wait, a second
+ * wait costs the run more than the venue is worth, and the next scheduled run
+ * will pick it up.
+ */
+async function retryChallengedVenues(
+  queue: ChallengedEntry[],
+  waveSummaries: WaveSummary[],
+  breaker: RunBreaker,
+  options: ScrapeAllOptions = {},
+): Promise<WaveSummary | null> {
+  if (queue.length === 0) return null;
+
+  const names = queue.map((q) => q.entry.taskId.replace(/^scraper-/, "")).join(", ");
+  if (breaker.isTripped()) {
+    console.log(`[scrape-all] Challenge retry: skipped (circuit breaker tripped) — ${names}`);
+    return { label: "Challenge retry", succeeded: 0, failed: 0, total: 0, note: `skipped, ${queue.length} left blocked` };
+  }
+
+  // Wait only for the venue that was blocked most recently; everything queued
+  // earlier has already served a longer wait.
+  const newestFailure = Math.max(...queue.map((q) => q.failedAt));
+  const elapsed = Date.now() - newestFailure;
+  const remaining = Math.min(CHALLENGE_RETRY_DELAY_MS - elapsed, CHALLENGE_RETRY_MAX_WAIT_MS);
+  if (remaining > 0) {
+    console.log(
+      `[scrape-all] Challenge retry: waiting ${Math.round(remaining / 60_000)}min for ` +
+        `anti-bot block(s) to clear — ${names}`,
+    );
+    await new Promise((resolve) => setTimeout(resolve, remaining));
+  } else {
+    console.log(
+      `[scrape-all] Challenge retry: ${Math.round(elapsed / 60_000)}min already elapsed since ` +
+        `the block — retrying now: ${names}`,
+    );
+  }
+
+  let succeeded = 0;
+  let failed = 0;
+  const tasks = queue.map(
+    ({ entry }) =>
+      () =>
+        runScraperEntry(entry, "Challenge retry", breaker, options.onEntryComplete),
+  );
+  const settled = await runWithConcurrency(tasks, WAVE_CONCURRENCY, breaker.isTripped);
+  for (let i = 0; i < settled.length; i++) {
+    const result = settled[i];
+    const { entry } = queue[i];
+    const name = entry.taskId.replace(/^scraper-/, "");
+    if (result.status === "fulfilled" && result.value.succeeded) {
+      succeeded++;
+      // Correct the wave that already counted this venue as failed, rather
+      // than reporting a recovery as an extra success. Counting it in both
+      // places would make a 31-venue run read "30 succeeded, 2 failed" across
+      // 32 slots.
+      const original = waveSummaries.find((w) => w.label === WAVE_LABELS[entry.wave]);
+      if (original && original.failed > 0) {
+        original.failed--;
+        original.succeeded++;
+      }
+      console.log(`[scrape-all] Challenge retry: ${name} RECOVERED`);
+    } else {
+      failed++;
+      console.log(`[scrape-all] Challenge retry: ${name} still blocked`);
+    }
+  }
+  console.log(`[scrape-all] Challenge retry: ${succeeded} recovered, ${failed} still blocked`);
+  // total: 0 keeps this row out of the venue-count arithmetic — it is a
+  // correction to the waves above, not a wave of its own.
+  return { label: "Challenge retry", succeeded: 0, failed: 0, total: 0, note: `${succeeded} recovered, ${failed} still blocked` };
 }
 
 /** Run the enrichment wave: Letterboxd ratings + (best-effort) other tasks. */
@@ -714,10 +917,22 @@ export async function runScrapeAll(options: ScrapeAllOptions = {}): Promise<Scra
     loadScreeningCountMap(),
   ]);
 
+  // Venues knocked out by an anti-bot block, re-attempted once after the waves.
+  const challengeQueue: ChallengedEntry[] = [];
+
   // Wave 1: Chain scrapers (3 — fully parallel). Kept as their own pool:
   // chains are multi-venue giants with scaled wall-clock caps.
   waveSummaries.push(
-    ...(await runWaves(["chain"], "Chains", 4, freshness, countMap, breaker, options)),
+    ...(await runWaves(
+      ["chain"],
+      "Chains",
+      WAVE_CONCURRENCY,
+      freshness,
+      countMap,
+      breaker,
+      options,
+      challengeQueue,
+    )),
   );
 
   // Waves 2+3: Playwright (7) + Cheerio/API (20) independents share ONE pool
@@ -728,13 +943,19 @@ export async function runScrapeAll(options: ScrapeAllOptions = {}): Promise<Scra
     ...(await runWaves(
       ["playwright", "cheerio"],
       "Independents (Playwright + Cheerio)",
-      4,
+      WAVE_CONCURRENCY,
       freshness,
       countMap,
       breaker,
       options,
+      challengeQueue,
     )),
   );
+
+  // Deferred retry BEFORE enrichment, so anything recovered here still gets
+  // its Letterboxd pass in this run rather than waiting a week.
+  const challengeSummary = await retryChallengedVenues(challengeQueue, waveSummaries, breaker, options);
+  if (challengeSummary) waveSummaries.push(challengeSummary);
 
   // Wave 4: Post-scrape enrichment (Letterboxd ratings). Skipped when the
   // breaker tripped — enrichment would only hammer the same wedged DB.
@@ -749,8 +970,10 @@ export async function runScrapeAll(options: ScrapeAllOptions = {}): Promise<Scra
   const totalFailed = waveSummaries.reduce((s, w) => s + w.failed, 0);
   const durationMin = Math.round((Date.now() - startTime) / 60_000);
 
-  const summaryLines = waveSummaries.map(
-    (w) => `${w.label}: ${w.succeeded}/${w.total} OK${w.failed > 0 ? ` (${w.failed} failed)` : ""}`,
+  const summaryLines = waveSummaries.map((w) =>
+    w.note !== undefined
+      ? `${w.label}: ${w.note}`
+      : `${w.label}: ${w.succeeded}/${w.total} OK${w.failed > 0 ? ` (${w.failed} failed)` : ""}`,
   );
 
   // Pull anomaly/failure/zero-count signal from this run window
