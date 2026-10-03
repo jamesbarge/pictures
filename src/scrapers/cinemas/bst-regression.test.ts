@@ -35,9 +35,7 @@ import { CloseUpCinemaScraper } from "./close-up";
 
 type PrivDate = { parseDateTime: (s: string) => Date | null };
 type PrivBFI = { parseBFIDateTime: (s: string) => Date | null };
-type PrivPhoenix = {
-  parseShowtime: (date: string, time: string, year: number, now: Date) => Date | null;
-};
+type PrivPhoenix = { parsePages: (pages: string[]) => Promise<Array<{ datetime: Date }>> };
 type PrivOlympic = { parsePages: (pages: string[]) => Promise<Array<{ datetime: Date }>> };
 type PrivDavidLean = {
   parseDateTime: (day: string, month: string, time: string, year: number) => Date | null;
@@ -114,13 +112,27 @@ describe("BST regression: BFI parseBFIDateTime", () => {
   });
 });
 
-describe("BST regression: Phoenix parseShowtime", () => {
+describe("BST regression: Phoenix parsePages", () => {
   const scraper = new PhoenixScraper() as unknown as PrivPhoenix;
 
-  it("keeps the screening date and converts the UK-local time to UTC", () => {
-    const now = new Date("2026-06-01T12:00:00.000Z");
-    expect(scraper.parseShowtime("Tue 14 Jul", "18:10", 2026, now)?.toISOString())
-      .toBe("2026-07-14T17:10:00.000Z");
+  it("keeps the screening date and converts the UK-local time to UTC", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-01T12:00:00.000Z"));
+
+    const events = {
+      Events: [
+        {
+          ID: 1,
+          Title: "Example Film",
+          Performances: [{ StartDate: "2026-07-14", StartTime: "1810", URL: "Booking?x=1" }],
+        },
+      ],
+    };
+    const [screening] = await scraper.parsePages([
+      `<script>var Events = ${JSON.stringify(events)};</script>`,
+    ]);
+
+    expect(screening.datetime.toISOString()).toBe("2026-07-14T17:10:00.000Z");
   });
 });
 

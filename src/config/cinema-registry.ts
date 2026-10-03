@@ -307,7 +307,7 @@ const INDEPENDENT_CINEMAS: CinemaDefinition[] = [
     coordinates: { lat: 51.5871, lng: -0.1642 },
     screens: 2,
     chain: null,
-    scraperType: "playwright",
+    scraperType: "cheerio",
     scraperModule: "cinemas/phoenix",
     scraperFactory: "createPhoenixScraper",
     active: true,
