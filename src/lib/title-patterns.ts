@@ -263,6 +263,14 @@ function intToRoman(value: number): string {
 /** Trailing bracketed decoration: "(4K Restoration)", "[35mm]", "(BIA)". */
 const TRAILING_BRACKET = /\s*[([{][^([{)\]}]*[)\]}]\s*$/;
 
+/**
+ * Trailing festival or organiser tag after a dash: "Shorts Block 3 - LIFF",
+ * "… UK Theatrical Premiere - TFFF". Upper-case letters only, so ordinary words
+ * ("Mockingjay - Part 2", "PRIVATE HIRE - 1 HOUR") never read as a tag; a tag
+ * that is itself an instalment numeral ("Rocky - IV") is kept by the caller.
+ */
+const TRAILING_TAG = /\s+[-–—]\s+([A-Z]{2,6})$/;
+
 /** A trailing explicit date — "07/10/2026", "31/10" — is not an instalment. */
 const TRAILING_DATE = /\d{1,4}[/.]\d{1,2}(?:[/.]\d{2,4})?\s*$/;
 
@@ -287,6 +295,10 @@ const TRAILING_SEPARATORS = /[\s\-–—:,.]+$/;
  * Deliberately conservative about what counts as a marker:
  *   - Trailing bracketed decoration is stripped first, so "Toy Story 5 (BIA)"
  *     and "Sing 2 (Sing-Along)" still read as instalments 5 and 2.
+ *   - So is a trailing upper-case festival tag. Genesis lists festival titles
+ *     as "Shorts Block 3 - LIFF"; with the tag read as the last token, every
+ *     block carried no number, and the 2026-10-03 run merged Shorts Blocks 2-12
+ *     into one "Shorts Block 11 - LIFF" film at 78-83%.
  *   - A four-digit year in range is part of the name: "Blade Runner 2049",
  *     "1917" and "2046" carry NO marker, so decoration differences still match.
  *   - A trailing date carries no marker, so the run's "Baby Comptines
@@ -328,11 +340,16 @@ type TrailingNumber = { value: number; kind: "instalment" | "name-number" };
 
 function readTrailingNumber(title: string): TrailingNumber | null {
   let base = title.trim();
-  // Peel every trailing bracketed group, not just the last one.
+  // Peel every trailing bracketed group and festival tag, not just the last
+  // one: "Sessions (London Premiere) - LIFF" carries both.
   let previous: string;
   do {
     previous = base;
     base = base.replace(TRAILING_BRACKET, "").trim();
+    const tag = base.match(TRAILING_TAG);
+    if (tag && instalmentRoman(tag[1]) === null) {
+      base = base.slice(0, tag.index).trim();
+    }
   } while (base !== previous);
 
   if (TRAILING_DATE.test(base)) return null;
@@ -363,10 +380,8 @@ function readTrailingNumber(title: string): TrailingNumber | null {
   }
 
   if (/^[IVXLCDMivxlcdm]+$/.test(token)) {
-    const parsed = romanToInt(token);
-    if (parsed === null || parsed < 1 || parsed > MAX_INSTALMENT) return null;
-    if (intToRoman(parsed) !== token.toUpperCase()) return null;
-    return { value: parsed, kind: "instalment" };
+    const parsed = instalmentRoman(token);
+    return parsed === null ? null : { value: parsed, kind: "instalment" };
   }
 
   if (instalmentWord) {
@@ -376,6 +391,18 @@ function readTrailingNumber(title: string): TrailingNumber | null {
   }
 
   return null;
+}
+
+/**
+ * The instalment a Roman-numeral token names, or null when it is not one.
+ * The numeral must round-trip canonically and land at or below MAX_INSTALMENT,
+ * which keeps letter runs like "MIX" (1009) and "LIV" (54) out.
+ */
+function instalmentRoman(token: string): number | null {
+  if (!/^[IVXLCDMivxlcdm]+$/.test(token)) return null;
+  const parsed = romanToInt(token);
+  if (parsed === null || parsed < 1 || parsed > MAX_INSTALMENT) return null;
+  return intToRoman(parsed) === token.toUpperCase() ? parsed : null;
 }
 
 /**
