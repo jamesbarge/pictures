@@ -1,3 +1,12 @@
+## 2026-10-03: Dependabot for npm and GitHub Actions
+**PR**: #759 | **Files**: `.github/dependabot.yml` (new), `CLAUDE.md`, `changelogs/2026-10-03-dependabot.md`
+- Weekly grouped minor and patch PRs per app (backend `/`, frontend `/frontend`), one PR per major, a monthly grouped Actions PR, and one grouped PR per lockfile for minor and patch security fixes. A 7-day cooldown holds each bumped release back until it is a week old.
+- Hold-backs: `@types/node` majors are ignored while `.nvmrc` pins 22, drizzle updates share their own PR, and `rebrowser-playwright` gets its own PR so a scrape can be checked before merge.
+- Dependabot alerts and security updates are now on in repo settings. The first scan found 163 open advisories across 42 packages, 5 of them critical, led by three Next.js RCE advisories fixed by 16.3.6.
+- PRs opened by `dependabot[bot]` are exempt from the changelog rule (`CLAUDE.md`).
+
+---
+
 ## 2026-08-06: THE SLEEPER — one acclaimed-but-under-seen repertory film per day
 **PR**: #743 | **Files**: `src/lib/{sleeper.ts,london-date.ts}`(new + tests), `src/db/repositories/sleeper.ts`(new), `src/db/schema/daily-picks.ts`(new), `src/db/migrations/{0014_add_tmdb_vote_count,0015_add_daily_picks}.sql`(new), `src/db/backfill-tmdb-vote-count.ts`(new), `src/app/api/sleepers/route.ts`(new + test), `src/scripts/run-scrape-and-enrich.ts`, `frontend/src/lib/components/calendar/{FigmaFilmCard,FigmaTextDay}.svelte`, `frontend/src/routes/{+page.server.ts,+page.svelte}` + 11 TMDB write sites — 30 files
 - **One film per London day that is rated highly on Letterboxd but thinly voted on TMDB**, repertory and non-documentary only, guaranteed to screen that day. Shown as a vertical `THE SLEEPER` rail on the existing homepage card, first day section only. No reordering, no new layout. The homepage already sorted each day by Letterboxd rating desc, so the celebrated title was always leftmost and the interesting obscurity was buried mid-row; there was no editorial voice in the product at all.
