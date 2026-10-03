@@ -1,3 +1,12 @@
+## 2026-10-04: Phoenix reads its full programme from the Savoy JSON blob
+**PR**: #775 | **Files**: `src/scrapers/cinemas/phoenix.ts`, `src/scrapers/cinemas/phoenix.test.ts` (new), `src/scrapers/cinemas/bst-regression.test.ts`, `src/scrapers/registry.ts`, `src/config/cinema-registry.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`, `changelogs/2026-10-04-phoenix-full-programme.md`
+- Phoenix's homepage grid stops after 16 events (`if (TheNumEventsDisplayed <= 15)` in the site's own JS). Our scraper found films by reading that grid, so on 2026-10-04 it captured 32 of 57 future performances and stopped at 18 Oct, while the venue publishes to 5 Jun 2027.
+- Phoenix now parses the embedded Savoy `var Events` blob through `platforms/savoy.ts` with a single fetch and runs in the Cheerio wave. A live run returned 57 screenings across 39 titles. The validator accepts 50 and holds 7 opera and ballet nights (23 Jan to 5 Jun 2027) under its 90-day cap until they come within range.
+- All 32 rows the old scraper returned keep identical sourceIds and booking URLs, so existing rows update in place.
+- All six Phoenix listings the L-CUT cross-check flagged as missing (Banshees of Inisherin, Nosferatu live score, How Deep Is Your Love, Rocky Horror, Ringu, Ghost Town) are in the new output.
+
+---
+
 ## 2026-10-03: Mobile masthead loses its empty band
 **PR**: #767 | **Files**: `frontend/src/lib/components/layout/Header.svelte`
 - Below 768px the masthead drops a 180px minimum height that exists to seat the desktop nav and house-lights dial, both hidden on phones. Phones get 40px back on every page (205px to 165px), and the wordmark keeps its size.
