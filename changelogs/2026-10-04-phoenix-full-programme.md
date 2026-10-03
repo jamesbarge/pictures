@@ -1,6 +1,6 @@
 # Phoenix reads its full programme from the Savoy JSON blob
 
-**PR**: TBD
+**PR**: #775
 **Date**: 2026-10-04
 
 ## Changes
