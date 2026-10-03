@@ -9,15 +9,27 @@
  * Only rows with tmdb_id IS NULL and at least one upcoming screening are touched.
  * Writes reuse the rematch sweep's executeUpdate / executeMerge, so a manual match
  * gets the same metadata fields, write guards and transactional merge as the
- * automated paths. A row keeps its scraped title unless TMDB's title normalizes to
- * the same lookup key; otherwise the next scrape would miss it and re-create an
- * unmatched row.
+ * automated paths.
+ *
+ * Re-scrape durability: the pipeline finds films by normalizeTitle(films.title).
+ * An UPDATE keeps the scraped title unless TMDB's title normalizes to the same key,
+ * so updated rows stay findable. A MERGE deletes the row carrying the venue's key;
+ * unless the cleaner, the trigram step or a cache alias routes that venue title to
+ * the merge target, the next scrape re-creates an unmatched row and moves the
+ * screenings back onto it. The dry run flags those merges as [key changes]. The
+ * mapping file is safe to re-run: re-created rows with the same titles are merged
+ * again.
+ *
+ * Needs .claude/data-check-learnings.json in the working directory (it holds the
+ * TMDB blocklist and learned cleaner rules, and is gitignored, so worktrees lack it
+ * unless symlinked). --execute refuses to run without it.
  *
  * Usage:
  *   npx tsx --env-file=.env.local -r tsconfig-paths/register scripts/apply-manual-tmdb-matches.ts --file=<path>
  *   ... --execute    apply the plan (default is a dry run)
  */
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { and, eq, gte, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { films, screenings } from "@/db/schema";
@@ -90,6 +102,17 @@ export function planManualMatches(input: {
   return [...actions, ...skips];
 }
 
+/** Merges into a keeper whose UPDATE failed would fold siblings into a row that never got its tmdb_id. */
+export function withoutMergesIntoFailedKeepers(
+  merges: PlannedAction[],
+  failedKeeperIds: Set<string>,
+): { kept: PlannedAction[]; dropped: PlannedAction[] } {
+  const kept: PlannedAction[] = [];
+  const dropped: PlannedAction[] = [];
+  for (const m of merges) (m.kind === "merge" && failedKeeperIds.has(m.targetFilmId) ? dropped : kept).push(m);
+  return { kept, dropped };
+}
+
 async function loadCandidateRows(titles: string[]): Promise<Map<string, CandidateRow[]>> {
   const rows = await db
     .select({
@@ -133,6 +156,13 @@ async function main() {
 
   console.log(`[apply-manual-tmdb] ${execute ? "EXECUTE" : "DRY RUN"} | ${Object.keys(mapping).length} matches, ${Object.keys(reclassify).length} reclassifications`);
 
+  const learnings = resolve(process.cwd(), ".claude/data-check-learnings.json");
+  if (!existsSync(learnings)) {
+    const msg = `${learnings} is missing: the TMDB blocklist and learned cleaner rules would be silently empty.`;
+    if (execute) throw new Error(`${msg} Run from the main checkout or symlink the file.`);
+    console.warn(`WARNING: ${msg}`);
+  }
+
   const rowsByTitle = await loadCandidateRows(Object.keys(mapping));
   const owners = await loadOwners([...new Set(Object.values(mapping))]);
   const plan = planManualMatches({ rowsByTitle, mapping, owners, isBlocked: isBlockedTmdbId });
@@ -165,8 +195,13 @@ async function main() {
     const title = chooseTitle(p.row.title, t.title, normalizeTitle);
     console.log(`  ${String(p.row.screenings).padStart(4)}  "${p.row.title}" -> ${p.tmdbId} "${t.title}" (${t.year ?? "?"})${title !== p.row.title ? `  [retitle "${title}"]` : ""}`);
   }
-  console.log(`\nMERGE ${merges.length} rows (${count(merges)} upcoming screenings)`);
-  for (const p of merges) if (p.kind === "merge") console.log(`  ${String(p.row.screenings).padStart(4)}  "${p.row.title}" -> film ${p.targetFilmId.slice(0, 8)} "${p.targetTitle}" (tmdb ${p.tmdbId})`);
+  const keyChanges = merges.filter((p) => p.kind === "merge" && normalizeTitle(p.row.title) !== normalizeTitle(p.targetTitle));
+  console.log(`\nMERGE ${merges.length} rows (${count(merges)} upcoming screenings; ${keyChanges.length} change the cache key)`);
+  for (const p of merges) {
+    if (p.kind !== "merge") continue;
+    const flag = keyChanges.includes(p) ? "  [key changes]" : "";
+    console.log(`  ${String(p.row.screenings).padStart(4)}  "${p.row.title}" -> film ${p.targetFilmId.slice(0, 8)} "${p.targetTitle}" (tmdb ${p.tmdbId})${flag}`);
+  }
   console.log(`\nSKIP ${skips.length}`);
   for (const p of skips) if (p.kind === "skip") console.log(`  "${p.title}" (${p.tmdbId}): ${p.reason}`);
 
@@ -185,6 +220,9 @@ async function main() {
     : [];
   console.log(`\nRECLASSIFY ${reclassRows.length} rows`);
   for (const r of reclassRows) console.log(`  "${r.title}" -> ${reclassify[r.title]}`);
+  const reclassFound = new Set(reclassRows.map((r) => r.title));
+  for (const title of Object.keys(reclassify))
+    if (!reclassFound.has(title)) console.log(`  SKIP "${title}": no unmatched film row with upcoming screenings has this exact title`);
 
   if (!execute) {
     console.log("\n[DRY RUN] No changes made. Re-run with --execute to apply.");
@@ -193,6 +231,7 @@ async function main() {
 
   let ok = 0;
   let failed = 0;
+  const failedKeepers = new Set<string>();
   for (const p of updates) {
     if (p.kind !== "update") continue;
     const t = tmdb.get(p.tmdbId)!;
@@ -210,10 +249,14 @@ async function main() {
       ok++;
     } catch (err) {
       failed++;
+      failedKeepers.add(p.row.id);
       console.error(`  UPDATE failed "${p.row.title}" -> ${p.tmdbId}: ${(err as Error).message}`);
     }
   }
-  for (const p of merges) {
+  const { kept: safeMerges, dropped } = withoutMergesIntoFailedKeepers(merges, failedKeepers);
+  for (const p of dropped)
+    if (p.kind === "merge") console.error(`  MERGE skipped "${p.row.title}": its keeper ${p.targetFilmId.slice(0, 8)} failed to update`);
+  for (const p of safeMerges) {
     if (p.kind !== "merge") continue;
     try {
       await executeMerge({
@@ -236,7 +279,7 @@ async function main() {
       .set({ contentType: reclassify[r.title] as "film" | "concert" | "live_broadcast" | "event", updatedAt: new Date() })
       .where(eq(films.id, r.id));
   }
-  console.log(`\n[EXECUTE] ${ok} match actions applied, ${failed} failed, ${reclassRows.length} rows reclassified.`);
+  console.log(`\n[EXECUTE] ${ok} match actions applied, ${failed} failed, ${dropped.length} merges skipped, ${reclassRows.length} rows reclassified.`);
 }
 
 const isDirectRun =

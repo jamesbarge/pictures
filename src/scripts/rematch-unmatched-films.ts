@@ -305,7 +305,7 @@ export async function executeUpdate(action: UpdateAction): Promise<void> {
     `rematch-sweep tmdb=${action.tmdbId} title="${details.details.title}"`,
   );
 
-  await db
+  const updated = await db
     .update(films)
     .set({
       tmdbId: action.tmdbId,
@@ -340,7 +340,13 @@ export async function executeUpdate(action: UpdateAction): Promise<void> {
       matchedAt: new Date(),
       updatedAt: new Date(),
     })
-    .where(eq(films.id, action.film.id));
+    // Only fill a row that is still unmatched: a plan made earlier must never
+    // overwrite a match that another job wrote in the meantime.
+    .where(and(eq(films.id, action.film.id), isNull(films.tmdbId)))
+    .returning({ id: films.id });
+  if (updated.length === 0) {
+    throw new Error(`film ${action.film.id} already has a tmdb_id; refusing to overwrite`);
+  }
 }
 
 /**

@@ -10,7 +10,13 @@ vi.mock("@/lib/tmdb/blocklist", () => ({ isBlockedTmdbId: vi.fn() }));
 vi.mock("@/scripts/rematch-unmatched-films", () => ({ executeUpdate: vi.fn(), executeMerge: vi.fn() }));
 vi.mock("@/scrapers/pipeline", () => ({ normalizeTitle: vi.fn() }));
 
-import { chooseTitle, planManualMatches, type CandidateRow } from "./apply-manual-tmdb-matches";
+import {
+  chooseTitle,
+  planManualMatches,
+  withoutMergesIntoFailedKeepers,
+  type CandidateRow,
+  type PlannedAction,
+} from "./apply-manual-tmdb-matches";
 
 const row = (id: string, title: string, screenings: number): CandidateRow => ({
   id,
@@ -112,5 +118,17 @@ describe("planManualMatches", () => {
       { kind: "skip", title: "Blocked", tmdbId: 111, reason: "tmdb id is on the global blocklist" },
       { kind: "skip", title: "Missing", tmdbId: 222, reason: "no unmatched row with upcoming screenings has this exact title" },
     ]);
+  });
+});
+
+describe("withoutMergesIntoFailedKeepers", () => {
+  it("drops merges whose keeper UPDATE failed and keeps merges into owners", () => {
+    const merges: PlannedAction[] = [
+      { kind: "merge", row: row("b", "Minotaur FFFL", 10), tmdbId: 1, targetFilmId: "keeper", targetTitle: "Minotaur" },
+      { kind: "merge", row: row("c", "Casino Royale", 4), tmdbId: 2, targetFilmId: "owner", targetTitle: "Casino Royale" },
+    ];
+    const { kept, dropped } = withoutMergesIntoFailedKeepers(merges, new Set(["keeper"]));
+    expect(kept.map((m) => (m.kind === "merge" ? m.row.id : null))).toEqual(["c"]);
+    expect(dropped).toHaveLength(1);
   });
 });
