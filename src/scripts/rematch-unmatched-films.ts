@@ -249,14 +249,14 @@ function matchWithBackoff(
 // Plan types
 // ---------------------------------------------------------------------------
 
-interface UnmatchedFilm {
+export interface UnmatchedFilm {
   id: string;
   title: string;
   year: number | null;
   directors: string[];
 }
 
-interface UpdateAction {
+export interface UpdateAction {
   film: UnmatchedFilm;
   cleanedTitle: string;
   tmdbId: number;
@@ -267,9 +267,13 @@ interface UpdateAction {
   /** Year derived via the exact-title second-chance pass (review marker). */
   derivedYear?: number;
   directorHint?: string;
+  /** Title to store instead of TMDB's (keeps the scraper's spelling so re-scrapes still find the row). */
+  title?: string;
+  /** Audit value for films.match_strategy; defaults to "rematch-sweep". */
+  strategy?: string;
 }
 
-interface MergeAction {
+export interface MergeAction {
   film: UnmatchedFilm;
   cleanedTitle: string;
   tmdbId: number;
@@ -289,7 +293,7 @@ interface FlagAction {
 // ---------------------------------------------------------------------------
 
 /** Apply an UPDATE action: enrich the existing row in place with TMDB data. */
-async function executeUpdate(action: UpdateAction): Promise<void> {
+export async function executeUpdate(action: UpdateAction): Promise<void> {
   const client = getTMDBClient();
   const details = await withTmdbBackoff(() => client.getFullFilmData(action.tmdbId));
 
@@ -306,7 +310,7 @@ async function executeUpdate(action: UpdateAction): Promise<void> {
     .set({
       tmdbId: action.tmdbId,
       imdbId: details.details.imdb_id || null,
-      title: details.details.title,
+      title: action.title ?? details.details.title,
       originalTitle: details.details.original_title,
       year: guardedYear,
       runtime: details.details.runtime || null,
@@ -332,7 +336,7 @@ async function executeUpdate(action: UpdateAction): Promise<void> {
       // Audit trail + Letterboxd anchor, consistent with the pipeline path.
       letterboxdUrl: `https://letterboxd.com/tmdb/${action.tmdbId}`,
       matchConfidence: action.confidence,
-      matchStrategy: "rematch-sweep",
+      matchStrategy: action.strategy ?? "rematch-sweep",
       matchedAt: new Date(),
       updatedAt: new Date(),
     })
@@ -346,7 +350,7 @@ async function executeUpdate(action: UpdateAction): Promise<void> {
  * transaction, with a repoint-before-delete verification (plan STOP
  * condition: never delete a film row that still has screenings).
  */
-async function executeMerge(action: MergeAction): Promise<void> {
+export async function executeMerge(action: MergeAction): Promise<void> {
   const dupeId = action.film.id;
   const primaryId = action.targetFilmId;
 
