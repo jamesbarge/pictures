@@ -1,3 +1,11 @@
+## 2026-10-04: ICA scraper follows season and festival hubs
+**PR**: TBD | **Files**: `src/scrapers/cinemas/ica.ts`, `src/scrapers/cinemas/ica.test.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`, `changelogs/2026-10-04-ica-hub-discovery.md`
+- The ICA scraper finds pages from every /films tile, the /upcoming calendar and the child pages of season and festival hubs (LFF, Imamura, London Latino FF, The Independent, Doc'n'Roll and others). A live run without persistence found 198 screenings where the old scraper found 85, each matching ICA's Spektrix ticketing to the minute.
+- L-CUT coverage from the scraper's own rows rises from 81 to 144 of 147 listings. The 3 left are the same screenings under different titles.
+- LFF screenings link to their BFI ticket pages (they used to point at the ICA homepage), and a title split by a line break reads "UK PREMIERE The Night is Fading Away" where it used to read "UK PREMIEREThe Night is Fading Away".
+
+---
+
 ## 2026-10-03: Mobile masthead loses its empty band
 **PR**: #767 | **Files**: `frontend/src/lib/components/layout/Header.svelte`
 - Below 768px the masthead drops a 180px minimum height that exists to seat the desktop nav and house-lights dial, both hidden on phones. Phones get 40px back on every page (205px to 165px), and the wordmark keeps its size.
