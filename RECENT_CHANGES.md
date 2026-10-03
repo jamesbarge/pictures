@@ -1,5 +1,5 @@
 ## 2026-10-04: Apply judged TMDB matches from a mapping file
-**PR**: #TBD | **Files**: `scripts/apply-manual-tmdb-matches.ts`, `scripts/apply-manual-tmdb-matches.test.ts`, `src/scripts/rematch-unmatched-films.ts`, `scripts/destructive-script-guards.test.ts`
+**PR**: #774 | **Files**: `scripts/apply-manual-tmdb-matches.ts`, `scripts/apply-manual-tmdb-matches.test.ts`, `src/scripts/rematch-unmatched-films.ts`, `scripts/destructive-script-guards.test.ts`
 - New default-dry script applies a reviewed title -> TMDB id mapping (and optional content-type reclassifications) to unmatched films with upcoming screenings, reusing the rematch sweep's update and transactional merge.
 - First use on 2026-10-04: 202 match actions and 69 reclassifications, 0 failures. Future screenings on films with no TMDB data fell from 4,151 of 8,540 to 362, led by this week's wide releases (Digger, Sense and Sensibility, Verity), which the matcher skips because the pipeline drops current-year hints. About 316 of those screenings sit on merged rows that need the title-cleaner fix to survive the next scrape; re-running the mapping file covers the gap meanwhile.
 
