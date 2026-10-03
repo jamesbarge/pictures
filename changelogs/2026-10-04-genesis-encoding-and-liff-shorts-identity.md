@@ -1,6 +1,6 @@
 # Genesis encoding, dated-panel rollover and LIFF shorts identity
 
-**PR**: TBD
+**PR**: #776
 **Date**: 2026-10-04
 
 ## Changes

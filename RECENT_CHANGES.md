@@ -1,5 +1,5 @@
 ## 2026-10-04: Genesis encoding, dated-panel rollover and LIFF shorts identity
-**PR**: TBD | **Files**: `src/scrapers/cinemas/genesis.ts`, `src/scrapers/cinemas/genesis.test.ts` (new), `src/lib/title-patterns.ts`, `src/lib/film-similarity-sequel.test.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`
+**PR**: #776 | **Files**: `src/scrapers/cinemas/genesis.ts`, `src/scrapers/cinemas/genesis.test.ts` (new), `src/lib/title-patterns.ts`, `src/lib/film-similarity-sequel.test.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`
 - The film matcher reads the number in front of a trailing festival tag, so "Shorts Block 3 - LIFF" and "Shorts Block 11 - LIFF" resolve to separate films. The 2026-10-03 run had filed Shorts Blocks 2-12 under one film, which L-CUT parity counted as 9 missing Genesis screenings.
 - Genesis pages are decoded as Windows-1252, the charset the server declares. Titles now keep their curly apostrophes, pound signs and en dashes; before the fix, 9 stored Genesis titles carried U+FFFD in their place.
 - A showing earlier the same day stays in the past and is dropped. It used to roll into next year and get rejected as too_far_future on every run.
