@@ -1,5 +1,5 @@
 ## 2026-10-03: Dependabot for npm and GitHub Actions
-**PR**: #TBD | **Files**: `.github/dependabot.yml` (new), `CLAUDE.md`, `changelogs/2026-10-03-dependabot.md`
+**PR**: #759 | **Files**: `.github/dependabot.yml` (new), `CLAUDE.md`, `changelogs/2026-10-03-dependabot.md`
 - Weekly grouped minor and patch PRs per app (backend `/`, frontend `/frontend`), one PR per major, a monthly grouped Actions PR, and one grouped PR per lockfile for minor and patch security fixes. A 7-day cooldown holds each bumped release back until it is a week old.
 - Hold-backs: `@types/node` majors are ignored while `.nvmrc` pins 22, drizzle updates share their own PR, and `rebrowser-playwright` gets its own PR so a scrape can be checked before merge.
 - Dependabot alerts and security updates are now on in repo settings. The first scan found 163 open advisories across 42 packages, 5 of them critical, led by three Next.js RCE advisories fixed by 16.3.6.
