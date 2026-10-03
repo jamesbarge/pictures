@@ -1,5 +1,5 @@
 ## 2026-10-03: Frontend unit tests run in CI
-**PR**: #TBD | **Files**: `.github/workflows/test.yml`
+**PR**: #770 | **Files**: `.github/workflows/test.yml`
 - The frontend CI job runs `npm test` (vitest) after `npm ci`. Until now Playwright was its only test step, so the 92 tests in `frontend/src/**/*.test.ts` never ran in CI.
 
 ---
