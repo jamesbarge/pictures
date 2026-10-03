@@ -1,3 +1,9 @@
+## 2026-10-03: Mobile masthead loses its empty band
+**PR**: #TBD | **Files**: `frontend/src/lib/components/layout/Header.svelte`
+- Below 768px the masthead drops a 180px minimum height that exists to seat the desktop nav and house-lights dial, both hidden on phones. Phones get 40px back on every page (205px to 165px), and the wordmark keeps its size.
+
+---
+
 ## 2026-10-03: Homepage STARTING SOON strip
 **PR**: #762 | **Files**: `frontend/src/routes/+page.svelte`, `frontend/src/lib/components/calendar/FigmaTextDay.svelte`, `frontend/src/lib/analytics/posthog.ts`, `frontend/test-all.spec.ts`, `frontend/tests/mobile.spec.ts`
 - A STARTING SOON timetable sits above the first day: the next 6 screenings starting within 3 hours, soonest first, with the active filters applied. It hides in TEXT mode and when nothing starts in the window.
