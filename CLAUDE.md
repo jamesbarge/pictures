@@ -43,6 +43,7 @@ If you encounter repeated failures or uncertainty:
 
 ## Changelogs - PRIORITY
 **Every PR or direct ship to main MUST update BOTH changelog locations.**
+PRs opened by `dependabot[bot]` are exempt: the bot cannot write changelogs, and the PR itself is the record. Config lives in `.github/dependabot.yml`.
 
 ### 1. Quick Summary: `RECENT_CHANGES.md` (root)
 Add a new entry **at the top** of the file. Keep only the last ~20 entries.
