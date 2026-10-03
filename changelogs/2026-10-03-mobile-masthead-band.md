@@ -1,6 +1,6 @@
 # Mobile masthead: remove the empty band under the wordmark
 
-**PR**: #TBD
+**PR**: #767
 **Date**: 2026-10-03
 
 ## Changes

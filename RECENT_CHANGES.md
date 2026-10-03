@@ -1,5 +1,5 @@
 ## 2026-10-03: Mobile masthead loses its empty band
-**PR**: #TBD | **Files**: `frontend/src/lib/components/layout/Header.svelte`
+**PR**: #767 | **Files**: `frontend/src/lib/components/layout/Header.svelte`
 - Below 768px the masthead drops a 180px minimum height that exists to seat the desktop nav and house-lights dial, both hidden on phones. Phones get 40px back on every page (205px to 165px), and the wordmark keeps its size.
 
 ---
