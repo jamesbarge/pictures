@@ -1,6 +1,19 @@
 /**
  * ICA Cinema Scraper
  * Scrapes film listings from ica.art
+ *
+ * Discovery (see SCRAPING_PLAYBOOK.md, ICA section):
+ *   1. /films tiles of every type. ICA puts film screenings it files under
+ *      Live or Exhibitions on /films too (e.g. /live/tg50-heathen-earth,
+ *      /exhibitions/artists-film-picks-*).
+ *   2. /upcoming, the site's own day-by-day calendar (~30 days), Films items
+ *      only. It links individual festival screenings directly.
+ *   3. One level of hub expansion. Season and festival pages (/films/imamura,
+ *      /films/bfi-london-film-festival-2026, ...) carry no performance list;
+ *      their screenings live on child pages linked from the page body. Most
+ *      of a season's later dates are only reachable this way.
+ * Each event page carries the same `.performance-list .performance` markup, so
+ * parsing is unchanged.
  */
 
 import { BaseScraper } from "../base";
@@ -19,47 +32,140 @@ interface FilmInfo {
   country?: string;
 }
 
+interface QueuedPage {
+  url: string;
+  /** 0 = linked from an index page; 1 = child of a hub. Only depth 0 expands. */
+  depth: number;
+}
+
+/**
+ * Upper bound on page fetches per run. The 2026-10-04 crawl made 147. The cap
+ * keeps a runaway hub inside the 10-minute venue wall-clock cap; seeds are
+ * queued before hub children, so a cap hit drops only the furthest-out dates.
+ */
+const MAX_PAGE_FETCHES = 250;
+
+/** Single-segment paths that are section indexes, not event pages. */
+const SECTION_INDEXES = new Set([
+  "films", "live", "talks", "exhibitions", "calendar",
+  "today", "tomorrow", "next-7-days", "upcoming",
+]);
+
+/** Path prefixes that are never event pages (booking, CMS admin, assets). */
+const NON_EVENT_PREFIXES = ["/book/", "/open-records-generator/", "/static/", "/media/"];
+
 export class ICAScraper extends BaseScraper {
   config: ScraperConfig = {
     cinemaId: "ica",
     baseUrl: "https://www.ica.art",
-    requestsPerMinute: 6,
-    delayBetweenRequests: 3000,
+    requestsPerMinute: 60,
+    // fetchUrl waits this long before every request. The site is not
+    // bot-protected; 1s matches the codebase norm and keeps ~150 pages well
+    // under the venue wall-clock cap.
+    delayBetweenRequests: 1000,
   };
 
   protected async fetchPages(): Promise<string[]> {
-    // First, get the main films page to find all film URLs
-    const mainUrl = `${this.config.baseUrl}/films`;
-    console.log(`[${this.config.cinemaId}] Fetching film listing: ${mainUrl}`);
+    const id = this.config.cinemaId;
 
-    const mainHtml = await this.fetchUrl(mainUrl);
-    const $ = this.parseHtml(mainHtml);
+    // Index pages are required: a failure here throws rather than returning a
+    // silently partial programme.
+    const filmsUrl = `${this.config.baseUrl}/films`;
+    console.log(`[${id}] Fetching film listing: ${filmsUrl}`);
+    const $films = this.parseHtml(await this.fetchUrl(filmsUrl));
+    const tileHrefs = $films(".item > a").map((_, el) => $films(el).attr("href")).get();
 
-    // Extract film URLs from the listing page
-    const filmUrls: string[] = [];
-    $(".item.films > a").each((_, el) => {
-      const href = $(el).attr("href");
-      if (href && href.startsWith("/films/") && !this.isExcludedUrl(href)) {
-        filmUrls.push(`${this.config.baseUrl}${href}`);
-      }
-    });
+    const upcomingUrl = `${this.config.baseUrl}/upcoming`;
+    console.log(`[${id}] Fetching calendar: ${upcomingUrl}`);
+    const $upcoming = this.parseHtml(await this.fetchUrl(upcomingUrl));
+    // The calendar also lists talks, live music and exhibitions; Films only.
+    const calendarHrefs = $upcoming(".item.films > a").map((_, el) => $upcoming(el).attr("href")).get();
 
-    console.log(`[${this.config.cinemaId}] Found ${filmUrls.length} film pages to scrape`);
+    const queue: QueuedPage[] = [];
+    const seen = new Set<string>();
+    const enqueue = (href: string | undefined, depth: number): boolean => {
+      const url = this.toEventUrl(href);
+      if (!url) return false;
+      // The same page is linked under several paths (/films/lff-lali and
+      // /films/bfi-london-film-festival-2026/lff-lali; /imamura-stolen-desire
+      // and /films/imamura-stolen-desire). The final segment identifies it.
+      const key = url.slice(url.lastIndexOf("/") + 1);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      queue.push({ url, depth });
+      return true;
+    };
+    for (const href of [...tileHrefs, ...calendarHrefs]) enqueue(href, 0);
+    console.log(
+      `[${id}] Found ${queue.length} pages to scrape (${tileHrefs.length} /films tiles, ` +
+        `${calendarHrefs.length} /upcoming film items)`,
+    );
 
-    // Fetch each film's detail page with rate limiting
     const pages: string[] = [];
-    for (const url of filmUrls.slice(0, 50)) { // Limit to 50 films for now
+    let hubs = 0;
+    let fetched = 0;
+    for (let i = 0; i < queue.length; i++) {
+      if (fetched >= MAX_PAGE_FETCHES) {
+        console.warn(
+          `[${id}] Page budget (${MAX_PAGE_FETCHES}) reached; ${queue.length - i} queued page(s) not fetched`,
+        );
+        break;
+      }
+      const { url, depth } = queue[i];
+      fetched++;
       try {
-        console.log(`[${this.config.cinemaId}] Fetching: ${url}`);
+        console.log(`[${id}] Fetching: ${url}`);
         const html = await this.fetchUrl(url);
-        pages.push(html);
-        await this.delay(this.config.delayBetweenRequests);
+        const $ = this.parseHtml(html);
+        if ($(".performance-list .performance").length > 0) {
+          pages.push(html);
+        } else if (depth === 0) {
+          // Hub page: queue the child pages linked from its body. Links inside
+          // collapsed <details> blocks are the hub's archive (Off-Circuit lists
+          // ~50 past releases there, Long Takes its past seasons); skipping them
+          // saves ~60 fetches of pages with no future screenings.
+          hubs++;
+          let added = 0;
+          $("#detail-body a[href], #detail-side a[href]").each((_, el) => {
+            if ($(el).closest("details").length > 0) return;
+            if (enqueue($(el).attr("href"), depth + 1)) added++;
+          });
+          if (added > 0) console.log(`[${id}] Hub ${url}: queued ${added} child page(s)`);
+        }
       } catch (error) {
-        console.error(`[${this.config.cinemaId}] Failed to fetch ${url}:`, error);
+        console.error(`[${id}] Failed to fetch ${url}:`, error);
       }
     }
 
+    console.log(`[${id}] Fetched ${fetched} pages: ${pages.length} with performances, ${hubs} hubs`);
     return pages;
+  }
+
+  /**
+   * Resolve a link to a canonical www.ica.art event-page URL, or null when it
+   * points somewhere that can't be an event page (another host, a section
+   * index, booking, assets, calendar day links, excluded archive paths).
+   */
+  private toEventUrl(href: string | undefined): string | null {
+    if (!href || href.startsWith("javascript:") || href.startsWith("mailto:")) return null;
+    // A scheme-less external link ("www.docnrollfestival.com") would otherwise
+    // resolve as a relative path on ica.art and 404.
+    if (/^[^/:]+\.[a-z]{2,}(\/|$)/i.test(href)) return null;
+    let parsed: URL;
+    try {
+      parsed = new URL(href, this.config.baseUrl);
+    } catch {
+      return null;
+    }
+    if (parsed.hostname !== "www.ica.art" && parsed.hostname !== "ica.art") return null;
+    const path = parsed.pathname.replace(/\/+$/, "");
+    const segments = path.split("/").filter(Boolean);
+    if (segments.length === 0) return null;
+    if (segments.length === 1 && SECTION_INDEXES.has(segments[0])) return null;
+    if (NON_EVENT_PREFIXES.some((prefix) => path.startsWith(prefix))) return null;
+    if (/^\/\d{4}-\d{2}(-\d{2})?$/.test(path)) return null;
+    if (this.isExcludedUrl(path)) return null;
+    return `${this.config.baseUrl}${path}`;
   }
 
   private isExcludedUrl(href: string): boolean {
@@ -109,7 +215,12 @@ export class ICAScraper extends BaseScraper {
     // would become "LONDON PREMIEREBouchra" without this)
     const $titleEl = $("span.title").first().clone();
     $titleEl.find(".tag, .badge, .label, .flag").remove();
-    let title = $titleEl.text().trim();
+    // Same bug class via a line break: "UK PREMIERE</br>The Night is Fading
+    // Away" read as "UK PREMIEREThe Night is Fading Away" and minted that film.
+    $titleEl.find("br").replaceWith(" ");
+    // Collapse the runs of whitespace the replacement leaves. sourceIds are
+    // unaffected: they already map every whitespace run to a single "-".
+    let title = $titleEl.text().replace(/\s+/g, " ").trim();
     if (!title) {
       // Fallback to page title
       const pageTitle = $("title").text();
@@ -161,6 +272,18 @@ export class ICAScraper extends BaseScraper {
       if (bookMatch) {
         bookingBase = `${this.config.baseUrl}/book/${bookMatch[1]}`;
       }
+    }
+    if (!bookingBase) {
+      // Screenings ICA hosts but does not sell (BFI London Film Festival) point
+      // the "Book tickets" button at the seller's page instead of /book/{id}.
+      // Without this they fell back to og:url, which is the ICA homepage.
+      const externalBook = $("[onclick*='location.href']")
+        .filter((_, el) => /book/i.test($(el).text()))
+        .first()
+        .attr("onclick")
+        // Some LFF pages pad the URL: location.href=" https://whatson.bfi.org.uk/...".
+        ?.match(/location\.href\s*=\s*["']\s*(https?:\/\/[^"'\s]+)/);
+      if (externalBook) bookingBase = externalBook[1];
     }
 
     // Fallback: get canonical URL if no booking link found
