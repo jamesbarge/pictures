@@ -1,3 +1,10 @@
+## 2026-10-03: Homepage STARTING SOON strip
+**PR**: #762 | **Files**: `frontend/src/routes/+page.svelte`, `frontend/src/lib/components/calendar/FigmaTextDay.svelte`, `frontend/src/lib/analytics/posthog.ts`, `frontend/test-all.spec.ts`, `frontend/tests/mobile.spec.ts`
+- A STARTING SOON timetable sits above the first day: the next 6 screenings starting within 3 hours, soonest first, with the active filters applied. It hides in TEXT mode and when nothing starts in the window.
+- The first showtime moves from about 895px to 452px down on desktop and from about 940px to 476px on a phone, so phones see a time without scrolling. Cards keep their rating order.
+
+---
+
 ## 2026-10-03: Frontend unit tests run in CI
 **PR**: #770 | **Files**: `.github/workflows/test.yml`
 - The frontend CI job runs `npm test` (vitest) after `npm ci`. Until now Playwright was its only test step, so the 92 tests in `frontend/src/**/*.test.ts` never ran in CI.
