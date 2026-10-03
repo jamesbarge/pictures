@@ -95,12 +95,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Vitest unit tests (frontend/src/**/*.test.ts). Playwright only matches
-      # *.spec.ts and the root job's vitest only covers the root src/, so
-      # without this step these tests never ran in CI. `npm ci` has already run
-      # `svelte-kit sync` via the `prepare` script, which generates the tsconfig
-      # vitest needs. Runs before the browser install so a broken unit test
-      # fails in seconds.
+      # Vitest (frontend/src/**/*.test.ts); Playwright only runs *.spec.ts.
       - name: Run unit tests
         run: npm test
 

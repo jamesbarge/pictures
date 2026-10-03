@@ -11,4 +11,3 @@
 ## Impact
 - A broken frontend unit test fails the job in seconds, before the build and E2E steps.
 - Checked locally under `TZ=UTC`, as on the runner: 92 of 92 pass on main.
-- #762 adds 6 tests for the STARTING SOON selection rule, which this step then enforces.
