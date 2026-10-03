@@ -260,9 +260,7 @@
 		gap: 6px;
 	}
 
-	/* The 180px floor seats the desktop nav column and the house-lights dial
-	   beside the logo. Below 768px both are hidden, so it only left an empty
-	   band under the wordmark that pushed the listings down. */
+	/* 180px floor only seats the desktop nav and dimmer, both hidden here. */
 	@media (max-width: 767px) {
 		.brand-bar {
 			min-height: 0;
