@@ -1,3 +1,9 @@
+## 2026-10-03: Frontend unit tests run in CI
+**PR**: #TBD | **Files**: `.github/workflows/test.yml`
+- The frontend CI job runs `npm test` (vitest) after `npm ci`. Until now Playwright was its only test step, so the 92 tests in `frontend/src/**/*.test.ts` never ran in CI.
+
+---
+
 ## 2026-10-03: Dependabot for npm and GitHub Actions
 **PR**: #759 | **Files**: `.github/dependabot.yml` (new), `CLAUDE.md`, `changelogs/2026-10-03-dependabot.md`
 - Weekly grouped minor and patch PRs per app (backend `/`, frontend `/frontend`), one PR per major, a monthly grouped Actions PR, and one grouped PR per lockfile for minor and patch security fixes. A 7-day cooldown holds each bumped release back until it is a week old.
