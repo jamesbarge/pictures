@@ -1,6 +1,6 @@
 # Homepage STARTING SOON strip
 
-**PR**: #TBD
+**PR**: #762
 **Date**: 2026-10-03
 
 ## Changes
