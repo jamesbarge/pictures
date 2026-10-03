@@ -9,7 +9,7 @@
 	import { filters } from '$lib/stores/filters.svelte';
 	import { today as todayStore } from '$lib/stores/today.svelte';
 	import { hydrationSafeClock } from '$lib/hydration-clock.svelte';
-	import { buildFilmMap, selectStartingSoon } from '$lib/calendar-filter';
+	import { buildFilmMap } from '$lib/calendar-filter';
 	import { toLondonDateStr, compareFilmsByCalendarPriority } from '$lib/utils';
 	import { toCardScreening } from '$lib/components/calendar/card-shapes';
 	import { trackFilterNoResults } from '$lib/analytics/posthog';
@@ -127,38 +127,21 @@
 		return out;
 	});
 
-	// STARTING SOON: the next few screenings across every film, soonest first.
-	// The grid below keeps its rating-first order; this strip is the time-first
-	// way in. TEXT mode is already a time-sorted timetable, so it skips it.
+	// STARTING SOON: the next screenings across every film, soonest first. The
+	// grid keeps its rating order; TEXT mode is already a timetable, so skips it.
 	const SOON_WINDOW_MS = 3 * 60 * 60 * 1000;
 	const SOON_LIMIT = 6;
 
-	// The strip is only useful while its times are current, and its booking
-	// links open in a new tab, so this tab is routinely left behind and resumed.
-	// It gets its own clock that ticks each minute and on return to the tab.
-	// Until the effect first runs it falls back to `clock.now`, so the first
-	// client render still matches the server's (see `$lib/hydration-clock`).
+	// Own ticking clock: booking opens a new tab, so this one goes stale. Falls
+	// back to `clock.now` until the effect runs, so hydration matches the server.
 	let soonTick = $state<number | null>(null);
 	const soonNow = $derived(soonTick ?? clock.now);
 	$effect(() => {
 		const tick = () => (soonTick = Date.now());
 		tick();
 		const id = setInterval(tick, 60_000);
-		const onVisible = () => {
-			if (document.visibilityState === 'visible') tick();
-		};
-		document.addEventListener('visibilitychange', onVisible);
-		return () => {
-			clearInterval(id);
-			document.removeEventListener('visibilitychange', onVisible);
-		};
+		return () => clearInterval(id);
 	});
-
-	const startingSoon = $derived(
-		displayMode === 'posters'
-			? selectStartingSoon(filmMap, soonNow, { windowMs: SOON_WINDOW_MS, limit: SOON_LIMIT })
-			: []
-	);
 
 	type PageScreening = (typeof data.screenings)[number];
 
@@ -312,7 +295,7 @@
 			{/if}
 		</EmptyState>
 	{:else}
-		{#if startingSoon.length > 0}
+		{#if displayMode === 'posters'}
 			<!-- Own class, not `.day`: it spans days, and day selectors (tests,
 			     fitToFirstRow) must keep meaning "one calendar day". -->
 			<section class="soon">
@@ -320,10 +303,12 @@
 					<h2>STARTING <span class="day-ord">SOON</span></h2>
 				</header>
 				<FigmaTextDay
-					films={startingSoon.map(({ film, screenings }) =>
+					films={[...filmMap.values()].map(({ film, screenings }) =>
 						toTextDayFilm(film, screenings, data.sleepers[clock.today] === String(film.id))
 					)}
 					now={soonNow}
+					until={soonNow + SOON_WINDOW_MS}
+					limit={SOON_LIMIT}
 					label="Screenings starting soon"
 					source="calendar-soon"
 				/>
@@ -460,6 +445,9 @@
 	@media (min-width: 1357px) {
 		.day, .soon { max-width: 1309px; }    /* 4 cards (1312 - 3) */
 	}
+
+	/* Nothing starts within the window (late at night, TOMORROW selected). */
+	.soon:not(:has(.text-row)) { display: none; }
 
 	/* In TEXT mode, the day section ignores the card-row width ladder and uses
 	   the full page-chrome width — the table doesn't need to line up with poster

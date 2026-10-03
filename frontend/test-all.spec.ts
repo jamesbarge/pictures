@@ -401,12 +401,12 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 
 		test('STARTING SOON leads with the next screenings, soonest first', async ({ page }) => {
 			// Live data: late at night nothing may start within three hours, and
-			// then the strip is correctly absent. The selection rule itself is
-			// pinned by unit tests in src/lib/calendar-filter.test.ts.
+			// then the strip is correctly hidden. This is the strip's only check.
 			await page.setViewportSize({ width: 1440, height: 900 });
 			await page.goto(BASE);
 			await page.waitForSelector('article.card', { timeout: 10000 });
-			const strip = page.locator('section.soon');
+			// The section stays in the DOM when empty (CSS hides it), so match rows.
+			const strip = page.locator('section.soon:has(.text-row)');
 
 			// ISR can serve hour-old HTML whose strip was chosen at render time;
 			// hydration re-chooses it against the live clock. Retry the whole read

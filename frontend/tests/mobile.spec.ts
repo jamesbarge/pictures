@@ -269,7 +269,7 @@ test.describe('Mobile Responsive — iPhone 12 Pro (390x844)', () => {
 			// screen; the strip exists so a phone sees a time without scrolling.
 			await page.goto(BASE);
 			await page.locator('section.day .film-row article.card').first().waitFor({ timeout: 10000 });
-			const strip = page.locator('section.soon');
+			const strip = page.locator('section.soon:has(.text-row)');
 
 			// Hydration can add or remove the strip on ISR-served HTML, so retry
 			// until it settles. Absence is legitimate late at night.

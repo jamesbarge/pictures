@@ -6,12 +6,18 @@
 	let {
 		films,
 		now,
+		until = Infinity,
+		limit = Infinity,
 		label = 'Screenings list',
 		source = 'calendar-text'
 	}: {
 		films: Array<{ film: CardFilm; screenings: CardScreening[]; sleeper?: boolean }>;
 		/** Epoch ms to judge "upcoming" against — see the note in FigmaFilmCard. */
 		now: number;
+		/** Epoch ms; screenings starting later are left out. */
+		until?: number;
+		/** Maximum rows, soonest first. */
+		limit?: number;
 		/** Accessible name for the table; must differ when two share a page. */
 		label?: string;
 		/** Analytics source for row clicks, so each placement is measured apart. */
@@ -23,7 +29,8 @@
 		const out: Array<{ film: CardFilm; screening: CardScreening; sleeper: boolean }> = [];
 		for (const { film, screenings, sleeper } of films) {
 			for (const s of screenings) {
-				if (new Date(s.datetime).getTime() <= now) continue;
+				const t = new Date(s.datetime).getTime();
+				if (t <= now || t > until) continue;
 				out.push({ film, screening: s, sleeper: Boolean(sleeper) });
 			}
 		}
@@ -39,7 +46,7 @@
 			if (marked) row.sleeper = false;
 			else marked = true;
 		}
-		return out;
+		return out.slice(0, limit);
 	});
 
 	function clickRow(film: CardFilm, s: CardScreening) {
