@@ -9,7 +9,7 @@
 	import { filters } from '$lib/stores/filters.svelte';
 	import { today as todayStore } from '$lib/stores/today.svelte';
 	import { hydrationSafeClock } from '$lib/hydration-clock.svelte';
-	import { buildFilmMap } from '$lib/calendar-filter';
+	import { buildFilmMap, selectStartingSoon } from '$lib/calendar-filter';
 	import { toLondonDateStr, compareFilmsByCalendarPriority } from '$lib/utils';
 	import { toCardScreening } from '$lib/components/calendar/card-shapes';
 	import { trackFilterNoResults } from '$lib/analytics/posthog';
@@ -126,6 +126,55 @@
 		}
 		return out;
 	});
+
+	// STARTING SOON: the next few screenings across every film, soonest first.
+	// The grid below keeps its rating-first order; this strip is the time-first
+	// way in. TEXT mode is already a time-sorted timetable, so it skips it.
+	const SOON_WINDOW_MS = 3 * 60 * 60 * 1000;
+	const SOON_LIMIT = 6;
+
+	// The strip is only useful while its times are current, and its booking
+	// links open in a new tab, so this tab is routinely left behind and resumed.
+	// It gets its own clock that ticks each minute and on return to the tab.
+	// Until the effect first runs it falls back to `clock.now`, so the first
+	// client render still matches the server's (see `$lib/hydration-clock`).
+	let soonTick = $state<number | null>(null);
+	const soonNow = $derived(soonTick ?? clock.now);
+	$effect(() => {
+		const tick = () => (soonTick = Date.now());
+		tick();
+		const id = setInterval(tick, 60_000);
+		const onVisible = () => {
+			if (document.visibilityState === 'visible') tick();
+		};
+		document.addEventListener('visibilitychange', onVisible);
+		return () => {
+			clearInterval(id);
+			document.removeEventListener('visibilitychange', onVisible);
+		};
+	});
+
+	const startingSoon = $derived(
+		displayMode === 'posters'
+			? selectStartingSoon(filmMap, soonNow, { windowMs: SOON_WINDOW_MS, limit: SOON_LIMIT })
+			: []
+	);
+
+	type PageScreening = (typeof data.screenings)[number];
+
+	// One shape for both timetables (TEXT mode and STARTING SOON) so they
+	// cannot drift apart.
+	function toTextDayFilm(
+		film: NonNullable<PageScreening['film']>,
+		screenings: PageScreening[],
+		sleeper: boolean
+	) {
+		return {
+			film: { id: film.id, title: film.title, year: film.year, director: film.director ?? null },
+			screenings: screenings.map(toCardScreening),
+			sleeper
+		};
+	}
 
 	const hasActiveFilters = $derived(
 		filters.filmSearch.length > 0 ||
@@ -263,6 +312,23 @@
 			{/if}
 		</EmptyState>
 	{:else}
+		{#if startingSoon.length > 0}
+			<!-- Own class, not `.day`: it spans days, and day selectors (tests,
+			     fitToFirstRow) must keep meaning "one calendar day". -->
+			<section class="soon">
+				<header class="day-header">
+					<h2>STARTING <span class="day-ord">SOON</span></h2>
+				</header>
+				<FigmaTextDay
+					films={startingSoon.map(({ film, screenings }) =>
+						toTextDayFilm(film, screenings, data.sleepers[clock.today] === String(film.id))
+					)}
+					now={soonNow}
+					label="Screenings starting soon"
+					source="calendar-soon"
+				/>
+			</section>
+		{/if}
 		{#each visibleDayGroups as { date, films }, di (date)}
 				{@const parts = dayParts(date)}
 				<section class="day" class:day-wide={displayMode === 'text'} use:fitToFirstRow>
@@ -277,22 +343,9 @@
 					</header>
 					{#if displayMode === 'text'}
 						<FigmaTextDay
-							films={films.map(({ film, screenings }) => ({
-								film: {
-									id: film.id,
-									title: film.title,
-									year: film.year,
-									director: film.director ?? null
-								},
-								screenings: screenings.map((s) => ({
-									id: s.id,
-									datetime: s.datetime,
-									cinemaName: s.cinema?.name ?? 'Unknown',
-									format: s.format,
-									bookingUrl: s.bookingUrl
-								})),
-								sleeper: di === 0 && data.sleepers[date] === String(film.id)
-							}))}
+							films={films.map(({ film, screenings }) =>
+								toTextDayFilm(film, screenings, di === 0 && data.sleepers[date] === String(film.id))
+							)}
 							now={clock.now}
 						/>
 					{:else}
@@ -385,8 +438,10 @@
 	/* Day section caps at N cards wide for the viewport. The fitToFirstRow JS
 	   action overrides this with an explicit shrunken width when a day has
 	   fewer cards than the cap, so the black header bar lines up with the
-	   actual cards beneath it. */
-	.day {
+	   actual cards beneath it. The STARTING SOON strip follows the same ladder
+	   so its edges line up with the card grid below it. */
+	.day,
+	.soon {
 		display: flex;
 		flex-direction: column;
 		align-self: flex-start;
@@ -395,15 +450,15 @@
 	}
 
 	@media (min-width: 703px) {
-		.day { max-width: 655px; }     /* 2 cards (656 - 1) */
+		.day, .soon { max-width: 655px; }     /* 2 cards (656 - 1) */
 	}
 
 	@media (min-width: 1030px) {
-		.day { max-width: 982px; }     /* 3 cards (984 - 2) */
+		.day, .soon { max-width: 982px; }     /* 3 cards (984 - 2) */
 	}
 
 	@media (min-width: 1357px) {
-		.day { max-width: 1309px; }    /* 4 cards (1312 - 3) */
+		.day, .soon { max-width: 1309px; }    /* 4 cards (1312 - 3) */
 	}
 
 	/* In TEXT mode, the day section ignores the card-row width ladder and uses

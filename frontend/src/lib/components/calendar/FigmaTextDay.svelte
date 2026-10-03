@@ -1,15 +1,21 @@
 <script lang="ts">
 	import { formatTime } from '$lib/utils';
-	import { trackScreeningClick } from '$lib/analytics/posthog';
+	import { trackScreeningClick, type DiscoverySource } from '$lib/analytics/posthog';
 	import { formatLabel, type CardFilm, type CardScreening } from './card-shapes';
 
 	let {
 		films,
-		now
+		now,
+		label = 'Screenings list',
+		source = 'calendar-text'
 	}: {
 		films: Array<{ film: CardFilm; screenings: CardScreening[]; sleeper?: boolean }>;
 		/** Epoch ms to judge "upcoming" against — see the note in FigmaFilmCard. */
 		now: number;
+		/** Accessible name for the table; must differ when two share a page. */
+		label?: string;
+		/** Analytics source for row clicks, so each placement is measured apart. */
+		source?: DiscoverySource;
 	} = $props();
 
 	// Flatten film+screenings into one row per upcoming screening, sorted by time.
@@ -46,12 +52,12 @@
 				screeningTime: s.datetime,
 				cinemaName: s.cinemaName
 			},
-			'calendar-text'
+			source
 		);
 	}
 </script>
 
-<div class="text-table" role="table" aria-label="Screenings list">
+<div class="text-table" role="table" aria-label={label}>
 	<div class="text-thead" role="row">
 		<span role="columnheader">TIME</span>
 		<span role="columnheader">TITLE</span>

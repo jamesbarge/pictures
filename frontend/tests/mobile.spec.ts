@@ -263,6 +263,26 @@ test.describe('Mobile Responsive — iPhone 12 Pro (390x844)', () => {
 			expect(box!.x + box!.width).toBeLessThanOrEqual(viewport);
 			expect(box!.height).toBeGreaterThanOrEqual(14);
 		});
+
+		test('the first STARTING SOON time is on the first screen', async ({ page }) => {
+			// Poster cards put their first showtime about 940px down an 844px
+			// screen; the strip exists so a phone sees a time without scrolling.
+			await page.goto(BASE);
+			await page.locator('section.day .film-row article.card').first().waitFor({ timeout: 10000 });
+			const strip = page.locator('section.soon');
+
+			// Hydration can add or remove the strip on ISR-served HTML, so retry
+			// until it settles. Absence is legitimate late at night.
+			let present = false;
+			await expect(async () => {
+				present = (await strip.count()) > 0;
+				if (!present) return;
+				const box = (await strip.locator('time').first().boundingBox())!;
+				const viewportHeight = await page.evaluate(() => window.innerHeight);
+				expect(box.y + box.height).toBeLessThanOrEqual(viewportHeight);
+			}).toPass({ timeout: 15000 });
+			test.skip(!present, 'nothing starts within the next three hours');
+		});
 	});
 
 	// ═══════════════════════════════════════════════
