@@ -1,3 +1,12 @@
+## 2026-10-04: David Lean reads its TicketSolve XML feed
+**PR**: TBD | **Files**: `src/scrapers/cinemas/david-lean.ts`, `src/scrapers/cinemas/david-lean.test.ts`, `src/scrapers/cinemas/bst-regression.test.ts`, `src/scrapers/utils/screening-classification.ts`, `src/scrapers/utils/screening-classification.test.ts` (new), `src/scrapers/SCRAPING_PLAYBOOK.md`
+- The scraper reads `https://davidleancinema.ticketsolve.com/shows.xml` with a plain fetch, replacing a Playwright homepage scrape. Dry parse 2026-10-04: 30 -> 58 screenings, last date 31 Oct -> 28 Nov, and Animal Shorts at its real 12:00 start (the homepage gave the 10:30 doors time).
+- TicketSolve labels not-yet-on-sale events "sold out". The scraper sets `sold_out` only when the event's own XML shows it on sale with 0 seats, so the 27 November events carry no SOLD OUT tag.
+- sourceIds become `david-lean-{eventId}`. Legacy-keyed future rows need a one-off cleanup immediately before the first persist; see the changelog file.
+- Relaxed screenings set `eventType: "relaxed"`, and `classifyScreening` marks any scraper-supplied relaxed event type as a relaxed screening.
+
+---
+
 ## 2026-10-03: Mobile masthead loses its empty band
 **PR**: #767 | **Files**: `frontend/src/lib/components/layout/Header.svelte`
 - Below 768px the masthead drops a 180px minimum height that exists to seat the desktop nav and house-lights dial, both hidden on phones. Phones get 40px back on every page (205px to 165px), and the wordmark keeps its size.
