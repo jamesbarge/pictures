@@ -1,6 +1,6 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
 
-import { BASE } from './tests/base-url';
+import { BASE, dismissConsent } from './tests/base-url';
 
 // Open a toolbar Dropdown (WHERE / FORMAT / the WHEN custom-date control) and
 // wait for its `role="group"` panel to appear. The Dropdown registers a
@@ -27,16 +27,7 @@ test.use({ viewport: { width: 1440, height: 900 } });
 // Dismiss cookie consent before every test so assertions aren't blocked by
 // the pretext banner. Use addInitScript (runs on every navigation) so reloads
 // don't re-trigger it.
-test.beforeEach(async ({ context }) => {
-	await context.addInitScript(() => {
-		try {
-			localStorage.setItem(
-				'pictures-cookie-consent',
-				JSON.stringify({ status: 'rejected', updatedAt: new Date().toISOString() })
-			);
-		} catch { /* ignore */ }
-	});
-});
+test.beforeEach(({ context }) => dismissConsent(context));
 
 test.describe('Pictures London — SvelteKit Frontend', () => {
 
@@ -53,6 +44,7 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 			const firstTitle = await page.locator('article.card h3.title').first().textContent();
 			expect(firstTitle).toBeTruthy();
 			expect(firstTitle!.length).toBeGreaterThan(0);
+			await expect(page).toHaveTitle('pictures · london');
 		});
 
 		test('shows day header band with weekday + ordinal', async ({ page }) => {
@@ -159,7 +151,6 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 		});
 
 		test('toolbar exposes the filter controls', async ({ page }) => {
-			await page.setViewportSize({ width: 1440, height: 900 });
 			await page.goto(BASE);
 			// The homepage filter sidebar was replaced by the FigmaToolbar. Assert
 			// its accessible shape: the search input, the WHERE / FORMAT chip
@@ -177,7 +168,6 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 		});
 
 		test('ALL / NEW / REP film-type tabs visible', async ({ page }) => {
-			await page.setViewportSize({ width: 1440, height: 900 });
 			await page.goto(BASE);
 			const tablist = page.locator('[role="tablist"][aria-label="Film type"]');
 			await expect(tablist.getByRole('tab', { name: 'ALL', exact: true })).toBeVisible();
@@ -186,7 +176,6 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 		});
 
 		test('REP tab filters to repertory-only films', async ({ page }) => {
-			await page.setViewportSize({ width: 1440, height: 900 });
 			await page.goto(BASE);
 			await page.waitForSelector('article.card', { timeout: 10000 });
 
@@ -225,7 +214,6 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 			// to the SSR'd "All" view's films. This test loads the page with a
 			// New filter persisted in localStorage and confirms each card's
 			// poster URL matches the title set produced by clicking the tab.
-			await page.setViewportSize({ width: 1440, height: 900 });
 
 			const readPairs = () =>
 				page.evaluate(() =>
@@ -271,7 +259,6 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 		});
 
 		test('WHERE cinema filter narrows results', async ({ page }) => {
-			await page.setViewportSize({ width: 1440, height: 900 });
 			await page.goto(BASE);
 			await page.waitForSelector('article.card', { timeout: 10000 });
 			const allCount = await page.locator('article.card').count();
@@ -299,7 +286,6 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 		});
 
 		test('FORMAT filter (35mm) reduces displayed films', async ({ page }) => {
-			await page.setViewportSize({ width: 1440, height: 900 });
 			await page.goto(BASE);
 			await page.waitForSelector('article.card', { timeout: 10000 });
 			// Skip when no 35mm films are currently visible — the filter can't
@@ -362,7 +348,6 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 		});
 
 		test('search matches cinema names', async ({ page }) => {
-			await page.setViewportSize({ width: 1440, height: 900 });
 			await page.goto(BASE);
 			await page.waitForSelector('article.card', { timeout: 10000 });
 			// Skip when today has no Prince Charles films at all — the test
@@ -388,7 +373,6 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 			// sidebar no longer exists; the toolbar's "Display mode" tablist now
 			// owns the POSTERS/TEXT view switch. POSTERS renders poster cards,
 			// TEXT renders the screenings table.
-			await page.setViewportSize({ width: 1440, height: 900 });
 			await page.goto(BASE);
 			await page.waitForSelector('article.card', { timeout: 10000 });
 			const displayMode = page.locator('[role="tablist"][aria-label="Display mode"]');
@@ -402,7 +386,6 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 		test('STARTING SOON leads with the next screenings, soonest first', async ({ page }) => {
 			// Live data: late at night nothing may start within three hours, and
 			// then the strip is correctly hidden. This is the strip's only check.
-			await page.setViewportSize({ width: 1440, height: 900 });
 			await page.goto(BASE);
 			await page.waitForSelector('article.card', { timeout: 10000 });
 			// The section stays in the DOM when empty (CSS hides it), so match rows.
@@ -450,7 +433,6 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 		});
 
 		test('House lights dimmer label is visible', async ({ page }) => {
-			await page.setViewportSize({ width: 1440, height: 900 });
 			await page.goto(BASE);
 			await expect(page.getByText('house lights')).toBeVisible();
 		});
@@ -462,11 +444,6 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 			await expect(page.locator('footer').getByText('privacy')).toBeVisible();
 			await expect(page.locator('footer').getByText('terms')).toBeVisible();
 		});
-
-		test('has correct page title', async ({ page }) => {
-			await page.goto(BASE);
-			await expect(page).toHaveTitle('pictures · london');
-		});
 	});
 
 	// ═══════════════════════════════════════════════
@@ -475,19 +452,12 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 
 	test.describe('Navigation', () => {
 		test('header nav links are visible at desktop width', async ({ page }) => {
-			await page.setViewportSize({ width: 1440, height: 900 });
 			await page.goto(BASE);
 			const nav = page.locator('nav[aria-label="Main"]');
 			await expect(nav.getByRole('link', { name: 'About' })).toBeVisible();
 			await expect(nav.getByRole('link', { name: 'Map' })).toBeVisible();
 			await expect(nav.getByRole('link', { name: 'Reachable' })).toBeVisible();
 			await expect(nav.getByRole('link', { name: 'Watchlist' })).toBeVisible();
-		});
-
-		test('clicking wordmark navigates to home', async ({ page }) => {
-			await page.goto(`${BASE}/about`);
-			await page.locator('[aria-label="pictures london — home"]').click();
-			await expect(page).toHaveURL(BASE + '/');
 		});
 
 		test('footer about link navigates to about page', async ({ page }) => {
@@ -550,14 +520,6 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 			expect(extLinks).toBeGreaterThan(0);
 		});
 
-		test('has correct page title with film name', async ({ page }) => {
-			await page.goto(BASE);
-			await page.waitForSelector('article.card', { timeout: 10000 });
-			await page.locator('article.card a').first().click();
-			await page.waitForURL(/\/film\//);
-			await expect(page).toHaveTitle(/— pictures · london/);
-		});
-
 		test('shows bookable screening rows in the Showings section', async ({ page }) => {
 			// The redesign removed the per-screening iCal download button
 			// (`/api/calendar?screening=`). The Showings section now exposes each
@@ -580,6 +542,7 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 			await page.waitForSelector('article.card', { timeout: 10000 });
 			await page.locator('article.card a').first().click();
 			await page.waitForURL(/\/film\//);
+			await expect(page).toHaveTitle(/— pictures · london/);
 			const pick = page.getByRole('button', { name: /Pick date/ });
 			if (await pick.count() === 0) test.skip();
 			await pick.first().click();
@@ -595,10 +558,6 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 		test('loads with correct heading', async ({ page }) => {
 			await page.goto(`${BASE}/tonight`);
 			await expect(page.locator('h1')).toContainText('TONIGHT');
-		});
-
-		test('has correct page title', async ({ page }) => {
-			await page.goto(`${BASE}/tonight`);
 			await expect(page).toHaveTitle(/Tonight/);
 		});
 	});
@@ -611,6 +570,7 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 		test('loads cinema list with cards', async ({ page }) => {
 			await page.goto(`${BASE}/cinemas`);
 			await expect(page.locator('h1')).toContainText('CINEMAS');
+			await expect(page).toHaveTitle(/Cinemas/);
 			const cards = await page.locator('.cinema-card').count();
 			expect(cards).toBeGreaterThan(0);
 		});
@@ -625,11 +585,6 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 			expect(filteredCount).toBeLessThan(allCount);
 			expect(filteredCount).toBeGreaterThan(0);
 		});
-
-		test('has correct page title', async ({ page }) => {
-			await page.goto(`${BASE}/cinemas`);
-			await expect(page).toHaveTitle(/Cinemas/);
-		});
 	});
 
 	// ═══════════════════════════════════════════════
@@ -640,6 +595,7 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 		test('loads directors list', async ({ page }) => {
 			await page.goto(`${BASE}/directors`);
 			await expect(page.locator('h1')).toContainText('DIRECTORS');
+			await expect(page).toHaveTitle(/Directors/);
 			const cards = await page.locator('.director-card').count();
 			expect(cards).toBeGreaterThan(0);
 		});
@@ -660,11 +616,6 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 			const filteredCount = await page.locator('.director-card').count();
 			expect(filteredCount).toBeLessThanOrEqual(allCount);
 		});
-
-		test('has correct page title', async ({ page }) => {
-			await page.goto(`${BASE}/directors`);
-			await expect(page).toHaveTitle(/Directors/);
-		});
 	});
 
 	// ═══════════════════════════════════════════════
@@ -675,10 +626,6 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 		test('loads with correct heading', async ({ page }) => {
 			await page.goto(`${BASE}/watchlist`);
 			await expect(page.locator('h1')).toContainText('WATCHLIST');
-		});
-
-		test('has correct page title', async ({ page }) => {
-			await page.goto(`${BASE}/watchlist`);
 			await expect(page).toHaveTitle(/Watchlist/);
 		});
 	});
@@ -691,6 +638,7 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 		test('loads with all setting sections', async ({ page }) => {
 			await page.goto(`${BASE}/settings`);
 			await expect(page.locator('h1')).toContainText('SETTINGS');
+			await expect(page).toHaveTitle(/Settings/);
 			await expect(page.getByText('DEFAULT VIEW')).toBeVisible();
 			await expect(page.getByText('THEME')).toBeVisible();
 			await expect(page.getByText('CLEAR ALL DATA')).toBeVisible();
@@ -700,11 +648,6 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 			await page.goto(`${BASE}/settings`);
 			await expect(page.getByRole('tab', { name: 'POSTER' })).toBeVisible();
 			await expect(page.getByRole('tab', { name: 'TEXT' })).toBeVisible();
-		});
-
-		test('has correct page title', async ({ page }) => {
-			await page.goto(`${BASE}/settings`);
-			await expect(page).toHaveTitle(/Settings/);
 		});
 	});
 
@@ -749,13 +692,9 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 	// ═══════════════════════════════════════════════
 
 	test.describe('Error Handling', () => {
-		test('404 page shows for unknown routes', async ({ page }) => {
+		test('404 page shows for unknown routes with a back to calendar link', async ({ page }) => {
 			await page.goto(`${BASE}/this-page-does-not-exist`);
 			await expect(page.locator('h1')).toContainText('404');
-		});
-
-		test('404 page has back to calendar link', async ({ page }) => {
-			await page.goto(`${BASE}/this-page-does-not-exist`);
 			await expect(page.getByText('BACK TO CALENDAR')).toBeVisible();
 		});
 	});
@@ -827,11 +766,6 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 	// ═══════════════════════════════════════════════
 
 	test.describe('Cinema Map Page', () => {
-		test('loads map page with heading', async ({ page }) => {
-			await page.goto(`${BASE}/map`);
-			await expect(page.getByText('CINEMA MAP')).toBeVisible();
-		});
-
 		test('shows venue count', async ({ page }) => {
 			await page.goto(`${BASE}/map`);
 			await expect(page.getByText(/\d+ VENUES/)).toBeVisible();

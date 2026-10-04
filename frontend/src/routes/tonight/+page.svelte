@@ -70,7 +70,7 @@
 		{#if filmMap.length === 0}
 			<EmptyState title="Nothing showing tonight" description="Check back later or browse all screenings." />
 		{:else}
-			<div class="film-grid">
+			<div class="poster-grid">
 				{#each filmMap as { film, screenings }, i (film.id)}
 					<FilmCard
 						film={{
@@ -91,27 +91,3 @@
 		{/if}
 	</div>
 </section>
-
-<style>
-	.film-grid {
-		display: grid;
-		grid-template-columns: repeat(2, 1fr);
-		column-gap: 1rem;
-		row-gap: 0;
-		grid-auto-rows: auto;
-		content-visibility: auto;
-		contain-intrinsic-size: auto 900px;
-	}
-
-	@media (min-width: 768px) {
-		.film-grid { grid-template-columns: repeat(3, 1fr); column-gap: 1.25rem; }
-	}
-
-	@media (min-width: 1024px) {
-		.film-grid { grid-template-columns: repeat(4, 1fr); }
-	}
-
-	@media (min-width: 1280px) {
-		.film-grid { grid-template-columns: repeat(6, 1fr); }
-	}
-</style>

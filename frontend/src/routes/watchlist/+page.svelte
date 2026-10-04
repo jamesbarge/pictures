@@ -91,6 +91,52 @@
 	<meta name="robots" content="noindex" />
 </svelte:head>
 
+{#snippet row(film: WatchlistFilm, showing: boolean)}
+	<a href="/film/{film.id}" class="watchlist-row" class:muted={!showing}>
+		{#if film.posterUrl}
+			{@const posterImage = getPosterImageAttributes(film.posterUrl, {
+				baseSize: 'w92',
+				srcSetSizes: ['w92', 'w154'],
+				sizes: '36px'
+			})}
+			<img
+				src={posterImage?.src ?? film.posterUrl}
+				srcset={posterImage?.srcset}
+				sizes={posterImage?.sizes}
+				alt=""
+				class="wl-poster"
+				loading="lazy"
+				decoding="async"
+			/>
+		{:else}
+			<div class="wl-poster-empty"></div>
+		{/if}
+		<div class="wl-info">
+			<span class="wl-title">{film.title}</span>
+			<span class="wl-meta">{film.year ?? ''}{film.directors.length ? ` · ${film.directors[0]}` : ''}</span>
+		</div>
+		{#if showing}
+			<div class="wl-screenings">
+				<span class="wl-count">{film.screeningCount} SCREENINGS</span>
+				{#if film.nextScreening}
+					<span class="wl-next">Next: {formatTime(film.nextScreening)}</span>
+				{/if}
+			</div>
+			<button
+				class="wl-remove"
+				onclick={(e) => { e.preventDefault(); filmStatuses.removeStatus(film.id); films = films.filter(f => f.id !== film.id); }}
+				aria-label="Remove from watchlist"
+			>
+				<svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10" fill="none">
+					<path d="M1 1L9 9M9 1L1 9" stroke="currentColor" stroke-width="1.2" stroke-linecap="square"/>
+				</svg>
+			</button>
+		{:else}
+			<span class="wl-no-screenings">NO SCREENINGS</span>
+		{/if}
+	</a>
+{/snippet}
+
 <section class="py-6">
 	<div class="max-w-[1400px] mx-auto px-4 md:px-8">
 		<div class="flex items-baseline justify-between mb-6 pb-1.5 border-b-2 border-[var(--color-border)]">
@@ -121,47 +167,7 @@
 				<div class="mb-8">
 					<h2 class="section-label">CURRENTLY SHOWING</h2>
 					<div class="film-list">
-						{#each currentlyShowing as film (film.id)}
-							<a href="/film/{film.id}" class="watchlist-row">
-								{#if film.posterUrl}
-									{@const posterImage = getPosterImageAttributes(film.posterUrl, {
-										baseSize: 'w92',
-										srcSetSizes: ['w92', 'w154'],
-										sizes: '36px'
-									})}
-									<img
-										src={posterImage?.src ?? film.posterUrl}
-										srcset={posterImage?.srcset}
-										sizes={posterImage?.sizes}
-										alt=""
-										class="wl-poster"
-										loading="lazy"
-										decoding="async"
-									/>
-								{:else}
-									<div class="wl-poster-empty"></div>
-								{/if}
-								<div class="wl-info">
-									<span class="wl-title">{film.title}</span>
-									<span class="wl-meta">{film.year ?? ''}{film.directors.length ? ` · ${film.directors[0]}` : ''}</span>
-								</div>
-								<div class="wl-screenings">
-									<span class="wl-count">{film.screeningCount} SCREENINGS</span>
-									{#if film.nextScreening}
-										<span class="wl-next">Next: {formatTime(film.nextScreening)}</span>
-									{/if}
-								</div>
-								<button
-									class="wl-remove"
-									onclick={(e) => { e.preventDefault(); filmStatuses.removeStatus(film.id); films = films.filter(f => f.id !== film.id); }}
-									aria-label="Remove from watchlist"
-								>
-									<svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10" fill="none">
-										<path d="M1 1L9 9M9 1L1 9" stroke="currentColor" stroke-width="1.2" stroke-linecap="square"/>
-									</svg>
-								</button>
-							</a>
-						{/each}
+						{#each currentlyShowing as film (film.id)}{@render row(film, true)}{/each}
 					</div>
 				</div>
 			{/if}
@@ -170,33 +176,7 @@
 				<div>
 					<h2 class="section-label">NOT CURRENTLY PLAYING</h2>
 					<div class="film-list">
-						{#each notPlaying as film (film.id)}
-							<a href="/film/{film.id}" class="watchlist-row muted">
-								{#if film.posterUrl}
-									{@const posterImage = getPosterImageAttributes(film.posterUrl, {
-										baseSize: 'w92',
-										srcSetSizes: ['w92', 'w154'],
-										sizes: '36px'
-									})}
-									<img
-										src={posterImage?.src ?? film.posterUrl}
-										srcset={posterImage?.srcset}
-										sizes={posterImage?.sizes}
-										alt=""
-										class="wl-poster"
-										loading="lazy"
-										decoding="async"
-									/>
-								{:else}
-									<div class="wl-poster-empty"></div>
-								{/if}
-								<div class="wl-info">
-									<span class="wl-title">{film.title}</span>
-									<span class="wl-meta">{film.year ?? ''}{film.directors.length ? ` · ${film.directors[0]}` : ''}</span>
-								</div>
-								<span class="wl-no-screenings">NO SCREENINGS</span>
-							</a>
-						{/each}
+						{#each notPlaying as film (film.id)}{@render row(film, false)}{/each}
 					</div>
 				</div>
 			{/if}

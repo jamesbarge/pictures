@@ -36,36 +36,3 @@
 		</div>
 	</div>
 </section>
-
-<style>
-	.prose {
-		font-size: var(--font-size-base);
-		line-height: 1.7;
-		color: var(--color-text-secondary);
-	}
-
-	.prose p {
-		margin-bottom: 1.25rem;
-	}
-
-	.prose h2 {
-		font-size: var(--font-size-xs);
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		color: var(--color-text);
-		margin-top: 2rem;
-		margin-bottom: 0.75rem;
-	}
-
-	.prose a {
-		color: var(--color-text);
-		text-decoration: underline;
-		text-underline-offset: 2px;
-	}
-
-	.prose strong {
-		color: var(--color-text);
-		font-weight: 600;
-	}
-</style>

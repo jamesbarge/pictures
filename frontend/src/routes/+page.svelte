@@ -14,17 +14,10 @@
 	import { toCardScreening } from '$lib/components/calendar/card-shapes';
 	import { trackFilterNoResults } from '$lib/analytics/posthog';
 	import { browser } from '$app/environment';
-	import { page } from '$app/state';
 
 	let { data } = $props();
 
-	const cinemas = $derived((page.data?.cinemas ?? []) as Array<{
-		id: string;
-		name: string;
-		shortName: string | null;
-		address: { area: string } | null;
-		coordinates: { lat: number; lng: number } | null;
-	}>);
+	const cinemas = $derived(data.cinemas);
 
 	let mobileFilterOpen = $state(false);
 	let mobileFilterTrigger = $state<HTMLButtonElement>();
