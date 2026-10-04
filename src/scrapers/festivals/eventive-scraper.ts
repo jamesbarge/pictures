@@ -9,7 +9,6 @@
  */
 
 import type { RawScreening } from "@/scrapers/types";
-import type { TaggingResult } from "./types";
 import {
   getFilms,
   getEvents,
@@ -17,8 +16,6 @@ import {
   type EventiveFilm,
   type EventiveEvent,
 } from "./eventive-client";
-import { saveScreenings } from "@/scrapers/pipeline";
-import { getCinemaById } from "@/config/cinema-registry";
 
 // ── Festival configurations ──────────────────────────────────────────────
 
@@ -168,85 +165,4 @@ function createScreening(
     sourceId: `eventive-${event.id}`,
     availabilityStatus,
   };
-}
-
-/**
- * Scrape all active Eventive festivals and save to database.
- * Only scrapes festivals within their watch windows.
- */
-export async function scrapeActiveEventiveFestivals(): Promise<TaggingResult[]> {
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth(); // 0-indexed
-  const results: TaggingResult[] = [];
-
-  for (const config of EVENTIVE_FESTIVALS) {
-    // Import the festival config to check typical months
-    const { FESTIVAL_CONFIGS } = await import("./festival-config");
-    const festivalConfig = FESTIVAL_CONFIGS[config.slugBase];
-    if (!festivalConfig) continue;
-
-    // Check if we're within the watch window (typical months ± 1 month)
-    const inWindow = festivalConfig.typicalMonths.some(
-      (m) => Math.abs(currentMonth - m) <= 1 || Math.abs(currentMonth - m) >= 11
-    );
-    if (!inWindow) continue;
-
-    try {
-      const { screenings } = await scrapeEventiveFestival(
-        config.slugBase,
-        currentYear
-      );
-
-      // Group by cinemaId and save
-      const byCinema = new Map<string, RawScreening[]>();
-      for (const s of screenings) {
-        const cId = (s as RawScreening & { cinemaId: string }).cinemaId;
-        if (!byCinema.has(cId)) byCinema.set(cId, []);
-        byCinema.get(cId)!.push(s);
-      }
-
-      let totalSaved = 0;
-      // Every screening this ingester writes carries a festivalSlug, so this is
-      // the path where a festival-link failure is most likely. Reported rather
-      // than folded into totalSaved: the screening rows landed, and the link
-      // failing is a separate fact that must not read as a clean ingest.
-      let totalPostWriteFailures = 0;
-      for (const [cinemaId, cinemaScreenings] of byCinema) {
-        const cinema = getCinemaById(cinemaId);
-        if (!cinema) continue;
-
-        // Persist cinema.id, not the mapping key: getCinemaById resolves legacy
-        // aliases and returns the canonical record, so the raw key could carry a
-        // legacy ID past this guard and be written verbatim.
-        const result = await saveScreenings(cinema.id, cinemaScreenings);
-        totalSaved += result.added + result.updated;
-        totalPostWriteFailures += result.postWriteFailures;
-      }
-
-      if (totalPostWriteFailures > 0) {
-        console.warn(
-          `[Eventive] ${config.slugBase}: ${totalPostWriteFailures} screening(s) ` +
-            `persisted but their festival link failed — the rows are stored and ` +
-            `untagged`
-        );
-      }
-
-      results.push({
-        festivalSlug: `${config.slugBase}-${currentYear}`,
-        festivalName: config.slugBase,
-        screeningsChecked: screenings.length,
-        screeningsTagged: totalSaved,
-        alreadyTagged: 0,
-        postWriteFailures: totalPostWriteFailures,
-      });
-    } catch (error) {
-      console.error(
-        `[Eventive] Failed to scrape ${config.slugBase}:`,
-        error instanceof Error ? error.message : error
-      );
-    }
-  }
-
-  return results;
 }

@@ -21,7 +21,6 @@ const BARBICAN_SEASON_CONFIG: SeasonScraperConfig = {
   cinemaId: "barbican",
   baseUrl: "https://www.barbican.org.uk",
   seasonsPath: "/whats-on/cinema",
-  requestsPerMinute: 6,
   delayBetweenRequests: 3000,
 };
 
@@ -165,10 +164,6 @@ export class BarbicanSeasonScraper extends BaseSeasonScraper {
     // Extract films from event links
     const films = this.extractFilmsFromPage($);
 
-    // Extract series slug for sourceId
-    const slugMatch = url.match(/\/series\/([^/?#]+)/);
-    const sourceId = slugMatch ? slugMatch[1] : this.generateSlug(name);
-
     // Try to extract director from series name
     const directorName = this.extractDirectorFromTitle(name);
 
@@ -182,7 +177,6 @@ export class BarbicanSeasonScraper extends BaseSeasonScraper {
       websiteUrl: url,
       sourceCinema: this.config.cinemaId,
       films,
-      sourceId,
     };
   }
 
@@ -217,36 +211,9 @@ export class BarbicanSeasonScraper extends BaseSeasonScraper {
       if (seenTitles.has(normalized)) return;
       seenTitles.add(normalized);
 
-      // Extract year from title if present
-      const yearMatch = title.match(/\((\d{4})\)/);
-      const year = yearMatch ? parseInt(yearMatch[1]) : undefined;
-      const cleanTitle = title.replace(/\s*\(\d{4}\)\s*$/, "").trim();
-
-      films.push({
-        title: cleanTitle,
-        year,
-        orderIndex: index,
-        filmUrl: this.resolveUrl(href),
-      });
+      films.push({ ...this.splitYear(title), orderIndex: index });
     });
 
     return films;
   }
-
-  /**
-   * Resolve relative URL to absolute
-   */
-  private resolveUrl(url: string): string {
-    if (url.startsWith("http")) return url;
-    if (url.startsWith("//")) return `https:${url}`;
-    if (url.startsWith("/")) return `${this.config.baseUrl}${url}`;
-    return `${this.config.baseUrl}/${url}`;
-  }
-}
-
-/**
- * Factory function
- */
-export function createBarbicanSeasonScraper(): BarbicanSeasonScraper {
-  return new BarbicanSeasonScraper();
 }

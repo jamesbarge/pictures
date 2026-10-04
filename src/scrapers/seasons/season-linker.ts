@@ -7,7 +7,7 @@
  */
 
 import { db } from "@/db";
-import { seasons, seasonFilms, films } from "@/db/schema";
+import { seasons, seasonFilms } from "@/db/schema";
 import { levenshteinSimilarity } from "@/lib/levenshtein";
 import { eq, and } from "drizzle-orm";
 
@@ -68,14 +68,6 @@ async function loadSeasonCache(): Promise<SeasonCache[]> {
   console.log(`[SeasonLinker] Loaded ${seasonCache.length} active seasons`);
 
   return seasonCache;
-}
-
-/**
- * Clear the season cache (call after season scrapers run)
- */
-export function clearSeasonCache(): void {
-  seasonCache = null;
-  cacheLoadedAt = null;
 }
 
 /**
@@ -146,93 +138,6 @@ export async function linkFilmToMatchingSeasons(
     } catch (error) {
       // Likely a duplicate key error - ignore
       console.warn(`[SeasonLinker] Failed to link film to season:`, error);
-    }
-  }
-
-  return linkedCount;
-}
-
-/**
- * Re-link all films for a specific season
- * 
- * Called after a season scraper runs to link films that already exist.
- * 
- * @param seasonId - The season's database ID
- * @returns Number of new links created
- */
-export async function relinkSeasonFilms(seasonId: string): Promise<number> {
-  // Get the season's raw film titles
-  const [season] = await db
-    .select({
-      id: seasons.id,
-      name: seasons.name,
-      rawFilmTitles: seasons.rawFilmTitles,
-    })
-    .from(seasons)
-    .where(eq(seasons.id, seasonId))
-    .limit(1);
-
-  if (!season) {
-    console.warn(`[SeasonLinker] Season not found: ${seasonId}`);
-    return 0;
-  }
-
-  const rawTitles = season.rawFilmTitles || [];
-  if (rawTitles.length === 0) {
-    return 0;
-  }
-
-  // Normalize all titles
-  const normalizedTitles = rawTitles.map(normalizeTitle);
-
-  // Get all films
-  const allFilms = await db
-    .select({
-      id: films.id,
-      title: films.title,
-    })
-    .from(films);
-
-  let linkedCount = 0;
-
-  for (const film of allFilms) {
-    const normalizedFilmTitle = normalizeTitle(film.title);
-
-    // Check for match
-    const isMatch = normalizedTitles.some(
-      (seasonTitle) =>
-        seasonTitle === normalizedFilmTitle ||
-        normalizedFilmTitle.startsWith(seasonTitle) ||
-        seasonTitle.startsWith(normalizedFilmTitle) ||
-        levenshteinSimilarity(normalizedFilmTitle, seasonTitle) > 0.85
-    );
-
-    if (!isMatch) continue;
-
-    // Check if link exists
-    const existing = await db
-      .select({ seasonId: seasonFilms.seasonId })
-      .from(seasonFilms)
-      .where(
-        and(
-          eq(seasonFilms.seasonId, seasonId),
-          eq(seasonFilms.filmId, film.id)
-        )
-      )
-      .limit(1);
-
-    if (existing.length > 0) continue;
-
-    // Create link
-    try {
-      await db.insert(seasonFilms).values({
-        seasonId: seasonId,
-        filmId: film.id,
-      });
-      linkedCount++;
-      console.log(`[SeasonLinker] Linked "${film.title}" to season "${season.name}"`);
-    } catch {
-      // Ignore duplicates
     }
   }
 

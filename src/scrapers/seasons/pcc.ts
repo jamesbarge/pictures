@@ -21,7 +21,6 @@ const PCC_SEASON_CONFIG: SeasonScraperConfig = {
   cinemaId: "prince-charles-cinema",
   baseUrl: "https://princecharlescinema.com",
   seasonsPath: "/seasons-events/",
-  requestsPerMinute: 10,
   delayBetweenRequests: 1500,
 };
 
@@ -151,10 +150,6 @@ export class PCCSeasonScraper extends BaseSeasonScraper {
     // Extract films
     const films = this.extractFilms($);
 
-    // Generate source ID from URL slug
-    const slugMatch = url.match(/\/seasons-events\/([^/?#]+)/);
-    const sourceId = slugMatch ? slugMatch[1].replace(/\/$/, "") : this.generateSlug(name);
-
     // Try to extract director name
     const directorName = this.extractDirectorFromTitle(name);
 
@@ -168,7 +163,6 @@ export class PCCSeasonScraper extends BaseSeasonScraper {
       websiteUrl: url,
       sourceCinema: this.config.cinemaId,
       films,
-      sourceId,
     };
   }
 
@@ -182,7 +176,6 @@ export class PCCSeasonScraper extends BaseSeasonScraper {
     // Strategy 1: Look for film links in the content
     $('a[href*="/whats-on/"], a[href*="/film/"]').each((index, el) => {
       const $link = $(el);
-      const href = $link.attr("href") || "";
 
       let title = $link.text().trim();
       if (!title || title.length < 2) return;
@@ -197,17 +190,7 @@ export class PCCSeasonScraper extends BaseSeasonScraper {
       if (seenTitles.has(normalized)) return;
       seenTitles.add(normalized);
 
-      // Extract year from title
-      const yearMatch = title.match(/\((\d{4})\)/);
-      const year = yearMatch ? parseInt(yearMatch[1]) : undefined;
-      const cleanTitle = title.replace(/\s*\(\d{4}\)\s*$/, "").trim();
-
-      films.push({
-        title: cleanTitle,
-        year,
-        orderIndex: index,
-        filmUrl: this.resolveUrl(href),
-      });
+      films.push({ ...this.splitYear(title), orderIndex: index });
     });
 
     // Strategy 2: Look for film titles in headings or list items
@@ -223,36 +206,10 @@ export class PCCSeasonScraper extends BaseSeasonScraper {
         if (seenTitles.has(normalized)) return;
         seenTitles.add(normalized);
 
-        // Extract year
-        const yearMatch = text.match(/\((\d{4})\)/);
-        const year = yearMatch ? parseInt(yearMatch[1]) : undefined;
-        const cleanTitle = text.replace(/\s*\(\d{4}\)\s*$/, "").trim();
-
-        films.push({
-          title: cleanTitle,
-          year,
-          orderIndex: index,
-        });
+        films.push({ ...this.splitYear(text), orderIndex: index });
       });
     }
 
     return films;
   }
-
-  /**
-   * Resolve relative URL to absolute
-   */
-  private resolveUrl(url: string): string {
-    if (url.startsWith("http")) return url;
-    if (url.startsWith("//")) return `https:${url}`;
-    if (url.startsWith("/")) return `${this.config.baseUrl}${url}`;
-    return `${this.config.baseUrl}/${url}`;
-  }
-}
-
-/**
- * Factory function
- */
-export function createPCCSeasonScraper(): PCCSeasonScraper {
-  return new PCCSeasonScraper();
 }

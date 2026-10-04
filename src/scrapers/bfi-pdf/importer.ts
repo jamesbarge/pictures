@@ -491,7 +491,7 @@ async function saveByVenue(
   let totalFailed = 0;
 
   for (const venue of venues) {
-    const venueScreenings = allScreenings.filter((s) => getVenueKey(s) === venue.id);
+    const venueScreenings = allScreenings.filter((s) => getBFIVenueKey(s) === venue.id);
     if (venueScreenings.length === 0) continue;
 
     console.log(`[BFI-Import] Saving ${venueScreenings.length} ${venue.name} screenings...`);
@@ -557,26 +557,15 @@ export function getBFIVenueKey(screening: RawScreening): "bfi-southbank" | "bfi-
   return "bfi-southbank";
 }
 
-// Internal alias preserved for legacy call-sites inside this file.
-const getVenueKey = getBFIVenueKey;
-
 /**
  * Create a unique key for a screening based on venue, film, datetime, and screen.
  */
 function createScreeningKey(screening: RawScreening): string {
-  const venueKey = getVenueKey(screening);
+  const venueKey = getBFIVenueKey(screening);
   const titleKey = screening.filmTitle.toLowerCase().replace(/\s+/g, "-");
   const dateKey = screening.datetime.toISOString().slice(0, 16); // YYYY-MM-DDTHH:mm
   const screenKey = (screening.screen || "unknown")
     .toLowerCase()
     .replace(/\s+/g, "-");
   return `${venueKey}-${titleKey}-${dateKey}-${screenKey}`;
-}
-
-// Export for use as a scraper function
-export async function scrape(): Promise<RawScreening[]> {
-  await runBFIImport();
-  // Note: screenings are already saved by runBFIImport, but we return them
-  // for compatibility with the scraper interface
-  return [];
 }

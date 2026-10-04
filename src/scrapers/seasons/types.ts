@@ -34,9 +34,6 @@ export interface RawSeason {
 
   /** Film titles included in this season */
   films: RawSeasonFilm[];
-
-  /** Unique identifier for deduplication */
-  sourceId?: string;
 }
 
 /**
@@ -54,9 +51,6 @@ export interface RawSeasonFilm {
 
   /** Order within the season (for curated ordering) */
   orderIndex?: number;
-
-  /** URL to the film's page on the cinema website */
-  filmUrl?: string;
 }
 
 /**
@@ -72,44 +66,8 @@ export interface SeasonScraperConfig {
   /** URL or path to the seasons listing page */
   seasonsPath: string;
 
-  /** Rate limiting - requests per minute */
-  requestsPerMinute: number;
-
   /** Delay between requests in milliseconds */
   delayBetweenRequests: number;
-}
-
-/**
- * Result of a season scrape operation
- */
-export interface SeasonScraperResult {
-  /** Cinema ID that was scraped */
-  cinemaId: string;
-
-  /** Seasons extracted */
-  seasons: RawSeason[];
-
-  /** When the scrape was performed */
-  scrapedAt: Date;
-
-  /** Whether the scrape succeeded */
-  success: boolean;
-
-  /** Error message if the scrape failed */
-  error?: string;
-}
-
-/**
- * Interface for season scrapers
- */
-export interface SeasonScraper {
-  config: SeasonScraperConfig;
-
-  /** Scrape all seasons from the cinema */
-  scrape(): Promise<RawSeason[]>;
-
-  /** Health check - verify the seasons page is accessible */
-  healthCheck(): Promise<boolean>;
 }
 
 /**
@@ -127,7 +85,4 @@ export interface SeasonSaveResult {
 
   /** Number of films that couldn't be matched */
   filmsUnmatched: number;
-
-  /** Slugs of seasons that were processed */
-  seasonSlugs: string[];
 }

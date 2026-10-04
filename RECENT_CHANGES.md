@@ -1,3 +1,12 @@
+## 2026-10-04: Delete dead seasons, festivals and BFI PDF code
+**PR**: #PENDING | **Files**: `src/scrapers/seasons/run-seasons.ts` (new), `src/scrapers/seasons/base.ts`, `src/scrapers/festivals/eventive-scraper.ts`, `src/scrapers/bfi-pdf/programme-changes-parser.ts`, `src/scrapers/bfi-pdf/pdf-parser.ts`, `package.json`
+- Deletes code with no caller since the Trigger.dev and Bree schedulers went (#469, #472): the festival watchdog and its probes, the persisting Eventive ingest `scrapeActiveEventiveFestivals`, the BFI ghost cleanup (`bfi-pdf/cleanup.ts`, 423 lines), two unimported barrels and a dozen unused helpers.
+- The five copy-paste seasons runners become one `run-seasons.ts <venue>`; the five `npm run scrape:<venue>-seasons` names still work. The seasons scrapers share one `resolveUrl` built on `new URL` and one `splitYear`, and lose fields nothing read (`sourceId`, `filmUrl`, `requestsPerMinute`, `seasonSlugs`).
+- The two BFI parsers drop write-only fields (cast, runtime, countries, accessibility flags, notes, `parseErrors`) and share one venue map, month map and title cleaner.
+- 1,867 fewer lines of code. The seasons feature, the Eventive dry-run admin route, the reverse-tagger and the standalone BFI import path all stay.
+
+---
+
 ## 2026-10-04: JW3 film nights outside the Cinema genre
 **PR**: #783 | **Files**: `src/scrapers/cinemas/jw3.ts`, `src/scrapers/cinemas/jw3.test.ts` (new), `src/scrapers/SCRAPING_PLAYBOOK.md`
 - JW3 now keeps film nights filed under other Spektrix genres when the name labels them, e.g. `Young JW3 Queer Movie & Pizza Night: Call Me By Your Name`, listed as the film after the colon. This adds Call Me By Your Name (21 Oct) and Theater Camp (16 Dec).
