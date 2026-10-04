@@ -260,6 +260,13 @@
 		gap: 6px;
 	}
 
+	/* 180px floor only seats the desktop nav and dimmer, both hidden here. */
+	@media (max-width: 767px) {
+		.brand-bar {
+			min-height: 0;
+		}
+	}
+
 	@media (max-width: 320px) {
 		.brand-bar {
 			height: auto;

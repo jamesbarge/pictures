@@ -39,6 +39,19 @@ export const GENESIS_VENUE = {
   website: "https://genesiscinema.co.uk",
 };
 
+/**
+ * Decode a response body with the charset its Content-Type declares, falling
+ * back to UTF-8 when the header names none or names one TextDecoder rejects.
+ */
+export function decodeBody(body: ArrayBuffer, contentType: string | null): string {
+  const charset = contentType?.match(/charset=["']?([^;"'\s]+)/i)?.[1] ?? "utf-8";
+  try {
+    return new TextDecoder(charset).decode(body);
+  } catch {
+    return new TextDecoder("utf-8").decode(body);
+  }
+}
+
 // ============================================================================
 // Genesis Scraper Implementation
 // ============================================================================
@@ -89,7 +102,13 @@ export class GenesisScraper implements CinemaScraper {
       throw new Error(`Failed to fetch ${url}: ${response.status}`);
     }
 
-    return response.text();
+    // Genesis serves Windows-1252 bytes ("content-type: text/html;
+    // charset=ISO-8859-1") under a <meta charset="UTF-8"> tag. response.text()
+    // always decodes UTF-8, which turned every ’ and £ into U+FFFD
+    // ("I�m Not You", "SLASHERAMA - �21") and cost those titles their TMDB
+    // match. Decode with the header's charset instead: the WHATWG decoder maps
+    // the ISO-8859-1 label to windows-1252, which is what the bytes are.
+    return decodeBody(await response.arrayBuffer(), response.headers.get("content-type"));
   }
 
   private extractFilmUrls(html: string): string[] {
@@ -255,7 +274,8 @@ export class GenesisScraper implements CinemaScraper {
 
       const day = parseInt(dateMatch[1]);
       const monthName = dateMatch[2].toLowerCase();
-      const year = dateMatch[3] ? parseInt(dateMatch[3]) : new Date().getFullYear();
+      const hasExplicitYear = Boolean(dateMatch[3]);
+      const year = hasExplicitYear ? parseInt(dateMatch[3]) : new Date().getFullYear();
 
       // Map both abbreviated and full month names to month index
       const months: Record<string, number> = {
@@ -280,8 +300,11 @@ export class GenesisScraper implements CinemaScraper {
       // would store London times one hour ahead during BST.
       let date = ukLocalToUTC(year, month, day, time.hours, time.minutes);
 
-      // If date is in the past, assume next year
-      if (date < new Date()) {
+      // A past yearless date ("13 Jan" seen in October) belongs to next year.
+      // A dated panel (panel_YYYYMMDD) already names its year, so a past one is
+      // simply an earlier showing today: rolling it forward produced a phantom
+      // screening 364 days out that the validator rejected as too_far_future.
+      if (!hasExplicitYear && date < new Date()) {
         date = ukLocalToUTC(year + 1, month, day, time.hours, time.minutes);
       }
 

@@ -68,15 +68,17 @@ describe("normalized cache path", () => {
 
   it("does NOT collapse unrecognised bracketed suffixes, which is why the guard strips them", () => {
     // Measured, not assumed. An unknown suffix keeps its inner text
-    // ("toy story 5 bia", "1917 70mm"), so the cache misses and the decision
+    // ("toy story 5 imax", "1917 imax"), so the cache misses and the decision
     // falls to the similarity path — where "Toy Story 5 (BIA)" scored 75% in
     // the run. That is exactly why sequelMarkerOf peels brackets before
     // reading the marker: without it the guard would compare 5 against 5 fine
     // here, but a "(BIA)"-style suffix on a marker-bearing title would hide
     // the marker behind the suffix text.
-    expect(normalizeTitle("Toy Story 5 (BIA)")).toBe("toy story 5 bia");
-    expect(normalizeTitle("1917 (70mm)")).toBe("1917 70mm");
-    expect(normalizeTitle("Toy Story 5 (BIA)")).not.toBe(normalizeTitle("Toy Story 5"));
+    // "(70mm)" and "(BIA)" became recognised decorations on 2026-10-04, so
+    // "(IMAX)" is the unrecognised example now.
+    expect(normalizeTitle("Toy Story 5 (IMAX)")).toBe("toy story 5 imax");
+    expect(normalizeTitle("1917 (IMAX)")).toBe("1917 imax");
+    expect(normalizeTitle("Toy Story 5 (IMAX)")).not.toBe(normalizeTitle("Toy Story 5"));
   });
 
   it("treats Roman and Arabic renderings as different cache keys", () => {
