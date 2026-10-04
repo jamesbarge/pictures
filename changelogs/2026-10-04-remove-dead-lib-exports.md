@@ -1,6 +1,6 @@
 # Remove dead exports and fields in src/lib and src/db
 
-**PR**: #PENDING
+**PR**: #788
 **Date**: 2026-10-04
 
 ## Changes

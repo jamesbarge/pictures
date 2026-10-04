@@ -1,5 +1,5 @@
 ## 2026-10-04: Remove dead exports and fields in src/lib and src/db
-**PR**: #PENDING | **Files**: `src/lib/posthog-api.ts`, `src/lib/scrape-quarantine.ts`, `src/lib/scrape-run-summary.ts`, `src/lib/event-classifier.ts`, `src/lib/api-errors.ts`, `src/lib/tmdb/*`, `src/lib/posters/*`, `src/db/backfill-posters.ts`, `src/db/enrich-letterboxd.ts`, `src/db/schema/*.ts`
+**PR**: #788 | **Files**: `src/lib/posthog-api.ts`, `src/lib/scrape-quarantine.ts`, `src/lib/scrape-run-summary.ts`, `src/lib/event-classifier.ts`, `src/lib/api-errors.ts`, `src/lib/tmdb/*`, `src/lib/posters/*`, `src/db/backfill-posters.ts`, `src/db/enrich-letterboxd.ts`, `src/db/schema/*.ts`
 - Deletes exports, fields and helpers that nothing calls or that only their own tests call: `batchMatchFilms`, `getBackdropUrl`, `getFilmVideos`, `findPostersForMany`, `verifyCronSecret`, `RateLimitError`, four PostHog REST wrappers, the two classifier memo caches, the unread `cleanTitle`/`confidence`/`posterStrategy` fields and 36 unused Drizzle type aliases.
 - `scrape-progress`, `scrape-checkpoint` and `scrape-run-summary` now share one `atomicWrite` with the same pid+counter temp names. A progress stamp after `tmp/` is deleted mid-run now succeeds on the first write.
 - `db:classify-events` drops the 13 s per-film sleep left from the Gemini rate limit; the classifier is pure regex.
