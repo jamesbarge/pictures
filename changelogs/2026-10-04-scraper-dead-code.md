@@ -1,6 +1,6 @@
 # Trim dead scraper code
 
-**PR**: #PENDING
+**PR**: #791
 **Date**: 2026-10-04
 
 ## Changes
