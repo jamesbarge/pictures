@@ -1,5 +1,5 @@
 ## 2026-10-04: Remove the legacy React site from the root Next.js app
-**PR**: #PENDING | **Files**: `next.config.ts`, `src/app/layout.tsx`, `public/robots.txt`, `.github/workflows/test.yml`, `package.json`
+**PR**: #787 | **Files**: `next.config.ts`, `src/app/layout.tsx`, `public/robots.txt`, `.github/workflows/test.yml`, `package.json`
 - api.pictures.london now serves only the API, the admin dashboard and Clerk sign-in. The 16 legacy page routes, 82 React components, the zustand stores, 7 hooks and the helpers only they used are deleted: 190 files and about 32,700 lines.
 - Legacy page URLs return a 308 to the same path on pictures.london; `/cinemas/:slug/tonight`, `/directors/:id` and `/seasons/:slug` go to the nearest parent page. `robots.txt` disallows all crawling of the API host.
 - 15 dependencies leave package.json (react-query, zustand, posthog-js, Vercel Analytics, Google Maps, Testing Library, `@playwright/test` and others), and 57 packages leave the lockfile.

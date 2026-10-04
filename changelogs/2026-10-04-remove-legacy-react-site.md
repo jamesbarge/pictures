@@ -1,6 +1,6 @@
 # Remove the legacy React site from the root Next.js app
 
-**PR**: #PENDING
+**PR**: #787
 **Date**: 2026-10-04
 
 ## Changes
