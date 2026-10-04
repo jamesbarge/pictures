@@ -1,6 +1,6 @@
 # Remove social outreach pipeline, duplicate CI test run and unused dependencies
 
-**PR**: #PENDING
+**PR**: #792
 **Date**: 2026-10-04
 
 ## Changes
