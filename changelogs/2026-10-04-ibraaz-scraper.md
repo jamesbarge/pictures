@@ -1,6 +1,6 @@
 # Ibraaz gets a first-party scraper
 
-**PR**: TBD
+**PR**: #782
 **Date**: 2026-10-04
 
 ## Changes
