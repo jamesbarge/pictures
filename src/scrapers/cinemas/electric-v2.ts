@@ -12,9 +12,6 @@ import { BaseScraper } from "../base";
 import type { RawScreening, ScraperConfig } from "../types";
 import { ukLocalToUTC } from "../utils/date-parser";
 
-// Re-export config and venue for compatibility
-export { ELECTRIC_CONFIG, ELECTRIC_VENUES } from "./electric";
-
 // API Response Types
 interface ElectricFilm {
   vistaId: string;

@@ -12,9 +12,6 @@ import { BaseScraper } from "../base";
 import type { RawScreening, ScraperConfig } from "../types";
 import { parseUKLocalDateTime } from "../utils/date-parser";
 
-// Re-export config and venue for compatibility
-export { NICKEL_CONFIG, NICKEL_VENUE } from "./the-nickel";
-
 // API Response Types
 interface NickelFilm {
   id: number;
@@ -70,15 +67,7 @@ export class NickelScraperV2 extends BaseScraper {
       // Generate source ID for deduplication
       const sourceId = `nickel-${item.id}`;
 
-      // Normalize format
-      const format =
-        item.format?.toLowerCase() === "digital"
-          ? "digital"
-          : item.format?.toLowerCase() === "35mm"
-            ? "35mm"
-            : item.format?.toLowerCase() === "16mm"
-              ? "16mm"
-              : item.format?.toLowerCase() || "digital";
+      const format = item.format?.toLowerCase() || "digital";
 
       return {
         filmTitle: item.film.title,
@@ -93,20 +82,9 @@ export class NickelScraperV2 extends BaseScraper {
     });
   }
 
+  // Skip mystery movies/special events without real titles. The base already dedupes by sourceId.
   protected validate(screenings: RawScreening[]): RawScreening[] {
-    const baseValidated = super.validate(screenings);
-    const seen = new Set<string>();
-
-    return baseValidated.filter((s) => {
-      // Skip mystery movies/special events without real titles
-      if (s.filmTitle === "MYSTERY MOVIE") return false;
-
-      // Deduplicate by sourceId
-      if (s.sourceId && seen.has(s.sourceId)) return false;
-      if (s.sourceId) seen.add(s.sourceId);
-
-      return true;
-    });
+    return super.validate(screenings).filter((s) => s.filmTitle !== "MYSTERY MOVIE");
   }
 }
 

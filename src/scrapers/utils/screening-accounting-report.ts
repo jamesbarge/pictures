@@ -27,7 +27,7 @@ export {
  * The subset of `BaseScraper` the runner needs for accounting. Duck-typed
  * rather than an `instanceof` check because several venues implement
  * `CinemaScraper` directly without extending `BaseScraper` (for example
- * `cinemas/the-nickel.ts`), and those must report `unavailable` instead of
+ * `cinemas/lexi.ts`), and those must report `unavailable` instead of
  * being forced into a false zero.
  */
 export interface PreFilterSource {

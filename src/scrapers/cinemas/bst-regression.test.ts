@@ -24,7 +24,6 @@ vi.mock("../festivals/festival-detector", () => ({
   },
 }));
 
-import { RichMixScraper } from "./rich-mix";
 import { RichMixScraperV2 } from "./rich-mix-v2";
 import { BFIScraper } from "./bfi";
 import { PhoenixScraper } from "./phoenix";
@@ -33,7 +32,6 @@ import { DavidLeanScraper } from "./david-lean";
 import { GenesisScraper } from "./genesis";
 import { CloseUpCinemaScraper } from "./close-up";
 
-type PrivDate = { parseDateTime: (s: string) => Date | null };
 type PrivBFI = { parseBFIDateTime: (s: string) => Date | null };
 type PrivPhoenix = { parsePages: (pages: string[]) => Promise<Array<{ datetime: Date }>> };
 type PrivOlympic = { parsePages: (pages: string[]) => Promise<Array<{ datetime: Date }>> };
@@ -48,20 +46,6 @@ type PrivCloseUp = {
 
 afterEach(() => {
   vi.useRealTimers();
-});
-
-describe("BST regression: Rich Mix parseDateTime", () => {
-  const scraper = new RichMixScraper() as unknown as PrivDate;
-
-  it("BST: 2026-05-26 18:10:00 UK local → 17:10 UTC", () => {
-    expect(scraper.parseDateTime("2026-05-26 18:10:00")?.toISOString())
-      .toBe("2026-05-26T17:10:00.000Z");
-  });
-
-  it("GMT: 2026-01-15 18:10:00 UK local → 18:10 UTC (no offset)", () => {
-    expect(scraper.parseDateTime("2026-01-15 18:10:00")?.toISOString())
-      .toBe("2026-01-15T18:10:00.000Z");
-  });
 });
 
 describe("BST regression: Rich Mix v2 (Spektrix startUtc)", () => {
