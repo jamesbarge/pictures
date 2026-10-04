@@ -1,6 +1,6 @@
 # Delete dead API code
 
-**PR**: #PENDING
+**PR**: #793
 **Date**: 2026-10-04
 
 ## Changes
