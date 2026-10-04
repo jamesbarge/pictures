@@ -1,6 +1,6 @@
 # Frontend dead code and two unused dependencies removed
 
-**PR**: #PENDING
+**PR**: #794
 **Date**: 2026-10-04
 
 ## Changes
