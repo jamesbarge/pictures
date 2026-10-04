@@ -5,6 +5,51 @@
 
 ---
 
+
+---
+
+## 2026-10-04: Genesis encoding, dated-panel rollover and LIFF shorts identity
+**PR**: #776 | **Files**: `src/scrapers/cinemas/genesis.ts`, `src/scrapers/cinemas/genesis.test.ts` (new), `src/lib/title-patterns.ts`, `src/lib/film-similarity-sequel.test.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`
+- The film matcher reads the number in front of a trailing festival tag, so "Shorts Block 3 - LIFF" and "Shorts Block 11 - LIFF" resolve to separate films. The 2026-10-03 run had filed Shorts Blocks 2-12 under one film, which L-CUT parity counted as 9 missing Genesis screenings.
+- Genesis pages are decoded as Windows-1252, the charset the server declares. Titles now keep their curly apostrophes, pound signs and en dashes; before the fix, 9 stored Genesis titles carried U+FFFD in their place.
+- A showing earlier the same day stays in the past and is dropped. It used to roll into next year and get rejected as too_far_future on every run.
+
+---
+
+
+---
+
+## 2026-10-04: ICA scraper follows season and festival hubs
+**PR**: #780 | **Files**: `src/scrapers/cinemas/ica.ts`, `src/scrapers/cinemas/ica.test.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`, `changelogs/2026-10-04-ica-hub-discovery.md`
+- The ICA scraper finds pages from every /films tile, the /upcoming calendar and the child pages of season and festival hubs (LFF, Imamura, London Latino FF, The Independent, Doc'n'Roll and others). A live run without persistence found 198 screenings where the old scraper found 85, each matching ICA's Spektrix ticketing to the minute.
+- L-CUT coverage from the scraper's own rows rises from 81 to 144 of 147 listings. The 3 left are the same screenings under different titles.
+- Discovery stops at 170 pages or 300s so the venue stays inside its 10-minute cap, and only Cinema 1 and Cinema 2 performances count (talks and gigs on the Stage share the markup).
+- LFF screenings link to their BFI ticket pages (they used to point at the ICA homepage), and a title split by a line break reads "UK PREMIERE The Night is Fading Away" where it used to read "UK PREMIEREThe Night is Fading Away".
+
+---
+
+
+---
+
+## 2026-10-04: David Lean reads its TicketSolve XML feed
+**PR**: #779 | **Files**: `src/scrapers/cinemas/david-lean.ts`, `src/scrapers/cinemas/david-lean.test.ts`, `src/scrapers/cinemas/bst-regression.test.ts`, `src/scrapers/utils/screening-classification.ts`, `src/scrapers/utils/screening-classification.test.ts` (new), `src/scrapers/SCRAPING_PLAYBOOK.md`
+- The scraper reads `https://davidleancinema.ticketsolve.com/shows.xml` with a plain fetch, replacing a Playwright homepage scrape. Dry parse 2026-10-04: 30 -> 58 screenings, last date 31 Oct -> 28 Nov, and Animal Shorts at its real 12:00 start (the homepage gave the 10:30 doors time).
+- TicketSolve labels not-yet-on-sale events "sold out". The scraper sets `sold_out` only when the event's own XML shows it on sale with 0 seats, so the 27 November events carry no SOLD OUT tag.
+- sourceIds become `david-lean-{eventId}`. Legacy-keyed future rows need a one-off cleanup immediately before the first persist; see the changelog file.
+- Relaxed screenings set `eventType: "relaxed"`, and `classifyScreening` marks any scraper-supplied relaxed event type as a relaxed screening.
+
+---
+
+
+---
+
+## 2026-10-04: Apply judged TMDB matches from a mapping file
+**PR**: #774 | **Files**: `scripts/apply-manual-tmdb-matches.ts`, `scripts/apply-manual-tmdb-matches.test.ts`, `src/scripts/rematch-unmatched-films.ts`, `scripts/destructive-script-guards.test.ts`
+- New default-dry script applies a reviewed title -> TMDB id mapping (and optional content-type reclassifications) to unmatched films with upcoming screenings, reusing the rematch sweep's update and transactional merge.
+- First use on 2026-10-04: 202 match actions and 69 reclassifications, 0 failures. Future screenings on films with no TMDB data fell from 4,151 of 8,540 to 362, led by this week's wide releases (Digger, Sense and Sensibility, Verity), which the matcher skips because the pipeline drops current-year hints. About 316 of those screenings sit on merged rows that need the title-cleaner fix to survive the next scrape; re-running the mapping file covers the gap meanwhile.
+
+---
+
 ## 2026-10-03: Mobile masthead loses its empty band
 **PR**: #767 | **Files**: `frontend/src/lib/components/layout/Header.svelte`
 - Below 768px the masthead drops a 180px minimum height that exists to seat the desktop nav and house-lights dial, both hidden on phones. Phones get 40px back on every page (205px to 165px), and the wordmark keeps its size.

@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 const root = process.cwd();
 
 const defaultDryScripts = [
+  "scripts/apply-manual-tmdb-matches.ts",
   "scripts/audit-and-fix-upcoming.ts",
   "scripts/_cleanup-bst-ghost-screenings.ts",
   "scripts/_fix-boy-and-the-world.ts",
