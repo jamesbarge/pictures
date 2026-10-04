@@ -15,7 +15,7 @@ import { linkFilmToMatchingSeasons } from "./seasons/season-linker";
 import { isConnectionError } from "./runner-factory";
 
 import { runPhase, stampProgress } from "@/lib/scrape-progress";
-import { VENUE_LANGUAGE_PRIORS, resolveCinemaId } from "@/config/cinema-registry";
+import { VENUE_LANGUAGE_PRIORS, allowsCurrentReleaseMatching, resolveCinemaId } from "@/config/cinema-registry";
 
 // Extracted utility modules
 import {
@@ -39,7 +39,7 @@ import {
 } from "./utils/screening-accounting";
 
 // Import for local use + re-export for external consumers
-import { cleanFilmTitle, extractEnglishFromBracket } from "./utils/film-title-cleaner";
+import { cleanFilmTitle, cleanFilmTitleWithMetadata, extractEnglishFromBracket } from "./utils/film-title-cleaner";
 export { cleanFilmTitle } from "./utils/film-title-cleaner";
 
 // Agent imports - conditionally used when ENABLE_AGENTS=true
@@ -607,7 +607,8 @@ export async function processScreenings(
               firstScreening.director,
               firstScreening.posterUrl,
               firstScreening.runtime,
-              VENUE_LANGUAGE_PRIORS[cinemaId]
+              VENUE_LANGUAGE_PRIORS[cinemaId],
+              allowsCurrentReleaseMatching(cinemaId)
             ),
             20_000,
             `getOrCreateFilm: ${firstScreening.filmTitle}`,
@@ -823,7 +824,8 @@ async function getOrCreateFilm(
   scraperDirector?: string,
   scraperPosterUrl?: string,
   scraperRuntime?: number,
-  venueLanguages?: string[]
+  venueLanguages?: string[],
+  allowCurrentRelease = false
 ): Promise<string | null> {
   // Use AI to extract the actual film title from event-style names
   // e.g., "Saturday Morning Picture Club: The Muppets Christmas Carol" → "The Muppets Christmas Carol"
@@ -850,6 +852,14 @@ async function getOrCreateFilm(
     const yearMatch = title.match(/\((\d{4})\)\s*$/);
     if (yearMatch) {
       scraperYear = parseInt(yearMatch[1], 10);
+    } else {
+      // A release year behind a decoration counts too: "Frankenstein (1931) on
+      // 35mm". Past years only, because a decoration year such as "(2026
+      // Re-release)" is the screening year.
+      const { extractedYear } = cleanFilmTitleWithMetadata(title);
+      if (extractedYear && extractedYear < new Date().getFullYear()) {
+        scraperYear = extractedYear;
+      }
     }
   }
 
@@ -905,7 +915,8 @@ async function getOrCreateFilm(
       scraperDirector,
       scraperPosterUrl,
       scraperRuntime,
-      venueLanguages
+      venueLanguages,
+      allowCurrentRelease
     );
     if (tmdbFilmId) {
       return tmdbFilmId;

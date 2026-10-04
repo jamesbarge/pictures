@@ -43,6 +43,10 @@ const DIRECTOR_MATCH_BONUS = 0.15;
 const DIRECTOR_MISMATCH_PENALTY = 0.1;
 // Venue original-language prior (plan 005, step 5)
 const VENUE_LANGUAGE_BONUS = 0.05;
+// Current-release rule: clears the 0.6 minMatchConfidence floor and stays
+// under data-check's 0.8 revalidation threshold, so the patrol re-checks it.
+const CURRENT_RELEASE_CONFIDENCE = 0.75;
+const CURRENT_RELEASE_YEAR_TOLERANCE = 1;
 
 /**
  * Get TMDB matching thresholds from the AutoQuality-tuned config.
@@ -69,6 +73,12 @@ interface MatchHints {
   venueLanguages?: string[];
   /** If true, skip ambiguity checks (for re-processing with known good metadata) */
   skipAmbiguityCheck?: boolean;
+  /**
+   * If true, an ambiguous title may match the only current UK release of that
+   * name. Set for first-run venues only: at a repertory venue a bare
+   * "Frankenstein" is the classic. Off when absent.
+   */
+  allowCurrentRelease?: boolean;
 }
 
 interface MatchResult {
@@ -77,6 +87,11 @@ interface MatchResult {
   title: string;
   year: number;
   posterPath: string | null;
+  /**
+   * Set when the current-release rule made the match, so callers can record
+   * it as the match strategy.
+   */
+  strategy?: "current-release";
   /**
    * Full TMDB details, populated only when the runtime cross-check already
    * fetched them — lets callers (matchAndCreateFromTMDB) skip a duplicate
@@ -136,6 +151,78 @@ function calculateSimilarity(a: string, b: string): number {
 }
 
 /**
+ * Strict comparison key for the current-release rule: case, accents and
+ * punctuation fold away and every word stays. `normalizeTitle` drops
+ * subtitles and a leading "The", which would make "Alien" equal "Alien: Earth".
+ */
+function exactTitleKey(title: string): string {
+  return title
+    .normalize("NFKD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim();
+}
+
+/**
+ * Accept an ambiguous title when exactly one film in current UK release
+ * carries it exactly, on its title or its original title.
+ *
+ * Why: the ambiguity gate needs a year for a single-word title, and year
+ * discipline (film-matching.ts) drops any current-year hint as possible
+ * screening-year pollution. So a new wide release such as "Digger", "Verity"
+ * or "Pressure" could never match, whatever the chain sent. Being the only
+ * film of that name in TMDB's GB now-playing and upcoming lists supplies the
+ * evidence the year would have. Zero or several such films keep the skip, as
+ * does a release whose year disagrees with a year hint. Callers enable it
+ * per venue (`allowCurrentRelease`).
+ */
+async function matchCurrentRelease(
+  title: string,
+  hints: MatchHints | undefined,
+  client: ReturnType<typeof getTMDBClient>
+): Promise<MatchResult | null> {
+  const key = exactTitleKey(title);
+  if (!key) return null;
+
+  let releases: TMDBSearchResult[];
+  try {
+    releases = await client.getCurrentReleases();
+  } catch (err) {
+    console.warn(
+      `[tmdb-match] Current-release lookup failed for "${title}" ` +
+        `(${err instanceof Error ? err.message : String(err)}); keeping the ambiguity skip`
+    );
+    return null;
+  }
+
+  const blockedIds = getBlockedTmdbIds();
+  const candidates = releases.filter((film) => {
+    if (blockedIds.has(film.id)) return false;
+    const sameTitle = [film.title, film.original_title].some(
+      (field) => !!field && exactTitleKey(field) === key
+    );
+    if (!sameTitle) return false;
+    if (!hints?.year) return true;
+    const releaseYear = parseInt(film.release_date?.split("-")[0] ?? "", 10);
+    return Math.abs(releaseYear - hints.year) <= CURRENT_RELEASE_YEAR_TOLERANCE;
+  });
+
+  if (candidates.length !== 1) return null;
+
+  const [film] = candidates;
+  return {
+    tmdbId: film.id,
+    confidence: CURRENT_RELEASE_CONFIDENCE,
+    title: film.title,
+    year: film.release_date ? parseInt(film.release_date.split("-")[0], 10) : 0,
+    posterPath: film.poster_path,
+    strategy: "current-release",
+  };
+}
+
+/**
  * Determine if a film is repertory based on release year
  */
 export function isRepertoryFilm(releaseDate: string | undefined): boolean {
@@ -165,12 +252,25 @@ export async function matchFilmToTMDB(
   title: string,
   hints?: MatchHints
 ): Promise<MatchResult | null> {
+  const client = getTMDBClient();
+
   // Check if title is ambiguous and requires metadata
   if (!hints?.skipAmbiguityCheck) {
     const hasYear = !!hints?.year;
     const hasDirector = !!hints?.director;
 
     if (!hasSufficientMetadata(title, hasYear, hasDirector)) {
+      const currentRelease = hints?.allowCurrentRelease
+        ? await matchCurrentRelease(title, hints, client)
+        : null;
+      if (currentRelease) {
+        console.log(
+          `[tmdb-match] Ambiguous title "${title}" matched the only current GB release ` +
+            `of that name: tmdb=${currentRelease.tmdbId} (${currentRelease.year})`
+        );
+        return applyRuntimeCrossCheck(currentRelease, hints, client);
+      }
+
       const ambiguity = analyzeTitleAmbiguity(title);
       console.warn(
         `[tmdb-match] Skipping ambiguous title "${title}" - ` +
@@ -180,8 +280,6 @@ export async function matchFilmToTMDB(
       return null;
     }
   }
-
-  const client = getTMDBClient();
 
   // Search with year hint if provided
   const searchResults = await client.searchFilms(title, hints?.year);
