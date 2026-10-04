@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import {
   getOrCreateImportResults,
   LetterboxdImportError,
+  type ImportError,
 } from "@/lib/letterboxd-import";
+import { handleApiError } from "@/lib/api-errors";
 
 const USERNAME_REGEX = /^[a-zA-Z0-9_-]+$/;
 const MAX_USERNAME_LENGTH = 40;
@@ -61,39 +63,17 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     if (error instanceof LetterboxdImportError) {
-      switch (error.code) {
-        case "user_not_found":
-          return NextResponse.json(
-            { error: `Letterboxd user "${username}" not found` },
-            { status: 404 },
-          );
-        case "private_watchlist":
-          return NextResponse.json(
-            { error: `Watchlist for "${username}" is private` },
-            { status: 403 },
-          );
-        case "empty_watchlist":
-          return NextResponse.json(
-            { error: `Watchlist for "${username}" is empty` },
-            { status: 422 },
-          );
-        case "rate_limited":
-          return NextResponse.json(
-            { error: "Letterboxd is rate-limiting requests. Please try again later." },
-            { status: 429 },
-          );
-        case "network_error":
-          return NextResponse.json(
-            { error: "Failed to fetch watchlist from Letterboxd" },
-            { status: 500 },
-          );
-      }
+      const responses: Record<ImportError, [number, string]> = {
+        user_not_found: [404, `Letterboxd user "${username}" not found`],
+        private_watchlist: [403, `Watchlist for "${username}" is private`],
+        empty_watchlist: [422, `Watchlist for "${username}" is empty`],
+        rate_limited: [429, "Letterboxd is rate-limiting requests. Please try again later."],
+        network_error: [500, "Failed to fetch watchlist from Letterboxd"],
+      };
+      const [status, message] = responses[error.code];
+      return NextResponse.json({ error: message }, { status });
     }
 
-    console.error("Letterboxd preview error:", error);
-    return NextResponse.json(
-      { error: "An unexpected error occurred" },
-      { status: 500 },
-    );
+    return handleApiError(error, "POST /api/letterboxd/preview");
   }
 }

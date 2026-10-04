@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { handleApiError } from "@/lib/api-errors";
+import { BadRequestError, handleApiError } from "@/lib/api-errors";
 import { RATE_LIMITS, withRateLimit } from "@/lib/rate-limit";
 import { getActiveCinemas } from "@/db/repositories/cinema";
 import { CACHE_10MIN } from "@/lib/cache-headers";
@@ -24,10 +24,7 @@ export const GET = withRateLimit(RATE_LIMITS.public, "cinemas")(async (request: 
     });
 
     if (!parseResult.success) {
-      return NextResponse.json(
-        { error: "Invalid query parameters", details: parseResult.error.flatten() },
-        { status: 400 }
-      );
+      throw new BadRequestError("Invalid query parameters", parseResult.error.flatten());
     }
 
     const params = parseResult.data;

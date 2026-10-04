@@ -41,11 +41,6 @@ const SEASONS_LIMIT = 5;
 const PEOPLE_LIMIT = 5;
 const SCREENING_WINDOW_DAYS = 30;
 
-function toRows<T>(result: unknown): T[] {
-  if (Array.isArray(result)) return result as T[];
-  return ((result as { rows?: T[] }).rows ?? []);
-}
-
 function formatCinemaAddress(address: CinemaAddress | null): string | null {
   if (!address) return null;
   const parts = [address.street, address.area, address.postcode].filter(Boolean);
@@ -134,9 +129,9 @@ export const GET = withRateLimit(RATE_LIMITS.search, "search")(async (request: N
     // is findable; the recency boost keeps soon-showing films at the top.
     // The CTEs limit pre-fusion candidates to 200 each so the planner can
     // use the GIN indexes efficiently before the JOIN to films.
-    const [filmsRes, cinemasRes, screeningsRes, festivalsRes, seasonsRes, peopleRes] =
+    const [filmRows, cinemaRows, screeningRows, festivalRows, seasonRows, personRows] =
       await Promise.all([
-        db.execute(sql`
+        db.execute<FilmRow>(sql`
           WITH params AS (
             SELECT
               ${query}::text AS q,
@@ -206,7 +201,7 @@ export const GET = withRateLimit(RATE_LIMITS.search, "search")(async (request: N
           LIMIT ${FILMS_LIMIT}
         `),
 
-        db.execute(sql`
+        db.execute<CinemaRow>(sql`
           SELECT c.id, c.name, c.short_name AS "shortName", c.address
           FROM cinemas c, websearch_to_tsquery('pictures', ${query}) tsq
           WHERE c.is_active
@@ -217,7 +212,7 @@ export const GET = withRateLimit(RATE_LIMITS.search, "search")(async (request: N
           LIMIT ${CINEMAS_LIMIT}
         `),
 
-        db.execute(sql`
+        db.execute<ScreeningRow>(sql`
           SELECT
             s.id,
             s.datetime,
@@ -249,7 +244,7 @@ export const GET = withRateLimit(RATE_LIMITS.search, "search")(async (request: N
           LIMIT ${SCREENINGS_LIMIT}
         `),
 
-        db.execute(sql`
+        db.execute<FestivalRow>(sql`
           SELECT id, name, slug, short_name AS "shortName",
                  year, start_date AS "startDate", end_date AS "endDate",
                  logo_url AS "logoUrl"
@@ -262,7 +257,7 @@ export const GET = withRateLimit(RATE_LIMITS.search, "search")(async (request: N
           LIMIT ${FESTIVALS_LIMIT}
         `),
 
-        db.execute(sql`
+        db.execute<SeasonRow>(sql`
           SELECT id, name, slug, director_name AS "directorName",
                  start_date AS "startDate", end_date AS "endDate",
                  poster_url AS "posterUrl"
@@ -274,7 +269,7 @@ export const GET = withRateLimit(RATE_LIMITS.search, "search")(async (request: N
           LIMIT ${SEASONS_LIMIT}
         `),
 
-        db.execute(sql`
+        db.execute<PersonRow>(sql`
           -- People (directors) with upcoming screenings whose name matches the query.
           -- Mirrors the /api/directors unnest pattern; ILIKE substring OR trigram for
           -- typo tolerance. Candidate set is the ~1k upcoming films, so unnest is cheap.
@@ -351,12 +346,7 @@ export const GET = withRateLimit(RATE_LIMITS.search, "search")(async (request: N
       filmCount: number;
     };
 
-    const filmRows = toRows<FilmRow>(filmsRes);
-    const cinemaRows = toRows<CinemaRow>(cinemasRes);
-    const screeningRows = toRows<ScreeningRow>(screeningsRes);
-    const festivalRows = toRows<FestivalRow>(festivalsRes);
-    const seasonRows = toRows<SeasonRow>(seasonsRes);
-    const peopleRows = toRows<PersonRow>(peopleRes).map((p) => ({
+    const peopleRows = personRows.map((p) => ({
       name: p.name,
       filmCount: p.filmCount,
       role: "director" as const,

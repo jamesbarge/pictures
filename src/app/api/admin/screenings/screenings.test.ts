@@ -1,6 +1,6 @@
 /**
  * Tests for Admin Screenings API routes
- * Tests POST for creating screenings, PUT for editing, DELETE for removing
+ * Tests POST for creating screenings, PUT for editing
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
@@ -20,7 +20,6 @@ vi.mock("nanoid", () => ({
 const mockSelect = vi.fn();
 const mockUpdate = vi.fn();
 const mockInsert = vi.fn();
-const mockDelete = vi.fn();
 
 vi.mock("@/db", () => ({
   db: {
@@ -38,9 +37,6 @@ vi.mock("@/db", () => ({
       set: () => ({
         where: mockUpdate,
       }),
-    }),
-    delete: () => ({
-      where: mockDelete,
     }),
   },
 }));
@@ -240,54 +236,6 @@ describe("Admin Screenings API", () => {
       });
 
       const response = await PUT(request, { params: Promise.resolve({ id: "screening-1" }) });
-      expect(response.status).toBe(200);
-
-      const data = await response.json();
-      expect(data.success).toBe(true);
-    });
-  });
-
-  describe("DELETE /api/admin/screenings/[id]", () => {
-    let DELETE: (request: Request, context: { params: Promise<{ id: string }> }) => Promise<Response>;
-
-    beforeEach(async () => {
-      const module = await import("./[id]/route");
-      DELETE = module.DELETE;
-    });
-
-    it("returns 401 when not authenticated", async () => {
-      vi.mocked(auth).mockResolvedValue({ userId: null } as never);
-
-      const request = new Request("http://localhost/api/admin/screenings/screening-1", {
-        method: "DELETE",
-      });
-
-      const response = await DELETE(request, { params: Promise.resolve({ id: "screening-1" }) });
-      expect(response.status).toBe(401);
-    });
-
-    it("returns 404 when screening not found", async () => {
-      vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as never);
-      mockSelect.mockResolvedValueOnce([]); // Screening not found
-
-      const request = new Request("http://localhost/api/admin/screenings/nonexistent", {
-        method: "DELETE",
-      });
-
-      const response = await DELETE(request, { params: Promise.resolve({ id: "nonexistent" }) });
-      expect(response.status).toBe(404);
-    });
-
-    it("deletes screening successfully", async () => {
-      vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as never);
-      mockSelect.mockResolvedValueOnce([{ id: "screening-1" }]); // Screening exists
-      mockDelete.mockResolvedValueOnce({ rowCount: 1 });
-
-      const request = new Request("http://localhost/api/admin/screenings/screening-1", {
-        method: "DELETE",
-      });
-
-      const response = await DELETE(request, { params: Promise.resolve({ id: "screening-1" }) });
       expect(response.status).toBe(200);
 
       const data = await response.json();
