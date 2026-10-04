@@ -44,13 +44,13 @@ export const GENRE_TOKENS: Record<string, string> = {
   adventure: "adventure",
 };
 
-export const GENRE_PHRASES_BY_LENGTH: Record<number, string[]> = {
-  2: ["sci fi", "science fiction"],
-};
-
 // Phrase-form variants that should map to the same canonical value.
 // "sci fi" (space) is the most-typed.
 export const GENRE_PHRASE_MAP: Record<string, string> = {
   "sci fi": "science fiction",
   "science fiction": "science fiction",
+};
+
+export const GENRE_PHRASES_BY_LENGTH: Record<number, string[]> = {
+  2: Object.keys(GENRE_PHRASE_MAP).filter((k) => k.includes(" ")),
 };

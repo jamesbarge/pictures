@@ -7,8 +7,6 @@ export type CinemaProgrammingType =
 	| 'repertory' | 'arthouse' | 'mainstream' | 'documentary'
 	| 'experimental' | 'family' | 'events';
 
-export type DataSourceType = 'scrape' | 'api' | 'manual';
-
 export interface CinemaAddress {
 	street: string;
 	area: string;

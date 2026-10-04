@@ -25,22 +25,6 @@ interface TravelTimesResponse {
 }
 
 // ============================================================================
-// Date helpers (replaces date-fns)
-// ============================================================================
-
-function addMinutes(date: Date, minutes: number): Date {
-	return new Date(date.getTime() + minutes * 60_000);
-}
-
-function subMinutes(date: Date, minutes: number): Date {
-	return new Date(date.getTime() - minutes * 60_000);
-}
-
-function differenceInMinutes(a: Date, b: Date): number {
-	return Math.round((a.getTime() - b.getTime()) / 60_000);
-}
-
-// ============================================================================
 // Travel Time Fetching
 // ============================================================================
 
@@ -160,18 +144,18 @@ export function getReachableScreenings(
 		const runtime = screening.film.runtime ?? 120;
 
 		const screeningStart = new Date(screening.datetime);
-		const screeningEnd = addMinutes(screeningStart, runtime);
+		const screeningEnd = new Date(screeningStart.getTime() + runtime * 60_000);
 
 		// Must finish before deadline
 		if (screeningEnd > finishedByTime) continue;
 
 		// Calculate when user needs to leave
-		const leaveBy = subMinutes(screeningStart, travelMinutes);
+		const leaveBy = new Date(screeningStart.getTime() - travelMinutes * 60_000);
 
 		// Must leave in the future
 		if (leaveBy <= currentTime) continue;
 
-		const minutesUntilLeave = differenceInMinutes(leaveBy, currentTime);
+		const minutesUntilLeave = Math.round((leaveBy.getTime() - currentTime.getTime()) / 60_000);
 
 		reachable.push({
 			...screening,

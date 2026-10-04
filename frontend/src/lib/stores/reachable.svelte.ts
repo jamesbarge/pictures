@@ -155,15 +155,5 @@ export const reachableStore = {
 		return Object.keys(travelTimes).length > 0;
 	},
 
-	calculateTravelTimes,
-
-	clear() {
-		postcode = '';
-		coordinates = null;
-		finishedByTime = null;
-		travelMode = 'transit';
-		travelTimes = {};
-		isCalculating = false;
-		error = null;
-	}
+	calculateTravelTimes
 };

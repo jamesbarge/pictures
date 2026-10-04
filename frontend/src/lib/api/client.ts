@@ -1,7 +1,6 @@
 // In dev: Vite proxy handles /api → localhost:3000
 // In production: Vercel rewrites /api/* → pictures.london/api/*
-// So API_BASE is always empty — relative /api/ paths work everywhere
-const API_BASE = '';
+// So relative /api/ paths work everywhere.
 
 export class ApiError extends Error {
 	constructor(
@@ -30,7 +29,7 @@ async function ensureOk(res: Response): Promise<void> {
 
 export async function apiGet<T>(path: string, opts?: RequestOpts): Promise<T> {
 	const f = opts?.fetch ?? fetch;
-	const res = await f(`${API_BASE}${path}`, {
+	const res = await f(path, {
 		headers: JSON_HEADERS,
 		signal: opts?.signal
 	});
@@ -40,7 +39,7 @@ export async function apiGet<T>(path: string, opts?: RequestOpts): Promise<T> {
 
 export async function apiPost<T>(path: string, body: unknown, opts?: RequestOpts): Promise<T> {
 	const f = opts?.fetch ?? fetch;
-	const res = await f(`${API_BASE}${path}`, {
+	const res = await f(path, {
 		method: 'POST',
 		headers: JSON_HEADERS,
 		body: JSON.stringify(body),

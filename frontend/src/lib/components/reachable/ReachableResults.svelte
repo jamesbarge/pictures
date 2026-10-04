@@ -23,25 +23,6 @@
 
 	const urgencyOrder: UrgencyGroup[] = ['leave_soon', 'leave_within_hour', 'later'];
 
-	function urgencyClass(urgency: UrgencyGroup): string {
-		switch (urgency) {
-			case 'leave_soon':
-				return 'urgency-soon';
-			case 'leave_within_hour':
-				return 'urgency-hour';
-			default:
-				return 'urgency-later';
-		}
-	}
-
-	function finishedByStr(date: Date): string {
-		return date.toLocaleTimeString('en-GB', {
-			hour: '2-digit',
-			minute: '2-digit',
-			hour12: false,
-			timeZone: 'Europe/London'
-		});
-	}
 </script>
 
 {#if screenings.length === 0}
@@ -56,7 +37,7 @@
 		<h2 class="empty-title">NO REACHABLE SCREENINGS</h2>
 		<p class="empty-desc">
 			No screenings finish before
-			<strong>{finishedByStr(finishedByTime)}</strong>
+			<strong>{formatTime(finishedByTime)}</strong>
 			that you can reach in time. Try a later deadline or different travel mode.
 		</p>
 		<p class="empty-meta">
@@ -72,7 +53,7 @@
 
 		{#each urgencyOrder as urgency (urgency)}
 			{@const groupScreenings = groups[urgency]}
-			{@const urgencyCss = urgencyClass(urgency)}
+			{@const urgencyCss = `urgency-${urgency}`}
 			{#if groupScreenings.length > 0}
 				<div class="urgency-group">
 					<!-- Group header -->
@@ -288,8 +269,8 @@
 		opacity: 0.6;
 	}
 
-	.urgency-soon { color: var(--color-screening-text); }
-	.urgency-hour { color: var(--color-screening-text); }
+	.urgency-leave_soon { color: var(--color-screening-text); }
+	.urgency-leave_within_hour { color: var(--color-screening-text); }
 	.urgency-later { color: var(--color-screening-text); opacity: 0.75; }
 
 	/* ── Cards ── */
@@ -379,12 +360,12 @@
 		height: 0.875rem;
 	}
 
-	.leave-badge.urgency-soon {
+	.leave-badge.urgency-leave_soon {
 		background: color-mix(in srgb, var(--color-accent) 15%, transparent);
 		color: var(--color-accent);
 	}
 
-	.leave-badge.urgency-hour {
+	.leave-badge.urgency-leave_within_hour {
 		background: var(--color-bg-subtle);
 		color: var(--color-text);
 	}

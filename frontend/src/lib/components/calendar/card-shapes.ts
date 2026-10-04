@@ -1,6 +1,6 @@
 /**
  * Shared view-model shapes for the calendar card components
- * (FilmCard, DesktopHybridCard, MobileFilmRow).
+ * (FilmCard, FigmaFilmCard, FigmaTextDay).
  *
  * Each card historically declared its own near-identical inline `Film` and
  * `Screening` interfaces, drifting field-by-field over time. Consolidating
@@ -18,11 +18,8 @@ export interface CardFilm {
 	year?: number | null;
 	director?: string | null;
 	runtime?: number | null;
-	country?: string | null;
-	certification?: string | null;
 	genres?: string[] | null;
 	posterUrl?: string | null;
-	tmdbId?: number | null;
 }
 
 export interface CardScreening {

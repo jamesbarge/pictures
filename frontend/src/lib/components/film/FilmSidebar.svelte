@@ -2,10 +2,6 @@
 	import type { FilmStatus } from '$lib/types';
 
 	interface Film {
-		id: string;
-		title: string;
-		year: number | null;
-		genres: string[];
 		directors: string[];
 		cast: Array<{ name: string; character?: string }> | null;
 		countries: string[];

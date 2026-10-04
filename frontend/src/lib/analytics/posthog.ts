@@ -6,7 +6,7 @@
  * film detail) would otherwise pull the ~70KB-gzip library into its chunk
  * via the static-import graph, defeating the deliberate lazy load in
  * `PostHogProvider.svelte`. We accept the posthog instance via
- * `attachPostHog()` from the provider and buffer calls made before it
+ * `initPostHog()` from the provider and buffer calls made before it
  * arrives, so no events are lost during the idle-callback boot window.
  */
 
@@ -14,6 +14,7 @@ import type posthog from 'posthog-js';
 import { browser } from '$app/environment';
 import { PUBLIC_POSTHOG_KEY } from '$env/static/public';
 import { buildPostHogConfig } from './posthog-config';
+import type { FilmStatus } from '$lib/types';
 
 type PostHogClient = typeof posthog;
 
@@ -38,11 +39,10 @@ function enqueue(fn: (p: PostHogClient) => void): void {
 }
 
 /**
- * Called by `PostHogProvider.svelte` after it dynamically imports posthog-js
- * and runs `client.init()`. Flushes any track calls that fired during the
- * idle-deferred boot window.
+ * Called by `initPostHog` after `client.init()`. Flushes any track calls that
+ * fired during the idle-deferred boot window.
  */
-export function attachPostHog(instance: PostHogClient) {
+function attachPostHog(instance: PostHogClient) {
 	client = instance;
 	initialized = true;
 	const buffered = pending.splice(0, pending.length);
@@ -168,12 +168,10 @@ export function trackBookingClick(
 
 // ── Watchlist & Status Events ───────────────────────────────────
 
-type FilmStatus = 'want_to_see' | 'seen' | 'not_interested' | null;
-
 export function trackFilmStatusChange(
 	film: FilmContext,
-	previousStatus: FilmStatus,
-	newStatus: FilmStatus
+	previousStatus: FilmStatus | null,
+	newStatus: FilmStatus | null
 ) {
 	if (!browser) return;
 	enqueue((p) =>
@@ -304,25 +302,4 @@ export function trackException(message: string, statusCode?: number) {
 			url: window.location.href
 		})
 	);
-}
-
-// ── Calendar & Share Events ─────────────────────────────────────
-
-export function trackCalendarExport(screening: ScreeningContext) {
-	if (!browser) return;
-	enqueue((p) =>
-		p.capture('calendar_export_clicked', {
-			film_id: screening.filmId,
-			film_title: screening.filmTitle,
-			screening_id: screening.screeningId,
-			cinema_name: screening.cinemaName
-		})
-	);
-}
-
-// ── Feature Flags ───────────────────────────────────────────────
-
-export function isFeatureEnabled(flagKey: string): boolean {
-	if (!browser || !client) return false;
-	return client.isFeatureEnabled(flagKey) ?? false;
 }

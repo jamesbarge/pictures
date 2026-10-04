@@ -45,7 +45,7 @@
 			if (isInlineSearchInput) return;
 
 			e.preventDefault();
-			palette.toggle('cmdk');
+			palette.toggle();
 		}
 
 		document.addEventListener('keydown', handleKeydown);

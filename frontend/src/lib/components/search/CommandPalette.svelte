@@ -14,7 +14,7 @@
 	 *                     filter rows, falls through to open for entities)
 	 *   - Click on row  → same as Enter
 	 *
-	 * Presentation switches on `media.isDesktop`:
+	 * Presentation switches on the `desktop` media query:
 	 *  - Desktop (≥ 768px): centered modal at top: 12vh, 640px wide
 	 *  - Mobile: full-screen sheet
 	 *
@@ -23,9 +23,9 @@
 	 * live filter-mutation feature.
 	 */
 	import { onMount, tick } from 'svelte';
+	import { MediaQuery } from 'svelte/reactivity';
 	import { Dialog } from 'bits-ui';
 	import { palette, type ActivationMode } from '$lib/stores/palette.svelte';
-	import { media } from '$lib/stores/media.svelte';
 	import CommandPaletteInput from './CommandPaletteInput.svelte';
 	import ActiveFiltersRow from './ActiveFiltersRow.svelte';
 	import ResultsList from './ResultsList.svelte';
@@ -38,7 +38,7 @@
 	let navMode = $state<'keyboard' | 'mouse'>('keyboard');
 
 	const chips = $derived(palette.parsed.chipDescriptors);
-	const isDesktop = $derived(media.isDesktop);
+	const desktop = new MediaQuery('min-width: 768px', true);
 	const rowCount = $derived(palette.flatRows.length);
 	const activeDescendant = $derived<string | undefined>(
 		rowCount > 0 ? `${ROW_ID_PREFIX}-${palette.selectedIndex}` : undefined
@@ -47,7 +47,7 @@
 	const isLoading = $derived(palette.isLoading);
 
 	function handleOpenChange(next: boolean) {
-		if (next) palette.openPalette('click');
+		if (next) palette.openPalette();
 		else palette.closePalette();
 	}
 
@@ -166,7 +166,7 @@
 	<Dialog.Portal>
 		<Dialog.Overlay class="cmdk-overlay" />
 		<Dialog.Content
-			class={isDesktop ? 'cmdk-content cmdk-desktop' : 'cmdk-content cmdk-mobile'}
+			class={desktop.current ? 'cmdk-content cmdk-desktop' : 'cmdk-content cmdk-mobile'}
 			aria-describedby={undefined}
 			data-nav-mode={navMode}
 		>
@@ -215,7 +215,7 @@
 				{/if}
 			</div>
 
-			{#if isDesktop}
+			{#if desktop.current}
 				<div class="footer" aria-hidden="true">
 					<span>↑↓ navigate · ↵ open · ⌘↵ new tab · ⌥↵ filter · ESC close</span>
 				</div>
@@ -286,17 +286,5 @@
 		color: var(--color-text-tertiary);
 		letter-spacing: 0.04em;
 		background: var(--color-surface);
-	}
-
-	:global(.sr-only) {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
 	}
 </style>

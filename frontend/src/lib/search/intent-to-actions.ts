@@ -27,15 +27,16 @@ import type { FilterActionResult } from "./result-types";
  * without wiring it in `applyIntent` would surface an action row that
  * silently no-ops.
  */
-function actionableSliceCount(parsed: ParsedIntent): number {
-  let n = 0;
-  if (parsed.formats.length > 0) n++;
-  if (parsed.genres.length > 0) n++;
-  if (parsed.decades.length > 0) n++;
-  if (parsed.dateFrom || parsed.dateTo) n++;
-  if (parsed.timeFrom !== undefined || parsed.timeTo !== undefined) n++;
-  if (parsed.isRepertory !== undefined) n++;
-  return n;
+function hasActionableSlice(parsed: ParsedIntent): boolean {
+  return (
+    parsed.formats.length > 0 ||
+    parsed.genres.length > 0 ||
+    parsed.decades.length > 0 ||
+    !!(parsed.dateFrom || parsed.dateTo) ||
+    parsed.timeFrom !== undefined ||
+    parsed.timeTo !== undefined ||
+    parsed.isRepertory !== undefined
+  );
 }
 
 function describeIntent(parsed: ParsedIntent): string {
@@ -62,24 +63,13 @@ function describeIntent(parsed: ParsedIntent): string {
 }
 
 export function intentToActions(parsed: ParsedIntent): FilterActionResult[] {
-  const count = actionableSliceCount(parsed);
-  if (count === 0) return [];
+  if (!hasActionableSlice(parsed)) return [];
   const description = describeIntent(parsed) || "matching filters";
   return [
     {
       kind: "filter-action",
-      // Stable id keyed on the slices so React/Svelte reuses the same
-      // row across keystrokes when the parsed intent didn't change.
-      id: `apply:${[
-        parsed.formats.join(","),
-        parsed.genres.join(","),
-        parsed.decades.join(","),
-        parsed.dateFrom?.toISOString() ?? "",
-        parsed.dateTo?.toISOString() ?? "",
-        parsed.timeFrom ?? "",
-        parsed.timeTo ?? "",
-        parsed.isRepertory ?? "",
-      ].join("|")}`,
+      // The only action row. ResultsList keys rows by position, so the id is fixed.
+      id: "apply",
       label: `Apply filters: ${description}`,
       shortcut: "⌥↵",
     },
