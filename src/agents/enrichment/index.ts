@@ -15,18 +15,15 @@ import { generateTextWithUsage } from "@/lib/deepseek";
 import { db, schema } from "@/db";
 import { eq, isNull, sql } from "drizzle-orm";
 import { analyzeTitleAmbiguity, hasSufficientMetadata } from "@/lib/tmdb/ambiguity";
-import {
-  type TmdbMatchResult,
-  type AgentResult,
-  AGENT_CONFIGS,
-} from "../types";
-import { CINEMA_AGENT_SYSTEM_PROMPT, calculateCost } from "../config";
+import { type TmdbMatchResult, type AgentResult } from "../types";
+import { CINEMA_AGENT_SYSTEM_PROMPT } from "../config";
 import {
   extractFilmTitleSync as extractFilmTitle,
   generateSearchVariations,
 } from "@/lib/title-extraction";
 
 const AGENT_NAME = "enrichment";
+const AUTO_APPLY_THRESHOLD = 0.5;
 
 // TMDB API configuration
 const TMDB_API_KEY = process.env.TMDB_API_KEY;
@@ -137,16 +134,15 @@ function resolveMatchStrategy(hasYear: boolean, hasDirector: boolean): string {
  * Auto-apply a high-confidence TMDB match to the database.
  * Handles ambiguity checks, duplicate detection (merging), and direct DB update.
  * Returns "skip" if the film was flagged as ambiguous (caller should continue to next film),
- * "applied" if the match was written, or "not-applied" if auto-fix is disabled.
+ * "applied" if the match was written, or "not-applied" if confidence is below the threshold.
  */
 async function autoApplyMatch(
   film: { id: string; title: string; year: number | null; directors: string[] | null },
   bestMatch: { id: number },
   confidence: number,
   matchResult: TmdbMatchResult,
-  enableAutoFix: boolean,
 ): Promise<"skip" | "applied" | "not-applied"> {
-  if (!matchResult.shouldAutoApply || !enableAutoFix) return "not-applied";
+  if (!matchResult.shouldAutoApply) return "not-applied";
 
   const shouldSkip = await shouldSkipAmbiguousMatch(
     film.id, film.title, film.year, film.directors, confidence,
@@ -233,7 +229,6 @@ export async function enrichUnmatchedFilms(
   limit = 20
 ): Promise<AgentResult<TmdbMatchResult[]>> {
   const startTime = Date.now();
-  const config = AGENT_CONFIGS.enrichment;
   const results: TmdbMatchResult[] = [];
   let totalTokens = 0;
 
@@ -429,8 +424,7 @@ Respond with JSON:
                 matchedTitle: bestMatch.title,
                 confidence: parsed.confidence,
                 matchStrategy,
-                shouldAutoApply:
-                  parsed.confidence >= config.confidenceThreshold,
+                shouldAutoApply: parsed.confidence >= AUTO_APPLY_THRESHOLD,
               };
 
               results.push(matchResult);
@@ -441,7 +435,6 @@ Respond with JSON:
                 bestMatch,
                 parsed.confidence,
                 matchResult,
-                config.enableAutoFix,
               );
               if (applyResult === "skip") continue;
             }
@@ -455,15 +448,9 @@ Respond with JSON:
       await new Promise((resolve) => setTimeout(resolve, 250));
     }
 
-    const cost = calculateCost(
-      config.model,
-      totalTokens * 0.7,
-      totalTokens * 0.3
-    );
-
     const autoApplied = results.filter((r) => r.shouldAutoApply).length;
     console.log(
-      `[${AGENT_NAME}] Found ${results.length} matches, auto-applied ${autoApplied}, cost: $${cost.estimatedCostUsd}`
+      `[${AGENT_NAME}] Found ${results.length} matches, auto-applied ${autoApplied}, tokens: ${totalTokens}`
     );
 
     return {

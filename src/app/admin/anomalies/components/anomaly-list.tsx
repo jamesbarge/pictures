@@ -12,7 +12,6 @@ import { cn } from "@/lib/cn";
 import Link from "next/link";
 import { ReScrapeButton } from "./re-scrape-button";
 import { DismissButton, isAnomalyDismissed } from "./dismiss-button";
-import { AIVerifyButton } from "./ai-verify-button";
 import { useHydrated } from "@/hooks/useHydrated";
 
 export interface DetectedAnomaly {
@@ -156,7 +155,6 @@ function AnomalyCard({
           </Link>
           <div className="ml-auto flex gap-2">
             <ReScrapeButton cinemaId={anomaly.cinemaId} />
-            <AIVerifyButton cinemaId={anomaly.cinemaId} anomaly={anomaly} />
             <DismissButton
               cinemaId={anomaly.cinemaId}
               todayCount={anomaly.todayCount}

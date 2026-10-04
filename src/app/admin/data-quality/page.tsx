@@ -16,7 +16,6 @@ import {
   Clock,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { DataQualityActions } from "./components/data-quality-actions";
 import { GapTable } from "./components/gap-table";
 
 export const dynamic = "force-dynamic";
@@ -95,10 +94,9 @@ export default async function DataQualityPage() {
         <div>
           <h1 className="text-2xl font-display text-text-primary">Data Quality</h1>
           <p className="text-text-secondary mt-1">
-            Film metadata completeness and fallback enrichment
+            Film metadata completeness
           </p>
         </div>
-        <DataQualityActions />
       </div>
 
       {/* Summary cards */}

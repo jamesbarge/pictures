@@ -8,7 +8,7 @@ import { cinemas, screenings } from "@/db/schema";
 import { eq, gte, lte, count, and } from "drizzle-orm";
 import { startOfDay, endOfDay, subWeeks, format } from "date-fns";
 import { Card, CardContent } from "@/components/ui/card";
-import { AlertTriangle, CheckCircle, XCircle, Zap } from "lucide-react";
+import { AlertTriangle, CheckCircle, XCircle } from "lucide-react";
 import { AnomalyList, type DetectedAnomaly } from "./components/anomaly-list";
 import { RescanAllButton } from "./components/rescan-all-button";
 
@@ -197,22 +197,6 @@ export default async function AdminAnomaliesPage() {
 
       {/* Anomaly List (client component handles dismiss filtering) */}
       <AnomalyList anomalies={sortedAnomalies} />
-
-      {/* Phase 2 Notice */}
-      <Card className="bg-accent-primary/5 border-accent-primary/20">
-        <CardContent>
-          <div className="flex items-start gap-3">
-            <Zap className="w-5 h-5 text-accent-primary shrink-0 mt-0.5" />
-            <div>
-              <h3 className="font-medium text-text-primary">Phase 2: AI Verification</h3>
-              <p className="text-sm text-text-secondary mt-1">
-                In the next phase, anomalies will trigger AI verification agents that can
-                automatically visit cinema websites, compare data, and add missing screenings.
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }
