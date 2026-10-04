@@ -496,42 +496,72 @@ Use this format when recording cinema-specific quirks:
   last five of those fell beyond the venue's actual horizon, so half the search budget could not
   return anything.
 
-  Three bounds replace the fixed loop count:
-  1. **Start** at the last day the homepage's `var shows` JSON already covers. The array is ordered
-     and complete up to its final entry (verified: its four 27 September shows are exactly the four
-     the 27 September search page lists), so earlier days need no request. That last day IS swept,
-     because a truncated array could cut a day in half.
-  2. **Stop** at the horizon `/film_programmes/` advertises. Every programme heading in
-     `.inner_block_3 h2 a` ends with its final screening date ("3 - 31 October 2026: Winter Sleep",
-     "26 September 2026: Against all Odds: Albuquerque"), so the maximum across the index is the
-     real horizon. One request buys it: on 2026-09-21 it read 31 October, i.e. +40 days. The index
-     page is fetched for the horizon ONLY and is deliberately kept out of the pages handed to
-     `parsePages` (it carries no `date=` param and no timed spans, so it would be inert, but keeping
-     it out means `extractPageDate` can never latch onto one of its programme dates).
-  3. **Cap** at `MAX_SEARCH_REQUESTS = 45` regardless, so a misreported horizon cannot become
-     hundreds of requests. `FALLBACK_HORIZON_DAYS = 42` applies when the index is unreadable.
-  4. **Give up early** after `MAX_EMPTY_DAY_STREAK = 5` consecutive listing-free days. ⚠️ This
-     threshold must NOT be lowered towards 1. Close-Up goes dark on scattered SINGLE days — 6, 15,
-     23 and 29 October 2026 all returned zero listings inside a programme running to 31 October, and
-     the longest consecutive run measured was one day — so stopping on the first empty day would
-     have truncated at 6 October and lost **34 of 59** screenings. With the published horizon in
-     hand the streak never fires; it earns its keep only when the index is unreadable and the
-     42-day fallback overshoots a short programme (measured: 38 requests → 9 in that case).
+  **The sweep is an explicit day list planned from `/film_programmes/` (2026-10-04).** The
+  2026-09-21 version walked every day from the JSON's last day to the published horizon and gave up
+  after 5 empty days. The 2026-10-04 horizon audit found it missing two screenings on a typical
+  programme: it never swept 22 Oct (Vicky Smith – Animated Matter) because that day sat inside the
+  JSON window, and it stopped at 5 Nov ("5 consecutive listing-free days … stopping 12 day(s)
+  early") on the way to a one-off on 17 Nov (Jenny Baines – Action Films). `planSweepDays` now
+  fetches a day only when a programme screens on it AND the JSON cannot account for it:
+  1. **Range programmes** ("3 - 31 October 2026: Winter Sleep", "28 September - 3 October 2026: …"):
+     every day from the JSON's last day, or the range's first day if later, to the range's end. A
+     range screens on some of its days and not others; only a search page says which. The JSON's
+     own last day is included because a truncated array could cut it in half. A start that omits
+     its month or year borrows the end's, stepping the year back for a December-to-January span; a
+     heading prefix in any other shape is read as already running.
+  2. **One-day programmes** ("17 November 2026: Jenny Baines – Action Films followed by Q&A"): their
+     day, unless the JSON already names a show on it; on the JSON's own last day they are always
+     fetched, for the same truncation reason. A start after its end ("28 - 5 November") is read as
+     already running. Title matching is deliberately avoided (the
+     heading adds "followed by Q&A"; the listing does not).
+  3. **Unnamed JSON shows**: any day where the JSON lists a future show as `"title": null` and the
+     homepage's h2 list cannot name it. That list only runs about a week ahead, so a null-title show
+     later in the month was silently dropped. 22 Oct 20:15 was exactly this: it IS in the JSON.
 
-  **Result, measured live 2026-09-21: 11 requests → 33, and 24 screenings → 59** across 35 distinct
-  days, contiguous 22 September to 31 October. Of the 32 days past the JSON boundary the old loop
-  reached 4; the sweep reaches all 32.
+  The JSON is ordered and complete up to its final entry (verified 2026-09-20: its four 27 September
+  shows are exactly the four the 27 September search page lists), which is why days it covers need
+  no request beyond the three cases above. Headings that carry no readable date are logged as a
+  warning, since each is a programme the plan cannot see. The index page is fetched for planning
+  ONLY and is kept out of the pages handed to `parsePages` (it carries no `date=` param and no timed
+  spans, so it would be inert, but keeping it out means `extractPageDate` can never latch onto one of
+  its programme dates).
+
+  **Measured live 2026-10-04: 6 search requests (18 planned) → 3 (22 Oct, 31 Oct, 17 Nov), and 38
+  validated screenings → 40**, last date 31 Oct → 17 Nov. The contiguous walk stopped after 6 of its
+  18 planned days and reached neither miss. Fewer requests matter doubly here: every request is one
+  more chance to land inside a Cloudflare window.
+
+  Bounds that still apply:
+  - **Cap** at `MAX_SEARCH_REQUESTS = 45` (near-term days first, the list is ascending), so a
+    misreported horizon cannot become hundreds of requests.
+  - **Fallback**: when the index is unreadable or lists nothing current, the plan is every day from
+    the JSON's last day to `FALLBACK_HORIZON_DAYS = 42` (plus any unnamed-show days), and ONLY then
+    does `MAX_EMPTY_DAY_STREAK = 5` end the walk early. ⚠️ That threshold must NOT be lowered
+    towards 1. Close-Up goes dark on scattered SINGLE days — 6, 15, 23 and 29 October 2026 all
+    returned zero listings inside a programme running to 31 October — so stopping on the first
+    empty day would have truncated at 6 October and lost **34 of 59** screenings. With the
+    published horizon in hand the streak is not applied at all: a dark run there is a gap in the
+    programme.
+  - **`SWEEP_BUDGET_MS = 300_000`** wall-clock ceiling, unchanged.
+
+  History: on 2026-09-21 the contiguous walk replaced a 7-day stride (11 requests → 33, 24
+  screenings → 59 across 35 distinct days). The stride had sampled about one day in seven past the
+  JSON window, and its last five probes fell beyond the venue's horizon.
 - **A challenge part-way through the sweep KEEPS what has been fetched (do not "fix" this to
-  throw).** The sweep is ~33 requests over ~114s and a block lasts ~19-27 minutes, so interruption
-  is routine: on 2026-09-21 a window opened at 10:00:23 and closed during request 10 of 33. Throwing
+  throw).** On 2026-09-21 the contiguous sweep was ~33 requests over ~114s; the planned sweep is
+  usually a handful of requests now, and a block still lasts ~19-27 minutes, so interruption
+  happens: on 2026-09-21 a window opened at 10:00:23 and closed during request 10 of 33. Throwing
   there discarded 9 good pages AND the homepage JSON for zero screenings. It is safe to keep them
   because near-term coverage comes from the JSON (request #1, covering everything up to the sweep
   start) and because **nothing downstream deletes on a partial batch** —
   `reportSupersededScreeningCandidates` is a `SELECT COUNT(*)` with "No runtime opt-in to deletion"
   (`pipeline.ts:359`) and `pipeline.ts` contains no DELETE at all. A challenge on the programme
   index likewise keeps the homepage and skips the sweep, since the index request doubles as a probe.
-  Non-challenge failures keep the old required/optional split: the first `REQUIRED_DAYS = 14` of the
-  sweep must succeed or the run fails, later days only shorten the horizon.
+  Non-challenge failures keep a required/optional split. Search-only coverage starts at the JSON's
+  last day, so a day from there to `REQUIRED_DAYS = 14` calendar days later must succeed or the run
+  fails. Later days only shorten the horizon. A day BEFORE the JSON's last day is fetched only to
+  name an unnamed show, so its failure costs that one title and is optional: throwing there would
+  discard the homepage JSON and every other page, and send runner retries into the WAF.
 - **⚠️ The venue publishes am/pm typos, and we drop those screenings rather than guess.** Found
   2026-09-21 once daily sweeping made the whole programme visible: `26-10-2026` renders
   `04:30 am : Winter Sleep` (a 196-minute film) and `27-10-2026` renders
