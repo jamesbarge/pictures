@@ -943,10 +943,13 @@ none was judged to pay for itself at ~12-20 screenings a year.
 - **Horizon** (`IndyVenue.horizonDays`, default `DEFAULT_HORIZON_DAYS`=35): per-venue, since
   the loop makes ONE POST per day so this is the exact request count. **Set it to exceed a
   venue's real publication window** — commercial INDY cinemas publish event cinema (opera,
-  NT Live, repertory) months out. **Chiswick=150** (2026-07-20 audit: publishes to ~mid-Dec;
+  NT Live, repertory) months out. **Chiswick=200** (2026-07-20 audit: publishes to ~mid-Dec;
   the 35-day default captured only 16 of 66 distinct films, dropping the entire Sep+ tail incl.
-  Fargo, Rear Window, Met Opera). Regent Street keeps the 35-day default. When adding an INDY
-  venue, probe how far its `showingsForDate` returns data and set `horizonDays` accordingly.
+  Fargo, Rear Window, Met Opera). **Regent Street=120** (2026-10-04 horizon audit: kept showings
+  to day offset 48, the London Baltic Film Festival 13-21 Nov plus Q&A one-offs; the 35-day
+  default dropped 6-7 of 33 depending on run date). When adding an INDY venue, probe how far
+  its `showingsForDate` returns data and set `horizonDays` accordingly. Note that showings past
+  day 90 only survive validation because INDY sets `timeSource:"iso"` (180-day cap).
 - **Map**: filmTitle=`movie.name`; datetime=`new Date(time)` (`timeSource:"iso"` — true UTC,
   no BST mislabel); runtime=`movie.duration`; year=`movie.releaseDate` year;
   bookingUrl=`{baseUrl}/checkout/showing/{id}`; **sourceId=`{cinemaId}-{showing.id}`**.

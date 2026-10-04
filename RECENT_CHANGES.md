@@ -1,3 +1,13 @@
+## 2026-10-04: Regent Street INDY horizon raised to 120 days
+**PR**: #777 | **Files**: `src/scrapers/cinemas/regent-street.ts`, `src/scrapers/cinemas/regent-street.test.ts` (new), `src/scrapers/SCRAPING_PLAYBOOK.md`
+- Regent Street asks INDY for 120 days of showings. It set no horizon, so the shared 35-day default skipped the London Baltic Film Festival (13-21 Nov) and the November Q&A one-offs.
+- Dry parse on 2026-10-04: 27 -> 33 showings, last showing 7 Nov -> 21 Nov, for about 85 extra GraphQL POSTs per run.
+
+---
+
+
+---
+
 ## 2026-10-04: Genesis encoding, dated-panel rollover and LIFF shorts identity
 **PR**: #776 | **Files**: `src/scrapers/cinemas/genesis.ts`, `src/scrapers/cinemas/genesis.test.ts` (new), `src/lib/title-patterns.ts`, `src/lib/film-similarity-sequel.test.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`
 - The film matcher reads the number in front of a trailing festival tag, so "Shorts Block 3 - LIFF" and "Shorts Block 11 - LIFF" resolve to separate films. The 2026-10-03 run had filed Shorts Blocks 2-12 under one film, which L-CUT parity counted as 9 missing Genesis screenings.
