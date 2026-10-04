@@ -1,5 +1,5 @@
 ## 2026-10-04: Remove Gemini-dependent code
-**PR**: #PENDING | **Files**: `src/lib/gemini.ts`, `src/agents/run-agents.ts`, `src/app/admin/agents/`, `src/app/api/admin/anomalies/verify/`, `src/scrapers/pipeline.ts`, `scripts/audit-and-fix-upcoming.ts`, `scripts/data-check.ts`, `package.json`
+**PR**: #785 | **Files**: `src/lib/gemini.ts`, `src/agents/run-agents.ts`, `src/app/admin/agents/`, `src/app/api/admin/anomalies/verify/`, `src/scrapers/pipeline.ts`, `scripts/audit-and-fix-upcoming.ts`, `scripts/data-check.ts`, `package.json`
 - Deleted the Gemini client and everything that called it: the scraper-health, link-validator and fallback enrichment agents, the `/admin/agents` page and routes, AI Verify, the data-quality enrichment route, the `ENABLE_AGENTS` pipeline hook and the Stagehand booking verifier. About 4,985 lines go, plus 249 lockfile packages including `@google/genai`.
 - `npm run agents:enrich` (DeepSeek) now runs without a Gemini key check. `agents:links`, `agents:health` and `agents:fallback-enrich` are removed, and `audit:fix-upcoming` drops its fallback pass, so its passes run 1 to 7.
 

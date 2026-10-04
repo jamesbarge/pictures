@@ -1,6 +1,6 @@
 # Remove Gemini-dependent code
 
-**PR**: #PENDING
+**PR**: #785
 **Date**: 2026-10-04
 
 ## Changes
