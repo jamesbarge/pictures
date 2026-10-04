@@ -1,6 +1,6 @@
 # Remove retired-scheduler, QA and never-wired modules from src/lib
 
-**PR**: #PENDING
+**PR**: #784
 **Date**: 2026-10-04
 
 ## Changes
