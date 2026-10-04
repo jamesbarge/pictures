@@ -1,5 +1,5 @@
 ## 2026-10-04: ICA scraper follows season and festival hubs
-**PR**: TBD | **Files**: `src/scrapers/cinemas/ica.ts`, `src/scrapers/cinemas/ica.test.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`, `changelogs/2026-10-04-ica-hub-discovery.md`
+**PR**: #780 | **Files**: `src/scrapers/cinemas/ica.ts`, `src/scrapers/cinemas/ica.test.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`, `changelogs/2026-10-04-ica-hub-discovery.md`
 - The ICA scraper finds pages from every /films tile, the /upcoming calendar and the child pages of season and festival hubs (LFF, Imamura, London Latino FF, The Independent, Doc'n'Roll and others). A live run without persistence found 198 screenings where the old scraper found 85, each matching ICA's Spektrix ticketing to the minute.
 - L-CUT coverage from the scraper's own rows rises from 81 to 144 of 147 listings. The 3 left are the same screenings under different titles.
 - Discovery stops at 170 pages or 300s so the venue stays inside its 10-minute cap, and only Cinema 1 and Cinema 2 performances count (talks and gigs on the Stage share the markup).

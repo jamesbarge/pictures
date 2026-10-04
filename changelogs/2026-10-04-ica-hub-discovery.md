@@ -1,6 +1,6 @@
 # ICA scraper: follow season and festival hubs
 
-**PR**: TBD
+**PR**: #780
 **Date**: 2026-10-04
 
 ## Changes
