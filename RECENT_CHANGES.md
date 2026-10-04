@@ -6,6 +6,23 @@
 - All six Phoenix listings the L-CUT cross-check flagged as missing (Banshees of Inisherin, Nosferatu live score, How Deep Is Your Love, Rocky Horror, Ringu, Ghost Town) are in the new output.
 
 ---
+
+---
+
+## 2026-10-04: Close-Up day sweep planned from the programme index
+**PR**: #778 | **Files**: `src/scrapers/cinemas/close-up.ts`, `src/scrapers/cinemas/close-up.test.ts` (new), `src/scrapers/SCRAPING_PLAYBOOK.md`
+- The search-page sweep fetches only the days a `/film_programmes/` heading says something screens on and the homepage JSON cannot account for: range tails past the JSON, one-off event days, the JSON's last day, and days with a `"title": null` show.
+- Recovers 22 Oct Vicky Smith: Animated Matter (a null-title JSON show) and 17 Nov Jenny Baines: Action Films (cut off by the 5-empty-day streak). Live 2026-10-04: 3 search requests where the old walk made 6 of 18 planned, 38 -> 40 screenings.
+- The empty-day streak applies only when the programme index is unreadable. A failed fetch for a day before the JSON's last day costs that one title and keeps the run. The Cloudflare `challengeSeen` fast-fail is unchanged and now under test.
+
+---
+
+
+---
+
+
+---
+
 ## 2026-10-04: Regent Street INDY horizon raised to 120 days
 **PR**: #777 | **Files**: `src/scrapers/cinemas/regent-street.ts`, `src/scrapers/cinemas/regent-street.test.ts` (new), `src/scrapers/SCRAPING_PLAYBOOK.md`
 - Regent Street asks INDY for 120 days of showings. It set no horizon, so the shared 35-day default skipped the London Baltic Film Festival (13-21 Nov) and the November Q&A one-offs.
