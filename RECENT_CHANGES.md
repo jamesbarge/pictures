@@ -1,5 +1,5 @@
 ## 2026-10-04: Close-Up day sweep planned from the programme index
-**PR**: TBD | **Files**: `src/scrapers/cinemas/close-up.ts`, `src/scrapers/cinemas/close-up.test.ts` (new), `src/scrapers/SCRAPING_PLAYBOOK.md`
+**PR**: #778 | **Files**: `src/scrapers/cinemas/close-up.ts`, `src/scrapers/cinemas/close-up.test.ts` (new), `src/scrapers/SCRAPING_PLAYBOOK.md`
 - The search-page sweep fetches only the days a `/film_programmes/` heading says something screens on and the homepage JSON cannot account for: range tails past the JSON, one-off event days, the JSON's last day, and days with a `"title": null` show.
 - Recovers 22 Oct Vicky Smith: Animated Matter (a null-title JSON show) and 17 Nov Jenny Baines: Action Films (cut off by the 5-empty-day streak). Live 2026-10-04: 3 search requests where the old walk made 6 of 18 planned, 38 -> 40 screenings.
 - The empty-day streak applies only when the programme index is unreadable. A failed fetch for a day before the JSON's last day costs that one title and keeps the run. The Cloudflare `challengeSeen` fast-fail is unchanged and now under test.

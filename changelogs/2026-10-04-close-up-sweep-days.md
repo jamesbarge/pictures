@@ -1,6 +1,6 @@
 # Close-Up day sweep planned from the programme index
 
-**PR**: TBD
+**PR**: #778
 **Date**: 2026-10-04
 
 ## Changes
