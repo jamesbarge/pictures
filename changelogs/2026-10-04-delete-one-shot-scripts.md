@@ -1,6 +1,6 @@
 # Delete 72 finished one-shot scripts
 
-**PR**: #PENDING
+**PR**: #786
 **Date**: 2026-10-04
 
 ## Changes
