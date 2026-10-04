@@ -82,7 +82,8 @@ Rules:
 | Olympic (`cinemas/olympic.ts`) | `olympic-studios` | `olympic-{bookingId}-{ISO}` | booking id from URL (`""` when absent; ISO keeps it unique) |
 | David Lean (`cinemas/david-lean.ts`) | `david-lean-cinema` | `david-lean-{eventId}` | TicketSolve event id (since 2026-10-04; before that `david-lean-{titleSlug≤30}-{ISO}`, derived) |
 | Riverside (`cinemas/riverside-v2.ts`) | `riverside-studios` | `riverside-{event.id}-{perf.timestamp}` | event id + perf timestamp |
-| L-CUT gap-fill (`scripts/lcut-gapfill.ts`) | multiple (real venues, incl. `the-arzner`, `horse-hospital`, `good-shepherd-studios`, `project-loop`, `deptford-cinema`, `ibraaz`, `metroland-studios`, `set-social-peckham`) | `lcut-{lcutMongoId}` | L-CUT API film id (`https://lcutlondon.com/api/films/date/DD-MM-YYYY?page=N`) |
+| Ibraaz (`cinemas/ibraaz.ts`) | `ibraaz` | `ibraaz-{slug}-{ISO}` | derived; slug from the event page's canonical URL, percent-decoded so it matches the raw-Unicode listing link |
+| L-CUT gap-fill (`scripts/lcut-gapfill.ts`) | multiple (real venues, incl. `the-arzner`, `horse-hospital`, `good-shepherd-studios`, `project-loop`, `deptford-cinema`, `metroland-studios`, `set-social-peckham`) | `lcut-{lcutMongoId}` | L-CUT API film id (`https://lcutlondon.com/api/films/date/DD-MM-YYYY?page=N`) |
 
 ### Phantom reconcile (`src/scripts/reconcile-phantom-screenings.ts`)
 
@@ -665,6 +666,54 @@ Use this format when recording cinema-specific quirks:
   - Rating strip must stay end-anchored (regression: `"What's Up, Doc? U"` → `"What's p, Doc?"` with substring replace).
 - Last verified (2026-06-12): live run — 88/88 films emitted runtime, all within 1–600; His Girl Friday=92 matches canonical.
 
+### Ibraaz (Fitzrovia, W1)
+- Scraper: `src/scrapers/cinemas/ibraaz.ts` (Cheerio, fetch-based, runnable under tsx). Cheerio wave,
+  task `scraper-ibraaz`. Was an L-CUT source-only venue until 2026-10-04; L-CUT never listed it, so
+  it had 0 rows ever. L-CUT now treats it as report-only.
+- Site: Nuxt SSR over Craft CMS + Solspace Calendar. Every page is fully server-rendered.
+- Source URL pattern: listing `https://ibraaz.org/whats-on`, detail `https://ibraaz.org/whats-on/<slug>`.
+  The site has a `?category=film` filter, but robots.txt disallows `/*?`, so read the unfiltered
+  listing and filter on tags. The listing holds every upcoming event (17 on 2026-10-04, through
+  6 Dec plus exhibitions into 2027); no pagination seen. Past events live at `/events-archive`.
+- Key selectors:
+  - Listing: `article.card`; slug from its first `a[href^="/whats-on/"]`; tags from `.card__info .tag`.
+    A nav block repeats some links outside `article.card`, and the "Related" strip repeats cards, so
+    dedupe by slug.
+  - Detail: `h1` (title); `dl.summary dt` whose text is "Date and Time:" then its `dd`, one `<p>` per
+    line; `link[rel=canonical]` (slug, percent-encoded with lowercase hex); `meta[property=og:image]`
+    (poster, a still); Ticket Tailor widget `a[href^="https://tickets.ibraaz.org/events/"]`. Skip the
+    widget's `https://www.tickettailor.com?rf=...` "Sell tickets online" link.
+- Film selection: a card must carry "Film", and every other tag must be `Library-in-Residence` or
+  `Talk`. Co-tags across 31 archived Film events + the live programme on 2026-10-04:
+  - kept: `Film` alone; `Film` + `Library-in-Residence` ("Library Transmission" screenings with an
+    intro); `Film` + `Talk` (The Last Responders, a documentary then a conversation).
+  - rejected: `Film` + `Performance` (The Glass Essays performance lecture), `Film` + `Workshop`
+    (Rihla, a lecture with excerpts), `Film` + `Music` (a cassette-archive day with a separate
+    evening performance). An unseen co-tag is rejected until reviewed; the scraper logs each
+    skipped Film card with its tags.
+- Date/time format: yearless free text in the CMS `datesText` field. Seen: `Sun 18 Oct, 3–4.30pm`,
+  `Sunday 7 June, 3–4.30pm`, `Wednesday 3 Dec, 6.30-8pm`, `Sunday 19 Jul, 3—4:30 pm`,
+  `Sunday 15 Feb, 2 – 3.30 pm`, `Wednesday 21 Jan 2026, 6-8pm`, `Saturday 27 June, 1–3pm and 7–8pm`.
+  `parseIbraazDateTimes()` splits on the first comma, runs the day/month through
+  `parseScreeningDate()` (shared year inference, explicit year wins) and each start through
+  `parseScreeningTime()` + `combineDateAndTime()` for BST/GMT. The start of a range usually has no
+  meridiem and borrows the end's, flipped when it would land after the end (`11–1pm` is 11am).
+  `X and Y` gives one start per range. The weekday must match the inferred date, which catches a
+  stale listing rolled into next year. Any other shape returns nothing and logs a warning.
+- **Do not trust `time[datetime]` or the payload `startDate`.** Both carry `+00:00` and editors fill
+  them inconsistently: Foragers (3pm BST, 18 Oct 2026) is `15:00:00+00:00`, a 4pm instant, while the
+  archived "A Summer in La Goulette" (3pm BST) is `14:00:00+00:00`, the true instant. Ticket Tailor
+  shows 3:00 PM for Foragers and MILISUTHANDO, matching the human string.
+- Failure policy: zero `article.card` on the listing throws (exhibitions are always listed, so
+  zero means the markup changed), and a failed event page fails the scrape so the runner retries
+  the venue.
+- Booking: Ticket Tailor widget URL (`/events/ibraaz/<id>/select-date?ref=website_widget`, returned
+  200 with a Chrome UA on 2026-10-04). Archived pages drop the widget, so the event page is the
+  fallback. Times are text-sourced (`timeSource` unset); all seen starts are 13:00-18:30.
+- Last verified (2026-10-04): live dry parse, 3 rows: Foragers 2026-10-18 15:00 BST (14:00Z),
+  MILISUTHANDO 2026-10-25 15:00 GMT (the changeover Sunday), Yugantar 2026-11-15 15:00 GMT; The Glass
+  Essays skipped. All 31 archived Film pages parse to the times their date strings show.
+
 ### L-CUT gap-fill (`scripts/lcut-gapfill.ts`, 2026-07-13)
 - **What**: L-CUT (https://lcutlondon.com) is a third-party repertory listings guide with an
   unauthenticated JSON API: `GET /api/films/date/DD-MM-YYYY?page=N` → `{films, hasMore}`.
@@ -695,9 +744,9 @@ Use this format when recording cinema-specific quirks:
   missing vs L-CUT is a scraper-regression signal (warn-level Telegram). Auto-inserting
   scraped venues would mask the regression, so we don't. The split is derived at runtime from
   the scraper registry (`getScrapedCinemaIds`), so a venue auto-reclassifies when it gains a
-  scraper. Source-only set as of 2026-08-09 (8 venues): `the-arzner`, `horse-hospital`,
-  `good-shepherd-studios`, `project-loop`, `deptford-cinema`, `ibraaz`, `metroland-studios`,
-  `set-social-peckham`.
+  scraper. Source-only set as of 2026-10-04 (7 venues): `the-arzner`, `horse-hospital`,
+  `good-shepherd-studios`, `project-loop`, `deptford-cinema`, `metroland-studios`,
+  `set-social-peckham`. `ibraaz` left the set on 2026-10-04 when it gained `cinemas/ibraaz.ts`.
 
 #### Adding a venue to the gap-fill (no scraper) — the 2-file recipe
 Worked example: the four venues added 2026-08-09. Nothing else is needed; there is no
@@ -718,8 +767,9 @@ scraper module, no `SCRAPER_REGISTRY` entry, and no wave assignment.
 files must move together or the build goes red.
 
 #### The 2026-08-09 additions — first-party scraper notes (deliberately not built)
-All four are L-CUT-sourced only. Each has a cheap scrape path if the gap-fill under-covers it;
-none was judged to pay for itself at ~12-20 screenings a year.
+All four were L-CUT-sourced only. Each has a cheap scrape path if the gap-fill under-covers it;
+none was judged to pay for itself at ~12-20 screenings a year. Ibraaz got a scraper on 2026-10-04
+because L-CUT carried none of its screenings.
 - **`deptford-cinema`** (Deptford Cinema, deptfordcinema.org) — Squarespace. Events JSON at
   `/new-events?format=json&month=August-2026` → `items[]` with `title`, `startDate`/`endDate`
   (epoch ms), `excerpt`, `categories`, `fullUrl`, `pagination.nextPage` to walk months. No
@@ -729,14 +779,9 @@ none was judged to pay for itself at ~12-20 screenings a year.
   up its premises in 2020; currently a monthly residency at The Brookmill, previously The Ivy
   House in Nunhead), so the registry's static pin will go stale and only the JSON tracks it.
   L-CUT was carrying 2 of the 4 screenings the venue advertised at time of adding.
-- **`ibraaz`** (Ibraaz, ibraaz.org) — Nuxt but fully server-rendered; Cheerio-friendly.
-  `/whats-on?category=film` filters to film. `article.card` → `.tag--themed` (= "Film"),
-  `h3 a.title`, `p.line--bold` (director), `time.card__dates`. **Do not trust
-  `time[datetime]`** — an archived card renders `2026-07-26T15:00:00+00:00` as "3–4:30pm",
-  so parse the human string as Europe/London. Screening room is "Minassa". Tickets are Ticket
-  Tailor on `tickets.ibraaz.org`, which is Cloudflare-403 — booking URL only. No past-events
-  archive. Watch the times: L-CUT had two Aug 2026 rows an hour earlier than the venue's own
-  published 3pm start.
+- **`ibraaz`**: built 2026-10-04, see "Ibraaz (Fitzrovia, W1)" above. Two claims from this note
+  turned out wrong on 2026-10-04: `/events-archive` holds past events, and `tickets.ibraaz.org`
+  returned 200 to a Chrome UA.
 - **`metroland-studios`** (Metroland Cultures, metrolandcultures.com) — WordPress with an open
   REST API and a custom post type: `/wp-json/wp/v2/event?per_page=100&orderby=date`. **A
   venue-site scraper would miss nearly all the film**: the monthly Majlis Film Club is
