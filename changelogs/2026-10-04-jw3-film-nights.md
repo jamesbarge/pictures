@@ -1,6 +1,6 @@
 # JW3 keeps film nights filed outside the Cinema genre
 
-**PR**: TBD
+**PR**: #783
 **Date**: 2026-10-04
 
 ## Changes
