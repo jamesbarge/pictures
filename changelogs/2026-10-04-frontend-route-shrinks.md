@@ -1,6 +1,6 @@
 # Frontend routes share their screening, CSS and test helpers
 
-**PR**: #PENDING
+**PR**: #795
 **Date**: 2026-10-04
 
 ## Changes

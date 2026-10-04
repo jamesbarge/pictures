@@ -1,5 +1,5 @@
 ## 2026-10-04: Frontend routes share their screening, CSS and test helpers
-**PR**: #PENDING | **Files**: `frontend/src/lib/server/api.ts`, `frontend/src/routes/+page.server.ts`, `frontend/src/routes/sitemap.xml/+server.ts`, `frontend/src/app.css`, `frontend/test-all.spec.ts`, `frontend/tests/mobile.spec.ts`
+**PR**: #795 | **Files**: `frontend/src/lib/server/api.ts`, `frontend/src/routes/+page.server.ts`, `frontend/src/routes/sitemap.xml/+server.ts`, `frontend/src/app.css`, `frontend/test-all.spec.ts`, `frontend/tests/mobile.spec.ts`
 - Home, tonight and this-weekend trim screening rows through one `slimScreening` helper. Map and reachable read cinemas from the root layout, so each makes one fewer `/api/cinemas` call per render.
 - The sitemap fetches the 200-film browse payload directly and stops calling `/api/films/sitemap`, which never existed and returned 400 on every render. The XML is byte-identical to main (186,071 bytes, 1,253 URLs).
 - `app.css` drops unused tokens and classes, the duplicate `Inter` face and its `.sr-only` copy, and gains one global `.prose` and one `.poster-grid` in place of six scoped copies. Four unused fonts (188 KB) are deleted.
