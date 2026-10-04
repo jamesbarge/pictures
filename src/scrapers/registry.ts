@@ -34,7 +34,6 @@ import { createEverymanScraper } from "@/scrapers/chains/everyman";
 // Independent (Playwright) factories
 import { createBFIScraper } from "@/scrapers/cinemas/bfi";
 import { createBarbicanScraper } from "@/scrapers/cinemas/barbican";
-import { createPhoenixScraper } from "@/scrapers/cinemas/phoenix";
 import { createElectricScraperV2 } from "@/scrapers/cinemas/electric-v2";
 import { createLexiScraper } from "@/scrapers/cinemas/lexi";
 import { createRegentStreetScraper } from "@/scrapers/cinemas/regent-street";
@@ -44,6 +43,7 @@ import { createJW3Scraper } from "@/scrapers/cinemas/jw3";
 // Independent (Cheerio / API) factories
 import { createCastleScraper } from "@/scrapers/cinemas/castle";
 import { createRioScraper } from "@/scrapers/cinemas/rio";
+import { createPhoenixScraper } from "@/scrapers/cinemas/phoenix";
 import { createPrinceCharlesScraper } from "@/scrapers/cinemas/prince-charles";
 import { createICAScraper } from "@/scrapers/cinemas/ica";
 import { createGenesisScraper } from "@/scrapers/cinemas/genesis";
@@ -128,17 +128,6 @@ const PLAYWRIGHT_ENTRIES: ScraperRegistryEntry[] = [
     }),
   },
   {
-    taskId: "scraper-phoenix",
-    cliAliases: ["phoenix-east-finchley"],
-    type: "single",
-    wave: "playwright",
-    buildConfig: (): SingleVenueConfig => ({
-      type: "single",
-      venue: getVenueFromRegistry("phoenix-east-finchley"),
-      createScraper: () => createPhoenixScraper(),
-    }),
-  },
-  {
     taskId: "scraper-electric",
     type: "multi",
     wave: "playwright",
@@ -203,6 +192,17 @@ const CHEERIO_ENTRIES: ScraperRegistryEntry[] = [
       type: "single",
       venue: getVenueFromRegistry("rio-dalston"),
       createScraper: () => createRioScraper(),
+    }),
+  },
+  {
+    taskId: "scraper-phoenix",
+    cliAliases: ["phoenix-east-finchley"],
+    type: "single",
+    wave: "cheerio",
+    buildConfig: (): SingleVenueConfig => ({
+      type: "single",
+      venue: getVenueFromRegistry("phoenix-east-finchley"),
+      createScraper: () => createPhoenixScraper(),
     }),
   },
   {

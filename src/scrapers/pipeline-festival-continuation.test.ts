@@ -154,6 +154,7 @@ vi.mock("@/lib/scrape-progress", () => ({
 vi.mock("@/config/cinema-registry", () => ({
   resolveCinemaId: (id: string) => id,
   VENUE_LANGUAGE_PRIORS: {},
+  allowsCurrentReleaseMatching: () => false,
 }));
 
 import { processScreenings } from "./pipeline";

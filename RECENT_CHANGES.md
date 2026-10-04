@@ -5,6 +5,41 @@
 - Live dry parse: Foragers (18 Oct), MILISUTHANDO (25 Oct) and Yugantar (15 Nov), each with its Ticket Tailor booking link.
 
 ---
+
+---
+
+## 2026-10-04: Title cleaner covers festival and format decorations; current UK releases match at first-run venues
+**PR**: #781 | **Files**: `src/scrapers/utils/film-title-cleaner.ts`, `src/lib/tmdb/client.ts`, `src/lib/tmdb/match.ts`, `src/scrapers/utils/film-matching.ts`, `src/scrapers/pipeline.ts`, `src/config/cinema-registry.ts`
+- The cleaner strips festival tags and prefixes (FFFL, LIFF, LPFF, UKJFF, London Breeze, Black History Month), format and version notes (16/35/70mm, Re-release, Remastered, 4K), anchored extras (intros, Q&A, talks, live score) and Met Opera / RBO season codes. Venue listings now normalize to the same cache key as their film, so 39 rows merged by hand on 2026-10-04 stay merged after the next scrape.
+- New UK releases with one-word titles (Digger, Verity, Pressure) match through TMDB's GB now-playing and upcoming lists, only at first-run venues and only when no conflicting year hint exists. A live check over 534 unmatched titles accepted 9, all agreeing with the manual review.
+- The film cache also indexes each film's TMDB original title, so "Le Boucher", "Festen" and "Cliente" find their films.
+
+---
+## 2026-10-04: Phoenix reads its full programme from the Savoy JSON blob
+**PR**: #775 | **Files**: `src/scrapers/cinemas/phoenix.ts`, `src/scrapers/cinemas/phoenix.test.ts` (new), `src/scrapers/cinemas/bst-regression.test.ts`, `src/scrapers/registry.ts`, `src/config/cinema-registry.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`, `changelogs/2026-10-04-phoenix-full-programme.md`
+- Phoenix's homepage grid stops after 16 events (`if (TheNumEventsDisplayed <= 15)` in the site's own JS). Our scraper found films by reading that grid, so on 2026-10-04 it captured 32 of 57 future performances and stopped at 18 Oct, while the venue publishes to 5 Jun 2027.
+- Phoenix now parses the embedded Savoy `var Events` blob through `platforms/savoy.ts` with a single fetch and runs in the Cheerio wave. A live run returned 57 screenings across 39 titles. The validator accepts 50 and holds 7 opera and ballet nights (23 Jan to 5 Jun 2027) under its 90-day cap until they come within range.
+- All 32 rows the old scraper returned keep identical sourceIds and booking URLs, so existing rows update in place.
+- All six Phoenix listings the L-CUT cross-check flagged as missing (Banshees of Inisherin, Nosferatu live score, How Deep Is Your Love, Rocky Horror, Ringu, Ghost Town) are in the new output.
+
+---
+
+---
+
+## 2026-10-04: Close-Up day sweep planned from the programme index
+**PR**: #778 | **Files**: `src/scrapers/cinemas/close-up.ts`, `src/scrapers/cinemas/close-up.test.ts` (new), `src/scrapers/SCRAPING_PLAYBOOK.md`
+- The search-page sweep fetches only the days a `/film_programmes/` heading says something screens on and the homepage JSON cannot account for: range tails past the JSON, one-off event days, the JSON's last day, and days with a `"title": null` show.
+- Recovers 22 Oct Vicky Smith: Animated Matter (a null-title JSON show) and 17 Nov Jenny Baines: Action Films (cut off by the 5-empty-day streak). Live 2026-10-04: 3 search requests where the old walk made 6 of 18 planned, 38 -> 40 screenings.
+- The empty-day streak applies only when the programme index is unreadable. A failed fetch for a day before the JSON's last day costs that one title and keeps the run. The Cloudflare `challengeSeen` fast-fail is unchanged and now under test.
+
+---
+
+
+---
+
+
+---
+
 ## 2026-10-04: Regent Street INDY horizon raised to 120 days
 **PR**: #777 | **Files**: `src/scrapers/cinemas/regent-street.ts`, `src/scrapers/cinemas/regent-street.test.ts` (new), `src/scrapers/SCRAPING_PLAYBOOK.md`
 - Regent Street asks INDY for 120 days of showings. It set no horizon, so the shared 35-day default skipped the London Baltic Film Festival (13-21 Nov) and the November Q&A one-offs.

@@ -6,6 +6,7 @@ import {
   extractEnglishFromBracket,
   getKnownNonFilmTypeFromEntries,
 } from "./film-title-cleaner";
+import unmatchedTitles from "./fixtures/unmatched-titles-2026-10-04.json";
 
 describe("cleanFilmTitle", () => {
   describe("existing event prefixes", () => {
@@ -702,5 +703,289 @@ describe("reviewed wrapper prefixes", () => {
 
   it("keeps the film name that shares its first words with a wrapper", () => {
     expect(cleanFilmTitle("Funeral Parade of Roses")).toBe("Funeral Parade of Roses");
+  });
+});
+
+// Titles from the 2026-10-04 coverage pass: 534 upcoming films had no TMDB
+// match, and these decorations were why many of them never reached a search.
+// The learnings file that could carry such rules is gitignored and absent in
+// CI, so each rule lives in code and is pinned here.
+describe("2026-10-04 unmatched-coverage decorations", () => {
+  function expectCleaned(cases: Array<{ input: string; cleaned: string; year?: number }>) {
+    for (const { input, cleaned, year } of cases) {
+      it(`"${input}" → "${cleaned}"${year ? ` + year ${year}` : ""}`, () => {
+        const result = cleanFilmTitleWithMetadata(input);
+        expect(result.cleanedTitle).toBe(cleaned);
+        if (year) expect(result.extractedYear).toBe(year);
+        expect(cleanFilmTitle(result.cleanedTitle)).toBe(cleaned);
+      });
+    }
+  }
+
+  describe("festival tag suffixes", () => {
+    expectCleaned([
+      { input: "Madame FFFL", cleaned: "Madame" },
+      { input: "Coward - FFFL", cleaned: "Coward" },
+      { input: "Case 137 FFF", cleaned: "Case 137" },
+      { input: "Viva Carmen! FFFL", cleaned: "Viva Carmen!" },
+      { input: "Shorts Block 11 - LIFF", cleaned: "Shorts Block 11" },
+      { input: "Under The Bypass (World Premiere) - LIFF", cleaned: "Under The Bypass" },
+      { input: "Between Worlds (LPFF)", cleaned: "Between Worlds" },
+      { input: "I'd do it All Over Again (LoLaFF)", cleaned: "I'd do it All Over Again" },
+      { input: "Anina - LoLaFF", cleaned: "Anina" },
+      { input: "Scaling The Eiffel Tower (LIFF)", cleaned: "Scaling The Eiffel Tower" },
+      { input: "The Crowd (London Breeze Film Festival UK Premiere", cleaned: "The Crowd" },
+      { input: "Man Baby (London Breeze Film Festival Preview", cleaned: "Man Baby" },
+      { input: "Shorts Programme (London Breeze Film Festival)", cleaned: "Shorts Programme" },
+    ]);
+  });
+
+  describe("festival and strand prefixes", () => {
+    expectCleaned([
+      { input: "LPFF 2026: Concrete Land", cleaned: "Concrete Land" },
+      { input: "LPFF 2026 Short Session: Between Worlds", cleaned: "Between Worlds" },
+      { input: "LPFF 2026 Closing Night: Conversation with the Sea", cleaned: "Conversation with the Sea" },
+      { input: "London Palestine Film Festival 2026: Lovely Butterfly", cleaned: "Lovely Butterfly" },
+      { input: "UKJFF 2026: The Sea", cleaned: "The Sea" },
+      { input: "UKJFF: The Righteous Road Trip", cleaned: "The Righteous Road Trip" },
+      { input: "HKFF 2026: Behind the Shadows", cleaned: "Behind the Shadows" },
+      { input: "London Breeze Film Festival: Miss Jobson", cleaned: "Miss Jobson" },
+      { input: "Doc’ n Roll Film Festival 2026: Frampton", cleaned: "Frampton" },
+      { input: "Sheffield DocFest Spotlights: MKO", cleaned: "MKO" },
+      { input: "HACKNEY CHILDREN'S FILM FEST: THE LITTLE VAMPIRE", cleaned: "THE LITTLE VAMPIRE" },
+      { input: "Hackney Children’s Film Fest: THE WILD ROBOT", cleaned: "THE WILD ROBOT" },
+      { input: "Classroom Cinema: The Staffroom", cleaned: "The Staffroom" },
+      { input: "Babykino: The Shoshani Riddle", cleaned: "The Shoshani Riddle" },
+      { input: "Members' Screening: The Social Reckoning", cleaned: "The Social Reckoning" },
+      { input: "Centrepiece Gala: The Wedding Entertainer", cleaned: "The Wedding Entertainer" },
+      { input: "Closing Night Gala: The Last Concert", cleaned: "The Last Concert" },
+      { input: "Opening Night: The Journey to Gyeong-ju", cleaned: "The Journey to Gyeong-ju" },
+      { input: "FFFL Opening Gala - A Woman's Life", cleaned: "A Woman's Life" },
+      { input: "Odyssey 2026: The Last Emperor", cleaned: "The Last Emperor" },
+      { input: "Screening - Dune: Part Three", cleaned: "Dune: Part Three" },
+      { input: "Crafty Movie Night - Corpse Bride", cleaned: "Corpse Bride" },
+      { input: "Girl, So Cinema Club: Sense and Sensibility", cleaned: "Sense and Sensibility" },
+      { input: "Evolution of Horror Presents: Sinners", cleaned: "Sinners" },
+      { input: "We Are Doc Women presents: Ghost Town plus Q&A", cleaned: "Ghost Town" },
+      { input: "CineCarib presents Fanon", cleaned: "Fanon" },
+      { input: "Peer presents One Hundred Faces for a Single Day", cleaned: "One Hundred Faces for a Single Day" },
+      { input: "presents MIRACLE MILE", cleaned: "MIRACLE MILE" },
+      // The source of those "presents …" leftovers: the Bar Trash rule used to
+      // stop before "presents", so a second clean gave a different answer.
+      { input: "BAR TRASH presents The Robe", cleaned: "The Robe" },
+      { input: "BAR TRASH presents BLACKMAIL (1929)", cleaned: "BLACKMAIL", year: 1929 },
+    ]);
+  });
+
+  describe("format suffixes", () => {
+    expectCleaned([
+      { input: "ERASERHEAD (16mm)", cleaned: "ERASERHEAD" },
+      { input: "Heat (35mm)", cleaned: "Heat" },
+      { input: "The Odyssey (70mm)", cleaned: "The Odyssey" },
+      { input: "Steel of Film (35 mm)", cleaned: "Steel of Film" },
+      { input: "The Hart of London (1970) on 16mm", cleaned: "The Hart of London", year: 1970 },
+      { input: "THE MAD BOMBER (ON 16MM)", cleaned: "THE MAD BOMBER" },
+      { input: "THE UNKNOWN (ON 16MM", cleaned: "THE UNKNOWN" },
+      { input: "COP (VHS)", cleaned: "COP" },
+      { input: "Avengers: Endgame (Re-release)", cleaned: "Avengers: Endgame" },
+      { input: "28 Days Later... (Re-release)", cleaned: "28 Days Later..." },
+      { input: "ParaNorman (Remastered)", cleaned: "ParaNorman" },
+      { input: "Alien (Theatrical Cut)", cleaned: "Alien" },
+      { input: "Possession (North American Cut)", cleaned: "Possession" },
+      { input: "Blade (4K reissue)", cleaned: "Blade" },
+      { input: "24 Hour Party People (4K Re-release)", cleaned: "24 Hour Party People" },
+      { input: "Wake in Fright - 4K Restoration", cleaned: "Wake in Fright" },
+      { input: "Halloween 4K Restoration", cleaned: "Halloween" },
+      { input: "Sexy Beast- 4K Restoration", cleaned: "Sexy Beast" },
+      { input: "La Boum 4K - FFFL", cleaned: "La Boum" },
+      { input: "For Sale (A vendre) 4K", cleaned: "For Sale (A vendre)" },
+      { input: "For Sale (A vendre) 4K + extended intro FFFL", cleaned: "For Sale (A vendre)" },
+      { input: "Nadja • 4K Restoration • London Premiere", cleaned: "Nadja" },
+    ]);
+  });
+
+  describe("extras", () => {
+    expectCleaned([
+      { input: "Her Private Hell + Recorded Intro", cleaned: "Her Private Hell" },
+      { input: "Tongues Untied + pre-recorded intro by writer Jason Okundaye", cleaned: "Tongues Untied" },
+      { input: "Extra Geography + extended intro with director Molly Manners", cleaned: "Extra Geography" },
+      { input: "Life Support + Director Introduction", cleaned: "Life Support" },
+      { input: "Naza + Q+A", cleaned: "Naza" },
+      { input: "Ghost Town plus Director Q&A", cleaned: "Ghost Town" },
+      { input: "The Estate + Panel Discussion", cleaned: "The Estate" },
+      { input: "Cactus Pears + ScreenTalk", cleaned: "Cactus Pears" },
+      { input: "CANDYMAN + Book Launch", cleaned: "CANDYMAN" },
+      { input: "Nosferatu with Live Score", cleaned: "Nosferatu" },
+      { input: "The Cabinet of Dr. Caligari (Live Score)", cleaned: "The Cabinet of Dr. Caligari" },
+      { input: "Wicker - Preview", cleaned: "Wicker" },
+      { input: "Sinners - Black History Month 2026", cleaned: "Sinners" },
+      { input: "Wolfwalkers I Trans Awareness programme 2026", cleaned: "Wolfwalkers" },
+      { input: "Everything Must Go Edition w/ Bonus Footage", cleaned: "Everything Must Go" },
+      { input: "Donnie Darko 25th Anniversary", cleaned: "Donnie Darko" },
+      { input: "Terminator 2: Judgment Day 35th Anniversary", cleaned: "Terminator 2: Judgment Day" },
+      { input: "Charlie and Lola – 25th Anniversary", cleaned: "Charlie and Lola" },
+      { input: "The Transformers: The Movie: 40th Anniversary", cleaned: "The Transformers: The Movie" },
+      { input: "Casino Royale (20th Anniversary", cleaned: "Casino Royale" },
+      { input: "24 Hour Party People - (24 Year Anniversary)", cleaned: "24 Hour Party People" },
+      { input: "It's Nice Up North (20th Anniversary) + Q+A", cleaned: "It's Nice Up North" },
+      { input: "House of Usher (aka The Fall of the House of Usher)", cleaned: "House of Usher" },
+      { input: "Noose (aka The Silk Noose)", cleaned: "Noose" },
+    ]);
+  });
+
+  describe("glued premiere prefix", () => {
+    expectCleaned([
+      { input: "UK PREMIEREThe Night is Fading Away", cleaned: "The Night is Fading Away" },
+    ]);
+
+    it("records the glued premiere as the stripped prefix", () => {
+      expect(cleanFilmTitleWithMetadata("UK PREMIEREThe Night is Fading Away").strippedPrefix).toBe("UK PREMIERE");
+    });
+  });
+
+  describe("opera season prefixes", () => {
+    expectCleaned([
+      { input: "Met Opera 2026-27: Tosca", cleaned: "Tosca" },
+      { input: "Met Opera: Tosca", cleaned: "Tosca" },
+      { input: "RBO Encore 2026-27: Manon", cleaned: "Manon" },
+      { input: "2026-27: La Fanciulla del West", cleaned: "La Fanciulla del West" },
+      { input: "Live 2026-27: Gotterdammerung", cleaned: "Gotterdammerung" },
+      // The venue's own typo for the 2026-27 season
+      { input: "2026-26: Silent Night", cleaned: "Silent Night" },
+      { input: "Live 2026-26: Silent Night", cleaned: "Silent Night" },
+    ]);
+  });
+
+  describe("real titles that share words with the new rules survive", () => {
+    const preserved = [
+      "28 Days Later...",
+      "Nosferatu",
+      "The Odyssey",
+      "Casino Royale",
+      "Mission: Impossible – Dead Reckoning",
+      "Alien: Romulus",
+      "Dune: Part Three",
+      "Ghost Town",
+      "Live and Let Die",
+      "Opening Night",
+      "Preview",
+      "The Party",
+      "30th Anniversary",
+      "2001: A Space Odyssey",
+      "Blade Runner 2049",
+      "Christmas Presents",
+      "Peer Gynt",
+      "Screening Technology, Theorizing Posthumanism",
+      "The Meaning of Liff",
+      "Riff Raff",
+      "Halloween",
+      "Madame",
+      "Members Only",
+      "Silent Night",
+      "Live Flesh",
+      "24 Hour Party People",
+      "The Night is Fading Away",
+    ];
+
+    for (const title of preserved) {
+      it(`preserves "${title}"`, () => {
+        expect(cleanFilmTitle(title)).toBe(title);
+      });
+    }
+
+    it("keeps a double bill's second year in the title once its extra is stripped", () => {
+      const result = cleanFilmTitleWithMetadata(
+        "Speak (1962) and The Committee (1968) + Introduction by series curator Sophia Satchell-Baeza",
+      );
+      expect(result.cleanedTitle).toBe("Speak (1962) and The Committee (1968)");
+      expect(result.extractedYear).toBeUndefined();
+    });
+
+    it("leaves a bulleted double bill whole, so the second film's year never becomes the hint", () => {
+      const input = "Halloween (1978) + Halloween II (1981) • Double Feature";
+      const result = cleanFilmTitleWithMetadata(input);
+      expect(result.cleanedTitle).toBe(input);
+      expect(result.extractedYear).toBeUndefined();
+    });
+
+    it("keeps Frankenstein's release year as a hint", () => {
+      const result = cleanFilmTitleWithMetadata("Frankenstein (1931)");
+      expect(result.cleanedTitle).toBe("Frankenstein");
+      expect(result.extractedYear).toBe(1931);
+    });
+  });
+
+  describe("programme strands, part markers and guest credits", () => {
+    expectCleaned([
+      { input: "Black History Month 2026: Sinners", cleaned: "Sinners" },
+      { input: "Black History Month: Cotton Queen", cleaned: "Cotton Queen" },
+      { input: "Liberté (Pt2)", cleaned: "Liberté" },
+      { input: "Résistance (Pt1)", cleaned: "Résistance" },
+      { input: "Resistance - part1", cleaned: "Resistance" },
+      { input: "Liberte - part 2", cleaned: "Liberte" },
+      { input: "The Invite (BIA)", cleaned: "The Invite" },
+      { input: "Toy Story 5 (BIA)", cleaned: "Toy Story 5" },
+      { input: "Special Preview of Fatherland with Katja Hoyer", cleaned: "Fatherland" },
+      { input: "Special Preview of Fatherland", cleaned: "Fatherland" },
+      { input: "Preview of Fatherland", cleaned: "Fatherland" },
+      // A one-word "guest" is part of the title
+      { input: "Special Preview of Dances with Wolves", cleaned: "Dances with Wolves" },
+      { input: "Ken Russell's The Devils: The Director's Cut", cleaned: "The Devils" },
+      { input: "Brazil: Director's Cut", cleaned: "Brazil" },
+      { input: "Dry Leaf + Q&A TBC", cleaned: "Dry Leaf" },
+      { input: "Portrait of Jason + intro + live poetry", cleaned: "Portrait of Jason" },
+      { input: "CAMP CLASSICS presents BLOWIE (+Q&A)", cleaned: "BLOWIE" },
+      { input: "Persona + Introduction by Ronja Blight", cleaned: "Persona" },
+      { input: "THE SECRET AGENT + Talk presented by MUBI and PINTS OF KNOWLEDGE", cleaned: "THE SECRET AGENT" },
+      { input: "Gunnera + Introduction film critic Henry K. Miller", cleaned: "Gunnera" },
+      { input: "Daleks’ Invasion Earth 2150 A.D. + Introduction and Book Signing by Lillian Crawford", cleaned: "Daleks’ Invasion Earth 2150 A.D." },
+      { input: "Köln 75 + ScreenTalk...", cleaned: "Köln 75" },
+      { input: "Girls Like Girls + Q+A with Hayley Kiyoko", cleaned: "Girls Like Girls" },
+    ]);
+
+    // Canonical sequel naming carries the film's identity, so it stays. The
+    // part rule only takes abbreviated "(Pt2)" and lowercase "- part 2" after
+    // a title that does not end in a number.
+    const preserved = [
+      "Mockingjay - Part 2",
+      "Che - Part 2",
+      "Humpty Dumpty X - PART 1",
+      "Dune: Part Two",
+      "Kill Bill: Vol. 2",
+      "Harry Potter and the Deathly Hallows: Part 2",
+      "Part 2",
+      "Toy Story 5 (Pt1)",
+      // Possessive credits stay unless the title is a director's cut: TMDB
+      // keeps some as part of the title.
+      "Lee Cronin's The Mummy",
+      "Ken Russell's The Devils",
+      "Bram Stoker's Dracula",
+      "Mary Shelley's Frankenstein",
+      "Rob Zombie's Halloween",
+      "Schindler's List",
+      "Ferris Bueller's Day Off",
+      "The Devil's Backbone",
+      "Apocalypse Now: Final Cut",
+      // Double bills whose second film starts like an extra
+      "Tony Takitani + Talk Radio",
+      "Volver + Talk to Her",
+      "Serpico + Q & A Nights",
+    ];
+
+    for (const title of preserved) {
+      it(`preserves "${title}"`, () => {
+        expect(cleanFilmTitle(title)).toBe(title);
+      });
+    }
+  });
+});
+
+describe("idempotency over the 534 unmatched titles of 2026-10-04", () => {
+  it("cleaning a cleaned title changes nothing", () => {
+    expect(unmatchedTitles).toHaveLength(534);
+    const unstable = unmatchedTitles
+      .map((title) => ({ title, once: cleanFilmTitle(title) }))
+      .filter(({ once }) => cleanFilmTitle(once) !== once);
+    expect(unstable).toEqual([]);
   });
 });
