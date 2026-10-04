@@ -1,6 +1,6 @@
 # Regent Street INDY horizon raised to 120 days
 
-**PR**: TBD
+**PR**: #777
 **Date**: 2026-10-04
 
 ## Changes

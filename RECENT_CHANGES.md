@@ -1,5 +1,5 @@
 ## 2026-10-04: Regent Street INDY horizon raised to 120 days
-**PR**: TBD | **Files**: `src/scrapers/cinemas/regent-street.ts`, `src/scrapers/cinemas/regent-street.test.ts` (new), `src/scrapers/SCRAPING_PLAYBOOK.md`
+**PR**: #777 | **Files**: `src/scrapers/cinemas/regent-street.ts`, `src/scrapers/cinemas/regent-street.test.ts` (new), `src/scrapers/SCRAPING_PLAYBOOK.md`
 - Regent Street asks INDY for 120 days of showings. It set no horizon, so the shared 35-day default skipped the London Baltic Film Festival (13-21 Nov) and the November Q&A one-offs.
 - Dry parse on 2026-10-04: 27 -> 33 showings, last showing 7 Nov -> 21 Nov, for about 85 extra GraphQL POSTs per run.
 
