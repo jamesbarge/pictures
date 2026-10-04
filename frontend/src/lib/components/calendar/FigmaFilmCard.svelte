@@ -7,7 +7,6 @@
 		film,
 		screenings,
 		now,
-		maxScreenings = 3,
 		priority = false,
 		sleeper = false
 	}: {
@@ -21,7 +20,6 @@
 		 * `hydrationSafeClock().now`. See `$lib/hydration-clock`.
 		 */
 		now: number;
-		maxScreenings?: number;
 		priority?: boolean;
 		/**
 		 * THE SLEEPER marker — one acclaimed-but-under-seen repertory film per
@@ -44,8 +42,9 @@
 			.sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime())
 	);
 
-	const visible = $derived(upcoming.slice(0, maxScreenings));
-	const overflow = $derived(Math.max(0, upcoming.length - maxScreenings));
+	const MAX_SCREENINGS = 3;
+	const visible = $derived(upcoming.slice(0, MAX_SCREENINGS));
+	const overflow = $derived(Math.max(0, upcoming.length - MAX_SCREENINGS));
 
 	const distinctFormats = $derived.by(() => {
 		const seen = new Set<string>();

@@ -1,3 +1,11 @@
+## 2026-10-04: Frontend dead code and two unused dependencies removed
+**PR**: #794 | **Files**: `frontend/src/lib/stores/palette.svelte.ts`, `frontend/src/lib/search/parse-query.ts`, `frontend/src/lib/stores/filters.svelte.ts`, `frontend/src/lib/components/search/ResultsList.svelte`, `frontend/src/lib/utils.ts`, `frontend/package.json`
+- Deleted 11 files nothing imported (three calendar components, three palette rows, the recent-searches and media stores, a stub test, `lib/index.ts` and the scaffold favicon), plus store members, props and helpers with zero readers.
+- Swapped private duplicates for existing helpers: `formatTime`, `londonClock`, `formatLabel`, `formatHour`, Svelte's `MediaQuery` and a native class array in `Badge`. The palette store drops its 60-second clock interval and routes rows through one path map.
+- Uninstalled `clsx` and `@sveltejs/adapter-auto`. The frontend is about 2,050 lines smaller, and svelte-check, vitest, the build, E2E (only the 18 baseline failures) and before/after screenshots show no visible change.
+
+---
+
 ## 2026-10-04: JW3 film nights outside the Cinema genre
 **PR**: #783 | **Files**: `src/scrapers/cinemas/jw3.ts`, `src/scrapers/cinemas/jw3.test.ts` (new), `src/scrapers/SCRAPING_PLAYBOOK.md`
 - JW3 now keeps film nights filed under other Spektrix genres when the name labels them, e.g. `Young JW3 Queer Movie & Pizza Night: Call Me By Your Name`, listed as the film after the colon. This adds Call Me By Your Name (21 Oct) and Theater Camp (16 Dec).

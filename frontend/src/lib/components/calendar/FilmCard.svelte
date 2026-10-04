@@ -7,32 +7,22 @@
 	let {
 		film,
 		screenings,
-		activeCinemaIds = [],
-		maxScreenings = 3,
 		priority = false
 	}: {
 		film: CardFilm;
 		screenings: CardScreening[];
-		activeCinemaIds?: string[];
-		maxScreenings?: number;
 		/** Mark this card's poster as the LCP candidate (above-fold). */
 		priority?: boolean;
 	} = $props();
 
 	let isHovered = $state(false);
 
-	// Past-screening exclusion and chronological ordering are now both done
+	// Past-screening exclusion and chronological ordering are both done
 	// upstream (tonight/+page.svelte and this-weekend/+page.svelte both filter
-	// past datetimes and sort ASC before passing in), so we only need to apply
-	// the local cinema-id filter when one is active.
-	const filteredScreenings = $derived(
-		activeCinemaIds.length === 0
-			? screenings
-			: screenings.filter((sc) => activeCinemaIds.includes(sc.cinemaSlug ?? ''))
-	);
-
-	const visibleScreenings = $derived(filteredScreenings.slice(0, maxScreenings));
-	const overflowCount = $derived(Math.max(0, filteredScreenings.length - maxScreenings));
+	// past datetimes and sort ASC before passing in).
+	const MAX_SCREENINGS = 3;
+	const visibleScreenings = $derived(screenings.slice(0, MAX_SCREENINGS));
+	const overflowCount = $derived(Math.max(0, screenings.length - MAX_SCREENINGS));
 
 	const metaLine = $derived.by(() => {
 		const parts: string[] = [];

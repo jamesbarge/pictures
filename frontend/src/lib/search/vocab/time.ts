@@ -24,5 +24,5 @@ export const TIME_PRESETS: Record<string, TimeRange> = {
 };
 
 export const TIME_PHRASES_BY_LENGTH: Record<number, string[]> = {
-  2: ["late night"],
+  2: Object.keys(TIME_PRESETS).filter((k) => k.includes(" ")),
 };

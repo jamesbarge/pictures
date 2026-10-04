@@ -46,9 +46,6 @@ let formats = $state<string[]>([]);
 let programmingTypes = $state<FilterProgrammingType[]>([]);
 let genres = $state<string[]>([]);
 let decades = $state<string[]>([]);
-let hideSeen = $state(false);
-let hideNotInterested = $state(true);
-let showSoldOut = $state(false);
 
 let hydrated = false;
 
@@ -91,18 +88,6 @@ if (browser) {
 	});
 }
 
-function activeFilterCount(): number {
-	let count = 0;
-	if (cinemaIds.length > 0) count++;
-	if (dateFrom || dateTo) count++;
-	if (timeFrom !== null || timeTo !== null) count++;
-	if (formats.length > 0) count++;
-	if (programmingTypes.length > 0) count++;
-	if (genres.length > 0) count++;
-	if (decades.length > 0) count++;
-	return count;
-}
-
 function clearAll() {
 	filmSearch = '';
 	cinemaIds = [];
@@ -114,9 +99,6 @@ function clearAll() {
 	programmingTypes = [];
 	genres = [];
 	decades = [];
-	hideSeen = false;
-	hideNotInterested = true;
-	showSoldOut = false;
 }
 
 export const filters = {
@@ -150,16 +132,6 @@ export const filters = {
 	get decades() { return decades; },
 	set decades(v: string[]) { decades = v; },
 
-	get hideSeen() { return hideSeen; },
-	set hideSeen(v: boolean) { hideSeen = v; },
-
-	get hideNotInterested() { return hideNotInterested; },
-	set hideNotInterested(v: boolean) { hideNotInterested = v; },
-
-	get showSoldOut() { return showSoldOut; },
-	set showSoldOut(v: boolean) { showSoldOut = v; },
-
-	get activeFilterCount() { return activeFilterCount(); },
 	clearAll,
 
 	toggleCinema(id: string) {
@@ -211,37 +183,6 @@ export const filters = {
 	},
 
 	/**
-	 * Snapshot the slices the palette mutates. Lets the caller restore
-	 * state for Undo. We don't snapshot `filmSearch` / `hideSeen` /
-	 * `showSoldOut` because `applyIntent` never touches them.
-	 */
-	snapshotForUndo(): FilterSnapshot {
-		return {
-			cinemaIds: [...cinemaIds],
-			dateFrom,
-			dateTo,
-			timeFrom,
-			timeTo,
-			formats: [...formats],
-			programmingTypes: [...programmingTypes],
-			genres: [...genres],
-			decades: [...decades]
-		};
-	},
-
-	restoreFromSnapshot(s: FilterSnapshot) {
-		cinemaIds = [...s.cinemaIds];
-		dateFrom = s.dateFrom;
-		dateTo = s.dateTo;
-		timeFrom = s.timeFrom;
-		timeTo = s.timeTo;
-		formats = [...s.formats];
-		programmingTypes = [...s.programmingTypes];
-		genres = [...s.genres];
-		decades = [...s.decades];
-	},
-
-	/**
 	 * Batch-mutate filter state from a parsed query intent. Only slices
 	 * the parser fills in get touched; existing state for other slices
 	 * survives so a user can build up filters across multiple queries.
@@ -280,15 +221,3 @@ export const filters = {
 		}
 	}
 };
-
-export interface FilterSnapshot {
-	cinemaIds: string[];
-	dateFrom: string | null;
-	dateTo: string | null;
-	timeFrom: number | null;
-	timeTo: number | null;
-	formats: string[];
-	programmingTypes: FilterProgrammingType[];
-	genres: string[];
-	decades: string[];
-}

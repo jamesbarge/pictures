@@ -33,8 +33,7 @@
 				// path-change effect below only fires on a CHANGE — so a visit that
 				// never navigated lost its pageview entirely (407 opt-ins, 134
 				// pageview persons). It now fires from the consent effect instead.
-				// Start web-vitals reporting once PostHog is alive. The reporter
-				// is idempotent on subsequent calls.
+				// Start web-vitals reporting once PostHog is alive.
 				void webVitals.startWebVitals(ph.default);
 			});
 		};

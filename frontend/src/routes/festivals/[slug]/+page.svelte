@@ -44,7 +44,7 @@
 				{#each filmGroups as { film, screenings }, i (film?.id)}
 					{#if film}
 						<FilmCard
-							film={{ id: film.id, title: film.title, year: film.year, director: film.directors?.[0] ?? null, runtime: film.runtime, genres: film.genres ?? [], posterUrl: film.posterUrl, tmdbId: null }}
+							film={{ id: film.id, title: film.title, year: film.year, director: film.directors?.[0] ?? null, runtime: film.runtime, genres: film.genres ?? [], posterUrl: film.posterUrl }}
 							screenings={screenings.map((s) => ({ id: s.id, datetime: s.datetime, cinemaName: s.cinema?.name ?? '', cinemaSlug: s.cinema?.id ?? '', bookingUrl: s.bookingUrl }))}
 							priority={i === 0}
 						/>

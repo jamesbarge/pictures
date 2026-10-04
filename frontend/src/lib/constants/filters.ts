@@ -1,6 +1,5 @@
 import type { ScreeningFormat } from '$lib/types/screening';
 
-export type TimeOfDay = 'morning' | 'afternoon' | 'evening' | 'late_night';
 export type FilterProgrammingType = 'repertory' | 'new_release' | 'special_event' | 'preview';
 
 export const GENRE_OPTIONS = [
@@ -49,8 +48,4 @@ export function formatHour(hour: number): string {
 	if (hour < 12) return `${hour}am`;
 	if (hour === 12) return '12pm';
 	return `${hour - 12}pm`;
-}
-
-export function formatTimeRange(from: number, to: number): string {
-	return `${formatHour(from)}–${formatHour(to)}`;
 }

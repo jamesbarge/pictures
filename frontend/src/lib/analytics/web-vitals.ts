@@ -16,7 +16,6 @@ interface MinimalNetworkInformation {
 }
 
 function getConnectionType(): string | undefined {
-	if (typeof navigator === 'undefined') return undefined;
 	const conn = (
 		navigator as Navigator & { connection?: MinimalNetworkInformation }
 	).connection;
@@ -24,20 +23,14 @@ function getConnectionType(): string | undefined {
 }
 
 function getViewportBucket(): 'mobile' | 'tablet' | 'desktop' {
-	if (typeof window === 'undefined') return 'desktop';
 	const w = window.innerWidth;
 	if (w < 768) return 'mobile';
 	if (w < 1024) return 'tablet';
 	return 'desktop';
 }
 
-let started = false;
-
+// Called once, from PostHogProvider's onMount, so it needs no SSR guard or latch.
 export async function startWebVitals(client: typeof posthog): Promise<void> {
-	if (started) return;
-	if (typeof window === 'undefined') return;
-	started = true;
-
 	const { onLCP, onINP, onCLS, onTTFB, onFCP } = await import('web-vitals');
 
 	// Each web-vital callback has its own metric subtype (LCPMetric, INPMetric,

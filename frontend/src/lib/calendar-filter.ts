@@ -1,5 +1,6 @@
 import type { FilterProgrammingType } from '$lib/constants/filters';
 import { toLondonDateStr } from '$lib/utils';
+import { londonClock } from '$lib/london-date';
 
 // Minimal structural type — only the fields `buildFilmMap` actually reads.
 // Callers can pass any wider type that satisfies this constraint; the output
@@ -52,38 +53,6 @@ export interface FilmGroup<S extends CalendarScreening = CalendarScreening> {
 	screenings: S[];
 }
 
-// Module-scope dedup for the one-sided-range invariant warning. Lives here
-// (rather than in the calling component) because the invariant is about the
-// helper's own input — a future caller breaking the convention should be
-// surfaced regardless of which Svelte component happened to invoke us.
-let lastOneSidedRangeWarnKey = '';
-
-// Cached London-time hour formatter. The time-of-day filter compares each
-// screening's London hour against a slider range; without caching, every
-// `dt.toLocaleString('en-GB', { …, timeZone: 'Europe/London' })` allocates a
-// fresh Intl.DateTimeFormat — dominant cost when the time filter is active
-// across a 14-day payload.
-const LONDON_HOUR_FORMATTER = new Intl.DateTimeFormat('en-GB', {
-	hour: 'numeric',
-	hour12: false,
-	timeZone: 'Europe/London'
-});
-
-function getLondonHour(d: Date): number {
-	// `formatToParts` avoids a string→int parse and is marginally faster than
-	// `format()` + `parseInt()` for the same value.
-	const parts = LONDON_HOUR_FORMATTER.formatToParts(d);
-	for (const p of parts) {
-		if (p.type === 'hour') {
-			const h = Number(p.value);
-			// `en-GB` with `hour12: false` returns `24` at midnight on some
-			// engines — normalise to `0` so the range check is consistent.
-			return h === 24 ? 0 : h;
-		}
-	}
-	return 0;
-}
-
 /**
  * Group upcoming screenings by film, applying the active filters.
  *
@@ -111,24 +80,6 @@ export function buildFilmMap<S extends CalendarScreening>(
 	const effectiveTo = filters.dateTo ?? '9999-12-31';
 	const searchQuery = filters.filmSearch ? filters.filmSearch.toLowerCase() : '';
 
-	// A `dateTo`-only range (with no `dateFrom`) is unusual — every UI surface
-	// that exposes a single-day filter sets both ends. Warn in dev so a drifting
-	// caller surfaces instead of silently defaulting `dateFrom` to today.
-	if (
-		import.meta.env.DEV &&
-		filters.dateFrom === null &&
-		filters.dateTo !== null
-	) {
-		const key = `${filters.dateFrom}|${filters.dateTo}`;
-		if (lastOneSidedRangeWarnKey !== key) {
-			lastOneSidedRangeWarnKey = key;
-			console.warn('buildFilmMap: dateTo set without dateFrom', {
-				dateFrom: filters.dateFrom,
-				dateTo: filters.dateTo
-			});
-		}
-	}
-
 	for (const s of screenings) {
 		const film = s.film;
 		if (!film) continue;
@@ -153,7 +104,7 @@ export function buildFilmMap<S extends CalendarScreening>(
 		if (filters.formats.length > 0 && (!s.format || !filters.formats.includes(s.format))) continue;
 
 		if (filters.timeFrom !== null && filters.timeTo !== null) {
-			const hour = getLondonHour(dt);
+			const hour = londonClock(dt).hour;
 			if (hour < filters.timeFrom || hour > filters.timeTo) continue;
 		}
 

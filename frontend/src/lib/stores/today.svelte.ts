@@ -7,10 +7,9 @@ import { toLondonDateStr } from '$lib/utils';
 // - `$derived.by` only re-runs on tracked-state changes; a user who leaves
 //   the homepage open across midnight would otherwise keep seeing yesterday's
 //   listings until they interact with a filter.
-// - Multiple consumers (DayMasthead `activeDate`, homepage `filmMap` default,
-//   `dayGroups` bucketing) need to advance together — one shared source of
-//   truth prevents the masthead from claiming "Sunday" while the grid still
-//   shows Saturday's screenings for one render tick.
+// - Multiple consumers (homepage `filmMap` default, `dayGroups` bucketing, the
+//   film page and the filter chips) need to advance together, so one shared
+//   source of truth keeps them on the same day for every render tick.
 
 let todayValue = $state(toLondonDateStr(new Date()));
 
@@ -38,17 +37,7 @@ function msUntilNextLondonMidnight(): number {
 	return dayMs - elapsedMs + 1000;
 }
 
-// HMR can re-evaluate this module, which would stack a fresh `visibilitychange`
-// listener and a fresh midnight-tick timer on top of the previous boot. The
-// listener is never removed at runtime (the store lives for the full document
-// lifetime), so the simplest fix is a global de-dupe key — module-level
-// `let _bootstrapped` would itself reset on HMR.
-const BOOTSTRAP_KEY = '__picturesTodayStoreBootstrapped';
-type WindowWithBootstrap = Window & { [BOOTSTRAP_KEY]?: boolean };
-
-if (browser && !(window as WindowWithBootstrap)[BOOTSTRAP_KEY]) {
-	(window as WindowWithBootstrap)[BOOTSTRAP_KEY] = true;
-
+if (browser) {
 	const tick = () => {
 		todayValue = toLondonDateStr(new Date());
 		setTimeout(tick, msUntilNextLondonMidnight());

@@ -27,8 +27,6 @@
 	import FestivalRow from './rows/FestivalRow.svelte';
 	import SeasonRow from './rows/SeasonRow.svelte';
 	import FilterActionRow from './rows/FilterActionRow.svelte';
-	import RecentRow from './rows/RecentRow.svelte';
-	import UserStatusRow from './rows/UserStatusRow.svelte';
 
 	interface Props {
 		idPrefix?: string;
@@ -39,37 +37,21 @@
 	const results = $derived<PaletteResults>(palette.results);
 	const selectedIndex = $derived(palette.selectedIndex);
 
-	const layout = $derived.by(() => {
-		const flat: Array<{
+	const sections = $derived.by(() => {
+		const out: Array<{
 			section: keyof PaletteResults;
-			row: unknown;
-			flatIndex: number;
-			id: string;
+			items: Array<{ row: unknown; flatIndex: number; id: string }>;
 		}> = [];
 		let i = 0;
 		for (const section of SECTION_ORDER) {
 			const rows = results[section];
 			if (!rows || rows.length === 0) continue;
+			const items = [];
 			for (const row of rows) {
-				flat.push({ section, row, flatIndex: i, id: `${idPrefix}-${i}` });
+				items.push({ row, flatIndex: i, id: `${idPrefix}-${i}` });
 				i += 1;
 			}
-		}
-		return flat;
-	});
-
-	const sections = $derived.by(() => {
-		const out: Array<{
-			section: keyof PaletteResults;
-			items: typeof layout;
-		}> = [];
-		let cursor: (typeof out)[number] | null = null;
-		for (const item of layout) {
-			if (!cursor || cursor.section !== item.section) {
-				cursor = { section: item.section, items: [] };
-				out.push(cursor);
-			}
-			cursor.items.push(item);
+			out.push({ section, items });
 		}
 		return out;
 	});
@@ -84,51 +66,39 @@
 		{SECTION_LABELS[group.section]}
 	</div>
 	{#each group.items as item (item.id)}
-		{#if item.section === 'films'}
+		{#if group.section === 'films'}
 			<FilmRow
 				film={item.row as never}
 				selected={item.flatIndex === selectedIndex}
 				id={item.id}
 			/>
-		{:else if item.section === 'people'}
+		{:else if group.section === 'people'}
 			<PersonRow
 				person={item.row as never}
 				selected={item.flatIndex === selectedIndex}
 				id={item.id}
 			/>
-		{:else if item.section === 'cinemas'}
+		{:else if group.section === 'cinemas'}
 			<CinemaRow
 				cinema={item.row as never}
 				selected={item.flatIndex === selectedIndex}
 				id={item.id}
 			/>
-		{:else if item.section === 'festivals'}
+		{:else if group.section === 'festivals'}
 			<FestivalRow
 				festival={item.row as never}
 				selected={item.flatIndex === selectedIndex}
 				id={item.id}
 			/>
-		{:else if item.section === 'seasons'}
+		{:else if group.section === 'seasons'}
 			<SeasonRow
 				season={item.row as never}
 				selected={item.flatIndex === selectedIndex}
 				id={item.id}
 			/>
-		{:else if item.section === 'actions'}
+		{:else if group.section === 'actions'}
 			<FilterActionRow
 				action={item.row as never}
-				selected={item.flatIndex === selectedIndex}
-				id={item.id}
-			/>
-		{:else if item.section === 'recents'}
-			<RecentRow
-				recent={item.row as never}
-				selected={item.flatIndex === selectedIndex}
-				id={item.id}
-			/>
-		{:else if item.section === 'userStatuses'}
-			<UserStatusRow
-				status={item.row as never}
 				selected={item.flatIndex === selectedIndex}
 				id={item.id}
 			/>

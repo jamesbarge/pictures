@@ -5,17 +5,13 @@
 		open = false,
 		onClose,
 		align = 'left',
-		role = 'group',
 		ariaLabel = 'Filter options',
-		triggerEl = undefined,
 		children
 	}: {
 		open: boolean;
 		onClose: () => void;
 		align?: 'left' | 'right';
-		role?: string;
 		ariaLabel?: string;
-		triggerEl?: HTMLElement | undefined;
 		children: import('svelte').Snippet;
 	} = $props();
 
@@ -25,14 +21,12 @@
 		if (e.key === 'Escape' && open) {
 			e.preventDefault();
 			onClose();
-			triggerEl?.focus();
 		}
 	}
 
 	function handleClickOutside(e: MouseEvent) {
 		if (open && panelEl && !panelEl.contains(e.target as Node)) {
 			onClose();
-			triggerEl?.focus();
 		}
 	}
 
@@ -68,7 +62,7 @@
 		class="dropdown-panel"
 		class:align-right={align === 'right'}
 		tabindex="-1"
-		{role}
+		role="group"
 		aria-label={ariaLabel}
 	>
 		{@render children()}

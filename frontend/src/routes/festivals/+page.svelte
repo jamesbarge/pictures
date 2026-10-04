@@ -1,5 +1,4 @@
 <script lang="ts">
-	import Badge from '$lib/components/ui/Badge.svelte';
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
 
 	let { data } = $props();

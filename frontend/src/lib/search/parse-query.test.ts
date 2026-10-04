@@ -17,10 +17,9 @@ function isoDate(d?: Date): string | undefined {
   return d?.toISOString();
 }
 
-describe("parseQuery — empty & freeText", () => {
+describe("parseQuery — empty & plain text", () => {
   it("returns empty intent for empty string", () => {
     const r = parseQuery("", NOW);
-    expect(r.freeText).toBe("");
     expect(r.formats).toEqual([]);
     expect(r.genres).toEqual([]);
     expect(r.chipDescriptors).toEqual([]);
@@ -28,18 +27,17 @@ describe("parseQuery — empty & freeText", () => {
 
   it("returns empty intent for whitespace", () => {
     const r = parseQuery("   ", NOW);
-    expect(r.freeText).toBe("");
-  });
-
-  it("passes a plain title through as freeText", () => {
-    const r = parseQuery("Kurosawa", NOW);
-    expect(r.freeText).toBe("Kurosawa");
     expect(r.chipDescriptors).toEqual([]);
   });
 
-  it("passes multi-word title through as freeText", () => {
+  it("leaves a plain title unparsed", () => {
+    const r = parseQuery("Kurosawa", NOW);
+    expect(r.chipDescriptors).toEqual([]);
+  });
+
+  it("leaves a multi-word title unparsed", () => {
     const r = parseQuery("Wes Anderson", NOW);
-    expect(r.freeText).toBe("Wes Anderson");
+    expect(r.chipDescriptors).toEqual([]);
   });
 });
 
@@ -48,14 +46,12 @@ describe("parseQuery — canonical filter values", () => {
     const r = parseQuery("4k", NOW);
 
     expect(r.formats).toEqual(["dcp_4k"]);
-    expect(r.freeText).toBe("");
   });
 
   it("maps sci-fi to the canonical science fiction genre", () => {
     const r = parseQuery("sci-fi", NOW);
 
     expect(r.genres).toEqual(["science fiction"]);
-    expect(r.freeText).toBe("");
   });
 });
 
@@ -65,7 +61,6 @@ describe("parseQuery — dates", () => {
     expect(isoDate(r.dateFrom)).toBe("2026-05-13T23:00:00.000Z");
     expect(isoDate(r.dateTo)).toBe("2026-05-14T23:00:00.000Z");
     expect(r.timeFrom).toBe(18);
-    expect(r.freeText).toBe("");
     expect(r.chipDescriptors.find((c) => c.id === "date:tonight")).toBeDefined();
   });
 
@@ -295,7 +290,6 @@ describe("parseQuery — composite queries", () => {
     expect(r.chainTokens).toEqual(["Curzon"]);
     expect(isoDate(r.dateFrom)).toBe("2026-05-13T23:00:00.000Z");
     expect(r.timeFrom).toBe(18);
-    expect(r.freeText).toBe("at"); // leftover
   });
 
   it("'70mm this weekend' parses format + date range", () => {
@@ -303,14 +297,12 @@ describe("parseQuery — composite queries", () => {
     expect(r.formats).toEqual(["70mm"]);
     expect(isoDate(r.dateFrom)).toBe("2026-05-15T23:00:00.000Z");
     expect(isoDate(r.dateTo)).toBe("2026-05-17T23:00:00.000Z");
-    expect(r.freeText).toBe("");
   });
 
   it("'kids films saturday' → family genre + date", () => {
     const r = parseQuery("kids films saturday", NOW);
     expect(r.genres).toEqual(["family"]);
     expect(isoDate(r.dateFrom)).toBe("2026-05-15T23:00:00.000Z");
-    expect(r.freeText).toBe("films");
   });
 
   it("'subtitled french noir 80s' → 4 filter slots", () => {
@@ -319,7 +311,6 @@ describe("parseQuery — composite queries", () => {
     expect(r.countries).toEqual(["france"]);
     expect(r.genres).toEqual(["noir"]);
     expect(r.decades).toEqual(["1980s"]);
-    expect(r.freeText).toBe("");
   });
 
   it("'pcc tomorrow 8pm' → cinema + date + time", () => {
@@ -329,9 +320,9 @@ describe("parseQuery — composite queries", () => {
     expect(r.timeFrom).toBe(20);
   });
 
-  it("free text preserves original casing for unmatched tokens", () => {
+  it("title words around a date phrase add no chips", () => {
     const r = parseQuery("Wes Anderson tonight", NOW);
-    expect(r.freeText).toBe("Wes Anderson");
+    expect(r.chipDescriptors.map((c) => c.id)).toEqual(["date:tonight"]);
     expect(isoDate(r.dateFrom)).toBe("2026-05-13T23:00:00.000Z");
   });
 
