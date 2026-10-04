@@ -215,7 +215,8 @@ export async function matchAndCreateFromTMDB(
   scraperDirector?: string,
   scraperPosterUrl?: string,
   scraperRuntime?: number,
-  venueLanguages?: string[]
+  venueLanguages?: string[],
+  allowCurrentRelease = false
 ): Promise<string | null> {
   // Year discipline: many scrapers send the SCREENING year as the film year,
   // and pipeline.ts also extracts "(YYYY)" from titles — for the current year
@@ -235,20 +236,24 @@ export async function matchAndCreateFromTMDB(
     director: scraperDirector,
     runtime: scraperRuntime,
     venueLanguages,
+    allowCurrentRelease,
   });
-
-  // Audit-trail accuracy: record the strategy that actually applied. After
-  // year-stripping, a current-year film matches with NO year hint — labeling
-  // it "auto-with-year" would be wrong (schema vocabulary: films.ts).
-  const matchStrategy = releaseYearHint
-    ? "auto-with-year"
-    : scraperDirector
-      ? "auto-with-director"
-      : "auto-no-hints";
 
   if (!match) {
     return null;
   }
+
+  // Audit-trail accuracy: record the strategy that actually applied. After
+  // year-stripping, a current-year film matches with NO year hint — labeling
+  // it "auto-with-year" would be wrong (schema vocabulary: films.ts). A match
+  // from the current-release rule says so itself.
+  const matchStrategy =
+    match.strategy ??
+    (releaseYearHint
+      ? "auto-with-year"
+      : scraperDirector
+        ? "auto-with-director"
+        : "auto-no-hints");
 
   // Check if we already have this TMDB ID — cache first, then DB fallback
   const cachedByTmdb = cache.byTmdbId.get(match.tmdbId);
