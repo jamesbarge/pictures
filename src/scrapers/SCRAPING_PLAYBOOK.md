@@ -139,7 +139,7 @@ The `/scrape` slash command runs read-only detectors against `scraper_runs`: thr
 6. Record site-specific notes below.
 
 ## Date Parser Notes
-- **Phoenix, Olympic (2026-06-09):** Date labels are parsed through `parseScreeningDate()` before combining with UK-local times. Do not reintroduce `date-fns/parse()` for these paths. (David Lean was on this list until 2026-10-04; it now reads offset-bearing ISO instants from TicketSolve, cross-checked with `parseUKLocalDateTime()`.)
+- **Olympic (2026-06-09):** Date labels are parsed through `parseScreeningDate()` before combining with UK-local times. Do not reintroduce `date-fns/parse()` for these paths. (David Lean was on this list until 2026-10-04; it now reads offset-bearing ISO instants from TicketSolve, cross-checked with `parseUKLocalDateTime()`. Phoenix moved to Savoy JSON `StartDate`/`StartTime` the same day.)
 - **Genesis (2026-06-09):** Time labels use `parseScreeningTime()` so ambiguous `1:00-9:59` values default to PM.
 - **Close-Up (2026-06-09):** Search-page date-only values are UTC-midnight dates; combine them with `ukLocalToUTC()` using UTC date components.
 
@@ -991,77 +991,63 @@ none was judged to pay for itself at ~12-20 screenings a year.
 - **NOT INDY**: Phoenix Cinema (East Finchley) is an ASP.NET `.dll` system
   (`PhoenixCinemaLondon.dll`), despite an old comment claiming otherwise — see cinemas/phoenix.ts.
 
-### Phoenix Cinema (`cinemas/phoenix.ts`, updated 2026-08-09)
-- **Platform**: ASP.NET/Savoy `.dll` (`PhoenixCinemaLondon.dll`), server-rendered — the full
-  programme and all showtimes are in the initial HTML (no client-side rendering).
-- **URLs**: `programmeUrl` = `/whats-on/` which now **301-redirects** to
-  `/PhoenixCinemaLondon.dll/Home`. Playwright follows the redirect automatically; do not hard-code
-  the `.dll/Home` URL. Film pages are `/PhoenixCinemaLondon.dll/WhatsOn?f={id}`.
-- **CRITICAL — do NOT use `waitUntil: "networkidle"`** (root cause of the 2026-07-18 outage:
-  every `page.goto` timed out at 60s → 3 retries exhausted → `success=false`, ~65 screenings went
-  stale). The site holds analytics/tracking connections open so `networkidle` never fires. Use
-  `waitUntil: "domcontentloaded"` — content is already present.
-- **Programme selectors**: film links from `.film-title` → nearest `a[href*="WhatsOn"]`. The
-  `/Home` page repeats each film (27 `.film-title` nodes for 16 films on 2026-08-09); dedupe by
-  resolved `pageUrl`. There is no pagination — every currently-booking film is on that one page.
-- **Showtime selectors — `li.performance` is ONE ROW PER DATE, NOT per screening.** This is the
-  single easiest thing to get wrong here. Each `li.performance` (class token `performance`, which
-  does NOT collide with `programme-performances` / `performances`, nor with the `day-has-performance`
-  date-picker cells) holds exactly one `span.date.column` ("Sat 29 Aug") and then **N**
-  `span.perf-time` → `a.button.booking` pairs inside a single `div.column`:
-
-  ```html
-  <li class="performance  columns is-multiline">
-    <span class="date column is-12">Sat 29 Aug</span>
-    <div class="column">
-      <span class="perf-time">17:30</span>
-      <a class="button booking" href="Booking?…TcsPerformance_604101…">…<span class="time">Book Now</span></a>
-      <span class="perf-time">20:00</span>
-      <a class="button booking" href="Booking?…TcsPerformance_604099…">…<span class="time">Book Now</span></a>
-    </div>
-  </li>
-  ```
-
-  Walk **every** `.perf-time` in the row and pair it with the *next anchor sibling* — that anchor
-  is that showing's own booking deep-link. `querySelector('.perf-time')` (singular) silently kept
-  only the first showing of each day: measured 2026-08-09 it returned **56 of the 66** future
-  screenings the site published, losing every second-and-later showtime on a busy date (The Odyssey
-  lost 6 of 12 — its whole 19:30 evening run — plus The Summer Book 1, Spider-Man 1, Bitter
-  Christmas 2). Fixed 2026-08-09.
-- **Times** are 24h with no AM/PM (`.perf-time` = "15:15"). Never read the booking button's inner
-  `.time` span — it reads "Book Now". Anchors also carry
-  `aria-label="Go to booking for 17:30"`, useful as a pairing cross-check.
-- **Ground-truth trick**: each booking href carries `TcsPerformance_{id}`, one id per screening.
-  Counting distinct ids across the film pages is a selector-independent count of what the site
-  publishes — use it to verify completeness rather than trusting the row count.
-- **`.performance` rows render TWICE** (desktop + mobile markup), so raw row counts are doubled;
-  the scraper's `filmTitle+ISO` dedupe collapses them.
-- **Horizon**: the site publishes only as far as booking is open — 2026-08-09 to 2026-09-03, i.e.
-  ~25 days / 16 films / 66 screenings. That is the site ceiling, well short of the 60–70 day
-  target; there is no window parameter that reveals more.
-- **Date labels** use both "Sep" and "Sept" ("Tue 1 Sep", "Thu 03 Sept"); the month regex covers
-  the 3-letter prefix so both parse.
-- A positional date↔time fallback remains for layout drift (booking URL falls back to film page).
-- **KNOWN ISSUE — all-or-nothing failure (`phoenix.ts`, "Failed to fetch N/M Phoenix film pages")**:
-  the scraper visits 16 film pages and throws if *any one* of them fails, discarding all 66 already
-  parsed screenings. One transient 30s timeout therefore costs the whole venue. Left as-is
-  deliberately (partial batches used to drive superseded-cleanup deletions), but it is the likely
-  scraper-side contributor to Phoenix's `status=failed` / zero-contributed-rows history alongside
-  the 2026-08-05 DB-step retry bug. Revisit once the partial-batch `skipSupersededCleanup` guard
-  lands: a threshold (e.g. fail only if >20% of pages fail) would be safer than all-or-nothing.
-- **`fetchWithBrowser` (`utils/browser.ts`) still uses `waitUntil:"networkidle"`** and is a trap for
-  this venue, but Phoenix does NOT use it — it launches `chromium` directly with
-  `domcontentloaded`. The helper's only remaining caller is `debug-bfi.ts`. Do not route Phoenix
-  (or any Savoy `.dll` venue) through it.
-- **FUTURE (robustness)**: the `/Home` page embeds a Savoy modern-JSON `var Events = {…}` blob —
-  Phoenix could migrate to `platforms/savoy.ts` (`extractSavoyEventsJson` + `parseSavoyEvents`,
-  as used by Rio/Lexi/Arzner) and drop the 50+ per-film page navigations entirely.
+### Phoenix Cinema (`cinemas/phoenix.ts`, rewritten 2026-10-04 onto `platforms/savoy.ts`)
+- **Platform**: Savoy Systems MODERN JSON template (`PhoenixCinemaLondon.dll`). `/whats-on/`
+  301-redirects to `/PhoenixCinemaLondon.dll/Home`, which embeds `var Events = {"Events":[...]}`
+  holding every bookable event and all of its performances. The scraper is a `BaseScraper` that
+  fetches that one page (fetch follows the redirect; do not hard-code `.dll/Home`) and hands it to
+  `parseSavoyEvents`. Registry: `scraperType: "cheerio"`, Cheerio wave. No browser, one request.
+- **ROOT CAUSE of the old coverage gap (fixed 2026-10-04): the site's own grid stops at 16
+  events.** The programme grid (`#whats-on-list`) is built client-side by `Populate()`, which
+  wraps `AddEventBoxToList` in `if (TheNumEventsDisplayed <= 15)`. The old Playwright scraper
+  discovered films from rendered `.film-title` nodes, so it only ever saw the first 16 events by
+  date and silently dropped the rest. Measured 2026-10-04: 16 of 40 events, 32 of 57 future
+  performances, horizon 14 days (to 18 Oct) where the blob runs to 5 Jun 2027. The run history
+  swinging between 32 and 68 screenings since July was this cap meeting a changing mix (a busy
+  multi-showing film in the first 16 lifts the count; one-off opera and NT Live nights lower it).
+  The 2026-08-09 note that "~25 days / 16 films is the site ceiling" was this cap, misread.
+- **Do NOT go back to DOM scraping** of `/Home` or the per-film `WhatsOn?f={id}` pages for
+  discovery. If the blob ever disappears, `extractSavoyEventsJson` throws (never empty-as-success).
+- **Blob fields used**: event `Title` (HTML-encoded, e.g. `Q&amp;A`; sometimes padded with
+  leading or double spaces), `Year`, `Director` (sometimes leading-space padded), `RunningTime`,
+  `URL` (film page); performance `StartDate` ("YYYY-MM-DD") + `StartTime` ("HHMM", 24h UK-local,
+  so there is no AM/PM ambiguity, hence `timeSource: "local-24h"`), `AuditoriumName`, `URL`. The
+  scraper emits every future performance, `IsOpenForSale:false` ones included.
+- **Phoenix clean-up on top of the shared parser** (`parsePages`): titles go through
+  `decodeHtmlEntities(...).trim()`; directors are trimmed; `AuditoriumName` "Screen 1 Oversell"
+  (Savoy's allocation for free events) is reported as "Screen 1".
+- **sourceId is unchanged** from the DOM scraper: `phoenix-{slug(decoded title)}-{ISO}`. Verified
+  2026-10-04: all 32 screenings the old scraper returned have identical sourceIds AND booking URLs
+  under the new code, so existing rows upsert in place and no reconcile is needed.
+- **Booking URLs**: `perf.URL` is that performance's own deep link. Savoy ticketing gives a relative
+  `Booking?Booking=...TcsPerformance_{id}...`, resolved against `/PhoenixCinemaLondon.dll/`.
+  Partner-ticketed events give an absolute URL (cinematik.app, eidocinema.com, japanesefilm.club),
+  kept as-is. A missing or malformed `perf.URL` (partner links are hand-typed, and `new URL`
+  throws on e.g. "https:// host") falls back to the event's film page with a warning.
+- **Mixed programme**: Film, Documentaries, Phoenix Classics, Opera, Theatre, Ballet & Dance and
+  Art Live are all kept (`filmTypeOnly` off), as before; the pipeline classifies non-film events.
+  `TypeDescription` lives on the EVENT here, not the performance.
+- **Ground truth**: count FUTURE `Performances[]` across the blob (the raw count includes today's
+  already-started shows: 62 raw against 57 future on 2026-10-04). One performance = one screening.
+  Distinct `TcsPerformance_{id}` values cover Savoy-ticketed performances only and miss partner
+  links.
+- **Horizon**: set by the venue's booking window, which is long for event cinema (Met Opera and
+  RBO seasons) and short for new releases. 2026-10-04: film and documentary listings to 14 Nov,
+  live events to 5 Jun 2027. **The pipeline's 90-day validator cap** (`screening-validator.ts`,
+  `too_far_future`; only `timeSource:"iso"` gets 180) holds back performances further out: 7 of
+  57 on 2026-10-04 (Met Opera / RBO, 23 Jan to 5 Jun 2027). They show as validation rejections
+  each run and land once inside 90 days. Raising the cap for Savoy is a validator policy call.
+- **Title-cleaning follow-ups seen in the DB (pipeline, not this scraper):** "Met Opera 2026-27:
+  Macbeth" was stored as "2026-27: Macbeth"; "75 Years of Contemporary Films: Mahanagar (The Big
+  City)" kept its season prefix, so it failed to merge with the L-CUT row for the same showing
+  and the venue showed it twice.
 
 ### Savoy Systems platform (`src/scrapers/platforms/savoy.ts`, 2026-07-14)
 - **Two DISTINCT front-end templates** — do not conflate them:
   - **Modern JSON** — homepage (root → `/{Dll}.dll/Home`) embeds `var Events = {"Events":[…]};`.
     Films carry `Performances[]` with `StartDate` ("YYYY-MM-DD") + `StartTime` ("HHMM", UK-local),
-    `AuditoriumName`, `URL`, and (Lexi/Arzner) `TypeDescription`. Venues: **Rio, Lexi, The Arzner**.
+    `AuditoriumName`, `URL`, and (Lexi/Arzner) `TypeDescription`. Venues: **Rio, Lexi, The Arzner,
+    Phoenix**.
   - **Legacy HTML-table** — `/{Dll}.dll/` renders server-side `div.programme` / `TcsProgramme_`
     title links / `td.PeformanceListDate` / `StartTimeAndStatus`, with **NO `var Events`**. Venues:
     **Ciné Lumière, ArtHouse Crouch End**. These need a SEPARATE table parser (not savoy.ts).
@@ -1072,7 +1058,8 @@ none was judged to pay for itself at ~12-20 screenings a year.
 - **Label corrections (verified live 2026-07-14):** Lexi is Savoy modern-JSON, NOT "Admit One";
   The Arzner is Savoy modern-JSON (`TheArzner.dll`), NOT "Jacro" — a direct scraper is trivial and
   is the intended replacement for its L-CUT gap-fill feed; Castle is Wagtail + Admit One, NOT Savoy.
-- **`.dll` name per venue**: Rio→`Rio`, Lexi→`TheLexiCinema`, Arzner→`TheArzner`.
+- **`.dll` name per venue**: Rio→`Rio`, Lexi→`TheLexiCinema`, Arzner→`TheArzner`,
+  Phoenix→`PhoenixCinemaLondon`.
 
 ### Peckhamplex (`cinemas/peckhamplex.ts`, coming-soon added 2026-08-09)
 - **Source URL patterns** — two listings, both unpaginated (verified: zero pagination links,
