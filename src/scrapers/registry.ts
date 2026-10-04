@@ -61,6 +61,7 @@ import { createOlympicScraper } from "@/scrapers/cinemas/olympic";
 import { createDavidLeanScraper } from "@/scrapers/cinemas/david-lean";
 import { createRiversideScraperV2 } from "@/scrapers/cinemas/riverside-v2";
 import { createChiswickScraper } from "@/scrapers/cinemas/chiswick";
+import { createIbraazScraper } from "@/scrapers/cinemas/ibraaz";
 
 export type ScraperWave = "chain" | "playwright" | "cheerio" | "enrichment";
 
@@ -385,6 +386,16 @@ const CHEERIO_ENTRIES: ScraperRegistryEntry[] = [
       type: "single",
       venue: getVenueFromRegistry("chiswick-cinema"),
       createScraper: () => createChiswickScraper(),
+    }),
+  },
+  {
+    taskId: "scraper-ibraaz",
+    type: "single",
+    wave: "cheerio",
+    buildConfig: (): SingleVenueConfig => ({
+      type: "single",
+      venue: getVenueFromRegistry("ibraaz"),
+      createScraper: () => createIbraazScraper(),
     }),
   },
 ];

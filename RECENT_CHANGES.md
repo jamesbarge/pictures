@@ -1,3 +1,13 @@
+## 2026-10-04: Ibraaz first-party scraper
+**PR**: #782 | **Files**: `src/scrapers/cinemas/ibraaz.ts` (new), `src/scrapers/cinemas/ibraaz.test.ts` (new), `src/scrapers/registry.ts`, `src/scrapers/task-registry.ts`, `src/config/cinema-registry.ts`, `scripts/lcut-gapfill.test.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`
+- Ibraaz (Fitzrovia) moves from L-CUT source-only, where it had 0 rows ever, to a Cheerio scraper in the Cheerio wave. It keeps events tagged Film (alone, or with Library-in-Residence or Talk) and skips performance lectures, workshops and music days.
+- Times come from the event page's yearless "Date and Time" line through the shared date parser, so 3pm reads as 14:00 UTC on 18 Oct and 15:00 UTC on 25 Oct. The site's `+00:00` timestamps are ignored because editors fill them inconsistently.
+- Live dry parse: Foragers (18 Oct), MILISUTHANDO (25 Oct) and Yugantar (15 Nov), each with its Ticket Tailor booking link.
+
+---
+
+---
+
 ## 2026-10-04: Title cleaner covers festival and format decorations; current UK releases match at first-run venues
 **PR**: #781 | **Files**: `src/scrapers/utils/film-title-cleaner.ts`, `src/lib/tmdb/client.ts`, `src/lib/tmdb/match.ts`, `src/scrapers/utils/film-matching.ts`, `src/scrapers/pipeline.ts`, `src/config/cinema-registry.ts`
 - The cleaner strips festival tags and prefixes (FFFL, LIFF, LPFF, UKJFF, London Breeze, Black History Month), format and version notes (16/35/70mm, Re-release, Remastered, 4K), anchored extras (intros, Q&A, talks, live score) and Met Opera / RBO season codes. Venue listings now normalize to the same cache key as their film, so 39 rows merged by hand on 2026-10-04 stay merged after the next scrape.
