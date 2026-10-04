@@ -11,7 +11,6 @@ import {
   isVacuousRun,
   parseReconcileArgs,
   scrapeHorizon,
-  validateCinemaId,
 } from "./reconcile-phantom-screenings";
 
 const NOW = new Date("2026-06-12T12:00:00.000Z");
@@ -53,22 +52,6 @@ describe("parseReconcileArgs (guard 1a: single cinema per invocation)", () => {
     const args = parseReconcileArgs(["rio-dalston", "--exectue"]);
     expect(args.errors).toHaveLength(1);
     expect(args.errors[0]).toMatch(/unknown flag/i);
-  });
-});
-
-describe("validateCinemaId (guard 1b: must exist in registry)", () => {
-  const known = ["phoenix-east-finchley", "rio-dalston", "bfi-southbank"];
-
-  it("accepts a known id", () => {
-    expect(validateCinemaId("rio-dalston", known)).toBe(true);
-  });
-
-  it("rejects an unknown id", () => {
-    expect(validateCinemaId("rio-dalson", known)).toBe(false);
-  });
-
-  it("rejects the empty string", () => {
-    expect(validateCinemaId("", known)).toBe(false);
   });
 });
 

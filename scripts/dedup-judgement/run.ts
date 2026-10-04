@@ -41,6 +41,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { sql } from "drizzle-orm";
 import { TypeSafeClient } from "../typesafe-experiments/api";
+import { mapConcurrent } from "../typesafe-experiments/evaluation";
 import { buildRequest, type CandidatePair, type FilmSide } from "./questions";
 import {
   decideFromAnswers,
@@ -151,25 +152,6 @@ async function ask(pair: CandidatePair, client: TypeSafeClient): Promise<PairAns
   return record.response.answers as unknown as PairAnswers;
 }
 
-/** Bounded-concurrency map, so a 400-pair sweep stays inside the rate limit. */
-async function mapLimit<T, R>(
-  items: T[],
-  limit: number,
-  fn: (item: T) => Promise<R>
-): Promise<R[]> {
-  const out = new Array<R>(items.length);
-  let next = 0;
-  await Promise.all(
-    Array.from({ length: Math.min(limit, items.length) }, async () => {
-      while (next < items.length) {
-        const i = next++;
-        out[i] = await fn(items[i]);
-      }
-    })
-  );
-  return out;
-}
-
 function describe(side: FilmSide): string {
   return `${side.title} [${side.year ?? "-"}|tmdb ${side.tmdbId ?? "-"}|${side.screeningCount} scr]`;
 }
@@ -221,7 +203,7 @@ async function main() {
   }
 
   const client = new TypeSafeClient({ cacheDir: CACHE_DIR, mode: args.replay ? "replay" : "live" });
-  const answers = await mapLimit(pairs, CONCURRENCY, (p) => ask(p, client));
+  const answers = await mapConcurrent(pairs, (p) => ask(p, client), CONCURRENCY);
   const stats = client.stats;
   console.log(
     `TypeSafe: ${stats.networkRequests} network requests, ${stats.cacheHits} cache hits, ` +
