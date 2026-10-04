@@ -64,6 +64,3 @@ export const dataIssues = pgTable(
     index("idx_data_issues_detected").on(table.detectedAt),
   ]
 );
-
-export type DataIssueInsert = typeof dataIssues.$inferInsert;
-export type DataIssueSelect = typeof dataIssues.$inferSelect;

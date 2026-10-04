@@ -13,8 +13,8 @@
  *   // From a separate terminal:
  *   tail -f tmp/scrape-progress.json | jq
  */
-import { promises as fs } from "node:fs";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
+import { atomicWrite } from "@/lib/scrape-run-summary";
 
 export interface ProgressSnapshot {
   /** Wave currently in flight: "Chains" | "Playwright" | "Cheerio" | "Vision" | "Phase 0" | "Phase 2" | "Phase 3" | "Phase 4" */
@@ -38,17 +38,6 @@ export interface ProgressSnapshot {
 const DEFAULT_PATH = join(process.cwd(), "tmp", "scrape-progress.json");
 const PROGRESS_PATH = process.env.SCRAPE_PROGRESS_FILE ?? DEFAULT_PATH;
 
-let ensuredDir = false;
-
-async function ensureDir(): Promise<void> {
-  if (ensuredDir) return;
-  await fs.mkdir(dirname(PROGRESS_PATH), { recursive: true });
-  ensuredDir = true;
-}
-
-/** Monotonic counter so concurrent writers in one process never share a temp file. */
-let writeSeq = 0;
-
 /**
  * Atomically write the snapshot to `tmp/scrape-progress.json`. Failures are
  * logged once and otherwise swallowed — a broken progress stamp must never
@@ -66,30 +55,11 @@ export async function stampProgress(input: Omit<ProgressSnapshot, "lastHeartbeat
     lastHeartbeatAt: now,
     ...input,
   };
-  const tmp = `${PROGRESS_PATH}.${process.pid}.${writeSeq++}.tmp`;
   try {
-    await ensureDir();
-    await fs.writeFile(tmp, JSON.stringify(snapshot, null, 2) + "\n");
-    await fs.rename(tmp, PROGRESS_PATH);
+    await atomicWrite(PROGRESS_PATH, JSON.stringify(snapshot, null, 2) + "\n");
   } catch (err) {
-    // The directory may have been removed mid-run (e.g. a tmp/ cleanup);
-    // drop the memo so the next stamp recreates it instead of failing forever.
-    ensuredDir = false;
-    // Best-effort cleanup — unique temp names would otherwise accumulate
-    // orphans when writeFile succeeded but rename failed.
-    await fs.unlink(tmp).catch(() => {});
     // Surface once at warn level; don't spam.
     console.warn(`[scrape-progress] write failed: ${err instanceof Error ? err.message : String(err)}`);
-  }
-}
-
-/** Read the most recent snapshot, or null if no run has stamped yet. */
-export async function readProgress(): Promise<ProgressSnapshot | null> {
-  try {
-    const raw = await fs.readFile(PROGRESS_PATH, "utf8");
-    return JSON.parse(raw) as ProgressSnapshot;
-  } catch {
-    return null;
   }
 }
 

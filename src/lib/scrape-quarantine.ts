@@ -11,7 +11,7 @@
  */
 
 import { sql } from "drizzle-orm";
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { db } from "@/db";
 
@@ -83,12 +83,9 @@ export function analyzeRunsForSilentBreaker(
  * 60+1 queries; now 1) which cut pre-flight latency for the detector from
  * ~700ms to <100ms in live replay.
  */
-export async function detectSilentBreakers(options?: {
-  threshold?: number;
-  lookback?: number;
-}): Promise<QuarantinedCinema[]> {
-  const threshold = options?.threshold ?? 2;
-  const lookback = options?.lookback ?? 5;
+export async function detectSilentBreakers(): Promise<QuarantinedCinema[]> {
+  const threshold = 2;
+  const lookback = 5;
 
   const rows = (await db.execute(sql`
     WITH ranked AS (
@@ -317,33 +314,22 @@ export function analyzeRunsForFlakiness(
     nonEmptySuccessRuns.length > 0 &&
     nonEmptyMean <= thresholds.smallVenueMaxNonEmptyMean;
 
+  // 0 = healthy, 1 = warn, 2 = critical
+  const level = (ratio: number, warn: number, critical: number) =>
+    ratio >= critical ? 2 : ratio >= warn ? 1 : 0;
+  // Small venues skip the empty-ratio signal because a near-empty programme is normal for them.
+  const emptyLevel = isSmallVenue
+    ? 0
+    : level(emptyRatio, thresholds.emptyRatioWarn, thresholds.emptyRatioCritical);
+  const failedLevel = level(failedRatio, thresholds.failedRatioWarn, thresholds.failedRatioCritical);
+
   const reasons: string[] = [];
-  let severity: FlakySeverity | null = null;
+  if (emptyLevel) reasons.push(`${Math.round(emptyRatio * 100)}% of recent runs returned success+0`);
+  if (failedLevel) reasons.push(`${Math.round(failedRatio * 100)}% of recent runs failed outright`);
 
-  const bump = (next: FlakySeverity) => {
-    if (severity === null) severity = next;
-    else if (severity === "warn" && next === "critical") severity = "critical";
-  };
-
-  if (isSmallVenue) {
-    // Skip empty-ratio signal — the venue's nature, not a bug.
-  } else if (emptyRatio >= thresholds.emptyRatioCritical) {
-    reasons.push(`${Math.round(emptyRatio * 100)}% of recent runs returned success+0`);
-    bump("critical");
-  } else if (emptyRatio >= thresholds.emptyRatioWarn) {
-    reasons.push(`${Math.round(emptyRatio * 100)}% of recent runs returned success+0`);
-    bump("warn");
-  }
-
-  if (failedRatio >= thresholds.failedRatioCritical) {
-    reasons.push(`${Math.round(failedRatio * 100)}% of recent runs failed outright`);
-    bump("critical");
-  } else if (failedRatio >= thresholds.failedRatioWarn) {
-    reasons.push(`${Math.round(failedRatio * 100)}% of recent runs failed outright`);
-    bump("warn");
-  }
-
-  if (severity === null) return null;
+  const worst = Math.max(emptyLevel, failedLevel);
+  if (worst === 0) return null;
+  const severity: FlakySeverity = worst === 2 ? "critical" : "warn";
 
   return {
     totalRuns: runs.length,
@@ -372,9 +358,8 @@ export function analyzeRunsForFlakiness(
  * *before* the window function, so out-of-window runs never get an `rn` at all
  * and cannot consume a `lookback` slot.
  */
-export async function detectFlakyCinemas(
-  thresholds: FlakyThresholds = DEFAULT_FLAKY_THRESHOLDS,
-): Promise<FlakyCinema[]> {
+export async function detectFlakyCinemas(): Promise<FlakyCinema[]> {
+  const thresholds = DEFAULT_FLAKY_THRESHOLDS;
   const rows = (await db.execute(sql`
     WITH ranked AS (
       SELECT
@@ -572,9 +557,8 @@ export function analyzeYieldDrop(
  *
  * Single windowed SQL — same shape as `detectFlakyCinemas`.
  */
-export async function detectYieldDrop(
-  thresholds: YieldDropThresholds = DEFAULT_YIELD_DROP_THRESHOLDS,
-): Promise<YieldDropCinema[]> {
+export async function detectYieldDrop(): Promise<YieldDropCinema[]> {
+  const thresholds = DEFAULT_YIELD_DROP_THRESHOLDS;
   const totalNeeded = thresholds.recentWindow + thresholds.baselineWindow;
 
   const rows = (await db.execute(sql`
@@ -684,14 +668,10 @@ export interface YieldDelta {
  *
  * Pure SQL — single query, no per-cinema fan-out.
  */
-export async function detectYieldDeltaSinceBaseline(options?: {
-  baselineDays?: number;
-  dropThreshold?: number;
-  minBaseline?: number;
-}): Promise<YieldDelta[]> {
-  const baselineDays = options?.baselineDays ?? 7;
-  const dropThreshold = options?.dropThreshold ?? 0.7;
-  const minBaseline = options?.minBaseline ?? 10;
+export async function detectYieldDeltaSinceBaseline(): Promise<YieldDelta[]> {
+  const baselineDays = 7;
+  const dropThreshold = 0.7;
+  const minBaseline = 10;
 
   // For each active cinema:
   //   - latest = most recent successful run (any age)
@@ -795,10 +775,8 @@ export interface StaleCinema {
  * Including them would mean every /scrape run reports the same 5 "never
  * scraped" zombies indefinitely.
  */
-export async function detectStaleCinemas(options?: {
-  thresholdHours?: number;
-}): Promise<StaleCinema[]> {
-  const thresholdHours = options?.thresholdHours ?? 24;
+export async function detectStaleCinemas(): Promise<StaleCinema[]> {
+  const thresholdHours = 24;
 
   // For each ACTIVE cinema, get the most recent run's startedAt and compute
   // hours since. Done in a single query rather than N+1.
@@ -855,21 +833,19 @@ export interface DqsSnapshot {
   lowestComposite24h: number | null;
 }
 
+const EMPTY_DQS: DqsSnapshot = { runCount24h: 0, avgComposite24h: null, lowestComposite24h: null };
+
 export function readRecentDqs(): DqsSnapshot {
   try {
+    // A missing file throws ENOENT, which the catch turns into EMPTY_DQS.
     const path = resolve(process.cwd(), ".claude/data-check-learnings.json");
-    if (!existsSync(path)) {
-      return { runCount24h: 0, avgComposite24h: null, lowestComposite24h: null };
-    }
     const data = JSON.parse(readFileSync(path, "utf-8")) as {
       dqsHistory?: Array<{ timestamp: string; compositeScore: number }>;
     };
     const history = data.dqsHistory ?? [];
     const cutoff = Date.now() - 24 * 60 * 60 * 1000;
     const recent = history.filter((h) => new Date(h.timestamp).getTime() >= cutoff);
-    if (recent.length === 0) {
-      return { runCount24h: 0, avgComposite24h: null, lowestComposite24h: null };
-    }
+    if (recent.length === 0) return EMPTY_DQS;
     const scores = recent.map((r) => r.compositeScore);
     const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
     const min = Math.min(...scores);
@@ -879,7 +855,7 @@ export function readRecentDqs(): DqsSnapshot {
       lowestComposite24h: Math.round(min * 100) / 100,
     };
   } catch {
-    return { runCount24h: 0, avgComposite24h: null, lowestComposite24h: null };
+    return EMPTY_DQS;
   }
 }
 

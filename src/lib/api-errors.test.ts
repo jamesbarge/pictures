@@ -4,11 +4,8 @@ import {
   UnauthorizedError,
   BadRequestError,
   NotFoundError,
-  RateLimitError,
-  HttpStatus,
   errorResponse,
   handleApiError,
-  isApiError,
 } from "./api-errors";
 
 describe("ApiError classes", () => {
@@ -62,19 +59,6 @@ describe("ApiError classes", () => {
       expect(error.code).toBe("NOT_FOUND");
     });
   });
-
-  describe("RateLimitError", () => {
-    it("should have 429 status code", () => {
-      const error = new RateLimitError();
-      expect(error.statusCode).toBe(429);
-      expect(error.code).toBe("RATE_LIMITED");
-    });
-
-    it("should store resetIn value", () => {
-      const error = new RateLimitError("Too fast!", 60);
-      expect(error.resetIn).toBe(60);
-    });
-  });
 });
 
 describe("errorResponse", () => {
@@ -100,14 +84,6 @@ describe("errorResponse", () => {
     const response = errorResponse(error);
     const body = await response.json();
     expect(body.details).toEqual(details);
-  });
-
-  it("should include Retry-After header for RateLimitError", () => {
-    const error = new RateLimitError("Slow down", 120);
-    const response = errorResponse(error);
-
-    expect(response.headers.get("Retry-After")).toBe("120");
-    expect(response.headers.get("X-RateLimit-Remaining")).toBe("0");
   });
 });
 
@@ -149,34 +125,5 @@ describe("handleApiError", () => {
 
     expect(response.status).toBe(500);
     consoleSpy.mockRestore();
-  });
-});
-
-describe("isApiError", () => {
-  it("should return true for ApiError instances", () => {
-    expect(isApiError(new ApiError("test"))).toBe(true);
-    expect(isApiError(new UnauthorizedError())).toBe(true);
-    expect(isApiError(new BadRequestError())).toBe(true);
-  });
-
-  it("should return false for regular errors", () => {
-    expect(isApiError(new Error("test"))).toBe(false);
-  });
-
-  it("should return false for non-errors", () => {
-    expect(isApiError("string")).toBe(false);
-    expect(isApiError(null)).toBe(false);
-    expect(isApiError(undefined)).toBe(false);
-  });
-});
-
-describe("HttpStatus", () => {
-  it("should have correct status codes", () => {
-    expect(HttpStatus.BAD_REQUEST).toBe(400);
-    expect(HttpStatus.UNAUTHORIZED).toBe(401);
-    expect(HttpStatus.FORBIDDEN).toBe(403);
-    expect(HttpStatus.NOT_FOUND).toBe(404);
-    expect(HttpStatus.TOO_MANY_REQUESTS).toBe(429);
-    expect(HttpStatus.INTERNAL_SERVER_ERROR).toBe(500);
   });
 });

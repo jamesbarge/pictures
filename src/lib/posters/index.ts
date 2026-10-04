@@ -9,8 +9,4 @@
  * 5. Generated placeholder - Last resort
  */
 
-export { PosterService, getPosterService } from "./service";
-export { OMDBClient, getOMDBClient } from "./omdb";
-export { FanartClient, getFanartClient } from "./fanart";
-export { generatePosterPlaceholder, getPosterPlaceholderUrl } from "./placeholder";
-export type { PosterResult, PosterSource } from "./types";
+export { getPosterService } from "./service";

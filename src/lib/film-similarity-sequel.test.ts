@@ -28,12 +28,12 @@ vi.mock("@/db", () => ({
   },
 }));
 
+import { findMatchingFilm } from "./film-similarity";
 import {
   disagreesOnTrailingNumber,
-  findMatchingFilm,
   sequelMarkerOf,
   trailingNumberOf,
-} from "./film-similarity";
+} from "./title-patterns";
 
 function row(
   title: string,

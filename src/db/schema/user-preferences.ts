@@ -70,6 +70,3 @@ export const userPreferences = pgTable("user_preferences", {
     .notNull()
     .defaultNow(),
 });
-
-export type UserPreferencesInsert = typeof userPreferences.$inferInsert;
-export type UserPreferencesSelect = typeof userPreferences.$inferSelect;

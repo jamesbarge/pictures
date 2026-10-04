@@ -7,24 +7,12 @@
 import { NextResponse } from "next/server";
 
 /**
- * HTTP status codes for common API errors
- */
-export const HttpStatus = {
-  BAD_REQUEST: 400,
-  UNAUTHORIZED: 401,
-  FORBIDDEN: 403,
-  NOT_FOUND: 404,
-  TOO_MANY_REQUESTS: 429,
-  INTERNAL_SERVER_ERROR: 500,
-} as const;
-
-/**
  * Base API error class with HTTP status code
  */
 export class ApiError extends Error {
   constructor(
     message: string,
-    public readonly statusCode: number = HttpStatus.INTERNAL_SERVER_ERROR,
+    public readonly statusCode: number = 500,
     public readonly code?: string
   ) {
     super(message);
@@ -37,7 +25,7 @@ export class ApiError extends Error {
  */
 export class UnauthorizedError extends ApiError {
   constructor(message = "Unauthorized") {
-    super(message, HttpStatus.UNAUTHORIZED, "UNAUTHORIZED");
+    super(message, 401, "UNAUTHORIZED");
     this.name = "UnauthorizedError";
   }
 }
@@ -47,7 +35,7 @@ export class UnauthorizedError extends ApiError {
  */
 export class BadRequestError extends ApiError {
   constructor(message = "Bad request", public readonly details?: unknown) {
-    super(message, HttpStatus.BAD_REQUEST, "BAD_REQUEST");
+    super(message, 400, "BAD_REQUEST");
     this.name = "BadRequestError";
   }
 }
@@ -57,21 +45,8 @@ export class BadRequestError extends ApiError {
  */
 export class NotFoundError extends ApiError {
   constructor(message = "Resource not found") {
-    super(message, HttpStatus.NOT_FOUND, "NOT_FOUND");
+    super(message, 404, "NOT_FOUND");
     this.name = "NotFoundError";
-  }
-}
-
-/**
- * Rate limit exceeded error (429)
- */
-export class RateLimitError extends ApiError {
-  constructor(
-    message = "Too many requests",
-    public readonly resetIn?: number
-  ) {
-    super(message, HttpStatus.TOO_MANY_REQUESTS, "RATE_LIMITED");
-    this.name = "RateLimitError";
   }
 }
 
@@ -100,17 +75,7 @@ export function errorResponse(error: ApiError): NextResponse<ApiErrorResponse> {
     body.details = error.details;
   }
 
-  const headers: Record<string, string> = {};
-
-  if (error instanceof RateLimitError && error.resetIn) {
-    headers["Retry-After"] = String(error.resetIn);
-    headers["X-RateLimit-Remaining"] = "0";
-  }
-
-  return NextResponse.json(body, {
-    status: error.statusCode,
-    headers: Object.keys(headers).length > 0 ? headers : undefined,
-  });
+  return NextResponse.json(body, { status: error.statusCode });
 }
 
 /**
@@ -144,14 +109,5 @@ export function handleApiError(
   console.error(message, error);
 
   // Return generic 500 for unexpected errors
-  return errorResponse(
-    new ApiError("Internal server error", HttpStatus.INTERNAL_SERVER_ERROR)
-  );
-}
-
-/**
- * Type guard to check if a value is an ApiError
- */
-export function isApiError(error: unknown): error is ApiError {
-  return error instanceof ApiError;
+  return errorResponse(new ApiError("Internal server error"));
 }

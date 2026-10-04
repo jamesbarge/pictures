@@ -10,7 +10,7 @@ import { db } from "@/db";
 import { films, screenings as screeningsTable } from "@/db/schema";
 import { eq, and, gte, lte } from "drizzle-orm";
 import {
-  classifyEventCached,
+  classifyEvent,
   likelyNeedsClassification,
 } from "@/lib/event-classifier";
 import type { EventType, ScreeningFormat } from "@/types/screening";
@@ -62,7 +62,7 @@ export async function classifyScreening(
 
   if (needsClassification) {
     try {
-      const classification = await classifyEventCached(screening.filmTitle);
+      const classification = await classifyEvent(screening.filmTitle);
 
       if (classification.eventTypes.length > 0 || classification.format) {
         console.log(

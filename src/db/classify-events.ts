@@ -18,11 +18,6 @@ import {
   likelyNeedsClassification,
 } from "@/lib/event-classifier";
 
-// Batch size for processing (smaller = more frequent progress updates)
-const BATCH_SIZE = 5;
-// Delay between requests to respect rate limits (5 req/min = 12s between)
-const REQUEST_DELAY_MS = 13000;
-
 async function classifyEvents() {
   console.log("🏷️  Classifying screening events...\n");
 
@@ -48,73 +43,51 @@ async function classifyEvents() {
   let updated = 0;
   let failed = 0;
 
-  // Process in batches
-  for (let i = 0; i < filmsToClassify.length; i += BATCH_SIZE) {
-    const batch = filmsToClassify.slice(i, i + BATCH_SIZE);
+  for (const film of filmsToClassify) {
+    try {
+      const classification = await classifyEvent(film.title);
+      classified++;
 
-    console.log(
-      `Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(filmsToClassify.length / BATCH_SIZE)}...`
-    );
+      // Only update if we found something meaningful
+      if (
+        classification.eventTypes.length > 0 ||
+        classification.format ||
+        classification.hasSubtitles ||
+        classification.hasAudioDescription ||
+        classification.isRelaxedScreening ||
+        classification.season
+      ) {
+        // Update all screenings for this film
+        await db
+          .update(screenings)
+          .set({
+            isSpecialEvent: classification.isSpecialEvent,
+            eventType: classification.eventTypes[0] || null, // Primary event type
+            eventDescription:
+              classification.eventTypes.length > 1
+                ? `Also: ${classification.eventTypes.slice(1).join(", ")}`
+                : classification.eventDescription,
+            format: classification.format,
+            is3D: classification.is3D,
+            hasSubtitles: classification.hasSubtitles,
+            subtitleLanguage: classification.subtitleLanguage,
+            hasAudioDescription: classification.hasAudioDescription,
+            isRelaxedScreening: classification.isRelaxedScreening,
+            season: classification.season,
+            updatedAt: new Date(),
+          })
+          .where(eq(screenings.filmId, film.id));
 
-    for (let j = 0; j < batch.length; j++) {
-      const film = batch[j];
-
-      // Delay between requests to respect rate limits (5 req/min)
-      if (j > 0) {
-        await new Promise((r) => setTimeout(r, REQUEST_DELAY_MS));
+        console.log(
+          `  ✓ "${film.title}" → ${classification.eventTypes.join(", ") || "format/accessibility only"}`
+        );
+        updated++;
+      } else {
+        console.log(`  - "${film.title}" → no special event detected`);
       }
-
-      try {
-        const classification = await classifyEvent(film.title);
-        classified++;
-
-        // Only update if we found something meaningful
-        if (
-          classification.eventTypes.length > 0 ||
-          classification.format ||
-          classification.hasSubtitles ||
-          classification.hasAudioDescription ||
-          classification.isRelaxedScreening ||
-          classification.season
-        ) {
-          // Update all screenings for this film
-          await db
-            .update(screenings)
-            .set({
-              isSpecialEvent: classification.isSpecialEvent,
-              eventType: classification.eventTypes[0] || null, // Primary event type
-              eventDescription:
-                classification.eventTypes.length > 1
-                  ? `Also: ${classification.eventTypes.slice(1).join(", ")}`
-                  : classification.eventDescription,
-              format: classification.format,
-              is3D: classification.is3D,
-              hasSubtitles: classification.hasSubtitles,
-              subtitleLanguage: classification.subtitleLanguage,
-              hasAudioDescription: classification.hasAudioDescription,
-              isRelaxedScreening: classification.isRelaxedScreening,
-              season: classification.season,
-              updatedAt: new Date(),
-            })
-            .where(eq(screenings.filmId, film.id));
-
-          console.log(
-            `  ✓ "${film.title}" → ${classification.eventTypes.join(", ") || "format/accessibility only"}`
-          );
-          updated++;
-        } else {
-          console.log(`  - "${film.title}" → no special event detected`);
-        }
-      } catch (error) {
-        console.error(`  ✗ Failed: "${film.title}"`, error);
-        failed++;
-      }
-    }
-
-    // Delay between batches to respect rate limits
-    if (i + BATCH_SIZE < filmsToClassify.length) {
-      console.log(`  Waiting ${REQUEST_DELAY_MS / 1000}s before next batch...`);
-      await new Promise((r) => setTimeout(r, REQUEST_DELAY_MS));
+    } catch (error) {
+      console.error(`  ✗ Failed: "${film.title}"`, error);
+      failed++;
     }
   }
 

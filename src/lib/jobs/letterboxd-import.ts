@@ -9,6 +9,12 @@
  * creating film records, and upserting them into the user's watchlist.
  */
 
+import { eq } from "drizzle-orm";
+import { v4 as uuidv4 } from "uuid";
+import { db } from "@/db";
+import { films, userFilmStatuses } from "@/db/schema";
+import { matchFilmToTMDB, getTMDBClient, isRepertoryFilm, getDecade } from "@/lib/tmdb";
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -51,14 +57,6 @@ function sleep(ms: number): Promise<void> {
 export async function runLetterboxdImport(
   payload: LetterboxdImportPayload,
 ): Promise<LetterboxdImportOutput> {
-  // Dynamic imports to avoid bundling issues (following existing the cloud orchestrator patterns)
-  const { matchFilmToTMDB, getTMDBClient, isRepertoryFilm, getDecade } =
-    await import("@/lib/tmdb");
-  const { db } = await import("@/db");
-  const { films, userFilmStatuses } = await import("@/db/schema");
-  const { eq } = await import("drizzle-orm");
-  const { v4: uuidv4 } = await import("uuid");
-
   const { userId, username, entries } = payload;
 
   console.log(

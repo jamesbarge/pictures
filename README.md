@@ -99,9 +99,6 @@ POSTHOG_API_KEY=phx_...
 
 # AI Enrichment (optional)
 GEMINI_API_KEY=your_key
-
-# Cron Security
-CRON_SECRET=random_string
 ```
 
 See `.env.local.example` for the full list with documentation.

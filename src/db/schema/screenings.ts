@@ -66,13 +66,6 @@ export const screenings = pgTable(
       .notNull()
       .defaultNow(),
 
-    // Link verification (populated by agents)
-    // TODO: Add these columns via Supabase console - ALTER TABLE times out on serverless
-    // linkStatus: text("link_status").$type<
-    //   "verified" | "broken" | "redirect" | "sold_out" | "wrong_film" | "unchecked"
-    // >(),
-    // linkLastChecked: timestamp("link_last_checked", { withTimezone: true }),
-
     // Festival tracking
     // Note: Festival relationship is in festival_screenings join table
     // These fields are for quick filtering without joins
@@ -97,6 +90,3 @@ export const screenings = pgTable(
       .where(sql`${table.sourceId} is not null`),
   ]
 );
-
-export type ScreeningInsert = typeof screenings.$inferInsert;
-export type ScreeningSelect = typeof screenings.$inferSelect;

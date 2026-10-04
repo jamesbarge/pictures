@@ -22,6 +22,3 @@ export const users = pgTable("users", {
     .notNull()
     .defaultNow(),
 });
-
-export type UserInsert = typeof users.$inferInsert;
-export type UserSelect = typeof users.$inferSelect;

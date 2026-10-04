@@ -46,8 +46,7 @@ vi.mock("@/lib/posters", () => ({
 }));
 
 vi.mock("@/lib/film-similarity", () => ({
-  isSimilarityConfigured: () => false,
-  findMatchingFilm: vi.fn(),
+  findMatchingFilm: vi.fn().mockResolvedValue(null),
 }));
 
 import { matchAndCreateFromTMDB, type FilmCache } from "./film-matching";

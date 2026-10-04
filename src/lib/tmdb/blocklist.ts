@@ -65,15 +65,6 @@ function loadBlocklist(): void {
 }
 
 /**
- * Check if a TMDB ID is in the blocklist (known wrong match).
- * Returns the blocklist entry if found, null otherwise.
- */
-export function checkBlocklist(tmdbId: number): BlocklistEntry | null {
-  loadBlocklist();
-  return wrongIdIndex?.get(tmdbId) ?? null;
-}
-
-/**
  * Check if a film title has a known wrong match.
  * Uses normalized title matching.
  */
@@ -120,12 +111,4 @@ export function incrementBlocklistUsage(title: string): void {
   } catch {
     // Don't crash on write failure
   }
-}
-
-/**
- * Reset the cached blocklist (for testing or after JSON updates).
- */
-export function resetBlocklistCache(): void {
-  blocklistCache = null;
-  wrongIdIndex = null;
 }

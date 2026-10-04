@@ -6,6 +6,7 @@
  */
 
 import * as cheerio from "cheerio";
+import { CHROME_USER_AGENT_FULL } from "@/scrapers/constants";
 
 /**
  * Validate URL is safe to fetch (blocks private IPs, localhost, internal hosts)
@@ -82,8 +83,7 @@ export async function scrapeBookingPage(
   try {
     const response = await fetch(bookingUrl, {
       headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+        "User-Agent": CHROME_USER_AGENT_FULL,
         Accept: "text/html,application/xhtml+xml",
       },
       signal: AbortSignal.timeout(10000),

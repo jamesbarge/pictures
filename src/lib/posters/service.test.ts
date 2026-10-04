@@ -14,7 +14,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const matchFilmToTMDB = vi.fn();
 const searchFilms = vi.fn();
 const getFilmDetails = vi.fn();
-const classifyContentCached = vi.fn();
+const classifyContent = vi.fn();
 const isImageAccessible = vi.fn();
 
 vi.mock("@/lib/tmdb", () => ({
@@ -23,7 +23,7 @@ vi.mock("@/lib/tmdb", () => ({
 }));
 
 vi.mock("@/lib/content-classifier", () => ({
-  classifyContentCached: (...args: unknown[]) => classifyContentCached(...args),
+  classifyContent: (...args: unknown[]) => classifyContent(...args),
 }));
 
 vi.mock("@/lib/image-processor", () => ({
@@ -46,7 +46,7 @@ describe("PosterService.findPoster — films with no TMDB id", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Default: the classifier finds nothing better than the title it was given.
-    classifyContentCached.mockImplementation(async (t: string) => ({
+    classifyContent.mockImplementation(async (t: string) => ({
       cleanTitle: t,
       confidence: "low",
     }));
@@ -136,7 +136,7 @@ describe("PosterService.findPoster — films with no TMDB id", () => {
       year: 1950,
       posterPath: "/sunset.jpg",
     });
-    classifyContentCached.mockResolvedValue({
+    classifyContent.mockResolvedValue({
       cleanTitle: "Sunset Boulevard",
       confidence: "high",
     });

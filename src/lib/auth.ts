@@ -1,4 +1,3 @@
-import { timingSafeEqual } from "node:crypto";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import {
   getAdminEmailAllowlist,
@@ -78,28 +77,6 @@ export function forbiddenResponse() {
     { error: "Forbidden" },
     { status: 403 }
   );
-}
-
-/**
- * Verify that a request comes from Vercel Cron via the CRON_SECRET bearer token.
- * Used by cron route handlers to authenticate scheduled invocations.
- */
-export function verifyCronSecret(request: Request): boolean {
-  const authHeader = request.headers.get("authorization");
-  if (!authHeader) return false;
-
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return false;
-
-  const token = authHeader.replace("Bearer ", "");
-
-  // Constant-time comparison to avoid leaking the secret via response timing.
-  // timingSafeEqual requires equal-length buffers, so length-mismatch is an
-  // early (non-constant-time) reject — acceptable, as length is not the secret.
-  const tokenBuf = Buffer.from(token);
-  const secretBuf = Buffer.from(secret);
-  if (tokenBuf.length !== secretBuf.length) return false;
-  return timingSafeEqual(tokenBuf, secretBuf);
 }
 
 /**

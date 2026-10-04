@@ -3,18 +3,15 @@
  *
  * Extracts structured event metadata from a screening title and optional
  * description using deterministic regex rules — no LLM calls. Emits an
- * EventClassification covering: clean film title, event types, screening
- * format, accessibility flags, and (when present) the season/series name.
+ * EventClassification covering: event types, screening format,
+ * accessibility flags, and (when present) the season/series name.
  *
  * The rules below were lifted from the previous Gemini prompt's "Rules:"
  * section and codified verbatim. The output shape is identical to the
  * previous AI-backed implementation, so callers do not change.
  */
 
-import {
-  extractFilmTitleSync,
-  type PatternExtractionResult,
-} from "./title-extraction/pattern-extractor";
+import { extractFilmTitleSync } from "./title-extraction/pattern-extractor";
 import type { EventType, ScreeningFormat } from "@/types/screening";
 
 // Valid event types from the schema
@@ -35,7 +32,6 @@ const VALID_EVENT_TYPES: EventType[] = [
 ];
 
 interface EventClassification {
-  cleanTitle: string;
   isSpecialEvent: boolean;
   eventTypes: EventType[];
   eventDescription: string | null;
@@ -46,7 +42,6 @@ interface EventClassification {
   hasAudioDescription: boolean;
   isRelaxedScreening: boolean;
   season: string | null;
-  confidence: "high" | "medium" | "low";
 }
 
 /* -------------------------------------------------------------------------- */
@@ -168,16 +163,7 @@ export async function classifyEvent(
     }
   }
 
-  // 6) Clean title — delegate to the synchronous pattern-based extractor.
-  const cleaned = extractFilmTitleSync(title);
-  const cleanTitle = cleaned.extractedTitle || title;
-
-  // 7) Confidence — high when the pattern extractor was confident or no
-  // event signals fired; medium otherwise; low only on truly ambiguous
-  // input (long title, no signals, multiple colons).
-  const confidence = computeConfidence(title, cleaned, eventTypes, format);
-
-  // 8) isSpecialEvent — true if any event signal fired.
+  // 6) isSpecialEvent: true if any event signal fired.
   const isSpecialEvent =
     eventTypes.length > 0 ||
     format !== null ||
@@ -187,15 +173,15 @@ export async function classifyEvent(
     isRelaxedScreening ||
     season !== null;
 
-  // 9) Event description — surface the title remainder when extraction
-  // stripped a prefix or suffix; otherwise null.
+  // 7) Event description: surface the title remainder when the
+  // pattern-based extractor stripped a prefix or suffix; otherwise null.
+  const cleaned = extractFilmTitleSync(title);
   const eventDescription =
     cleaned.extractionMethod !== "none" && cleaned.extractedTitle !== title
       ? title.replace(cleaned.extractedTitle, "").replace(/^[\s:|+\-]+|[\s:|+\-]+$/g, "") || null
       : null;
 
   return {
-    cleanTitle,
     isSpecialEvent,
     eventTypes,
     eventDescription,
@@ -206,29 +192,7 @@ export async function classifyEvent(
     hasAudioDescription,
     isRelaxedScreening,
     season,
-    confidence,
   };
-}
-
-function computeConfidence(
-  rawTitle: string,
-  cleaned: PatternExtractionResult,
-  eventTypes: EventType[],
-  format: ScreeningFormat | null
-): "high" | "medium" | "low" {
-  // Pattern extractor's numeric confidence (0–1) is the strongest signal.
-  if (cleaned.confidence >= 0.85) return "high";
-  if (cleaned.confidence >= 0.5) return "medium";
-
-  // If we matched at least one event signal but the extractor was unsure,
-  // bias toward medium rather than low — we still produced useful metadata.
-  if (eventTypes.length > 0 || format !== null) return "medium";
-
-  // Title with multiple colons and no extractor confidence is ambiguous.
-  if (rawTitle.split(":").length > 2) return "low";
-
-  // Default: medium for everything else.
-  return "medium";
 }
 
 /**
@@ -265,24 +229,4 @@ export function likelyNeedsClassification(title: string): boolean {
   ];
 
   return patterns.some((p) => p.test(title));
-}
-
-// Cache for classifications to avoid re-processing identical titles.
-const classificationCache = new Map<string, EventClassification>();
-
-/**
- * Classify with caching. Async signature preserved for caller compatibility.
- */
-export async function classifyEventCached(
-  title: string,
-  description?: string
-): Promise<EventClassification> {
-  const cacheKey = `${title}|${description || ""}`;
-
-  const cached = classificationCache.get(cacheKey);
-  if (cached) return cached;
-
-  const result = await classifyEvent(title, description);
-  classificationCache.set(cacheKey, result);
-  return result;
 }
