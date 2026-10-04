@@ -1,6 +1,6 @@
 # Delete dead seasons, festivals and BFI PDF code
 
-**PR**: #PENDING
+**PR**: #790
 **Date**: 2026-10-04
 
 ## Changes
