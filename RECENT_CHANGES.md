@@ -1,5 +1,5 @@
 ## 2026-10-04: Every venue scrape runs through the unified CLI
-**PR**: #PENDING | **Files**: `src/scrapers/cli.ts`, `package.json`, `src/scrapers/runner-factory.ts`, `src/scrapers/base.ts`, `src/scrapers/cinemas/nickel-v2.ts`, `src/scrapers/cinemas/barbican.ts`
+**PR**: #789 | **Files**: `src/scrapers/cli.ts`, `package.json`, `src/scrapers/runner-factory.ts`, `src/scrapers/base.ts`, `src/scrapers/cinemas/nickel-v2.ts`, `src/scrapers/cinemas/barbican.ts`
 - The 26 `scrape:<venue>` scripts keep their names and run `src/scrapers/cli.ts <id>`, which now takes sub-venue args (`npm run scrape:curzon -- soho`) and exits 1 on a failed run. `scrape:all`, `scrape:chains` and `scrape:independents` call `npm run scrape -- --all|--chains|--independents`.
 - Deleted the 27 `run-*.ts` runners, `scrape:local`, `load:bfi-manual`, `scrape:snapshot`, five `debug-*.ts` probes, `fetchWithBrowser`, six unregistered scrapers (genesis-v2, electric, rich-mix, lexi-v2, the-nickel, riverside-studios) and the AutoScrape overlay lookup in `BaseScraper`.
 - Manual runs now use registry venue metadata, which the runners overwrote with stale copies (for example "Olympic Cinema" for Olympic Studios). About 8,800 lines removed.

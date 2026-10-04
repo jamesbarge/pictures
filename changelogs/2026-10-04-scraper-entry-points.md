@@ -1,6 +1,6 @@
 # Every venue scrape runs through the unified CLI
 
-**PR**: #PENDING
+**PR**: #789
 **Date**: 2026-10-04
 
 ## Changes
