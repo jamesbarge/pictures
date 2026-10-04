@@ -1115,6 +1115,40 @@ none was judged to pay for itself at ~12-20 screenings a year.
   `scrape()` under `DATABASE_URL=disabled` — it returns `RawScreening[]` and performs no writes.
 - Last verified (live): 2026-08-09.
 
+### Genesis Cinema (`cinemas/genesis.ts`, Mile End, coverage audit 2026-10-04)
+- **Source URL pattern:** `/whats-on/` for the film list, then one `/event/{eventCode}` page per
+  film. Film links come from the hidden search list (`a[href*='/event/']` with a leading `/`; the
+  visible cards use relative `event/N` hrefs, which the extractor deliberately skips as duplicates).
+  Booking links are `https://genesis.admit-one.co.uk/seats/?perfCode=N` → `sourceId`
+  `genesis-{perfCode}`.
+- **Completeness (verified 2026-10-04):** the scraper captures every published showing. 113 of 113
+  perfCodes on `/whats-on/`, and the union across all 54 event pages is the same 113. The category
+  strands (`/whatson/all`, `/events`, `/filmfestival`, `/35mm`, `/qanda`, `/subtitled`,
+  `/studio-screenings`, `/bartrash`, `/seasons`, `/pro-wrestling`) are subsets with no extra event
+  or perfCode, so festival (LIFF) and event listings need no separate source. All 95 future L-CUT
+  Genesis listings had a scraped showing at the exact same instant.
+- **Date/time format:** dates come from panel ids `panel_YYYYMMDD` (explicit year); times are
+  24-hour button text (`16:00`) parsed with `parseScreeningTime()`. A past date only rolls into
+  next year when the date had no year (the text fallback, "13 Jan"); dated panels never roll.
+- **Encoding:** pages are **Windows-1252** bytes sent as `content-type: text/html;
+  charset=ISO-8859-1`, under a `<meta charset="UTF-8">` that is wrong. `fetchPage` decodes with
+  the header's charset via `decodeBody()`; `response.text()` would decode UTF-8 and store U+FFFD for
+  every ’ £ – (9 Genesis film rows carried it as of 2026-10-04, e.g. `I�m Still Here`, which then
+  missed TMDB).
+- **Known pitfalls:**
+  - Festival titles carry a trailing tag: `Shorts Block 3 - LIFF`. Film identity relies on the
+    shared trailing-number guard peeling that tag (see the sequel-safe section below); before the
+    2026-10-04 fix, Shorts Blocks 2-12 all merged into one `Shorts Block 11 - LIFF` film, and
+    L-CUT parity reported them as 9-10 "missing" even though every showing was in the DB.
+  - L-CUT lists the 25 Oct event as `Steel on Film`; Genesis's own title is
+    `Steel of Film (in 35 mm) + Q&A`. We store the venue's title, so L-CUT parity will keep
+    reporting that one row as missing. It is a source-side spelling difference.
+  - The `festivals` table holds no LIFF row (seed data says April; the 2026 edition ran at Genesis
+    3-11 Oct), so LIFF showings are stored with `is_festival_screening = false`.
+- **Verification without touching the DB:** call `createGenesisScraper().scrape()` from a script
+  and print the result; `FestivalDetector.preload()` only reads.
+- Last verified (live): 2026-10-04.
+
 ## 2026-09-08 audit integration: shared safeguards
 
 - The screening pipeline resolves known cinema aliases and rejects unknown IDs before writes. Standalone Close-Up/Olympic IDs are canonical; metadata consolidation remains deferred.
@@ -1294,7 +1328,12 @@ round-trip only, so `MIX` and `LIV` are not numbers); instalment words
 `season`, `day`, each optionally followed by a spelled-out `one`-`twenty`
 (`Dune: Part Two`); four-digit years as identity numbers but never as
 instalments. Trailing bracketed decoration is peeled first, so
-`Toy Story 5 (BIA)` and `Sing 2 (Sing-Along)` still read 5 and 2.
+`Toy Story 5 (BIA)` and `Sing 2 (Sing-Along)` still read 5 and 2. So is a
+trailing upper-case festival tag after a dash (`Shorts Block 3 - LIFF` reads 3),
+unless the tag is itself a Roman instalment (`Rocky - IV` reads 4); added
+2026-10-04 after Genesis's LIFF Shorts Blocks 2-12 merged into one film. Of the
+32 film titles ending in ` - TAG` on that date, only `Shorts Block 11 - LIFF`
+gained a number.
 
 **Intentionally unsupported, and why.** A number needs a base title in front of
 it, so `X` (2022), `M` (1931), `1917` and a bare `II` carry none — they are
