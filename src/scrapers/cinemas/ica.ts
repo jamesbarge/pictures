@@ -12,8 +12,8 @@
  *      /films/bfi-london-film-festival-2026, ...) carry no performance list;
  *      their screenings live on child pages linked from the page body. Most
  *      of a season's later dates are only reachable this way.
- * Each event page carries the same `.performance-list .performance` markup, so
- * parsing is unchanged.
+ * Each event page carries the same `.performance-list .performance` markup.
+ * Talks and gigs use it too, so only performances in a Cinema screen are kept.
  */
 
 import { BaseScraper } from "../base";
@@ -39,11 +39,17 @@ interface QueuedPage {
 }
 
 /**
- * Upper bound on page fetches per run. The 2026-10-04 crawl made 147. The cap
- * keeps a runaway hub inside the 10-minute venue wall-clock cap; seeds are
- * queued before hub children, so a cap hit drops only the furthest-out dates.
+ * Discovery budgets. The venue wall-clock cap (10 minutes) covers fetching AND
+ * the pipeline, and ICA has hit it before (2026-09-02). The 2026-10-04 crawl
+ * made 147 fetches at ~1.77s each (~263s). Whichever budget runs out first
+ * stops new fetches. Hub children are queued in the order their hubs appear
+ * in the /films tiles, so a budget hit drops the children of the last hubs.
  */
-const MAX_PAGE_FETCHES = 250;
+const MAX_PAGE_FETCHES = 170;
+const DISCOVERY_TIME_BUDGET_MS = 300_000;
+
+/** Declared request rate; the per-request delay is derived from it. */
+const REQUESTS_PER_MINUTE = 60;
 
 /** Single-segment paths that are section indexes, not event pages. */
 const SECTION_INDEXES = new Set([
@@ -58,28 +64,43 @@ export class ICAScraper extends BaseScraper {
   config: ScraperConfig = {
     cinemaId: "ica",
     baseUrl: "https://www.ica.art",
-    requestsPerMinute: 60,
+    requestsPerMinute: REQUESTS_PER_MINUTE,
     // fetchUrl waits this long before every request. The site is not
-    // bot-protected; 1s matches the codebase norm and keeps ~150 pages well
-    // under the venue wall-clock cap.
-    delayBetweenRequests: 1000,
+    // bot-protected; 1s matches the codebase norm.
+    delayBetweenRequests: 60_000 / REQUESTS_PER_MINUTE,
   };
+
+  /**
+   * Load the festival cache before any fetching. A database blip then fails
+   * the run in seconds, before ~4 minutes of page fetches.
+   */
+  protected async initialize(): Promise<void> {
+    await FestivalDetector.preload();
+  }
 
   protected async fetchPages(): Promise<string[]> {
     const id = this.config.cinemaId;
+    const startedAt = Date.now();
 
-    // Index pages are required: a failure here throws rather than returning a
+    // /films is required: a failure here throws rather than returning a
     // silently partial programme.
     const filmsUrl = `${this.config.baseUrl}/films`;
     console.log(`[${id}] Fetching film listing: ${filmsUrl}`);
     const $films = this.parseHtml(await this.fetchUrl(filmsUrl));
     const tileHrefs = $films(".item > a").map((_, el) => $films(el).attr("href")).get();
 
+    // /upcoming is best-effort. On 2026-10-04 it added one page the /films
+    // tiles and hubs did not reach (lff-minotaur).
     const upcomingUrl = `${this.config.baseUrl}/upcoming`;
-    console.log(`[${id}] Fetching calendar: ${upcomingUrl}`);
-    const $upcoming = this.parseHtml(await this.fetchUrl(upcomingUrl));
-    // The calendar also lists talks, live music and exhibitions; Films only.
-    const calendarHrefs = $upcoming(".item.films > a").map((_, el) => $upcoming(el).attr("href")).get();
+    let calendarHrefs: string[] = [];
+    try {
+      console.log(`[${id}] Fetching calendar: ${upcomingUrl}`);
+      const $upcoming = this.parseHtml(await this.fetchUrl(upcomingUrl));
+      // The calendar also lists talks, live music and exhibitions; Films only.
+      calendarHrefs = $upcoming(".item.films > a").map((_, el) => $upcoming(el).attr("href")).get();
+    } catch (error) {
+      console.warn(`[${id}] Calendar ${upcomingUrl} failed; continuing with /films and its hubs:`, error);
+    }
 
     const queue: QueuedPage[] = [];
     const seen = new Set<string>();
@@ -104,10 +125,17 @@ export class ICAScraper extends BaseScraper {
     const pages: string[] = [];
     let hubs = 0;
     let fetched = 0;
+    const failed = { seed: 0, hubChild: 0 };
     for (let i = 0; i < queue.length; i++) {
-      if (fetched >= MAX_PAGE_FETCHES) {
+      const elapsedMs = Date.now() - startedAt;
+      if (fetched >= MAX_PAGE_FETCHES || elapsedMs >= DISCOVERY_TIME_BUDGET_MS) {
+        const reason = fetched >= MAX_PAGE_FETCHES
+          ? `page budget (${MAX_PAGE_FETCHES})`
+          : `time budget (${DISCOVERY_TIME_BUDGET_MS / 1000}s)`;
+        const skipped = queue.slice(i).map((q) => q.url);
         console.warn(
-          `[${id}] Page budget (${MAX_PAGE_FETCHES}) reached; ${queue.length - i} queued page(s) not fetched`,
+          `[${id}] Discovery stopped at the ${reason} after ${Math.round(elapsedMs / 1000)}s; ` +
+            `${skipped.length} queued page(s) not fetched: ${skipped.join(", ")}`,
         );
         break;
       }
@@ -133,11 +161,22 @@ export class ICAScraper extends BaseScraper {
           if (added > 0) console.log(`[${id}] Hub ${url}: queued ${added} child page(s)`);
         }
       } catch (error) {
+        if (depth === 0) failed.seed++;
+        else failed.hubChild++;
         console.error(`[${id}] Failed to fetch ${url}:`, error);
       }
     }
 
     console.log(`[${id}] Fetched ${fetched} pages: ${pages.length} with performances, ${hubs} hubs`);
+    if (failed.seed + failed.hubChild > 0) {
+      // One line per run so a partial crawl is visible next to the counts. A
+      // failed seed may have been a hub, which hides all of its children too.
+      console.warn(
+        `[${id}] ${failed.seed + failed.hubChild} page fetch(es) failed ` +
+          `(${failed.seed} from /films or /upcoming, ${failed.hubChild} hub children); ` +
+          `this run's programme is incomplete`,
+      );
+    }
     return pages;
   }
 
@@ -188,7 +227,6 @@ export class ICAScraper extends BaseScraper {
   }
 
   protected async parsePages(htmlPages: string[]): Promise<RawScreening[]> {
-    await FestivalDetector.preload();
     const screenings: RawScreening[] = [];
 
     for (const html of htmlPages) {
@@ -294,6 +332,7 @@ export class ICAScraper extends BaseScraper {
       : canonicalUrl ? `${this.config.baseUrl}${canonicalUrl}` : `${this.config.baseUrl}/films`;
 
     // Parse each performance in the list
+    const skippedVenues = new Set<string>();
     $(".performance-list .performance").each((_, el) => {
       const $perf = $(el);
 
@@ -305,8 +344,14 @@ export class ICAScraper extends BaseScraper {
       const dateText = $perf.find(".date").text().trim();
       const date = parseScreeningDate(dateText);
 
-      // Get venue/screen
+      // Get venue/screen. Films play in "Cinema 1"/"Cinema 2"; talks and gigs
+      // that share this markup play on "Stage" (/talks/my-tragedy,
+      // /live/gilla-band), and hubs can link to them.
       const venue = $perf.find(".venue").text().trim();
+      if (!/^cinema\b/i.test(venue)) {
+        skippedVenues.add(venue || "(no venue)");
+        return;
+      }
 
       if (time && date) {
         const datetime = combineDateAndTime(date, time);
@@ -331,6 +376,11 @@ export class ICAScraper extends BaseScraper {
 
     if (screenings.length > 0) {
       console.log(`[${this.config.cinemaId}] ${filmInfo.title}: ${screenings.length} screenings`);
+    }
+    if (skippedVenues.size > 0) {
+      console.log(
+        `[${this.config.cinemaId}] ${filmInfo.title}: skipped performances outside a cinema (${[...skippedVenues].join(", ")})`,
+      );
     }
 
     return screenings;
