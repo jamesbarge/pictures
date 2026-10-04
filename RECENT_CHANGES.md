@@ -1,3 +1,10 @@
+## 2026-10-04: Title cleaner covers festival and format decorations; current UK releases match at first-run venues
+**PR**: #TBD | **Files**: `src/scrapers/utils/film-title-cleaner.ts`, `src/lib/tmdb/client.ts`, `src/lib/tmdb/match.ts`, `src/scrapers/utils/film-matching.ts`, `src/scrapers/pipeline.ts`, `src/config/cinema-registry.ts`
+- The cleaner strips festival tags and prefixes (FFFL, LIFF, LPFF, UKJFF, London Breeze, Black History Month), format and version notes (16/35/70mm, Re-release, Remastered, 4K), anchored extras (intros, Q&A, talks, live score) and Met Opera / RBO season codes. Venue listings now normalize to the same cache key as their film, so 39 rows merged by hand on 2026-10-04 stay merged after the next scrape.
+- New UK releases with one-word titles (Digger, Verity, Pressure) match through TMDB's GB now-playing and upcoming lists, only at first-run venues and only when no conflicting year hint exists. A live check over 534 unmatched titles accepted 9, all agreeing with the manual review.
+- The film cache also indexes each film's TMDB original title, so "Le Boucher", "Festen" and "Cliente" find their films.
+
+---
 ## 2026-10-04: Phoenix reads its full programme from the Savoy JSON blob
 **PR**: #775 | **Files**: `src/scrapers/cinemas/phoenix.ts`, `src/scrapers/cinemas/phoenix.test.ts` (new), `src/scrapers/cinemas/bst-regression.test.ts`, `src/scrapers/registry.ts`, `src/config/cinema-registry.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`, `changelogs/2026-10-04-phoenix-full-programme.md`
 - Phoenix's homepage grid stops after 16 events (`if (TheNumEventsDisplayed <= 15)` in the site's own JS). Our scraper found films by reading that grid, so on 2026-10-04 it captured 32 of 57 future performances and stopped at 18 Oct, while the venue publishes to 5 Jun 2027.
