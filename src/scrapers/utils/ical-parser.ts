@@ -45,14 +45,14 @@ export interface ParsedVEvent {
 /** Public for unit testing. */
 export function parseVEvents(icalText: string): ParsedVEvent[] {
   // Unfold line continuations (a leading space/tab continues the previous line)
-  const lines = icalText.replace(/\r\n[ \t]/g, "").replace(/\n[ \t]/g, "").split(/\r?\n/);
+  const lines = icalText.replace(/\r?\n[ \t]/g, "").split(/\r?\n/);
 
   const events: ParsedVEvent[] = [];
-  let current: Partial<ParsedVEvent> & { _open?: boolean } | null = null;
+  let current: Partial<ParsedVEvent> | null = null;
 
   for (const line of lines) {
     if (line === "BEGIN:VEVENT") {
-      current = { _open: true, categories: [] };
+      current = { categories: [] };
       continue;
     }
     if (line === "END:VEVENT") {
@@ -68,7 +68,7 @@ export function parseVEvents(icalText: string): ParsedVEvent[] {
       current = null;
       continue;
     }
-    if (!current?._open) continue;
+    if (!current) continue;
 
     // Split into "PROPERTY[;params]" and "value"
     const colon = line.indexOf(":");

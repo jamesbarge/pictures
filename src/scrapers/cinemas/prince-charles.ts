@@ -139,7 +139,6 @@ export class PrinceCharlesScraper extends BaseScraper {
     let eventType: string | undefined;
     if (liClasses.includes("sing-along")) eventType = "singalong";
     else if (liClasses.includes("q-and-a")) eventType = "q_and_a";
-    else if (liClasses.includes("unreserved")) eventType = undefined; // Not really an event type
 
     return {
       filmTitle,

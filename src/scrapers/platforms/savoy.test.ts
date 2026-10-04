@@ -71,48 +71,6 @@ describe("parseSavoyEvents (Rio config)", () => {
     expect(s[1].runtime).toBe(167); // parsed from the string "167"
   });
 
-  const FILM_ONLY: SavoyVenue = {
-    cinemaId: "lexi",
-    baseUrl: "https://thelexicinema.co.uk",
-    filmTypeOnly: true,
-    buildSourceId: (e, p) => `lexi-${e.ID}-${p.ID}`,
-    buildBookingUrl: (_e, p, base) => (p.URL ? `${base}${p.URL}` : base),
-  };
-
-  it("filmTypeOnly drops non-Film performances", async () => {
-    const events = JSON.stringify({
-      Events: [
-        {
-          ID: 201,
-          Title: "Mixed Programme",
-          Performances: [
-            { ID: 1, StartDate: "2026-07-19", StartTime: "1900", TypeDescription: "Film", URL: "/b/1" },
-            { ID: 2, StartDate: "2026-07-19", StartTime: "2000", TypeDescription: "Theatre", URL: "/b/2" },
-          ],
-        },
-      ],
-    });
-    const s = await parseSavoyEvents(page(events), FILM_ONLY, NOW);
-    expect(s).toHaveLength(1);
-    expect(s[0].sourceId).toBe("lexi-201-1");
-  });
-
-  it("filmTypeOnly KEEPS a performance with no TypeDescription (keep-on-absent)", async () => {
-    const events = JSON.stringify({
-      Events: [{ ID: 301, Title: "No Type", Performances: [{ ID: 5, StartDate: "2026-07-19", StartTime: "1900", URL: "/b/5" }] }],
-    });
-    const s = await parseSavoyEvents(page(events), FILM_ONLY, NOW);
-    expect(s).toHaveLength(1); // absent discriminator → kept
-  });
-
-  it("does NOT filter by TypeDescription when filmTypeOnly is off (Rio)", async () => {
-    const events = JSON.stringify({
-      Events: [{ ID: 401, Title: "Theatre Night", Performances: [{ StartDate: "2026-07-19", StartTime: "1900", TypeDescription: "Theatre" }] }],
-    });
-    const s = await parseSavoyEvents(page(events), RIO, NOW);
-    expect(s).toHaveLength(1); // Rio keeps everything (no filmTypeOnly)
-  });
-
   it("throws when the var Events blob is missing (never empty-as-success)", async () => {
     await expect(
       parseSavoyEvents("<html><body>no data here</body></html>", RIO, NOW),

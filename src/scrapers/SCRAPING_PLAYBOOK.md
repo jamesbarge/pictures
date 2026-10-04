@@ -277,7 +277,7 @@ Use this format when recording cinema-specific quirks:
   - **Coverage**: The `/whats-on/cinema?day=` page covers ALL cinema series (New Releases, Cold War Visions, Relaxed Screenings, London Soundtrack Festival, etc.). The old `/whats-on/series/new-releases` page only covered one series.
   - **Day range**: The nav shows ~7 days but the `?day=` parameter accepts any future date. We scrape **70 days ahead** (`DAYS_AHEAD`). Was 30, which capped the venue at ~28 days of coverage; a 2026-08-09 replay went 25 days → 44 days and 75 → 103 screenings on the bump. Barbican publishes further still (furthest listing seen 2026-11-22, ~105 days out) — 70 is a deliberate stop at the ~2-month product target, since every extra day is another sequential request.
   - **Time lives in a nested span**: the booking `<a>` contains `<span><svg/></span><span>2.15pm</span>`. Read the **`<a>`'s** full `.text()` — an inner-node read can lose the meridiem, and the surrounding `.cinema-instance-list__instance` text is polluted with accessibility tooltip prose ("CAP Captioning assists…"), which breaks `parseScreeningTime()`'s anchored regexes.
-  - **Walk London days, not UTC days**: `new Date().toISOString().split("T")[0]` is the *UTC* date. Run between 23:00 and 00:00 London during BST it starts the walk on yesterday — one wasted request on a day whose screenings all fail `validate()` as past, and one day lost off the far end. `barbican.ts` uses a local `londonDateKey()` that anchors at noon UTC so stepping is DST-safe (an identical private copy lives in `platforms/indy.ts`; consolidating into `utils/date-parser.ts` is a follow-up).
+  - **Walk London days, not UTC days**: `new Date().toISOString().split("T")[0]` is the *UTC* date. Run between 23:00 and 00:00 London during BST it starts the walk on yesterday — one wasted request on a day whose screenings all fail `validate()` as past, and one day lost off the far end. `barbican.ts` (like `chains/curzon.ts` and `platforms/indy.ts`) uses `addDaysToDateString(londonDateString(now), i)` from `src/lib/london-date.ts`, which anchors at noon UTC so stepping is DST-safe.
   - **No pagination**: day pages render every card for that day; there is no pager or "load more" (checked `.pager`, `[rel=next]`, `a[href*='page=']` — no matches).
   - **Failure handling**: each day page gets `FETCH_ATTEMPTS = 2` (one retry, 4s backoff) so a single 5xx/reset cannot cost the venue its whole run; any day still failing after that fails the run, so a partial scrape is never recorded as success. `MAX_CONSECUTIVE_FAILURES = 3` aborts the walk early when the site is down or rate-limiting, bounding worst-case wall clock under the per-venue cap.
   - **Silent drops are logged**: instances yielding no readable time are counted and warned per day. Measured 0 across 12 days sampled +0…+69 (2026-08-09) and 0 across a full 70-day run, so any warning means the markup moved.
@@ -1003,9 +1003,10 @@ because L-CUT carried none of its screenings.
   added to the site after 2026-07-20. When a venue's coverage looks truncated, check
   `MAX(scraped_at)` before blaming the parser: here both were true.
 - Verify without writing: instantiate `BerthaDochouseScraper`, override `fetchUrl` to cache to disk,
-  and call `scrape()` under `DATABASE_URL=disabled`. Note `parsePages` awaits
-  `FestivalDetector.preload()`, which queries the DB — against the `max: 0` placeholder client that
-  promise never settles and the process **exits silently with code 0** mid-scrape. Stub it in probes.
+  and call `scrape()` under `DATABASE_URL=disabled`. `parsePages` makes no DB call (the unused
+  `FestivalDetector.preload()` was removed 2026-10-04). Any DB query against the `max: 0`
+  placeholder client never settles and the process **exits silently with code 0**, so stub DB
+  calls in probes.
 
 ### Close-Up — WAF burst-403s (hardened 2026-07-13)
 - The WAF intermittently 403s bursts of `/search_film_programmes/?date=` requests, then
@@ -1091,7 +1092,7 @@ because L-CUT carried none of its screenings.
   kept as-is. A missing or malformed `perf.URL` (partner links are hand-typed, and `new URL`
   throws on e.g. "https:// host") falls back to the event's film page with a warning.
 - **Mixed programme**: Film, Documentaries, Phoenix Classics, Opera, Theatre, Ballet & Dance and
-  Art Live are all kept (`filmTypeOnly` off), as before; the pipeline classifies non-film events.
+  Art Live are all kept, as before; the pipeline classifies non-film events.
   `TypeDescription` lives on the EVENT here, not the performance.
 - **Ground truth**: count FUTURE `Performances[]` across the blob (the raw count includes today's
   already-started shows: 62 raw against 57 future on 2026-10-04). One performance = one screening.
@@ -1119,8 +1120,8 @@ because L-CUT carried none of its screenings.
     **Ciné Lumière, ArtHouse Crouch End**. These need a SEPARATE table parser (not savoy.ts).
 - **`platforms/savoy.ts`** handles ONLY the modern-JSON template: `extractSavoyEventsJson` (brace-
   matched blob extraction, THROWS if absent — never empty-as-success) + `parseSavoyEvents` (maps
-  future performances, `combineDateAndTime` for UK-local HHMM, festival detection, optional
-  `filmTypeOnly` filter). Per-venue variation via `SavoyVenue` builders (sourceId, booking URL).
+  future performances, `combineDateAndTime` for UK-local HHMM, festival detection). Per-venue
+  variation via `SavoyVenue` builders (sourceId, booking URL).
 - **Label corrections (verified live 2026-07-14):** Lexi is Savoy modern-JSON, NOT "Admit One";
   The Arzner is Savoy modern-JSON (`TheArzner.dll`), NOT "Jacro" — a direct scraper is trivial and
   is the intended replacement for its L-CUT gap-fill feed; Castle is Wagtail + Admit One, NOT Savoy.
@@ -1301,8 +1302,8 @@ A scraper implementing `CinemaScraper` without extending `BaseScraper` (for exam
 `"unavailable"`. Detection is duck-typed in `asPreFilterSource`.
 
 **Write outcomes.** `upserted` means the `INSERT ... ON CONFLICT DO UPDATE` statement
-ran; Postgres inserted or updated and the statement does not say which, so
-`insertUpdateAttribution` is permanently `"unavailable"`. `updated` means an
+ran; Postgres inserted or updated and the statement does not say which, so the
+split is not recorded. `updated` means an
 `UPDATE ... WHERE id = ?` completed on a row `checkForDuplicate` had just identified.
 `unchanged` means the duplicate check said skip, or a 23505 collision left the row
 untouched.
@@ -1329,8 +1330,7 @@ code paths; it is a known follow-up.
 **No write bucket proves a row reached the table.** Neither statement carries
 `RETURNING` or reads a row count, so a row deleted concurrently between
 `checkForDuplicate` and the `UPDATE` yields zero affected rows and still completes.
-`affectedRowAttribution` is therefore permanently `"unavailable"` and the helper is
-named `completedWrites`, not `persistedWrites`. Establishing the true count needs a
+The helper is therefore named `completedWrites`. Establishing the true count needs a
 `RETURNING` on both production write statements.
 
 **Conservation.** `checkAccounting` verifies each boundary and **skips rather than
@@ -1374,12 +1374,6 @@ remaining screening list as `failed` and abandoned it. `linkFestivalBestEffort` 
 swallows and reports it, so the film's remaining screenings are written and counted.
 For a venue with a failing festival link, `added` runs higher and `failed` lower than
 before this change. The old numbers described writes that had in fact landed.
-
-**Supplementary batches.** `supplementary: true` marks a deliberately partial batch
-(L-CUT gap-fill and similar), whose counts must not be added into a full run's
-totals. **It is a marker awaiting a consumer**: nothing sets it outside tests today
-— `scripts/lcut-gapfill.ts` does not call `buildAccounting` at all — and nothing
-enforces the exclusion. Treat it as documentation, not as a guarantee.
 
 ---
 

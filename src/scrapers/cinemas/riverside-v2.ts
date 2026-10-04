@@ -62,7 +62,6 @@ export class RiversideScraperV2 extends BaseScraper {
     console.log(`[riverside-studios] Found ${cinemaEvents.length} cinema events`);
 
     const screenings: RawScreening[] = [];
-    const seenIds = new Set<string>();
 
     for (const event of cinemaEvents) {
       const performances = event.performances;
@@ -85,16 +84,12 @@ export class RiversideScraperV2 extends BaseScraper {
           const bookingUrlMatch = perf.html.match(/href="([^"]+)"/);
           const bookingUrl = bookingUrlMatch ? bookingUrlMatch[1] : event.url;
 
-          // Create unique source ID
-          const sourceId = `riverside-${event.id}-${perf.timestamp}`;
-          if (seenIds.has(sourceId)) continue;
-          seenIds.add(sourceId);
-
+          // BaseScraper.validate drops repeat sourceIds.
           screenings.push({
             filmTitle: event.title || event.name,
             datetime,
             bookingUrl,
-            sourceId,
+            sourceId: `riverside-${event.id}-${perf.timestamp}`,
           });
         }
       }

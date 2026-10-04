@@ -25,11 +25,9 @@ import { sanitizeRuntime } from "../utils/metadata-parser";
 
 interface FilmInfo {
   title: string;
-  url: string;
   director?: string;
   year?: number;
   runtime?: number;
-  country?: string;
 }
 
 interface QueuedPage {
@@ -268,7 +266,7 @@ export class ICAScraper extends BaseScraper {
     // Parse metadata from #colophon
     // Format: "<i>Title</i>, dir Director Name, Country Year, Runtime mins."
     const colophon = $("#colophon").text().trim();
-    const info: FilmInfo = { title, url: "" };
+    const info: FilmInfo = { title };
 
     if (colophon) {
       // Extract director: "dir Name"
@@ -287,12 +285,6 @@ export class ICAScraper extends BaseScraper {
       const runtimeMatch = colophon.match(/(\d+)\s*mins?\.?/i);
       if (runtimeMatch) {
         info.runtime = sanitizeRuntime(runtimeMatch[1]);
-      }
-
-      // Extract country (common patterns)
-      const countryMatch = colophon.match(/,\s*(USA|UK|France|Germany|Japan|Italy|Spain|Portugal|Belgium|Austria|Morocco|Lebanon|Mexico|Bulgaria)\b/i);
-      if (countryMatch) {
-        info.country = countryMatch[1];
       }
     }
 

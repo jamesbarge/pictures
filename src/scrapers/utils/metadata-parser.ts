@@ -159,12 +159,7 @@ function extractDirector(text: string): string | undefined {
     return cleanDirectorName(directedByMatch[1]);
   }
 
-  // Pattern 3: "(Year, Country, Director)" - The Nickel format
-  const nickelMatch = text.match(/\(\d{4},\s*[^,]+,\s*([^)]+)\)/);
-  if (nickelMatch) {
-    return cleanDirectorName(nickelMatch[1]);
-  }
-
+  // "(Year, Country, Director)" is handled by parseParenthetical before this runs.
   return undefined;
 }
 
