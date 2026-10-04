@@ -44,9 +44,6 @@ jobs:
       - name: Type check
         run: npx tsc --noEmit
 
-      - name: Run tests
-        run: npm run test:run
-
       - name: Run tests with coverage
         run: npm run test:coverage
 
@@ -78,8 +75,8 @@ jobs:
       # the build fails. Empty disables PostHog, which is what we want for E2E:
       # no analytics noise. (No Clerk var here — the frontend has no auth; Clerk
       # lives only in the root Next.js job below.)
-      PUBLIC_POSTHOG_KEY: ${{ secrets.PUBLIC_POSTHOG_KEY || '' }}
-      PUBLIC_POSTHOG_HOST: ${{ secrets.PUBLIC_POSTHOG_HOST || '' }}
+      PUBLIC_POSTHOG_KEY: ''
+      PUBLIC_POSTHOG_HOST: ''
 
     steps:
       - name: Checkout repository
