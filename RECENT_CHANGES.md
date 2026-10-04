@@ -1,3 +1,9 @@
+## 2026-10-04: JW3 film nights outside the Cinema genre
+**PR**: #783 | **Files**: `src/scrapers/cinemas/jw3.ts`, `src/scrapers/cinemas/jw3.test.ts` (new), `src/scrapers/SCRAPING_PLAYBOOK.md`
+- JW3 now keeps film nights filed under other Spektrix genres when the name labels them, e.g. `Young JW3 Queer Movie & Pizza Night: Call Me By Your Name`, listed as the film after the colon. This adds Call Me By Your Name (21 Oct) and Theater Camp (16 Dec).
+- No structured Spektrix field separates these nights from the workshops around them, so the rule reads the name. On the 2026-10-04 feed it keeps 3 of 214 non-Cinema events, all film nights.
+
+---
 ## 2026-10-04: Ibraaz first-party scraper
 **PR**: #782 | **Files**: `src/scrapers/cinemas/ibraaz.ts` (new), `src/scrapers/cinemas/ibraaz.test.ts` (new), `src/scrapers/registry.ts`, `src/scrapers/task-registry.ts`, `src/config/cinema-registry.ts`, `scripts/lcut-gapfill.test.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`
 - Ibraaz (Fitzrovia) moves from L-CUT source-only, where it had 0 rows ever, to a Cheerio scraper in the Cheerio wave. It keeps events tagged Film (alone, or with Library-in-Residence or Talk) and skips performance lectures, workshops and music days.
