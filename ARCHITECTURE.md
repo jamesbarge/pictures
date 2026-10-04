@@ -8,24 +8,18 @@ London cinema calendar app that scrapes screening data from 25+ independent Lond
 
 ```
 filmcal2/
-├── src/
-│   ├── app/                    # Next.js App Router pages & API routes
+├── frontend/                   # SvelteKit public site (pictures.london)
+│
+├── src/                        # Next.js app (api.pictures.london)
+│   ├── app/                    # App Router: API routes, admin, sign-in
 │   │   ├── api/                # REST API endpoints
 │   │   │   ├── screenings/     # Main data API
 │   │   │   ├── films/          # Film metadata
 │   │   │   ├── user/           # User preferences & sync
 │   │   │   └── cron/           # Scheduled jobs
-│   │   ├── film/[id]/          # Film detail pages
-│   │   └── page.tsx            # Main calendar view
+│   │   └── admin/              # Admin dashboard
 │   │
-│   ├── components/             # React components
-│   │   ├── calendar/           # Calendar grid, film cards, screening cards
-│   │   ├── filters/            # Date, cinema, time filter UI
-│   │   ├── layout/             # Header, navigation
-│   │   ├── search/             # Search dialog
-│   │   ├── settings/           # User settings
-│   │   ├── ui/                 # Shared primitives (MobileModal, etc.)
-│   │   └── watchlist/          # Watchlist view
+│   ├── components/             # Admin UI primitives (ui/) and Clerk wrappers
 │   │
 │   ├── scrapers/               # Cinema data scrapers
 │   │   ├── base.ts             # Abstract BaseScraper class
@@ -51,23 +45,15 @@ filmcal2/
 │   │   ├── title-extractor.ts  # AI-powered title extraction
 │   │   └── cn.ts               # Tailwind class merging
 │   │
-│   ├── stores/                 # Zustand state stores
-│   │   ├── film-status.ts      # Watchlist, seen, not interested
-│   │   ├── filters.ts          # Current filter state
-│   │   └── preferences.ts      # User preferences
-│   │
 │   ├── hooks/                  # React hooks
-│   │   ├── useHydrated.ts      # SSR hydration safety
-│   │   └── useBodyScrollLock.ts
+│   │   └── useHydrated.ts      # SSR hydration safety
 │   │
 │   └── test/                   # Test utilities
 │
 ├── AI_CONTEXT.md               # AI/navigation entry point
 ├── changelogs/                 # Detailed change archive
 │
-├── e2e/                        # Playwright E2E tests
-│
-└── public/                     # Static assets
+└── public/                     # Static assets (robots.txt, favicon)
 ```
 
 ## Data Flow
@@ -86,8 +72,8 @@ filmcal2/
          │
          ▼
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│  Enriched Film  │───▶│  Next.js API    │───▶│   React UI      │
-│     Record      │    │   /screenings   │    │  (Calendar)     │
+│  Enriched Film  │───▶│  Next.js API    │───▶│  SvelteKit UI   │
+│     Record      │    │   /screenings   │    │  (frontend/)    │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
@@ -124,55 +110,6 @@ npm run scrape:independents
 ```
 
 Scraper change notes and incident patterns are tracked in `src/scrapers/SCRAPING_PLAYBOOK.md`.
-
-## State Management
-
-Zustand stores with localStorage persistence:
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Zustand Stores                           │
-├─────────────────┬─────────────────┬─────────────────────────┤
-│  film-status    │    filters      │     preferences         │
-│  - watchlist    │  - dateFrom     │  - selectedCinemas      │
-│  - seen         │  - dateTo       │  - theme                │
-│  - notInterested│  - timeFrom/To  │  - defaultView          │
-└────────┬────────┴────────┬────────┴────────────┬────────────┘
-         │                 │                     │
-         ▼                 ▼                     ▼
-┌─────────────────────────────────────────────────────────────┐
-│                  localStorage (persist)                      │
-└─────────────────────────────────────────────────────────────┘
-         │
-         ▼ (when signed in)
-┌─────────────────────────────────────────────────────────────┐
-│                    Cloud Sync (Supabase)                     │
-└─────────────────────────────────────────────────────────────┘
-```
-
-## Component Hierarchy
-
-```
-App
-├── Providers (Clerk, PostHog, QueryClient)
-│   └── Header
-│       ├── Logo
-│       ├── SearchButton
-│       ├── DateFilter        ← extracted component
-│       │   └── MobileDatePickerModal
-│       ├── CinemaFilter
-│       │   └── MobileCinemaPickerModal
-│       └── UserMenu
-│
-├── CalendarGrid
-│   ├── FilmCard
-│   │   └── FilmStatusOverlay  ← shared component
-│   └── ScreeningCard
-│       └── FilmStatusOverlay  ← shared component
-│
-└── SearchDialog
-    └── SearchResults
-```
 
 ## Title Extraction
 
@@ -219,9 +156,7 @@ Shared patterns include:
 
 ## Authentication
 
-- **Clerk** handles user auth
-- Anonymous users: localStorage-only
-- Signed-in users: localStorage + cloud sync
+- **Clerk** handles admin sign-in on this app; pictures.london has no accounts
 - Auth helpers in `src/lib/auth.ts`:
   - `getCurrentUserId()` - returns null if not signed in
   - `requireAuth()` - throws if not signed in
@@ -234,7 +169,7 @@ PostHog integration tracks:
 - Search queries
 - Page views
 
-Events are triggered in Zustand store actions, not UI components.
+The client integration lives in `frontend/src/lib/analytics/posthog.ts`.
 
 ## Deployment
 
@@ -245,7 +180,5 @@ Events are triggered in Zustand store actions, not UI components.
 
 ## Performance Considerations
 
-- **SSR with hydration**: Use `useHydrated()` hook for localStorage-dependent UI
-- **React Query**: Caches API responses, avoids redundant fetches
+- **SSR with hydration**: Use `useHydrated()` hook for localStorage-dependent admin UI
 - **Pagination**: Screenings API supports cursor-based pagination
-- **Selective store subscriptions**: Use selectors in Zustand to minimize re-renders

@@ -1,6 +1,6 @@
 import { pgTable, text, timestamp, jsonb } from "drizzle-orm/pg-core";
 import { users } from "./users";
-import type { ProgrammingType, TimeOfDay } from "@/stores/filters";
+import type { ProgrammingType, TimeOfDay } from "@/lib/filter-constants";
 
 /**
  * Types matching the Zustand stores for JSON storage
