@@ -188,11 +188,24 @@ export class IbraazScraper extends BaseScraper {
       console.log(`[${this.config.cinemaId}] Skipping ${c.slug} (tags: ${c.tags.join(", ")})`);
     }
 
-    // A failed event page fails the whole scrape so the runner retries the
-    // venue; skipping it would quietly drop that film from the batch.
+    // One failed event page is skipped so it cannot cost the rest of the
+    // programme. When most fail, the site is down or blocking us, and a
+    // short run that looks clean would hide it, so fail the scrape instead.
     const pages: string[] = [];
+    const failed: string[] = [];
     for (const { slug } of selected) {
-      pages.push(await this.fetchUrl(encodeURI(`${LISTING_URL}/${slug}`)));
+      const url = encodeURI(`${LISTING_URL}/${slug}`);
+      try {
+        pages.push(await this.fetchUrl(url));
+      } catch (err) {
+        failed.push(url);
+        console.warn(`[${this.config.cinemaId}] Skipping ${url}: ${(err as Error).message}`);
+      }
+    }
+    if (failed.length * 2 > selected.length) {
+      throw new Error(
+        `${failed.length} of ${selected.length} event pages failed to fetch: ${failed.join(", ")}`,
+      );
     }
     return pages;
   }

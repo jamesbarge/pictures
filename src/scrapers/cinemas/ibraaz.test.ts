@@ -304,12 +304,42 @@ describe("IbraazScraper.fetchPages", () => {
     await expect(internals.fetchPages()).rejects.toThrow(/no event cards/);
   });
 
-  it("fails the scrape when an event page fails, so the runner retries the venue", async () => {
-    const { internals } = stubbed(async (url) => {
-      if (url.endsWith("/milisuthando")) throw new Error("HTTP 500: Internal Server Error");
-      return url === "https://ibraaz.org/whats-on" ? LISTING_FIXTURE : detailPage();
+  /** Listing fixture with the given event-page slugs failing. */
+  function failing(...slugs: string[]) {
+    return stubbed(async (url) => {
+      if (url === "https://ibraaz.org/whats-on") return LISTING_FIXTURE;
+      if (slugs.some((slug) => url.endsWith(`/${slug}`))) {
+        throw new Error("HTTP 500: Internal Server Error");
+      }
+      return detailPage();
     });
-    await expect(internals.fetchPages()).rejects.toThrow(/HTTP 500/);
+  }
+
+  it("skips a single failed event page and keeps the rest", async () => {
+    const { internals } = failing("milisuthando");
+    await expect(internals.fetchPages()).resolves.toHaveLength(3);
+  });
+
+  it("keeps going when exactly half the event pages fail", async () => {
+    const { internals } = failing("milisuthando", "yugantar");
+    await expect(internals.fetchPages()).resolves.toHaveLength(2);
+  });
+
+  it("fails the scrape when most event pages fail", async () => {
+    const { internals } = failing("foragers", "milisuthando", "yugantar");
+    await expect(internals.fetchPages()).rejects.toThrow(/3 of 4 event pages failed/);
+  });
+
+  it("fails the scrape when no event page could be fetched", async () => {
+    const { internals } = failing("foragers", "milisuthando", "yugantar", "%C3%A7a-twiste-%C3%A0-popenguine");
+    await expect(internals.fetchPages()).rejects.toThrow(/4 of 4 event pages failed/);
+  });
+
+  it("returns no pages without failing when nothing on the listing is a screening", async () => {
+    const listing = `<html><body>${card("taring-padi", ["Exhibition"], "Rakyat Pasti Menang")}</body></html>`;
+    const { internals, spy } = stubbed(async () => listing);
+    await expect(internals.fetchPages()).resolves.toEqual([]);
+    expect(spy).toHaveBeenCalledTimes(1);
   });
 });
 

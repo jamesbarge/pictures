@@ -705,8 +705,12 @@ Use this format when recording cinema-specific quirks:
   archived "A Summer in La Goulette" (3pm BST) is `14:00:00+00:00`, the true instant. Ticket Tailor
   shows 3:00 PM for Foragers and MILISUTHANDO, matching the human string.
 - Failure policy: zero `article.card` on the listing throws (exhibitions are always listed, so
-  zero means the markup changed), and a failed event page fails the scrape so the runner retries
-  the venue.
+  zero means the markup changed). A single failed event page is skipped with a warning; when more
+  than half of the selected pages fail (including all of them), the scrape throws so the runner
+  retries the venue and the run is visibly failed rather than short.
+- sourceId `ibraaz-{slug}-{ISO}` embeds the start instant, so if Ibraaz moves a session's time the
+  new time gets a new row and the old row stays listed until its time passes (superseded cleanup
+  is report-only). Fix by hand if a moved session matters before then.
 - Booking: Ticket Tailor widget URL (`/events/ibraaz/<id>/select-date?ref=website_widget`, returned
   200 with a Chrome UA on 2026-10-04). Archived pages drop the widget, so the event page is the
   fallback. Times are text-sourced (`timeSource` unset); all seen starts are 13:00-18:30.
