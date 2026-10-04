@@ -63,7 +63,7 @@ export function sanitizeDirectors(directors: unknown, context?: string): string[
     // Preserve the salvageable directors. The patrol's SQL rejected the whole
     // row because it couldn't isolate good entries; we can. Returning the
     // valid slice lets the user see correct credits immediately while the
-    // empty/missing case still triggers enrichment via daily-sweep.
+    // empty/missing case stays eligible for TMDB backfill.
   }
   return out;
 }
