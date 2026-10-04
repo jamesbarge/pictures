@@ -625,18 +625,31 @@ Use this format when recording cinema-specific quirks:
 
 ### ICA
 - Scraper: `src/scrapers/cinemas/ica.ts`
-- Source URL pattern: listing `https://www.ica.art/films` → per-film detail pages `/films/{slug}` (capped at 50 per run, 3s delay between fetches).
-- Approach: Cheerio over each film detail page.
+- Discovery (rewritten 2026-10-04, see below for why). Three sources, deduplicated by the URL's final path segment:
+  1. `https://www.ica.art/films`: every `.item > a` tile, whatever its type. ICA files some film screenings under Live or Exhibitions and still tiles them on /films (`/live/tg50-heathen-earth`, `/exhibitions/artists-film-picks-*`).
+  2. `https://www.ica.art/upcoming`: the site's own day-by-day calendar ("Everything"), ~30 days ahead. `.item.films > a` only; the same page also lists talks, live music and exhibitions. Best-effort: a failure warns and the run continues from /films and its hubs (on 2026-10-04 it contributed one page nothing else linked, `lff-minotaur`). A /films failure throws.
+  3. One level of hub expansion. A depth-0 page with no `.performance-list .performance` is a season/festival hub (`/films/imamura`, `/films/bfi-london-film-festival-2026`, `/films/london-palestine-film-festival-2026`, ...). Its children are the `a[href]` inside `#detail-body`/`#detail-side`, **skipping anything inside `<details>`** (that is where hubs keep their archive: Off-Circuit's ~50 past releases, Long Takes' past seasons). Children that are themselves hubs are not expanded.
+- Child URL forms seen: `https://www.ica.art/imamura-stolen-desire` (top-level slug), `/films/bfi-london-film-festival-2026/lff-lali` (nested), `https://ica.art/off-circuit-mirage` (no `www`). All canonicalise to `https://www.ica.art{path}`. Links to `/book/`, `/open-records-generator/` (a CMS edit link that leaks onto the LFF hub), `/static/`, `/media/`, calendar day paths (`/2026-10-28`) and scheme-less externals (`www.docnrollfestival.com`) are dropped.
+- Rate: `fetchUrl` waits `delayBetweenRequests` (60000 / `REQUESTS_PER_MINUTE` = 1000ms) before every request; there is no second per-page delay any more (the old code waited 3s twice per page). Measured cost is ~1.77s per fetch.
+- Budgets: discovery stops queuing fetches at `MAX_PAGE_FETCHES = 170` or `DISCOVERY_TIME_BUDGET_MS = 300000`, whichever comes first, and logs every queued URL it skipped. The 10-minute venue wall-clock cap covers the pipeline too, and ICA hit it on 2026-09-02. Hub children are queued in the order their hubs appear among the /films tiles, so a budget stop drops the children of the last hubs. 2026-10-04 live run: 147 fetches, 133 event pages, 11 hubs, ~263s, 198 screenings (was 43 fetches, 85 screenings, ~318s), which leaves about 15% headroom on each budget.
+- `FestivalDetector.preload()` runs in `initialize()`, before any fetch, so a database blip fails the run before the crawl starts.
+- Approach: Cheerio over each event page. Hub pages are discovery-only and never reach `parsePages`.
+- Screens: only performances whose `.venue` starts with "Cinema" are kept (ICA screens are Cinema 1 and Cinema 2). Talks and gigs use the same `.performance-list .performance` markup with venue "Stage" (`/talks/my-tragedy`, `/live/gilla-band`), and top-level slugs carry no section to filter on. A page whose performances are all skipped logs `skipped performances outside a cinema (...)`.
 - Key selectors:
-  - `span.title` — film title (nested `.tag/.badge/.label/.flag` removed first to avoid concatenation)
+  - `span.title`: film title (nested `.tag/.badge/.label/.flag` removed first, and `br` replaced with a space, to avoid concatenation; live pages use a malformed `</br>` between a strapline and the title)
   - `#colophon` — metadata line, format `"<i>Title</i>, dir Director Name, Country Year, Runtime mins."`
   - `.performance-list .performance` with `.time` (`"04:15 pm"`), `.date` (`"Fri, 19 Dec 2025"`), `.venue`
-- Metadata from `#colophon`: director (`dir X`), year (4-digit), runtime (`"(\d+)\s*mins?"` — forwarded as `RawScreening.runtime` via `sanitizeRuntime()`, plan 006), country.
-- sourceId format: `ica-{slugified title}-{ISO datetime}`.
+  - Booking: the "Book tickets" button's `onclick='location.href="/book/{eventId}"'`. `{eventId}` is the numeric prefix of the Spektrix event id (event `765601ACLV…` ↔ `/book/765601`). BFI London Film Festival pages point the button at `https://whatson.bfi.org.uk/lff/Online/article/…` instead, sometimes with a leading space inside the quotes (`/films/lff-florid`, `/films/lff-cadences-of-resistance`); that URL is used when no `/book/` link exists (before 2026-10-04 they fell back to `og:url`, which is the ICA homepage).
+- Metadata from `#colophon`: director (`dir X`), year (4-digit), runtime (`"(\d+)\s*mins?"` — forwarded as `RawScreening.runtime` via `sanitizeRuntime()`, plan 006), country. This is why ICA stays an HTML scraper: the Spektrix API below carries no director or year, and ICA's repertory titles are ambiguous without them (Imamura's *Black Rain* and Ridley Scott's are both 1989).
+- sourceId format: `ica-{slugified title}-{ISO datetime}`. A title change on ica.art therefore mints a new sourceId; the old row is left behind and is reported (never deleted) by the superseded-candidate check.
+- Spektrix (ticketing) public API, used for verification only: `https://system.spektrix.com/ica/api/v3/events` (filter `attribute_Category == "Films"`) and `/instances?startFrom=YYYY-MM-DD` (`startUtc` has no trailing `Z`). On 2026-10-04 the scraper's 198 rows all matched a Spektrix film instance to the minute, and 25 of 224 future Spektrix film instances had no linked page on ica.art (Pereda season, LKFF 26, Pushkin House, two Independent screenings, "LFF: Best of Fest"). `/films/london-korean-film-festival-2026` exists but nothing links to it. Those are reachable only through the API.
 - Known pitfalls:
+  - **The pre-2026-10-04 scraper read only `.item.films` tiles under `/films/` and never followed hub links.** Season and festival programmes (LFF, London Latino FF, Imamura, The Independent, Doc'n'Roll, NFTS Collective Visions, LPFF) were invisible to it: 85 of ~200 screenings. L-CUT parity showed 18 missing, and 46 more were masked by `lcut-` rows a gap-fill run inserted on 2026-09-20.
   - Excluded listing URLs (year archives, `/films/today`, etc.) are filtered in `isExcludedUrl` — keep in sync if ICA adds new non-film listing pages.
-  - One detail-page fetch per film: a full run costs ~50 requests; don't loop live runs.
-- Last verified (2026-06-12): live run — 19/21 films emitted runtime (two had no runtime in colophon), all within 1–600.
+  - A season reachable only through another hub (e.g. a future Long Takes season with no /films tile) is not expanded; its dates still arrive through `/upcoming` once they are within ~30 days.
+  - A full run costs ~150 requests; don't loop live runs.
+  - Failed page fetches are logged one by one and summarised in one warning per run (`N page fetch(es) failed (...); this run's programme is incomplete`). A failed seed may have been a hub, which hides all its children. **Do not run `reconcile-phantom-screenings` for ICA after a run with that warning or a `Discovery stopped at the ... budget` warning**: rows on the pages it missed look like phantoms and would be deleted.
+- Last verified (2026-10-04): live run without persistence, 198 screenings, 0 before 10:00, 188 with year+director, all 36 LFF screenings on BFI booking links; L-CUT 144/147 by the parity matcher (the 3 misses are the same screenings under different titles: "Prison (Excerpt)", "I.K.U", "Throbbing Gristle: Recording Heathen Earth").
 
 ### Garden Cinema (Covent Garden)
 - Scraper: `src/scrapers/cinemas/garden.ts`

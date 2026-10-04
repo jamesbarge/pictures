@@ -1,3 +1,15 @@
+## 2026-10-04: ICA scraper follows season and festival hubs
+**PR**: #780 | **Files**: `src/scrapers/cinemas/ica.ts`, `src/scrapers/cinemas/ica.test.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`, `changelogs/2026-10-04-ica-hub-discovery.md`
+- The ICA scraper finds pages from every /films tile, the /upcoming calendar and the child pages of season and festival hubs (LFF, Imamura, London Latino FF, The Independent, Doc'n'Roll and others). A live run without persistence found 198 screenings where the old scraper found 85, each matching ICA's Spektrix ticketing to the minute.
+- L-CUT coverage from the scraper's own rows rises from 81 to 144 of 147 listings. The 3 left are the same screenings under different titles.
+- Discovery stops at 170 pages or 300s so the venue stays inside its 10-minute cap, and only Cinema 1 and Cinema 2 performances count (talks and gigs on the Stage share the markup).
+- LFF screenings link to their BFI ticket pages (they used to point at the ICA homepage), and a title split by a line break reads "UK PREMIERE The Night is Fading Away" where it used to read "UK PREMIEREThe Night is Fading Away".
+
+---
+
+
+---
+
 ## 2026-10-04: David Lean reads its TicketSolve XML feed
 **PR**: #779 | **Files**: `src/scrapers/cinemas/david-lean.ts`, `src/scrapers/cinemas/david-lean.test.ts`, `src/scrapers/cinemas/bst-regression.test.ts`, `src/scrapers/utils/screening-classification.ts`, `src/scrapers/utils/screening-classification.test.ts` (new), `src/scrapers/SCRAPING_PLAYBOOK.md`
 - The scraper reads `https://davidleancinema.ticketsolve.com/shows.xml` with a plain fetch, replacing a Playwright homepage scrape. Dry parse 2026-10-04: 30 -> 58 screenings, last date 31 Oct -> 28 Nov, and Animal Shorts at its real 12:00 start (the homepage gave the 10:30 doors time).
