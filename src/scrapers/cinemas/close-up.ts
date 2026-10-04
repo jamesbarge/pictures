@@ -58,12 +58,28 @@ function to24Hour(hour: number, ampm: string): number {
 interface CloseUpShow {
   id: string;
   fp_id: string;
-  title: string;
+  title: string | null;
   blink: string; // Booking URL (TicketSource)
   show_time: string; // Format: "YYYY-MM-DD HH:MM:SS"
   status: string;
   booking_availability: string;
   film_url: string;
+}
+
+/** One /film_programmes/ heading's screening dates, inclusive, as London-day UTC midnights. */
+interface ProgrammeSpan {
+  start: Date;
+  end: Date;
+}
+
+/** What the homepage's embedded JSON already settles, per London day (UTC-midnight ms). */
+interface JsonCoverage {
+  /** Last London day the JSON reaches, never earlier than today. */
+  through: Date;
+  /** Days with at least one show the JSON can name (its own title or the homepage list). */
+  namedDays: Set<number>;
+  /** Days with a future show the JSON lists as `"title": null` and the homepage cannot name. */
+  unnamedDays: Set<number>;
 }
 
 export class CloseUpCinemaScraper extends BaseScraper {
@@ -79,7 +95,9 @@ export class CloseUpCinemaScraper extends BaseScraper {
    * search pages failed mid-run, then returned 200 minutes later with the
    * same headers). Each page gets retries with backoff; only near-term days
    * are load-bearing. A far-future failure shortens the horizon, which the
-   * next run recovers; a near-term failure would persist a hole.
+   * next run recovers; a near-term failure would persist a hole. Counted in
+   * calendar days from the JSON's last day, where search-only coverage
+   * begins, so a sparse day list keeps the same cut-off a contiguous walk had.
    */
   private static readonly REQUIRED_DAYS = 14;
 
@@ -101,16 +119,20 @@ export class CloseUpCinemaScraper extends BaseScraper {
   private static readonly FALLBACK_HORIZON_DAYS = 42;
 
   /**
-   * Consecutive listing-free days that end the sweep early.
+   * Consecutive listing-free days that end the FALLBACK sweep early.
+   *
+   * Applied only when the programme index is unreadable, where it stops
+   * FALLBACK_HORIZON_DAYS overshooting a short programme. With the index in
+   * hand the sweep is an explicit list of days and a dark run is expected:
+   * measured 2026-10-04, a one-off event on 17 November sat 17 days after the
+   * main programme ended, and this streak stopped the sweep at 5 November.
    *
    * Set well above the real gap pattern on purpose. Close-Up goes dark on
    * scattered single days — 6, 15, 23 and 29 October 2026 all returned zero
    * listings inside a programme that runs to 31 October — and the longest
    * consecutive run measured was ONE day. Stopping on the first empty day
    * would have truncated at 6 October and lost 34 of 59 screenings, so this
-   * must never be lowered towards 1. With the published horizon in hand it
-   * should never fire at all; it earns its keep only when the programme index
-   * is unreadable and FALLBACK_HORIZON_DAYS overshoots a short programme.
+   * must never be lowered towards 1.
    */
   private static readonly MAX_EMPTY_DAY_STREAK = 5;
 
@@ -204,43 +226,87 @@ export class CloseUpCinemaScraper extends BaseScraper {
   }
 
   /**
-   * Last London calendar day the homepage's embedded JSON already covers.
+   * What the homepage's embedded JSON already settles.
    *
    * The array is ordered and complete up to its final entry — verified
    * 2026-09-20, where its four 27 September shows are exactly the four the
-   * 27 September search page lists — so every day before the last needs no
-   * request at all. The last day itself IS swept, because a truncated array
-   * could cut a day in half.
+   * 27 September search page lists — so a day the JSON covers needs no
+   * request, with two exceptions the planner handles: its last day (a
+   * truncated array could cut it in half) and any day carrying a show it
+   * cannot name. The booking system does emit `"title": null` (2026-10-04:
+   * Vicky Smith – Animated Matter, 22 October), and the homepage's h2 list
+   * that names such shows only runs about a week ahead, so for later dates
+   * only that day's search page has the title.
    */
-  private jsonCoverageThrough(homepage: string, today: Date): Date {
-    const shows = this.extractShowsJson(homepage);
-    if (!shows || shows.length === 0) return today;
+  private jsonCoverage(homepage: string, today: Date, now: Date): JsonCoverage {
+    const namedDays = new Set<number>();
+    const unnamedDays = new Set<number>();
+    let throughMs = today.getTime();
 
-    let latestMs = today.getTime();
+    const shows = this.extractShowsJson(homepage) ?? [];
+    const homepageTitles = this.extractHomepageTitles(homepage);
     for (const show of shows) {
       if (show.status !== "1" || !show.show_time) continue;
       const dt = this.parseDateTime(show.show_time);
       if (!dt || isNaN(dt.getTime())) continue;
       const dayMs = CloseUpCinemaScraper.londonDay(dt).getTime();
-      if (dayMs > latestMs) latestMs = dayMs;
+      if (dayMs > throughMs) throughMs = dayMs;
+
+      // The same title resolution extractFromJson applies.
+      const title = (show.title ?? homepageTitles.get(dt.toISOString()) ?? "").trim();
+      if (title) namedDays.add(dayMs);
+      else if (dt >= now) unnamedDays.add(dayMs);
     }
-    return new Date(latestMs);
+
+    return { through: new Date(throughMs), namedDays, unnamedDays };
   }
 
   /**
-   * Last day the venue has published, read from the /film_programmes/ index.
+   * Read one programme heading's date span.
    *
-   * Every programme heading ends with its FINAL screening date, optionally
-   * preceded by a start day: "3 - 31 October 2026: Winter Sleep",
-   * "26 September 2026: Against all Odds: Albuquerque". The maximum across the
-   * index is therefore the real horizon, and one request buys it. Measured
-   * 2026-09-21: 26 programmes, latest 31 October, i.e. +40 days — so the old
-   * loop's last four probes (+49 to +70) could never have returned anything.
-   *
-   * Returns null when the index is unreadable, so the caller falls back to a
-   * fixed horizon rather than silently sweeping nothing.
+   * Every heading ENDS with the programme's final screening date and may
+   * start with its first: "22 October 2026: Vicky Smith – Animated Matter",
+   * "3 - 31 October 2026: Winter Sleep", "28 September - 3 October 2026: …".
+   * A start that omits its month or year borrows the end's, stepping the year
+   * back for a December-to-January span. A prefix in any other shape, or a
+   * start that lands after the end ("28 - 5 November 2026"), is read as
+   * already running, which can only add days to the sweep.
    */
-  private async fetchPublishedHorizon(today: Date): Promise<Date | null> {
+  private static parseProgrammeSpan(text: string, today: Date): ProgrammeSpan | null {
+    const endMatch = text.match(/(\d{1,2})\s+([a-z]+)\s+(\d{4})\s*:/i);
+    if (!endMatch || endMatch.index === undefined) return null;
+    const endMonth = MONTH_NAMES[endMatch[2].toLowerCase()];
+    if (endMonth === undefined) return null;
+    const endYear = parseInt(endMatch[3], 10);
+    const end = new Date(Date.UTC(endYear, endMonth, parseInt(endMatch[1], 10)));
+
+    const prefix = text.slice(0, endMatch.index).trim();
+    if (!prefix) return { start: end, end };
+
+    const startMatch = prefix.match(/^(\d{1,2})(?:\s+([a-z]+))?(?:\s+(\d{4}))?\s*[-–]$/i);
+    const startMonth = startMatch?.[2] ? MONTH_NAMES[startMatch[2].toLowerCase()] : endMonth;
+    if (!startMatch || startMonth === undefined) return { start: today, end };
+    const startYear = startMatch[3]
+      ? parseInt(startMatch[3], 10)
+      : startMonth > endMonth
+        ? endYear - 1
+        : endYear;
+    const start = new Date(Date.UTC(startYear, startMonth, parseInt(startMatch[1], 10)));
+    return start.getTime() > end.getTime() ? { start: today, end } : { start, end };
+  }
+
+  /**
+   * The current programmes, read from the /film_programmes/ index.
+   *
+   * One request buys every programme's date span, which is what lets the
+   * sweep fetch a handful of days instead of walking the calendar. Measured
+   * 2026-10-04: 16 programmes, a main season ending 31 October and a one-off
+   * on 17 November.
+   *
+   * Returns null when the index is unreadable or lists nothing current, so
+   * the caller falls back to a fixed horizon and still sweeps.
+   */
+  private async fetchProgrammeSpans(today: Date): Promise<ProgrammeSpan[] | null> {
     const url = `${this.config.baseUrl}/film_programmes/`;
     let html: string;
     try {
@@ -258,23 +324,78 @@ export class CloseUpCinemaScraper extends BaseScraper {
     }
 
     const $ = cheerio.load(html);
-    let horizonMs = 0;
+    const spans: ProgrammeSpan[] = [];
+    const unreadable: string[] = [];
 
     $(".inner_block_3 h2 a").each((_, el) => {
-      const match = $(el).text().trim().match(/(\d{1,2})\s+(\w+)\s+(\d{4})\s*:/);
-      if (!match) return;
-
-      const monthNum = MONTH_NAMES[match[2].toLowerCase()];
-      if (monthNum === undefined) return;
-
-      const dayMs = Date.UTC(parseInt(match[3], 10), monthNum, parseInt(match[1], 10));
-      // A programme that has finished can still be listed; it cannot extend
-      // the horizon.
-      if (dayMs < today.getTime()) return;
-      if (dayMs > horizonMs) horizonMs = dayMs;
+      const text = $(el).text().trim();
+      const span = CloseUpCinemaScraper.parseProgrammeSpan(text, today);
+      if (!span) {
+        unreadable.push(text);
+        return;
+      }
+      // A programme that has finished can still be listed; it adds no days.
+      if (span.end.getTime() < today.getTime()) return;
+      spans.push(span);
     });
 
-    return horizonMs > 0 ? new Date(horizonMs) : null;
+    if (unreadable.length > 0) {
+      // Each one is a programme whose days the sweep cannot plan for.
+      console.warn(
+        `[${this.config.cinemaId}] ${unreadable.length} programme heading(s) carry no readable ` +
+          `date and add no sweep days: ${unreadable.map((t) => JSON.stringify(t)).join(", ")}`,
+      );
+    }
+
+    return spans.length > 0 ? spans : null;
+  }
+
+  /**
+   * London days the search sweep must fetch, ascending.
+   *
+   * With the programme index in hand, a day is fetched only when a programme
+   * screens on it and the homepage JSON cannot account for it:
+   *   - a RANGE programme: every day from the JSON's last day (or the range's
+   *     first, if later) to the range's end. A range screens on some of its
+   *     days and not others, and only a search page says which.
+   *   - a ONE-DAY programme (a one-off event): its day, unless the JSON
+   *     already names a show on it before its own last day.
+   *   - any day carrying a show the JSON lists but cannot name.
+   * Measured 2026-10-04 that is 3 requests (22 Oct, 31 Oct, 17 Nov). The
+   * contiguous walk planned 18 (31 Oct to 17 Nov), fetched 6 before the
+   * empty-day streak stopped it, and reached neither 22 Oct nor 17 Nov.
+   *
+   * Without the index (`spans` null) there is no horizon to plan against, so
+   * it walks every day from the JSON's last day to FALLBACK_HORIZON_DAYS and
+   * the caller applies MAX_EMPTY_DAY_STREAK.
+   */
+  private static planSweepDays(
+    spans: ProgrammeSpan[] | null,
+    json: JsonCoverage,
+    today: Date,
+  ): Date[] {
+    const { DAY_MS, FALLBACK_HORIZON_DAYS } = CloseUpCinemaScraper;
+    const days = new Set<number>(json.unnamedDays);
+    const throughMs = json.through.getTime();
+    const addDays = (fromMs: number, toMs: number) => {
+      // UTC midnights: adding whole days never drifts across a BST boundary.
+      for (let ms = fromMs; ms <= toMs; ms += DAY_MS) days.add(ms);
+    };
+
+    if (spans === null) {
+      addDays(throughMs, today.getTime() + FALLBACK_HORIZON_DAYS * DAY_MS);
+    } else {
+      for (const { start, end } of spans) {
+        const endMs = end.getTime();
+        if (start.getTime() === endMs) {
+          if (!json.namedDays.has(endMs) || endMs === throughMs) days.add(endMs);
+        } else {
+          addDays(Math.max(start.getTime(), throughMs), endMs);
+        }
+      }
+    }
+
+    return [...days].sort((a, b) => a - b).map((ms) => new Date(ms));
   }
 
   protected async fetchPages(): Promise<string[]> {
@@ -309,37 +430,37 @@ export class CloseUpCinemaScraper extends BaseScraper {
     // Sweep the date search endpoint ONE DAY at a time, because that is what it
     // returns. Format: /search_film_programmes/?date=DD-MM-YYYY
     //
-    // The request count is bounded three ways rather than by a fixed loop
-    // count: the sweep starts where the homepage JSON's coverage ends, it stops
-    // at the horizon the programme index advertises, and MAX_SEARCH_REQUESTS
-    // caps it whatever those two say.
+    // The days come from planSweepDays: the programme index says which days
+    // anything screens on, and the homepage JSON rules out the ones it already
+    // covers. MAX_SEARCH_REQUESTS caps the list whatever those two say.
     const iso = (d: Date) => d.toISOString().slice(0, 10);
-    const today = CloseUpCinemaScraper.londonDay(new Date());
-    const sweepFrom = this.jsonCoverageThrough(homepage, today);
-    const publishedHorizon = await this.fetchPublishedHorizon(today);
+    const now = new Date();
+    const today = CloseUpCinemaScraper.londonDay(now);
+    const json = this.jsonCoverage(homepage, today, now);
+    const spans = await this.fetchProgrammeSpans(today);
 
     // The index request doubles as a probe: if it was challenged, the sweep
-    // would be 45 doomed requests into a live block. Keep the homepage.
+    // would be doomed requests into a live block. Keep the homepage.
     if (this.challengeSeen) {
       console.warn(
         `[${this.config.cinemaId}] Cloudflare challenge hit the programme index. Keeping the ` +
-          `homepage only (its JSON covers through ${iso(sweepFrom)}); skipping the day sweep.`,
+          `homepage only (its JSON covers through ${iso(json.through)}); skipping the day sweep.`,
       );
       return pages;
     }
 
-    const horizon =
-      publishedHorizon ??
-      new Date(today.getTime() + CloseUpCinemaScraper.FALLBACK_HORIZON_DAYS * CloseUpCinemaScraper.DAY_MS);
-
-    const span =
-      Math.floor((horizon.getTime() - sweepFrom.getTime()) / CloseUpCinemaScraper.DAY_MS) + 1;
-    const daysToFetch = Math.max(0, Math.min(span, CloseUpCinemaScraper.MAX_SEARCH_REQUESTS));
+    const plan = CloseUpCinemaScraper.planSweepDays(spans, json, today);
+    const daysToFetch = Math.min(plan.length, CloseUpCinemaScraper.MAX_SEARCH_REQUESTS);
+    const horizon = spans
+      ? `published horizon ${iso(new Date(Math.max(...spans.map((p) => p.end.getTime()))))}`
+      : `programme index unreadable, fallback horizon ${iso(plan[plan.length - 1] ?? today)}`;
 
     console.log(
-      `[${this.config.cinemaId}] JSON covers through ${iso(sweepFrom)}; ` +
-        `${publishedHorizon ? "published" : "fallback"} horizon ${iso(horizon)}; ` +
-        `sweeping ${daysToFetch} day(s)${span > daysToFetch ? ` (capped from ${span})` : ""}`,
+      `[${this.config.cinemaId}] JSON covers through ${iso(json.through)} ` +
+        `(${json.unnamedDays.size} day(s) with an unnamed show); ${horizon}; ` +
+        `sweeping ${daysToFetch} day(s)` +
+        `${plan.length > daysToFetch ? ` (capped from ${plan.length})` : ""}: ` +
+        plan.slice(0, daysToFetch).map(iso).join(", "),
     );
 
     let emptyStreak = 0;
@@ -357,10 +478,10 @@ export class CloseUpCinemaScraper extends BaseScraper {
         break;
       }
 
-      const targetDate = new Date(sweepFrom.getTime() + i * CloseUpCinemaScraper.DAY_MS);
+      const targetDate = plan[i];
 
-      // Read back in UTC: the anchor is a UTC midnight stamped with a London
-      // calendar day, so adding whole days never drifts across a BST boundary.
+      // Read back in UTC: each day is a UTC midnight stamped with a London
+      // calendar day.
       const day = targetDate.getUTCDate().toString().padStart(2, "0");
       const month = (targetDate.getUTCMonth() + 1).toString().padStart(2, "0");
       const year = targetDate.getUTCFullYear();
@@ -373,9 +494,10 @@ export class CloseUpCinemaScraper extends BaseScraper {
         pages.push(html);
 
         // A day with no timed listing is empty; the same shape the search-page
-        // extractor matches. Only a long RUN of them ends the sweep.
+        // extractor matches. Only a long RUN of them ends the sweep, and only
+        // the fallback walk, which has no published horizon to stop at.
         emptyStreak = /\d{1,2}:\d{2}\s*(?:am|pm)\s*:/i.test(html) ? 0 : emptyStreak + 1;
-        if (emptyStreak >= CloseUpCinemaScraper.MAX_EMPTY_DAY_STREAK) {
+        if (spans === null && emptyStreak >= CloseUpCinemaScraper.MAX_EMPTY_DAY_STREAK) {
           console.log(
             `[${this.config.cinemaId}] ${emptyStreak} consecutive listing-free days ending ` +
               `${iso(targetDate)} — programme looks finished, stopping ` +
@@ -389,7 +511,7 @@ export class CloseUpCinemaScraper extends BaseScraper {
         // A challenge part-way through the sweep STOPS it and keeps what we
         // have. Three reasons it must not throw:
         //   1. Near-term coverage is already secured. The homepage JSON is
-        //      request #1 and it covers every day up to `sweepFrom`, so any
+        //      request #1 and it covers every day up to `json.through`, so any
         //      completed portion of the sweep is a strict gain over nothing.
         //   2. Nothing downstream deletes on a partial batch.
         //      `reportSupersededScreeningCandidates` is a `SELECT COUNT(*)`
@@ -411,7 +533,14 @@ export class CloseUpCinemaScraper extends BaseScraper {
           break;
         }
         console.warn(`[${this.config.cinemaId}] Failed to fetch ${dateUrl}:`, error);
-        if (i < CloseUpCinemaScraper.REQUIRED_DAYS) {
+        // Required: the first REQUIRED_DAYS of search-only coverage, which
+        // starts at the JSON's last day. A day before that was fetched only to
+        // name a show the JSON already lists, so losing it costs one title,
+        // and throwing would discard the JSON and every other page with it.
+        const t = targetDate.getTime();
+        const throughMs = json.through.getTime();
+        const requiredUntil = throughMs + CloseUpCinemaScraper.REQUIRED_DAYS * CloseUpCinemaScraper.DAY_MS;
+        if (t >= throughMs && t < requiredUntil) {
           requiredFailures.push(dateUrl);
         } else {
           optionalFailures.push(dateUrl);
@@ -425,7 +554,7 @@ export class CloseUpCinemaScraper extends BaseScraper {
     if (requiredFailures.length > 0) {
       throw new Error(
         `Failed to fetch ${requiredFailures.length} near-term Close-Up search pages ` +
-          `(first ${CloseUpCinemaScraper.REQUIRED_DAYS} days of the sweep from ${iso(sweepFrom)})`,
+          `(within ${CloseUpCinemaScraper.REQUIRED_DAYS} days of the JSON's last day, ${iso(json.through)})`,
       );
     }
     if (optionalFailures.length > 0) {
