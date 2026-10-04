@@ -1,3 +1,11 @@
+## 2026-10-04: Ibraaz first-party scraper
+**PR**: #782 | **Files**: `src/scrapers/cinemas/ibraaz.ts` (new), `src/scrapers/cinemas/ibraaz.test.ts` (new), `src/scrapers/registry.ts`, `src/scrapers/task-registry.ts`, `src/config/cinema-registry.ts`, `scripts/lcut-gapfill.test.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`
+- Ibraaz (Fitzrovia) moves from L-CUT source-only, where it had 0 rows ever, to a Cheerio scraper in the Cheerio wave. It keeps events tagged Film (alone, or with Library-in-Residence or Talk) and skips performance lectures, workshops and music days.
+- Times come from the event page's yearless "Date and Time" line through the shared date parser, so 3pm reads as 14:00 UTC on 18 Oct and 15:00 UTC on 25 Oct. The site's `+00:00` timestamps are ignored because editors fill them inconsistently.
+- Live dry parse: Foragers (18 Oct), MILISUTHANDO (25 Oct) and Yugantar (15 Nov), each with its Ticket Tailor booking link.
+
+---
+
 ## 2026-10-03: Mobile masthead loses its empty band
 **PR**: #767 | **Files**: `frontend/src/lib/components/layout/Header.svelte`
 - Below 768px the masthead drops a 180px minimum height that exists to seat the desktop nav and house-lights dial, both hidden on phones. Phones get 40px back on every page (205px to 165px), and the wordmark keeps its size.
