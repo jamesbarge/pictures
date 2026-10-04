@@ -1,0 +1,102 @@
+# Dependabot version updates for npm and GitHub Actions.
+# Options reference:
+# https://docs.github.com/en/code-security/dependabot/working-with-dependabot/dependabot-options-reference
+#
+# The backend (/) and frontend (/frontend) are separate entries on purpose. They
+# deploy separately (api.pictures.london and pictures.london), so one breaking
+# frontend bump should never hold a week of backend bumps hostage.
+#
+# Security updates come from the repo's "Dependabot security updates" setting.
+# They open as soon as an advisory lands and skip the schedule and cooldown,
+# but they still honour `ignore`, `commit-message` and any group marked
+# `applies-to: security-updates`. Check open alerts before adding an ignore:
+# ignoring maplibre-gl majors, say, would also block 6.4.1, the only fix for
+# its critical XSS.
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: Europe/London
+    # Wait a week before proposing a new release. Hijacked npm releases are
+    # usually caught and pulled within days. This gates the bumped package
+    # only: its transitive deps still resolve to the newest in range, and a
+    # local `npm install` skips it entirely. Security updates skip it too.
+    cooldown:
+      default-days: 7
+    # Produces "chore(deps): ..." and "chore(deps-dev): ...".
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      # One PR a week for every minor and patch bump. Majors arrive one per PR
+      # so each can be read against its own changelog.
+      backend-minor-patch:
+        update-types: [minor, patch]
+        exclude-patterns:
+          - "drizzle-*"
+          # The stealth Playwright fork behind the BFI and Cloudflare scrapers
+          # (src/scrapers/utils/browser.ts). Each bump ships a new bundled
+          # Chromium and CI never runs a scraper, so it arrives in its own PR
+          # to be checked with a /scrape-one before merging. Upstream has
+          # published nothing since 1.52.0 (May 2025), so this rarely fires.
+          - "rebrowser-playwright"
+      # drizzle-orm and drizzle-kit are both 0.x, where a "minor" bump can
+      # break the API, and a kit out of step with the ORM breaks migrations.
+      # Updates to either land in one shared PR, apart from the weekly group.
+      drizzle:
+        patterns: ["drizzle-*"]
+      # Minor and patch security fixes share one PR per lockfile, so a burst
+      # of advisories costs one CI run (Frontend E2E drives ~200 page loads
+      # against the production API) and one lockfile rebase. A major security
+      # fix still gets its own PR.
+      backend-security:
+        applies-to: security-updates
+        update-types: [minor, patch]
+    ignore:
+      # Typed to the .nvmrc runtime (22). Newer majors describe Node APIs that
+      # 22 lacks. Lift this when .nvmrc moves.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: Europe/London
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      frontend-minor-patch:
+        update-types: [minor, patch]
+      frontend-security:
+        applies-to: security-updates
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+      timezone: Europe/London
+    # The workflows use floating major tags (actions/checkout@v4), so minor and
+    # patch releases reach CI on the next run without a PR, and Dependabot only
+    # ever proposes new majors here. The cooldown makes a new major tag wait a
+    # week. Pinning actions to commit SHAs would put every release under review.
+    cooldown:
+      default-days: 7
+    # Produces "ci(deps): ...".
+    commit-message:
+      prefix: ci
+      include: scope
+    groups:
+      github-actions:
+        patterns: ["*"]

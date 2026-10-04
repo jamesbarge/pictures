@@ -44,6 +44,7 @@ const INDEPENDENT_TASK_MAP: Record<string, string> = {
   "jw3": "scraper-jw3",
   "bertha-dochouse": "scraper-bertha-dochouse",
   "cinema-museum": "scraper-cinema-museum",
+  "ibraaz": "scraper-ibraaz",
 };
 
 /** Resolve a cinema ID to its the cloud orchestrator task ID, or `null` if unmapped. */

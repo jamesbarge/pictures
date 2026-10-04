@@ -1,3 +1,131 @@
+## 2026-10-04: JW3 film nights outside the Cinema genre
+**PR**: #783 | **Files**: `src/scrapers/cinemas/jw3.ts`, `src/scrapers/cinemas/jw3.test.ts` (new), `src/scrapers/SCRAPING_PLAYBOOK.md`
+- JW3 now keeps film nights filed under other Spektrix genres when the name labels them, e.g. `Young JW3 Queer Movie & Pizza Night: Call Me By Your Name`, listed as the film after the colon. This adds Call Me By Your Name (21 Oct) and Theater Camp (16 Dec).
+- No structured Spektrix field separates these nights from the workshops around them, so the rule reads the name. On the 2026-10-04 feed it keeps 3 of 214 non-Cinema events, all film nights.
+
+---
+## 2026-10-04: Ibraaz first-party scraper
+**PR**: #782 | **Files**: `src/scrapers/cinemas/ibraaz.ts` (new), `src/scrapers/cinemas/ibraaz.test.ts` (new), `src/scrapers/registry.ts`, `src/scrapers/task-registry.ts`, `src/config/cinema-registry.ts`, `scripts/lcut-gapfill.test.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`
+- Ibraaz (Fitzrovia) moves from L-CUT source-only, where it had 0 rows ever, to a Cheerio scraper in the Cheerio wave. It keeps events tagged Film (alone, or with Library-in-Residence or Talk) and skips performance lectures, workshops and music days.
+- Times come from the event page's yearless "Date and Time" line through the shared date parser, so 3pm reads as 14:00 UTC on 18 Oct and 15:00 UTC on 25 Oct. The site's `+00:00` timestamps are ignored because editors fill them inconsistently.
+- Live dry parse: Foragers (18 Oct), MILISUTHANDO (25 Oct) and Yugantar (15 Nov), each with its Ticket Tailor booking link.
+
+---
+
+---
+
+## 2026-10-04: Title cleaner covers festival and format decorations; current UK releases match at first-run venues
+**PR**: #781 | **Files**: `src/scrapers/utils/film-title-cleaner.ts`, `src/lib/tmdb/client.ts`, `src/lib/tmdb/match.ts`, `src/scrapers/utils/film-matching.ts`, `src/scrapers/pipeline.ts`, `src/config/cinema-registry.ts`
+- The cleaner strips festival tags and prefixes (FFFL, LIFF, LPFF, UKJFF, London Breeze, Black History Month), format and version notes (16/35/70mm, Re-release, Remastered, 4K), anchored extras (intros, Q&A, talks, live score) and Met Opera / RBO season codes. Venue listings now normalize to the same cache key as their film, so 39 rows merged by hand on 2026-10-04 stay merged after the next scrape.
+- New UK releases with one-word titles (Digger, Verity, Pressure) match through TMDB's GB now-playing and upcoming lists, only at first-run venues and only when no conflicting year hint exists. A live check over 534 unmatched titles accepted 9, all agreeing with the manual review.
+- The film cache also indexes each film's TMDB original title, so "Le Boucher", "Festen" and "Cliente" find their films.
+
+---
+## 2026-10-04: Phoenix reads its full programme from the Savoy JSON blob
+**PR**: #775 | **Files**: `src/scrapers/cinemas/phoenix.ts`, `src/scrapers/cinemas/phoenix.test.ts` (new), `src/scrapers/cinemas/bst-regression.test.ts`, `src/scrapers/registry.ts`, `src/config/cinema-registry.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`, `changelogs/2026-10-04-phoenix-full-programme.md`
+- Phoenix's homepage grid stops after 16 events (`if (TheNumEventsDisplayed <= 15)` in the site's own JS). Our scraper found films by reading that grid, so on 2026-10-04 it captured 32 of 57 future performances and stopped at 18 Oct, while the venue publishes to 5 Jun 2027.
+- Phoenix now parses the embedded Savoy `var Events` blob through `platforms/savoy.ts` with a single fetch and runs in the Cheerio wave. A live run returned 57 screenings across 39 titles. The validator accepts 50 and holds 7 opera and ballet nights (23 Jan to 5 Jun 2027) under its 90-day cap until they come within range.
+- All 32 rows the old scraper returned keep identical sourceIds and booking URLs, so existing rows update in place.
+- All six Phoenix listings the L-CUT cross-check flagged as missing (Banshees of Inisherin, Nosferatu live score, How Deep Is Your Love, Rocky Horror, Ringu, Ghost Town) are in the new output.
+
+---
+
+---
+
+## 2026-10-04: Close-Up day sweep planned from the programme index
+**PR**: #778 | **Files**: `src/scrapers/cinemas/close-up.ts`, `src/scrapers/cinemas/close-up.test.ts` (new), `src/scrapers/SCRAPING_PLAYBOOK.md`
+- The search-page sweep fetches only the days a `/film_programmes/` heading says something screens on and the homepage JSON cannot account for: range tails past the JSON, one-off event days, the JSON's last day, and days with a `"title": null` show.
+- Recovers 22 Oct Vicky Smith: Animated Matter (a null-title JSON show) and 17 Nov Jenny Baines: Action Films (cut off by the 5-empty-day streak). Live 2026-10-04: 3 search requests where the old walk made 6 of 18 planned, 38 -> 40 screenings.
+- The empty-day streak applies only when the programme index is unreadable. A failed fetch for a day before the JSON's last day costs that one title and keeps the run. The Cloudflare `challengeSeen` fast-fail is unchanged and now under test.
+
+---
+
+
+---
+
+
+---
+
+## 2026-10-04: Regent Street INDY horizon raised to 120 days
+**PR**: #777 | **Files**: `src/scrapers/cinemas/regent-street.ts`, `src/scrapers/cinemas/regent-street.test.ts` (new), `src/scrapers/SCRAPING_PLAYBOOK.md`
+- Regent Street asks INDY for 120 days of showings. It set no horizon, so the shared 35-day default skipped the London Baltic Film Festival (13-21 Nov) and the November Q&A one-offs.
+- Dry parse on 2026-10-04: 27 -> 33 showings, last showing 7 Nov -> 21 Nov, for about 85 extra GraphQL POSTs per run.
+
+---
+
+
+---
+
+## 2026-10-04: Genesis encoding, dated-panel rollover and LIFF shorts identity
+**PR**: #776 | **Files**: `src/scrapers/cinemas/genesis.ts`, `src/scrapers/cinemas/genesis.test.ts` (new), `src/lib/title-patterns.ts`, `src/lib/film-similarity-sequel.test.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`
+- The film matcher reads the number in front of a trailing festival tag, so "Shorts Block 3 - LIFF" and "Shorts Block 11 - LIFF" resolve to separate films. The 2026-10-03 run had filed Shorts Blocks 2-12 under one film, which L-CUT parity counted as 9 missing Genesis screenings.
+- Genesis pages are decoded as Windows-1252, the charset the server declares. Titles now keep their curly apostrophes, pound signs and en dashes; before the fix, 9 stored Genesis titles carried U+FFFD in their place.
+- A showing earlier the same day stays in the past and is dropped. It used to roll into next year and get rejected as too_far_future on every run.
+
+---
+
+
+---
+
+## 2026-10-04: ICA scraper follows season and festival hubs
+**PR**: #780 | **Files**: `src/scrapers/cinemas/ica.ts`, `src/scrapers/cinemas/ica.test.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`, `changelogs/2026-10-04-ica-hub-discovery.md`
+- The ICA scraper finds pages from every /films tile, the /upcoming calendar and the child pages of season and festival hubs (LFF, Imamura, London Latino FF, The Independent, Doc'n'Roll and others). A live run without persistence found 198 screenings where the old scraper found 85, each matching ICA's Spektrix ticketing to the minute.
+- L-CUT coverage from the scraper's own rows rises from 81 to 144 of 147 listings. The 3 left are the same screenings under different titles.
+- Discovery stops at 170 pages or 300s so the venue stays inside its 10-minute cap, and only Cinema 1 and Cinema 2 performances count (talks and gigs on the Stage share the markup).
+- LFF screenings link to their BFI ticket pages (they used to point at the ICA homepage), and a title split by a line break reads "UK PREMIERE The Night is Fading Away" where it used to read "UK PREMIEREThe Night is Fading Away".
+
+---
+
+
+---
+
+## 2026-10-04: David Lean reads its TicketSolve XML feed
+**PR**: #779 | **Files**: `src/scrapers/cinemas/david-lean.ts`, `src/scrapers/cinemas/david-lean.test.ts`, `src/scrapers/cinemas/bst-regression.test.ts`, `src/scrapers/utils/screening-classification.ts`, `src/scrapers/utils/screening-classification.test.ts` (new), `src/scrapers/SCRAPING_PLAYBOOK.md`
+- The scraper reads `https://davidleancinema.ticketsolve.com/shows.xml` with a plain fetch, replacing a Playwright homepage scrape. Dry parse 2026-10-04: 30 -> 58 screenings, last date 31 Oct -> 28 Nov, and Animal Shorts at its real 12:00 start (the homepage gave the 10:30 doors time).
+- TicketSolve labels not-yet-on-sale events "sold out". The scraper sets `sold_out` only when the event's own XML shows it on sale with 0 seats, so the 27 November events carry no SOLD OUT tag.
+- sourceIds become `david-lean-{eventId}`. Legacy-keyed future rows need a one-off cleanup immediately before the first persist; see the changelog file.
+- Relaxed screenings set `eventType: "relaxed"`, and `classifyScreening` marks any scraper-supplied relaxed event type as a relaxed screening.
+
+---
+
+
+---
+
+## 2026-10-04: Apply judged TMDB matches from a mapping file
+**PR**: #774 | **Files**: `scripts/apply-manual-tmdb-matches.ts`, `scripts/apply-manual-tmdb-matches.test.ts`, `src/scripts/rematch-unmatched-films.ts`, `scripts/destructive-script-guards.test.ts`
+- New default-dry script applies a reviewed title -> TMDB id mapping (and optional content-type reclassifications) to unmatched films with upcoming screenings, reusing the rematch sweep's update and transactional merge.
+- First use on 2026-10-04: 202 match actions and 69 reclassifications, 0 failures. Future screenings on films with no TMDB data fell from 4,151 of 8,540 to 362, led by this week's wide releases (Digger, Sense and Sensibility, Verity), which the matcher skips because the pipeline drops current-year hints. About 316 of those screenings sit on merged rows that need the title-cleaner fix to survive the next scrape; re-running the mapping file covers the gap meanwhile.
+
+---
+
+## 2026-10-03: Mobile masthead loses its empty band
+**PR**: #767 | **Files**: `frontend/src/lib/components/layout/Header.svelte`
+- Below 768px the masthead drops a 180px minimum height that exists to seat the desktop nav and house-lights dial, both hidden on phones. Phones get 40px back on every page (205px to 165px), and the wordmark keeps its size.
+
+---
+
+## 2026-10-03: Homepage STARTING SOON strip
+**PR**: #762 | **Files**: `frontend/src/routes/+page.svelte`, `frontend/src/lib/components/calendar/FigmaTextDay.svelte`, `frontend/src/lib/analytics/posthog.ts`, `frontend/test-all.spec.ts`, `frontend/tests/mobile.spec.ts`
+- A STARTING SOON timetable sits above the first day: the next 6 screenings starting within 3 hours, soonest first, with the active filters applied. It hides in TEXT mode and when nothing starts in the window.
+- The first showtime moves from about 895px to 452px down on desktop and from about 940px to 476px on a phone, so phones see a time without scrolling. Cards keep their rating order.
+
+---
+
+## 2026-10-03: Frontend unit tests run in CI
+**PR**: #770 | **Files**: `.github/workflows/test.yml`
+- The frontend CI job runs `npm test` (vitest) after `npm ci`. Until now Playwright was its only test step, so the 92 tests in `frontend/src/**/*.test.ts` never ran in CI.
+
+---
+
+## 2026-10-03: Dependabot for npm and GitHub Actions
+**PR**: #759 | **Files**: `.github/dependabot.yml` (new), `CLAUDE.md`, `changelogs/2026-10-03-dependabot.md`
+- Weekly grouped minor and patch PRs per app (backend `/`, frontend `/frontend`), one PR per major, a monthly grouped Actions PR, and one grouped PR per lockfile for minor and patch security fixes. A 7-day cooldown holds each bumped release back until it is a week old.
+- Hold-backs: `@types/node` majors are ignored while `.nvmrc` pins 22, drizzle updates share their own PR, and `rebrowser-playwright` gets its own PR so a scrape can be checked before merge.
+- Dependabot alerts and security updates are now on in repo settings. The first scan found 163 open advisories across 42 packages, 5 of them critical, led by three Next.js RCE advisories fixed by 16.3.6.
+- PRs opened by `dependabot[bot]` are exempt from the changelog rule (`CLAUDE.md`).
+
+---
+
 ## 2026-08-06: THE SLEEPER — one acclaimed-but-under-seen repertory film per day
 **PR**: #743 | **Files**: `src/lib/{sleeper.ts,london-date.ts}`(new + tests), `src/db/repositories/sleeper.ts`(new), `src/db/schema/daily-picks.ts`(new), `src/db/migrations/{0014_add_tmdb_vote_count,0015_add_daily_picks}.sql`(new), `src/db/backfill-tmdb-vote-count.ts`(new), `src/app/api/sleepers/route.ts`(new + test), `src/scripts/run-scrape-and-enrich.ts`, `frontend/src/lib/components/calendar/{FigmaFilmCard,FigmaTextDay}.svelte`, `frontend/src/routes/{+page.server.ts,+page.svelte}` + 11 TMDB write sites — 30 files
 - **One film per London day that is rated highly on Letterboxd but thinly voted on TMDB**, repertory and non-documentary only, guaranteed to screen that day. Shown as a vertical `THE SLEEPER` rail on the existing homepage card, first day section only. No reordering, no new layout. The homepage already sorted each day by Letterboxd rating desc, so the celebrated title was always leftmost and the interesting obscurity was buried mid-row; there was no editorial voice in the product at all.

@@ -5,6 +5,7 @@
 
 import type {
   TMDBSearchResponse,
+  TMDBSearchResult,
   TMDBMovieDetails,
   TMDBCredits,
   TMDBVideosResponse,
@@ -19,9 +20,17 @@ const TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p";
 const TMDB_CACHE_REVALIDATE_SEC = 24 * 60 * 60; // 24 hours
 const DIRECTOR_JOB = "Director";
 const MAX_CAST_MEMBERS = 10;
+// Current UK releases (GB now_playing + upcoming). On 2026-10-04 the lists ran
+// to 9 and 3 pages, so the cap only guards against a runaway total_pages.
+const CURRENT_RELEASE_REGION = "GB";
+const CURRENT_RELEASE_LISTS = ["now_playing", "upcoming"] as const;
+const CURRENT_RELEASE_MAX_PAGES = 20;
+const CURRENT_RELEASE_TTL_SEC = 6 * 60 * 60; // 6 hours
 
 export class TMDBClient {
   private apiKey: string;
+  private currentReleases: { fetchedAt: number; films: TMDBSearchResult[] } | null = null;
+  private currentReleasesInFlight: Promise<TMDBSearchResult[]> | null = null;
 
   constructor(apiKey?: string) {
     this.apiKey = apiKey || process.env.TMDB_API_KEY || "";
@@ -30,7 +39,11 @@ export class TMDBClient {
     }
   }
 
-  private async fetch<T>(endpoint: string, params: Record<string, string> = {}): Promise<T> {
+  private async fetch<T>(
+    endpoint: string,
+    params: Record<string, string> = {},
+    revalidateSec = TMDB_CACHE_REVALIDATE_SEC
+  ): Promise<T> {
     const url = new URL(`${TMDB_BASE_URL}${endpoint}`);
     url.searchParams.set("api_key", this.apiKey);
 
@@ -39,7 +52,7 @@ export class TMDBClient {
     }
 
     const response = await fetch(url.toString(), {
-      next: { revalidate: TMDB_CACHE_REVALIDATE_SEC },
+      next: { revalidate: revalidateSec },
     });
 
     if (!response.ok) {
@@ -58,6 +71,49 @@ export class TMDBClient {
       params.year = year.toString();
     }
     return this.fetch<TMDBSearchResponse>("/search/movie", params);
+  }
+
+  /**
+   * Films in UK cinemas now or opening soon: TMDB's now_playing and upcoming
+   * lists for region GB, every page up to total_pages, deduplicated by id.
+   *
+   * Cached on the client for six hours, so a scrape run pays for the dozen
+   * pages once. Concurrent callers share one fetch, and a failed fetch is not
+   * cached.
+   */
+  async getCurrentReleases(): Promise<TMDBSearchResult[]> {
+    const cached = this.currentReleases;
+    if (cached && Date.now() - cached.fetchedAt < CURRENT_RELEASE_TTL_SEC * 1000) {
+      return cached.films;
+    }
+
+    this.currentReleasesInFlight ??= this.fetchCurrentReleases()
+      .then((films) => {
+        this.currentReleases = { fetchedAt: Date.now(), films };
+        return films;
+      })
+      .finally(() => {
+        this.currentReleasesInFlight = null;
+      });
+    return this.currentReleasesInFlight;
+  }
+
+  private async fetchCurrentReleases(): Promise<TMDBSearchResult[]> {
+    const byId = new Map<number, TMDBSearchResult>();
+    for (const list of CURRENT_RELEASE_LISTS) {
+      for (let page = 1; page <= CURRENT_RELEASE_MAX_PAGES; page++) {
+        const response = await this.fetch<TMDBSearchResponse>(
+          `/movie/${list}`,
+          { region: CURRENT_RELEASE_REGION, page: String(page) },
+          CURRENT_RELEASE_TTL_SEC
+        );
+        for (const film of response.results) {
+          if (!byId.has(film.id)) byId.set(film.id, film);
+        }
+        if (page >= response.total_pages) break;
+      }
+    }
+    return [...byId.values()];
   }
 
   /**

@@ -116,6 +116,40 @@ describe("other unsafe matches observed in the same run", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Festival-tagged numbered titles: Genesis, 2026-10-03 run
+// ---------------------------------------------------------------------------
+
+describe("numbered titles behind a trailing festival tag", () => {
+  // The run logged "Shorts Block N - LIFF" → "Shorts Block 11 - LIFF" for every
+  // N from 2 to 12 (78-83%), filing eleven separate programmes under one film.
+  it('refuses "Shorts Block 12 - LIFF" → "Shorts Block 11 - LIFF"', async () => {
+    pgRows = [row("Shorts Block 11 - LIFF", 0.83)];
+    await expect(findMatchingFilm("Shorts Block 12 - LIFF", null)).resolves.toBeNull();
+  });
+
+  it('refuses "Shorts Block 3 - LIFF" → "Shorts Block 11 - LIFF"', async () => {
+    pgRows = [row("Shorts Block 11 - LIFF", 0.78)];
+    await expect(findMatchingFilm("Shorts Block 3 - LIFF", null)).resolves.toBeNull();
+  });
+
+  it("keeps the same block matching itself", async () => {
+    pgRows = [row("Shorts Block 11 - LIFF", 1, null, "block-11")];
+    await expect(findMatchingFilm("Shorts Block 11 - LIFF", null)).resolves.toEqual({
+      filmId: "block-11",
+      confidence: "high",
+    });
+  });
+
+  it("keeps an unnumbered tagged premiere matching its earlier listing", async () => {
+    // Observed in the same run at 65% and correct: same film, premiere label added.
+    pgRows = [row("Scaling The Eiffel Tower - LIFF", 0.65, null, "eiffel")];
+    await expect(
+      findMatchingFilm("Scaling The Eiffel Tower (London Premiere) - LIFF", null),
+    ).resolves.toEqual({ filmId: "eiffel", confidence: "high" });
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Positive cases: the guard must not break these
 // ---------------------------------------------------------------------------
 
@@ -222,6 +256,14 @@ describe("sequelMarkerOf", () => {
     ["Screen in Use - 30", 30],
     ["Toy Story 5 (BIA)", 5],
     ["Sing 2 (Sing-Along)", 2],
+    // A trailing upper-case festival tag is decoration, like a bracket.
+    ["Shorts Block 3 - LIFF", 3],
+    ["Shorts Block 12 – LIFF", 12],
+    ["Shorts Block 7 — LIFF", 7],
+    // Bracket and tag peel in turn until neither is left.
+    ["Shorts Block 3 (Q&A) - LIFF", 3],
+    // ...unless the tag is itself the numeral.
+    ["Rocky - IV", 4],
   ])("reads %s as instalment %i", (title, expected) => {
     expect(sequelMarkerOf(title)).toBe(expected);
   });
@@ -241,6 +283,9 @@ describe("sequelMarkerOf", () => {
     // A trailing date is not an instalment. Real run titles look like this.
     ["Baby Comptines 07/10/2026"],
     ["THE NICKEL'S HALLOWEEN MASH - DAY ONE 31/10"],
+    // Peeling the tag and the bracket leaves an unnumbered title.
+    ["Sessions (London Premiere) - LIFF"],
+    ["Shorts Block - LIFF"],
   ])("reads %s as having no instalment marker", (title) => {
     expect(sequelMarkerOf(title)).toBeNull();
   });
