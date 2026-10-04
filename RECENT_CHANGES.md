@@ -1,3 +1,10 @@
+## 2026-10-04: Regent Street INDY horizon raised to 120 days
+**PR**: #777 | **Files**: `src/scrapers/cinemas/regent-street.ts`, `src/scrapers/cinemas/regent-street.test.ts` (new), `src/scrapers/SCRAPING_PLAYBOOK.md`
+- Regent Street asks INDY for 120 days of showings. It set no horizon, so the shared 35-day default skipped the London Baltic Film Festival (13-21 Nov) and the November Q&A one-offs.
+- Dry parse on 2026-10-04: 27 -> 33 showings, last showing 7 Nov -> 21 Nov, for about 85 extra GraphQL POSTs per run.
+
+---
+
 ## 2026-10-03: Mobile masthead loses its empty band
 **PR**: #767 | **Files**: `frontend/src/lib/components/layout/Header.svelte`
 - Below 768px the masthead drops a 180px minimum height that exists to seat the desktop nav and house-lights dial, both hidden on phones. Phones get 40px back on every page (205px to 165px), and the wordmark keeps its size.
