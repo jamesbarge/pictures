@@ -1,6 +1,6 @@
 # Title cleaner covers festival and format decorations; current UK releases match at first-run venues
 
-**PR**: #TBD
+**PR**: #781
 **Date**: 2026-10-04
 
 ## Changes
