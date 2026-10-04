@@ -371,15 +371,29 @@ Use this format when recording cinema-specific quirks:
 ### JW3 (Finchley Road)
 - Scraper: `src/scrapers/cinemas/jw3.ts` (fetch-based, no browser — runnable under tsx).
 - Ticketing: Spektrix, client `jw3`. Public read API base: `https://ticket.jw3.org.uk/jw3/api/v3`.
-- Strategy (2 calls): `GET /events` → keep `attribute_Genre == "Cinema"` (excludes the centre's
-  talks/languages/classes/music/walks); `GET /instances?startFrom=YYYY-MM-DD&startTo=YYYY-MM-DD`
-  → join to Cinema events by `event.id`.
+- Strategy (2 calls): `GET /events` → keep `attribute_Genre == "Cinema"` plus named film nights
+  from other genres (below; excludes the centre's talks/languages/classes/music/walks);
+  `GET /instances?startFrom=YYYY-MM-DD&startTo=YYYY-MM-DD` → join to those events by `event.id`.
 - Dates: `instance.startUtc` is UTC **without** a trailing `Z` — append `Z` before `new Date(...)`.
   No `ukLocalToUTC` needed (Spektrix already converts), so the BST off-by-one cannot occur here.
 - Booking URL: `https://www.jw3.org.uk/spektrix/ChooseSeats?EventInstanceId=<instance.id>` (verified 200).
 - `sourceId`: `jw3-<instance.id>`; poster from `event.imageUrl`; availability from `instance.isOnSale`.
 - Known: NT Live / live broadcasts also carry `attribute_Genre = "Cinema"` and flow through; the
   data-quality pipeline classifies `content_type` downstream.
+- Film nights outside the Cinema genre (added 2026-10-04, `jw3FilmTitle()`): Young JW3 files its
+  film nights under `Young Professionals`, e.g. `Young JW3 Queer Movie & Pizza Night: Call Me By Your
+  Name` (21 Oct) and `...: Theater Camp` (16 Dec). Nothing structured marks them. Checked on
+  2026-10-04 across all 287 events: genre, every `attribute_*` field and the instance `planId` match
+  the surrounding workshops (both nights use the general plan `202AVG...`, shared with 117 non-film
+  instances; the cinema plan `4401APL...` carries only Cinema plus one talk). Description keywords
+  are unsafe: talks about film stars, "film clips" and a TV episode screening all mention film. The
+  rule is name-only: for a non-Cinema event, the segment before the last colon must match
+  `/\b(movie|film)\b.*\b(night|club)\b/i`, and the film title is the text after that colon. It
+  keeps 3 of 214 non-Cinema events (the two above plus the past `Young JW3 x Young UJIA: Film Club:
+  Entebbe`) and drops `Young Jury Award for Best Short Film 2026` (a UKJF shorts awards evening).
+  A renamed strand will silently fall out again, so recheck this list when JW3 coverage looks low.
+- The film-night instance `start` is the doors/pizza time (18:30); the description gives the film
+  start ("7.15pm - Film starts"). The row keeps the ticketed 18:30 start.
 
 ### Cinema Museum (Kennington, SE11)
 - Scraper: `src/scrapers/cinemas/cinema-museum.ts` (fetch-based iCal, runnable under tsx).
