@@ -160,6 +160,37 @@ describe("matchAndCreateFromTMDB — audit trail persistence (step 1)", () => {
     expect(payload.matchStrategy).toBe("auto-with-director");
   });
 
+  it("records current-release when the matcher accepted a current GB release", async () => {
+    mocks.matchFilmToTMDB.mockResolvedValue({
+      tmdbId: 558,
+      confidence: 0.75,
+      title: "Digger",
+      year: new Date().getFullYear(),
+      posterPath: null,
+      strategy: "current-release",
+    });
+    mocks.getFullFilmData.mockResolvedValue(makeFullFilmData({ title: "Digger" }));
+
+    // Chains send the screening year, which year discipline strips; the
+    // strategy must still say how the match was actually made.
+    const filmId = await matchAndCreateFromTMDB(makeCache(), "Digger", new Date().getFullYear());
+
+    expect(filmId).not.toBeNull();
+    const payload = mocks.insertValues.mock.calls[0][0];
+    expect(payload.matchStrategy).toBe("current-release");
+    expect(payload.matchConfidence).toBe(0.75);
+  });
+
+  it("passes the venue's current-release permission through to the matcher", async () => {
+    mocks.matchFilmToTMDB.mockResolvedValue(null);
+
+    await matchAndCreateFromTMDB(makeCache(), "Digger", undefined, undefined, undefined, undefined, undefined, true);
+    await matchAndCreateFromTMDB(makeCache(), "Digger");
+
+    expect(mocks.matchFilmToTMDB.mock.calls[0][1]).toEqual(expect.objectContaining({ allowCurrentRelease: true }));
+    expect(mocks.matchFilmToTMDB.mock.calls[1][1]).toEqual(expect.objectContaining({ allowCurrentRelease: false }));
+  });
+
   it("returns existing film id without inserting when TMDB id already exists in DB", async () => {
     mocks.matchFilmToTMDB.mockResolvedValue({
       tmdbId: 555,
@@ -239,6 +270,7 @@ describe("matchAndCreateFromTMDB — hint threading (step 6)", () => {
       director: "Jacques Deray",
       runtime: 120,
       venueLanguages: ["fr"],
+      allowCurrentRelease: false,
     });
   });
 

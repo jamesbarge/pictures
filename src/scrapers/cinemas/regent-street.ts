@@ -21,11 +21,16 @@ import {
 } from "../platforms/indy";
 import type { RawScreening, ScraperConfig, CinemaScraper } from "../types";
 
-const REGENT_STREET_VENUE: IndyVenue = {
+export const REGENT_STREET_VENUE: IndyVenue = {
   cinemaId: "regent-street",
   baseUrl: "https://www.regentstreetcinema.com",
   circuitId: "19",
   siteId: "85",
+  // Regent Street publishes festivals and Q&A events 7+ weeks out (horizon
+  // audit 2026-10-04: kept showings to day offset 48, London Baltic Film
+  // Festival 13-21 Nov). The shared 35-day default dropped 7 of 33. 120 gives
+  // margin past that for about 85 extra POSTs (mostly empty, 250ms apart).
+  horizonDays: 120,
 };
 
 const REGENT_STREET_CONFIG: ScraperConfig = {

@@ -140,11 +140,25 @@ export const EVENT_PREFIXES = [
   /^uk\s+premiere\s*[:|]?\s+/i,
   /^world\s+premiere\s*[:|]?\s+/i,
   /^european?\s+premiere\s*[:|]?\s+/i,
+  // Glued form with no space at all: "UK PREMIEREThe Night is Fading Away".
+  // Case-sensitive, and the next word must start upper-then-lower, so
+  // "UK PREMIERES: …" keeps its S.
+  /^(?:UK|LONDON|WORLD|EUROPEAN?)\s+PREMIERE(?=[A-Z][a-z])/,
+  // "Special Preview of Fatherland with Katja Hoyer". Ahead of the bare
+  // "Preview" rule, which would leave "of Fatherland". The guest credit is
+  // dropped after the loop, only for titles this rule matched. No "A Preview
+  // of" form: after "MilkTea Presents:" it would only strip on a second clean.
+  /^(?:special\s+)?preview\s+of\s+/i,
   /^preview[:\s]+/i,
   /^sneak\s+preview[:\s]+/i,
   /^advance\s+screening[:\s]+/i,
   /^special\s+screening[:\s]+/i,
-  /^member['\s]*s?\s+screening[:\s]+/i,
+  /^member(?:s['’]?|['’]s)?\s+screening[:\s]+/i,
+  // Festival gala slots. The colon is required, so Cassavetes' bare
+  // "Opening Night" stays a title.
+  /^(?:opening|closing)\s+night(?:\s+gala)?\s*:\s*/i,
+  /^centrepiece\s+gala\s*:\s*/i,
+  /^screening\s+[-–]\s+/i,
 
   // Format-based event names
   /^35mm[:\s]+/i,
@@ -215,12 +229,20 @@ export const EVENT_PREFIXES = [
 
   // Broadcast/RBO/ROH encore screenings
   /^rbo\s+cinema\s+season\b[^:]*[:\s]+/i,
-  /^rbo\s+encore[:\s]+/i,
-  /^roh\s+encore[:\s]+/i,
+  // Optional season code in the same match, as for Met Opera below:
+  // "RBO Encore 2026-27: Manon"
+  /^rbo\s+encore(?:\s+20\d{2}[-–/]\d{2})?[:\s]+/i,
+  /^roh\s+encore(?:\s+20\d{2}[-–/]\d{2})?[:\s]+/i,
   /^encore[:\s]+/i,
   /^rbo[:\s]+/i,
   /^nt\s+live[:\s]+/i,
-  /^met\s+opera[:\s]+/i,
+  // "Met Opera: Tosca" and "Met Opera 2026-27: Tosca". The season code must go
+  // in the same match, or the colon handler keeps "2026-27" as the title.
+  /^met\s+opera(?:\s+live)?(?:\s+20\d{2}[-–/]\d{2})?[:\s]+/i,
+  // The season code on its own, where the venue dropped the company name:
+  // "2026-27: Tosca", "Live 2026-27: Gotterdammerung", and the venue's own
+  // "2026-26" typo. The dash-year form leaves "2001: A Space Odyssey" alone.
+  /^(?:live\s+)?20\d{2}[-–/]\d{2}\s*:\s*/i,
 
   // Community / cultural screening series
   /^screen\s+cuba\s+presents?[:\s]+/i,
@@ -248,6 +270,24 @@ export const EVENT_PREFIXES = [
   /^mostovi\s+film\s+collective\s+presents?[:\s]+/i,
   /^waving\s+kites\b[^:]*presents?[:\s]+/i,
   /^re:?mind\s+film\s+festival\s+presents?[:\s]+/i,
+  // Festival programme tags: the acronym, an optional year and an optional
+  // strand name, then a colon or a spaced dash ("LPFF 2026 Short Session: …",
+  // "UKJFF: …", "FFFL Opening Gala - …"). Case-sensitive so ordinary words
+  // never match.
+  /^(?:LPFF|UKJFF|HKFF|LIFF|FFFL|LoLaFF)(?:\s+\d{4})?(?:\s+[^:]{1,30}?)?(?:\s*:|\s+[-–])\s+/,
+  /^london\s+palestine\s+film\s+festival(?:\s+\d{4})?\s*:\s*/i,
+  /^london\s+breeze\s+film\s+festival(?:\s+shorts)?\s*:\s*/i,
+  /^sheffield\s+docfest(?:\s+spotlights?)?\s*:\s*/i,
+  /^hackney\s+children['’]?s\s+film\s+fest(?:ival)?\s*:\s*/i,
+
+  // Venue strands found in the 2026-10-04 coverage pass. Most are followed by
+  // a title starting "The", which the colon handler keeps as a subtitle.
+  /^black\s+history\s+month(?:\s+\d{4})?\s*:\s*/i,
+  /^classroom\s+cinema\s*:\s*/i,
+  /^babykino\s*:\s*/i,
+  /^odyssey\s+\d{4}\s*:\s*/i,
+  /^crafty\s+movie\s+night\s*[-–:]\s*/i,
+  /^girl,?\s+so\s+cinema\s+club\s*:\s*/i,
 
   // Generic "[Org] presents:" pattern — org name + "present(s)" + separator
   // Matches "X Film Club presents:", "X Film Festival present:", etc.
@@ -260,8 +300,8 @@ export const EVENT_PREFIXES = [
   // Screening format prefixes (Rio, etc.)
   /^naturist\s+screening[:\s]+/i,
 
-  // Doc'n Roll festival prefix
-  /^doc['']?n\s+roll\b[^:]*[:\s]+/i,
+  // Doc'n Roll festival prefix, including the spaced curly form "Doc’ n Roll"
+  /^doc\s*['’]?\s*n\s+roll\b[^:]*[:\s]+/i,
 
   // Recurring event series prefixes (identified by data-check patrol cycles 7-12)
   /^lob-?sters\s+tennis\s+anniversary\s+screening[:\s]+/i,
@@ -281,7 +321,9 @@ export const EVENT_PREFIXES = [
   /^club\s+room[:\s]+/i,
   /^camp\s+classics\s+presents?[:\s]+/i,
   /^better\s+than\s+nothing\s+presents?[:\s]+/i,
-  /^bar\s+trash[:\s]+/i, // bare "Bar Trash:" (no episode number, separate from "Bar Trash 42:")
+  // bare "Bar Trash:" (no episode number, separate from "Bar Trash 42:"), and
+  // "BAR TRASH presents X", which used to leave "presents X" behind
+  /^bar\s+trash(?:\s+presents)?[:\s]+/i,
 
   // Generic "<Distributor/Org> Films presents:" \u2014 catches "Alborada Films
   // presents:" and similar. Distinct from the existing "X Film Club/Festival
@@ -293,6 +335,16 @@ export const EVENT_PREFIXES = [
   //   colon handler instead, which is the correct path for venues like
   //   Coldharbour where the colon form is just venue branding, not a strand.
   /^[\w&''\u2019-][\w\s&''\u2019-]*?\s+films\s+presents[:\s]+/i,
+
+  // Generic "<Org> presents:" with a colon and at most four words of org name
+  // ("Evolution of Horror Presents:", "We Are Doc Women presents:"). Plural
+  // only, like the Films rule above. Without the colon, only the presenters
+  // seen in listings are stripped, so a title such as "Christmas Presents" is
+  // safe.
+  /^(?:[\w'\u2019&.!-]+\s+){1,4}presents\s*:\s*/i,
+  /^(?:cinecarib|peer|evolution\s+of\s+horror)\s+presents?\s+/i,
+  // A presenter the venue already cut, leaving "presents MIRACLE MILE"
+  /^presents\s+/i,
 
   // Patrol-learned prefixes from `.claude/data-check-learnings.json`. Compiled
   // and appended at module init so re-running /data-check naturally adds new
@@ -406,6 +458,32 @@ interface CleanTitleResult {
 }
 
 /**
+ * What may follow an extra such as "+ talk" or "+ Q&A" for it to count as one:
+ * the end of the title, punctuation, or a word that describes the extra
+ * ("with", "by", "presented", "film critic"). Any other word means the plus
+ * joins a second film, as in "Tony Takitani + Talk Radio", and the title is
+ * left whole.
+ */
+const EXTRA_TAIL = String.raw`(?=\s*$|\s*[:;,.(…–+-]|\s+(?:with|by|from|and|&|presented|hosted|chaired|moderated|featuring|feat\.?|ft\.?|followed|in\s+conversation|film\s+critic|director|curator|writer|tbc|liff\d*|lpff\d*|fffl)\b)`;
+
+/** "+ Q&A" / "+ Q+A" (including HTML-encoded &amp;), "+ Introduction", "+ Director Introduction",
+ * "+ discussion with ...", "+ Panel Discussion", "+ ScreenTalk", "+ talk", "+ Book Launch", "+ Live Music" */
+const PLUS_EXTRA = new RegExp(
+  String.raw`\s*\+\s*(?:q\s*(?:&amp;|&|\+)\s*a|(?:panel\s+)?discussion|(?:director\s+)?introduction|screen\s?talk|talk|book\s+launch|live\s+music)${EXTRA_TAIL}.*$`,
+  "i",
+);
+
+/** "+ intro ...", "+ Recorded Intro", "+ pre-recorded intro by ...", "+ extended intro with ...".
+ * Unanchored, as before: the short word "intro" never starts a second film. */
+const PLUS_INTRO = /\s*\+\s*(?:(?:pre-?)?recorded\s+|extended\s+)?intro\b.*$/i;
+
+/** "plus Q&A" / "plus Director Q&A" */
+const PLUS_WORD_QA = new RegExp(
+  String.raw`\s+plus\s+(?:director\s+)?q\s*(?:&amp;|&|\+)\s*a${EXTRA_TAIL}.*$`,
+  "i",
+);
+
+/**
  * Clean a film title and return metadata about what was stripped.
  *
  * Returns the cleaned title along with the stripped prefix and suffix,
@@ -433,11 +511,18 @@ export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
     }
   }
 
+  // A "Special Preview of" event usually ends with its guest: "Fatherland with
+  // Katja Hoyer". Only here, and only for a name of two or three capitalised
+  // words, so "Dances with Wolves" keeps its wolves.
+  if (strippedPrefix && /preview\s+of$/i.test(strippedPrefix)) {
+    cleaned = cleaned.replace(/\s+with\s+\p{Lu}[\p{L}'’-]+(?:\s+\p{Lu}[\p{L}'’-]+){1,2}$/u, "").trim();
+  }
+
   // Strip pagination artifacts from BFI titles (e.g. "The Chronology of Water p17")
   cleaned = cleaned.replace(/\s+p\d{1,3}\s*$/i, "").trim();
 
-  // Strip "on 35mm" / "on 70mm" film format suffixes (PCC/Lost Reels style)
-  cleaned = cleaned.replace(/\s+on\s+(35mm|70mm)\s*$/i, "").trim();
+  // Strip "on 16mm" / "on 35mm" / "on 70mm" film format suffixes (PCC/Lost Reels style)
+  cleaned = cleaned.replace(/\s+on\s+(16mm|35mm|70mm)\s*$/i, "").trim();
 
   // Strip ": 4K Restoration Premiere" / similar format-noise colon suffixes
   // BEFORE the generic colon handler. The colon handler would otherwise
@@ -445,6 +530,18 @@ export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
   // Premiere" as the real title (because "Vampire's Kiss" is 2 words and the
   // after-colon is longer). Strip the noise here so the handler doesn't see it.
   cleaned = cleaned.replace(/\s*:\s*4k\s+restoration\s+premiere\s*$/i, "").trim();
+  // Same reason for ": The Director's Cut": "Brazil: Director's Cut" would
+  // otherwise come out as "Director's Cut". A director's cut also drops its
+  // two- or three-word possessive credit ("Ken Russell's The Devils: The
+  // Director's Cut"). Elsewhere that credit can be the film's own TMDB title
+  // ("Lee Cronin's The Mummy", "Bram Stoker's Dracula"), so it stays.
+  const directorsCut = cleaned.match(/\s*:\s*(?:the\s+)?director['’]?s\s+cut\s*$/i);
+  if (directorsCut) {
+    cleaned = cleaned
+      .slice(0, directorsCut.index)
+      .replace(/^(?:\p{Lu}[\p{L}.-]*\s+){1,2}\p{Lu}[\p{L}.-]*['’][sS]?\s+/u, "")
+      .trim();
+  }
 
   // Handle remaining colon-separated titles where film is after colon
   // but only if the part before colon looks like an event name (not a film title)
@@ -459,8 +556,9 @@ export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
     // Check if before-colon is a known event-type word pattern
     const isEventPattern = /^(season|series|part|episode|chapter|vol(ume)?|act|double\s+feature|marathon|retrospective|tribute|celebration|anniversary|special|presents?|screening|showing|feature)/i.test(beforeColon);
 
-    // Check if after-colon looks like a subtitle (short, starts with article/adjective)
-    const isSubtitle = /^(the|a|an|new|last|final|return|rise|fall|revenge|attack|empire|phantom|force|rogue|solo|part)\s/i.test(afterColon);
+    // Check if after-colon looks like a subtitle (short, starts with article/adjective).
+    // "Vol." keeps "Kill Bill: Vol. 2" whole; it used to come out as "Vol. 2".
+    const isSubtitle = /^(the|a|an|new|last|final|return|rise|fall|revenge|attack|empire|phantom|force|rogue|solo|part|vol(?:ume)?\.?)\s/i.test(afterColon);
 
     // If before colon is a film series or after-colon is a subtitle, keep the full title
     if (isFilmSeries || isSubtitle) {
@@ -489,6 +587,9 @@ export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
   const stripTrailingYear = (input: string): string => {
     const match = input.match(/\s*\((\d{4})\)\s*$/);
     if (!match) return input;
+    // A double bill with a year per film ("Speak (1962) and The Committee
+    // (1968)") has no single release year; the last one is the second film's.
+    if (/\(\d{4}\)/.test(input.slice(0, match.index))) return input;
     extractedYear = parseInt(match[1], 10);
     return input.slice(0, match.index).trim();
   };
@@ -517,6 +618,13 @@ export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
     if (decorationYear) extractedYear ??= parseInt(decorationYear[1], 10);
 
     cleaned = stripTerminalDecorations(cleaned
+    // Remove festival tags: "Madame FFFL", "Coward - FFFL", "Case 137 FFF",
+    // "Between Worlds (LPFF)". Case-sensitive so real words never match
+    // ("The Meaning of Liff").
+    .replace(/\s+(?:[-–]\s+)?(?:FFFL|FFF|LIFF|LPFF|LoLaFF)\s*$|\s*\((?:FFFL|LIFF|LPFF|LoLaFF)\)\s*$/, "")
+    // Remove London Breeze Film Festival notes, often with the closing bracket
+    // cut off: "The Crowd (London Breeze Film Festival UK Premiere"
+    .replace(/\s*\(london\s+breeze\s+film\s+festival\b[^)]*\)?\s*$/i, "")
     // Remove BBFC ratings: (U), (PG), (12), (12A), (15), (18), with optional asterisk
     .replace(/\s*\((U|PG|12A?|15|18)\*?\)\s*$/i, "")
     // Remove bracketed notes like [is a Christmas Movie]
@@ -529,14 +637,53 @@ export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
     .replace(/\s*\(\d+\s*mins?\)\s*\+.*$/i, "")
     // Remove complex event suffixes: "+ Live Recording of PPF Podcast...", "+ Panel hosted by..."
     .replace(/\s*\+\s+[A-Z][\w\s]+(?:Q&A|Recording|Podcast|hosted\s+by).*$/i, "")
-    // Remove trailing "+ Q&A" (including HTML-encoded &amp;) / "+ pre-recorded intro by ..." / "+ discussion with ..." / "+ Live Music"
-    .replace(/\s*\+\s*(q\s*(&amp;|&)\s*a|discussion|intro|live\s+music)\b.*$/i, "")
-    // Remove trailing format parentheticals like "(ON VHS)", "(ON 35MM)"
-    .replace(/\s*\(on\s+(vhs|35mm|70mm|blu-?ray|dvd|4k)\)\s*$/i, "")
+    // Remove trailing extras: "+ Q&A", "+ pre-recorded intro by ...", "plus Director Q&A".
+    // All but the intros are anchored by EXTRA_TAIL so a double bill keeps its
+    // second film.
+    .replace(PLUS_INTRO, "")
+    .replace(PLUS_EXTRA, "")
+    .replace(PLUS_WORD_QA, "")
+    // Remove a bracketed "(+Q&A)"
+    .replace(/\s*\(\s*\+\s*q\s*(?:&amp;|&|\+)\s*a\s*\)\s*$/i, "")
+    // Remove live-score notes: "Nosferatu with Live Score", "(Live Score)"
+    .replace(/\s+with\s+live\s+score\s*$|\s*\(live\s+score\)\s*$/i, "")
+    // Remove programme notes: "- Preview", "- Black History Month 2026",
+    // "I Trans Awareness programme 2026" (the I stands in for a pipe),
+    // "Edition w/ Bonus Footage"
+    .replace(/\s+[-–]\s+preview\s*$/i, "")
+    .replace(/\s+[-–]\s+black\s+history\s+month(?:\s+\d{4})?\s*$/i, "")
+    .replace(/\s+[I|]\s+trans\s+awareness\s+programme(?:\s+\d{4})?\s*$/i, "")
+    .replace(/\s+edition\s+w\/\s*bonus\s+footage\s*$/i, "")
+    // Remove trailing format parentheticals like "(ON VHS)", "(ON 16MM)", and
+    // the unclosed "(ON 16MM" some listings truncate to
+    .replace(/\s*\(on\s+(vhs|16mm|35mm|70mm|blu-?ray|dvd|4k)\)?\s*$/i, "")
+    // Remove "(16mm)" / "(35mm)" / "(70mm)" / "(35 mm)" format parentheticals
+    .replace(/\s*\((?:16|35|70)\s?mm\)\s*$/i, "")
+    // Remove undated version notes: "(Re-release)", "(Remastered)",
+    // "(Theatrical Cut)", "(North American Cut)"
+    .replace(/\s*\((?:re-?release|remastered|theatrical\s+cut|north\s+american\s+cut)\)\s*$/i, "")
+    // Remove 4K notes: "(4K reissue)", "(4K Re-release)", "- 4K Restoration",
+    // "Sexy Beast- 4K Restoration", "Halloween 4K Restoration", "La Boum 4K"
+    .replace(/(?:\s*[-–]\s*|\s*\(|\s+)4k(?:\s+(?:restoration|re-?release|reissue))?\)?\s*$/i, "")
+    // Remove "(aka The Silk Noose)" alternate-title notes
+    .replace(/\s*\(aka\s+[^)]*\)\s*$/i, "")
+    // Remove the "(BIA)" screening-type tag: "The Invite (BIA)"
+    .replace(/\s*\(BIA\)\s*$/i, "")
+    // Remove a venue's part marker after a title that ends in a letter:
+    // "Liberté (Pt2)", "Resistance - part1". Only the abbreviated "(Pt2)" and
+    // the lowercase "- part 2". Canonical sequel naming ("Mockingjay - Part 2",
+    // "Che - Part 2", "Dune: Part Two") is the film's identity and stays.
+    .replace(/(?<=\p{L})\s*\(pt\.?\s*\d+\)\s*$/iu, "")
+    .replace(/(?<=\p{L})\s+[-–]\s*part\s*\d+\s*$/u, "")
     // Remove "Presented by ..." suffixes
     .replace(/\s+presented\s+by\s+.*$/i, "")
     // Remove "• Nth Anniversary" suffixes
     .replace(/\s*[•·]\s*\d+\w*\s+anniversary\b.*$/i, "")
+    // Remove other bullet-separated decorations: "Nadja • 4K Restoration • London Premiere".
+    // "• Double Feature" is deliberately absent: stripping it from
+    // "Halloween (1978) + Halloween II (1981) • Double Feature" exposes the
+    // second film's year as the hint for the whole double bill.
+    .replace(/\s*[•·]\s*(?:4k|restoration|(?:uk|london|world|european?)\s+premiere)\b.*$/i, "")
     // Remove "(Extended Edition)" / "(Extended Cut)" parentheticals
     .replace(/\s*\(extended\s+(edition|cut)\)\s*$/i, "")
     // Remove re-release / special edition suffixes: "(2026 Re-release)", "(4K Restoration)", "(2026 Encore)"
@@ -552,6 +699,15 @@ export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
     // \s+ after still requires whitespace before the number to avoid matching
     // legitimate hyphenated titles.
     .replace(/\s*-\s*\d+(?:th|st|nd|rd)\s+anniversary\b.*$/i, "")
+    // Remove a bare "25th Anniversary" with no brackets, with any separator in
+    // front of it ("Lola – 25th Anniversary", "The Movie: 40th Anniversary").
+    // The required space means a row literally named "30th Anniversary" is
+    // left alone.
+    .replace(/\s*[-–:]?\s+\d+(?:th|st|nd|rd)\s+anniversary\s*$/i, "")
+    // Remove an unclosed "(20th Anniversary" the listing cut short
+    .replace(/\s*\(\d+(?:th|st|nd|rd)\s+anniversary\b[^)]*$/i, "")
+    // Remove "- (24 Year Anniversary)" / "(24 Year Anniversary)"
+    .replace(/\s*(?:[-–]\s*)?\(\d+\s+years?\s+anniversary\)\s*$/i, "")
     // Remove "- Birthday Season" / "- Birthday Seaon" suffix (typo-tolerant).
     // Castle Cinema's "Birthday Season" strand. Caught 10+ times across patrol
     // cycles 16-17 — both "- Birthday Season" and the recurring "Birthday Seaon"

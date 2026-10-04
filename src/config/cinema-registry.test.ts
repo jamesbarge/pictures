@@ -16,7 +16,35 @@ import {
   isLegacyId,
   resolveCinemaId,
   VENUE_LANGUAGE_PRIORS,
+  allowsCurrentReleaseMatching,
 } from "./cinema-registry";
+
+describe("allowsCurrentReleaseMatching", () => {
+  it("allows first-run chain venues", () => {
+    for (const id of ["picturehouse-central", "curzon-soho", "everyman-borough-yards", "peckhamplex"]) {
+      expect(allowsCurrentReleaseMatching(id), id).toBe(true);
+    }
+  });
+
+  it("refuses repertory venues, where a bare classic title is the classic", () => {
+    for (const id of [
+      "bfi-southbank",
+      "prince-charles",
+      "close-up-cinema",
+      "cinema-museum",
+      "the-nickel",
+      "garden",
+      "cine-lumiere",
+      "genesis",
+    ]) {
+      expect(allowsCurrentReleaseMatching(id), id).toBe(false);
+    }
+  });
+
+  it("refuses an unknown venue", () => {
+    expect(allowsCurrentReleaseMatching("xyzzy-plugh")).toBe(false);
+  });
+});
 
 describe("getCinemaById", () => {
   it("returns the cinema for a known canonical ID", () => {
