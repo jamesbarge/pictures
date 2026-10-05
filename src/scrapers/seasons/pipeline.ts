@@ -29,7 +29,6 @@ export async function processSeasons(
     updated: 0,
     filmsLinked: 0,
     filmsUnmatched: 0,
-    seasonSlugs: [],
   };
 
   // Load film cache for matching
@@ -39,7 +38,6 @@ export async function processSeasons(
   for (const rawSeason of rawSeasons) {
     try {
       const saved = await saveSeason(rawSeason, filmCache);
-      result.seasonSlugs.push(saved.slug);
 
       if (saved.isNew) {
         result.created++;
@@ -112,7 +110,6 @@ async function saveSeason(
   rawSeason: RawSeason,
   filmCache: Map<string, CachedFilm>
 ): Promise<{
-  slug: string;
   isNew: boolean;
   filmsLinked: number;
   filmsUnmatched: number;
@@ -186,7 +183,6 @@ async function saveSeason(
   );
 
   return {
-    slug,
     isNew,
     filmsLinked: linked,
     filmsUnmatched: unmatched,
@@ -359,39 +355,4 @@ function getDefaultEndDate(): Date {
   const date = new Date();
   date.setMonth(date.getMonth() + 3);
   return date;
-}
-
-/**
- * Merge a season that appears at multiple cinemas
- * Used when the same director season runs at BFI + Barbican, etc.
- */
-export async function mergeSeasonSources(
-  primarySlug: string,
-  additionalCinema: string
-): Promise<void> {
-  const season = await db
-    .select()
-    .from(seasons)
-    .where(eq(seasons.slug, primarySlug))
-    .limit(1);
-
-  if (season.length === 0) {
-    console.warn(`[SeasonPipeline] Cannot merge - season not found: ${primarySlug}`);
-    return;
-  }
-
-  const currentCinemas = season[0].sourceCinemas || [];
-  if (!currentCinemas.includes(additionalCinema)) {
-    await db
-      .update(seasons)
-      .set({
-        sourceCinemas: [...currentCinemas, additionalCinema],
-        updatedAt: new Date(),
-      })
-      .where(eq(seasons.slug, primarySlug));
-
-    console.log(
-      `[SeasonPipeline] Merged ${additionalCinema} into season: ${primarySlug}`
-    );
-  }
 }

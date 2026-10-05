@@ -79,7 +79,6 @@ describe("BFI importer resilience", () => {
         makeScreening("IMAX", "Film Two"),
       ],
       lastUpdated: "1 Jan",
-      parseErrors: [],
     });
 
     const result = await runBFIImport();
@@ -101,7 +100,6 @@ describe("BFI importer resilience", () => {
       changes: [],
       screenings: [],
       lastUpdated: null,
-      parseErrors: [],
     });
 
     const result = await runBFIImport();
@@ -121,7 +119,6 @@ describe("BFI importer resilience", () => {
       changes: [],
       screenings: [makeScreening("NFT2", "Film Three")],
       lastUpdated: "2 Jan",
-      parseErrors: [],
     });
 
     const result = await runProgrammeChangesImport();
@@ -142,7 +139,6 @@ describe("BFI importer resilience", () => {
       changes: [],
       screenings: [],
       lastUpdated: "3 Jan",
-      parseErrors: [],
     });
 
     const result = await runProgrammeChangesImport();
@@ -168,7 +164,6 @@ describe("BFI importer resilience", () => {
       screenings: [
         makeScreening("Unknown", "Shared Film", "https://whatson.bfi.org.uk/imax/shared-film"),
       ],
-      parseErrors: [],
     });
     mockFetchProgrammeChanges.mockResolvedValue({
       changes: [],
@@ -176,7 +171,6 @@ describe("BFI importer resilience", () => {
         makeScreening("Unknown", "Shared Film", "https://whatson.bfi.org.uk/southbank/shared-film"),
       ],
       lastUpdated: "4 Jan",
-      parseErrors: [],
     });
 
     const result = await runBFIImport();

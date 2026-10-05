@@ -48,17 +48,6 @@ export interface TaggingResult {
   screeningsChecked: number;
   screeningsTagged: number;
   alreadyTagged: number;
-  /**
-   * Screenings that persisted but whose festival link failed, when this run
-   * wrote through the screening pipeline.
-   *
-   * `undefined` means not measured, never "none": the reverse tagger writes
-   * festival links directly and never calls the pipeline, so it has no such
-   * counter. Absence and zero must stay distinguishable — this is the path
-   * that produces `festivalSlug` screenings, so it is where a link failure
-   * would otherwise be invisible.
-   */
-  postWriteFailures?: number;
 }
 
 /**
@@ -80,20 +69,4 @@ export interface FestivalRecord {
   startDate: string;
   endDate: string;
   venues: string[] | null;
-}
-
-/**
- * Watchdog probe configuration for a festival website.
- */
-export interface WatchdogProbe {
-  /** Festival slug base (without year) */
-  slugBase: string;
-  /** URL to probe for programme availability */
-  probeUrl: string | ((year: number) => string);
-  /** CSS selector or content signal indicating programme is live */
-  signal: "content-hash" | "page-exists" | "element-count";
-  /** CSS selector for element-count signal */
-  selector?: string;
-  /** Minimum element count to consider programme live */
-  minCount?: number;
 }

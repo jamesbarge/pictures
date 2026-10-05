@@ -131,7 +131,7 @@ The `/scrape` slash command runs read-only detectors against `scraper_runs`: thr
 ## Scraper Families
 - Chains (multi-venue): `src/scrapers/chains/`
 - Independent cinemas: `src/scrapers/cinemas/`
-- Season scraping: `src/scrapers/seasons/`
+- Season scraping: `src/scrapers/seasons/` (one runner, `run-seasons.ts <venue>`, behind the five `npm run scrape:<venue>-seasons` scripts)
 - BFI PDF import flow: `src/scrapers/bfi-pdf/`
 
 ## Change Checklist
@@ -1349,11 +1349,12 @@ the row is committed, so it is counted on `postWriteFailures`, never in
 summaries, and it still refuses the superseded-candidate report via
 `shouldRunSupersededCleanup`.
 
-The only current producer is `festivals/eventive-scraper.ts`: it is the sole
-place a `RawScreening` gets a `festivalSlug`, so today the counter is
-structurally zero on every other path, including every registry venue scrape and
-the L-CUT gap-fill. It is threaded through those paths anyway because the
-contract is about the post-write stage, not about festivals specifically.
+The Eventive ingest (`festivals/eventive-scraper.ts`) was the producer this
+counter was built for. Its persisting path, `scrapeActiveEventiveFestivals`, was
+deleted on 2026-10-04 after losing its scheduler in #472, so Eventive rows now
+only reach the admin dry-run route and are never saved. The counter is threaded
+through every registry venue scrape and the L-CUT gap-fill because the contract
+covers the whole post-write stage.
 
 It reaches the **per-venue** layer only. `RunnerResult` has no run-level total, the
 `runner_completed` log omits it, and `VenueResult.success` stays `true`, so
