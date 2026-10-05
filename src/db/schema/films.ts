@@ -88,7 +88,7 @@ export const films = pgTable("films", {
   // Match tracking - for auditing and reprocessing
   // Confidence score from TMDB matching (0-1)
   matchConfidence: real("match_confidence"),
-  // How the match was made: "auto-with-year", "auto-with-director", "auto-no-hints", "manual", "review"
+  // How the match was made: "auto-with-year", "auto-with-director", "auto-no-hints", "current-release", "manual", "review"
   matchStrategy: text("match_strategy"),
   // When the TMDB match was performed
   matchedAt: timestamp("matched_at", { withTimezone: true }),

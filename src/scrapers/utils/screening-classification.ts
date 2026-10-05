@@ -50,7 +50,8 @@ export async function classifyScreening(
   let hasSubtitles = false;
   let subtitleLanguage: string | null = null;
   let hasAudioDescription = false;
-  let isRelaxedScreening = false;
+  // A scraper that names the type itself skips title classification below.
+  let isRelaxedScreening = screening.eventType === "relaxed";
   let season: string | null = null;
 
   // If scraper didn't provide event data, try to classify the title

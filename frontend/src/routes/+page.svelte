@@ -127,6 +127,38 @@
 		return out;
 	});
 
+	// STARTING SOON: the next screenings across every film, soonest first. The
+	// grid keeps its rating order; TEXT mode is already a timetable, so skips it.
+	const SOON_WINDOW_MS = 3 * 60 * 60 * 1000;
+	const SOON_LIMIT = 6;
+
+	// Own ticking clock: booking opens a new tab, so this one goes stale. Falls
+	// back to `clock.now` until the effect runs, so hydration matches the server.
+	let soonTick = $state<number | null>(null);
+	const soonNow = $derived(soonTick ?? clock.now);
+	$effect(() => {
+		const tick = () => (soonTick = Date.now());
+		tick();
+		const id = setInterval(tick, 60_000);
+		return () => clearInterval(id);
+	});
+
+	type PageScreening = (typeof data.screenings)[number];
+
+	// One shape for both timetables (TEXT mode and STARTING SOON) so they
+	// cannot drift apart.
+	function toTextDayFilm(
+		film: NonNullable<PageScreening['film']>,
+		screenings: PageScreening[],
+		sleeper: boolean
+	) {
+		return {
+			film: { id: film.id, title: film.title, year: film.year, director: film.director ?? null },
+			screenings: screenings.map(toCardScreening),
+			sleeper
+		};
+	}
+
 	const hasActiveFilters = $derived(
 		filters.filmSearch.length > 0 ||
 		filters.cinemaIds.length > 0 ||
@@ -263,6 +295,25 @@
 			{/if}
 		</EmptyState>
 	{:else}
+		{#if displayMode === 'posters'}
+			<!-- Own class, not `.day`: it spans days, and day selectors (tests,
+			     fitToFirstRow) must keep meaning "one calendar day". -->
+			<section class="soon">
+				<header class="day-header">
+					<h2>STARTING <span class="day-ord">SOON</span></h2>
+				</header>
+				<FigmaTextDay
+					films={[...filmMap.values()].map(({ film, screenings }) =>
+						toTextDayFilm(film, screenings, data.sleepers[clock.today] === String(film.id))
+					)}
+					now={soonNow}
+					until={soonNow + SOON_WINDOW_MS}
+					limit={SOON_LIMIT}
+					label="Screenings starting soon"
+					source="calendar-soon"
+				/>
+			</section>
+		{/if}
 		{#each visibleDayGroups as { date, films }, di (date)}
 				{@const parts = dayParts(date)}
 				<section class="day" class:day-wide={displayMode === 'text'} use:fitToFirstRow>
@@ -277,22 +328,9 @@
 					</header>
 					{#if displayMode === 'text'}
 						<FigmaTextDay
-							films={films.map(({ film, screenings }) => ({
-								film: {
-									id: film.id,
-									title: film.title,
-									year: film.year,
-									director: film.director ?? null
-								},
-								screenings: screenings.map((s) => ({
-									id: s.id,
-									datetime: s.datetime,
-									cinemaName: s.cinema?.name ?? 'Unknown',
-									format: s.format,
-									bookingUrl: s.bookingUrl
-								})),
-								sleeper: di === 0 && data.sleepers[date] === String(film.id)
-							}))}
+							films={films.map(({ film, screenings }) =>
+								toTextDayFilm(film, screenings, di === 0 && data.sleepers[date] === String(film.id))
+							)}
 							now={clock.now}
 						/>
 					{:else}
@@ -385,8 +423,10 @@
 	/* Day section caps at N cards wide for the viewport. The fitToFirstRow JS
 	   action overrides this with an explicit shrunken width when a day has
 	   fewer cards than the cap, so the black header bar lines up with the
-	   actual cards beneath it. */
-	.day {
+	   actual cards beneath it. The STARTING SOON strip follows the same ladder
+	   so its edges line up with the card grid below it. */
+	.day,
+	.soon {
 		display: flex;
 		flex-direction: column;
 		align-self: flex-start;
@@ -395,16 +435,19 @@
 	}
 
 	@media (min-width: 703px) {
-		.day { max-width: 655px; }     /* 2 cards (656 - 1) */
+		.day, .soon { max-width: 655px; }     /* 2 cards (656 - 1) */
 	}
 
 	@media (min-width: 1030px) {
-		.day { max-width: 982px; }     /* 3 cards (984 - 2) */
+		.day, .soon { max-width: 982px; }     /* 3 cards (984 - 2) */
 	}
 
 	@media (min-width: 1357px) {
-		.day { max-width: 1309px; }    /* 4 cards (1312 - 3) */
+		.day, .soon { max-width: 1309px; }    /* 4 cards (1312 - 3) */
 	}
+
+	/* Nothing starts within the window (late at night, TOMORROW selected). */
+	.soon:not(:has(.text-row)) { display: none; }
 
 	/* In TEXT mode, the day section ignores the card-row width ladder and uses
 	   the full page-chrome width — the table doesn't need to line up with poster
