@@ -1,14 +1,7 @@
-import type { Metadata, Viewport } from "next";
+import type { Metadata } from "next";
 import { DM_Sans, JetBrains_Mono, Cormorant } from "next/font/google";
 import localFont from "next/font/local";
-import Script from "next/script";
-import { Analytics } from "@vercel/analytics/next";
-import { SpeedInsights } from "@vercel/speed-insights/next";
 import { ClerkProviderConditional } from "@/components/clerk-provider-conditional";
-import { Providers } from "@/components/providers";
-import { OrganizationSchema } from "@/components/seo/json-ld";
-import { Footer } from "@/components/layout/footer";
-import { brand } from "@/lib/brand";
 import "./globals.css";
 
 const dmSans = DM_Sans({
@@ -46,121 +39,10 @@ const ttSlabs = localFont({
   display: "swap",
 });
 
-const BASE_URL = brand.baseUrl;
-
-/**
- * Comprehensive metadata for SEO and social sharing
- * Includes Open Graph, Twitter Cards, and verification tags
- */
-export async function generateMetadata(): Promise<Metadata> {
-  return {
-    // Basic metadata
-  title: {
-    default: `${brand.name} - ${brand.tagline}`,
-    template: `%s | ${brand.name}`,
-  },
-  description:
-    "Find screenings at London cinemas. Daily updated listings from BFI Southbank, Prince Charles Cinema, Curzon, Picturehouse, ICA, Barbican, and 20+ venues.",
-  keywords: [
-    "London cinema",
-    "film listings",
-    "independent cinema",
-    "BFI Southbank",
-    "Prince Charles Cinema",
-    "art house cinema",
-    "repertory cinema",
-    "London film",
-    "cinema listings",
-    "movie showtimes",
-  ],
-
-  // Canonical and alternate URLs
-  metadataBase: new URL(BASE_URL),
-  alternates: {
-    canonical: "/",
-  },
-
-  // Open Graph for Facebook, LinkedIn, etc.
-  openGraph: {
-    type: "website",
-    locale: "en_GB",
-    url: BASE_URL,
-    siteName: brand.name,
-    title: `${brand.name} - ${brand.tagline}`,
-    description:
-      "Find screenings at London cinemas. BFI, Prince Charles, Curzon, Picturehouse, ICA, and more. Updated daily.",
-    images: [
-      {
-        url: `${BASE_URL}/og-image.png`,
-        width: 1200,
-        height: 630,
-        alt: `${brand.name} - London Cinema Listings`,
-      },
-    ],
-  },
-
-  // Twitter Card
-  twitter: {
-    card: "summary_large_image",
-    title: `${brand.name} - ${brand.tagline}`,
-    description:
-      "Find screenings at London cinemas. Updated daily with showtimes from 20+ venues.",
-    images: [`${BASE_URL}/og-image.png`],
-    creator: brand.social.twitter,
-  },
-
-  // Robots directives
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-      "max-video-preview": -1,
-      "max-image-preview": "large",
-      "max-snippet": -1,
-    },
-  },
-
-  // Icons - multiple sizes for different contexts
-  icons: {
-    icon: [
-      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
-      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
-      { url: "/favicon-48x48.png", sizes: "48x48", type: "image/png" },
-    ],
-    apple: [
-      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
-    ],
-    other: [
-      { rel: "icon", url: "/icon-192.png", sizes: "192x192", type: "image/png" },
-      { rel: "icon", url: "/icon-512.png", sizes: "512x512", type: "image/png" },
-    ],
-  },
-
-  // Verification — env vars set in .env.local after registering with each dashboard
-  verification: {
-    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,
-    other: {
-      "msvalidate.01": process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION ?? "",
-    },
-  },
-
-    // App info
-    applicationName: brand.name,
-    authors: [{ name: brand.name }],
-    generator: "Next.js",
-    category: "Entertainment",
-  };
-}
-
-/**
- * Viewport configuration
- */
-export const viewport: Viewport = {
-  width: "device-width",
-  initialScale: 1,
-  themeColor: brand.colors.primary,
+// This app serves the API and admin only; pictures.london (frontend/) is the public site.
+export const metadata: Metadata = {
+  title: "Pictures Admin",
+  robots: { index: false, follow: false },
 };
 
 export default function RootLayout({
@@ -169,26 +51,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <head>
-        {/* Theme initialization script - prevents flash of wrong theme */}
-        <Script src="/theme-init.js" strategy="beforeInteractive" />
-      </head>
+    // `dark` reproduces what the deleted theme-init.js applied by default.
+    <html lang="en" className="dark">
       <body
         className={`${dmSans.variable} ${jetbrainsMono.variable} ${cormorant.variable} ${ttSlabs.variable} antialiased bg-background-primary text-text-primary`}
       >
-        {/* Organization schema for brand recognition */}
-        <OrganizationSchema />
-        <ClerkProviderConditional>
-          <Providers>
-            <div className="min-h-screen flex flex-col">
-              <main className="flex-1">{children}</main>
-              <Footer />
-            </div>
-          </Providers>
-        </ClerkProviderConditional>
-        <Analytics />
-        <SpeedInsights />
+        <ClerkProviderConditional>{children}</ClerkProviderConditional>
       </body>
     </html>
   );

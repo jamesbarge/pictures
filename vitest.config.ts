@@ -8,10 +8,9 @@ export default defineConfig({
     environment: "jsdom",
     // Include both .ts and .tsx test files
     include: ["src/**/*.test.ts", "src/**/*.test.tsx", "scripts/**/*.test.ts"],
-    // Exclude E2E tests (those are run by Playwright)
     // discovery.test.ts imports the frontend palette, which needs frontend deps
     // root CI does not install; its own config runs it (see the harness README).
-    exclude: ["e2e/**", "node_modules/**", "scripts/typesafe-experiments/discovery.test.ts"],
+    exclude: ["node_modules/**", "scripts/typesafe-experiments/discovery.test.ts"],
     // Setup files run before each test file
     setupFiles: ["./src/test/setup.ts"],
     // Coverage configuration
@@ -20,9 +19,7 @@ export default defineConfig({
       include: [
         "src/lib/**",
         "src/scrapers/utils/**",
-        "src/stores/**",
         "src/app/api/**",
-        "src/components/**",
       ],
       exclude: [
         "**/*.test.ts",

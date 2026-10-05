@@ -123,7 +123,7 @@ npm run lint         # Run ESLint
 ```bash
 npm run test         # Run unit tests (watch mode)
 npm run test:run     # Run unit tests once
-npm run test:e2e     # Run Playwright E2E tests
+cd frontend && npx playwright test   # Frontend E2E (pictures.london)
 ```
 
 ### Database
@@ -189,14 +189,12 @@ For the Playwright workflow to run:
 ## Architecture
 
 ```
-src/
-├── app/                 # Next.js App Router pages
+frontend/                # SvelteKit public site (pictures.london)
+src/                     # Next.js app (api.pictures.london)
+├── app/                 # App Router: API routes, admin, sign-in
 │   ├── api/             # API routes
-│   ├── film/[id]/       # Film detail pages
-│   └── ...
-├── components/          # React components
-│   ├── calendar/        # Calendar view components
-│   └── ...
+│   └── admin/           # Admin dashboard
+├── components/          # Admin UI primitives and Clerk wrappers
 ├── db/                  # Database schema & utilities
 │   └── schema/          # Drizzle schema files
 ├── scrapers/            # Cinema scrapers
@@ -204,7 +202,6 @@ src/
 │   ├── cinemas/         # Individual venues
 │   └── utils/           # Shared scraping utilities
 ├── agents/              # Claude AI agents
-├── stores/              # Zustand state stores
 └── lib/                 # Utilities & helpers
 ```
 
