@@ -239,7 +239,9 @@ const INDEPENDENT_CINEMAS: CinemaDefinition[] = [
     scraperFactory: "createNickelScraperV2",
     active: true,
     features: ["bar", "restaurant", "luxury"],
-    programmingFocus: ["mainstream", "arthouse"],
+    // Repertory: its listings are cult and genre seasons (Female Prisoner
+    // Scorpion, grindhouse double bills), checked 2026-10-04.
+    programmingFocus: ["repertory", "arthouse"],
     description: "Boutique cinema with restaurant and bar.",
     bookingUrl: "https://thenickel.co.uk",
     legacyIds: ["nickel"],
@@ -307,7 +309,7 @@ const INDEPENDENT_CINEMAS: CinemaDefinition[] = [
     coordinates: { lat: 51.5871, lng: -0.1642 },
     screens: 2,
     chain: null,
-    scraperType: "playwright",
+    scraperType: "cheerio",
     scraperModule: "cinemas/phoenix",
     scraperFactory: "createPhoenixScraper",
     active: true,
@@ -624,6 +626,25 @@ const INDEPENDENT_CINEMAS: CinemaDefinition[] = [
     bookingUrl: "https://thelexicinema.co.uk",
   },
 
+  {
+    id: "ibraaz",
+    name: "Ibraaz",
+    shortName: "Ibraaz",
+    website: "https://ibraaz.org",
+    address: { street: "93 Mortimer Street", area: "Fitzrovia", postcode: "W1W 7SS", borough: "Westminster" },
+    coordinates: { lat: 51.5173, lng: -0.142 },
+    screens: 1,
+    chain: null,
+    scraperType: "cheerio",
+    scraperModule: "cinemas/ibraaz",
+    scraperFactory: "createIbraazScraper",
+    active: true,
+    features: ["arts-centre", "gallery", "cafe", "accessible"],
+    programmingFocus: ["arthouse", "documentary", "world-cinema", "events"],
+    description: "Fitzrovia arts centre for art and ideas from the global majority; screenings run in its Minassa screening room.",
+    bookingUrl: "https://ibraaz.org/whats-on",
+  },
+
   // Venues sourced via the L-CUT gap-fill (scripts/lcut-gapfill.ts)
   {
     id: "the-arzner",
@@ -719,24 +740,6 @@ const INDEPENDENT_CINEMAS: CinemaDefinition[] = [
     programmingFocus: ["repertory", "arthouse", "community", "events"],
     description: "Volunteer-run community cinema collective, currently a monthly pay-what-you-can residency at The Brookmill in Deptford.",
     bookingUrl: "https://deptfordcinema.org/new-events",
-  },
-  {
-    id: "ibraaz",
-    name: "Ibraaz",
-    shortName: "Ibraaz",
-    website: "https://ibraaz.org",
-    address: { street: "93 Mortimer Street", area: "Fitzrovia", postcode: "W1W 7SS", borough: "Westminster" },
-    coordinates: { lat: 51.5173, lng: -0.142 },
-    screens: 1,
-    chain: null,
-    scraperType: "api",
-    scraperModule: "external/lcut-gapfill",
-    scraperFactory: "lcutGapfill",
-    active: true,
-    features: ["arts-centre", "gallery", "cafe", "accessible"],
-    programmingFocus: ["arthouse", "documentary", "world-cinema", "events"],
-    description: "Fitzrovia arts centre for art and ideas from the global majority; screenings run in its Minassa screening room.",
-    bookingUrl: "https://ibraaz.org/whats-on",
   },
   {
     id: "metroland-studios",
@@ -1675,6 +1678,18 @@ export function getChainIds(): ChainId[] {
 export const VENUE_LANGUAGE_PRIORS: Record<string, string[]> = {
   "cine-lumiere": ["fr"], // Institut français — predominantly French programming
 };
+
+/**
+ * Whether a venue's listings may use the matcher's current-release rule, which
+ * matches an ambiguous title to the only current UK release of that name.
+ * First-run venues qualify: programming focus includes "mainstream" and not
+ * "repertory". Repertory venues and unknown IDs do not, because there a bare
+ * "Frankenstein" or "Nosferatu" is usually the classic.
+ */
+export function allowsCurrentReleaseMatching(cinemaId: string): boolean {
+  const focus = getCinemaById(cinemaId)?.programmingFocus ?? [];
+  return focus.includes("mainstream") && !focus.includes("repertory");
+}
 
 // ============================================================================
 // Database Seed Functions

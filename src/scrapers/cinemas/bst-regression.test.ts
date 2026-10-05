@@ -35,12 +35,10 @@ import { CloseUpCinemaScraper } from "./close-up";
 
 type PrivDate = { parseDateTime: (s: string) => Date | null };
 type PrivBFI = { parseBFIDateTime: (s: string) => Date | null };
-type PrivPhoenix = {
-  parseShowtime: (date: string, time: string, year: number, now: Date) => Date | null;
-};
+type PrivPhoenix = { parsePages: (pages: string[]) => Promise<Array<{ datetime: Date }>> };
 type PrivOlympic = { parsePages: (pages: string[]) => Promise<Array<{ datetime: Date }>> };
 type PrivDavidLean = {
-  parseDateTime: (day: string, month: string, time: string, year: number) => Date | null;
+  startInstant: (iso: string) => { datetime: Date; timeSource: string } | null;
 };
 type PrivGenesis = { parseDateTime: (date: string, time: string) => Date | null };
 type PrivCloseUp = {
@@ -114,13 +112,27 @@ describe("BST regression: BFI parseBFIDateTime", () => {
   });
 });
 
-describe("BST regression: Phoenix parseShowtime", () => {
+describe("BST regression: Phoenix parsePages", () => {
   const scraper = new PhoenixScraper() as unknown as PrivPhoenix;
 
-  it("keeps the screening date and converts the UK-local time to UTC", () => {
-    const now = new Date("2026-06-01T12:00:00.000Z");
-    expect(scraper.parseShowtime("Tue 14 Jul", "18:10", 2026, now)?.toISOString())
-      .toBe("2026-07-14T17:10:00.000Z");
+  it("keeps the screening date and converts the UK-local time to UTC", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-01T12:00:00.000Z"));
+
+    const events = {
+      Events: [
+        {
+          ID: 1,
+          Title: "Example Film",
+          Performances: [{ StartDate: "2026-07-14", StartTime: "1810", URL: "Booking?x=1" }],
+        },
+      ],
+    };
+    const [screening] = await scraper.parsePages([
+      `<script>var Events = ${JSON.stringify(events)};</script>`,
+    ]);
+
+    expect(screening.datetime.toISOString()).toBe("2026-07-14T17:10:00.000Z");
   });
 });
 
@@ -147,16 +159,25 @@ describe("BST regression: Olympic parsePages", () => {
   });
 });
 
-describe("BST regression: David Lean parseDateTime", () => {
+describe("BST regression: David Lean TicketSolve start instants", () => {
   const scraper = new DavidLeanScraper() as unknown as PrivDavidLean;
 
-  it("keeps the screening date and converts the UK-local time to UTC", () => {
-    expect(scraper.parseDateTime("14", "Jul", "6.10pm", 2026)?.toISOString())
-      .toBe("2026-07-14T17:10:00.000Z");
+  it("keeps TicketSolve's offset either side of the October change", () => {
+    expect(scraper.startInstant("2026-10-24T14:00:00+01:00")?.datetime.toISOString())
+      .toBe("2026-10-24T13:00:00.000Z");
+    expect(scraper.startInstant("2026-10-27T14:30:00+00:00")?.datetime.toISOString())
+      .toBe("2026-10-27T14:30:00.000Z");
   });
 
-  it("rejects invalid times instead of fabricating midnight", () => {
-    expect(scraper.parseDateTime("14", "Jul", "not-a-time", 2026)).toBeNull();
+  it("reads an offset-less wall clock as London time, whatever the runtime zone", () => {
+    expect(scraper.startInstant("2026-07-14T18:10:00")).toEqual({
+      datetime: new Date("2026-07-14T17:10:00.000Z"),
+      timeSource: "local-24h",
+    });
+  });
+
+  it("rejects an unreadable start instead of fabricating midnight", () => {
+    expect(scraper.startInstant("not-a-time")).toBeNull();
   });
 });
 
