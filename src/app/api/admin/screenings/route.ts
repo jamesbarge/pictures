@@ -7,7 +7,6 @@ import { withAdminAuth } from "@/lib/auth";
 import { db } from "@/db";
 import { screenings, films, cinemas } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { nanoid } from "nanoid";
 import { getCanonicalId } from "@/config/cinema-registry";
 import type { ScreeningFormat, EventType } from "@/types/screening";
 
@@ -70,7 +69,7 @@ export const POST = withAdminAuth(async (request) => {
     }
 
     // Create the screening
-    const screeningId = nanoid();
+    const screeningId = crypto.randomUUID();
     await db.insert(screenings).values({
       id: screeningId,
       filmId,

@@ -16,7 +16,6 @@ Use this file as the single navigation entry point for AI agents and contributor
 | DB/schema/scripts | `src/db/` | `drizzle.config.ts`, `src/db/schema/` |
 | API behavior | `src/app/api/` | `src/lib/`, `src/db/` |
 | Data quality agents | `src/agents/` | `src/agents/data-quality/README.md` |
-| Outreach pipeline | `scripts/social-outreach/README.md` | `.github/workflows/social-outreach.yml` |
 
 ## Documentation Map
 - Canonical rules: `CLAUDE.md`
