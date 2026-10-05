@@ -227,6 +227,7 @@ describe("registry ↔ VENUE_MAP integration (guards cinema-id drift)", () => {
     ["Coldharbour Blue", "coldharbour-blue"],
     ["Peckhamplex", "peckhamplex"],
     ["BFI IMAX", "bfi-imax"],
+    ["Ibraaz", "ibraaz"],
   ])("recognizes captured L-CUT name %s as report-only %s", (name, id) => {
     expect(VENUE_MAP[normalizeVenueName(name)]).toEqual([id]);
     expect(getCinemaById(id)?.active).toBe(true);
@@ -240,13 +241,13 @@ describe("registry ↔ VENUE_MAP integration (guards cinema-id drift)", () => {
   // silently reclassify a scraped venue as source-only — auto-inserting L-CUT
   // rows into a venue we already scrape AND dropping its regression signal.
   // These tests run the REAL registry so that drift becomes a red build.
-  it("real registry yields exactly the 8 known source-only venues", () => {
+  // Ibraaz left this set on 2026-10-04 when it gained a first-party scraper.
+  it("real registry yields exactly the 7 known source-only venues", () => {
     const { sourceOnly } = classifyLcutTargets(getScrapedCinemaIds());
     expect([...sourceOnly].sort()).toEqual([
       "deptford-cinema",
       "good-shepherd-studios",
       "horse-hospital",
-      "ibraaz",
       "metroland-studios",
       "project-loop",
       "set-social-peckham",
@@ -674,7 +675,6 @@ describe("source-only venues need a cinemas row first", () => {
   const SOURCE_ONLY = [
     "metroland-studios",
     "deptford-cinema",
-    "ibraaz",
     "set-social-peckham",
   ];
 

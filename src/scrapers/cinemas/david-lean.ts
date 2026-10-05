@@ -5,383 +5,271 @@
  * Address: Katharine Street, Croydon CR9 1ET
  * Website: https://www.davidleancinema.uk (redirected from .org.uk)
  *
- * Uses TicketSolve for booking (via tinyurl redirects)
- * Divi-based site with slider for featured films and listing section
- * Playwright-based scraper for dynamic content
+ * Reads the venue's public TicketSolve XML feed (switched 2026-10-04). A plain
+ * fetch returns 200 with every published event: an ISO start with
+ * TicketSolve's own UTC offset, a per-event booking URL and a per-event detail
+ * feed. It replaced a Playwright scrape of the Divi homepage that waited on
+ * `networkidle` and regex-parsed innerText, which read doors times as start
+ * times (Animal Shorts, 4 Oct: "from 10.30am" for a 12:00 start) and only
+ * reached as far as the homepage's current month.
  */
 
-import { getYear, addYears } from "date-fns";
-import { chromium } from "rebrowser-playwright";
+import * as cheerio from "cheerio";
 
 import { BOT_USER_AGENT } from "../constants";
-import type { RawScreening, ScraperConfig, CinemaScraper } from "../types";
-import {
-  combineDateAndTime,
-  parseScreeningDate,
-  parseScreeningTime,
-} from "../utils/date-parser";
+import { BaseScraper } from "../base";
+import type { RawScreening, ScraperConfig } from "../types";
+import { parseUKLocalDateTime } from "../utils/date-parser";
 import { checkHealth } from "../utils/health-check";
+import { sanitizeRuntime } from "../utils/metadata-parser";
 
-const DAVID_LEAN_CONFIG: ScraperConfig = {
-  cinemaId: "david-lean-cinema",
-  baseUrl: "https://www.davidleancinema.uk",
-  requestsPerMinute: 10,
-  delayBetweenRequests: 1000,
-};
+export const DAVID_LEAN_FEED_URL = "https://davidleancinema.ticketsolve.com/shows.xml";
 
-/**
- * True when a `.et_pb_text_inner` block's text looks like a listing (has a
- * date AND an "at <time>" showtime) rather than incidental page copy.
- *
- * MUST be kept textually identical to the inline check inside `scrape()`'s
- * `page.evaluate()` callback: that callback runs in the browser context and
- * can't import this function directly, so the two copies are hand-synced.
- * This exported copy exists so the regression test can exercise the real
- * filtering regex (a bare-hour time like "11am" must NOT be dropped — see the
- * Toy Story 5 case in david-lean.test.ts) instead of asserting against
- * `parseListingText`, which never runs this filter.
- */
-export function isListingCandidateText(text: string): boolean {
-  return (
-    /\d{1,2}\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*/i.test(text) &&
-    /at\s+\d{1,2}([.:]\d{2})?\s*(am|pm)/i.test(text)
-  );
+/** One event as listed in shows.xml. */
+interface FeedEvent {
+  eventId: string;
+  showName: string;
+  description: string;
+  startIso: string;
+  bookingUrl: string;
+  /** Lowercased feed label: "available" or "sold out" as measured. */
+  status: string;
+  /** This event's own XML, the only place onsale_time and seat counts appear. */
+  detailUrl: string;
 }
 
-export class DavidLeanScraper implements CinemaScraper {
-  config = DAVID_LEAN_CONFIG;
+/** What an event's own XML adds: whether it is on sale and how many seats are left. */
+interface EventDetail {
+  available: number | null;
+  onsaleAt: Date | null;
+}
 
-  async scrape(): Promise<RawScreening[]> {
-    console.log(`[${this.config.cinemaId}] Starting David Lean Cinema scrape...`);
+/**
+ * Trailing parenthetical naming the kind of screening:
+ * "SCHOOL OF ROCK (Dementia-Friendly Screening)", "THE INVITE (Babes-In-Arms)".
+ * Left in the title it reaches film matching and TMDB as part of the name.
+ */
+const SCREENING_NOTE = /\s*\(([^()]*\b(?:screening|babes[- ]in[- ]arms)\b[^()]*)\)\s*$/i;
 
-    const browser = await chromium.launch({ headless: true });
-    const context = await browser.newContext();
-    const page = await context.newPage();
+/**
+ * Wall-clock budget for the per-event detail fetches. Each fetchUrl may take
+ * up to 30s, so 27 hung endpoints would run past the runner's 600s venue cap;
+ * availability is optional and is the part to give up.
+ */
+const DETAIL_BUDGET_MS = 60_000;
 
-    try {
-      console.log(`[${this.config.cinemaId}] Loading homepage...`);
-      await page.goto(this.config.baseUrl, {
-        waitUntil: "networkidle",
-        timeout: 30000
-      });
+/**
+ * "UK | 1958 | 83 mins", "USA/UK | 2025| 100 mins": year then runtime. No
+ * trailing word boundary: the description's divs run together as text, so
+ * the next line follows directly ("112 minsDirector: Morgan Matthews").
+ */
+const STATS_LINE = /\|\s*((?:19|20)\d{2})\s*\|\s*(\d{2,3})\s*min/i;
 
-      const screenings: RawScreening[] = [];
-      const now = new Date();
-      const currentYear = getYear(now);
+export class DavidLeanScraper extends BaseScraper {
+  config: ScraperConfig = {
+    cinemaId: "david-lean-cinema",
+    baseUrl: "https://www.davidleancinema.uk",
+    requestsPerMinute: 60,
+    // Applied before every request: the feed plus one detail XML per
+    // "sold out" event (27 on 2026-10-04).
+    delayBetweenRequests: 250,
+  };
 
-      // Extract booking URLs from the slider (title → URL map)
-      // Booking links are in et_pb_slide elements, NOT in the text listings
-      const sliderBookingMap = await page.evaluate(() => {
-        const map: Record<string, string> = {};
-        document.querySelectorAll('.et_pb_slide').forEach(slide => {
-          const title = slide.querySelector('.et_pb_slide_title')?.textContent?.trim()?.toUpperCase() || '';
-          const url = slide.querySelector('a.et_pb_more_button')?.getAttribute('href')
-            || slide.querySelector('a.et_pb_slide_title_link')?.getAttribute('href')
-            || null;
-          if (title && url && !url.includes('#')) {
-            map[title] = url;
-          }
-        });
-        return map;
-      });
+  protected async fetchPages(): Promise<string[]> {
+    // The feed is the whole programme, so a failure here fails the venue.
+    const feed = await this.fetchUrl(DAVID_LEAN_FEED_URL);
 
-      console.log(`[${this.config.cinemaId}] Found ${Object.keys(sliderBookingMap).length} booking URLs from slider`);
+    const now = new Date();
+    const pending = this.readFeed(feed).filter((event) => {
+      if (event.status !== "sold out" || !event.detailUrl) return false;
+      const start = this.startInstant(event.startIso);
+      return start !== null && start.datetime >= now;
+    });
 
-      // Extract listings from the schedule section.
-      // IMPORTANT: use innerText (NOT textContent) so the rendered line breaks
-      // are preserved. The blocks are structured one item per line —
-      //   "The Drama\n\n2025 | USA | 105 min\nFri 12 June at 11.00am ..."
-      // parseListingText() relies on splitting on "\n" to separate the title
-      // from the metadata/date lines. textContent collapses everything onto a
-      // single run ("...105 minFri 12 June..."), which broke title extraction.
-      const listings = await page.evaluate(() => {
-        const textElements = document.querySelectorAll('.et_pb_text_inner');
-        const results: Array<{ text: string; link: string | null }> = [];
-
-        textElements.forEach(el => {
-          const text = (el as HTMLElement).innerText?.trim() || "";
-          // Check for links anywhere in the element or its parent column
-          const link = el.querySelector('a[href*="tinyurl"], a[href*="ticketsolve"], a.et_pb_button')?.getAttribute('href')
-            || el.closest('.et_pb_column')?.querySelector('a[href*="tinyurl"], a[href*="ticketsolve"]')?.getAttribute('href')
-            || null;
-
-          // Look for patterns with date/time info — kept in sync with
-          // isListingCandidateText() below (this callback runs inside the
-          // browser via page.evaluate and can't import it directly; the unit
-          // test exercises the exported copy against the same real-world
-          // strings, e.g. the Toy Story 5 bare-hour case).
-          if (/\d{1,2}\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*/i.test(text) &&
-              /at\s+\d{1,2}([.:]\d{2})?\s*(am|pm)/i.test(text)) {
-            results.push({ text, link });
-          }
-        });
-
-        return results;
-      });
-
-      console.log(`[${this.config.cinemaId}] Found ${listings.length} listing entries`);
-
-      // Process listings to extract screenings
-      const seenScreenings = new Set<string>();
-      const sliderTitles = Object.keys(sliderBookingMap);
-      const matchStats = { direct: 0, exact: 0, substring: 0, wordOverlap: 0, fallback: 0 };
-
-      for (const listing of listings) {
-        // Try to match booking URL: first from listing itself, then from slider by title
-        let bookingUrl = listing.link;
-        if (bookingUrl) {
-          matchStats.direct++;
-        } else {
-          // Extract title from listing text and match against slider
-          const lines = listing.text.split("\n").map(l => l.trim()).filter(Boolean);
-          let firstLine = lines[0] || "";
-          // Skip metadata lines (year | runtime | country)
-          if (firstLine.match(/^\d{4}\s*\|/) && lines.length > 1) {
-            firstLine = lines[1];
-          }
-          const titleUpper = firstLine.replace(/\s*\(Cert\s*\d+A?\)\s*/gi, "").trim().toUpperCase();
-
-          // 1. Try exact match first
-          bookingUrl = sliderBookingMap[titleUpper] || null;
-          if (bookingUrl) {
-            matchStats.exact++;
-          }
-
-          // 2. Try substring match with length-ratio guard to prevent false positives
-          if (!bookingUrl && titleUpper.length > 5) {
-            for (const sliderTitle of sliderTitles) {
-              const shorter = Math.min(sliderTitle.length, titleUpper.length);
-              const longer = Math.max(sliderTitle.length, titleUpper.length);
-              if (shorter / longer >= 0.5 && (sliderTitle.includes(titleUpper) || titleUpper.includes(sliderTitle))) {
-                console.log(`[${this.config.cinemaId}] Booking match (substring): "${titleUpper}" → "${sliderTitle}"`);
-                bookingUrl = sliderBookingMap[sliderTitle];
-                matchStats.substring++;
-                break;
-              }
-            }
-          }
-
-          // 3. Try word overlap using Jaccard similarity (intersection/union) >= 0.5
-          if (!bookingUrl && titleUpper.length > 5) {
-            const titleWords = titleUpper.split(/\s+/).filter(w => w.length > 2);
-            let bestMatch = "";
-            let bestScore = 0;
-            for (const sliderTitle of sliderTitles) {
-              const sliderWords = sliderTitle.split(/\s+/).filter(w => w.length > 2);
-              const overlap = titleWords.filter(w => sliderWords.includes(w)).length;
-              const union = new Set([...titleWords, ...sliderWords]).size;
-              const score = overlap / Math.max(union, 1);
-              if (score > bestScore && score >= 0.5) {
-                bestScore = score;
-                bestMatch = sliderTitle;
-              }
-            }
-            if (bestMatch) {
-              console.log(`[${this.config.cinemaId}] Booking match (word-overlap ${(bestScore * 100).toFixed(0)}%): "${titleUpper}" → "${bestMatch}"`);
-              bookingUrl = sliderBookingMap[bestMatch];
-              matchStats.wordOverlap++;
-            }
-          }
-
-          if (!bookingUrl) {
-            matchStats.fallback++;
-          }
-        }
-
-        const parsed = this.parseListingText(listing.text, bookingUrl, currentYear, now);
-        for (const screening of parsed) {
-          const key = `${screening.filmTitle}-${screening.datetime.toISOString()}`;
-          if (!seenScreenings.has(key)) {
-            seenScreenings.add(key);
-            screenings.push(screening);
-          }
-        }
+    // Availability is optional: every screening is published whatever happens
+    // here, and an event without its detail keeps availability unset.
+    const details: string[] = [];
+    const startedAt = Date.now();
+    for (const [i, event] of pending.entries()) {
+      if (Date.now() - startedAt >= DETAIL_BUDGET_MS) {
+        console.warn(
+          `[${this.config.cinemaId}] Detail budget spent after ${i} of ${pending.length} events; ` +
+            `leaving the rest with availability unset.`,
+        );
+        break;
       }
-
-      console.log(`[${this.config.cinemaId}] Booking URL matches: ${JSON.stringify(matchStats)}`);
-      console.log(`[${this.config.cinemaId}] Found ${screenings.length} screenings total`);
-      return screenings;
-    } finally {
-      await browser.close();
+      try {
+        details.push(await this.fetchUrl(event.detailUrl));
+      } catch (error) {
+        // One failing endpoint usually means all of them are failing.
+        console.warn(
+          `[${this.config.cinemaId}] Could not read ${event.detailUrl}; stopping detail fetches and ` +
+            `leaving ${pending.length - i} event(s) with availability unset:`,
+          error,
+        );
+        break;
+      }
     }
+
+    return [feed, ...details];
   }
 
-  /**
-   * Parse one listing's text block into screenings.
-   *
-   * Public for tests: this scraper ran at ZERO yield for its entire life
-   * because nothing exercised this parser (the month regex required "Jun"
-   * while the site writes "June"). The fixture test encodes that failure.
-   *
-   * Format assumption (load-bearing): ONE date per line — the time blob
-   * captures to end-of-line, so two dates on one line would mis-attribute
-   * the second date's times to the first.
-   */
-  parseListingText(
-    text: string,
-    bookingUrl: string | null,
-    currentYear: number,
-    now: Date
-  ): RawScreening[] {
+  protected async parsePages(pages: string[]): Promise<RawScreening[]> {
+    const [feed, ...detailPages] = pages;
+    const details = new Map<string, EventDetail>();
+    for (const xml of detailPages) {
+      const $ = cheerio.load(xml, { xml: true });
+      const event = $("event").first();
+      const id = event.attr("id");
+      if (!id) continue;
+      const available = parseInt(event.children("available").text().trim(), 10);
+      const onsale = event.children("onsale_time").text().trim();
+      details.set(id, {
+        available: Number.isNaN(available) ? null : available,
+        onsaleAt: onsale && !Number.isNaN(Date.parse(onsale)) ? new Date(onsale) : null,
+      });
+    }
+
+    const now = new Date();
     const screenings: RawScreening[] = [];
-
-    // Extract film title (first line before year/country/runtime)
-    const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
-    let filmTitle = lines[0];
-
-    // Clean title - remove metadata if present
-    if (filmTitle.match(/^\d{4}\s*\|/)) {
-      // First line is metadata, skip to second
-      filmTitle = lines.length > 1 ? lines[1] : "";
-    }
-
-    if (!filmTitle) return screenings;
-
-    // Extract date/time patterns from the full text.
-    // Pattern: "<DayName> DD <Month> at <rest-of-line>"
-    //   - DayName: tolerate the site's variants (Tues, Weds, Thur, Thurs) via \w*.
-    //   - Month: 3-letter prefix + optional trailing letters → matches both the
-    //     FULL names the site actually uses ("June", "July") and any abbreviation.
-    //     The old pattern required a bare 3-letter month, so "June" never matched
-    //     "Jun" + "\s+at" — this was why the scraper had NEVER returned a screening.
-    //   - Capture the REST OF THE LINE as the time blob (stop at newline) so
-    //     multiple showtimes ("2.30pm and 7.30pm", "2.30pm (HOH) and 7.30pm") are
-    //     all captured, including ones interrupted by parentheticals.
-    const dateTimePattern = /(?:Mon|Tue|Tues|Wed|Weds|Thur|Thurs|Fri|Sat|Sun)\w*\s+(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+at\s+([^\n]*)/gi;
-
-    for (const match of text.matchAll(dateTimePattern)) {
-      const [, dayNum, monthName, timeBlob] = match;
-
-      // "Special screenings" announcement blocks put an intro SENTENCE on the
-      // first line (e.g. "We have two special screenings in August...") and
-      // embed the real film title AFTER the times on each date line:
-      //   "Wednesday 05 August at 7.00pm - ALL OF US STRANGERS plus Q&A"
-      // When a line carries its own title it wins over the block's first line
-      // (which is the sentence, not a film). Normal film blocks have no " - "
-      // in the time blob and fall back to the block title.
-      const { title: lineTitle, timePart } = this.splitEmbeddedTitle(timeBlob, filmTitle);
-      const times = this.extractTimes(timePart);
-
-      for (const time of times) {
-        const datetime = this.parseDateTime(dayNum, monthName, time, currentYear);
-        if (!datetime) {
-          console.warn(`[${this.config.cinemaId}] Failed to parse showtime: ${dayNum} ${monthName} ${time}`);
-          continue;
-        }
-
-        try {
-          // Only roll a parsed date forward a year for a genuine year-boundary
-          // case (e.g. a "5 Jan" listing seen in December). A date that is only
-          // RECENTLY past — this week's already-shown screenings, which a
-          // "what's on" page still lists — must NOT be bumped: doing so created
-          // phantom screenings ~360 days in the future that the validator then
-          // rejected (blocking the whole scrape). Recently-past dates stay in the
-          // current year and are dropped by the `>= now` guard below.
-          const daysFromNow = (datetime.getTime() - now.getTime()) / 86_400_000;
-          const adjustedDatetime = daysFromNow < -180 ? addYears(datetime, 1) : datetime;
-
-          if (adjustedDatetime >= now) {
-            const cleanedTitle = this.cleanTitle(lineTitle);
-            screenings.push({
-              filmTitle: cleanedTitle,
-              datetime: adjustedDatetime,
-              bookingUrl: bookingUrl || this.config.baseUrl + "/#whatson",
-              sourceId: `david-lean-${cleanedTitle.toLowerCase().replace(/\s+/g, "-").substring(0, 30)}-${adjustedDatetime.toISOString()}`,
-            });
-          }
-        } catch {
-          // Skip on error
-        }
+    for (const event of this.readFeed(feed ?? "")) {
+      const start = this.startInstant(event.startIso);
+      if (!start) {
+        console.warn(
+          `[${this.config.cinemaId}] Unreadable start "${event.startIso}" for ${event.showName} (event ${event.eventId})`,
+        );
+        continue;
       }
+
+      const note = event.showName.match(SCREENING_NOTE);
+      const stats = cheerio.load(event.description).text().match(STATS_LINE);
+      // The note leaves the title, so title classification cannot see it.
+      const relaxed = note !== null && /\brelaxed\b/i.test(note[1]);
+
+      screenings.push({
+        filmTitle: note ? event.showName.slice(0, note.index).trim() : event.showName,
+        datetime: start.datetime,
+        bookingUrl: event.bookingUrl,
+        sourceId: `david-lean-${event.eventId}`,
+        timeSource: start.timeSource,
+        availabilityStatus: this.availability(event, details.get(event.eventId), now),
+        ...(note && { eventDescription: note[1].trim() }),
+        ...(relaxed && { eventType: "relaxed" }),
+        ...(stats && { year: parseInt(stats[1], 10), runtime: sanitizeRuntime(parseInt(stats[2], 10)) }),
+      });
     }
 
+    console.log(`[${this.config.cinemaId}] Parsed ${screenings.length} events from the TicketSolve feed`);
     return screenings;
   }
 
-  private cleanTitle(title: string): string {
-    // Remove certificate info like "(Cert 15)"
-    return title.replace(/\s*\(Cert\s*\d+A?\)\s*/gi, "").trim();
+  /**
+   * Every event in shows.xml under the David Lean venue.
+   *
+   * Throws when there is no such venue: a 200 that is a challenge page, a
+   * maintenance page or a renamed venue would otherwise be recorded as a
+   * successful run with 0 screenings.
+   */
+  private readFeed(xml: string): FeedEvent[] {
+    const $ = cheerio.load(xml, { xml: true });
+    const events: FeedEvent[] = [];
+    let venueSeen = false;
+
+    $("venues > venue").each((_, venue) => {
+      const venueName = $(venue).children("name").text().trim();
+      // One TicketSolve account can sell for more than one venue; only this
+      // one is the cinema.
+      if (!/david lean/i.test(venueName)) {
+        console.warn(`[${this.config.cinemaId}] Skipping TicketSolve venue "${venueName}"`);
+        return;
+      }
+      venueSeen = true;
+
+      $(venue).find("shows > show").each((_, show) => {
+        const showName = $(show).children("name").text().trim();
+        const description = $(show).children("description").text();
+        $(show).find("events > event").each((_, el) => {
+          const event = $(el);
+          const eventId = event.attr("id");
+          const bookingUrl = event.children("url").text().trim();
+          if (!eventId || !showName || !bookingUrl) return;
+          events.push({
+            eventId,
+            showName,
+            description,
+            startIso: event.children("date_time_iso").text().trim(),
+            bookingUrl,
+            status: event.children("status").text().trim().toLowerCase(),
+            detailUrl: event.children("feed").children("url").text().trim(),
+          });
+        });
+      });
+    });
+
+    if (!venueSeen) {
+      throw new Error(
+        `${DAVID_LEAN_FEED_URL} returned no David Lean venue (first bytes: ` +
+          `${JSON.stringify(xml.slice(0, 120))}). Expected the TicketSolve shows feed.`,
+      );
+    }
+    return events;
   }
 
   /**
-   * Split a date line's post-"at" blob into its time portion and, when present,
-   * the film title embedded after a " - " separator. The site's "special
-   * screenings" announcement blocks use this shape:
-   *   "7.00pm - ALL OF US STRANGERS plus Q&A"
-   * so the block's first line is an intro sentence rather than a film name.
-   * Returns the block-level fallback title for normal film blocks (no " - ").
+   * The event's start instant.
+   *
+   * `date_time_iso` carries TicketSolve's own UTC offset, "+01:00" before the
+   * 25 October 2026 change and "+00:00" after, so it is an absolute instant.
+   * Its wall-clock half is re-read as London time through the shared parser
+   * as a check: the two agree unless TicketSolve's venue timezone is wrong,
+   * and then London wins, because the venue and every printed listing are in
+   * London. A wall clock read that way is labelled "local-24h", the
+   * provenance for a local 24-hour clock.
    */
-  private splitEmbeddedTitle(
-    timeBlob: string,
-    fallbackTitle: string
-  ): { title: string; timePart: string } {
-    const sep = timeBlob.indexOf(" - ");
-    if (sep === -1) return { title: fallbackTitle, timePart: timeBlob };
+  private startInstant(iso: string): { datetime: Date; timeSource: "iso" | "local-24h" } | null {
+    const match = iso.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})(?::\d{2})?(Z|[+-]\d{2}:?\d{2})?$/);
+    if (!match) return null;
+    const london = parseUKLocalDateTime(match[1]);
+    if (Number.isNaN(london.getTime())) return null;
+    if (!match[2]) return { datetime: london, timeSource: "local-24h" };
 
-    const timePart = timeBlob.slice(0, sep);
-    // Strip trailing "plus Q&A" / "plus Q & A" annotations from the title.
-    const title = timeBlob
-      .slice(sep + 3)
-      .replace(/\s*plus\s+Q\s*&\s*A.*$/i, "")
-      .trim();
+    const instant = new Date(iso);
+    if (instant.getTime() === london.getTime()) return { datetime: instant, timeSource: "iso" };
 
-    // Only treat this as an embedded title if the portion before " - " actually
-    // holds a time and we recovered a non-empty title that ISN'T ITSELF a time
-    // — otherwise a normal time-range listing ("10.00am - 12.00pm") would have
-    // its end time misread as the film title, silently dropping the screening.
-    const titleLooksLikeTime = /^\d{1,2}\s*[.:]?\d{0,2}\s*(am|pm)?\s*(\(hoh\))?$/i.test(title);
-    if (!title || !/\d/.test(timePart) || titleLooksLikeTime) {
-      return { title: fallbackTitle, timePart: timeBlob };
-    }
-    return { title, timePart };
+    console.warn(
+      `[${this.config.cinemaId}] TicketSolve offset in "${iso}" is not London's; ` +
+        `using ${london.toISOString()} for that London wall clock`,
+    );
+    return { datetime: london, timeSource: "local-24h" };
   }
 
-  private extractTimes(text: string): string[] {
-    const times: string[] = [];
-
-    // "HH.MMam" / "HH:MM pm" — tolerate a space before am/pm (the site writes
-    // "2.00 pm"). Normalise by stripping internal whitespace so downstream
-    // parseScreeningTime sees a clean token.
-    const timePattern = /(\d{1,2}[.:]\d{2}\s*(?:am|pm))/gi;
-    let remaining = text;
-    for (const m of text.matchAll(timePattern)) {
-      times.push(m[1].replace(/\s+/g, ""));
-    }
-    // Remove the detailed times from the text BEFORE scanning for bare-hour
-    // times. Otherwise the bare-hour pattern matches the minute half of a
-    // detailed time — "11.00am" yields a spurious "00am" (→ 00:xx phantom
-    // early-morning/next-day screenings) and "2.00pm" a spurious "00pm"
-    // (→ phantom noon, since 0pm parses to 12:00).
-    remaining = remaining.replace(timePattern, " ");
-
-    // Also handle bare "HHam" / "HH pm" format (no minutes)
-    const simpleTimePattern = /(\d{1,2}\s*(?:am|pm))/gi;
-    for (const m of remaining.matchAll(simpleTimePattern)) {
-      times.push(m[1].replace(/\s+/g, ""));
-    }
-
-    return times;
+  /**
+   * Availability, believed only on evidence.
+   *
+   * TicketSolve labels an event "sold out" until it goes on sale. Measured
+   * 2026-10-04: all 27 November events read "sold out" in shows.xml while
+   * their own XML said 68 of 68 seats available with onsale_time 2026-10-08
+   * 09:00 BST. Flagging those would put a SOLD OUT tag on a month the venue
+   * has not started selling, so "sold out" needs the event to be on sale AND
+   * out of seats. Anything short of that is left unset.
+   */
+  private availability(
+    event: FeedEvent,
+    detail: EventDetail | undefined,
+    now: Date,
+  ): RawScreening["availabilityStatus"] {
+    if (event.status === "available") return "available";
+    if (event.status !== "sold out" || !detail) return undefined;
+    // An event with no onsale_time gives no evidence it is on sale.
+    if (!detail.onsaleAt || detail.onsaleAt > now) return undefined;
+    return detail.available === 0 ? "sold_out" : undefined;
   }
 
-  private parseDateTime(
-    dayNum: string,
-    monthName: string,
-    timeStr: string,
-    currentYear: number
-  ): Date | null {
-    const time = parseScreeningTime(timeStr);
-    if (!time) return null;
-
-    const dateStr = `${dayNum} ${monthName} ${currentYear}`;
-    const parsedDate = parseScreeningDate(dateStr);
-    if (!parsedDate) return null;
-
-    return combineDateAndTime(parsedDate, time);
-  }
-
+  // Probes the feed, the one dependency the scrape has.
   async healthCheck(): Promise<boolean> {
-    return checkHealth(this.config.baseUrl, {
+    return checkHealth(DAVID_LEAN_FEED_URL, {
       headers: { "User-Agent": BOT_USER_AGENT },
+      signal: AbortSignal.timeout(30_000),
     });
   }
 }

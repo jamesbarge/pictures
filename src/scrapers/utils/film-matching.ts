@@ -34,6 +34,7 @@ import { sanitizeDirectors, sanitizeYear } from "./film-write-guards";
  *   - `id`       — every caller returns this as the resolved filmId
  *   - `posterUrl`, `year`, `imdbId` — pipeline.ts getOrCreateFilm's
  *     tryUpdatePoster backfill for a cached film with no poster
+ *   - `originalTitle` — initFilmCache's original-title alias keys
  *
  * Adding a consumer that needs another column means adding it to BOTH this Pick
  * and the select projection in initFilmCache. Correctness beats the byte count:
@@ -41,7 +42,7 @@ import { sanitizeDirectors, sanitizeYear } from "./film-write-guards";
  */
 type FilmRecord = Pick<
   typeof films.$inferSelect,
-  "id" | "title" | "year" | "tmdbId" | "imdbId" | "posterUrl"
+  "id" | "title" | "originalTitle" | "year" | "tmdbId" | "imdbId" | "posterUrl"
 >;
 
 // ============================================================================
@@ -91,6 +92,7 @@ export async function initFilmCache(
       .select({
         id: films.id,
         title: films.title,
+        originalTitle: films.originalTitle,
         year: films.year,
         tmdbId: films.tmdbId,
         imdbId: films.imdbId,
@@ -128,8 +130,10 @@ export async function initFilmCache(
     }
   }
 
+  const aliasCount = addOriginalTitleAliases(cache, allFilms);
+
   console.log(
-    `[Pipeline] Film cache initialized with ${cache.byTitle.size} unique films, ${cache.byTmdbId.size} TMDB IDs (${allFilms.length} total)`,
+    `[Pipeline] Film cache initialized with ${cache.byTitle.size - aliasCount} unique films, ${aliasCount} original-title aliases, ${cache.byTmdbId.size} TMDB IDs (${allFilms.length} total)`,
   );
   if (blockedCount > 0) {
     console.log(
@@ -137,6 +141,40 @@ export async function initFilmCache(
     );
   }
   return cache;
+}
+
+/**
+ * Index each film under its original title as well, so a venue that lists
+ * "Le Boucher" or "Festen" finds the row TMDB titled "The Butcher" or "The
+ * Celebration". Returns the number of aliases added.
+ *
+ * Aliases never redirect a title that already resolves: a title key always
+ * wins, and an alias that two different films share is indexed for neither.
+ * Rows of the same TMDB film count as one film. A film carrying a blocklisted
+ * TMDB id gets no alias, because its original title came from the wrong film.
+ */
+function addOriginalTitleAliases(cache: FilmCache, allFilms: FilmRecord[]): number {
+  const owners = new Map<string, FilmRecord | null>();
+  for (const film of allFilms) {
+    if (!film.originalTitle || (film.tmdbId && isBlockedTmdbId(film.tmdbId))) continue;
+    const alias = cache.normalizeTitle(film.originalTitle);
+    if (!alias || cache.byTitle.has(alias)) continue;
+
+    const owner = owners.get(alias);
+    if (owner === undefined) {
+      owners.set(alias, film);
+    } else if (owner && owner.id !== film.id && !(owner.tmdbId && owner.tmdbId === film.tmdbId)) {
+      owners.set(alias, null);
+    }
+  }
+
+  let added = 0;
+  for (const [alias, film] of owners) {
+    if (!film) continue;
+    cache.byTitle.set(alias, film);
+    added++;
+  }
+  return added;
 }
 
 /** Lookup a film in cache (O(1) access). Returns null on cache miss. */
@@ -215,7 +253,8 @@ export async function matchAndCreateFromTMDB(
   scraperDirector?: string,
   scraperPosterUrl?: string,
   scraperRuntime?: number,
-  venueLanguages?: string[]
+  venueLanguages?: string[],
+  allowCurrentRelease = false
 ): Promise<string | null> {
   // Year discipline: many scrapers send the SCREENING year as the film year,
   // and pipeline.ts also extracts "(YYYY)" from titles — for the current year
@@ -235,20 +274,24 @@ export async function matchAndCreateFromTMDB(
     director: scraperDirector,
     runtime: scraperRuntime,
     venueLanguages,
+    allowCurrentRelease,
   });
-
-  // Audit-trail accuracy: record the strategy that actually applied. After
-  // year-stripping, a current-year film matches with NO year hint — labeling
-  // it "auto-with-year" would be wrong (schema vocabulary: films.ts).
-  const matchStrategy = releaseYearHint
-    ? "auto-with-year"
-    : scraperDirector
-      ? "auto-with-director"
-      : "auto-no-hints";
 
   if (!match) {
     return null;
   }
+
+  // Audit-trail accuracy: record the strategy that actually applied. After
+  // year-stripping, a current-year film matches with NO year hint — labeling
+  // it "auto-with-year" would be wrong (schema vocabulary: films.ts). A match
+  // from the current-release rule says so itself.
+  const matchStrategy =
+    match.strategy ??
+    (releaseYearHint
+      ? "auto-with-year"
+      : scraperDirector
+        ? "auto-with-director"
+        : "auto-no-hints");
 
   // Check if we already have this TMDB ID — cache first, then DB fallback
   const cachedByTmdb = cache.byTmdbId.get(match.tmdbId);
@@ -336,6 +379,7 @@ export async function matchAndCreateFromTMDB(
   addToFilmCache(cache, {
     id: filmId,
     title: details.details.title,
+    originalTitle: details.details.original_title,
     year: guardedYear,
     tmdbId: match.tmdbId,
     imdbId: details.details.imdb_id,
@@ -416,6 +460,7 @@ export async function createFilmWithoutTMDB(
   addToFilmCache(cache, {
     id: filmId,
     title: matchingTitle,
+    originalTitle: null,
     year: cleanYear ?? null,
     tmdbId: null,
     imdbId: null,

@@ -13,7 +13,10 @@ Update this playbook whenever you:
 - **Resume is not necessarily a one-venue retry**: after a failed scrape phase, only completed scraper entries can be skipped. Checkpointed L-CUT/cleanup/audit phases are honored only as a contiguous prefix of completed phases; if scrape did not complete, these downstream phases rerun. The September 9 checkpoint records L-CUT/cleanup/audit but not scrape, so `--resume` does not mean "only Close-Up runs." Checkpoint age/argument validation can instead trigger a full run. Inspect the checkpoint and startup messages before choosing a retry; do not retry a known source block merely to make the run green.
 - **Scrape diff is a comparison, not a mutation ledger** (2026-09-10): `scrape-diff.ts` compares trimmed/lowercased film titles plus UTC instants within the next 30 days. Its unmatched incoming/existing rows do not prove inserts, cancellations or deletions. Raw scraper titles can differ from enriched DB titles, including unsafe sequel matches; inspect identities before drawing conclusions. `scraped_at` means last refresh, not creation. The `RECENTLY_REFRESHED_NOT_MATCHED` warning replaces the misleading `RECENTLY_ADDED_THEN_REMOVED`; null refresh timestamps are unknown, not recent. Legacy result fields `added`/`removed` remain comparison-only. Empty-capture blocking and matching behavior are unchanged.
 - **L-CUT parity aliases** (2026-09-10): observed labels `Genesis Cinema`, `Bertha DocHouse`, `Coldharbour Blue`, `Peckhamplex` and `BFI IMAX` resolve to their canonical first-party scraper IDs. The scheduled gap-fill's eight source-only write targets are unchanged; these five are parity/report-only. Keep the real-registry classification and no-write orchestration tests when adding aliases. Supervised CLI `--execute` without `--targets` remains broader and is not a safe verification command.
-- **Title decorations and reviewed wrappers are shared by both title paths** (2026-09-26): `TERMINAL_DECORATION_SUFFIXES` and `REVIEWED_WRAPPER_PREFIXES` in `src/lib/title-extraction/patterns.ts` feed both `extractFilmTitleSync` (enrichment) and `cleanFilmTitleWithMetadata` (scraper pipeline). A complete decoration such as `(London Premiere + Q&A)`, `(VHS Screening)` or `(B&W)` is removed as one unit before the generic `+ Q&A` rule, which used to cut it at the plus sign and leave `Casablanca (London Premiere`. Wrappers cover `Relaxed Screening:`, `Senior Community Cinema[ x Partner]:`, `Cine-Real presents`, `LAFS presents` and `Funeral Parade presents`; the scraper also unwraps one pair of quotes left behind a stripped wrapper. Add a new wrapper here only when it names a strand anchored at the start of the title, and add a test to both paths. The paths still differ on release years on purpose: the scraper moves `(1954)` into `extractedYear`, the sync extractor keeps it. Known gap: the scraper has no `(35mm)` suffix rule.
+- **Title decorations and reviewed wrappers are shared by both title paths** (2026-09-26): `TERMINAL_DECORATION_SUFFIXES` and `REVIEWED_WRAPPER_PREFIXES` in `src/lib/title-extraction/patterns.ts` feed both `extractFilmTitleSync` (enrichment) and `cleanFilmTitleWithMetadata` (scraper pipeline). A complete decoration such as `(London Premiere + Q&A)`, `(VHS Screening)` or `(B&W)` is removed as one unit before the generic `+ Q&A` rule, which used to cut it at the plus sign and leave `Casablanca (London Premiere`. Wrappers cover `Relaxed Screening:`, `Senior Community Cinema[ x Partner]:`, `Cine-Real presents`, `LAFS presents` and `Funeral Parade presents`; the scraper also unwraps one pair of quotes left behind a stripped wrapper. Add a new wrapper here only when it names a strand anchored at the start of the title, and add a test to both paths. The paths still differ on release years on purpose: the scraper moves `(1954)` into `extractedYear`, the sync extractor keeps it. The scraper strips `(16mm)`/`(35mm)`/`(70mm)` since 2026-10-04.
+- **Festival tags, strand prefixes and season codes live in code** (2026-10-04): 534 upcoming films were unmatched, many because their decoration never reached TMDB. `cleanFilmTitleWithMetadata` now strips festival tags (` FFFL`, ` - LIFF`, `(LPFF)`, `(LoLaFF)`, `(London Breeze Film Festival …` even when unclosed), festival and strand prefixes (`LPFF 2026 Short Session:`, `UKJFF:`, `London Palestine Film Festival 2026:`, `Classroom Cinema:`, `Babykino:`, `Members' Screening:`, `Opening Night:`, generic `<Org> presents:`), format and version notes (`on 16mm`, `(ON 16MM`, `(Re-release)`, `(Theatrical Cut)`, the 4K family, `• 4K Restoration • …`), extras (`+ pre-recorded intro`, `+ Q+A`, `plus Q&A`, `with Live Score`, `- Preview`, bare `25th Anniversary`, `(aka …)`, `(BIA)`), venue part markers (`Liberté (Pt2)`, `Resistance - part1`), `Black History Month 2026:`, `Special Preview of X with Guest Name`, `Ken Russell's The Devils: The Director's Cut`, the glued `UK PREMIEREThe …` and opera season codes (`Met Opera 2026-27:`, `RBO Encore 2026-27:`, bare `2026-27:`). Extras other than `+ intro` count only at the end of the title or before a describing word (`with`, `by`, `presented`, `TBC`), so `Tony Takitani + Talk Radio` keeps its second film. A trailing year after another `(YYYY)` stays in the title: it belongs to the second film of a double bill. The learnings file is gitignored and absent in CI, so a recurring decoration belongs in code with a test. Every rule has a preservation test (`Opening Night`, `Preview`, `30th Anniversary`, `The Odyssey`, `The Meaning of Liff`, `Mockingjay - Part 2`, `Che - Part 2`, `Kill Bill: Vol. 2`, `Lee Cronin's The Mummy`), and the 534 titles of that day are a fixture for an idempotency test. Canonical part naming (`- Part 2`, `: Part Two`) is the film's identity and stays; a possessive credit is only dropped with a director's cut, because TMDB keeps some (`Lee Cronin's The Mummy`). Rejected on purpose: `• Double Feature` (it exposed the second film's year as the hint for a double bill). Known limitation: once a prefix is stripped, the old two-word colon heuristic can still cut a title's own main title (`presents Dawson City: Frozen Time` → `Frozen Time`), the same thing it already does to the bare title.
+- **The film cache also answers to original titles** (2026-10-04): `initFilmCache` indexes each film under `normalizeTitle(original_title)` too, so a venue listing `Le Boucher`, `Festen` or `Minotaure` finds the row TMDB titled `The Butcher`, `The Celebration` or `Minotaur`. A title key always wins, an alias two different films share is indexed for neither, and a film with a blocklisted TMDB id gets no alias. On 2026-10-04 that added 677 aliases. Known risk: an alias can catch a different film of the same name that has no row yet (`Hanabi`, the original title of the 2026 `Fire Flower`, would also catch Kitano's `Hana-bi`). The same is true of any title key, since the cache ignores year.
+- **Current GB releases unlock ambiguous new titles** (2026-10-04): the ambiguity gate needs a year for a single-word title, and year discipline drops any current-year hint, so `Digger`, `Verity` and `Pressure` could never match from a chain. `matchFilmToTMDB` now accepts the match when exactly one film in TMDB's GB `now_playing` + `upcoming` lists has that exact title (or original title), within a year of any year hint, and not blocklisted. Only first-run venues opt in (`allowsCurrentReleaseMatching`: programming focus has `mainstream` and not `repertory`), so a bare `Frankenstein` at a repertory venue never attaches to a new release; the pipeline also takes a past release year from behind a decoration (`Frankenstein (1931) on 35mm`). It records `match_strategy = "current-release"` at confidence 0.75. `TMDBClient.getCurrentReleases()` caches the dozen pages for six hours per process. Zero or several namesakes keep the skip.
 - Always capture full time strings including AM/PM context.
 - If a time is `1-9` with no AM/PM, default to PM.
 - Treat times before `10:00` as likely parse errors and log warnings.
@@ -80,9 +83,10 @@ Rules:
 | ArtHouse Crouch End (`cinemas/arthouse-crouch-end.ts`) | `arthouse-crouch-end` | `arthouse-{titleSlug}-{ISO}` | derived (lowercase, whitespace→dash, punctuation kept) |
 | Coldharbour Blue (`cinemas/coldharbour-blue.ts`) | `coldharbour-blue` | `coldharbour-{event.id}` | API event id |
 | Olympic (`cinemas/olympic.ts`) | `olympic-studios` | `olympic-{bookingId}-{ISO}` | booking id from URL (`""` when absent; ISO keeps it unique) |
-| David Lean (`cinemas/david-lean.ts`) | `david-lean-cinema` | `david-lean-{titleSlug≤30}-{ISO}` | derived (lowercase, whitespace→dash, punctuation kept) |
+| David Lean (`cinemas/david-lean.ts`) | `david-lean-cinema` | `david-lean-{eventId}` | TicketSolve event id (since 2026-10-04; before that `david-lean-{titleSlug≤30}-{ISO}`, derived) |
 | Riverside (`cinemas/riverside-v2.ts`) | `riverside-studios` | `riverside-{event.id}-{perf.timestamp}` | event id + perf timestamp |
-| L-CUT gap-fill (`scripts/lcut-gapfill.ts`) | multiple (real venues, incl. `the-arzner`, `horse-hospital`, `good-shepherd-studios`, `project-loop`, `deptford-cinema`, `ibraaz`, `metroland-studios`, `set-social-peckham`) | `lcut-{lcutMongoId}` | L-CUT API film id (`https://lcutlondon.com/api/films/date/DD-MM-YYYY?page=N`) |
+| Ibraaz (`cinemas/ibraaz.ts`) | `ibraaz` | `ibraaz-{slug}-{ISO}` | derived; slug from the event page's canonical URL, percent-decoded so it matches the raw-Unicode listing link |
+| L-CUT gap-fill (`scripts/lcut-gapfill.ts`) | multiple (real venues, incl. `the-arzner`, `horse-hospital`, `good-shepherd-studios`, `project-loop`, `deptford-cinema`, `metroland-studios`, `set-social-peckham`) | `lcut-{lcutMongoId}` | L-CUT API film id (`https://lcutlondon.com/api/films/date/DD-MM-YYYY?page=N`) |
 
 ### Phantom reconcile (`src/scripts/reconcile-phantom-screenings.ts`)
 
@@ -139,7 +143,7 @@ The `/scrape` slash command runs read-only detectors against `scraper_runs`: thr
 6. Record site-specific notes below.
 
 ## Date Parser Notes
-- **Phoenix, Olympic, David Lean (2026-06-09):** Date labels are parsed through `parseScreeningDate()` before combining with UK-local times. Do not reintroduce `date-fns/parse()` for these paths.
+- **Olympic (2026-06-09):** Date labels are parsed through `parseScreeningDate()` before combining with UK-local times. Do not reintroduce `date-fns/parse()` for these paths. (David Lean was on this list until 2026-10-04; it now reads offset-bearing ISO instants from TicketSolve, cross-checked with `parseUKLocalDateTime()`. Phoenix moved to Savoy JSON `StartDate`/`StartTime` the same day.)
 - **Genesis (2026-06-09):** Time labels use `parseScreeningTime()` so ambiguous `1:00-9:59` values default to PM.
 - **Close-Up (2026-06-09):** Search-page date-only values are UTC-midnight dates; combine them with `ukLocalToUTC()` using UTC date components.
 
@@ -371,15 +375,29 @@ Use this format when recording cinema-specific quirks:
 ### JW3 (Finchley Road)
 - Scraper: `src/scrapers/cinemas/jw3.ts` (fetch-based, no browser — runnable under tsx).
 - Ticketing: Spektrix, client `jw3`. Public read API base: `https://ticket.jw3.org.uk/jw3/api/v3`.
-- Strategy (2 calls): `GET /events` → keep `attribute_Genre == "Cinema"` (excludes the centre's
-  talks/languages/classes/music/walks); `GET /instances?startFrom=YYYY-MM-DD&startTo=YYYY-MM-DD`
-  → join to Cinema events by `event.id`.
+- Strategy (2 calls): `GET /events` → keep `attribute_Genre == "Cinema"` plus named film nights
+  from other genres (below; excludes the centre's talks/languages/classes/music/walks);
+  `GET /instances?startFrom=YYYY-MM-DD&startTo=YYYY-MM-DD` → join to those events by `event.id`.
 - Dates: `instance.startUtc` is UTC **without** a trailing `Z` — append `Z` before `new Date(...)`.
   No `ukLocalToUTC` needed (Spektrix already converts), so the BST off-by-one cannot occur here.
 - Booking URL: `https://www.jw3.org.uk/spektrix/ChooseSeats?EventInstanceId=<instance.id>` (verified 200).
 - `sourceId`: `jw3-<instance.id>`; poster from `event.imageUrl`; availability from `instance.isOnSale`.
 - Known: NT Live / live broadcasts also carry `attribute_Genre = "Cinema"` and flow through; the
   data-quality pipeline classifies `content_type` downstream.
+- Film nights outside the Cinema genre (added 2026-10-04, `jw3FilmTitle()`): Young JW3 files its
+  film nights under `Young Professionals`, e.g. `Young JW3 Queer Movie & Pizza Night: Call Me By Your
+  Name` (21 Oct) and `...: Theater Camp` (16 Dec). Nothing structured marks them. Checked on
+  2026-10-04 across all 287 events: genre, every `attribute_*` field and the instance `planId` match
+  the surrounding workshops (both nights use the general plan `202AVG...`, shared with 117 non-film
+  instances; the cinema plan `4401APL...` carries only Cinema plus one talk). Description keywords
+  are unsafe: talks about film stars, "film clips" and a TV episode screening all mention film. The
+  rule is name-only: for a non-Cinema event, the segment before the last colon must match
+  `/\b(movie|film)\b.*\b(night|club)\b/i`, and the film title is the text after that colon. It
+  keeps 3 of 214 non-Cinema events (the two above plus the past `Young JW3 x Young UJIA: Film Club:
+  Entebbe`) and drops `Young Jury Award for Best Short Film 2026` (a UKJF shorts awards evening).
+  A renamed strand will silently fall out again, so recheck this list when JW3 coverage looks low.
+- The film-night instance `start` is the doors/pizza time (18:30); the description gives the film
+  start ("7.15pm - Film starts"). The row keeps the ticketed 18:30 start.
 
 ### Cinema Museum (Kennington, SE11)
 - Scraper: `src/scrapers/cinemas/cinema-museum.ts` (fetch-based iCal, runnable under tsx).
@@ -496,42 +514,72 @@ Use this format when recording cinema-specific quirks:
   last five of those fell beyond the venue's actual horizon, so half the search budget could not
   return anything.
 
-  Three bounds replace the fixed loop count:
-  1. **Start** at the last day the homepage's `var shows` JSON already covers. The array is ordered
-     and complete up to its final entry (verified: its four 27 September shows are exactly the four
-     the 27 September search page lists), so earlier days need no request. That last day IS swept,
-     because a truncated array could cut a day in half.
-  2. **Stop** at the horizon `/film_programmes/` advertises. Every programme heading in
-     `.inner_block_3 h2 a` ends with its final screening date ("3 - 31 October 2026: Winter Sleep",
-     "26 September 2026: Against all Odds: Albuquerque"), so the maximum across the index is the
-     real horizon. One request buys it: on 2026-09-21 it read 31 October, i.e. +40 days. The index
-     page is fetched for the horizon ONLY and is deliberately kept out of the pages handed to
-     `parsePages` (it carries no `date=` param and no timed spans, so it would be inert, but keeping
-     it out means `extractPageDate` can never latch onto one of its programme dates).
-  3. **Cap** at `MAX_SEARCH_REQUESTS = 45` regardless, so a misreported horizon cannot become
-     hundreds of requests. `FALLBACK_HORIZON_DAYS = 42` applies when the index is unreadable.
-  4. **Give up early** after `MAX_EMPTY_DAY_STREAK = 5` consecutive listing-free days. ⚠️ This
-     threshold must NOT be lowered towards 1. Close-Up goes dark on scattered SINGLE days — 6, 15,
-     23 and 29 October 2026 all returned zero listings inside a programme running to 31 October, and
-     the longest consecutive run measured was one day — so stopping on the first empty day would
-     have truncated at 6 October and lost **34 of 59** screenings. With the published horizon in
-     hand the streak never fires; it earns its keep only when the index is unreadable and the
-     42-day fallback overshoots a short programme (measured: 38 requests → 9 in that case).
+  **The sweep is an explicit day list planned from `/film_programmes/` (2026-10-04).** The
+  2026-09-21 version walked every day from the JSON's last day to the published horizon and gave up
+  after 5 empty days. The 2026-10-04 horizon audit found it missing two screenings on a typical
+  programme: it never swept 22 Oct (Vicky Smith – Animated Matter) because that day sat inside the
+  JSON window, and it stopped at 5 Nov ("5 consecutive listing-free days … stopping 12 day(s)
+  early") on the way to a one-off on 17 Nov (Jenny Baines – Action Films). `planSweepDays` now
+  fetches a day only when a programme screens on it AND the JSON cannot account for it:
+  1. **Range programmes** ("3 - 31 October 2026: Winter Sleep", "28 September - 3 October 2026: …"):
+     every day from the JSON's last day, or the range's first day if later, to the range's end. A
+     range screens on some of its days and not others; only a search page says which. The JSON's
+     own last day is included because a truncated array could cut it in half. A start that omits
+     its month or year borrows the end's, stepping the year back for a December-to-January span; a
+     heading prefix in any other shape is read as already running.
+  2. **One-day programmes** ("17 November 2026: Jenny Baines – Action Films followed by Q&A"): their
+     day, unless the JSON already names a show on it; on the JSON's own last day they are always
+     fetched, for the same truncation reason. A start after its end ("28 - 5 November") is read as
+     already running. Title matching is deliberately avoided (the
+     heading adds "followed by Q&A"; the listing does not).
+  3. **Unnamed JSON shows**: any day where the JSON lists a future show as `"title": null` and the
+     homepage's h2 list cannot name it. That list only runs about a week ahead, so a null-title show
+     later in the month was silently dropped. 22 Oct 20:15 was exactly this: it IS in the JSON.
 
-  **Result, measured live 2026-09-21: 11 requests → 33, and 24 screenings → 59** across 35 distinct
-  days, contiguous 22 September to 31 October. Of the 32 days past the JSON boundary the old loop
-  reached 4; the sweep reaches all 32.
+  The JSON is ordered and complete up to its final entry (verified 2026-09-20: its four 27 September
+  shows are exactly the four the 27 September search page lists), which is why days it covers need
+  no request beyond the three cases above. Headings that carry no readable date are logged as a
+  warning, since each is a programme the plan cannot see. The index page is fetched for planning
+  ONLY and is kept out of the pages handed to `parsePages` (it carries no `date=` param and no timed
+  spans, so it would be inert, but keeping it out means `extractPageDate` can never latch onto one of
+  its programme dates).
+
+  **Measured live 2026-10-04: 6 search requests (18 planned) → 3 (22 Oct, 31 Oct, 17 Nov), and 38
+  validated screenings → 40**, last date 31 Oct → 17 Nov. The contiguous walk stopped after 6 of its
+  18 planned days and reached neither miss. Fewer requests matter doubly here: every request is one
+  more chance to land inside a Cloudflare window.
+
+  Bounds that still apply:
+  - **Cap** at `MAX_SEARCH_REQUESTS = 45` (near-term days first, the list is ascending), so a
+    misreported horizon cannot become hundreds of requests.
+  - **Fallback**: when the index is unreadable or lists nothing current, the plan is every day from
+    the JSON's last day to `FALLBACK_HORIZON_DAYS = 42` (plus any unnamed-show days), and ONLY then
+    does `MAX_EMPTY_DAY_STREAK = 5` end the walk early. ⚠️ That threshold must NOT be lowered
+    towards 1. Close-Up goes dark on scattered SINGLE days — 6, 15, 23 and 29 October 2026 all
+    returned zero listings inside a programme running to 31 October — so stopping on the first
+    empty day would have truncated at 6 October and lost **34 of 59** screenings. With the
+    published horizon in hand the streak is not applied at all: a dark run there is a gap in the
+    programme.
+  - **`SWEEP_BUDGET_MS = 300_000`** wall-clock ceiling, unchanged.
+
+  History: on 2026-09-21 the contiguous walk replaced a 7-day stride (11 requests → 33, 24
+  screenings → 59 across 35 distinct days). The stride had sampled about one day in seven past the
+  JSON window, and its last five probes fell beyond the venue's horizon.
 - **A challenge part-way through the sweep KEEPS what has been fetched (do not "fix" this to
-  throw).** The sweep is ~33 requests over ~114s and a block lasts ~19-27 minutes, so interruption
-  is routine: on 2026-09-21 a window opened at 10:00:23 and closed during request 10 of 33. Throwing
+  throw).** On 2026-09-21 the contiguous sweep was ~33 requests over ~114s; the planned sweep is
+  usually a handful of requests now, and a block still lasts ~19-27 minutes, so interruption
+  happens: on 2026-09-21 a window opened at 10:00:23 and closed during request 10 of 33. Throwing
   there discarded 9 good pages AND the homepage JSON for zero screenings. It is safe to keep them
   because near-term coverage comes from the JSON (request #1, covering everything up to the sweep
   start) and because **nothing downstream deletes on a partial batch** —
   `reportSupersededScreeningCandidates` is a `SELECT COUNT(*)` with "No runtime opt-in to deletion"
   (`pipeline.ts:359`) and `pipeline.ts` contains no DELETE at all. A challenge on the programme
   index likewise keeps the homepage and skips the sweep, since the index request doubles as a probe.
-  Non-challenge failures keep the old required/optional split: the first `REQUIRED_DAYS = 14` of the
-  sweep must succeed or the run fails, later days only shorten the horizon.
+  Non-challenge failures keep a required/optional split. Search-only coverage starts at the JSON's
+  last day, so a day from there to `REQUIRED_DAYS = 14` calendar days later must succeed or the run
+  fails. Later days only shorten the horizon. A day BEFORE the JSON's last day is fetched only to
+  name an unnamed show, so its failure costs that one title and is optional: throwing there would
+  discard the homepage JSON and every other page, and send runner retries into the WAF.
 - **⚠️ The venue publishes am/pm typos, and we drop those screenings rather than guess.** Found
   2026-09-21 once daily sweeping made the whole programme visible: `26-10-2026` renders
   `04:30 am : Winter Sleep` (a 196-minute film) and `27-10-2026` renders
@@ -550,37 +598,65 @@ Use this format when recording cinema-specific quirks:
   **`healthCheck()` 16.4s / 3 requests → 0.2s / 1 request, same `false`**.
 
 ### The David Lean Cinema (Croydon Clocktower)
-- Scraper: `src/scrapers/cinemas/david-lean.ts` (Playwright/`rebrowser-playwright`, Divi/WordPress site).
-- Source URL: `https://www.davidleancinema.uk` (homepage carries the full what's-on list).
-- Booking: TicketSolve via `tinyurl`/`ticketsolve` links. Most listing blocks carry their own booking link, so the slider title→URL matcher is a fallback only.
-- Key selectors: listings in `.et_pb_text_inner`; slider booking map from `.et_pb_slide` (`.et_pb_slide_title` + `a.et_pb_more_button`).
-- Date/time format: one film per `.et_pb_text_inner` block; lines are `Title` / `YYYY | Country | NN min` / `<DayName> DD <Month> at <times>` (e.g. `Tues 16 June at 2.30pm and 7.30pm`, sometimes split by a `(HOH)`/`(Relaxed)` parenthetical). Parsed via `parseScreeningDate()` + `parseScreeningTime()` → `combineDateAndTime()`.
-- **Zero-yield bug fixed 2026-06-12 (had NEVER returned a screening):**
-  1. The date/time regex required a bare 3-letter month (`Jun`); the site writes FULL month names (`June`). `Jun` matched inside `June` but the following `\s+at` then failed → no listing ever parsed. Widened the month alternation to a 3-letter prefix + optional trailing letters (`(Jan|...|Dec)[a-z]*`), widened the day-name group (`Tues`/`Weds`/`Thur`/`Thurs` via `\w*`), and capture the rest of the line as the time blob (`[^\n]*`) so multi-time listings and ones interrupted by `(HOH)` are fully captured.
-  2. Listings are read via `innerText` (NOT `textContent`) so the per-line title/metadata/date structure is preserved — `textContent` collapsed everything onto one run (`...105 minFri 12 June...`), breaking title extraction.
-  3. `extractTimes()` strips the detailed `HH.MMam` times from the text BEFORE scanning for bare-hour times; otherwise the bare-hour pattern matched the minute half of a detailed time (`2.00pm` → spurious `00pm`), producing phantom 00:xx / next-day screenings.
-- Year roll-forward guard retained: only bump a parsed date forward a year when it is >180 days in the past (genuine year boundary); recently-past dates stay in the current year and are dropped by the `>= now` filter (prevents the old ~360-day phantom screenings).
-- **Load-bearing format assumption: ONE date per line.** The time blob captures to end-of-line, so a line like "Tues 16 June at 2.30pm and Wed 17 June at 7.30pm" would attribute BOTH times to 16 June and never see the second date. The site doesn't currently do this; if listings change shape, stop the blob at the next day-name token. Regression tests: `david-lean.test.ts`.
-- **Two coverage/title bugs fixed 2026-07-20 (audit):**
-  1. **Bare-hour times dropped whole blocks.** The DOM-level filter required a
-     time WITH minutes right after "at" (`at\s+\d{1,2}[.:]\d{2}\s*(am|pm)`). A
-     block whose first showtime was a bare hour — e.g. Toy Story 5's
-     `Thurs 20 Aug at 11am, 2.30pm (HOH) and 7.00pm` — never entered the
-     listings and its 3 screenings were silently missed. Minutes are now
-     OPTIONAL in that filter (`at\s+\d{1,2}([.:]\d{2})?\s*(am|pm)`), matching
-     what `parseListingText` and `extractTimes` already tolerate.
-  2. **"Special screenings" announcement blocks captured the intro sentence as
-     the film title.** These blocks put a SENTENCE on line 0 and embed the real
-     title AFTER the times on each date line:
-     `Wednesday 05 August at 7.00pm - ALL OF US STRANGERS plus Q&A`. The parser
-     assumed one film per block (title = line 0) and applied the sentence to
-     every screening (producing "films" titled `We have two special screenings
-     in August which include Q&A's:`). `splitEmbeddedTitle()` now splits the
-     post-"at" blob on the first ` - ` and uses the embedded title (minus a
-     trailing `plus Q&A`) when present; normal blocks with no ` - ` keep the
-     block title. Multiple films per block are therefore supported.
-- Verified live 2026-06-12: `scrape()` → 49 screenings (was 0), 0 suspect (<09:00 UTC) times. Cross-checked vs site: "Fairyland" 16 June 2.30pm+7.30pm, "Who Framed Roger Rabbit?" 20 June 11.00am, "The Devil Wears Prada 2" 24 June 5.30pm.
-- Verified live 2026-07-20: `scrape()` → 42 screenings, 25 titles, Toy Story 5 present (11:00/14:30/19:00 on 20 Aug), special-screening titles resolved (ALL OF US STRANGERS 5 Aug, COME SEE ME IN THE GOOD LIGHT 18 Aug), 0 sentence-titles, 0 sub-10:00 times. DB cleanup removed 2 sentence-title "films" (4 screenings) + 4 stale `00:00` phantom rows (pre-fix `11.00am`→`00am` era; correct 11:00 rows coexisted, so no coverage lost).
+- Scraper: `src/scrapers/cinemas/david-lean.ts` (`BaseScraper`, plain fetch + Cheerio in `xml` mode; no browser).
+- **Source (since 2026-10-04): the public TicketSolve XML feed** `https://davidleancinema.ticketsolve.com/shows.xml`.
+  A plain fetch returns 200 (~127KB, no queue-it hop) with every published event: 58 on 2026-10-04,
+  4 Oct to 28 Nov. Shape: `venues > venue > shows > show > events > event`; show `name` and
+  `description` are CDATA; each event has `date_time_iso`, a booking `url` (`…/events/{id}/seats`),
+  a `status` (`available` / `sold out`) and `feed > url` pointing at its own XML.
+- **Time**: `date_time_iso` carries TicketSolve's own UTC offset (`+01:00` before the 25 Oct 2026
+  change, `+00:00` after; the `zone="GMT"` attribute is wrong, ignore it). It is read as an absolute
+  instant (`timeSource:"iso"`) and its wall-clock half is re-read through `parseUKLocalDateTime()`
+  as a check. If they ever disagree, TicketSolve's venue timezone is misconfigured and the London
+  reading wins, labelled `"local-24h"`. An offset-less value is read as London time whatever the
+  runtime's zone.
+- **Availability: TicketSolve says "sold out" for events not yet on sale.** On 2026-10-04 all 27
+  November events read `sold out` in `shows.xml`; their per-event XML said `available` 68 of
+  `capacity` 68 with `onsale_time` 2026-10-08 09:00 BST. `shows.xml` carries no `onsale_time`, so the
+  scraper fetches the per-event XML for future `sold out` events only (27 extra requests, ~10s
+  total) and sets `availabilityStatus:"sold_out"` only when `onsale_time` is present and past AND
+  `available` is 0. A future or missing `onsale_time`, seats left, or an unread detail all leave it
+  unset. `available` maps to `"available"`. The frontend renders `sold_out` as a SOLD OUT tag, so a
+  false positive hides a whole month of bookable shows.
+- **Detail fetches are budgeted.** They stop at the first failure (one hung endpoint usually means
+  all of them) and after `DETAIL_BUDGET_MS = 60_000`. Each `fetchUrl` can take 30s, so 27 hung
+  endpoints would otherwise run past the runner's 600s venue cap. Screenings are published either
+  way; only availability is given up.
+- **Titles**: show `name` as published, which is ALL CAPS ("LATE FAME", "COYOTE Vs ACME"). A
+  trailing screening-type parenthetical moves to `eventDescription`: "SCHOOL OF ROCK (Dementia-Friendly
+  Screening)" → "SCHOOL OF ROCK" + "Dementia-Friendly Screening"; also "(Relaxed Screening)",
+  "(Babes-In-Arms)". A relaxed note also sets `eventType:"relaxed"`, because title classification
+  only ever sees the stripped title; `classifyScreening()` seeds `isRelaxedScreening` from that
+  event type, which keeps the RELAXED search filter working. Year and runtime come from the description's stats line ("UK | 1958 | 83 mins");
+  the description's divs run together as text ("112 minsDirector:"), so that regex has no trailing
+  word boundary. 17 of 34 shows carried it on 2026-10-04; 15 (mostly November) had an empty
+  description.
+- **⚠️ Colon titles meet the pipeline's colon heuristic.** `cleanFilmTitle()` strips a short
+  before-colon prefix, so "DRACULA: PRINCE OF DARKNESS" (1966) matches as "Prince of Darkness", which
+  is how the 9 Sep scrape attached the 31 Oct 20:30 show to Carpenter's 1987 film. "ELVIS: THAT'S THE
+  WAY IT IS" is exposed the same way. The film-cache lookup is title-only, so the year the scraper
+  now passes does not prevent it. That is a pipeline issue; check these rows after a scrape.
+- Venue filter: only `venue` elements whose name matches /david lean/i are read, since one TicketSolve
+  account can sell for several venues. A response with no such venue THROWS: a 200 challenge page,
+  maintenance page or renamed venue would otherwise record a successful run with 0 screenings.
+- `healthCheck()` HEADs the feed, the one dependency the scrape has.
+- **sourceId switch leaves legacy rows behind.** `pipeline.ts` never rewrites `source_id` on update,
+  so rows keyed `david-lean-{slug}-{ISO}` that Layer 1 of `checkForDuplicate` re-matches keep that key,
+  and rows whose title now resolves differently (the ENB "PRESENTS" title, the 10 Oct "TBC"
+  placeholder, the stale 31 Oct 20:30 Dracula copy) stay beside their replacements. Delete future
+  `david-lean-cinema` rows whose `source_id !~ '^david-lean-[0-9]+$'` immediately BEFORE the first
+  persist, which then re-inserts every event under its new key. Deleting after the persist removes
+  the ~28 rows Layer 1 had updated in place, until the next scrape. SQL in
+  `changelogs/2026-10-04-david-lean-ticketsolve.md`.
+- **History**: until 2026-10-04 this was a Playwright scrape of the Divi homepage (`networkidle`
+  wait, innerText regexes over `.et_pb_text_inner` blocks, a slider title→URL matcher). It reached
+  only the homepage's current month (30 screenings, last 31 Oct, on 2026-10-04) and read doors times
+  as start times: Animal Shorts on 4 Oct was written "from 10.30am" for a 12:00 start. Its 2026-06-12
+  and 2026-07-20 fixes (full month names, bare-hour times, special-screening blocks) went with that
+  parser.
+- Verified live 2026-10-04 (dry parse, no DB writes): 58 screenings (30 before), last date 28 Nov
+  (31 Oct before), all 27 November events ingested with availability unset, 0 `sold_out`, 31
+  `available`, 0 before 10:00 London, Animal Shorts at 12:00 BST (11:00Z).
 
 ### Rio Cinema (Dalston)
 - Scraper: `src/scrapers/cinemas/rio.ts`
@@ -597,18 +673,31 @@ Use this format when recording cinema-specific quirks:
 
 ### ICA
 - Scraper: `src/scrapers/cinemas/ica.ts`
-- Source URL pattern: listing `https://www.ica.art/films` → per-film detail pages `/films/{slug}` (capped at 50 per run, 3s delay between fetches).
-- Approach: Cheerio over each film detail page.
+- Discovery (rewritten 2026-10-04, see below for why). Three sources, deduplicated by the URL's final path segment:
+  1. `https://www.ica.art/films`: every `.item > a` tile, whatever its type. ICA files some film screenings under Live or Exhibitions and still tiles them on /films (`/live/tg50-heathen-earth`, `/exhibitions/artists-film-picks-*`).
+  2. `https://www.ica.art/upcoming`: the site's own day-by-day calendar ("Everything"), ~30 days ahead. `.item.films > a` only; the same page also lists talks, live music and exhibitions. Best-effort: a failure warns and the run continues from /films and its hubs (on 2026-10-04 it contributed one page nothing else linked, `lff-minotaur`). A /films failure throws.
+  3. One level of hub expansion. A depth-0 page with no `.performance-list .performance` is a season/festival hub (`/films/imamura`, `/films/bfi-london-film-festival-2026`, `/films/london-palestine-film-festival-2026`, ...). Its children are the `a[href]` inside `#detail-body`/`#detail-side`, **skipping anything inside `<details>`** (that is where hubs keep their archive: Off-Circuit's ~50 past releases, Long Takes' past seasons). Children that are themselves hubs are not expanded.
+- Child URL forms seen: `https://www.ica.art/imamura-stolen-desire` (top-level slug), `/films/bfi-london-film-festival-2026/lff-lali` (nested), `https://ica.art/off-circuit-mirage` (no `www`). All canonicalise to `https://www.ica.art{path}`. Links to `/book/`, `/open-records-generator/` (a CMS edit link that leaks onto the LFF hub), `/static/`, `/media/`, calendar day paths (`/2026-10-28`) and scheme-less externals (`www.docnrollfestival.com`) are dropped.
+- Rate: `fetchUrl` waits `delayBetweenRequests` (60000 / `REQUESTS_PER_MINUTE` = 1000ms) before every request; there is no second per-page delay any more (the old code waited 3s twice per page). Measured cost is ~1.77s per fetch.
+- Budgets: discovery stops queuing fetches at `MAX_PAGE_FETCHES = 170` or `DISCOVERY_TIME_BUDGET_MS = 300000`, whichever comes first, and logs every queued URL it skipped. The 10-minute venue wall-clock cap covers the pipeline too, and ICA hit it on 2026-09-02. Hub children are queued in the order their hubs appear among the /films tiles, so a budget stop drops the children of the last hubs. 2026-10-04 live run: 147 fetches, 133 event pages, 11 hubs, ~263s, 198 screenings (was 43 fetches, 85 screenings, ~318s), which leaves about 15% headroom on each budget.
+- `FestivalDetector.preload()` runs in `initialize()`, before any fetch, so a database blip fails the run before the crawl starts.
+- Approach: Cheerio over each event page. Hub pages are discovery-only and never reach `parsePages`.
+- Screens: only performances whose `.venue` starts with "Cinema" are kept (ICA screens are Cinema 1 and Cinema 2). Talks and gigs use the same `.performance-list .performance` markup with venue "Stage" (`/talks/my-tragedy`, `/live/gilla-band`), and top-level slugs carry no section to filter on. A page whose performances are all skipped logs `skipped performances outside a cinema (...)`.
 - Key selectors:
-  - `span.title` — film title (nested `.tag/.badge/.label/.flag` removed first to avoid concatenation)
+  - `span.title`: film title (nested `.tag/.badge/.label/.flag` removed first, and `br` replaced with a space, to avoid concatenation; live pages use a malformed `</br>` between a strapline and the title)
   - `#colophon` — metadata line, format `"<i>Title</i>, dir Director Name, Country Year, Runtime mins."`
   - `.performance-list .performance` with `.time` (`"04:15 pm"`), `.date` (`"Fri, 19 Dec 2025"`), `.venue`
-- Metadata from `#colophon`: director (`dir X`), year (4-digit), runtime (`"(\d+)\s*mins?"` — forwarded as `RawScreening.runtime` via `sanitizeRuntime()`, plan 006), country.
-- sourceId format: `ica-{slugified title}-{ISO datetime}`.
+  - Booking: the "Book tickets" button's `onclick='location.href="/book/{eventId}"'`. `{eventId}` is the numeric prefix of the Spektrix event id (event `765601ACLV…` ↔ `/book/765601`). BFI London Film Festival pages point the button at `https://whatson.bfi.org.uk/lff/Online/article/…` instead, sometimes with a leading space inside the quotes (`/films/lff-florid`, `/films/lff-cadences-of-resistance`); that URL is used when no `/book/` link exists (before 2026-10-04 they fell back to `og:url`, which is the ICA homepage).
+- Metadata from `#colophon`: director (`dir X`), year (4-digit), runtime (`"(\d+)\s*mins?"` — forwarded as `RawScreening.runtime` via `sanitizeRuntime()`, plan 006), country. This is why ICA stays an HTML scraper: the Spektrix API below carries no director or year, and ICA's repertory titles are ambiguous without them (Imamura's *Black Rain* and Ridley Scott's are both 1989).
+- sourceId format: `ica-{slugified title}-{ISO datetime}`. A title change on ica.art therefore mints a new sourceId; the old row is left behind and is reported (never deleted) by the superseded-candidate check.
+- Spektrix (ticketing) public API, used for verification only: `https://system.spektrix.com/ica/api/v3/events` (filter `attribute_Category == "Films"`) and `/instances?startFrom=YYYY-MM-DD` (`startUtc` has no trailing `Z`). On 2026-10-04 the scraper's 198 rows all matched a Spektrix film instance to the minute, and 25 of 224 future Spektrix film instances had no linked page on ica.art (Pereda season, LKFF 26, Pushkin House, two Independent screenings, "LFF: Best of Fest"). `/films/london-korean-film-festival-2026` exists but nothing links to it. Those are reachable only through the API.
 - Known pitfalls:
+  - **The pre-2026-10-04 scraper read only `.item.films` tiles under `/films/` and never followed hub links.** Season and festival programmes (LFF, London Latino FF, Imamura, The Independent, Doc'n'Roll, NFTS Collective Visions, LPFF) were invisible to it: 85 of ~200 screenings. L-CUT parity showed 18 missing, and 46 more were masked by `lcut-` rows a gap-fill run inserted on 2026-09-20.
   - Excluded listing URLs (year archives, `/films/today`, etc.) are filtered in `isExcludedUrl` — keep in sync if ICA adds new non-film listing pages.
-  - One detail-page fetch per film: a full run costs ~50 requests; don't loop live runs.
-- Last verified (2026-06-12): live run — 19/21 films emitted runtime (two had no runtime in colophon), all within 1–600.
+  - A season reachable only through another hub (e.g. a future Long Takes season with no /films tile) is not expanded; its dates still arrive through `/upcoming` once they are within ~30 days.
+  - A full run costs ~150 requests; don't loop live runs.
+  - Failed page fetches are logged one by one and summarised in one warning per run (`N page fetch(es) failed (...); this run's programme is incomplete`). A failed seed may have been a hub, which hides all its children. **Do not run `reconcile-phantom-screenings` for ICA after a run with that warning or a `Discovery stopped at the ... budget` warning**: rows on the pages it missed look like phantoms and would be deleted.
+- Last verified (2026-10-04): live run without persistence, 198 screenings, 0 before 10:00, 188 with year+director, all 36 LFF screenings on BFI booking links; L-CUT 144/147 by the parity matcher (the 3 misses are the same screenings under different titles: "Prison (Excerpt)", "I.K.U", "Throbbing Gristle: Recording Heathen Earth").
 
 ### Garden Cinema (Covent Garden)
 - Scraper: `src/scrapers/cinemas/garden.ts`
@@ -623,6 +712,58 @@ Use this format when recording cinema-specific quirks:
 - Known pitfalls:
   - Rating strip must stay end-anchored (regression: `"What's Up, Doc? U"` → `"What's p, Doc?"` with substring replace).
 - Last verified (2026-06-12): live run — 88/88 films emitted runtime, all within 1–600; His Girl Friday=92 matches canonical.
+
+### Ibraaz (Fitzrovia, W1)
+- Scraper: `src/scrapers/cinemas/ibraaz.ts` (Cheerio, fetch-based, runnable under tsx). Cheerio wave,
+  task `scraper-ibraaz`. Was an L-CUT source-only venue until 2026-10-04; L-CUT never listed it, so
+  it had 0 rows ever. L-CUT now treats it as report-only.
+- Site: Nuxt SSR over Craft CMS + Solspace Calendar. Every page is fully server-rendered.
+- Source URL pattern: listing `https://ibraaz.org/whats-on`, detail `https://ibraaz.org/whats-on/<slug>`.
+  The site has a `?category=film` filter, but robots.txt disallows `/*?`, so read the unfiltered
+  listing and filter on tags. The listing holds every upcoming event (17 on 2026-10-04, through
+  6 Dec plus exhibitions into 2027); no pagination seen. Past events live at `/events-archive`.
+- Key selectors:
+  - Listing: `article.card`; slug from its first `a[href^="/whats-on/"]`; tags from `.card__info .tag`.
+    A nav block repeats some links outside `article.card`, and the "Related" strip repeats cards, so
+    dedupe by slug.
+  - Detail: `h1` (title); `dl.summary dt` whose text is "Date and Time:" then its `dd`, one `<p>` per
+    line; `link[rel=canonical]` (slug, percent-encoded with lowercase hex); `meta[property=og:image]`
+    (poster, a still); Ticket Tailor widget `a[href^="https://tickets.ibraaz.org/events/"]`. Skip the
+    widget's `https://www.tickettailor.com?rf=...` "Sell tickets online" link.
+- Film selection: a card must carry "Film", and every other tag must be `Library-in-Residence` or
+  `Talk`. Co-tags across 31 archived Film events + the live programme on 2026-10-04:
+  - kept: `Film` alone; `Film` + `Library-in-Residence` ("Library Transmission" screenings with an
+    intro); `Film` + `Talk` (The Last Responders, a documentary then a conversation).
+  - rejected: `Film` + `Performance` (The Glass Essays performance lecture), `Film` + `Workshop`
+    (Rihla, a lecture with excerpts), `Film` + `Music` (a cassette-archive day with a separate
+    evening performance). An unseen co-tag is rejected until reviewed; the scraper logs each
+    skipped Film card with its tags.
+- Date/time format: yearless free text in the CMS `datesText` field. Seen: `Sun 18 Oct, 3–4.30pm`,
+  `Sunday 7 June, 3–4.30pm`, `Wednesday 3 Dec, 6.30-8pm`, `Sunday 19 Jul, 3—4:30 pm`,
+  `Sunday 15 Feb, 2 – 3.30 pm`, `Wednesday 21 Jan 2026, 6-8pm`, `Saturday 27 June, 1–3pm and 7–8pm`.
+  `parseIbraazDateTimes()` splits on the first comma, runs the day/month through
+  `parseScreeningDate()` (shared year inference, explicit year wins) and each start through
+  `parseScreeningTime()` + `combineDateAndTime()` for BST/GMT. The start of a range usually has no
+  meridiem and borrows the end's, flipped when it would land after the end (`11–1pm` is 11am).
+  `X and Y` gives one start per range. The weekday must match the inferred date, which catches a
+  stale listing rolled into next year. Any other shape returns nothing and logs a warning.
+- **Do not trust `time[datetime]` or the payload `startDate`.** Both carry `+00:00` and editors fill
+  them inconsistently: Foragers (3pm BST, 18 Oct 2026) is `15:00:00+00:00`, a 4pm instant, while the
+  archived "A Summer in La Goulette" (3pm BST) is `14:00:00+00:00`, the true instant. Ticket Tailor
+  shows 3:00 PM for Foragers and MILISUTHANDO, matching the human string.
+- Failure policy: zero `article.card` on the listing throws (exhibitions are always listed, so
+  zero means the markup changed). A single failed event page is skipped with a warning; when more
+  than half of the selected pages fail (including all of them), the scrape throws so the runner
+  retries the venue and the run is visibly failed rather than short.
+- sourceId `ibraaz-{slug}-{ISO}` embeds the start instant, so if Ibraaz moves a session's time the
+  new time gets a new row and the old row stays listed until its time passes (superseded cleanup
+  is report-only). Fix by hand if a moved session matters before then.
+- Booking: Ticket Tailor widget URL (`/events/ibraaz/<id>/select-date?ref=website_widget`, returned
+  200 with a Chrome UA on 2026-10-04). Archived pages drop the widget, so the event page is the
+  fallback. Times are text-sourced (`timeSource` unset); all seen starts are 13:00-18:30.
+- Last verified (2026-10-04): live dry parse, 3 rows: Foragers 2026-10-18 15:00 BST (14:00Z),
+  MILISUTHANDO 2026-10-25 15:00 GMT (the changeover Sunday), Yugantar 2026-11-15 15:00 GMT; The Glass
+  Essays skipped. All 31 archived Film pages parse to the times their date strings show.
 
 ### L-CUT gap-fill (`scripts/lcut-gapfill.ts`, 2026-07-13)
 - **What**: L-CUT (https://lcutlondon.com) is a third-party repertory listings guide with an
@@ -654,9 +795,9 @@ Use this format when recording cinema-specific quirks:
   missing vs L-CUT is a scraper-regression signal (warn-level Telegram). Auto-inserting
   scraped venues would mask the regression, so we don't. The split is derived at runtime from
   the scraper registry (`getScrapedCinemaIds`), so a venue auto-reclassifies when it gains a
-  scraper. Source-only set as of 2026-08-09 (8 venues): `the-arzner`, `horse-hospital`,
-  `good-shepherd-studios`, `project-loop`, `deptford-cinema`, `ibraaz`, `metroland-studios`,
-  `set-social-peckham`.
+  scraper. Source-only set as of 2026-10-04 (7 venues): `the-arzner`, `horse-hospital`,
+  `good-shepherd-studios`, `project-loop`, `deptford-cinema`, `metroland-studios`,
+  `set-social-peckham`. `ibraaz` left the set on 2026-10-04 when it gained `cinemas/ibraaz.ts`.
 
 #### Adding a venue to the gap-fill (no scraper) — the 2-file recipe
 Worked example: the four venues added 2026-08-09. Nothing else is needed; there is no
@@ -677,8 +818,9 @@ scraper module, no `SCRAPER_REGISTRY` entry, and no wave assignment.
 files must move together or the build goes red.
 
 #### The 2026-08-09 additions — first-party scraper notes (deliberately not built)
-All four are L-CUT-sourced only. Each has a cheap scrape path if the gap-fill under-covers it;
-none was judged to pay for itself at ~12-20 screenings a year.
+All four were L-CUT-sourced only. Each has a cheap scrape path if the gap-fill under-covers it;
+none was judged to pay for itself at ~12-20 screenings a year. Ibraaz got a scraper on 2026-10-04
+because L-CUT carried none of its screenings.
 - **`deptford-cinema`** (Deptford Cinema, deptfordcinema.org) — Squarespace. Events JSON at
   `/new-events?format=json&month=August-2026` → `items[]` with `title`, `startDate`/`endDate`
   (epoch ms), `excerpt`, `categories`, `fullUrl`, `pagination.nextPage` to walk months. No
@@ -688,14 +830,9 @@ none was judged to pay for itself at ~12-20 screenings a year.
   up its premises in 2020; currently a monthly residency at The Brookmill, previously The Ivy
   House in Nunhead), so the registry's static pin will go stale and only the JSON tracks it.
   L-CUT was carrying 2 of the 4 screenings the venue advertised at time of adding.
-- **`ibraaz`** (Ibraaz, ibraaz.org) — Nuxt but fully server-rendered; Cheerio-friendly.
-  `/whats-on?category=film` filters to film. `article.card` → `.tag--themed` (= "Film"),
-  `h3 a.title`, `p.line--bold` (director), `time.card__dates`. **Do not trust
-  `time[datetime]`** — an archived card renders `2026-07-26T15:00:00+00:00` as "3–4:30pm",
-  so parse the human string as Europe/London. Screening room is "Minassa". Tickets are Ticket
-  Tailor on `tickets.ibraaz.org`, which is Cloudflare-403 — booking URL only. No past-events
-  archive. Watch the times: L-CUT had two Aug 2026 rows an hour earlier than the venue's own
-  published 3pm start.
+- **`ibraaz`**: built 2026-10-04, see "Ibraaz (Fitzrovia, W1)" above. Two claims from this note
+  turned out wrong on 2026-10-04: `/events-archive` holds past events, and `tickets.ibraaz.org`
+  returned 200 to a Chrome UA.
 - **`metroland-studios`** (Metroland Cultures, metrolandcultures.com) — WordPress with an open
   REST API and a custom post type: `/wp-json/wp/v2/event?per_page=100&orderby=date`. **A
   venue-site scraper would miss nearly all the film**: the monthly Majlis Film Club is
@@ -902,10 +1039,13 @@ none was judged to pay for itself at ~12-20 screenings a year.
 - **Horizon** (`IndyVenue.horizonDays`, default `DEFAULT_HORIZON_DAYS`=35): per-venue, since
   the loop makes ONE POST per day so this is the exact request count. **Set it to exceed a
   venue's real publication window** — commercial INDY cinemas publish event cinema (opera,
-  NT Live, repertory) months out. **Chiswick=150** (2026-07-20 audit: publishes to ~mid-Dec;
+  NT Live, repertory) months out. **Chiswick=200** (2026-07-20 audit: publishes to ~mid-Dec;
   the 35-day default captured only 16 of 66 distinct films, dropping the entire Sep+ tail incl.
-  Fargo, Rear Window, Met Opera). Regent Street keeps the 35-day default. When adding an INDY
-  venue, probe how far its `showingsForDate` returns data and set `horizonDays` accordingly.
+  Fargo, Rear Window, Met Opera). **Regent Street=120** (2026-10-04 horizon audit: kept showings
+  to day offset 48, the London Baltic Film Festival 13-21 Nov plus Q&A one-offs; the 35-day
+  default dropped 6-7 of 33 depending on run date). When adding an INDY venue, probe how far
+  its `showingsForDate` returns data and set `horizonDays` accordingly. Note that showings past
+  day 90 only survive validation because INDY sets `timeSource:"iso"` (180-day cap).
 - **Map**: filmTitle=`movie.name`; datetime=`new Date(time)` (`timeSource:"iso"` — true UTC,
   no BST mislabel); runtime=`movie.duration`; year=`movie.releaseDate` year;
   bookingUrl=`{baseUrl}/checkout/showing/{id}`; **sourceId=`{cinemaId}-{showing.id}`**.
@@ -917,77 +1057,63 @@ none was judged to pay for itself at ~12-20 screenings a year.
 - **NOT INDY**: Phoenix Cinema (East Finchley) is an ASP.NET `.dll` system
   (`PhoenixCinemaLondon.dll`), despite an old comment claiming otherwise — see cinemas/phoenix.ts.
 
-### Phoenix Cinema (`cinemas/phoenix.ts`, updated 2026-08-09)
-- **Platform**: ASP.NET/Savoy `.dll` (`PhoenixCinemaLondon.dll`), server-rendered — the full
-  programme and all showtimes are in the initial HTML (no client-side rendering).
-- **URLs**: `programmeUrl` = `/whats-on/` which now **301-redirects** to
-  `/PhoenixCinemaLondon.dll/Home`. Playwright follows the redirect automatically; do not hard-code
-  the `.dll/Home` URL. Film pages are `/PhoenixCinemaLondon.dll/WhatsOn?f={id}`.
-- **CRITICAL — do NOT use `waitUntil: "networkidle"`** (root cause of the 2026-07-18 outage:
-  every `page.goto` timed out at 60s → 3 retries exhausted → `success=false`, ~65 screenings went
-  stale). The site holds analytics/tracking connections open so `networkidle` never fires. Use
-  `waitUntil: "domcontentloaded"` — content is already present.
-- **Programme selectors**: film links from `.film-title` → nearest `a[href*="WhatsOn"]`. The
-  `/Home` page repeats each film (27 `.film-title` nodes for 16 films on 2026-08-09); dedupe by
-  resolved `pageUrl`. There is no pagination — every currently-booking film is on that one page.
-- **Showtime selectors — `li.performance` is ONE ROW PER DATE, NOT per screening.** This is the
-  single easiest thing to get wrong here. Each `li.performance` (class token `performance`, which
-  does NOT collide with `programme-performances` / `performances`, nor with the `day-has-performance`
-  date-picker cells) holds exactly one `span.date.column` ("Sat 29 Aug") and then **N**
-  `span.perf-time` → `a.button.booking` pairs inside a single `div.column`:
-
-  ```html
-  <li class="performance  columns is-multiline">
-    <span class="date column is-12">Sat 29 Aug</span>
-    <div class="column">
-      <span class="perf-time">17:30</span>
-      <a class="button booking" href="Booking?…TcsPerformance_604101…">…<span class="time">Book Now</span></a>
-      <span class="perf-time">20:00</span>
-      <a class="button booking" href="Booking?…TcsPerformance_604099…">…<span class="time">Book Now</span></a>
-    </div>
-  </li>
-  ```
-
-  Walk **every** `.perf-time` in the row and pair it with the *next anchor sibling* — that anchor
-  is that showing's own booking deep-link. `querySelector('.perf-time')` (singular) silently kept
-  only the first showing of each day: measured 2026-08-09 it returned **56 of the 66** future
-  screenings the site published, losing every second-and-later showtime on a busy date (The Odyssey
-  lost 6 of 12 — its whole 19:30 evening run — plus The Summer Book 1, Spider-Man 1, Bitter
-  Christmas 2). Fixed 2026-08-09.
-- **Times** are 24h with no AM/PM (`.perf-time` = "15:15"). Never read the booking button's inner
-  `.time` span — it reads "Book Now". Anchors also carry
-  `aria-label="Go to booking for 17:30"`, useful as a pairing cross-check.
-- **Ground-truth trick**: each booking href carries `TcsPerformance_{id}`, one id per screening.
-  Counting distinct ids across the film pages is a selector-independent count of what the site
-  publishes — use it to verify completeness rather than trusting the row count.
-- **`.performance` rows render TWICE** (desktop + mobile markup), so raw row counts are doubled;
-  the scraper's `filmTitle+ISO` dedupe collapses them.
-- **Horizon**: the site publishes only as far as booking is open — 2026-08-09 to 2026-09-03, i.e.
-  ~25 days / 16 films / 66 screenings. That is the site ceiling, well short of the 60–70 day
-  target; there is no window parameter that reveals more.
-- **Date labels** use both "Sep" and "Sept" ("Tue 1 Sep", "Thu 03 Sept"); the month regex covers
-  the 3-letter prefix so both parse.
-- A positional date↔time fallback remains for layout drift (booking URL falls back to film page).
-- **KNOWN ISSUE — all-or-nothing failure (`phoenix.ts`, "Failed to fetch N/M Phoenix film pages")**:
-  the scraper visits 16 film pages and throws if *any one* of them fails, discarding all 66 already
-  parsed screenings. One transient 30s timeout therefore costs the whole venue. Left as-is
-  deliberately (partial batches used to drive superseded-cleanup deletions), but it is the likely
-  scraper-side contributor to Phoenix's `status=failed` / zero-contributed-rows history alongside
-  the 2026-08-05 DB-step retry bug. Revisit once the partial-batch `skipSupersededCleanup` guard
-  lands: a threshold (e.g. fail only if >20% of pages fail) would be safer than all-or-nothing.
-- **`fetchWithBrowser` (`utils/browser.ts`) still uses `waitUntil:"networkidle"`** and is a trap for
-  this venue, but Phoenix does NOT use it — it launches `chromium` directly with
-  `domcontentloaded`. The helper's only remaining caller is `debug-bfi.ts`. Do not route Phoenix
-  (or any Savoy `.dll` venue) through it.
-- **FUTURE (robustness)**: the `/Home` page embeds a Savoy modern-JSON `var Events = {…}` blob —
-  Phoenix could migrate to `platforms/savoy.ts` (`extractSavoyEventsJson` + `parseSavoyEvents`,
-  as used by Rio/Lexi/Arzner) and drop the 50+ per-film page navigations entirely.
+### Phoenix Cinema (`cinemas/phoenix.ts`, rewritten 2026-10-04 onto `platforms/savoy.ts`)
+- **Platform**: Savoy Systems MODERN JSON template (`PhoenixCinemaLondon.dll`). `/whats-on/`
+  301-redirects to `/PhoenixCinemaLondon.dll/Home`, which embeds `var Events = {"Events":[...]}`
+  holding every bookable event and all of its performances. The scraper is a `BaseScraper` that
+  fetches that one page (fetch follows the redirect; do not hard-code `.dll/Home`) and hands it to
+  `parseSavoyEvents`. Registry: `scraperType: "cheerio"`, Cheerio wave. No browser, one request.
+- **ROOT CAUSE of the old coverage gap (fixed 2026-10-04): the site's own grid stops at 16
+  events.** The programme grid (`#whats-on-list`) is built client-side by `Populate()`, which
+  wraps `AddEventBoxToList` in `if (TheNumEventsDisplayed <= 15)`. The old Playwright scraper
+  discovered films from rendered `.film-title` nodes, so it only ever saw the first 16 events by
+  date and silently dropped the rest. Measured 2026-10-04: 16 of 40 events, 32 of 57 future
+  performances, horizon 14 days (to 18 Oct) where the blob runs to 5 Jun 2027. The run history
+  swinging between 32 and 68 screenings since July was this cap meeting a changing mix (a busy
+  multi-showing film in the first 16 lifts the count; one-off opera and NT Live nights lower it).
+  The 2026-08-09 note that "~25 days / 16 films is the site ceiling" was this cap, misread.
+- **Do NOT go back to DOM scraping** of `/Home` or the per-film `WhatsOn?f={id}` pages for
+  discovery. If the blob ever disappears, `extractSavoyEventsJson` throws (never empty-as-success).
+- **Blob fields used**: event `Title` (HTML-encoded, e.g. `Q&amp;A`; sometimes padded with
+  leading or double spaces), `Year`, `Director` (sometimes leading-space padded), `RunningTime`,
+  `URL` (film page); performance `StartDate` ("YYYY-MM-DD") + `StartTime` ("HHMM", 24h UK-local,
+  so there is no AM/PM ambiguity, hence `timeSource: "local-24h"`), `AuditoriumName`, `URL`. The
+  scraper emits every future performance, `IsOpenForSale:false` ones included.
+- **Phoenix clean-up on top of the shared parser** (`parsePages`): titles go through
+  `decodeHtmlEntities(...).trim()`; directors are trimmed; `AuditoriumName` "Screen 1 Oversell"
+  (Savoy's allocation for free events) is reported as "Screen 1".
+- **sourceId is unchanged** from the DOM scraper: `phoenix-{slug(decoded title)}-{ISO}`. Verified
+  2026-10-04: all 32 screenings the old scraper returned have identical sourceIds AND booking URLs
+  under the new code, so existing rows upsert in place and no reconcile is needed.
+- **Booking URLs**: `perf.URL` is that performance's own deep link. Savoy ticketing gives a relative
+  `Booking?Booking=...TcsPerformance_{id}...`, resolved against `/PhoenixCinemaLondon.dll/`.
+  Partner-ticketed events give an absolute URL (cinematik.app, eidocinema.com, japanesefilm.club),
+  kept as-is. A missing or malformed `perf.URL` (partner links are hand-typed, and `new URL`
+  throws on e.g. "https:// host") falls back to the event's film page with a warning.
+- **Mixed programme**: Film, Documentaries, Phoenix Classics, Opera, Theatre, Ballet & Dance and
+  Art Live are all kept (`filmTypeOnly` off), as before; the pipeline classifies non-film events.
+  `TypeDescription` lives on the EVENT here, not the performance.
+- **Ground truth**: count FUTURE `Performances[]` across the blob (the raw count includes today's
+  already-started shows: 62 raw against 57 future on 2026-10-04). One performance = one screening.
+  Distinct `TcsPerformance_{id}` values cover Savoy-ticketed performances only and miss partner
+  links.
+- **Horizon**: set by the venue's booking window, which is long for event cinema (Met Opera and
+  RBO seasons) and short for new releases. 2026-10-04: film and documentary listings to 14 Nov,
+  live events to 5 Jun 2027. **The pipeline's 90-day validator cap** (`screening-validator.ts`,
+  `too_far_future`; only `timeSource:"iso"` gets 180) holds back performances further out: 7 of
+  57 on 2026-10-04 (Met Opera / RBO, 23 Jan to 5 Jun 2027). They show as validation rejections
+  each run and land once inside 90 days. Raising the cap for Savoy is a validator policy call.
+- **Title-cleaning follow-ups seen in the DB (pipeline, not this scraper):** "Met Opera 2026-27:
+  Macbeth" was stored as "2026-27: Macbeth"; "75 Years of Contemporary Films: Mahanagar (The Big
+  City)" kept its season prefix, so it failed to merge with the L-CUT row for the same showing
+  and the venue showed it twice.
 
 ### Savoy Systems platform (`src/scrapers/platforms/savoy.ts`, 2026-07-14)
 - **Two DISTINCT front-end templates** — do not conflate them:
   - **Modern JSON** — homepage (root → `/{Dll}.dll/Home`) embeds `var Events = {"Events":[…]};`.
     Films carry `Performances[]` with `StartDate` ("YYYY-MM-DD") + `StartTime` ("HHMM", UK-local),
-    `AuditoriumName`, `URL`, and (Lexi/Arzner) `TypeDescription`. Venues: **Rio, Lexi, The Arzner**.
+    `AuditoriumName`, `URL`, and (Lexi/Arzner) `TypeDescription`. Venues: **Rio, Lexi, The Arzner,
+    Phoenix**.
   - **Legacy HTML-table** — `/{Dll}.dll/` renders server-side `div.programme` / `TcsProgramme_`
     title links / `td.PeformanceListDate` / `StartTimeAndStatus`, with **NO `var Events`**. Venues:
     **Ciné Lumière, ArtHouse Crouch End**. These need a SEPARATE table parser (not savoy.ts).
@@ -998,7 +1124,8 @@ none was judged to pay for itself at ~12-20 screenings a year.
 - **Label corrections (verified live 2026-07-14):** Lexi is Savoy modern-JSON, NOT "Admit One";
   The Arzner is Savoy modern-JSON (`TheArzner.dll`), NOT "Jacro" — a direct scraper is trivial and
   is the intended replacement for its L-CUT gap-fill feed; Castle is Wagtail + Admit One, NOT Savoy.
-- **`.dll` name per venue**: Rio→`Rio`, Lexi→`TheLexiCinema`, Arzner→`TheArzner`.
+- **`.dll` name per venue**: Rio→`Rio`, Lexi→`TheLexiCinema`, Arzner→`TheArzner`,
+  Phoenix→`PhoenixCinemaLondon`.
 
 ### Peckhamplex (`cinemas/peckhamplex.ts`, coming-soon added 2026-08-09)
 - **Source URL patterns** — two listings, both unpaginated (verified: zero pagination links,
@@ -1073,6 +1200,40 @@ none was judged to pay for itself at ~12-20 screenings a year.
 - **Verification without touching the DB:** instantiate `createPeckhamplexScraper()` and call
   `scrape()` under `DATABASE_URL=disabled` — it returns `RawScreening[]` and performs no writes.
 - Last verified (live): 2026-08-09.
+
+### Genesis Cinema (`cinemas/genesis.ts`, Mile End, coverage audit 2026-10-04)
+- **Source URL pattern:** `/whats-on/` for the film list, then one `/event/{eventCode}` page per
+  film. Film links come from the hidden search list (`a[href*='/event/']` with a leading `/`; the
+  visible cards use relative `event/N` hrefs, which the extractor deliberately skips as duplicates).
+  Booking links are `https://genesis.admit-one.co.uk/seats/?perfCode=N` → `sourceId`
+  `genesis-{perfCode}`.
+- **Completeness (verified 2026-10-04):** the scraper captures every published showing. 113 of 113
+  perfCodes on `/whats-on/`, and the union across all 54 event pages is the same 113. The category
+  strands (`/whatson/all`, `/events`, `/filmfestival`, `/35mm`, `/qanda`, `/subtitled`,
+  `/studio-screenings`, `/bartrash`, `/seasons`, `/pro-wrestling`) are subsets with no extra event
+  or perfCode, so festival (LIFF) and event listings need no separate source. All 95 future L-CUT
+  Genesis listings had a scraped showing at the exact same instant.
+- **Date/time format:** dates come from panel ids `panel_YYYYMMDD` (explicit year); times are
+  24-hour button text (`16:00`) parsed with `parseScreeningTime()`. A past date only rolls into
+  next year when the date had no year (the text fallback, "13 Jan"); dated panels never roll.
+- **Encoding:** pages are **Windows-1252** bytes sent as `content-type: text/html;
+  charset=ISO-8859-1`, under a `<meta charset="UTF-8">` that is wrong. `fetchPage` decodes with
+  the header's charset via `decodeBody()`; `response.text()` would decode UTF-8 and store U+FFFD for
+  every ’ £ – (9 Genesis film rows carried it as of 2026-10-04, e.g. `I�m Still Here`, which then
+  missed TMDB).
+- **Known pitfalls:**
+  - Festival titles carry a trailing tag: `Shorts Block 3 - LIFF`. Film identity relies on the
+    shared trailing-number guard peeling that tag (see the sequel-safe section below); before the
+    2026-10-04 fix, Shorts Blocks 2-12 all merged into one `Shorts Block 11 - LIFF` film, and
+    L-CUT parity reported them as 9-10 "missing" even though every showing was in the DB.
+  - L-CUT lists the 25 Oct event as `Steel on Film`; Genesis's own title is
+    `Steel of Film (in 35 mm) + Q&A`. We store the venue's title, so L-CUT parity will keep
+    reporting that one row as missing. It is a source-side spelling difference.
+  - The `festivals` table holds no LIFF row (seed data says April; the 2026 edition ran at Genesis
+    3-11 Oct), so LIFF showings are stored with `is_festival_screening = false`.
+- **Verification without touching the DB:** call `createGenesisScraper().scrape()` from a script
+  and print the result; `FestivalDetector.preload()` only reads.
+- Last verified (live): 2026-10-04.
 
 ## 2026-09-08 audit integration: shared safeguards
 
@@ -1253,7 +1414,12 @@ round-trip only, so `MIX` and `LIV` are not numbers); instalment words
 `season`, `day`, each optionally followed by a spelled-out `one`-`twenty`
 (`Dune: Part Two`); four-digit years as identity numbers but never as
 instalments. Trailing bracketed decoration is peeled first, so
-`Toy Story 5 (BIA)` and `Sing 2 (Sing-Along)` still read 5 and 2.
+`Toy Story 5 (BIA)` and `Sing 2 (Sing-Along)` still read 5 and 2. So is a
+trailing upper-case festival tag after a dash (`Shorts Block 3 - LIFF` reads 3),
+unless the tag is itself a Roman instalment (`Rocky - IV` reads 4); added
+2026-10-04 after Genesis's LIFF Shorts Blocks 2-12 merged into one film. Of the
+32 film titles ending in ` - TAG` on that date, only `Shorts Block 11 - LIFF`
+gained a number.
 
 **Intentionally unsupported, and why.** A number needs a base title in front of
 it, so `X` (2022), `M` (1931), `1917` and a bare `II` carry none — they are

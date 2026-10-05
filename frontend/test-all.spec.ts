@@ -399,6 +399,56 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 			await expect(page.locator('article.card').first()).toBeVisible();
 		});
 
+		test('STARTING SOON leads with the next screenings, soonest first', async ({ page }) => {
+			// Live data: late at night nothing may start within three hours, and
+			// then the strip is correctly hidden. This is the strip's only check.
+			await page.setViewportSize({ width: 1440, height: 900 });
+			await page.goto(BASE);
+			await page.waitForSelector('article.card', { timeout: 10000 });
+			// The section stays in the DOM when empty (CSS hides it), so match rows.
+			const strip = page.locator('section.soon:has(.text-row)');
+
+			// ISR can serve hour-old HTML whose strip was chosen at render time;
+			// hydration re-chooses it against the live clock. Retry the whole read
+			// until the hydrated strip passes. Absence is legitimate when nothing
+			// starts within the window.
+			let present = false;
+			await expect(async () => {
+				present = (await strip.count()) > 0;
+				if (!present) return;
+				await expect(strip.locator('.day-header h2')).toHaveText(/STARTING\s+SOON/);
+				const table = strip.getByRole('table', { name: 'Screenings starting soon' });
+				await expect(table).toBeVisible();
+				const times = await table
+					.locator('time')
+					.evaluateAll((els) => els.map((el) => Date.parse(el.getAttribute('datetime') ?? '')));
+				expect(times.length).toBeGreaterThan(0);
+				expect(times.length).toBeLessThanOrEqual(6);
+				expect(times).toEqual([...times].sort((a, b) => a - b));
+				const now = Date.now();
+				for (const t of times) {
+					expect(t).toBeGreaterThan(now - 60_000);
+					expect(t).toBeLessThanOrEqual(now + 3 * 60 * 60 * 1000 + 60_000);
+				}
+			}).toPass({ timeout: 15000 });
+			test.skip(!present, 'nothing starts within the next three hours');
+
+			// It sits above the first day of cards.
+			const stripBox = (await strip.boundingBox())!;
+			const firstDayBox = (await page.locator('section.day').first().boundingBox())!;
+			expect(stripBox.y).toBeLessThan(firstDayBox.y);
+
+			// TEXT mode is already a timetable, so the strip steps aside. The tab's
+			// onclick is wired only after hydration, so retry the click.
+			await expect(async () => {
+				await page
+					.getByRole('tablist', { name: 'Display mode' })
+					.getByRole('tab', { name: 'TEXT', exact: true })
+					.click();
+				await expect(strip).toHaveCount(0, { timeout: 2000 });
+			}).toPass({ timeout: 20000 });
+		});
+
 		test('House lights dimmer label is visible', async ({ page }) => {
 			await page.setViewportSize({ width: 1440, height: 900 });
 			await page.goto(BASE);
