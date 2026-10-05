@@ -27,10 +27,10 @@ jobs:
         run: git config --global http.version HTTP/1.1
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '24'
           cache: 'npm'
@@ -51,7 +51,7 @@ jobs:
         run: npm run test:coverage
 
       - name: Upload coverage report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: coverage-report
@@ -83,10 +83,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '24'
           cache: 'npm'
@@ -94,6 +94,10 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      # Vitest (frontend/src/**/*.test.ts); Playwright only runs *.spec.ts.
+      - name: Run unit tests
+        run: npm test
 
       # WebKit is REQUIRED, not optional. tests/mobile.spec.ts does
       # `test.use(devices['iPhone 12 Pro'])`, and that descriptor carries
@@ -115,7 +119,7 @@ jobs:
         run: npm run test:e2e:ci
 
       - name: Upload Playwright report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: frontend-playwright-report
@@ -164,11 +168,11 @@ jobs:
 
       - name: Checkout repository
         if: steps.check-db.outputs.skip != 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Node.js
         if: steps.check-db.outputs.skip != 'true'
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '24'
           cache: 'npm'
@@ -202,7 +206,7 @@ jobs:
           echo "::notice title=Legacy E2E skipped::DATABASE_URL_TEST is not configured, so the legacy Next.js UI suite did not run. This does not affect coverage of pictures.london — that is the 'Frontend E2E' job, which always runs."
 
       - name: Upload Playwright report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: failure() && steps.check-db.outputs.skip != 'true'
         with:
           name: playwright-report
