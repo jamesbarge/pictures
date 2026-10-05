@@ -2,7 +2,7 @@
 
 ## Preferred Approach: Claude Code Direct Enrichment
 
-For bulk data cleanup (title fixing, non-film detection, TMDB matching, duplicate merging), **Claude Code writing and executing scripts is dramatically more effective** than the fallback enrichment agent (Claude Haiku via Anthropic API).
+For bulk data cleanup (title fixing, non-film detection, TMDB matching, duplicate merging), **Claude Code writing and executing scripts is dramatically more effective** than the DeepSeek enrichment agent (`npm run agents:enrich`).
 
 ### Why Claude Code is better for this
 1. **Batch pattern recognition** - Can review hundreds of unmatched films at once, identify event prefixes ("Funeral Parade presents", "Lost Reels", "LAFS PRESENTS:"), and write targeted regex/title-fix arrays
@@ -11,10 +11,8 @@ For bulk data cleanup (title fixing, non-film detection, TMDB matching, duplicat
 4. **Multi-phase orchestration** - Structures work into phases: delete non-films -> explicit title fixes -> auto-match remaining. Each phase builds on the last
 5. **Immediate verification** - Can query the database, run the default dry preview, review results, fix issues, then execute with `--execute` - all in one session
 
-### When to use the API agent instead
-- Ongoing maintenance of small batches (1-10 films)
-- Booking page scraping for metadata extraction
-- Cases where TMDB matching needs web search context
+### When to use the enrichment agent instead
+- Ongoing maintenance of small batches (1-10 films): `npm run agents:enrich -- 10`
 
 ### Workflow for major data quality passes
 1. Run `npm run audit:fix-upcoming` to preview issues and proposed changes
@@ -26,7 +24,7 @@ For bulk data cleanup (title fixing, non-film detection, TMDB matching, duplicat
 
 | Script | Purpose |
 |--------|---------|
-| `npm run audit:fix-upcoming` | Default-dry 8-pass orchestrator (non-film detection -> dedup -> TMDB -> enrichment -> poster -> dodgy detection); pass `--execute` to apply |
+| `npm run audit:fix-upcoming` | Default-dry 7-pass orchestrator (non-film detection -> dedup -> TMDB -> poster -> dodgy detection); pass `--execute` to apply |
 | `scripts/cleanup-duplicate-films.ts` | TMDB ID + trigram similarity dedup with union-find clustering |
 | `npm run cleanup:upcoming` | Default-dry 4-phase pipeline: title cleanup, TMDB, metadata, Letterboxd; pass `--execute` to apply |
 

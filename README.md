@@ -39,7 +39,7 @@ London has an incredible cinema scene, but finding what's showing means checking
 | Hosting | Vercel |
 | Scraping | Playwright + Cheerio |
 | Scheduling | Inngest (daily) + GitHub Actions (weekly) |
-| AI | Google Gemini (enrichment) + Claude Agent SDK (automation) |
+| AI | DeepSeek (`npm run agents:enrich`) |
 | Styling | Tailwind CSS v4 |
 
 ---
@@ -97,8 +97,8 @@ NEXT_PUBLIC_POSTHOG_KEY=phc_...
 NEXT_PUBLIC_POSTHOG_HOST=https://eu.i.posthog.com
 POSTHOG_API_KEY=phx_...
 
-# AI Enrichment (optional)
-GEMINI_API_KEY=your_key
+# AI Enrichment (optional, npm run agents:enrich)
+DEEPSEEK_API_KEY=your_key
 
 # Cron Security
 CRON_SECRET=random_string
@@ -156,10 +156,8 @@ npm run scrape:all          # Everything
 ### AI Agents
 
 ```bash
-npm run agents          # Run all agents
-npm run agents:links    # Verify booking URLs
-npm run agents:health   # Check scraper output
-npm run agents:enrich   # Improve TMDB matching
+npm run agents:enrich   # Improve TMDB matching (DeepSeek)
+npm run agents:verify   # Deterministic data quality checks
 ```
 
 ---
@@ -203,7 +201,7 @@ src/
 │   ├── chains/          # Curzon, Picturehouse, Everyman
 │   ├── cinemas/         # Individual venues
 │   └── utils/           # Shared scraping utilities
-├── agents/              # Claude AI agents
+├── agents/              # Data quality agents
 ├── stores/              # Zustand state stores
 └── lib/                 # Utilities & helpers
 ```
@@ -226,7 +224,7 @@ See `ARCHITECTURE.md` for a deeper look at the data flow, scraper architecture, 
 
 - **Screening times**: Scraped directly from cinema websites
 - **Film metadata**: [TMDB](https://www.themoviedb.org) API
-- **Enrichment**: Google Gemini AI for difficult title matching
+- **Enrichment**: DeepSeek for difficult title matching (`npm run agents:enrich`)
 
 ---
 

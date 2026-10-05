@@ -6,8 +6,6 @@
 import { db } from "@/db";
 import { cinemas, screenings } from "@/db/schema";
 import { eq, gte, count, and } from "drizzle-orm";
-import { Card, CardContent } from "@/components/ui/card";
-import { AlertCircle } from "lucide-react";
 import { CinemaCardWithConfig } from "./components/cinema-card-with-config";
 
 export const dynamic = "force-dynamic";
@@ -57,26 +55,6 @@ export default async function AdminCinemasPage() {
           </p>
         </div>
       </div>
-
-      {/* Tier Explanation */}
-      <Card>
-        <CardContent>
-          <div className="flex items-start gap-4">
-            <AlertCircle className="w-5 h-5 text-accent-primary shrink-0 mt-0.5" />
-            <div>
-              <h3 className="font-medium text-text-primary">About Cinema Tiers</h3>
-              <p className="text-sm text-text-secondary mt-1">
-                <strong>Top tier</strong> (independent cinemas): AI verification triggers on ANY anomaly.
-                These are the priority venues for data completeness.
-              </p>
-              <p className="text-sm text-text-secondary mt-1">
-                <strong>Standard tier</strong> (chain cinemas): AI verification only triggers on &gt;50% drops.
-                More tolerant of normal variation.
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Top Tier Cinemas */}
       <div>

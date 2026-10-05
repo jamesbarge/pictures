@@ -42,9 +42,6 @@ import {
 import { cleanFilmTitle, cleanFilmTitleWithMetadata, extractEnglishFromBracket } from "./utils/film-title-cleaner";
 export { cleanFilmTitle } from "./utils/film-title-cleaner";
 
-// Agent imports - conditionally used when ENABLE_AGENTS=true
-const AGENTS_ENABLED = process.env.ENABLE_AGENTS === "true";
-
 export interface PipelineResult {
   cinemaId: string;
   /**
@@ -736,80 +733,7 @@ export async function processScreenings(
   // Log cache performance stats
   logCacheStats(filmCache);
 
-  // Run agent-based analysis if enabled
-  if (AGENTS_ENABLED && result.added > 0) {
-    try {
-      await runPostScrapeAgents(cinemaId, screeningsToProcess, result);
-    } catch (agentError) {
-      console.warn(`[Pipeline] Agent analysis failed (non-blocking):`, agentError);
-    }
-  }
-
   return result;
-}
-
-/**
- * Run post-scrape agent analysis
- * This is optional and won't block the scrape if it fails
- */
-async function runPostScrapeAgents(
-  cinemaId: string,
-  screenings: RawScreening[],
-  _result: PipelineResult
-): Promise<void> {
-  void _result; // Reserved for future agent analysis
-  // Dynamically import agents to avoid loading SDK if not needed
-  const { analyzeScraperHealth } = await import("@/agents/scraper-health");
-  const { verifyBookingLinks } = await import("@/agents/link-validator");
-
-  console.log(`[Pipeline] Running agent analysis...`);
-
-  // Sample screenings for agent analysis
-  const samples = screenings.slice(0, 5).map((s) => ({
-    title: s.filmTitle,
-    datetime: s.datetime,
-    bookingUrl: s.bookingUrl,
-  }));
-
-  // Run scraper health check
-  const healthResult = await analyzeScraperHealth(
-    cinemaId,
-    screenings.length,
-    samples
-  );
-
-  if (healthResult.success && healthResult.data) {
-    const report = healthResult.data;
-    if (report.anomalyDetected) {
-      console.warn(`[Agent] Anomaly detected: ${report.warnings.join(", ")}`);
-      // Could store this in data_issues table for review
-    }
-  }
-
-  // Verify a sample of booking links (non-blocking)
-  // Get screening IDs from the database for recently added screenings
-  const recentScreenings = await db
-    .select({ id: screeningsTable.id })
-    .from(screeningsTable)
-    .where(eq(screeningsTable.cinemaId, cinemaId))
-    .orderBy(screeningsTable.scrapedAt)
-    .limit(10);
-
-  if (recentScreenings.length > 0) {
-    const linkResult = await verifyBookingLinks(
-      recentScreenings.map((s) => s.id),
-      { dryRun: false, batchSize: 10 }
-    );
-
-    if (linkResult.success && linkResult.data) {
-      const broken = linkResult.data.filter((r) => r.status === "broken");
-      if (broken.length > 0) {
-        console.warn(`[Agent] Found ${broken.length} broken links`);
-      }
-    }
-  }
-
-  console.log(`[Pipeline] Agent analysis complete`);
 }
 
 /**

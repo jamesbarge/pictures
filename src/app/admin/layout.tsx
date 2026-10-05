@@ -13,7 +13,6 @@ import {
   Building2,
   AlertCircle,
   BarChart3,
-  Bot,
   ChevronLeft,
   Calendar,
   ClipboardCheck,
@@ -70,12 +69,6 @@ const navItems: NavItem[] = [
     label: "Data Quality",
     icon: <ClipboardCheck className="w-5 h-5" />,
     description: "Film metadata completeness",
-  },
-  {
-    href: "/admin/agents",
-    label: "AI Agents",
-    icon: <Bot className="w-5 h-5" />,
-    description: "Run data quality agents",
   },
 ];
 
