@@ -13,11 +13,16 @@ const mocks = vi.hoisted(() => ({
   filmRows: [] as Array<Record<string, unknown>>,
   /** TMDB ids treated as blocklisted by the mocked blocklist module. */
   blockedIds: new Set<number>(),
+  /** The column projection initFilmCache passed to `db.select`. */
+  projection: undefined as Record<string, unknown> | undefined,
 }));
 
 vi.mock("@/db", () => ({
   db: {
-    select: () => ({ from: () => Promise.resolve(mocks.filmRows) }),
+    select: (projection?: Record<string, unknown>) => {
+      mocks.projection = projection;
+      return { from: () => Promise.resolve(mocks.filmRows) };
+    },
   },
   withDbTimeout: <T>(promise: Promise<T>) => promise,
 }));
@@ -32,6 +37,7 @@ import {
   logCacheStats,
   type FilmCache,
 } from "./film-matching";
+import { normalizeTitle } from "../pipeline";
 
 type FilmRecord = ReturnType<FilmCache["byTitle"]["get"]> extends infer R
   ? R extends undefined
@@ -216,5 +222,90 @@ describe("initFilmCache — preventive blocklist (plan 008 step 2)", () => {
       .find((m) => m.includes("blocklisted TMDB ids"));
     expect(blockedLine).toBeUndefined();
     spy.mockRestore();
+  });
+});
+
+describe("initFilmCache: original-title aliases", () => {
+  beforeEach(() => {
+    mocks.filmRows = [];
+    mocks.blockedIds = new Set();
+    vi.spyOn(console, "log").mockImplementation(() => {});
+  });
+
+  const lookup = (cache: FilmCache, title: string) => lookupFilmInCache(cache, normalizeTitle(title))?.id;
+
+  it("selects original_title alongside the narrowed columns", async () => {
+    await initFilmCache(normalizeTitle);
+
+    expect(Object.keys(mocks.projection ?? {})).toContain("originalTitle");
+  });
+
+  it("resolves a venue's original-language title to the film's row", async () => {
+    mocks.filmRows = [
+      { id: "butcher", title: "The Butcher", originalTitle: "Le Boucher", tmdbId: 2912 },
+      { id: "celebration", title: "The Celebration", originalTitle: "Festen", tmdbId: 309 },
+      { id: "unfaithful", title: "The Unfaithful Wife", originalTitle: "La Femme infidèle", tmdbId: 8286 },
+      { id: "gigolo", title: "A French Gigolo", originalTitle: "Cliente", tmdbId: 15460 },
+    ];
+
+    const cache = await initFilmCache(normalizeTitle);
+
+    expect(lookup(cache, "Le Boucher")).toBe("butcher");
+    expect(lookup(cache, "Festen")).toBe("celebration");
+    expect(lookup(cache, "La Femme infidele")).toBe("unfaithful");
+    expect(lookup(cache, "Cliente")).toBe("gigolo");
+    expect(lookup(cache, "The Butcher")).toBe("butcher");
+  });
+
+  it("lets a title key win over another film's alias, whatever the row order", async () => {
+    const alias = { id: "celebration", title: "The Celebration", originalTitle: "Festen", tmdbId: 309 };
+    const owner = { id: "festen-2026", title: "Festen", originalTitle: "Festen", tmdbId: 999 };
+
+    mocks.filmRows = [alias, owner];
+    expect(lookup(await initFilmCache(normalizeTitle), "Festen")).toBe("festen-2026");
+
+    mocks.filmRows = [owner, alias];
+    expect(lookup(await initFilmCache(normalizeTitle), "Festen")).toBe("festen-2026");
+  });
+
+  it("indexes neither film when two different films share an alias", async () => {
+    mocks.filmRows = [
+      { id: "a", title: "Bad Seed", originalTitle: "Mauvaise graine", tmdbId: 82185 },
+      { id: "b", title: "Bad Seed (2023)", originalTitle: "Mauvaise Graine", tmdbId: 777 },
+    ];
+
+    const cache = await initFilmCache(normalizeTitle);
+
+    expect(lookup(cache, "Mauvaise Graine")).toBeUndefined();
+  });
+
+  it("keeps an alias that two rows of the same TMDB film share", async () => {
+    mocks.filmRows = [
+      { id: "a", title: "The Butcher", originalTitle: "Le Boucher", tmdbId: 2912 },
+      { id: "b", title: "The Butcher (1970)", originalTitle: "Le Boucher", tmdbId: 2912 },
+    ];
+
+    const cache = await initFilmCache(normalizeTitle);
+
+    expect(lookup(cache, "Le Boucher")).toBe("a");
+  });
+
+  it("adds no alias for a film carrying a blocklisted TMDB id", async () => {
+    // Its original title came from the wrong TMDB film.
+    mocks.filmRows = [{ id: "wrong", title: "Gravity", originalTitle: "Gravité", tmdbId: 111 }];
+    mocks.blockedIds = new Set([111]);
+
+    const cache = await initFilmCache(normalizeTitle);
+
+    expect(lookup(cache, "Gravité")).toBeUndefined();
+    expect(lookup(cache, "Gravity")).toBe("wrong");
+  });
+
+  it("ignores rows without an original title", async () => {
+    mocks.filmRows = [{ id: "a", title: "Fjord", tmdbId: 1401459 }];
+
+    const cache = await initFilmCache(normalizeTitle);
+
+    expect(cache.byTitle.size).toBe(1);
   });
 });

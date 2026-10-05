@@ -82,6 +82,7 @@ export function trackPageview(url: string) {
 export type DiscoverySource =
 	| 'calendar'
 	| 'calendar-text' // text-mode (POSTERS/TEXT toggle) calendar rows
+	| 'calendar-soon' // homepage STARTING SOON strip
 	| 'search'
 	| 'tonight'
 	| 'map'
