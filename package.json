@@ -105,7 +105,7 @@
     "prepare": "husky"
   },
   "dependencies": {
-    "@ai-sdk/openai-compatible": "^1.0.36",
+    "@ai-sdk/openai-compatible": "^3.0.57",
     "@base-ui/react": "^1.0.0",
     "@browserbasehq/stagehand": "^3.3.0",
     "@clerk/nextjs": "^6.36.5",
