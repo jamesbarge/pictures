@@ -18,3 +18,50 @@ export async function apiFetch<T>(path: string, fetchFn: typeof globalThis.fetch
 	if (!res.ok) throw new ApiError(res.status, await res.text());
 	return res.json();
 }
+
+/** One `/api/screenings` row, typed to the fields the poster pages read. */
+export interface ApiScreening {
+	id: string;
+	datetime: string;
+	format: string | null;
+	bookingUrl: string;
+	film: {
+		id: string;
+		title: string;
+		year: number | null;
+		directors: string[];
+		genres: string[];
+		runtime: number | null;
+		posterUrl: string | null;
+		isRepertory: boolean;
+		letterboxdRating: number | null;
+		tmdbPopularity: number | null;
+	};
+	cinema: { id: string; name: string; shortName: string | null };
+}
+
+/** Trim an `/api/screenings` row to what the poster pages (home, tonight, this-weekend) serialize. */
+export function slimScreening(s: ApiScreening) {
+	return {
+		id: s.id,
+		datetime: s.datetime,
+		format: s.format,
+		bookingUrl: s.bookingUrl,
+		film: {
+			id: s.film.id,
+			title: s.film.title,
+			year: s.film.year,
+			director: s.film.directors?.[0] ?? null,
+			runtime: s.film.runtime,
+			posterUrl: s.film.posterUrl,
+			isRepertory: s.film.isRepertory,
+			letterboxdRating: s.film.letterboxdRating,
+			tmdbPopularity: s.film.tmdbPopularity ?? null
+		},
+		cinema: {
+			id: s.cinema.id,
+			name: s.cinema.name,
+			shortName: s.cinema.shortName
+		}
+	};
+}

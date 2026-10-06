@@ -17,7 +17,6 @@
 	} from '$lib/utils';
 	import { trackFilmView, trackBookingClick, trackFilmStatusChange } from '$lib/analytics/posthog';
 	import { onMount } from 'svelte';
-	import { browser } from '$app/environment';
 	import type { FilmStatus } from '$lib/types';
 
 	// Lazy-load the below-the-fold "If you like this" rail after first paint.
@@ -43,16 +42,14 @@
 
 		// Defer the similar-rail chunk until the browser is idle so it doesn't
 		// compete with the hero/showings paint.
-		if (browser) {
-			const load = () =>
-				import('$lib/components/film/FilmSimilarRail.svelte').then((m) => {
-					SimilarRail = m.default;
-				});
-			if ('requestIdleCallback' in window) {
-				requestIdleCallback(load, { timeout: 2000 });
-			} else {
-				setTimeout(load, 1500);
-			}
+		const load = () =>
+			import('$lib/components/film/FilmSimilarRail.svelte').then((m) => {
+				SimilarRail = m.default;
+			});
+		if ('requestIdleCallback' in window) {
+			requestIdleCallback(load, { timeout: 2000 });
+		} else {
+			setTimeout(load, 1500);
 		}
 	});
 
@@ -67,16 +64,10 @@
 	}
 
 	const futureScreenings = $derived.by(() => {
-		// Decorate-sort-undecorate to avoid `new Date()` per element per
-		// comparator call — film pages routinely show 50+ screenings.
 		const now = Date.now();
-		const decorated: Array<{ s: typeof screenings[number]; ms: number }> = [];
-		for (const s of screenings) {
-			const ms = new Date(s.datetime).getTime();
-			if (ms > now) decorated.push({ s, ms });
-		}
-		decorated.sort((a, b) => a.ms - b.ms);
-		return decorated.map((d) => d.s);
+		return screenings
+			.filter((s) => Date.parse(s.datetime) > now)
+			.sort((a, b) => Date.parse(a.datetime) - Date.parse(b.datetime));
 	});
 
 	const nextScreening = $derived(futureScreenings[0]);
@@ -251,25 +242,14 @@
 					Book next showing <span class="cta-detail">{formatTime(nextScreening.datetime)}, {nextScreening.cinema?.shortName ?? nextScreening.cinema?.name}</span>
 				</a>
 			{/if}
-			{#if currentStatus === 'want_to_see'}
-				<button
-					type="button"
-					class="cta secondary"
-					onclick={() => toggleStatus('want_to_see')}
-					aria-pressed={true}
-				>
-					♥ Remove from saved
-				</button>
-			{:else}
-				<button
-					type="button"
-					class="cta secondary"
-					onclick={() => toggleStatus('want_to_see')}
-					aria-pressed={false}
-				>
-					♡ Save
-				</button>
-			{/if}
+			<button
+				type="button"
+				class="cta secondary"
+				onclick={() => toggleStatus('want_to_see')}
+				aria-pressed={currentStatus === 'want_to_see'}
+			>
+				{currentStatus === 'want_to_see' ? '♥ Remove from saved' : '♡ Save'}
+			</button>
 			{#if film.trailerUrl}
 				<a class="cta secondary" href={film.trailerUrl} target="_blank" rel="noopener noreferrer">Trailer</a>
 			{/if}

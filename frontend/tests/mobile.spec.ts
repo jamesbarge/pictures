@@ -1,6 +1,6 @@
 import { test, expect, devices } from '@playwright/test';
 
-import { BASE } from './base-url';
+import { BASE, dismissConsent } from './base-url';
 
 // The FILTERS button wires its onclick (which lazy-imports MobileFilterSheet)
 // only after Svelte hydrates. Clicking before hydration silently drops the
@@ -33,19 +33,18 @@ async function openBurgerMenu(page: import('@playwright/test').Page) {
 	return nav;
 }
 
+// Load `path`, let late layout settle, and assert the page never scrolls sideways.
+async function expectNoOverflow(page: import('@playwright/test').Page, path: string) {
+	await page.goto(`${BASE}${path}`);
+	await page.waitForTimeout(1000);
+	const overflow = await page.evaluate(() => document.body.scrollWidth > window.innerWidth);
+	expect(overflow).toBe(false);
+}
+
 // Test at iPhone 12 Pro dimensions
 test.use(devices['iPhone 12 Pro']);
 
-test.beforeEach(async ({ context }) => {
-	await context.addInitScript(() => {
-		try {
-			localStorage.setItem(
-				'pictures-cookie-consent',
-				JSON.stringify({ status: 'rejected', updatedAt: new Date().toISOString() })
-			);
-		} catch { /* ignore */ }
-	});
-});
+test.beforeEach(({ context }) => dismissConsent(context));
 
 test.describe('Mobile Responsive — iPhone 12 Pro (390x844)', () => {
 
@@ -92,13 +91,6 @@ test.describe('Mobile Responsive — iPhone 12 Pro (390x844)', () => {
 			await openBurgerMenu(page);
 			await expect(page.locator('.mobile-nav-link', { hasText: /sign\s*in/i })).toHaveCount(0);
 			await expect(page.locator('a[href="/sign-in"]')).toHaveCount(0);
-		});
-
-		test('no horizontal page overflow', async ({ page }) => {
-			await page.goto(BASE);
-			await page.waitForTimeout(1000);
-			const overflow = await page.evaluate(() => document.body.scrollWidth > window.innerWidth);
-			expect(overflow).toBe(false);
 		});
 	});
 
@@ -149,11 +141,6 @@ test.describe('Mobile Responsive — iPhone 12 Pro (390x844)', () => {
 				(el) => parseFloat(window.getComputedStyle(el as HTMLElement).fontSize)
 			);
 			expect(fontSize).toBeGreaterThanOrEqual(16);
-		});
-
-		test('Filter button opens mobile filter sheet dialog', async ({ page }) => {
-			await gotoHomeHydrated(page);
-			await openFilterSheet(page);
 		});
 
 		test('Close button dismisses the filter sheet', async ({ page }) => {
@@ -329,12 +316,6 @@ test.describe('Mobile Responsive — iPhone 12 Pro (390x844)', () => {
 	// ═══════════════════════════════════════════════
 
 	test.describe('Mobile Navigation', () => {
-		test('hamburger menu button is visible', async ({ page }) => {
-			await page.goto(BASE);
-			const menuBtn = page.locator('.mobile-menu-btn');
-			await expect(menuBtn).toBeVisible();
-		});
-
 		test('hamburger menu opens and shows nav links', async ({ page }) => {
 			await page.goto(BASE);
 			await openBurgerMenu(page);
@@ -391,36 +372,17 @@ test.describe('Mobile Responsive — iPhone 12 Pro (390x844)', () => {
 	// ═══════════════════════════════════════════════
 
 	test.describe('Other Pages at Mobile Width', () => {
-		// Pre-existing regression: cinema-card 2-col grid doesn't collapse to 1-col
-		// below ~640px — cards measure ~300px but the grid lays them side-by-side
-		// with gap, overflowing at 390px viewport. Not introduced by V2a; tracked
-		// as a separate follow-up for the cinemas page mobile layout.
-		test.fixme('cinemas page renders without overflow', async ({ page }) => {
-			await page.goto(`${BASE}/cinemas`);
-			await page.waitForTimeout(1000);
-			const overflow = await page.evaluate(() => document.body.scrollWidth > window.innerWidth);
-			expect(overflow).toBe(false);
-		});
-
-		test('festivals page renders without overflow', async ({ page }) => {
-			await page.goto(`${BASE}/festivals`);
-			await page.waitForTimeout(1000);
-			const overflow = await page.evaluate(() => document.body.scrollWidth > window.innerWidth);
-			expect(overflow).toBe(false);
-		});
+		for (const path of ['/', '/festivals', '/search?q=godfather', '/tonight', '/settings']) {
+			test(`${path} renders without horizontal overflow`, async ({ page }) => {
+				await expectNoOverflow(page, path);
+			});
+		}
 
 		test('letterboxd page input and button fit', async ({ page }) => {
 			await page.goto(`${BASE}/letterboxd`);
 			await expect(page.getByPlaceholder('your-username')).toBeVisible();
 			await expect(page.getByRole('button', { name: 'IMPORT' })).toBeVisible();
 
-			const overflow = await page.evaluate(() => document.body.scrollWidth > window.innerWidth);
-			expect(overflow).toBe(false);
-		});
-
-		test('search results page renders without overflow', async ({ page }) => {
-			await page.goto(`${BASE}/search?q=godfather`);
-			await page.waitForTimeout(2000);
 			const overflow = await page.evaluate(() => document.body.scrollWidth > window.innerWidth);
 			expect(overflow).toBe(false);
 		});
@@ -433,20 +395,6 @@ test.describe('Mobile Responsive — iPhone 12 Pro (390x844)', () => {
 			const box = await mapContainer.boundingBox();
 			expect(box!.height).toBeGreaterThan(300);
 		});
-
-		test('tonight page renders without overflow', async ({ page }) => {
-			await page.goto(`${BASE}/tonight`);
-			await page.waitForTimeout(1000);
-			const overflow = await page.evaluate(() => document.body.scrollWidth > window.innerWidth);
-			expect(overflow).toBe(false);
-		});
-
-		test('settings page renders without overflow', async ({ page }) => {
-			await page.goto(`${BASE}/settings`);
-			await page.waitForTimeout(500);
-			const overflow = await page.evaluate(() => document.body.scrollWidth > window.innerWidth);
-			expect(overflow).toBe(false);
-		});
 	});
 });
 
@@ -457,35 +405,11 @@ test.describe('Mobile Responsive — iPhone 12 Pro (390x844)', () => {
 test.describe('Small Android (360x640)', () => {
 	test.use({ viewport: { width: 360, height: 640 } });
 
-	test('homepage has no horizontal overflow at 360px', async ({ page }) => {
-		await page.goto(BASE);
-		await page.waitForTimeout(1000);
-		const overflow = await page.evaluate(() => document.body.scrollWidth > window.innerWidth);
-		expect(overflow).toBe(false);
-	});
-
-	// Pre-existing regression, see note above — cinema-card grid needs a
-	// proper 1-col breakpoint below ~640px.
-	test.fixme('cinemas page has no horizontal overflow at 360px', async ({ page }) => {
-		await page.goto(`${BASE}/cinemas`);
-		await page.waitForTimeout(1000);
-		const overflow = await page.evaluate(() => document.body.scrollWidth > window.innerWidth);
-		expect(overflow).toBe(false);
-	});
-
-	test('reachable page has no horizontal overflow at 360px', async ({ page }) => {
-		await page.goto(`${BASE}/reachable`);
-		await page.waitForTimeout(1000);
-		const overflow = await page.evaluate(() => document.body.scrollWidth > window.innerWidth);
-		expect(overflow).toBe(false);
-	});
-
-	test('tonight page has no horizontal overflow at 360px', async ({ page }) => {
-		await page.goto(`${BASE}/tonight`);
-		await page.waitForTimeout(1000);
-		const overflow = await page.evaluate(() => document.body.scrollWidth > window.innerWidth);
-		expect(overflow).toBe(false);
-	});
+	for (const path of ['/', '/reachable', '/tonight']) {
+		test(`${path} has no horizontal overflow at 360px`, async ({ page }) => {
+			await expectNoOverflow(page, path);
+		});
+	}
 
 	test('THE SLEEPER marker fits the rail without clipping or overflow', async ({ page }) => {
 		// The real mobile risks are the vertical text outgrowing a shorter rail

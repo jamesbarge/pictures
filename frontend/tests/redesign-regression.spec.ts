@@ -1,6 +1,6 @@
-import { test, expect, type BrowserContext } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 
-import { BASE } from './base-url';
+import { BASE, dismissConsent } from './base-url';
 
 // Regression suite locking in this week's hand-fixed redesign bugs (post-#646
 // Spline redesign). Each test reproduces a specific bug that was fixed by hand
@@ -10,18 +10,6 @@ import { BASE } from './base-url';
 // *.spec.ts, so each describe sets an explicit viewport via `test.use` rather
 // than inheriting the project's device emulation — the bug being asserted is
 // viewport-specific in every case.
-
-const dismissConsent = (ctx: Pick<BrowserContext, 'addInitScript'>) =>
-	ctx.addInitScript(() => {
-		try {
-			localStorage.setItem(
-				'pictures-cookie-consent',
-				JSON.stringify({ status: 'rejected', updatedAt: new Date().toISOString() })
-			);
-		} catch {
-			/* ignore */
-		}
-	});
 
 // ═══════════════════════════════════════════════════════════════
 // 1. RESIZE RATCHET — fitToFirstRow must grow back, not only shrink

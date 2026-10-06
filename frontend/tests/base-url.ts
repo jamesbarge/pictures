@@ -1,3 +1,5 @@
+import type { BrowserContext } from '@playwright/test';
+
 /**
  * Origin the Playwright suite drives.
  *
@@ -24,3 +26,19 @@ const explicitTarget = process.env.E2E_BASE_URL || '';
 export const isExternalTarget = explicitTarget !== '';
 
 export const BASE = explicitTarget || `http://localhost:${E2E_PORT}`;
+
+/**
+ * Pre-reject cookie consent so the banner never covers what a test asserts.
+ * `addInitScript` runs on every navigation, so reloads stay dismissed too.
+ */
+export const dismissConsent = (ctx: Pick<BrowserContext, 'addInitScript'>) =>
+	ctx.addInitScript(() => {
+		try {
+			localStorage.setItem(
+				'pictures-cookie-consent',
+				JSON.stringify({ status: 'rejected', updatedAt: new Date().toISOString() })
+			);
+		} catch {
+			/* ignore */
+		}
+	});

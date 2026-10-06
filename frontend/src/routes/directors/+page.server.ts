@@ -6,7 +6,7 @@ export const config: Config = {
 	isr: { expiration: 3600, allowQuery: [] }
 };
 
-export interface DirectorEntry {
+interface DirectorEntry {
 	name: string;
 	filmCount: number;
 	films: string[];
