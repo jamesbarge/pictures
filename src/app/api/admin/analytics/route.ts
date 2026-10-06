@@ -2,7 +2,7 @@
  * Admin Analytics API
  * Queries PostHog data for the analytics dashboard
  *
- * GET /api/admin/analytics?type=summary|recordings|events|funnel
+ * GET /api/admin/analytics?type=summary|funnel|films|cinemas
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -10,8 +10,6 @@ import { withAdminAuth } from "@/lib/auth";
 import {
   healthCheck,
   getDashboardSummary,
-  listSessionRecordings,
-  getEventDefinitions,
   getConversionFunnel,
   getFilmEngagement,
   getCinemaEngagement,
@@ -23,7 +21,6 @@ export const GET = withAdminAuth(async (req) => {
     const searchParams = request.nextUrl.searchParams;
     const type = searchParams.get("type") || "summary";
     const dateFrom = searchParams.get("dateFrom") || "-7d";
-    const limit = parseInt(searchParams.get("limit") || "20", 10);
 
     // First check if PostHog API is configured
     const health = await healthCheck();
@@ -44,23 +41,9 @@ export const GET = withAdminAuth(async (req) => {
     }
 
     switch (type) {
-      case "health":
-        return NextResponse.json(health);
-
       case "summary":
         const summary = await getDashboardSummary(dateFrom);
         return NextResponse.json(summary);
-
-      case "recordings":
-        const recordings = await listSessionRecordings({
-          limit,
-          date_from: dateFrom,
-        });
-        return NextResponse.json(recordings);
-
-      case "events":
-        const events = await getEventDefinitions();
-        return NextResponse.json(events);
 
       case "funnel":
         const funnel = await getConversionFunnel(dateFrom);

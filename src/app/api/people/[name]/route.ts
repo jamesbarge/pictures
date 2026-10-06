@@ -13,6 +13,7 @@ import { z } from "zod";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db";
+import { handleApiError } from "@/lib/api-errors";
 import { CACHE_5MIN } from "@/lib/cache-headers";
 import { RATE_LIMITS, withRateLimit } from "@/lib/rate-limit";
 
@@ -34,11 +35,6 @@ type FilmRow = {
   screeningCount: number;
 };
 
-function toRows<T>(result: unknown): T[] {
-  if (Array.isArray(result)) return result as T[];
-  return (result as { rows?: T[] }).rows ?? [];
-}
-
 export const GET = withRateLimit(RATE_LIMITS.public, "people-detail")(async (
   _request: NextRequest,
   { params }: { params: Promise<{ name: string }> }
@@ -55,7 +51,7 @@ export const GET = withRateLimit(RATE_LIMITS.public, "people-detail")(async (
 
     // GROUP BY f.id (primary key) lets us select the other f.* columns via
     // PostgreSQL functional-dependency without listing each in GROUP BY.
-    const res = await db.execute(sql`
+    const films = await db.execute<FilmRow>(sql`
       SELECT
         f.id, f.title, f.year, f.directors,
         f.poster_url AS "posterUrl", f.runtime, f.genres,
@@ -72,7 +68,6 @@ export const GET = withRateLimit(RATE_LIMITS.public, "people-detail")(async (
       LIMIT 100
     `);
 
-    const films = toRows<FilmRow>(res);
     if (films.length === 0) {
       return NextResponse.json(
         { error: "No upcoming films for this person" },
@@ -91,7 +86,6 @@ export const GET = withRateLimit(RATE_LIMITS.public, "people-detail")(async (
       { headers: CACHE_5MIN }
     );
   } catch (error) {
-    console.error("Person detail error:", error);
-    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+    return handleApiError(error, "GET /api/people/[name]");
   }
 });

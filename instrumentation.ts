@@ -7,11 +7,6 @@
 
 import type { Instrumentation } from "next";
 
-export function register() {
-  // Initialization runs once when the server starts
-  // PostHog client is lazily initialized on first use
-}
-
 /**
  * Capture server-side request errors and send to PostHog
  * This handles errors from API routes, server components, and middleware

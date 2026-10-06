@@ -30,7 +30,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-import { handleApiError } from "@/lib/api-errors";
+import { BadRequestError, handleApiError } from "@/lib/api-errors";
 import { CACHE_1HOUR } from "@/lib/cache-headers";
 import { addDaysToDateString, londonDateString } from "@/lib/london-date";
 import { RATE_LIMITS, withRateLimit } from "@/lib/rate-limit";
@@ -49,10 +49,7 @@ export const GET = withRateLimit(RATE_LIMITS.public, "sleepers")(async (request:
       days: request.nextUrl.searchParams.get("days") ?? undefined,
     });
     if (!parsed.success) {
-      return NextResponse.json(
-        { error: "Invalid query parameters", details: parsed.error.flatten() },
-        { status: 400 },
-      );
+      throw new BadRequestError("Invalid query parameters", parsed.error.flatten());
     }
 
     const days = parsed.data.days ?? 14;

@@ -1,3 +1,12 @@
+## 2026-10-04: Delete dead API code
+**PR**: #793 | **Files**: `src/app/api/festivals/route.ts`, `src/app/api/festivals/[slug]/route.ts`, `src/app/api/festivals/festivals.test.ts` (new), `src/app/api/admin/screenings/[id]/route.ts`, `src/app/api/travel-times/route.ts`, `src/lib/cache-headers.ts`, `vercel.json`
+- Deleted four handlers nobody calls: `/api/admin/bfi/status`, PATCH and DELETE on `/api/admin/screenings/[id]`, and the GET help stub on `/api/travel-times`.
+- The festival routes drop their signed-in branches, the five unused list filters and the two detail flags. The SvelteKit frontend calls both anonymously with no params, and a new route test pins every field it reads. `getUserAwareCacheHeaders` and `PRIVATE_NO_STORE` lost their last callers and are gone.
+- Ten routes reuse `BadRequestError` or `handleApiError` for their 400 and 500 bodies. Smaller trims cover `letterboxd/preview` (lookup table), the `toRows` shim, three unused admin analytics types, the empty `register()`, the `trpc` middleware matcher and a `vercel.json` header that repeated the route's own `CACHE_5MIN`.
+- The API layer is about 760 lines shorter, and every response field the frontend reads is unchanged.
+
+---
+
 ## 2026-10-04: JW3 film nights outside the Cinema genre
 **PR**: #783 | **Files**: `src/scrapers/cinemas/jw3.ts`, `src/scrapers/cinemas/jw3.test.ts` (new), `src/scrapers/SCRAPING_PLAYBOOK.md`
 - JW3 now keeps film nights filed under other Spektrix genres when the name labels them, e.g. `Young JW3 Queer Movie & Pizza Night: Call Me By Your Name`, listed as the film after the colon. This adds Call Me By Your Name (21 Oct) and Theater Camp (16 Dec).

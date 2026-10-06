@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { NotFoundError, handleApiError } from "@/lib/api-errors";
+import { BadRequestError, NotFoundError, handleApiError } from "@/lib/api-errors";
 import { RATE_LIMITS, withRateLimit } from "@/lib/rate-limit";
 import {
   getCinemaById,
@@ -25,10 +25,7 @@ export const GET = withRateLimit(RATE_LIMITS.public, "cinemas-detail")(async (
     const { id } = await params;
     const parseResult = paramsSchema.safeParse({ id });
     if (!parseResult.success) {
-      return NextResponse.json(
-        { error: "Invalid cinema ID", details: parseResult.error.flatten() },
-        { status: 400 }
-      );
+      throw new BadRequestError("Invalid cinema ID", parseResult.error.flatten());
     }
 
     const [cinema, cinemaScreenings] = await Promise.all([

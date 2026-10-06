@@ -1,7 +1,6 @@
 /**
  * Admin Screening Detail API
  * PUT - Update an existing screening
- * DELETE - Remove a screening
  */
 
 import { withAdminAuth } from "@/lib/auth";
@@ -29,14 +28,6 @@ const updateScreeningSchema = z.object({
   screen: z.string().nullable().optional(),
   eventType: z.string().nullable().optional(),
   eventDescription: z.string().nullable().optional(),
-});
-
-// Zod schema for PATCH - lightweight inline editing
-const patchScreeningSchema = z.object({
-  datetime: z.string().datetime().optional(),
-  format: z.string().nullable().optional(),
-  screen: z.string().nullable().optional(),
-  eventType: z.string().nullable().optional(),
 });
 
 export const PUT = withAdminAuth<RouteParams>(async (request, _admin, { params }) => {
@@ -121,80 +112,3 @@ export const PUT = withAdminAuth<RouteParams>(async (request, _admin, { params }
   }
 });
 
-/**
- * PATCH - Lightweight update for inline editing
- * Only updates the specified field(s) and marks as manually edited
- */
-export const PATCH = withAdminAuth<RouteParams>(async (request, _admin, { params }) => {
-  try {
-    const { id: screeningId } = await params;
-
-    // Validate request body with Zod
-    const parseResult = patchScreeningSchema.safeParse(await request.json());
-    if (!parseResult.success) {
-      throw new BadRequestError("Invalid request body", parseResult.error.flatten());
-    }
-    const body = parseResult.data;
-
-    // Verify screening exists
-    const [existing] = await db
-      .select({ id: screenings.id })
-      .from(screenings)
-      .where(eq(screenings.id, screeningId))
-      .limit(1);
-
-    if (!existing) {
-      return Response.json({ error: "Screening not found" }, { status: 404 });
-    }
-
-    // Build update object
-    const updateData: Record<string, unknown> = {
-      updatedAt: new Date(),
-    };
-
-    // Only update fields that are explicitly provided
-    if (body.datetime !== undefined) {
-      updateData.datetime = new Date(body.datetime);
-    }
-    if (body.format !== undefined) updateData.format = body.format;
-    if (body.screen !== undefined) updateData.screen = body.screen;
-    if (body.eventType !== undefined) updateData.eventType = body.eventType;
-
-    await db
-      .update(screenings)
-      .set(updateData)
-      .where(eq(screenings.id, screeningId));
-
-    return Response.json({ success: true });
-  } catch (error) {
-    return handleApiError(error, "PATCH /api/admin/screenings/[id]");
-  }
-});
-
-export const DELETE = withAdminAuth<RouteParams>(async (_request, _admin, { params }) => {
-  const { id: screeningId } = await params;
-
-  try {
-    // Verify screening exists
-    const [existing] = await db
-      .select({ id: screenings.id })
-      .from(screenings)
-      .where(eq(screenings.id, screeningId))
-      .limit(1);
-
-    if (!existing) {
-      return Response.json({ error: "Screening not found" }, { status: 404 });
-    }
-
-    await db
-      .delete(screenings)
-      .where(eq(screenings.id, screeningId));
-
-    return Response.json({
-      success: true,
-      message: "Screening deleted",
-    });
-  } catch (error) {
-    return handleApiError(error, "DELETE /api/admin/screenings/[id]");
-  }
-});

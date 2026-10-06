@@ -20,6 +20,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { RATE_LIMITS, withRateLimit } from "@/lib/rate-limit";
+import { handleApiError } from "@/lib/api-errors";
 
 // Validation schema
 const requestSchema = z.object({
@@ -162,14 +163,11 @@ export const POST = withRateLimit(RATE_LIMITS.paidApi, "travel-times")(async (re
       .map((d) => `${d.lat},${d.lng}`)
       .join("|");
 
-    // Map our mode names to Google's
-    const googleMode = mode === "bicycling" ? "bicycling" : mode;
-
     // Initial Fetch
     const data = await fetchGoogleTimes(
       originsParam,
       destinationsParam,
-      googleMode,
+      mode,
       apiKey
     );
 
@@ -182,7 +180,7 @@ export const POST = withRateLimit(RATE_LIMITS.paidApi, "travel-times")(async (re
 
     // Parse results
     const elements = data.rows[0]?.elements || [];
-    const travelTimes = parseDistanceMatrixElements(elements, destinations, googleMode);
+    const travelTimes = parseDistanceMatrixElements(elements, destinations, mode);
 
     // Track destinations that failed for potential fallback
     const failedIndices = destinations
@@ -232,11 +230,7 @@ export const POST = withRateLimit(RATE_LIMITS.paidApi, "travel-times")(async (re
       cached: false,
     });
   } catch (error) {
-    console.error("Travel times API error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return handleApiError(error, "POST /api/travel-times");
   }
 });
 
@@ -287,35 +281,3 @@ async function fetchGoogleTimes(
 
   return data;
 }
-
-// Also support GET for simple testing (limited to a few destinations).
-// Rate-limited like every other public route so it never becomes an
-// unprotected path if it grows real logic.
-export const GET = withRateLimit(RATE_LIMITS.public, "travel-times-get")(async (request: Request) => {
-  const { searchParams } = new URL(request.url);
-
-  const lat = searchParams.get("lat");
-  const lng = searchParams.get("lng");
-
-  if (!lat || !lng) {
-    return NextResponse.json(
-      { error: "Missing lat/lng parameters" },
-      { status: 400 }
-    );
-  }
-
-  return NextResponse.json({
-    message: "Use POST for travel time calculations",
-    example: {
-      method: "POST",
-      body: {
-        origin: { lat: parseFloat(lat), lng: parseFloat(lng) },
-        destinations: [
-          { id: "bfi-southbank", lat: 51.5069, lng: -0.115 },
-          { id: "prince-charles", lat: 51.5114, lng: -0.1302 },
-        ],
-        mode: "transit",
-      },
-    },
-  });
-});
