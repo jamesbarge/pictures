@@ -1,3 +1,10 @@
+## 2026-10-04: Remove retired-scheduler, QA and never-wired modules from src/lib
+**PR**: #784 | **Files**: `src/lib/jobs/`, `src/lib/qa/`, `src/lib/enrichment/`, `src/lib/embeddings.ts`, `src/lib/scraper-health/`, `src/lib/data-quality/`, `scripts/qa-dry-run.ts`, `src/app/api/admin/qa/route.ts`
+- Deleted 4,119 lines of code with zero callers: the daily-sweep, post-scrape and post-deploy-verify jobs left behind when Trigger.dev went in #469, `data-quality/index.ts`, `enrichment/`, the whole `src/lib/qa/` pipeline with `scripts/qa-dry-run.ts` and the 501 `/api/admin/qa` stub, `scraper-health/alerts.ts` with the two snapshot writers, and the bge-m3 `embeddings.ts` module.
+- `thresholds.json` drops the unread `nonFilmDetection` and `safetyFloors` sections; `loadThresholdsAsync` is gone. Unit tests go from 2,566 to 2,503 because the deleted code's tests went with it. The one visible change is `POST /api/admin/qa` returning 404 where it returned 501.
+
+---
+
 ## 2026-10-04: JW3 film nights outside the Cinema genre
 **PR**: #783 | **Files**: `src/scrapers/cinemas/jw3.ts`, `src/scrapers/cinemas/jw3.test.ts` (new), `src/scrapers/SCRAPING_PLAYBOOK.md`
 - JW3 now keeps film nights filed under other Spektrix genres when the name labels them, e.g. `Young JW3 Queer Movie & Pizza Night: Call Me By Your Name`, listed as the film after the colon. This adds Call Me By Your Name (21 Oct) and Theater Camp (16 Dec).
