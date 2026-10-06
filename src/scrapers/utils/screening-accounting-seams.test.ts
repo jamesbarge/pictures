@@ -57,15 +57,12 @@ class FixtureScraper extends BaseScraper {
   protected async parsePages(): Promise<RawScreening[]> {
     return this.candidates;
   }
-
-  // Keep the overlay lookup off the DB in tests.
-  protected async loadConfigOverlay(): Promise<void> {}
 }
 
 /**
- * Mirrors the shape of the three live overrides (`nickel-v2`, `genesis-v2`,
- * `lexi-v2`): call super.validate(), then filter the result again. Nickel's
- * real override drops `MYSTERY MOVIE`, which is what this reproduces.
+ * Mirrors the live override in `nickel-v2`: call super.validate(), then filter
+ * the result again. Nickel's real override drops `MYSTERY MOVIE`, which is what
+ * this reproduces.
  */
 class SubclassFilterScraper extends FixtureScraper {
   protected validate(screenings: RawScreening[]): RawScreening[] {
@@ -226,8 +223,8 @@ describe("a subclass filter after super.validate() cannot falsify the counts", (
   });
 
   it("keeps a pure-dedup override, which drops nothing, free of a subclass reason", async () => {
-    // genesis-v2 and lexi-v2 repeat the base sourceId dedup, so their override
-    // is a no-op and must not invent a subclass_filter entry.
+    // An override that drops nothing (for example one that repeats the base
+    // sourceId dedup) must not invent a subclass_filter entry.
     const scraper = new SubclassFilterScraper(["<html/>"], [candidate({ sourceId: "ok1" })]);
     await scraper.scrape();
     expect(scraper.getPreFilterReport()!.byReason.subclass_filter).toBeUndefined();

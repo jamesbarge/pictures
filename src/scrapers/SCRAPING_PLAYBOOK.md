@@ -163,7 +163,7 @@ Use this format when recording cinema-specific quirks:
 ## High-Impact Sources (Current)
 ### BFI
 - Scrapers: `src/scrapers/cinemas/bfi.ts` (**Playwright single-wide-search — PRIMARY, working as of 2026-05-30**), `src/scrapers/bfi-pdf/` (PDF importer — **fallback only**)
-- Manual run: `npm run scrape:bfi` (Playwright path, both venues via `run-bfi-v2.ts` + runner-factory). `npm run scrape:bfi-pdf` still runs the PDF importer directly if ever needed.
+- Manual run: `npm run scrape:bfi` (Playwright path, both venues via `cli.ts` + runner-factory; `npm run scrape:bfi -- imax` for one venue). `npm run scrape:bfi-pdf` still runs the PDF importer directly if ever needed.
 - Date/time format: structured columns from the embedded `searchResults` array — feed `[11]`/`[10]`/`[9]` + `HH:MM` from `[8]` straight into `ukLocalToUTC`. 24h times, no AM/PM ambiguity.
 
 - **✅ CORRECTION (2026-05-30): the Playwright path WAS NOT impossible. The prior "needs a paid proxy (ScraperAPI)" conclusion was WRONG — caused by (a) firing many navigations per session and (b) a parser bug.** The single-wide-search stealth method below works headless from a local IP, both venues, every run. No proxy, no paid service. `SCRAPER_API_KEY` / ScraperAPI is NOT used and NOT needed.
@@ -1287,9 +1287,8 @@ predicates, their order and the surviving set are unchanged from before the
 accounting; only the tally is new.
 
 `subclass_filter` covers drops the base class cannot name. `validate()` is
-overridable and three scrapers call `super.validate()` and then filter again —
-`nickel-v2.ts` drops `MYSTERY MOVIE` titles, `genesis-v2.ts` and `lexi-v2.ts` repeat
-the sourceId dedup (a no-op). `scrape()` reconciles the report against what
+overridable and `nickel-v2.ts` calls `super.validate()` and then drops
+`MYSTERY MOVIE` titles. `scrape()` reconciles the report against what
 `validate()` actually returned and attributes any shortfall here, so a Nickel batch
 of one mystery screening reports `accepted: 0` instead of claiming it kept a
 candidate that never left the scraper. An override returning MORE than the base
@@ -1297,7 +1296,7 @@ filter kept cannot be described by the report at all, so it goes `"unavailable"`
 **If you add a `validate()` override that drops rows, you need no extra work** — the
 reconciliation is automatic. Do not update the counts by hand.
 A scraper implementing `CinemaScraper` without extending `BaseScraper` (for example
-`cinemas/the-nickel.ts`) reports `parsed`, `preFiltered` and `fetchedPayloads` as
+`cinemas/lexi.ts`) reports `parsed`, `preFiltered` and `fetchedPayloads` as
 `"unavailable"`. Detection is duck-typed in `asPreFilterSource`.
 
 **Write outcomes.** `upserted` means the `INSERT ... ON CONFLICT DO UPDATE` statement
