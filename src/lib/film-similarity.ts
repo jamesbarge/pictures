@@ -13,16 +13,7 @@
 
 import { db } from "@/db";
 import { sql } from "drizzle-orm";
-import {
-  disagreesOnTrailingNumber,
-  sequelMarkerOf,
-  trailingNumberOf,
-} from "./title-patterns";
-
-// Re-exported so the trigram matcher stays the one-stop import for callers that
-// already depend on it. The implementation lives in title-patterns.ts, which is
-// DB-free, so src/lib/tmdb/match.ts can share it without pulling in Drizzle.
-export { disagreesOnTrailingNumber, sequelMarkerOf, trailingNumberOf };
+import { disagreesOnTrailingNumber, trailingNumberOf } from "./title-patterns";
 
 /** Lower bound for considering a film at all — below this, never propose. */
 const MINIMUM_THRESHOLD = 0.25;
@@ -179,9 +170,4 @@ export async function findMatchingFilm(
   }
 
   return null;
-}
-
-/** Whether the similarity service is available. Always true: pg_trgm ships with Supabase. */
-export function isSimilarityConfigured(): boolean {
-  return true;
 }

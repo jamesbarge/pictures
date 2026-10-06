@@ -27,7 +27,6 @@ const POPULARITY_DIVISOR = 1000;
 const HIGH_COMPETITION_PENALTY = 0.15;
 const MODERATE_COMPETITION_PENALTY = 0.08;
 const REPERTORY_AGE_YEARS = 2;
-const RATE_LIMIT_DELAY_MS = 250;
 const YEAR_MISMATCH_PENALTY = -0.1;
 const CLASSIC_YEAR_THRESHOLD = 2000;
 const CLASSIC_YEAR_MISMATCH_TOLERANCE = 5;
@@ -611,33 +610,4 @@ async function findBestMatch(
   }
 
   return null;
-}
-
-/**
- * Batch match multiple films
- * Rate limited to respect TMDB API limits (40 requests per 10 seconds)
- */
-export async function batchMatchFilms(
-  films: Array<{ title: string; hints?: MatchHints }>
-): Promise<Map<string, MatchResult | null>> {
-  const results = new Map<string, MatchResult | null>();
-
-  for (let i = 0; i < films.length; i++) {
-    const { title, hints } = films[i];
-
-    try {
-      const match = await matchFilmToTMDB(title, hints);
-      results.set(title, match);
-    } catch (error) {
-      console.error(`Error matching "${title}":`, error);
-      results.set(title, null);
-    }
-
-    // Rate limiting: ~4 requests per second
-    if (i < films.length - 1) {
-      await new Promise((resolve) => setTimeout(resolve, RATE_LIMIT_DELAY_MS));
-    }
-  }
-
-  return results;
 }

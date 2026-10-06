@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  generatePosterPlaceholder,
-  getPosterPlaceholderDataUrl,
-  getPosterPlaceholderUrl,
-} from "./placeholder";
+import { generatePosterPlaceholder, getPosterPlaceholderUrl } from "./placeholder";
 
 describe("generatePosterPlaceholder", () => {
   it("returns a valid SVG string", () => {
@@ -47,22 +43,6 @@ describe("generatePosterPlaceholder", () => {
     const a = generatePosterPlaceholder("A");
     const b = generatePosterPlaceholder("B");
     expect(a).not.toBe(b);
-  });
-});
-
-describe("getPosterPlaceholderDataUrl", () => {
-  it("returns a base64-encoded data URL with correct mime type", () => {
-    const url = getPosterPlaceholderDataUrl("Vertigo");
-    expect(url.startsWith("data:image/svg+xml;base64,")).toBe(true);
-  });
-
-  it("decodes back to a valid SVG", () => {
-    const url = getPosterPlaceholderDataUrl("Vertigo", 1958);
-    const base64 = url.split(",")[1];
-    const decoded = Buffer.from(base64, "base64").toString("utf-8");
-    expect(decoded.startsWith("<svg")).toBe(true);
-    expect(decoded).toContain("Vertigo");
-    expect(decoded).toContain("1958");
   });
 });
 

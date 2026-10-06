@@ -11,10 +11,7 @@ import { films } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { matchFilmToTMDB, getTMDBClient, isRepertoryFilm, getDecade } from "@/lib/tmdb";
 import { getPosterService } from "@/lib/posters";
-import {
-  findMatchingFilm,
-  isSimilarityConfigured,
-} from "@/lib/film-similarity";
+import { findMatchingFilm } from "@/lib/film-similarity";
 import { v4 as uuidv4 } from "uuid";
 import { isBlockedTmdbId } from "@/lib/tmdb/blocklist";
 import { sanitizeDirectors, sanitizeYear } from "./film-write-guards";
@@ -218,10 +215,6 @@ export async function findFilmBySimilarity(
   matchingTitle: string,
   scraperYear?: number
 ): Promise<string | null> {
-  if (!isSimilarityConfigured()) {
-    return null;
-  }
-
   try {
     const match = await findMatchingFilm(matchingTitle, scraperYear);
 

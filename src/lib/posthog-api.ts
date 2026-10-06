@@ -69,15 +69,6 @@ async function posthogFetch<T>(
 // TYPES
 // ============================================
 
-interface PostHogEvent {
-  id: string;
-  distinct_id: string;
-  event: string;
-  timestamp: string;
-  properties: Record<string, unknown>;
-  elements?: unknown[];
-}
-
 interface PostHogPerson {
   id: string;
   distinct_ids: string[];
@@ -115,59 +106,23 @@ interface PaginatedResponse<T> {
   results: T[];
 }
 
-interface EventsQueryParams {
-  event?: string;
-  after?: string;
-  before?: string;
-  distinct_id?: string;
-  limit?: number;
-  offset?: number;
-  properties?: Record<string, unknown>[];
-}
-
 interface RecordingsQueryParams {
   limit?: number;
   offset?: number;
   date_from?: string;
   date_to?: string;
   person_uuid?: string;
-  console_search?: string;
-  duration_type_filter?: "duration" | "active_seconds";
-  duration?: [number, number]; // [min, max] in seconds
 }
 
 interface PersonsQueryParams {
   limit?: number;
   offset?: number;
   search?: string;
-  properties?: Record<string, unknown>[];
 }
 
 // ============================================
 // EVENT QUERIES
 // ============================================
-
-/**
- * Query events from PostHog
- */
-export async function queryEvents(
-  params: EventsQueryParams = {}
-): Promise<PaginatedResponse<PostHogEvent>> {
-  const projectId = getProjectId();
-  const searchParams = new URLSearchParams();
-
-  if (params.event) searchParams.set("event", params.event);
-  if (params.after) searchParams.set("after", params.after);
-  if (params.before) searchParams.set("before", params.before);
-  if (params.distinct_id) searchParams.set("distinct_id", params.distinct_id);
-  if (params.limit) searchParams.set("limit", String(params.limit));
-  if (params.offset) searchParams.set("offset", String(params.offset));
-
-  const query = searchParams.toString();
-  return posthogFetch<PaginatedResponse<PostHogEvent>>(
-    `/api/projects/${projectId}/events/${query ? `?${query}` : ""}`
-  );
-}
 
 /**
  * Get event definitions (list of all event types)
@@ -179,32 +134,6 @@ export async function getEventDefinitions(): Promise<
   return posthogFetch(
     `/api/projects/${projectId}/event_definitions/?limit=100`
   );
-}
-
-/**
- * Get event counts aggregated by event type
- */
-export async function getEventCounts(
-  dateFrom?: string,
-  dateTo?: string
-): Promise<Record<string, number>> {
-  const projectId = getProjectId();
-  const params = new URLSearchParams();
-  if (dateFrom) params.set("date_from", dateFrom);
-  if (dateTo) params.set("date_to", dateTo);
-
-  // Use insights API to get aggregated counts
-  const result = await posthogFetch<{ result: Array<{ label: string; count: number }> }>(
-    `/api/projects/${projectId}/insights/trend/?${params.toString()}&events=[{"id":"$pageview","math":"total"}]`
-  );
-
-  const counts: Record<string, number> = {};
-  if (result.result) {
-    for (const item of result.result) {
-      counts[item.label] = item.count;
-    }
-  }
-  return counts;
 }
 
 // ============================================
@@ -232,18 +161,6 @@ export async function listSessionRecordings(
   );
 }
 
-/**
- * Get session recording details
- */
-export async function getSessionRecording(
-  recordingId: string
-): Promise<PostHogSessionRecording & { snapshots?: unknown }> {
-  const projectId = getProjectId();
-  return posthogFetch(
-    `/api/projects/${projectId}/session_recordings/${recordingId}/`
-  );
-}
-
 // ============================================
 // PERSON QUERIES
 // ============================================
@@ -251,7 +168,7 @@ export async function getSessionRecording(
 /**
  * List persons (users)
  */
-export async function listPersons(
+async function listPersons(
   params: PersonsQueryParams = {}
 ): Promise<PaginatedResponse<PostHogPerson>> {
   const projectId = getProjectId();
@@ -267,23 +184,6 @@ export async function listPersons(
   );
 }
 
-/**
- * Get person details by distinct ID
- */
-export async function getPersonByDistinctId(
-  distinctId: string
-): Promise<PostHogPerson | null> {
-  const projectId = getProjectId();
-  try {
-    const result = await posthogFetch<PaginatedResponse<PostHogPerson>>(
-      `/api/projects/${projectId}/persons/?distinct_id=${encodeURIComponent(distinctId)}`
-    );
-    return result.results[0] || null;
-  } catch {
-    return null;
-  }
-}
-
 // ============================================
 // INSIGHTS & TRENDS
 // ============================================
@@ -291,7 +191,7 @@ export async function getPersonByDistinctId(
 /**
  * Query a trend insight (time series data)
  */
-export async function queryTrend(options: {
+async function queryTrend(options: {
   events: Array<{ id: string; math?: string; name?: string }>;
   dateFrom?: string;
   dateTo?: string;
@@ -321,7 +221,7 @@ export async function queryTrend(options: {
 /**
  * Query a funnel
  */
-export async function queryFunnel(options: {
+async function queryFunnel(options: {
   events: Array<{ id: string; order: number; name?: string }>;
   dateFrom?: string;
   dateTo?: string;
@@ -365,8 +265,6 @@ export async function getDashboardSummary(dateFrom = "-7d"): Promise<{
   topEvents: Array<{ name: string; count: number }>;
   recentRecordings: PostHogSessionRecording[];
 }> {
-  void getProjectId(); // validate env var is configured
-
   // Run queries in parallel
   const [persons, eventDefs, recordings] = await Promise.all([
     listPersons({ limit: 1 }), // Just to get count
@@ -407,8 +305,6 @@ export async function getFilmEngagement(dateFrom = "-7d"): Promise<{
   bookingClicks: Array<{ filmId: string; filmTitle: string; count: number }>;
   watchlistAdds: Array<{ filmId: string; filmTitle: string; count: number }>;
 }> {
-  void getProjectId(); // validate env var is configured
-
   // Query film_viewed events with breakdown by film_id
   const viewsResult = await queryTrend({
     events: [{ id: "film_viewed", math: "total" }],

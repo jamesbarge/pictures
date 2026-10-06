@@ -209,17 +209,6 @@ export function analyzeTitleAmbiguity(title: string): AmbiguityScore {
 }
 
 /**
- * Check if a title is ambiguous enough to require metadata for matching
- *
- * @param title - The film title to check
- * @returns true if director/year should be required for matching
- */
-export function isAmbiguousTitle(title: string): boolean {
-  const { requiresReview } = analyzeTitleAmbiguity(title);
-  return requiresReview;
-}
-
-/**
  * Check if we have sufficient metadata to confidently match an ambiguous title
  *
  * @param title - The film title

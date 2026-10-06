@@ -43,7 +43,7 @@ function makeSummary(overrides: Partial<RunSummary> = {}): RunSummary {
   };
 }
 
-describe("writeRunSummary / readRunSummary", () => {
+describe("writeRunSummary", () => {
   beforeEach(async () => {
     await fs.rm(TEST_ROOT, { recursive: true, force: true });
   });
@@ -56,14 +56,14 @@ describe("writeRunSummary / readRunSummary", () => {
 
   it("round-trips a summary through the latest-run file (fresh checkout, no tmp/)", async () => {
     const summaryFile = join(TEST_ROOT, "tmp", "scrape-run-summary.json");
-    const { writeRunSummary, readRunSummary } = await loadModule(summaryFile);
+    const { writeRunSummary } = await loadModule(summaryFile);
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 
     const summary = makeSummary({ status: "ok-with-warnings" });
     await writeRunSummary(summary);
 
     expect(warn).not.toHaveBeenCalled();
-    const back = await readRunSummary();
+    const back = JSON.parse(await fs.readFile(summaryFile, "utf8"));
     expect(back).toEqual(summary);
   });
 
@@ -94,12 +94,6 @@ describe("writeRunSummary / readRunSummary", () => {
     expect(files).toHaveLength(20);
     // Oldest three (00:00, 00:01, 00:02) pruned; oldest survivor is minute 3.
     expect(files[0]).toContain("2026-07-01T00-03-00");
-  });
-
-  it("readRunSummary returns null when no run has written yet", async () => {
-    const summaryFile = join(TEST_ROOT, "tmp", "scrape-run-summary.json");
-    const { readRunSummary } = await loadModule(summaryFile);
-    expect(await readRunSummary()).toBeNull();
   });
 
   it("swallows write failures with a single warn (never throws)", async () => {

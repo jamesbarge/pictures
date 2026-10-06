@@ -3,7 +3,7 @@
  *
  * Single entry point for all film title extraction needs:
  * - Sync pattern extraction (for enrichment agent / fast loops)
- * - Async pattern extraction (legacy `extractFilmTitleAI` API)
+ * - Async pattern extraction (`extractFilmTitle`)
  * - Caching and batch processing wrappers
  *
  * Title extraction is now fully deterministic — no LLM calls. The async
@@ -12,18 +12,10 @@
  */
 
 export { extractFilmTitleSync, type PatternExtractionResult } from "./pattern-extractor";
-export { extractFilmTitleAI, hasWordOverlap, type AIExtractionResult } from "./ai-extractor";
+export { extractFilmTitle, type AIExtractionResult } from "./ai-extractor";
 export { generateSearchVariations } from "./search-variants";
 
-import { extractFilmTitleAI, type AIExtractionResult } from "./ai-extractor";
-
-/**
- * Async pattern-based title extraction. Wraps the sync extractor for callers
- * that prefer the async signature. No network calls under the hood.
- */
-export async function extractFilmTitle(rawTitle: string): Promise<AIExtractionResult> {
-  return extractFilmTitleAI(rawTitle);
-}
+import { extractFilmTitle, type AIExtractionResult } from "./ai-extractor";
 
 /** Cache for extracted titles. */
 const titleCache = new Map<string, AIExtractionResult>();
