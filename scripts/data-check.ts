@@ -24,7 +24,8 @@ import postgres from "postgres";
 import * as cheerio from "cheerio";
 import * as fs from "fs";
 import * as path from "path";
-import { levenshteinDistance } from "../src/lib/levenshtein";
+import { levenshteinSimilarity as similarity } from "../src/lib/levenshtein";
+import { CHROME_USER_AGENT_FULL as UA } from "../src/scrapers/constants";
 import { PICTUREHOUSE_VENUES } from "../src/scrapers/chains/picturehouse";
 
 // ── Types ────────────────────────────────────────────────────────
@@ -280,8 +281,6 @@ const LETTERBOXD_RATING_REFRESH_CAP = 10;
 const TMDB_REVALIDATION_CAP = 10;
 const CINEMA_VERIFICATION_CAP = 10;
 const TOTAL_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes hard cap
-
-const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
 const NON_FILM_PATTERNS =
   /\b(quiz|reading group|workshop|discussion|talk|lecture|panel|book club|exhibition|karaoke|sing.?along|marathon|all.?nighter|membership|ballet|opera|theatre|theater|concert|gala|fundraiser|awards|ceremony)\b/i;
@@ -1155,26 +1154,18 @@ async function crossReferenceDb(
 // ── Phase C2: Cinema Website Verification ────────────────────────
 
 function levenshteinSimilarity(a: string, b: string): number {
-  const la = a.toLowerCase().trim();
-  const lb = b.toLowerCase().trim();
-  if (la === lb) return 1;
-  const maxLen = Math.max(la.length, lb.length);
-  if (maxLen === 0) return 1;
-  return 1 - levenshteinDistance(la, lb) / maxLen;
+  return similarity(a.toLowerCase().trim(), b.toLowerCase().trim());
 }
 
 async function fetchHtml(url: string, timeoutMs = 10000): Promise<string | null> {
   try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
     const resp = await fetch(url, {
-      signal: controller.signal,
+      signal: AbortSignal.timeout(timeoutMs),
       headers: { "User-Agent": UA },
       redirect: "follow",
     });
-    clearTimeout(timer);
     if (!resp.ok) return null;
-    return resp.text();
+    return await resp.text(); // the timeout signal also covers the body read
   } catch {
     return null;
   }

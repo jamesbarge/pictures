@@ -269,7 +269,6 @@ async function main(): Promise<void> {
         detectYieldDrop(),
       ]);
       const criticalFlaky = flaky.filter((f) => f.severity === "critical");
-      const total = breakers.length + flaky.length + yieldDrops.length;
       if (breakers.length === 0 && criticalFlaky.length === 0 && yieldDrops.length === 0) {
         console.log("[pre-flight] No silently-broken, critical-flaky, or yield-dropping cinemas — proceeding.");
         if (flaky.length > 0) {
@@ -286,7 +285,6 @@ async function main(): Promise<void> {
             `${flaky.length - criticalFlaky.length} warn-flaky, ${yieldDrops.length} yield-drop. ` +
             "Consider `/scrape-one <slug>` to investigate before starting a full run.",
         );
-        void total;
       }
       return {
         ok: true,
