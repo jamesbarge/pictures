@@ -10,7 +10,6 @@
  * Cheerio-based scraper - suitable for serverless cloud execution
  */
 
-import { getYear } from "date-fns";
 
 import { BaseScraper } from "../base";
 import type { RawScreening, ScraperConfig } from "../types";
@@ -43,7 +42,7 @@ export class OlympicScraper extends BaseScraper {
     const screenings: RawScreening[] = [];
     const $ = this.parseHtml(htmlPages[0]);
     const now = new Date();
-    const currentYear = getYear(now);
+    const currentYear = now.getFullYear();
 
     // Find all date headers
     const dateHeaders = $("h3.date-day");

@@ -2,17 +2,16 @@
  * Savoy Systems platform client — MODERN JSON template.
  *
  * These venues embed `var Events = {"Events":[...]};` as inline JSON on their
- * homepage (root redirects to `/{Dll}.dll/Home`). Shared by Rio, Lexi, and The
- * Arzner. Each film carries `Performances[]` with `StartDate` + `StartTime`
- * (HHMM, UK-local).
+ * homepage (root redirects to `/{Dll}.dll/Home`). Used by Rio and Phoenix. Each
+ * film carries `Performances[]` with `StartDate` + `StartTime` (HHMM, UK-local).
  *
  * NOT for the LEGACY HTML-table Savoy installs (Ciné Lumière, ArtHouse Crouch
  * End) — those render server-side `div.programme` tables with NO `var Events`
  * blob and need a separate table parser.
  *
  * Per-venue variation is injected via the SavoyVenue config (sourceId + booking
- * URL builders, optional TypeDescription==="Film" filter) so the parser stays
- * shared while each venue keeps its exact sourceId scheme.
+ * URL builders) so the parser stays shared while each venue keeps its exact
+ * sourceId scheme.
  */
 
 import type { RawScreening } from "../types";
@@ -27,8 +26,6 @@ export interface SavoyPerformance {
   StartTime: string; // "1800" (HHMM)
   AuditoriumName?: string;
   URL?: string;
-  /** Present on Lexi/Arzner (e.g. "Film"); absent on Rio. */
-  TypeDescription?: string;
 }
 
 export interface SavoyEvent {
@@ -49,9 +46,6 @@ interface SavoyEventsData {
 export interface SavoyVenue {
   cinemaId: string;
   baseUrl: string;
-  /** Keep only performances whose TypeDescription is "Film" (skips theatre/live
-   * events at mixed-programme venues). Off for Rio (no TypeDescription field). */
-  filmTypeOnly?: boolean;
   buildSourceId: (event: SavoyEvent, perf: SavoyPerformance, datetime: Date) => string;
   buildBookingUrl: (event: SavoyEvent, perf: SavoyPerformance, baseUrl: string) => string;
 }
@@ -119,7 +113,7 @@ function parseSavoyDateTime(dateStr: string, timeStr: string): Date {
 /**
  * Parse a Savoy modern-JSON homepage into future RawScreenings. Throws on a
  * missing/malformed Events blob (via extractSavoyEventsJson) — never empty-as-
- * success. Skips past screenings and (when filmTypeOnly) non-film performances.
+ * success. Skips past screenings.
  */
 export async function parseSavoyEvents(
   html: string,
@@ -132,13 +126,6 @@ export async function parseSavoyEvents(
 
   for (const event of data.Events) {
     for (const perf of event.Performances) {
-      // Keeps a performance when TypeDescription is ABSENT (only drops an
-      // explicit non-"Film"). Inert for Rio (no TypeDescription field).
-      // TODO(lexi/arzner): confirm TypeDescription is always present on a real
-      // fetch before trusting keep-on-absent — else non-film events leak in.
-      if (venue.filmTypeOnly && perf.TypeDescription && perf.TypeDescription !== "Film") {
-        continue;
-      }
       const datetime = parseSavoyDateTime(perf.StartDate, perf.StartTime);
       if (isNaN(datetime.getTime()) || datetime < now) continue;
 

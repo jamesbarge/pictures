@@ -23,7 +23,7 @@ import type { RawScreening, ScraperConfig, CinemaScraper } from "../types";
 import type { CheerioAPI } from "../utils/cheerio-types";
 import { checkHealth } from "../utils/health-check";
 import { CHROME_USER_AGENT_FULL } from "../constants";
-import { ukLocalToUTC } from "../utils/date-parser";
+import { parseUKLocalDateTime } from "../utils/date-parser";
 
 // ============================================================================
 // Peckhamplex Configuration
@@ -256,32 +256,14 @@ export class PeckhamplexScraper implements CinemaScraper {
     return null;
   }
 
+  /**
+   * `datetime="2026-01-04T17:30"` is UK-local wall time. An attribute with no
+   * time part is skipped: parseUKLocalDateTime would read it as midnight.
+   */
   private parseDateTime(datetimeAttr: string): Date | null {
-    try {
-      // datetime attribute format: "2026-01-04T17:30"
-      // This is local time, not UTC
-      const [datePart, timePart] = datetimeAttr.split("T");
-      if (!datePart || !timePart) return null;
-
-      const [year, month, day] = datePart.split("-").map(Number);
-      const [hours, minutes] = timePart.split(":").map(Number);
-
-      if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hours) || isNaN(minutes)) {
-        return null;
-      }
-
-      // Build UTC explicitly with BST offset — never rely on the runtime TZ.
-      const date = ukLocalToUTC(year, month - 1, day, hours, minutes);
-
-      // Validate the date
-      if (isNaN(date.getTime())) {
-        return null;
-      }
-
-      return date;
-    } catch {
-      return null;
-    }
+    if (!datetimeAttr.split("T")[1]) return null;
+    const date = parseUKLocalDateTime(datetimeAttr);
+    return isNaN(date.getTime()) ? null : date;
   }
 
   private validate(screenings: RawScreening[]): RawScreening[] {

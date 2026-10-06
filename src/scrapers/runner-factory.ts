@@ -70,14 +70,10 @@ export type ScraperRunnerConfig = SingleVenueConfig | MultiVenueConfig | ChainCo
 export interface RunnerOptions {
   /** Number of retry attempts per venue (default: 3) */
   retryAttempts?: number;
-  /** Whether to continue on error (default: true - retry-then-continue) */
-  continueOnError?: boolean;
   /** Use processScreenings with validation instead of saveScreenings (default: true) */
   useValidation?: boolean;
   /** Specific venue IDs to scrape (for chains/multi-venue, overrides getActiveVenueIds) */
   venueIds?: string[];
-  /** Enable verbose logging (default: false) */
-  verbose?: boolean;
 }
 
 interface VenueResult {
@@ -823,10 +819,8 @@ async function runSingleVenue(
 
 const DEFAULT_OPTIONS: Required<RunnerOptions> = {
   retryAttempts: 3,
-  continueOnError: true,
   useValidation: true,
   venueIds: [],
-  verbose: false,
 };
 
 /**
@@ -975,7 +969,6 @@ async function runScraperInner(
             error: failed.error,
           }));
           venueResults.push(failed);
-          if (!options.continueOnError) break;
           continue;
         }
 
@@ -984,11 +977,6 @@ async function runScraperInner(
           runSingleVenue(venue, scraper, options),
         );
         venueResults.push(result);
-
-        // Continue on error (retry-then-continue behavior)
-        if (!result.success && !options.continueOnError) {
-          break;
-        }
       }
 
     } else if (config.type === "chain") {

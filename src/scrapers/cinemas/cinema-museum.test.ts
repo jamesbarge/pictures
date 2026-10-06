@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { CinemaMuseumScraper, parseVEvents } from "./cinema-museum";
+import { CinemaMuseumScraper } from "./cinema-museum";
 import { CALENDAR_CLIENT_USER_AGENT } from "../constants";
 
 /**
@@ -48,37 +48,6 @@ CATEGORIES:Kennington Bioscope
 END:VEVENT
 END:VCALENDAR`;
 
-describe("parseVEvents (iCal parser)", () => {
-  it("extracts all VEVENT blocks", () => {
-    const events = parseVEvents(ICAL_FIXTURE);
-    expect(events).toHaveLength(3);
-  });
-
-  it("parses UID, SUMMARY, URL, and CATEGORIES correctly", () => {
-    const events = parseVEvents(ICAL_FIXTURE);
-    expect(events[0].uid).toBe("11677-1778929200-1778936400@cinemamuseum.org.uk");
-    expect(events[0].summary).toBe("Museum Tour - Morning");
-    expect(events[0].url).toBe("https://cinemamuseum.org.uk/scheduled/museum-tour-morning-7/");
-    expect(events[0].categories).toEqual(["Tours"]);
-  });
-
-  it("unescapes \\, in SUMMARY (RFC 5545 TEXT escape)", () => {
-    const events = parseVEvents(ICAL_FIXTURE);
-    expect(events[2].summary).toBe("Film, Sound, Music and Entertainment 1894 - 1929");
-  });
-
-  it("parses DTSTART local time correctly (timezone embedded in TZID parameter)", () => {
-    const events = parseVEvents(ICAL_FIXTURE);
-    expect(events[1].dtStartUKLocal).toEqual({
-      year: 2026,
-      month: 4, // May (0-indexed)
-      day: 16,
-      hour: 19,
-      minute: 30,
-    });
-  });
-});
-
 describe("CinemaMuseumScraper.parseICal", () => {
   const scraper = new CinemaMuseumScraper();
 
@@ -117,23 +86,6 @@ describe("CinemaMuseumScraper.parseICal", () => {
   it("returns [] for an empty feed", () => {
     const empty = "BEGIN:VCALENDAR\nVERSION:2.0\nEND:VCALENDAR";
     expect(scraper.parseICal(empty)).toEqual([]);
-  });
-
-  it("handles line-folding (continuation lines)", () => {
-    const folded =
-      "BEGIN:VEVENT\r\n" +
-      "DTSTART;TZID=Europe/London:20260516T193000\r\n" +
-      "UID:test-1@cinemamuseum.org.uk\r\n" +
-      "SUMMARY:This is a very long title that has been\r\n" +
-      "  folded onto a continuation line per RFC 5545\r\n" +
-      "URL:https://example.test/\r\n" +
-      "CATEGORIES:Events\r\n" +
-      "END:VEVENT";
-    const events = parseVEvents(folded);
-    expect(events).toHaveLength(1);
-    expect(events[0].summary).toBe(
-      "This is a very long title that has been folded onto a continuation line per RFC 5545",
-    );
   });
 });
 

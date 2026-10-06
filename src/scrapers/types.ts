@@ -63,15 +63,6 @@ export interface ScraperConfig {
   delayBetweenRequests: number;
 }
 
-/** Output of a scraper run: screenings collected plus metadata about the run */
-export interface ScraperResult {
-  cinemaId: string;
-  screenings: RawScreening[];
-  scrapedAt: Date;
-  success: boolean;
-  error?: string;
-}
-
 /** Contract for a single-venue cinema scraper implementation */
 export interface CinemaScraper {
   config: ScraperConfig;
@@ -136,8 +127,6 @@ export interface ChainScraper {
   chainConfig: ChainConfig;
   /** Per-venue failures from the latest multi-venue scrape. */
   venueErrors?: Map<string, string>;
-  /** Scrape all active venues */
-  scrapeAll(): Promise<Map<string, RawScreening[]>>;
   /** Scrape specific venues */
   scrapeVenues(venueIds: string[]): Promise<Map<string, RawScreening[]>>;
   /** Scrape single venue */

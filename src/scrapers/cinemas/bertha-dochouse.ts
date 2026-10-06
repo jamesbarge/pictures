@@ -24,7 +24,6 @@
 
 import { BaseScraper } from "../base";
 import type { RawScreening, ScraperConfig } from "../types";
-import { FestivalDetector } from "../festivals/festival-detector";
 import {
   combineDateAndTime,
   parseScreeningDate,
@@ -121,7 +120,6 @@ export class BerthaDochouseScraper extends BaseScraper {
   }
 
   protected async parsePages(htmlPages: string[]): Promise<RawScreening[]> {
-    await FestivalDetector.preload();
     const screenings: RawScreening[] = [];
 
     // `parseScreeningDate` adds 1 year when a no-year date string compares

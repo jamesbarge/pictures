@@ -1,3 +1,12 @@
+## 2026-10-04: Trim dead scraper code
+**PR**: #791 | **Files**: `src/scrapers/chains/*.ts`, `src/scrapers/platforms/{savoy,indy}.ts`, `src/scrapers/runner-factory.ts`, `src/scrapers/cinemas/{barbican,garden,peckhamplex,cinema-museum,bertha-dochouse,ica,olympic,prince-charles,riverside-v2,rich-mix-v2}.ts`, `src/scrapers/utils/{screening-accounting,screening-accounting-report,fetch-with-retry,metadata-parser,ical-parser,screening-classification}.ts`
+- Removes code nothing reaches: five chain venue helpers, `ChainScraper.scrapeAll`, the `chains/index.ts` barrel, `ScraperResult`, Savoy's `filmTypeOnly` option, the runner's unread `verbose` and always-true `continueOnError`, `PRE_FILTER_REASONS`, the `supplementary` accounting flag, two always-`"unavailable"` attribution fields and their log tokens, and `maxResponseSize`.
+- Curzon, INDY and Barbican use `addDaysToDateString(londonDateString(...))` from `src/lib/london-date.ts` in place of three private `londonDateKey` copies. Garden and Peckhamplex parse through the shared `parseUKLocalDateTime`. Scratch comparisons of old and new code over 1.27M (instant, offset) pairs and 5.7M date/time inputs, BST transition days and venue fixtures included, found zero differences.
+- Bertha DocHouse and Cinema Museum stop preloading the festival cache they never read, which saves one festivals query per run each.
+- 102 insertions and 580 deletions across 32 code files. Screening output is unchanged.
+
+---
+
 ## 2026-10-04: JW3 film nights outside the Cinema genre
 **PR**: #783 | **Files**: `src/scrapers/cinemas/jw3.ts`, `src/scrapers/cinemas/jw3.test.ts` (new), `src/scrapers/SCRAPING_PLAYBOOK.md`
 - JW3 now keeps film nights filed under other Spektrix genres when the name labels them, e.g. `Young JW3 Queer Movie & Pizza Night: Call Me By Your Name`, listed as the film after the colon. This adds Call Me By Your Name (21 Oct) and Theater Camp (16 Dec).

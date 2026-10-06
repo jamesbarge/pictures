@@ -42,66 +42,53 @@ interface ScreeningMetadata {
 export async function classifyScreening(
   screening: RawScreening
 ): Promise<ScreeningMetadata> {
-  let eventType = screening.eventType as EventType | undefined;
-  let eventDescription = screening.eventDescription;
-  let format = screening.format as ScreeningFormat | undefined;
-  let isSpecialEvent = false;
-  let is3D = false;
-  let hasSubtitles = false;
-  let subtitleLanguage: string | null = null;
-  let hasAudioDescription = false;
-  // A scraper that names the type itself skips title classification below.
-  let isRelaxedScreening = screening.eventType === "relaxed";
-  let season: string | null = null;
+  const scraperProvided: ScreeningMetadata = {
+    eventType: screening.eventType as EventType | undefined,
+    eventDescription: screening.eventDescription,
+    format: screening.format as ScreeningFormat | undefined,
+    isSpecialEvent: false,
+    is3D: false,
+    hasSubtitles: false,
+    subtitleLanguage: null,
+    hasAudioDescription: false,
+    // A scraper that names the type itself skips title classification below.
+    isRelaxedScreening: screening.eventType === "relaxed",
+    season: null,
+  };
 
-  // If scraper didn't provide event data, try to classify the title
-  const needsClassification =
-    !screening.eventType &&
-    !screening.format &&
-    likelyNeedsClassification(screening.filmTitle);
-
-  if (needsClassification) {
-    try {
-      const classification = await classifyEventCached(screening.filmTitle);
-
-      if (classification.eventTypes.length > 0 || classification.format) {
-        console.log(
-          `[Pipeline] Classified: "${screening.filmTitle}" → ${classification.eventTypes.join(", ") || classification.format || "accessibility"}`
-        );
-      }
-
-      // Apply classification results
-      isSpecialEvent = classification.isSpecialEvent;
-      eventType = classification.eventTypes[0] || null;
-      eventDescription =
-        classification.eventTypes.length > 1
-          ? `Also: ${classification.eventTypes.slice(1).join(", ")}`
-          : classification.eventDescription ?? undefined;
-      format = classification.format || format;
-      is3D = classification.is3D;
-      hasSubtitles = classification.hasSubtitles;
-      subtitleLanguage = classification.subtitleLanguage;
-      hasAudioDescription = classification.hasAudioDescription;
-      isRelaxedScreening = classification.isRelaxedScreening;
-      season = classification.season;
-    } catch (error) {
-      console.warn(`[Pipeline] Event classification failed:`, error);
-      // Continue with scraper-provided data
-    }
+  // Classify the title only when the scraper provided no event data.
+  if (screening.eventType || screening.format || !likelyNeedsClassification(screening.filmTitle)) {
+    return scraperProvided;
   }
 
-  return {
-    eventType,
-    eventDescription,
-    format,
-    isSpecialEvent,
-    is3D,
-    hasSubtitles,
-    subtitleLanguage,
-    hasAudioDescription,
-    isRelaxedScreening,
-    season,
-  };
+  try {
+    const classification = await classifyEventCached(screening.filmTitle);
+
+    if (classification.eventTypes.length > 0 || classification.format) {
+      console.log(
+        `[Pipeline] Classified: "${screening.filmTitle}" → ${classification.eventTypes.join(", ") || classification.format || "accessibility"}`
+      );
+    }
+
+    return {
+      eventType: classification.eventTypes[0] || null,
+      eventDescription:
+        classification.eventTypes.length > 1
+          ? `Also: ${classification.eventTypes.slice(1).join(", ")}`
+          : classification.eventDescription ?? undefined,
+      format: classification.format || scraperProvided.format,
+      isSpecialEvent: classification.isSpecialEvent,
+      is3D: classification.is3D,
+      hasSubtitles: classification.hasSubtitles,
+      subtitleLanguage: classification.subtitleLanguage,
+      hasAudioDescription: classification.hasAudioDescription,
+      isRelaxedScreening: classification.isRelaxedScreening,
+      season: classification.season,
+    };
+  } catch (error) {
+    console.warn(`[Pipeline] Event classification failed:`, error);
+    return scraperProvided; // Continue with scraper-provided data
+  }
 }
 
 // ============================================================================

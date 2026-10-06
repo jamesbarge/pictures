@@ -17,11 +17,7 @@ import {
   type ScreeningAccounting,
 } from "./screening-accounting";
 
-export {
-  formatAccounting,
-  checkAccounting,
-  type ScreeningAccounting,
-} from "./screening-accounting";
+export type { ScreeningAccounting } from "./screening-accounting";
 
 /**
  * The subset of `BaseScraper` the runner needs for accounting. Duck-typed
@@ -54,8 +50,6 @@ export interface BuildAccountingInput {
   fetchedPayloads: number | null;
   /** Null when no pipeline run happened (empty batch, or scrape threw). */
   pipeline: PipelineResult | null;
-  /** True for a deliberately partial batch such as L-CUT gap-fill. */
-  supplementary?: boolean;
 }
 
 /**
@@ -86,9 +80,6 @@ export function buildAccounting(input: BuildAccountingInput): ScreeningAccountin
     accepted: pipeline?.accepted ?? 0,
     write: pipeline ? pipeline.write : emptyWriteOutcomeCounts(),
     postWriteFailures: pipeline?.postWriteFailures ?? 0,
-    insertUpdateAttribution: UNAVAILABLE,
-    affectedRowAttribution: UNAVAILABLE,
-    supplementary: input.supplementary ?? false,
     blocked: pipeline?.blocked ?? false,
   };
 }

@@ -85,7 +85,6 @@ export class RichMixScraperV2 extends BaseScraper {
 
     const now = new Date();
     const screenings: RawScreening[] = [];
-    const seenIds = new Set<string>();
 
     for (const inst of instances) {
       if (inst.cancelled) continue;
@@ -97,10 +96,7 @@ export class RichMixScraperV2 extends BaseScraper {
       const datetime = new Date(iso);
       if (isNaN(datetime.getTime()) || datetime < now) continue;
 
-      const sourceId = `richmix-${inst.id}`;
-      if (seenIds.has(sourceId)) continue;
-      seenIds.add(sourceId);
-
+      const sourceId = `richmix-${inst.id}`; // BaseScraper.validate drops repeats
       const title = this.cleanEventName(event.name);
       const bookingUrl = this.buildBookingUrl(inst.id);
 
