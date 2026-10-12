@@ -25,17 +25,17 @@
 		"svelte-check": "^4.7.6",
 		"tailwindcss": "^4.0.0",
 		"typescript": "^6.0.3",
-		"vite": "^8.3.1",
+		"vite": "^8.3.2",
 		"vitest": "^5.0.3"
 	},
 	"dependencies": {
 		"@sveltejs/adapter-vercel": "^6.3.4",
-		"bits-ui": "^2.19.3",
+		"bits-ui": "^2.19.5",
 		"clsx": "^2.1.0",
 		"maplibre-gl": "^5.21.1",
 		"minisearch": "^7.2.0",
-		"posthog-js": "^1.434.15",
-		"web-vitals": "^6.2.2"
+		"posthog-js": "^1.436.1",
+		"web-vitals": "^6.2.3"
 	},
 	"overrides": {
 		"js-cookie": "^3.0.8"
