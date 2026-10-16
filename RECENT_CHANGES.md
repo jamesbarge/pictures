@@ -1,3 +1,12 @@
+## 2026-10-04: Delete 72 finished one-shot scripts
+**PR**: #786 | **Files**: `scripts/`, `src/scripts/`, `scripts/audit/`, `src/db/`, `scripts/destructive-script-guards.test.ts`, `scripts/data-check.ts`
+- Deleted 72 scripts (10,867 lines) that no npm script, workflow, slash command or import reaches: the `/goal` measurement family (10), May incident probes (14), screening-dedupe one-shots made unreachable by the `(cinema_id, source_id)` unique index or the report-only proximity policy (6), row-pinned repairs (9), search/BST verification harnesses (6), other stale top-level scripts (5), unwired `src/scripts` one-shots (6), the React-era front-end audit suite and two April audits (9), and hand-rolled `src/db` runners and seeds (7).
+- `destructive-script-guards.test.ts` moves the 18 deleted destructive scripts into its absence list, so none can come back unnoticed.
+- Small reuses: `data-check.ts` uses the shared `levenshteinSimilarity`, `CHROME_USER_AGENT_FULL` and `AbortSignal.timeout`; `dedup-judgement/run.ts` uses `mapConcurrent`, which stops pulling new pairs after the first failure.
+- Every remaining `npm run` command still works. `npm run reconcile:plan` / `reconcile:apply` cover future phantom-screening cleanup, and `npm run db:seed` covers seeding.
+
+---
+
 ## 2026-10-16: New-filter poster test survives repeated cards late in the evening
 **PR**: #825 | **Files**: `frontend/test-all.spec.ts`
 - The "persisted New filter renders matching posters and titles" test required the first five cards to have five different titles. After about 21:00 today has fewer than five New films left, so the first five cards run on into tomorrow's section and repeat titles, and Frontend E2E failed on every PR until midnight.
