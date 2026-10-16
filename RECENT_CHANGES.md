@@ -1,5 +1,5 @@
 ## 2026-10-16: One Nickel, and titles without access notes or HTML entities
-**PR**: pending | **Files**: `src/db/migrations/canonicalize-cinema-ids.ts`, `src/lib/title-extraction/patterns.ts`, `src/scrapers/utils/screening-classification.ts`
+**PR**: #815 | **Files**: `src/db/migrations/canonicalize-cinema-ids.ts`, `src/lib/title-extraction/patterns.ts`, `src/scrapers/utils/screening-classification.ts`
 - The Nickel is one cinema (`the-nickel`). `nickel` is only a legacy alias. Both scraper classes already write `the-nickel`; the live duplicates are rows the cinema-id migration could not retire, because the same showing under a dirtier film title was not treated as a collision.
 - The migration now deletes those copies (same source id, or same booking URL at the same time) and deletes the empty legacy cinema row. Run `npm run db:migrate-cinema-ids -- --execute`.
 - Title cleaning decodes `Paddington &amp; Storytime`, drops `(with subtitles for the D/deaf and those experiencing hearing loss)`, and still drops `(ON 16MM)`. A format already set on the screening no longer hides the subtitle flag.

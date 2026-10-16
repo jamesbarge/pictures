@@ -1,6 +1,6 @@
 # One Nickel, and titles without access notes or HTML entities
 
-**PR**: pending
+**PR**: #815
 **Date**: 2026-10-16
 
 ## Changes
