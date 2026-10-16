@@ -753,6 +753,8 @@ describe("2026-10-04 unmatched-coverage decorations", () => {
       { input: "Doc’ n Roll Film Festival 2026: Frampton", cleaned: "Frampton" },
       { input: "Sheffield DocFest Spotlights: MKO", cleaned: "MKO" },
       { input: "HACKNEY CHILDREN'S FILM FEST: THE LITTLE VAMPIRE", cleaned: "THE LITTLE VAMPIRE" },
+      // Rio stores the ampersand as an HTML entity. Decode it, then drop the fest prefix.
+      { input: "HACKNEY CHILDREN'S FILM FEST: Paddington &amp; Storytime", cleaned: "Paddington & Storytime" },
       { input: "Hackney Children’s Film Fest: THE WILD ROBOT", cleaned: "THE WILD ROBOT" },
       { input: "Classroom Cinema: The Staffroom", cleaned: "The Staffroom" },
       { input: "Babykino: The Shoshani Riddle", cleaned: "The Shoshani Riddle" },
@@ -786,6 +788,7 @@ describe("2026-10-04 unmatched-coverage decorations", () => {
       { input: "The Hart of London (1970) on 16mm", cleaned: "The Hart of London", year: 1970 },
       { input: "THE MAD BOMBER (ON 16MM)", cleaned: "THE MAD BOMBER" },
       { input: "THE UNKNOWN (ON 16MM", cleaned: "THE UNKNOWN" },
+      { input: "ERASERHEAD (ON 16MM)", cleaned: "ERASERHEAD" },
       { input: "COP (VHS)", cleaned: "COP" },
       { input: "Avengers: Endgame (Re-release)", cleaned: "Avengers: Endgame" },
       { input: "28 Days Later... (Re-release)", cleaned: "28 Days Later..." },
@@ -801,6 +804,18 @@ describe("2026-10-04 unmatched-coverage decorations", () => {
       { input: "For Sale (A vendre) 4K", cleaned: "For Sale (A vendre)" },
       { input: "For Sale (A vendre) 4K + extended intro FFFL", cleaned: "For Sale (A vendre)" },
       { input: "Nadja • 4K Restoration • London Premiere", cleaned: "Nadja" },
+    ]);
+  });
+
+  describe("accessibility suffixes", () => {
+    expectCleaned([
+      {
+        input: "Disclosure Day (with subtitles for the D/deaf and those experiencing hearing loss)",
+        cleaned: "Disclosure Day",
+      },
+      { input: "Disclosure Day (Subtitled)", cleaned: "Disclosure Day" },
+      { input: "Disclosure Day (Audio Described)", cleaned: "Disclosure Day" },
+      { input: "The Subtitles", cleaned: "The Subtitles" },
     ]);
   });
 

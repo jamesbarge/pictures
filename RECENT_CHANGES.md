@@ -1,3 +1,11 @@
+## 2026-10-16: One Nickel, and titles without access notes or HTML entities
+**PR**: pending | **Files**: `src/db/migrations/canonicalize-cinema-ids.ts`, `src/lib/title-extraction/patterns.ts`, `src/scrapers/utils/screening-classification.ts`
+- The Nickel is one cinema (`the-nickel`). `nickel` is only a legacy alias. Both scraper classes already write `the-nickel`; the live duplicates are rows the cinema-id migration could not retire, because the same showing under a dirtier film title was not treated as a collision.
+- The migration now deletes those copies (same source id, or same booking URL at the same time) and deletes the empty legacy cinema row. Run `npm run db:migrate-cinema-ids -- --execute`.
+- Title cleaning decodes `Paddington &amp; Storytime`, drops `(with subtitles for the D/deaf and those experiencing hearing loss)`, and still drops `(ON 16MM)`. A format already set on the screening no longer hides the subtitle flag.
+- Existing dirty film titles: `npm run cleanup:upcoming -- --execute`.
+
+---
 ## 2026-10-04: JW3 film nights outside the Cinema genre
 **PR**: #783 | **Files**: `src/scrapers/cinemas/jw3.ts`, `src/scrapers/cinemas/jw3.test.ts` (new), `src/scrapers/SCRAPING_PLAYBOOK.md`
 - JW3 now keeps film nights filed under other Spektrix genres when the name labels them, e.g. `Young JW3 Queer Movie & Pizza Night: Call Me By Your Name`, listed as the film after the colon. This adds Call Me By Your Name (21 Oct) and Theater Camp (16 Dec).
