@@ -20,7 +20,6 @@ const ICA_SEASON_CONFIG: SeasonScraperConfig = {
   cinemaId: "ica",
   baseUrl: "https://www.ica.art",
   seasonsPath: "/films",
-  requestsPerMinute: 6,
   delayBetweenRequests: 3000,
 };
 
@@ -191,10 +190,6 @@ export class ICASeasonScraper extends BaseSeasonScraper {
     // Extract films
     const films = this.extractFilms($);
 
-    // Generate source ID from URL
-    const slugMatch = url.match(/\/films\/([^/?#]+)/);
-    const sourceId = slugMatch ? slugMatch[1] : this.generateSlug(name);
-
     // Extract director name for "In Focus" strands
     let directorName = this.extractDirectorFromTitle(name);
 
@@ -213,7 +208,6 @@ export class ICASeasonScraper extends BaseSeasonScraper {
       websiteUrl: url,
       sourceCinema: this.config.cinemaId,
       films,
-      sourceId,
     };
   }
 
@@ -249,36 +243,9 @@ export class ICASeasonScraper extends BaseSeasonScraper {
       if (seenTitles.has(normalized)) return;
       seenTitles.add(normalized);
 
-      // Extract year from title
-      const yearMatch = title.match(/\((\d{4})\)/);
-      const year = yearMatch ? parseInt(yearMatch[1]) : undefined;
-      const cleanTitle = title.replace(/\s*\(\d{4}\)\s*$/, "").trim();
-
-      films.push({
-        title: cleanTitle,
-        year,
-        orderIndex: index,
-        filmUrl: this.resolveUrl(href),
-      });
+      films.push({ ...this.splitYear(title), orderIndex: index });
     });
 
     return films;
   }
-
-  /**
-   * Resolve relative URL to absolute
-   */
-  private resolveUrl(url: string): string {
-    if (url.startsWith("http")) return url;
-    if (url.startsWith("//")) return `https:${url}`;
-    if (url.startsWith("/")) return `${this.config.baseUrl}${url}`;
-    return `${this.config.baseUrl}/${url}`;
-  }
-}
-
-/**
- * Factory function
- */
-export function createICASeasonScraper(): ICASeasonScraper {
-  return new ICASeasonScraper();
 }

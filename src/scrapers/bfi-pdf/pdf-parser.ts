@@ -27,60 +27,26 @@ import type { RawScreening } from "../types";
 import type { FetchedPDF } from "./fetcher";
 import { buildBFISearchUrl } from "./url-builder";
 import { buildBfiSourceId } from "./bfi-source-id";
+import { VENUE_MAP, MONTHS, cleanBfiTitle } from "./programme-changes-parser";
 import { ukLocalToUTC } from "../utils/date-parser";
-
-// Venue mapping from PDF screen names to our cinema IDs
-const VENUE_MAP: Record<string, string> = {
-  "NFT1": "bfi-southbank",
-  "NFT2": "bfi-southbank",
-  "NFT3": "bfi-southbank",
-  "NFT4": "bfi-southbank",
-  "STUDIO": "bfi-southbank",
-  "BFI IMAX": "bfi-imax",
-  "IMAX": "bfi-imax",
-  "BFI REUBEN LIBRARY": "bfi-southbank",
-};
-
-// Month name to number mapping
-const MONTHS: Record<string, number> = {
-  JAN: 0, FEB: 1, MAR: 2, APR: 3, MAY: 4, JUN: 5,
-  JUL: 6, AUG: 7, SEP: 8, OCT: 9, NOV: 10, DEC: 11,
-  JANUARY: 0, FEBRUARY: 1, MARCH: 2, APRIL: 3,
-  JUNE: 5, JULY: 6, AUGUST: 7, SEPTEMBER: 8,
-  OCTOBER: 9, NOVEMBER: 10, DECEMBER: 11,
-};
 
 export interface ParsedFilm {
   title: string;
-  originalTitle?: string;
   year?: number;
   director?: string;
-  cast?: string[];
-  runtime?: number;
   format?: string;
-  certificate?: string;
-  countries?: string[];
-  description?: string;
   screenings: ParsedScreening[];
-  /** Season/strand this film belongs to */
-  season?: string;
 }
 
 export interface ParsedScreening {
-  day: string;
-  date: number;
-  month: string;
-  time: string;
   venue: string;
   cinemaId: string;
   datetime: Date;
-  accessibilityFlags: string[];
 }
 
 export interface ParseResult {
   films: ParsedFilm[];
   screenings: RawScreening[];
-  parseErrors: string[];
   pdfLabel: string;
 }
 
@@ -160,8 +126,6 @@ export async function parsePDF(fetchedPdf: FetchedPDF): Promise<ParseResult> {
   const lines = text.split("\n").map(l => l.trim()).filter(l => l.length > 0);
 
   const films: ParsedFilm[] = [];
-  const parseErrors: string[] = [];
-  let currentSeason: string | undefined;
 
   // Derive year from PDF label for screening dates
   const pdfYear = fetchedPdf.info.months?.start.getFullYear() || new Date().getFullYear();
@@ -176,9 +140,8 @@ export async function parsePDF(fetchedPdf: FetchedPDF): Promise<ParseResult> {
   while (i < lines.length) {
     const line = lines[i];
 
-    // Detect season/strand headers (all caps, short)
+    // Skip season/strand headers (all caps, short)
     if (isSeasonHeader(line)) {
-      currentSeason = line;
       i++;
       continue;
     }
@@ -196,7 +159,7 @@ export async function parsePDF(fetchedPdf: FetchedPDF): Promise<ParseResult> {
     }
 
     // Look for screening pattern to identify film entries
-    const filmResult = tryParseFilm(lines, i, pdfYear, currentSeason, pendingScreenings);
+    const filmResult = tryParseFilm(lines, i, pdfYear, pendingScreenings);
 
     if (filmResult) {
       films.push(filmResult.film);
@@ -217,7 +180,6 @@ export async function parsePDF(fetchedPdf: FetchedPDF): Promise<ParseResult> {
   return {
     films,
     screenings,
-    parseErrors,
     pdfLabel: fetchedPdf.info.label,
   };
 }
@@ -256,7 +218,6 @@ function tryParseFilm(
   lines: string[],
   startIndex: number,
   pdfYear: number,
-  currentSeason?: string,
   pendingScreenings?: ParsedScreening[],
 ): { film: ParsedFilm; nextIndex: number } | null {
   let titleLine = lines[startIndex];
@@ -310,7 +271,6 @@ function tryParseFilm(
   const film: ParsedFilm = {
     title: titleLine,
     screenings: [],
-    season: currentSeason,
   };
 
   let i = startIndex + 1;
@@ -324,11 +284,6 @@ function tryParseFilm(
       Object.assign(film, metadata);
       i++;
       break;
-    }
-
-    // Could be original title
-    if (!isScreeningLine(line) && line.length < 80) {
-      film.originalTitle = line;
     }
 
     i++;
@@ -366,11 +321,6 @@ function tryParseFilm(
       i++;
     } else if (isDescriptionLine(line)) {
       // Description lines - skip but continue
-      if (!film.description) {
-        film.description = line;
-      } else {
-        film.description += " " + line;
-      }
       i++;
     } else {
       // Hit a new film or section
@@ -440,18 +390,6 @@ function parseMetadataLine(line: string): Partial<ParsedFilm> {
     result.year = parseInt(yearMatch[0], 10);
   }
 
-  // Extract runtime
-  const runtimeMatch = line.match(/\b(\d{2,3})min\b/i);
-  if (runtimeMatch) {
-    result.runtime = parseInt(runtimeMatch[1], 10);
-  }
-
-  // Extract certificate
-  const certMatch = line.match(/\b(U|PG|12A?|15|18|TBC)\b\.?\s*$/);
-  if (certMatch) {
-    result.certificate = certMatch[1];
-  }
-
   // Extract format
   const formatPatterns = ["Digital 4K", "Digital", "DCP 4K", "DCP", "35mm", "70mm", "70mm IMAX", "IMAX Laser"];
   for (const format of formatPatterns) {
@@ -465,18 +403,6 @@ function parseMetadataLine(line: string): Partial<ParsedFilm> {
   const directorMatch = line.match(/(?:Director|Dir\.)\s+([^.]+)\./i);
   if (directorMatch) {
     result.director = directorMatch[1].trim();
-  }
-
-  // Extract cast (pattern: "With Actor One, Actor Two.")
-  const castMatch = line.match(/With\s+([^.]+)\./);
-  if (castMatch) {
-    result.cast = castMatch[1].split(",").map(s => s.trim());
-  }
-
-  // Extract countries (at the start, before year)
-  const countryMatch = line.match(/^([A-Za-z\-\/\s]+)\s+\d{4}/);
-  if (countryMatch) {
-    result.countries = countryMatch[1].split(/[-\/]/).map(s => s.trim()).filter(s => s.length > 0);
   }
 
   return result;
@@ -497,14 +423,7 @@ function parseScreeningLine(line: string, pdfYear: number): ParsedScreening[] {
 
     if (!match) continue;
 
-    const [, day, date, month, hours, minutes, venue] = match;
-
-    // Extract accessibility flags
-    const accessibilityFlags: string[] = [];
-    if (/\bAD\b/.test(part)) accessibilityFlags.push("AD");
-    if (/\bDS\b/.test(part)) accessibilityFlags.push("DS");
-    if (/\bCC\b/.test(part)) accessibilityFlags.push("CC");
-    if (/\bBSL\b/.test(part)) accessibilityFlags.push("BSL");
+    const [, , date, month, hours, minutes, venue] = match;
 
     // Calculate full datetime
     const monthNum = MONTHS[month.toUpperCase()];
@@ -528,14 +447,9 @@ function parseScreeningLine(line: string, pdfYear: number): ParsedScreening[] {
     }
 
     screenings.push({
-      day: day.toUpperCase(),
-      date: parseInt(date, 10),
-      month: month.toUpperCase(),
-      time: `${hours}:${minutes}`,
       venue: venueUpper,
       cinemaId,
       datetime,
-      accessibilityFlags,
     });
   }
 
@@ -580,12 +494,7 @@ function convertToRawScreenings(films: ParsedFilm[]): RawScreening[] {
       else if (/preview/i.test(film.title)) eventType = "preview";
       else if (/premiere/i.test(film.title)) eventType = "premiere";
 
-      // Clean title — only strip prefix when followed by colon
-      // e.g. "Preview: Film" → "Film", but NOT "UK Premiere of 4K Restoration: X"
-      const cleanTitle = film.title
-        .replace(/\s*\+\s*(Q\s*&?\s*A|intro|discussion|panel).*$/i, "")
-        .replace(/^(Preview|UK Premiere|Premiere):\s*/i, "")
-        .trim();
+      const cleanTitle = cleanBfiTitle(film.title);
 
       // Reject titles that look garbled
       if (isSuspiciousTitle(cleanTitle)) {
@@ -620,27 +529,4 @@ function convertToRawScreenings(films: ParsedFilm[]): RawScreening[] {
   }
 
   return screenings;
-}
-
-/**
- * Parse PDF from a file path (for testing)
- */
-export async function parsePDFFromPath(filePath: string): Promise<ParseResult> {
-  const fs = await import("fs");
-  const buffer = fs.readFileSync(filePath);
-
-  const mockFetchedPdf: FetchedPDF = {
-    info: {
-      label: "Test PDF",
-      fullPdfUrl: "",
-      accessiblePdfUrl: filePath,
-      mediaId: "test",
-      months: null,
-    },
-    buffer,
-    contentHash: "test",
-    fetchedAt: new Date(),
-  };
-
-  return parsePDF(mockFetchedPdf);
 }

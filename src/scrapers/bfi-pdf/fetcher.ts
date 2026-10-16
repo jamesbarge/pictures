@@ -363,31 +363,3 @@ export async function fetchLatestPDF(): Promise<FetchedPDF | null> {
 
   return downloadPDF(relevantPdf);
 }
-
-/**
- * Fetches all available PDFs that might contain relevant screenings.
- */
-export async function fetchAllRelevantPDFs(): Promise<FetchedPDF[]> {
-  const pdfs = await discoverPDFs();
-  const now = new Date();
-
-  // Filter to PDFs covering current or future dates
-  const relevantPdfs = pdfs.filter(p => {
-    if (!p.months) return true; // Include if we can't determine dates
-    return p.months.end >= now;
-  });
-
-  console.log(`[BFI-PDF] Downloading ${relevantPdfs.length} relevant PDFs...`);
-
-  const results: FetchedPDF[] = [];
-  for (const pdf of relevantPdfs) {
-    try {
-      const fetched = await downloadPDF(pdf);
-      results.push(fetched);
-    } catch (error) {
-      console.error(`[BFI-PDF] Failed to download ${pdf.label}:`, error);
-    }
-  }
-
-  return results;
-}

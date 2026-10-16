@@ -1,3 +1,12 @@
+## 2026-10-04: Delete dead seasons, festivals and BFI PDF code
+**PR**: #790 | **Files**: `src/scrapers/seasons/run-seasons.ts` (new), `src/scrapers/seasons/base.ts`, `src/scrapers/festivals/eventive-scraper.ts`, `src/scrapers/bfi-pdf/programme-changes-parser.ts`, `src/scrapers/bfi-pdf/pdf-parser.ts`, `package.json`
+- Deletes code with no caller since the Trigger.dev and Bree schedulers went (#469, #472): the festival watchdog and its probes, the persisting Eventive ingest `scrapeActiveEventiveFestivals`, the BFI ghost cleanup (`bfi-pdf/cleanup.ts`, 423 lines), two unimported barrels and a dozen unused helpers.
+- The five copy-paste seasons runners become one `run-seasons.ts <venue>`; the five `npm run scrape:<venue>-seasons` names still work. The seasons scrapers share one `resolveUrl` built on `new URL` and one `splitYear`, and lose fields nothing read (`sourceId`, `filmUrl`, `requestsPerMinute`, `seasonSlugs`).
+- The two BFI parsers drop write-only fields (cast, runtime, countries, accessibility flags, notes, `parseErrors`) and share one venue map, month map and title cleaner.
+- 1,867 fewer lines of code. The seasons feature, the Eventive dry-run admin route, the reverse-tagger and the standalone BFI import path all stay.
+
+---
+
 ## 2026-10-04: Every venue scrape runs through the unified CLI
 **PR**: #789 | **Files**: `src/scrapers/cli.ts`, `package.json`, `src/scrapers/runner-factory.ts`, `src/scrapers/base.ts`, `src/scrapers/cinemas/nickel-v2.ts`, `src/scrapers/cinemas/barbican.ts`
 - The 26 `scrape:<venue>` scripts keep their names and run `src/scrapers/cli.ts <id>`, which now takes sub-venue args (`npm run scrape:curzon -- soho`) and exits 1 on a failed run. `scrape:all`, `scrape:chains` and `scrape:independents` call `npm run scrape -- --all|--chains|--independents`.

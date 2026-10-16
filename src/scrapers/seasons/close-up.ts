@@ -34,7 +34,6 @@ const CLOSE_UP_SEASON_CONFIG: SeasonScraperConfig = {
   cinemaId: "close-up-cinema",
   baseUrl: "https://www.closeupfilmcentre.com",
   seasonsPath: "/",
-  requestsPerMinute: 10,
   delayBetweenRequests: 1000,
 };
 
@@ -164,18 +163,9 @@ export class CloseUpSeasonScraper extends BaseSeasonScraper {
       const normalizedTitle = show.title.toLowerCase().trim();
       if (filmMap.has(normalizedTitle)) continue;
 
-      // Extract year from title if present
-      const yearMatch = show.title.match(/\((\d{4})\)/);
-      const filmYear = yearMatch ? parseInt(yearMatch[1]) : undefined;
-      const cleanTitle = show.title.replace(/\s*\(\d{4}\)\s*$/, "").trim();
-
       filmMap.set(normalizedTitle, {
-        title: cleanTitle,
-        year: filmYear,
+        ...this.splitYear(show.title),
         orderIndex: orderIndex++,
-        filmUrl: show.film_url
-          ? `${this.config.baseUrl}${show.film_url}`
-          : undefined,
       });
     }
 
@@ -198,7 +188,6 @@ export class CloseUpSeasonScraper extends BaseSeasonScraper {
       websiteUrl,
       sourceCinema: this.config.cinemaId,
       films,
-      sourceId: `${year}-${slug}`,
     };
   }
 
@@ -264,11 +253,4 @@ export class CloseUpSeasonScraper extends BaseSeasonScraper {
 
     return null;
   }
-}
-
-/**
- * Factory function
- */
-export function createCloseUpSeasonScraper(): CloseUpSeasonScraper {
-  return new CloseUpSeasonScraper();
 }
