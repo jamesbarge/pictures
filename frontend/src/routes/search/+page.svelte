@@ -36,7 +36,7 @@
 			/>
 		{:else}
 			{#if results.length > 0}
-				<p class="text-xs text-[var(--color-muted)] uppercase tracking-wide-swiss mt-4 mb-3">
+				<p class="text-xs text-[var(--color-text-tertiary)] uppercase tracking-wide-swiss mt-4 mb-3">
 					{results.length} film{results.length !== 1 ? 's' : ''}
 				</p>
 				<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
@@ -60,12 +60,12 @@
 									/>
 								{:else}
 									<div class="w-full h-full flex items-center justify-center p-2">
-										<span class="text-xs font-mono text-[var(--color-muted)] text-center uppercase">{film.title}</span>
+										<span class="text-xs font-mono text-[var(--color-text-tertiary)] text-center uppercase">{film.title}</span>
 									</div>
 								{/if}
 							</div>
 							<p class="text-xs font-bold uppercase tracking-wide-swiss group-hover:underline line-clamp-2">{film.title}</p>
-							<p class="text-[10px] text-[var(--color-muted)] mt-0.5">
+							<p class="text-[10px] text-[var(--color-text-tertiary)] mt-0.5">
 								{film.year ?? ''}{film.directors?.length ? ` · ${film.directors[0]}` : ''}
 							</p>
 						</a>
@@ -74,18 +74,18 @@
 			{/if}
 
 			{#if cinemas.length > 0}
-				<p class="text-xs text-[var(--color-muted)] uppercase tracking-wide-swiss mt-6 mb-3">
+				<p class="text-xs text-[var(--color-text-tertiary)] uppercase tracking-wide-swiss mt-6 mb-3">
 					{cinemas.length} cinema{cinemas.length !== 1 ? 's' : ''}
 				</p>
 				<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
 					{#each cinemas as cinema (cinema.id)}
 						<a
 							href="/cinemas/{cinema.id}"
-							class="p-3 border border-[var(--color-border-subtle)] hover:border-[var(--color-foreground)] transition-colors"
+							class="p-3 border border-[var(--color-border-subtle)] hover:border-[var(--color-text)] transition-colors"
 						>
 							<p class="text-sm font-bold uppercase">{cinema.name}</p>
 							{#if cinema.area}
-								<p class="text-xs text-[var(--color-muted)]">{cinema.area}</p>
+								<p class="text-xs text-[var(--color-text-tertiary)]">{cinema.area}</p>
 							{/if}
 						</a>
 					{/each}

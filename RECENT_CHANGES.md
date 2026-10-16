@@ -1,3 +1,11 @@
+## 2026-10-16: Five fixes from the code review
+**PR**: #TBD | **Files**: `frontend/src/routes/{letterboxd,search,map,people/[name]}/+page.svelte`, `.claude/rules/frontend.md`, `src/db/seed-festivals.ts`, `src/db/seed-festivals.test.ts` (new), `src/app/admin/screenings/components/screening-form-modal.tsx`, `src/scrapers/utils/date-parser.ts`, `src/scrapers/utils/date-parser.test.ts`, `scripts/data-check.ts`
+- The Letterboxd, search, map and people pages used `--color-muted`, `--color-foreground` and `--color-background`, which `app.css` has never defined. They now use `--color-text-tertiary`, `--color-text` and `--color-bg`, so the Letterboxd IMPORT button has its dark fill and muted text is grey in light mode, dark mode and under the house-lights dimmer.
+- Importing `src/db/seed-festivals.ts`, as `alignment.test.ts` does, leaves the database alone. The seeder runs only when the file is executed directly.
+- The admin screening form shows and saves London time. It used to show UTC, so a BST screening looked an hour early.
+- `data-check` verifies Close-Up screenings. Its verifier was keyed by the legacy id `close-up`, and screenings carry `close-up-cinema`.
+
+---
 ## 2026-10-04: Trim dead scraper code
 **PR**: #791 | **Files**: `src/scrapers/chains/*.ts`, `src/scrapers/platforms/{savoy,indy}.ts`, `src/scrapers/runner-factory.ts`, `src/scrapers/cinemas/{barbican,garden,peckhamplex,cinema-museum,bertha-dochouse,ica,olympic,prince-charles,riverside-v2,rich-mix-v2}.ts`, `src/scrapers/utils/{screening-accounting,screening-accounting-report,fetch-with-retry,metadata-parser,ical-parser,screening-classification}.ts`
 - Removes code nothing reaches: five chain venue helpers, `ChainScraper.scrapeAll`, the `chains/index.ts` barrel, `ScraperResult`, Savoy's `filmTypeOnly` option, the runner's unread `verbose` and always-true `continueOnError`, `PRE_FILTER_REASONS`, the `supplementary` accounting flag, two always-`"unavailable"` attribution fields and their log tokens, and `maxResponseSize`.
