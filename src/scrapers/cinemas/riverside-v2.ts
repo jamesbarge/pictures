@@ -12,6 +12,7 @@
 
 import { BaseScraper } from "../base";
 import type { RawScreening, ScraperConfig } from "../types";
+import * as cheerio from "cheerio";
 
 // API response types
 interface RiversidePerformance {
@@ -34,6 +35,31 @@ interface RiversideEvent {
   performance_dates: number[];
   start_date: string;
   end_date?: string;
+  /** Description HTML; film events carry `<p>Director: <strong>…</strong></p>` and `<p>Year of Release: <strong>…</strong></p>` */
+  search?: string;
+}
+
+/**
+ * Year and director from an event's description, so the pipeline can tell
+ * Hammer's "Dracula" (1958) from Radu Jude's (2025). About half the cinema
+ * events carry them (21 and 22 of 39 on 2026-10-16).
+ */
+export function riversideFilmMetadata(search?: string): { year?: number; director?: string } {
+  if (!search) return { year: undefined, director: undefined };
+  // Labels sit in `<p>Director: <strong>…</strong></p>` or in a table row
+  // `<tr><td><strong>Director:</strong></td><td>…</td></tr>`. Matching the start
+  // of the row keeps "Music Director:" out; cheerio decodes "Agn&egrave;s".
+  const $ = cheerio.load(search);
+  const field = (label: RegExp) => {
+    for (const el of $("p, tr").toArray()) {
+      const text = $(el).text().replace(/\s+/g, " ").trim();
+      const match = text.match(label);
+      if (match) return text.slice(match[0].length).trim() || undefined;
+    }
+    return undefined;
+  };
+  const year = field(/^Year of Release:/i)?.match(/^\d{4}\b/)?.[0];
+  return { year: year ? parseInt(year, 10) : undefined, director: field(/^Directors?:/i) };
 }
 
 export class RiversideScraperV2 extends BaseScraper {
@@ -67,6 +93,7 @@ export class RiversideScraperV2 extends BaseScraper {
     for (const event of cinemaEvents) {
       const performances = event.performances;
       if (!performances) continue;
+      const { year, director } = riversideFilmMetadata(event.search);
 
       // Process all date keys
       for (const dateKey of Object.keys(performances)) {
@@ -95,6 +122,8 @@ export class RiversideScraperV2 extends BaseScraper {
             datetime,
             bookingUrl,
             sourceId,
+            year,
+            director,
           });
         }
       }
