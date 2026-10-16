@@ -65,12 +65,6 @@ interface BookingCheckResult {
   cinemaName: string;
   status: number | "timeout" | "error";
   ok: boolean;
-  /** AI verification verdict (when Stagehand is available) */
-  verdict?: "verified" | "wrong_film" | "error_page" | "not_booking_page" | "load_failed" | "extract_failed";
-  /** AI-extracted film title from the page */
-  extractedTitle?: string | null;
-  /** Title match confidence (0-1) */
-  confidence?: number;
 }
 
 interface CursorState {
@@ -273,7 +267,7 @@ const OBSIDIAN_DIR =
   "/Users/jamesbarge/Documents/Obsidian Vault/Pictures/Data Quality";
 const LEARNINGS_PATH = path.resolve(process.cwd(), ".claude/data-check-learnings.json");
 const BATCH_SIZE = 40;
-const BOOKING_SPOT_CHECKS = 10; // AI verification takes ~5s/URL, keep batch small
+const BOOKING_SPOT_CHECKS = 10; // HTTP HEAD checks, 8s timeout each
 const DETAIL_PAGE_VISITS = 10;
 const LETTERBOXD_ENRICHMENT_CAP = 15;
 const LETTERBOXD_RATING_REFRESH_CAP = 10;
@@ -1814,7 +1808,6 @@ async function spotCheckBookings(
   if (batchFilmIds.length === 0) return [];
   const now = new Date().toISOString();
 
-  // No chain exclusions — Stagehand handles SPAs (Curzon, BFI, etc.)
   const screenings = await sql`
     SELECT s.id, s.booking_url, s.cinema_id, f.title
     FROM screenings s
@@ -1829,71 +1822,37 @@ async function spotCheckBookings(
 
   if (screenings.length === 0) return [];
 
-  // Use AI-powered verification via Stagehand
-  try {
-    const { verifyBookingLinks } = await import("./lib/booking-verifier");
-    const verifications = await verifyBookingLinks({
-      urls: screenings.map((s: any) => ({
+  const results: BookingCheckResult[] = [];
+  for (const s of screenings) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
+      const resp = await fetch(s.booking_url, {
+        method: "HEAD",
+        signal: controller.signal,
+        redirect: "follow",
+        headers: { "User-Agent": UA },
+      });
+      clearTimeout(timeout);
+      results.push({
         url: s.booking_url,
-        expectedTitle: s.title,
-        cinemaId: s.cinema_id,
-      })),
-      maxChecks: BOOKING_SPOT_CHECKS,
-    });
-
-    return verifications.map((v) => ({
-      url: v.url,
-      filmTitle: v.expectedTitle,
-      cinemaName: v.cinemaId,
-      status: v.verdict === "load_failed" ? "timeout" as const : 200,
-      ok: v.verdict === "verified",
-      verdict: v.verdict,
-      extractedTitle: v.extractedTitle,
-      confidence: v.confidence,
-    }));
-  } catch (err) {
-    // Categorize the failure for better observability
-    const msg = err instanceof Error ? err.message : String(err);
-    const isExpected = msg.includes("Cannot find module") || msg.includes("ERR_MODULE_NOT_FOUND")
-      || msg.includes("Executable doesn't exist") || msg.includes("browserType.launch");
-    if (isExpected) {
-      console.error(`[data-check] Stagehand unavailable (${msg.slice(0, 60)}), falling back to HTTP HEAD`);
-    } else {
-      console.error(`[data-check] UNEXPECTED Stagehand failure — falling back to HTTP HEAD but needs investigation:`);
-      console.error(err instanceof Error ? err.stack : err);
+        filmTitle: s.title,
+        cinemaName: s.cinema_id,
+        status: resp.status,
+        ok: resp.status < 400,
+      });
+    } catch (fetchErr) {
+      const isTimeout = fetchErr instanceof Error && fetchErr.name === "AbortError";
+      results.push({
+        url: s.booking_url,
+        filmTitle: s.title,
+        cinemaName: s.cinema_id,
+        status: isTimeout ? "timeout" : "error",
+        ok: false,
+      });
     }
-    const results: BookingCheckResult[] = [];
-    for (const s of screenings) {
-      try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 8000);
-        const resp = await fetch(s.booking_url, {
-          method: "HEAD",
-          signal: controller.signal,
-          redirect: "follow",
-          headers: { "User-Agent": UA },
-        });
-        clearTimeout(timeout);
-        results.push({
-          url: s.booking_url,
-          filmTitle: s.title,
-          cinemaName: s.cinema_id,
-          status: resp.status,
-          ok: resp.status < 400,
-        });
-      } catch (fetchErr) {
-        const isTimeout = fetchErr instanceof Error && fetchErr.name === "AbortError";
-        results.push({
-          url: s.booking_url,
-          filmTitle: s.title,
-          cinemaName: s.cinema_id,
-          status: isTimeout ? "timeout" : "error",
-          ok: false,
-        });
-      }
-    }
-    return results;
   }
+  return results;
 }
 
 // ── Phase E: Scraper Health ───────────────────────────────────────
@@ -2202,30 +2161,19 @@ async function main() {
     const failedBookings = bookingChecks.filter((b) => !b.ok);
     if (failedBookings.length > 0) {
       for (const b of failedBookings) {
-        const issueType = b.verdict === "wrong_film"
-          ? "booking_page_wrong_film"
-          : b.verdict === "error_page"
-            ? "broken_booking_url"
-            : b.verdict === "not_booking_page"
-              ? "broken_booking_url"
-              : "broken_booking_url";
         const score = scoreIssue("broken_booking_url");
-        const desc = b.verdict
-          ? `Booking page ${b.verdict}: extracted="${b.extractedTitle ?? "none"}" expected="${b.filmTitle}" (${((b.confidence ?? 0) * 100).toFixed(0)}% match) at ${b.cinemaName}`
-          : `Booking URL returned ${b.status} at ${b.cinemaName}`;
         issues.push({
-          type: issueType,
+          type: "broken_booking_url",
           filmTitle: b.filmTitle,
-          description: desc,
-          metadata: { url: b.url, status: b.status, verdict: b.verdict, extractedTitle: b.extractedTitle, confidence: b.confidence },
+          description: `Booking URL returned ${b.status} at ${b.cinemaName}`,
+          metadata: { url: b.url, status: b.status },
           impactScore: score,
           severity: severityFromScore(score),
         });
       }
     }
-    const verified = bookingChecks.filter((b) => b.verdict === "verified").length;
     console.error(
-      `[data-check] Booking checks: ${bookingChecks.length} checked, ${verified} verified, ${failedBookings.length} failed`,
+      `[data-check] Booking checks: ${bookingChecks.length} checked, ${bookingChecks.length - failedBookings.length} ok, ${failedBookings.length} failed`,
     );
   }
   timerD.end();

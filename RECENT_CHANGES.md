@@ -1,3 +1,10 @@
+## 2026-10-04: Remove Gemini-dependent code
+**PR**: #785 | **Files**: `src/lib/gemini.ts`, `src/agents/run-agents.ts`, `src/app/admin/agents/`, `src/app/api/admin/anomalies/verify/`, `src/scrapers/pipeline.ts`, `scripts/audit-and-fix-upcoming.ts`, `scripts/data-check.ts`, `package.json`
+- Deleted the Gemini client and everything that called it: the scraper-health, link-validator and fallback enrichment agents, the `/admin/agents` page and routes, AI Verify, the data-quality enrichment route, the `ENABLE_AGENTS` pipeline hook and the Stagehand booking verifier. About 4,985 lines go, plus 249 lockfile packages including `@google/genai`.
+- `npm run agents:enrich` (DeepSeek) now runs without a Gemini key check. `agents:links`, `agents:health` and `agents:fallback-enrich` are removed, and `audit:fix-upcoming` drops its fallback pass, so its passes run 1 to 7.
+
+---
+
 ## 2026-10-04: Remove retired-scheduler, QA and never-wired modules from src/lib
 **PR**: #784 | **Files**: `src/lib/jobs/`, `src/lib/qa/`, `src/lib/enrichment/`, `src/lib/embeddings.ts`, `src/lib/scraper-health/`, `src/lib/data-quality/`, `scripts/qa-dry-run.ts`, `src/app/api/admin/qa/route.ts`
 - Deleted 4,119 lines of code with zero callers: the daily-sweep, post-scrape and post-deploy-verify jobs left behind when Trigger.dev went in #469, `data-quality/index.ts`, `enrichment/`, the whole `src/lib/qa/` pipeline with `scripts/qa-dry-run.ts` and the 501 `/api/admin/qa` stub, `scraper-health/alerts.ts` with the two snapshot writers, and the bge-m3 `embeddings.ts` module.
