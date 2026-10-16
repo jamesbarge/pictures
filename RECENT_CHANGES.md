@@ -1,3 +1,12 @@
+## 2026-10-04: Remove the legacy React site from the root Next.js app
+**PR**: #787 | **Files**: `next.config.ts`, `src/app/layout.tsx`, `public/robots.txt`, `.github/workflows/test.yml`, `package.json`
+- api.pictures.london now serves only the API, the admin dashboard and Clerk sign-in. The 16 legacy page routes, 82 React components, the zustand stores, 7 hooks and the helpers only they used are deleted: 190 files and about 32,700 lines.
+- Legacy page URLs return a 308 to the same path on pictures.london; `/cinemas/:slug/tonight`, `/directors/:id` and `/seasons/:slug` go to the nearest parent page. `robots.txt` disallows all crawling of the API host.
+- 15 dependencies leave package.json (react-query, zustand, posthog-js, Vercel Analytics, Google Maps, Testing Library, `@playwright/test` and others), and 57 packages leave the lockfile.
+- The required "E2E Tests" check builds the root app with `npm run build`. The old job skipped itself without a database secret and reported green.
+
+---
+
 ## 2026-10-04: Delete 72 finished one-shot scripts
 **PR**: #786 | **Files**: `scripts/`, `src/scripts/`, `scripts/audit/`, `src/db/`, `scripts/destructive-script-guards.test.ts`, `scripts/data-check.ts`
 - Deleted 72 scripts (10,867 lines) that no npm script, workflow, slash command or import reaches: the `/goal` measurement family (10), May incident probes (14), screening-dedupe one-shots made unreachable by the `(cinema_id, source_id)` unique index or the report-only proximity policy (6), row-pinned repairs (9), search/BST verification harnesses (6), other stale top-level scripts (5), unwired `src/scripts` one-shots (6), the React-era front-end audit suite and two April audits (9), and hand-rolled `src/db` runners and seeds (7).

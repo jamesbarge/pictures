@@ -155,31 +155,3 @@ function LoadingSpinner({ size }: { size: ButtonSize }) {
     </svg>
   );
 }
-
-// Icon button variant - square button for icons only
-export interface IconButtonProps extends Omit<ButtonProps, "leftIcon" | "rightIcon" | "children"> {
-  icon: ReactNode;
-  label: string; // Required for accessibility
-}
-
-export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
-  function IconButton({ icon, label, size = "md", className, ...props }, ref) {
-    const sizeClass = {
-      sm: "w-[var(--button-height-sm)] h-[var(--button-height-sm)]",
-      md: "w-[var(--button-height-md)] h-[var(--button-height-md)]",
-      lg: "w-[var(--button-height-lg)] h-[var(--button-height-lg)]",
-    };
-
-    return (
-      <Button
-        ref={ref}
-        size={size}
-        className={cn("!px-0", sizeClass[size], className)}
-        aria-label={label}
-        {...props}
-      >
-        {icon}
-      </Button>
-    );
-  }
-);
