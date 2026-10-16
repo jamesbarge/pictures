@@ -219,13 +219,11 @@ export class BarbicanScraper extends BaseScraper {
      */
     const unreadableInstances: string[] = [];
 
-    $(this.getSelector("filmCard", ".cinema-listing-card")).each((_, cardEl) => {
+    $(".cinema-listing-card").each((_, cardEl) => {
       const $card = $(cardEl);
 
       // Extract film title and event URL
-      const titleLink = $card.find(
-        this.getSelector("titleLink", ".cinema-listing-card__title a")
-      );
+      const titleLink = $card.find(".cinema-listing-card__title a");
       const rawTitle = titleLink.text().trim();
       const eventHref = titleLink.attr("href") || "";
 
@@ -244,7 +242,7 @@ export class BarbicanScraper extends BaseScraper {
 
       // Parse each showtime instance within this film card
       $card
-        .find(this.getSelector("instance", ".cinema-instance-list__instance"))
+        .find(".cinema-instance-list__instance")
         .each((_, instanceEl) => {
           const $instance = $(instanceEl);
 

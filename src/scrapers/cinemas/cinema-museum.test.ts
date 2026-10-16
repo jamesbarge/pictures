@@ -147,8 +147,8 @@ describe("CinemaMuseumScraper — WAF user agent", () => {
       .spyOn(globalThis, "fetch")
       .mockImplementation(async () => new Response("BEGIN:VCALENDAR\r\nEND:VCALENDAR"));
 
-    // Call fetchPages directly: scrape() runs loadConfigOverlay() first,
-    // which hits the DB and must not run in a unit test.
+    // Call fetchPages directly: scrape() goes on to parsePages, which preloads
+    // the festival cache from the DB and must not run in a unit test.
     const scraper = new CinemaMuseumScraper();
     await (scraper as unknown as { fetchPages(): Promise<string[]> }).fetchPages();
 

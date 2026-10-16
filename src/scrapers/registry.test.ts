@@ -18,7 +18,6 @@ import {
   type ScraperWave,
 } from "./registry";
 import { NickelScraperV2 } from "./cinemas/nickel-v2";
-import { NickelScraper } from "./cinemas/the-nickel";
 import { RichMixScraperV2 } from "./cinemas/rich-mix-v2";
 
 describe("SCRAPER_REGISTRY", () => {
@@ -105,10 +104,9 @@ describe("SCRAPER_REGISTRY", () => {
     expect(config.createScraper().config.cinemaId).toBe("riverside-studios");
   });
 
-  it("Nickel and Rich Mix use the V2 scraper implementations (same as scrape:* commands)", () => {
-    // package.json's scrape:nickel / scrape:rich-mix run the V2 runners. The
-    // registry must construct the same implementations, or scheduled scrapes
-    // diverge from manual ones (the original "three diverging registries" bug).
+  it("Nickel and Rich Mix use the V2 scraper implementations", () => {
+    // package.json's scrape:nickel / scrape:rich-mix run through cli.ts and this
+    // registry, so scheduled and manual scrapes build the same implementations.
     const cases = [
       { taskId: "scraper-nickel", cls: NickelScraperV2, cinemaId: "the-nickel" },
       { taskId: "scraper-rich-mix", cls: RichMixScraperV2, cinemaId: "rich-mix" },
@@ -123,8 +121,6 @@ describe("SCRAPER_REGISTRY", () => {
       expect(scraper.config.cinemaId).toBe(cinemaId);
       expect(config.venue.id).toBe(cinemaId);
     }
-    // the-nickel.ts is the pre-v2 class. It must not write a second cinema id.
-    expect(new NickelScraper().config.cinemaId).toBe("the-nickel");
     const nickelVenueIds = SCRAPER_REGISTRY.filter((entry) => entry.wave !== "enrichment")
       .flatMap((entry) => {
         const built = entry.buildConfig();
