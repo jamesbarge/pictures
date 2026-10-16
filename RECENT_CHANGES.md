@@ -1,5 +1,5 @@
 ## 2026-10-16: New-filter poster test survives repeated cards late in the evening
-**PR**: #TBD | **Files**: `frontend/test-all.spec.ts`
+**PR**: #825 | **Files**: `frontend/test-all.spec.ts`
 - The "persisted New filter renders matching posters and titles" test required the first five cards to have five different titles. After about 21:00 today has fewer than five New films left, so the first five cards run on into tomorrow's section and repeat titles, and Frontend E2E failed on every PR until midnight.
 - The check now asserts that no title shows two different posters, which is the render glitch it was there to catch. The persisted-filter comparison after reload is unchanged.
 

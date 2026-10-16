@@ -1,6 +1,6 @@
 # New-filter poster test survives repeated cards late in the evening
 
-**PR**: #TBD
+**PR**: #825
 **Date**: 2026-10-16
 
 ## Changes
