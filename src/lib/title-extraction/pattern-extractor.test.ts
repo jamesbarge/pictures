@@ -146,6 +146,10 @@ describe("extractFilmTitleSync", () => {
       ["Casablanca (London Premiere + Q&A with director)", "Casablanca"],
       ["Casablanca (VHS) (B&W)", "Casablanca"],
       ["Casablanca (B&W) (VHS)", "Casablanca"],
+      [
+        "Disclosure Day (with subtitles for the D/deaf and those experiencing hearing loss)",
+        "Disclosure Day",
+      ],
     ];
 
     for (const [input, expected] of cases) {
@@ -270,6 +274,16 @@ describe("extractFilmTitleSync", () => {
     it("should decode &#39; entities", () => {
       const result = extractFilmTitleSync("Classic Matinee: Singin&#39; in the Rain");
       expect(result.extractedTitle).toBe("Singin' in the Rain");
+    });
+
+    it("decodes the Rio Hackney fest listing's &amp;", () => {
+      const result = extractFilmTitleSync(
+        "HACKNEY CHILDREN'S FILM FEST: Paddington &amp; Storytime",
+      );
+      expect(result.extractedTitle).toBe(
+        "HACKNEY CHILDREN'S FILM FEST: Paddington & Storytime",
+      );
+      expect(result.extractedTitle).not.toContain("&amp;");
     });
   });
 });
