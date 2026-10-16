@@ -61,8 +61,14 @@ type FilmRecord = Pick<
  * `FilmCache` object — no shared mutable state.)
  */
 export interface FilmCache {
-  /** normalizedTitle -> film record */
+  /** normalizedTitle -> the film a listing with no release year gets (see `prefersForTitle`) */
   byTitle: Map<string, FilmRecord>;
+  /**
+   * normalizedTitle -> every film with that title. Remakes and namesakes share a
+   * key ("Heat" 1972/1995, "Halloween" 1978/2007), and only the scraper's release
+   * year can tell them apart, so `lookupFilmInCache` picks from this list.
+   */
+  namesakes: Map<string, FilmRecord[]>;
   /** tmdbId -> film record, for dedup by TMDB ID */
   byTmdbId: Map<number, FilmRecord>;
   /** Stats for end-of-run logging */
@@ -80,6 +86,7 @@ export async function initFilmCache(
 ): Promise<FilmCache> {
   const cache: FilmCache = {
     byTitle: new Map(),
+    namesakes: new Map(),
     byTmdbId: new Map(),
     stats: { hits: 0, misses: 0, dbQueries: 1 },
     normalizeTitle,
@@ -106,9 +113,9 @@ export async function initFilmCache(
   let blockedCount = 0;
   for (const film of allFilms) {
     const normalized = normalizeTitle(film.title);
-    // If duplicate normalized titles exist, keep the one with more data (has TMDB ID)
+    addNamesake(cache, normalized, film);
     const existing = cache.byTitle.get(normalized);
-    if (!existing || (film.tmdbId && !existing.tmdbId)) {
+    if (!existing || prefersForTitle(film, existing)) {
       cache.byTitle.set(normalized, film);
     }
     // Build TMDB ID index — two films with same TMDB ID are always the same film.
@@ -177,15 +184,70 @@ function addOriginalTitleAliases(cache: FilmCache, allFilms: FilmRecord[]): numb
   return added;
 }
 
-/** Lookup a film in cache (O(1) access). Returns null on cache miss. */
-export function lookupFilmInCache(cache: FilmCache, normalizedTitle: string): FilmRecord | null {
+/**
+ * Lookup a film in cache (O(1) access). Returns null on cache miss.
+ *
+ * With a release year, a same-title film within a year of it wins ("Heat" 1995
+ * at PCC gets Mann's film, not the 1972 one). Otherwise the title's default
+ * film comes back, and `yearConflicts` tells the caller it disagrees.
+ */
+export function lookupFilmInCache(
+  cache: FilmCache,
+  normalizedTitle: string,
+  scraperYear?: number,
+): FilmRecord | null {
   const cached = cache.byTitle.get(normalizedTitle);
   if (cached) {
     cache.stats.hits++;
+    const hint = releaseYearHint(scraperYear);
+    if (hint !== undefined && yearConflicts(cached, hint)) {
+      const sameYear = cache.namesakes
+        .get(normalizedTitle)
+        ?.find((film) => film.year != null && Math.abs(film.year - hint) <= 1);
+      if (sameYear) return sameYear;
+    }
     return cached;
   }
   cache.stats.misses++;
   return null;
+}
+
+/**
+ * Many scrapers send the SCREENING year, and a current-year "(YYYY)" in a title
+ * is indistinguishable from it, so only a year strictly before this one counts
+ * as a release year (and only a sane one).
+ */
+export function releaseYearHint(scraperYear?: number): number | undefined {
+  return scraperYear && scraperYear >= 1900 && scraperYear < new Date().getFullYear()
+    ? scraperYear
+    : undefined;
+}
+
+/** True when the scraper's release year and the film's known year are more than a year apart. */
+export function yearConflicts(film: Pick<FilmRecord, "year">, scraperYear?: number): boolean {
+  const hint = releaseYearHint(scraperYear);
+  return hint !== undefined && film.year != null && Math.abs(film.year - hint) > 1;
+}
+
+/**
+ * Which same-title film a listing with NO year gets: the one with TMDB data,
+ * then, between two TMDB films, the newer. Everyman and Picturehouse send no
+ * year and mostly show new releases, so "Dracula" there stays Radu Jude's 2025
+ * film after Hammer's 1958 one gets a row. Two rows without TMDB data keep the
+ * first loaded: the newer one is usually a screening-year stub ("Nostalghia"
+ * 2026 next to Tarkovsky's 1983 row).
+ * ponytail: a repertory venue that sends no year also gets the newer TMDB film;
+ * it has to send a year to reach an older namesake.
+ */
+function prefersForTitle(film: FilmRecord, current: FilmRecord): boolean {
+  if (!!film.tmdbId !== !!current.tmdbId) return !!film.tmdbId;
+  return !!film.tmdbId && (film.year ?? 0) > (current.year ?? 0);
+}
+
+function addNamesake(cache: FilmCache, normalized: string, film: FilmRecord) {
+  const list = cache.namesakes.get(normalized);
+  if (list) list.push(film);
+  else cache.namesakes.set(normalized, [film]);
 }
 
 /** Log cache performance stats. */
@@ -200,7 +262,11 @@ export function logCacheStats(cache: FilmCache): void {
 /** Add a new film to the cache. */
 function addToFilmCache(cache: FilmCache, film: FilmRecord) {
   const normalized = cache.normalizeTitle(film.title);
-  cache.byTitle.set(normalized, film);
+  addNamesake(cache, normalized, film);
+  const existing = cache.byTitle.get(normalized);
+  if (!existing || prefersForTitle(film, existing)) {
+    cache.byTitle.set(normalized, film);
+  }
   if (film.tmdbId) {
     cache.byTmdbId.set(film.tmdbId, film);
   }
@@ -254,23 +320,16 @@ export async function matchAndCreateFromTMDB(
   scraperPosterUrl?: string,
   scraperRuntime?: number,
   venueLanguages?: string[],
-  allowCurrentRelease = false
+  allowCurrentRelease = false,
+  requireYearAgreement = false
 ): Promise<string | null> {
-  // Year discipline: many scrapers send the SCREENING year as the film year,
-  // and pipeline.ts also extracts "(YYYY)" from titles — for the current year
-  // those are indistinguishable from screening-year pollution. A wrong
-  // current-year hint gives junk stubs a +0.2/+0.3 exact-year bonus and
-  // SELECTS the wrong film; losing a true hint merely costs a bonus. Same
-  // rule as createFilmWithoutTMDB: only accept years strictly before the
-  // current year (and within sane bounds).
-  const currentYear = new Date().getFullYear();
-  const releaseYearHint =
-    scraperYear && scraperYear >= 1900 && scraperYear < currentYear
-      ? scraperYear
-      : undefined;
+  // Year discipline (`releaseYearHint`): a wrong current-year hint gives junk
+  // stubs a +0.2/+0.3 exact-year bonus and SELECTS the wrong film; losing a
+  // true hint merely costs a bonus. Same rule as createFilmWithoutTMDB.
+  const yearHint = releaseYearHint(scraperYear);
 
   const match = await matchFilmToTMDB(matchingTitle, {
-    year: releaseYearHint,
+    year: yearHint,
     director: scraperDirector,
     runtime: scraperRuntime,
     venueLanguages,
@@ -281,13 +340,19 @@ export async function matchAndCreateFromTMDB(
     return null;
   }
 
+  // The year-conflict path in getOrCreateFilm only wants a film the scraper's
+  // year vouches for; anything else keeps the cached film it already had.
+  if (requireYearAgreement && yearHint !== undefined && Math.abs(match.year - yearHint) > 1) {
+    return null;
+  }
+
   // Audit-trail accuracy: record the strategy that actually applied. After
   // year-stripping, a current-year film matches with NO year hint — labeling
   // it "auto-with-year" would be wrong (schema vocabulary: films.ts). A match
   // from the current-release rule says so itself.
   const matchStrategy =
     match.strategy ??
-    (releaseYearHint
+    (yearHint
       ? "auto-with-year"
       : scraperDirector
         ? "auto-with-director"

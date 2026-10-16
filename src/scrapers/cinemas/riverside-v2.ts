@@ -34,6 +34,19 @@ interface RiversideEvent {
   performance_dates: number[];
   start_date: string;
   end_date?: string;
+  /** Description HTML; film events carry `<p>Director: <strong>…</strong></p>` and `<p>Year of Release: <strong>…</strong></p>` */
+  search?: string;
+}
+
+/**
+ * Year and director from an event's description, so the pipeline can tell
+ * Hammer's "Dracula" (1958) from Radu Jude's (2025). About half the cinema
+ * events carry them (21 and 22 of 39 on 2026-10-16).
+ */
+export function riversideFilmMetadata(search?: string): { year?: number; director?: string } {
+  const year = search?.match(/Year of Release:\s*<strong>\s*(\d{4})/i)?.[1];
+  const director = search?.match(/Director:\s*<strong>([^<]+)<\/strong>/i)?.[1].trim();
+  return { year: year ? parseInt(year, 10) : undefined, director: director || undefined };
 }
 
 export class RiversideScraperV2 extends BaseScraper {
@@ -67,6 +80,7 @@ export class RiversideScraperV2 extends BaseScraper {
     for (const event of cinemaEvents) {
       const performances = event.performances;
       if (!performances) continue;
+      const { year, director } = riversideFilmMetadata(event.search);
 
       // Process all date keys
       for (const dateKey of Object.keys(performances)) {
@@ -95,6 +109,8 @@ export class RiversideScraperV2 extends BaseScraper {
             datetime,
             bookingUrl,
             sourceId,
+            year,
+            director,
           });
         }
       }

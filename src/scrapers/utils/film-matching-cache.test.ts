@@ -35,6 +35,7 @@ import {
   initFilmCache,
   lookupFilmInCache,
   logCacheStats,
+  yearConflicts,
   type FilmCache,
 } from "./film-matching";
 import { normalizeTitle } from "../pipeline";
@@ -56,6 +57,7 @@ function makeFilmRecord(id: string, title: string, tmdbId?: number): FilmRecord 
 function makeCache(films: FilmRecord[] = []): FilmCache {
   const cache: FilmCache = {
     byTitle: new Map(),
+    namesakes: new Map(),
     byTmdbId: new Map(),
     stats: { hits: 0, misses: 0, dbQueries: 0 },
     normalizeTitle: (s: string) => s.toLowerCase().trim(),
@@ -307,5 +309,82 @@ describe("initFilmCache: original-title aliases", () => {
     const cache = await initFilmCache(normalizeTitle);
 
     expect(cache.byTitle.size).toBe(1);
+  });
+});
+
+describe("namesakes: the scraper's release year picks between same-title films", () => {
+  const normalize = (s: string) => s.toLowerCase().trim();
+  const thisYear = new Date().getFullYear();
+
+  beforeEach(() => {
+    mocks.filmRows = [];
+    mocks.blockedIds = new Set();
+  });
+
+  it("picks the namesake within a year of the release year (PCC lists Heat as 1995)", async () => {
+    mocks.filmRows = [
+      { id: "heat-1972", title: "Heat", year: 1972, tmdbId: 4579 },
+      { id: "heat-1995", title: "Heat", year: 1995, tmdbId: 949 },
+    ];
+    const cache = await initFilmCache(normalize);
+
+    expect(lookupFilmInCache(cache, "heat", 1995)?.id).toBe("heat-1995");
+    expect(lookupFilmInCache(cache, "heat", 1996)?.id).toBe("heat-1995");
+    expect(lookupFilmInCache(cache, "heat", 1972)?.id).toBe("heat-1972");
+  });
+
+  it.each([
+    ["older row first", [1958, 2025]],
+    ["newer row first", [2025, 1958]],
+  ])("gives a listing with no year the newest film with TMDB data (%s)", async (_, years) => {
+    mocks.filmRows = years.map((year) => ({ id: `dracula-${year}`, title: "Dracula", year, tmdbId: year }));
+    const cache = await initFilmCache(normalize);
+
+    expect(lookupFilmInCache(cache, "dracula")?.id).toBe("dracula-2025");
+  });
+
+  it("still prefers a film with TMDB data over a newer one without", async () => {
+    mocks.filmRows = [
+      { id: "stub-2026", title: "Persepolis", year: 2026, tmdbId: null },
+      { id: "persepolis-2007", title: "Persepolis", year: 2007, tmdbId: 2011 },
+    ];
+    const cache = await initFilmCache(normalize);
+
+    expect(lookupFilmInCache(cache, "persepolis")?.id).toBe("persepolis-2007");
+  });
+
+  it("keeps the first of two films without TMDB data (the newer is usually a screening-year stub)", async () => {
+    mocks.filmRows = [
+      { id: "nostalghia-1983", title: "Nostalghia", year: 1983, tmdbId: null },
+      { id: "stub-2026", title: "Nostalghia", year: 2026, tmdbId: null },
+    ];
+    const cache = await initFilmCache(normalize);
+
+    expect(lookupFilmInCache(cache, "nostalghia")?.id).toBe("nostalghia-1983");
+  });
+
+  it("returns the default film when no namesake fits, and yearConflicts flags it", async () => {
+    // Riverside's Hammer Dracula (1958) before a 1958 row exists.
+    mocks.filmRows = [{ id: "dracula-2025", title: "Dracula", year: 2025, tmdbId: 1323409 }];
+    const cache = await initFilmCache(normalize);
+    const film = lookupFilmInCache(cache, "dracula", 1958)!;
+
+    expect(film.id).toBe("dracula-2025");
+    expect(yearConflicts(film, 1958)).toBe(true);
+    expect(yearConflicts(film, 2024)).toBe(false);
+    expect(yearConflicts(film, undefined)).toBe(false);
+    expect(yearConflicts({ year: null }, 1958)).toBe(false);
+  });
+
+  it("ignores a current-year hint, which may be the screening year", async () => {
+    mocks.filmRows = [
+      { id: "heat-1972", title: "Heat", year: 1972, tmdbId: 4579 },
+      { id: "heat-1995", title: "Heat", year: 1995, tmdbId: 949 },
+    ];
+    const cache = await initFilmCache(normalize);
+    const film = lookupFilmInCache(cache, "heat", thisYear)!;
+
+    expect(film.id).toBe("heat-1995");
+    expect(yearConflicts(film, thisYear)).toBe(false);
   });
 });

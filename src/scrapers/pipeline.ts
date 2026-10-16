@@ -26,6 +26,7 @@ import {
   matchAndCreateFromTMDB,
   createFilmWithoutTMDB,
   tryUpdatePoster,
+  yearConflicts,
   type FilmCache,
 } from "./utils/film-matching";
 import {
@@ -890,7 +891,32 @@ async function getOrCreateFilm(
   const normalized = normalizeTitle(matchingTitle);
 
   // Try to find existing film using the pre-loaded cache (O(1) lookup)
-  const existing = lookupFilmInCache(filmCache, normalized);
+  const existing = lookupFilmInCache(filmCache, normalized, scraperYear);
+
+  if (existing && yearConflicts(existing, scraperYear)) {
+    // Every cached film of this title disagrees with the scraper's release year
+    // (Riverside's Hammer "Dracula" 1958 vs the cached 2025 film). Ask TMDB with
+    // the year, and keep the cached film unless TMDB finds one that year vouches
+    // for, so the worst case is the old match.
+    try {
+      const tmdbFilmId = await matchAndCreateFromTMDB(
+        filmCache,
+        matchingTitle,
+        scraperYear,
+        scraperDirector,
+        scraperPosterUrl,
+        scraperRuntime,
+        venueLanguages,
+        allowCurrentRelease,
+        true
+      );
+      if (tmdbFilmId) {
+        return tmdbFilmId;
+      }
+    } catch (error) {
+      console.warn(`[Pipeline] TMDB lookup failed for "${title}":`, error);
+    }
+  }
 
   if (existing) {
     // If existing film lacks a poster, try to find one
