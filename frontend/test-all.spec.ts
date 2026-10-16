@@ -245,8 +245,14 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 			await page.waitForTimeout(800);
 			const expected = await readPairs();
 			expect(expected.length).toBe(5);
-			// Sanity: titles are unique per card (catches obvious render glitches).
-			expect(new Set(expected.map((p) => p.title)).size).toBe(expected.length);
+			// Sanity: each title shows one poster (catches obvious render glitches).
+			// Titles can repeat: late in the evening today has fewer than five New
+			// films, so the first five cards run on into tomorrow's section.
+			const posterByTitle = new Map<string, string>();
+			for (const { title, imgSrc } of expected) {
+				expect(posterByTitle.get(title) ?? imgSrc, `"${title}" shows two posters`).toBe(imgSrc);
+				posterByTitle.set(title, imgSrc);
+			}
 
 			// Persist the New filter, reload, and verify the same pairings appear.
 			await context.addInitScript(() => {

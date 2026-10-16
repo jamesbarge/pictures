@@ -138,7 +138,6 @@ Webhook event data is cast to specific types without runtime validation. If Cler
 **Files:**
 - `src/components/layout/header.tsx` (1,409 lines)
 - `src/scrapers/pipeline.ts` (988 lines)
-- `src/inngest/functions.ts` (737 lines)
 
 **Issue:**
 Several files exceed 700+ lines, making them difficult to test and maintain. The header component manages multiple concerns (date picking, cinema selection, filters).

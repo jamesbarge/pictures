@@ -61,7 +61,6 @@
 - puppeteer-extra-plugin-stealth 2.11.2 - Bot detection evasion
 
 **Infrastructure:**
-- inngest 3.48.1 - Background job queue (`src/inngest/`)
 - @sentry/nextjs 10.32.1 - Error tracking
 - posthog-js 1.310.1 + posthog-node 5.18.0 - Analytics
 

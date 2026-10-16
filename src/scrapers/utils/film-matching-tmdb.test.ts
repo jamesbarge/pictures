@@ -55,6 +55,7 @@ import { matchAndCreateFromTMDB, type FilmCache } from "./film-matching";
 function makeCache(): FilmCache {
   return {
     byTitle: new Map(),
+    namesakes: new Map(),
     byTmdbId: new Map(),
     stats: { hits: 0, misses: 0, dbQueries: 0 },
     normalizeTitle: (s: string) => s.toLowerCase().trim(),
@@ -318,5 +319,38 @@ describe("matchAndCreateFromTMDB — details reuse (plan 006 follow-up)", () => 
     await matchAndCreateFromTMDB(makeCache(), "Joyland", 2022);
 
     expect(mocks.getFullFilmData).toHaveBeenCalledWith(555, undefined);
+  });
+});
+
+describe("matchAndCreateFromTMDB — requireYearAgreement (year-conflict path)", () => {
+  const hammer = { tmdbId: 11868, confidence: 0.9, title: "Dracula", year: 1958, posterPath: null };
+  const args = [undefined, undefined, undefined, undefined, false, true] as const;
+
+  it("creates the film when TMDB's match agrees with the release year", async () => {
+    mocks.matchFilmToTMDB.mockResolvedValue(hammer);
+    mocks.getFullFilmData.mockResolvedValue(makeFullFilmData({ title: "Dracula" }));
+
+    const filmId = await matchAndCreateFromTMDB(makeCache(), "Dracula", 1958, ...args);
+
+    expect(filmId).not.toBeNull();
+    expect(mocks.insertValues).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns null and writes nothing when TMDB's match is more than a year off", async () => {
+    // The year-filtered search found nothing and the unfiltered fallback picked another film.
+    mocks.matchFilmToTMDB.mockResolvedValue({ ...hammer, tmdbId: 1323409, year: 2025 });
+
+    const filmId = await matchAndCreateFromTMDB(makeCache(), "Dracula", 1958, ...args);
+
+    expect(filmId).toBeNull();
+    expect(mocks.insertValues).not.toHaveBeenCalled();
+    expect(mocks.selectLimit).not.toHaveBeenCalled();
+  });
+
+  it("does not check agreement unless asked", async () => {
+    mocks.matchFilmToTMDB.mockResolvedValue({ ...hammer, year: 2025 });
+    mocks.getFullFilmData.mockResolvedValue(makeFullFilmData({ title: "Dracula" }));
+
+    expect(await matchAndCreateFromTMDB(makeCache(), "Dracula", 1958)).not.toBeNull();
   });
 });

@@ -38,8 +38,8 @@ London has an incredible cinema scene, but finding what's showing means checking
 | Analytics | PostHog (EU hosted) |
 | Hosting | Vercel |
 | Scraping | Playwright + Cheerio |
-| Scheduling | Inngest (daily) + GitHub Actions (weekly) |
-| AI | Google Gemini (enrichment) + Claude Agent SDK (automation) |
+| Scheduling | Manual, from the Mac (`npm run scrape:unified`) |
+| AI | DeepSeek (`npm run agents:enrich`) |
 | Styling | Tailwind CSS v4 |
 
 ---
@@ -97,8 +97,8 @@ NEXT_PUBLIC_POSTHOG_KEY=phc_...
 NEXT_PUBLIC_POSTHOG_HOST=https://eu.i.posthog.com
 POSTHOG_API_KEY=phx_...
 
-# AI Enrichment (optional)
-GEMINI_API_KEY=your_key
+# AI Enrichment (optional, npm run agents:enrich)
+DEEPSEEK_API_KEY=your_key
 
 # Cron Security
 CRON_SECRET=random_string
@@ -156,33 +156,15 @@ npm run scrape:all          # Everything
 ### AI Agents
 
 ```bash
-npm run agents          # Run all agents
-npm run agents:links    # Verify booking URLs
-npm run agents:health   # Check scraper output
-npm run agents:enrich   # Improve TMDB matching
+npm run agents:enrich   # Improve TMDB matching (DeepSeek)
+npm run agents:verify   # Deterministic data quality checks
 ```
 
 ---
 
-## Automated Scraping
+## Scraping Schedule
 
-Scrapers run automatically via two mechanisms:
-
-### Daily (Inngest)
-Cheerio-based scrapers run daily at 6 AM UTC via Inngest functions on Vercel:
-- All independent cinemas with static HTML (Rio, Prince Charles, ICA, Genesis, etc.)
-
-### Weekly (GitHub Actions)
-Playwright-based scrapers run every Sunday at 10 PM UTC via GitHub Actions:
-- **Chains:** Curzon, Picturehouse, Everyman
-- **Independents:** BFI, Barbican, Phoenix, Electric, Lexi, Regent Street
-
-The workflow can also be triggered manually from the Actions tab.
-
-### Required GitHub Secrets
-For the Playwright workflow to run:
-- `DATABASE_URL` — Supabase connection string
-- `TMDB_API_KEY` — TMDB API key
+Every scrape runs from the Mac. `npm run scrape:unified` (the `/scrape` command) scrapes all cinemas and runs enrichment; `npm run scrape <cinema-id>` scrapes one venue. Nothing runs in the cloud: Inngest, Trigger.dev, Vercel crons and scheduled GitHub Actions have all been removed, so a screening written without a matching `scraper_runs` row points to a leftover cloud job.
 
 ---
 
@@ -201,7 +183,7 @@ src/                     # Next.js app (api.pictures.london)
 │   ├── chains/          # Curzon, Picturehouse, Everyman
 │   ├── cinemas/         # Individual venues
 │   └── utils/           # Shared scraping utilities
-├── agents/              # Claude AI agents
+├── agents/              # Data quality agents
 └── lib/                 # Utilities & helpers
 ```
 
@@ -223,7 +205,7 @@ See `ARCHITECTURE.md` for a deeper look at the data flow, scraper architecture, 
 
 - **Screening times**: Scraped directly from cinema websites
 - **Film metadata**: [TMDB](https://www.themoviedb.org) API
-- **Enrichment**: Google Gemini AI for difficult title matching
+- **Enrichment**: DeepSeek for difficult title matching (`npm run agents:enrich`)
 
 ---
 

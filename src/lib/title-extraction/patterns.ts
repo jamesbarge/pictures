@@ -133,6 +133,11 @@ export const TERMINAL_DECORATION_SUFFIXES: RegExp[] = [
   /\s*\((?:world|uk|london|european?)\s+premiere(?:\s*\+\s*q\s*&(?:amp;)?\s*a\b[^)]*)?\)\s*$/i,
   /\s*\(vhs(?:\s+screening)?\)\s*$/i,
   /\s*\(b\s*&(?:amp;)?\s*w\)\s*$/i,
+  // Access notes are not part of the film. BFI IMAX appends
+  // "(with subtitles for the D/deaf and those experiencing hearing loss)".
+  // The closing paren is optional because some feeds truncate it. The keyword
+  // has to be inside the parentheses, so a title like "The Subtitles" is kept.
+  /\s*\([^)]*\b(?:subtitles?|subtitled|captioned|open\s+captions?|closed\s+captions?|audio[\s-]*described|audio\s+description)\b[^)]*\)?\s*$/i,
 ];
 
 /**
