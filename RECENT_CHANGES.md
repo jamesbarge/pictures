@@ -1,3 +1,9 @@
+## 2026-10-16: New-filter poster test survives repeated cards late in the evening
+**PR**: #825 | **Files**: `frontend/test-all.spec.ts`
+- The "persisted New filter renders matching posters and titles" test required the first five cards to have five different titles. After about 21:00 today has fewer than five New films left, so the first five cards run on into tomorrow's section and repeat titles, and Frontend E2E failed on every PR until midnight.
+- The check now asserts that no title shows two different posters, which is the render glitch it was there to catch. The persisted-filter comparison after reload is unchanged.
+
+---
 ## 2026-10-04: Remove Gemini-dependent code
 **PR**: #785 | **Files**: `src/lib/gemini.ts`, `src/agents/run-agents.ts`, `src/app/admin/agents/`, `src/app/api/admin/anomalies/verify/`, `src/scrapers/pipeline.ts`, `scripts/audit-and-fix-upcoming.ts`, `scripts/data-check.ts`, `package.json`
 - Deleted the Gemini client and everything that called it: the scraper-health, link-validator and fallback enrichment agents, the `/admin/agents` page and routes, AI Verify, the data-quality enrichment route, the `ENABLE_AGENTS` pipeline hook and the Stagehand booking verifier. About 4,985 lines go, plus 249 lockfile packages including `@google/genai`.
