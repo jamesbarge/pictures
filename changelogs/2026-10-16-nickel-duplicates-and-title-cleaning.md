@@ -1,27 +1,24 @@
-# One Nickel, and titles without access notes or HTML entities
+# One Nickel, and titles without access notes
 
 **PR**: #815
 **Date**: 2026-10-16
 
 ## Changes
 
-- Confirmed the live Nickel split is not a second registry entry. `nickel-v2.ts` and `the-nickel.ts` both use cinema id `the-nickel`. The scraper registry, task registry, and `resolveCinemaId` already send every write to `the-nickel`. `nickel` remains a legacy alias.
-- The 16 Oct 2026 listings QA still showed 37 duplicated showings under cinema id `nickel`, including five whose film titles were the raw feed (`THE UNKNOWN (ON 16MM`, `THE MAD BOMBER (ON 16MM)`, `ERASERHEAD (ON 16MM)`) while `the-nickel` held the cleaned titles. Those rows share a booking URL and source id with the canonical copies, and different film ids.
-- `src/db/migrations/canonicalize-cinema-ids.ts` previously treated a collision as the same film id at the same time only. Moving the dirtier copy onto `the-nickel` would then violate the `(cinema_id, source_id)` unique index, so the alias could not be retired. A legacy row now collides when the source id matches, or when the booking URL matches at the same instant. Colliding rows are deleted. A legacy cinema with no screenings left is deleted, or marked inactive if a foreign key blocks the delete.
-- Title normalisation strips access parentheticals such as `(with subtitles for the D/deaf and those experiencing hearing loss)`, `(Subtitled)`, and `(Audio Described)`. The Rio listing `HACKNEY CHILDREN'S FILM FEST: Paddington &amp; Storytime` decodes to `Paddington & Storytime`. `(ON 16MM)`, including the truncated `(ON 16MM`, was already stripped and is now covered by the QA strings.
-- When a scraper has already set a format, classification still reads subtitles, audio description, relaxed, and 3D off the title.
+- The duplicate Nickel listings come from an orphaned Inngest Cloud cron (`scheduled-scrape-all`, daily at 06:00 UTC). It calls a Vercel deployment from before #478, whose code still writes the legacy cinema id `nickel` and runs an older title cleaner. On 16 Oct every `nickel` row in production was last written between 06:00 and 06:03 UTC, and the `nickel` cinema row was re-created on 5 Oct at 06:04 UTC after an earlier deletion. The current scrapers, the scraper registry and `resolveCinemaId` all write `the-nickel`; a registry test now pins that.
+- The same cron wrote Rio's `HACKNEY CHILDREN'S FILM FEST: Paddington &amp; Storytime`. The current cleaner already decodes the entity and drops the fest prefix; this PR adds the case as a test.
+- `src/db/migrations/canonicalize-cinema-ids.ts` treated a collision as the same film id at the same time only. The cron's copies sit under dirtier film titles (`THE UNKNOWN (ON 16MM` vs `The Unknown`), so moving them would hit the `(cinema_id, source_id)` unique index. A legacy row now collides when the source id matches, or when the booking URL matches at the same instant. Colliding rows are deleted.
+- A legacy cinema row left with no screenings is deleted. Every foreign key to `cinemas.id` cascades, so its scraper runs, baselines and health snapshots go with it. The dry run reports the delete that `--execute` would make.
+- Title normalisation strips access parentheticals such as `(with subtitles for the D/deaf and those experiencing hearing loss)`, `(Subtitled)` and `(Audio Described)`. The real BFI IMAX scraper wrote the Disclosure Day title on 15 Oct.
+- When a scraper has already set a format or event type, classification still reads subtitles, audio description, relaxed and 3D off the title.
 
 ## Impact
 
-- After the migration, the public listings have one Nickel. The five dirtier film rows are no longer attached to a second copy of the same showing.
-- The next scrape, and `npm run cleanup:upcoming -- --execute`, store `Disclosure Day` and `Paddington & Storytime` instead of the raw listing text. `Disclosure Day` keeps `hasSubtitles`.
+- New BFI IMAX scrapes store `Disclosure Day` and keep `hasSubtitles`.
+- The Nickel and Rio fixes hold only once the Inngest app is archived. Running the migration before that deletes rows the cron writes back the next morning.
 - Other legacy cinema ids (`close-up`, `phoenix`, `olympic`, and the rest of `legacyIds`) use the same collision rule. A shared film-page URL at two different times is still two showings.
 
 ## Production steps
 
-Do not run these until this branch is deployed, so a later scrape cannot write `nickel` again. Both commands are dry-run unless `--execute` is passed. `--apply` does not apply.
-
-```bash
-npm run db:migrate-cinema-ids -- --execute
-npm run cleanup:upcoming -- --execute
-```
+1. Archive the Inngest app `pictures-london`.
+2. `npm run db:migrate-cinema-ids`, read the dry run, then `npm run db:migrate-cinema-ids -- --execute`.

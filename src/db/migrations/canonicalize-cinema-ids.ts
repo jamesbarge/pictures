@@ -26,8 +26,9 @@
  * alone did not see the collision and the update then hit the
  * (cinema_id, source_id) unique index.
  *
- * Legacy cinema rows with no screenings left are deleted. If a foreign key
- * blocks the delete, the row is marked inactive instead.
+ * Legacy cinema rows with no screenings left are deleted. Every foreign key to
+ * cinemas.id cascades, so the delete also removes that row's scraper runs,
+ * baselines and health snapshots.
  *
  * Usage:
  *   npm run db:migrate-cinema-ids             # Dry run (shows what would change)
@@ -222,6 +223,12 @@ async function retireLegacyCinemas(): Promise<void> {
       continue;
     }
 
+    // Step 2 moves or deletes every legacy screening, but only with --execute.
+    if (DRY_RUN) {
+      console.log(`  [DRY RUN] Would delete ${legacyId} (${legacyCinema.name}) once step 2 empties it; canonical is ${canonicalId}`);
+      continue;
+    }
+
     const [result] = await db
       .select({ count: count() })
       .from(screenings)
@@ -233,21 +240,8 @@ async function retireLegacyCinemas(): Promise<void> {
       continue;
     }
 
-    if (DRY_RUN) {
-      console.log(`  [DRY RUN] Would delete ${legacyId} (${legacyCinema.name}); canonical is ${canonicalId}`);
-      continue;
-    }
-
-    try {
-      await db.delete(cinemas).where(eq(cinemas.id, legacyId));
-      console.log(`  🗑️  Deleted ${legacyId} (${legacyCinema.name})`);
-    } catch (error) {
-      await db
-        .update(cinemas)
-        .set({ isActive: false, updatedAt: new Date() })
-        .where(eq(cinemas.id, legacyId));
-      console.log(`  ⚠️  Could not delete ${legacyId} (${error}); marked inactive`);
-    }
+    await db.delete(cinemas).where(eq(cinemas.id, legacyId));
+    console.log(`  🗑️  Deleted ${legacyId} (${legacyCinema.name})`);
   }
 }
 
