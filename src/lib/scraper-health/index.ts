@@ -6,15 +6,13 @@
  * - Volume: How many future screenings exist?
  * - Anomalies: Are there sudden drops or suspicious patterns?
  *
- * Health checks run:
- * 1. Post-scrape: After each scraper run
- * 2. Daily cron: 7am UTC (after 6am scheduled scrapers)
+ * Health checks run on demand from the admin dashboard (`/admin`) and
+ * `GET /api/admin/health`.
  */
 
 import { db } from "@/db";
 import { screenings, healthSnapshots, cinemas } from "@/db/schema";
 import { eq, gte, and, sql, desc, count } from "drizzle-orm";
-import { v4 as uuidv4 } from "uuid";
 import { addDays, differenceInHours, subDays } from "date-fns";
 import {
   HEALTH_THRESHOLDS,
@@ -289,35 +287,6 @@ export async function runFullHealthCheck(): Promise<HealthCheckResult> {
 }
 
 /**
- * Save health snapshot to database
- */
-export async function saveHealthSnapshot(metrics: CinemaHealthMetrics): Promise<string> {
-  const id = uuidv4();
-
-  await db.insert(healthSnapshots).values({
-    id,
-    cinemaId: metrics.cinemaId,
-    snapshotAt: new Date(),
-    totalFutureScreenings: metrics.totalFutureScreenings,
-    next14dScreenings: metrics.next14dScreenings,
-    next7dScreenings: metrics.next7dScreenings,
-    lastScrapeAt: metrics.lastScrapeAt,
-    hoursSinceLastScrape: metrics.hoursSinceLastScrape,
-    overallHealthScore: metrics.overallHealthScore,
-    freshnessScore: metrics.freshnessScore,
-    volumeScore: metrics.volumeScore,
-    isAnomaly: metrics.isAnomaly,
-    anomalyReasons: metrics.anomalyReasons,
-    chainMedian: metrics.chainMedian,
-    percentOfChainMedian: metrics.percentOfChainMedian,
-    triggeredAlert: metrics.alertType !== null,
-    alertType: metrics.alertType,
-  });
-
-  return id;
-}
-
-/**
  * Get recent health snapshots for a cinema
  */
 export async function getRecentHealthSnapshots(
@@ -420,28 +389,4 @@ function generateAlertMessage(metrics: CinemaHealthMetrics): string {
   }
 
   return `${metrics.cinemaName}: ${parts.join(", ")}`;
-}
-
-// ============================================================================
-// Post-Scrape Hook
-// ============================================================================
-
-/**
- * Run health check after a scraper completes
- * Called from pipeline.ts
- */
-export async function postScrapeHealthCheck(cinemaId: string): Promise<void> {
-  const metrics = await getCinemaHealthMetrics(cinemaId);
-  if (!metrics) return;
-
-  // Save snapshot
-  await saveHealthSnapshot(metrics);
-
-  // Log if anomaly detected
-  if (metrics.isAnomaly) {
-    console.warn(
-      `[health] Anomaly detected for ${metrics.cinemaName}:`,
-      metrics.anomalyReasons.join(", ")
-    );
-  }
 }

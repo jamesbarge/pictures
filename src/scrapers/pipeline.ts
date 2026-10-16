@@ -26,6 +26,8 @@ import {
   matchAndCreateFromTMDB,
   createFilmWithoutTMDB,
   tryUpdatePoster,
+  releaseYearHint,
+  yearConflicts,
   type FilmCache,
 } from "./utils/film-matching";
 import {
@@ -41,9 +43,6 @@ import {
 // Import for local use + re-export for external consumers
 import { cleanFilmTitle, cleanFilmTitleWithMetadata, extractEnglishFromBracket } from "./utils/film-title-cleaner";
 export { cleanFilmTitle } from "./utils/film-title-cleaner";
-
-// Agent imports - conditionally used when ENABLE_AGENTS=true
-const AGENTS_ENABLED = process.env.ENABLE_AGENTS === "true";
 
 export interface PipelineResult {
   cinemaId: string;
@@ -561,7 +560,10 @@ export async function processScreenings(
     if ((extraction?.confidence === "low" || extraction?.confidence === "medium") && !extraction.canonicalTitle) {
       matchingTitle = cleanFilmTitle(screening.filmTitle);
     }
-    const key = normalizeTitle(matchingTitle);
+    // The release year is part of a film's identity: a venue showing Hammer's
+    // Dracula (1958) and Jude's (2025) needs two groups, or one year wins both.
+    const releaseYear = releaseYearHint(screening.year);
+    const key = normalizeTitle(matchingTitle) + (releaseYear ? ` (${releaseYear})` : "");
     if (!screeningsByFilm.has(key)) {
       screeningsByFilm.set(key, []);
     }
@@ -736,80 +738,7 @@ export async function processScreenings(
   // Log cache performance stats
   logCacheStats(filmCache);
 
-  // Run agent-based analysis if enabled
-  if (AGENTS_ENABLED && result.added > 0) {
-    try {
-      await runPostScrapeAgents(cinemaId, screeningsToProcess, result);
-    } catch (agentError) {
-      console.warn(`[Pipeline] Agent analysis failed (non-blocking):`, agentError);
-    }
-  }
-
   return result;
-}
-
-/**
- * Run post-scrape agent analysis
- * This is optional and won't block the scrape if it fails
- */
-async function runPostScrapeAgents(
-  cinemaId: string,
-  screenings: RawScreening[],
-  _result: PipelineResult
-): Promise<void> {
-  void _result; // Reserved for future agent analysis
-  // Dynamically import agents to avoid loading SDK if not needed
-  const { analyzeScraperHealth } = await import("@/agents/scraper-health");
-  const { verifyBookingLinks } = await import("@/agents/link-validator");
-
-  console.log(`[Pipeline] Running agent analysis...`);
-
-  // Sample screenings for agent analysis
-  const samples = screenings.slice(0, 5).map((s) => ({
-    title: s.filmTitle,
-    datetime: s.datetime,
-    bookingUrl: s.bookingUrl,
-  }));
-
-  // Run scraper health check
-  const healthResult = await analyzeScraperHealth(
-    cinemaId,
-    screenings.length,
-    samples
-  );
-
-  if (healthResult.success && healthResult.data) {
-    const report = healthResult.data;
-    if (report.anomalyDetected) {
-      console.warn(`[Agent] Anomaly detected: ${report.warnings.join(", ")}`);
-      // Could store this in data_issues table for review
-    }
-  }
-
-  // Verify a sample of booking links (non-blocking)
-  // Get screening IDs from the database for recently added screenings
-  const recentScreenings = await db
-    .select({ id: screeningsTable.id })
-    .from(screeningsTable)
-    .where(eq(screeningsTable.cinemaId, cinemaId))
-    .orderBy(screeningsTable.scrapedAt)
-    .limit(10);
-
-  if (recentScreenings.length > 0) {
-    const linkResult = await verifyBookingLinks(
-      recentScreenings.map((s) => s.id),
-      { dryRun: false, batchSize: 10 }
-    );
-
-    if (linkResult.success && linkResult.data) {
-      const broken = linkResult.data.filter((r) => r.status === "broken");
-      if (broken.length > 0) {
-        console.warn(`[Agent] Found ${broken.length} broken links`);
-      }
-    }
-  }
-
-  console.log(`[Pipeline] Agent analysis complete`);
 }
 
 /**
@@ -848,6 +777,9 @@ async function getOrCreateFilm(
   }
 
   // Extract year from title as a hint for TMDB matching if scraper didn't provide one
+  // A decoration year ("Akira (2025 Re-release)") dates the re-release, so it
+  // may inform TMDB on a cache miss but must not pick between cached namesakes.
+  let yearFromDecoration = false;
   if (!scraperYear) {
     const yearMatch = title.match(/\((\d{4})\)\s*$/);
     if (yearMatch) {
@@ -859,9 +791,11 @@ async function getOrCreateFilm(
       const { extractedYear } = cleanFilmTitleWithMetadata(title);
       if (extractedYear && extractedYear < new Date().getFullYear()) {
         scraperYear = extractedYear;
+        yearFromDecoration = !title.includes(`(${extractedYear})`);
       }
     }
   }
+  const cacheYear = yearFromDecoration ? undefined : scraperYear;
 
   // Use canonical title for matching (without version suffixes like "Final Cut").
   // This ensures "Apocalypse Now" and "Apocalypse Now : Final Cut" match to the
@@ -890,7 +824,37 @@ async function getOrCreateFilm(
   const normalized = normalizeTitle(matchingTitle);
 
   // Try to find existing film using the pre-loaded cache (O(1) lookup)
-  const existing = lookupFilmInCache(filmCache, normalized);
+  const existing = lookupFilmInCache(filmCache, normalized, cacheYear);
+
+  if (existing && yearConflicts(existing, cacheYear)) {
+    // Every cached film of this title disagrees with the scraper's release year
+    // (Riverside's Hammer "Dracula" 1958 vs the cached 2025 film). Ask TMDB with
+    // the year, and keep the cached film unless TMDB finds one that year vouches
+    // for, so the worst case is the old match. Its own 8s ceiling keeps a slow
+    // TMDB inside the caller's 20s, so a timeout also falls back.
+    try {
+      const tmdbFilmId = await withDbTimeout(
+        matchAndCreateFromTMDB(
+          filmCache,
+          matchingTitle,
+          cacheYear,
+          scraperDirector,
+          scraperPosterUrl,
+          scraperRuntime,
+          venueLanguages,
+          allowCurrentRelease,
+          true
+        ),
+        8_000,
+        `getOrCreateFilm: year-conflict TMDB "${title}"`
+      );
+      if (tmdbFilmId) {
+        return tmdbFilmId;
+      }
+    } catch (error) {
+      console.warn(`[Pipeline] TMDB lookup failed for "${title}":`, error);
+    }
+  }
 
   if (existing) {
     // If existing film lacks a poster, try to find one

@@ -16,6 +16,10 @@ import { join } from "node:path";
 
 const TEST_ROOT = join(tmpdir(), `scrape-progress-test-${process.pid}-${Date.now()}`);
 
+async function readSnapshot(progressFile: string) {
+  return JSON.parse(await fs.readFile(progressFile, "utf8"));
+}
+
 async function loadModule(progressFile: string) {
   vi.resetModules();
   vi.stubEnv("SCRAPE_PROGRESS_FILE", progressFile);
@@ -35,19 +39,19 @@ describe("stampProgress", () => {
 
   it("creates a missing directory before writing (fresh checkout)", async () => {
     const progressFile = join(TEST_ROOT, "deep", "nested", "tmp", "scrape-progress.json");
-    const { stampProgress, readProgress } = await loadModule(progressFile);
+    const { stampProgress } = await loadModule(progressFile);
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 
     await stampProgress({ phase: "test", startedAt: new Date().toISOString() });
 
     expect(warn).not.toHaveBeenCalled();
-    const snapshot = await readProgress();
+    const snapshot = await readSnapshot(progressFile);
     expect(snapshot?.phase).toBe("test");
   });
 
   it("survives concurrent writes without rename races", async () => {
     const progressFile = join(TEST_ROOT, "tmp", "scrape-progress.json");
-    const { stampProgress, readProgress } = await loadModule(progressFile);
+    const { stampProgress } = await loadModule(progressFile);
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 
     const startedAt = new Date().toISOString();
@@ -60,7 +64,7 @@ describe("stampProgress", () => {
     // No write may fail, the final file must be valid JSON, and no orphaned
     // temp files may be left behind.
     expect(warn).not.toHaveBeenCalled();
-    const snapshot = await readProgress();
+    const snapshot = await readSnapshot(progressFile);
     expect(snapshot?.phase).toBe("film-loop");
     const leftovers = (await fs.readdir(join(TEST_ROOT, "tmp"))).filter((f) => f.endsWith(".tmp"));
     expect(leftovers).toEqual([]);
@@ -68,20 +72,18 @@ describe("stampProgress", () => {
 
   it("recreates the directory if it is deleted mid-run", async () => {
     const progressFile = join(TEST_ROOT, "tmp", "scrape-progress.json");
-    const { stampProgress, readProgress } = await loadModule(progressFile);
+    const { stampProgress } = await loadModule(progressFile);
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 
     const startedAt = new Date().toISOString();
     await stampProgress({ phase: "first", startedAt });
     await fs.rm(join(TEST_ROOT, "tmp"), { recursive: true, force: true });
 
-    // First stamp after deletion fails (dir memo was stale) but resets the
-    // memo; the next one must succeed again.
+    // Every write recreates the directory, so the next stamp succeeds.
     await stampProgress({ phase: "second", startedAt });
-    await stampProgress({ phase: "third", startedAt });
 
-    const snapshot = await readProgress();
-    expect(snapshot?.phase).toBe("third");
-    expect(warn).toHaveBeenCalledTimes(1);
+    const snapshot = await readSnapshot(progressFile);
+    expect(snapshot?.phase).toBe("second");
+    expect(warn).not.toHaveBeenCalled();
   });
 });

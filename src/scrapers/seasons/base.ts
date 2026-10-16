@@ -9,13 +9,9 @@
 import * as cheerio from "cheerio";
 import type { CheerioAPI } from "../utils/cheerio-types";
 import { BOT_USER_AGENT, CHROME_USER_AGENT_FULL } from "../constants";
-import type {
-  RawSeason,
-  SeasonScraperConfig,
-  SeasonScraper,
-} from "./types";
+import type { RawSeason, SeasonScraperConfig } from "./types";
 
-export abstract class BaseSeasonScraper implements SeasonScraper {
+export abstract class BaseSeasonScraper {
   abstract config: SeasonScraperConfig;
 
   /**
@@ -149,23 +145,24 @@ export abstract class BaseSeasonScraper implements SeasonScraper {
   }
 
   /**
-   * Generate a slug from a season name
-   * e.g., "Kurosawa: Master of Cinema" -> "kurosawa-master-of-cinema"
+   * Resolve a relative, root-relative or protocol-relative URL against baseUrl
    */
-  protected generateSlug(name: string, suffix?: string): string {
-    let slug = name
-      .toLowerCase()
-      .replace(/['']/g, "") // Remove apostrophes
-      .replace(/[:;,!?()[\]{}]/g, "") // Remove punctuation
-      .replace(/\s+/g, "-") // Spaces to hyphens
-      .replace(/-+/g, "-") // Collapse multiple hyphens
-      .replace(/^-|-$/g, ""); // Trim leading/trailing hyphens
+  protected resolveUrl(url: string): string {
+    const base = this.config.baseUrl + "/";
+    // A malformed scraped href must not fail the whole season scrape.
+    return URL.canParse(url, base) ? new URL(url, base).href : url;
+  }
 
-    if (suffix) {
-      slug = `${slug}-${suffix}`;
-    }
-
-    return slug;
+  /**
+   * Split a trailing "(1992)" off a film title. The year is read from the
+   * first "(YYYY)" anywhere in the title.
+   */
+  protected splitYear(title: string): { title: string; year?: number } {
+    const yearMatch = title.match(/\((\d{4})\)/);
+    return {
+      title: title.replace(/\s*\(\d{4}\)\s*$/, "").trim(),
+      year: yearMatch ? parseInt(yearMatch[1]) : undefined,
+    };
   }
 
   /**

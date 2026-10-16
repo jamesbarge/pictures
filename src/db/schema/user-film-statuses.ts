@@ -55,6 +55,3 @@ export const userFilmStatuses = pgTable(
     uniqueIndex("user_film_unique").on(table.userId, table.filmId),
   ]
 );
-
-export type UserFilmStatusInsert = typeof userFilmStatuses.$inferInsert;
-export type UserFilmStatusSelect = typeof userFilmStatuses.$inferSelect;

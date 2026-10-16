@@ -96,11 +96,6 @@ export function parseReconcileArgs(argv: string[]): ReconcileArgs {
   return args;
 }
 
-/** Guard 1b (pure): the cinemaId must exist in the known registry. */
-export function validateCinemaId(cinemaId: string, knownIds: readonly string[]): boolean {
-  return knownIds.includes(cinemaId);
-}
-
 /**
  * Guard 2 (pure): true only if the last successful scrape completed recently
  * enough (within MAX_SCRAPE_AGE_MS, and not in the future).
@@ -196,7 +191,7 @@ async function main(): Promise<void> {
 
   // Guard 1: cinema must exist in the registry.
   const knownIds = CINEMA_REGISTRY.map((c) => c.id);
-  if (!validateCinemaId(cinemaId, knownIds)) {
+  if (!knownIds.includes(cinemaId)) {
     console.error(`ERROR: Unknown cinema "${cinemaId}" — not in the cinema registry.`);
     console.error(`Known IDs include: ${knownIds.slice(0, 10).join(", ")}, ...`);
     process.exit(1);

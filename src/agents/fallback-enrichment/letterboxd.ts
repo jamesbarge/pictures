@@ -12,23 +12,8 @@
 
 import * as cheerio from "cheerio";
 
+import { titleToSlug } from "@/db/enrich-letterboxd";
 import { CHROME_USER_AGENT } from "@/scrapers/constants";
-
-/**
- * Convert a film title to Letterboxd URL slug
- */
-function titleToSlug(title: string): string {
-  return title
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "") // Remove accents
-    .replace(/['']/g, "") // Remove apostrophes
-    .replace(/[&]/g, "and") // Replace & with and
-    .replace(/[^a-z0-9\s-]/g, "") // Remove special chars
-    .replace(/\s+/g, "-") // Replace spaces with hyphens
-    .replace(/-+/g, "-") // Collapse multiple hyphens
-    .replace(/^-|-$/g, ""); // Trim hyphens
-}
 
 /**
  * Fetch Letterboxd poster (OG image) for a film
