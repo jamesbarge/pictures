@@ -9,7 +9,7 @@
  */
 
 import { AsyncLocalStorage } from "node:async_hooks";
-import type { CinemaScraper, ChainScraper, RawScreening } from "./types";
+import type { CinemaScraper, ChainScraper } from "./types";
 import { SCRAPER_CHALLENGE_MARKER } from "./types";
 import { processScreenings, saveScreenings, ensureCinemaExists } from "./pipeline";
 import {
@@ -1291,103 +1291,4 @@ async function runScraperInner(
   // Note: flushPendingRecords runs in the runScraper wrapper's `finally`
   // — guaranteed regardless of whether this function returns or throws.
   return result;
-}
-
-// ============================================================================
-// Yield Evaluation (for AutoScrape experiments)
-// ============================================================================
-
-/** Result of a yield-mode scrape — raw screenings without DB persistence */
-interface YieldResult {
-  success: boolean;
-  screenings: RawScreening[];
-  durationMs: number;
-  error?: string;
-}
-
-/**
- * Run a single-venue scraper and return raw screenings WITHOUT persisting.
- * Used by AutoScrape to evaluate candidate configs in dry-run mode.
- * No DB writes, no recording, no pipeline processing.
- */
-export async function runScraperForYield(
-  config: SingleVenueConfig
-): Promise<YieldResult> {
-  const startTime = Date.now();
-
-  try {
-    const scraper = config.createScraper();
-
-    const isHealthy = await scraper.healthCheck();
-    if (!isHealthy) {
-      return {
-        success: false,
-        screenings: [],
-        durationMs: Date.now() - startTime,
-        error: "Health check failed - site not accessible",
-      };
-    }
-
-    const screenings = await scraper.scrape();
-
-    return {
-      success: true,
-      screenings,
-      durationMs: Date.now() - startTime,
-    };
-  } catch (error) {
-    return {
-      success: false,
-      screenings: [],
-      durationMs: Date.now() - startTime,
-      error: error instanceof Error ? error.message : String(error),
-    };
-  }
-}
-
-/**
- * Parse CLI arguments for venue selection
- * Supports: npm run scrape:curzon -- soho mayfair
- */
-function parseVenueArgs(prefix?: string): string[] {
-  const args = process.argv.slice(2);
-
-  if (args.length === 0) {
-    return [];
-  }
-
-  return args.map((arg) => {
-    // Allow shorthand like "soho" -> "curzon-soho"
-    if (prefix && !arg.startsWith(prefix)) {
-      return `${prefix}${arg}`;
-    }
-    return arg;
-  });
-}
-
-/**
- * Create a main function for a scraper entry point
- * Handles process exit codes and error logging
- */
-export function createMain(
-  config: ScraperRunnerConfig,
-  options?: RunnerOptions & { venuePrefix?: string }
-): () => Promise<void> {
-  return async () => {
-    const venueIds = parseVenueArgs(options?.venuePrefix);
-    const runnerOptions: RunnerOptions = {
-      ...options,
-      // Use CLI args if provided, otherwise use options.venueIds, defaulting to [] if neither
-      venueIds: venueIds.length > 0 ? venueIds : (options?.venueIds ?? []),
-    };
-
-    const result = await runScraper(config, runnerOptions);
-
-    if (!result.success) {
-      // runScraper's wrapper finally already flushed pending records inside
-      // its AsyncLocalStorage context — calling flushPendingRecords here
-      // would be a no-op (no active store) so we just exit.
-      process.exit(1);
-    }
-  };
 }

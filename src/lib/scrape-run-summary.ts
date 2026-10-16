@@ -9,9 +9,9 @@
  * network, no DB, no external service. See the local-only-no-off-mac
  * auto-memory rule.
  *
- * Atomic-write pattern (unique temp name + rename, swallow-and-warn on
- * failure) copied from scrape-progress.ts — see the 2026-06-11 rename-race
- * incident documented there.
+ * `atomicWrite` (unique temp name + rename) is shared with scrape-progress.ts
+ * and scrape-checkpoint.ts; see the 2026-06-11 rename-race incident
+ * documented in scrape-progress.ts.
  */
 import { promises as fs } from "node:fs";
 import { dirname, join } from "node:path";
@@ -100,7 +100,12 @@ const HISTORY_LIMIT = 20;
 /** Monotonic counter so concurrent writers in one process never share a temp file. */
 let writeSeq = 0;
 
-async function atomicWrite(path: string, content: string): Promise<void> {
+/**
+ * Write `content` to `path` via a unique temp file (pid + counter) and a
+ * rename, creating the parent directory first. Throws on failure after
+ * removing the temp file; callers decide whether to swallow and warn.
+ */
+export async function atomicWrite(path: string, content: string): Promise<void> {
   const tmp = `${path}.${process.pid}.${writeSeq++}.tmp`;
   await fs.mkdir(dirname(path), { recursive: true });
   try {
@@ -141,16 +146,6 @@ async function pruneHistory(): Promise<void> {
   const excess = files.slice(0, Math.max(0, files.length - HISTORY_LIMIT));
   for (const f of excess) {
     await fs.unlink(join(HISTORY_DIR, f)).catch(() => {});
-  }
-}
-
-/** Read the most recent run summary, or null if no run has written one yet. */
-export async function readRunSummary(): Promise<RunSummary | null> {
-  try {
-    const raw = await fs.readFile(SUMMARY_PATH, "utf8");
-    return JSON.parse(raw) as RunSummary;
-  } catch {
-    return null;
   }
 }
 

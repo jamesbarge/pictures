@@ -18,15 +18,5 @@
     "minYear": 1895,
     "maxYear": 2027,
     "maxRuntime": 600
-  },
-
-  "nonFilmDetection": {
-    "maxPatternsPerCategory": 30
-  },
-
-  "safetyFloors": {
-    "minAutoMergeSimilarity": 0.85,
-    "minTmdbConfidence": 0.6,
-    "maxNewNonFilmPatterns": 3
   }
 }

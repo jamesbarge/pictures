@@ -103,6 +103,8 @@ vi.mock("./utils/film-matching", () => ({
   initFilmCache: async () => ({}),
   // Resolves immediately, so getOrCreateFilm returns without a TMDB call.
   lookupFilmInCache: () => ({ id: "film-1", posterUrl: "https://example.invalid/p.jpg" }),
+  yearConflicts: () => false,
+  releaseYearHint: () => undefined,
   logCacheStats: () => {},
   findFilmBySimilarity: async () => null,
   matchAndCreateFromTMDB: async () => null,
