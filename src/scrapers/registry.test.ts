@@ -18,6 +18,7 @@ import {
   type ScraperWave,
 } from "./registry";
 import { NickelScraperV2 } from "./cinemas/nickel-v2";
+import { NickelScraper } from "./cinemas/the-nickel";
 import { RichMixScraperV2 } from "./cinemas/rich-mix-v2";
 
 describe("SCRAPER_REGISTRY", () => {
@@ -122,6 +123,17 @@ describe("SCRAPER_REGISTRY", () => {
       expect(scraper.config.cinemaId).toBe(cinemaId);
       expect(config.venue.id).toBe(cinemaId);
     }
+    // the-nickel.ts is the pre-v2 class. It must not write a second cinema id.
+    expect(new NickelScraper().config.cinemaId).toBe("the-nickel");
+    const nickelVenueIds = SCRAPER_REGISTRY.filter((entry) => entry.wave !== "enrichment")
+      .flatMap((entry) => {
+        const built = entry.buildConfig();
+        if (built.type === "chain") return built.venues.map((venue) => venue.id);
+        if (built.type === "multi") return built.venues.map((venue) => venue.id);
+        return [built.venue.id];
+      })
+      .filter((id) => id === "nickel" || id === "the-nickel");
+    expect(nickelVenueIds).toEqual(["the-nickel"]);
   });
 
   it("buildConfig is lazy — calling it succeeds without throwing for every non-enrichment entry", () => {
