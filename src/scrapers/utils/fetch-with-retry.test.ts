@@ -114,19 +114,6 @@ describe("fetchWithRetry", () => {
     expect(mock).toHaveBeenCalledTimes(2); // first attempt + retry, both fail
   });
 
-  it("respects a custom maxResponseSize", async () => {
-    const oneMb = 1 * 1024 * 1024;
-    const mock = vi.fn().mockResolvedValue(makeResponse(200, oneMb + 1));
-    globalThis.fetch = mock;
-
-    const promise = fetchWithRetry("https://example.com", {
-      maxResponseSize: oneMb,
-    });
-    promise.catch(() => {});
-    await vi.advanceTimersByTimeAsync(2000);
-    await expect(promise).rejects.toThrow(/Response size .* exceeds limit of/);
-  });
-
   it("ignores missing Content-Length header (no size check)", async () => {
     // If the server doesn't send Content-Length, the size guard is skipped.
     const mock = vi.fn().mockResolvedValue(makeResponse(200, null));

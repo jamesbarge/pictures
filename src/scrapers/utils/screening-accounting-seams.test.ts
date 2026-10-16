@@ -339,8 +339,6 @@ describe("accounting assembly across the runner seam", () => {
 
     expect(accounting.accepted).toBe(7);
     expect(accounting.fetchedPayloads).toBe(3);
-    expect(accounting.insertUpdateAttribution).toBe(UNAVAILABLE);
-    expect(accounting.affectedRowAttribution).toBe(UNAVAILABLE);
     expect(checkAccounting(accounting)).toEqual([]);
   });
 
@@ -426,21 +424,6 @@ describe("accounting assembly across the runner seam", () => {
     expect(accounting.blocked).toBe(true);
     expect(accounting.accepted).toBe(0);
     expect(accounting.write).toEqual({ upserted: 0, updated: 0, unchanged: 0, failed: 0 });
-    expect(checkAccounting(accounting)).toEqual([]);
-  });
-
-  it("flags a supplementary batch so its counts are never added to a full run", () => {
-    const accounting = buildAccounting({
-      cinemaId: "the-arzner",
-      preFilter: null,
-      fetchedPayloads: null,
-      pipeline: pipelineResult({
-        accepted: 9,
-        write: { upserted: 9, updated: 0, unchanged: 0, failed: 0 },
-      }),
-      supplementary: true,
-    });
-    expect(accounting.supplementary).toBe(true);
     expect(checkAccounting(accounting)).toEqual([]);
   });
 

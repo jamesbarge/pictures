@@ -23,6 +23,7 @@ import type { RawScreening, ScraperConfig } from "../types";
 import type { CheerioAPI } from "../utils/cheerio-types";
 import { parseScreeningTime, ukLocalToUTC } from "../utils/date-parser";
 import { FestivalDetector } from "../festivals/festival-detector";
+import { addDaysToDateString, londonDateString } from "@/lib/london-date";
 
 /**
  * Number of days ahead to scrape from today (London calendar days).
@@ -50,36 +51,6 @@ const RETRY_BACKOFF_MS = 4_000;
 /** Emit a progress line every N day pages instead of one line per request. */
 const PROGRESS_EVERY = 10;
 
-/**
- * YYYY-MM-DD in Europe/London, `offset` calendar days after `from`'s London
- * date. Anchors the arithmetic at NOON UTC (13:00 London in BST — always inside
- * the same calendar day) so stepping never skips or duplicates a day across a
- * BST↔GMT transition.
- *
- * Replaces `new Date().toISOString().split("T")[0]` plus `setDate()`, which read
- * the *UTC* date: run between 23:00 and 00:00 London during BST it started the
- * walk on yesterday, wasting a request on a day whose screenings are all in the
- * past and shaving a day off the far end.
- *
- * (`src/scrapers/platforms/indy.ts` carries a private copy of this helper;
- * consolidating the two into `utils/date-parser.ts` is a follow-up.)
- */
-function londonDateKey(from: Date, offset: number): string {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/London",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(from);
-  const num = (t: string) => Number(parts.find((p) => p.type === t)!.value);
-  // Date.UTC normalizes day-of-month overflow (e.g. day 32 → next month).
-  const anchored = new Date(Date.UTC(num("year"), num("month") - 1, num("day") + offset, 12));
-  const yyyy = anchored.getUTCFullYear();
-  const mm = String(anchored.getUTCMonth() + 1).padStart(2, "0");
-  const dd = String(anchored.getUTCDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-}
-
 export class BarbicanScraper extends BaseScraper {
   config: ScraperConfig = {
     cinemaId: "barbican",
@@ -93,7 +64,9 @@ export class BarbicanScraper extends BaseScraper {
     const now = new Date();
 
     for (let i = 0; i < DAYS_AHEAD; i++) {
-      const dateStr = londonDateKey(now, i);
+      // London calendar days (noon-anchored, DST-safe). A UTC date would start
+      // the walk on yesterday between 23:00 and 00:00 London during BST.
+      const dateStr = addDaysToDateString(londonDateString(now), i);
       const url = `${this.config.baseUrl}/whats-on/cinema?day=${dateStr}`;
 
       const html = await this.fetchDayPage(url);
