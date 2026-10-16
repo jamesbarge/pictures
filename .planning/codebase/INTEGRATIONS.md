@@ -103,14 +103,6 @@
 
 ## Background Jobs
 
-**Job Queue:**
-- Inngest - Async task processing
-  - Client: `src/inngest/client.ts`
-  - Functions: `src/inngest/functions.ts`
-  - API: `src/app/api/inngest/route.ts`
-  - Auth: `INNGEST_EVENT_KEY`, `INNGEST_SIGNING_KEY`
-  - Use cases: Scraping, enrichment, cleanup
-
 **AI Agents:**
 - Claude Agent SDK - Data quality automation
   - Package: `@anthropic-ai/claude-agent-sdk`
@@ -155,10 +147,6 @@
   - Events: user.created, user.updated, user.deleted, session.created
   - Handler: `src/app/api/webhooks/clerk/route.ts`
 
-- Inngest - `/api/inngest`
-  - Verification: Inngest SDK signature
-  - Events: Scraping triggers, job completions
-
 **Outgoing:**
 - Slack (optional) - Scraper alerts
   - Config: `SLACK_WEBHOOK_URL` env var
@@ -175,7 +163,6 @@
 | Clerk | Authentication | `NEXT_PUBLIC_CLERK_*` |
 | PostHog | Analytics | `NEXT_PUBLIC_POSTHOG_KEY` |
 | Sentry | Error tracking | `SENTRY_DSN` |
-| Inngest | Background jobs | `INNGEST_*_KEY` |
 | Google Maps | Maps & travel times | `GOOGLE_MAPS_API_KEY` |
 | Claude | AI agents | `ANTHROPIC_API_KEY` |
 
