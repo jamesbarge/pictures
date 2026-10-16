@@ -1004,3 +1004,40 @@ describe("idempotency over the 534 unmatched titles of 2026-10-04", () => {
     expect(unstable).toEqual([]);
   });
 });
+
+describe("colon suffixes that only describe the screening (2026-10-15 run)", () => {
+  it.each([
+    ["Short Cuts : 35mm Roadshow Tour", "Short Cuts"],
+    ["Dracula: 4K Restoration", "Dracula"],
+    ["Donnie Darko: 25th Anniversary VHS Screening", "Donnie Darko"],
+    ["The Hunger Games: Marathon Screening", "The Hunger Games"],
+    ["Dracula: Restored and Uncut + extended intro", "Dracula"],
+    // A trailing year or rating must not stop the strip ("Dracula:" otherwise).
+    ["Dracula: 4K Restoration (1931)", "Dracula"],
+    ["Short Cuts : 35mm Roadshow Tour (18)", "Short Cuts"],
+  ])("keeps the film half of %s", (raw, expected) => {
+    expect(cleanFilmTitle(raw)).toBe(expected);
+  });
+
+  it.each([
+    "Halloween III: Season of the Witch",
+    "Halloween H20: 20 Years Later",
+    "Dracula: Prince of Darkness",
+    "Elvis: That's the Way It Is",
+    "George Michael: The Faith Tour",
+  ])("keeps %s whole", (title) => {
+    expect(cleanFilmTitle(title)).toBe(title);
+  });
+
+  it.each([
+    // One noise word can be a real title (Restoration, 1995).
+    ["Film Club: Restoration", "Restoration"],
+    // A dangling connector is not a second noise word.
+    ["Kino Klub: Restoration &", "Restoration &"],
+    ["DocHouse: Avedon", "Avedon"],
+    // Halloween event prefixes still strip; only the sequel titles stay whole.
+    ["Halloween Special: Hocus Pocus", "Hocus Pocus"],
+  ])("still strips the event prefix in %s", (raw, expected) => {
+    expect(cleanFilmTitle(raw)).toBe(expected);
+  });
+});

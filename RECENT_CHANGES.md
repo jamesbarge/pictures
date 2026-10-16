@@ -1,3 +1,10 @@
+## 2026-10-16: Title cleaner keeps the film half of screening-description colons
+**PR**: #816 | **Files**: `src/scrapers/utils/film-title-cleaner.ts`, `src/scrapers/utils/film-title-cleaner.test.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`
+- A colon suffix of two or more screening words (anniversary, restoration, uncut, roadshow, tour, marathon, VHS, 35mm, 4K and similar) is stripped before the generic colon rule runs. "Short Cuts : 35mm Roadshow Tour" now cleans to Short Cuts and "Dracula: 4K Restoration" to Dracula. This replaces the one-off ": 4K Restoration Premiere" rule.
+- Halloween III, Halloween H20, Dracula, Elvis and Evangelion join the franchise list, so "Halloween III: Season of the Witch" and "Elvis: That's the Way It Is" keep their full titles.
+- In the 2026-10-15 run this left 7 films (12 upcoming screenings) without a TMDB match, among them PCC's four Short Cuts screenings filed as "Roadshow Tour", and matched "That's the Way It Is" to a 2018 film. A replay of 2,520 titles changes only the 11 intended titles.
+
+---
 ## 2026-10-16: One Nickel, and titles without access notes
 **PR**: #815 | **Files**: `src/db/migrations/canonicalize-cinema-ids.ts`, `src/lib/title-extraction/patterns.ts`, `src/scrapers/utils/screening-classification.ts`
 - The duplicate Nickel rows and Rio's `Paddington &amp; Storytime` come from the orphaned Inngest cron (06:00 UTC daily) running a pre-#478 deployment. Current scrapers write `the-nickel` and already decode the entity.

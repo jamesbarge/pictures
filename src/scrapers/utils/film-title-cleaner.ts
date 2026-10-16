@@ -484,6 +484,17 @@ const PLUS_WORD_QA = new RegExp(
 );
 
 /**
+ * ": 35mm Roadshow Tour" / ": 4K Restoration" — a colon suffix of 2+ words that only describe
+ * the screening. "and"/"&" may join two of them ("Restored and Uncut"). It may be followed by
+ * a "+ ..." tail, a "(1931)" year or a "[...]" note, which the later rules handle.
+ */
+const NOISE_WORD = String.raw`(?:\d+(?:st|nd|rd|th)|4k|16mm|35mm|70mm|vhs|imax|anniversary|restoration|restored|remastered|uncut|roadshow|tour|marathon|screening|premiere)`;
+const SCREENING_NOISE_COLON_SUFFIX = new RegExp(
+  String.raw`\s*:\s*${NOISE_WORD}(?:\s+(?:(?:and|&)\s+)?${NOISE_WORD})+(?=\s*(?:[+(\[]|$))`,
+  "i",
+);
+
+/**
  * Clean a film title and return metadata about what was stripped.
  *
  * Returns the cleaned title along with the stripped prefix and suffix,
@@ -524,12 +535,14 @@ export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
   // Strip "on 16mm" / "on 35mm" / "on 70mm" film format suffixes (PCC/Lost Reels style)
   cleaned = cleaned.replace(/\s+on\s+(16mm|35mm|70mm)\s*$/i, "").trim();
 
-  // Strip ": 4K Restoration Premiere" / similar format-noise colon suffixes
-  // BEFORE the generic colon handler. The colon handler would otherwise
-  // mis-identify "Vampire's Kiss" as the event prefix and "4K Restoration
-  // Premiere" as the real title (because "Vampire's Kiss" is 2 words and the
-  // after-colon is longer). Strip the noise here so the handler doesn't see it.
-  cleaned = cleaned.replace(/\s*:\s*4k\s+restoration\s+premiere\s*$/i, "").trim();
+  // Strip colon suffixes that only describe the screening (": 4K Restoration
+  // Premiere", ": 35mm Roadshow Tour", ": 25th Anniversary VHS Screening")
+  // BEFORE the generic colon handler. The colon handler would otherwise take
+  // "Vampire's Kiss" or "Short Cuts" as the event prefix and the noise as the
+  // title, because the film half is 3 words or fewer. Two or more noise words
+  // are required, so a real one-word title such as ": Restoration" survives.
+  // A trailing "+ extended intro" is left for the plus-sign rules below.
+  cleaned = cleaned.replace(SCREENING_NOISE_COLON_SUFFIX, "").trim();
   // Same reason for ": The Director's Cut": "Brazil: Director's Cut" would
   // otherwise come out as "Director's Cut". A director's cut also drops its
   // two- or three-word possessive credit ("Ken Russell's The Devils: The
@@ -551,7 +564,7 @@ export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
     const afterColon = colonMatch[2].trim();
 
     // Check if before-colon looks like a film series/franchise (keep these intact)
-    const isFilmSeries = /^(star\s+wars|indiana\s+jones|harry\s+potter|lord\s+of\s+the\s+rings|mission(?:\s+impossible|$)|pirates\s+of\s+the\s+caribbean|fast\s+(&|and)\s+furious|jurassic\s+(park|world)|the\s+matrix|batman|spider[\s-]?man|x[\s-]?men|avengers|guardians\s+of\s+the\s+galaxy|toy\s+story|shrek|finding\s+(nemo|dory)|the\s+dark\s+knight|alien|terminator|mad\s+max|back\s+to\s+the\s+future|die\s+hard|lethal\s+weapon|home\s+alone|rocky|rambo|the\s+godfather|twin\s+peaks|blade\s+runner|john\s+wick|planet\s+of\s+the\s+apes|dune|jlg\s*\/?\s*jlg|bookish)/i.test(beforeColon);
+    const isFilmSeries = /^(star\s+wars|indiana\s+jones|harry\s+potter|lord\s+of\s+the\s+rings|mission(?:\s+impossible|$)|pirates\s+of\s+the\s+caribbean|fast\s+(&|and)\s+furious|jurassic\s+(park|world)|the\s+matrix|batman|spider[\s-]?man|x[\s-]?men|avengers|guardians\s+of\s+the\s+galaxy|toy\s+story|shrek|finding\s+(nemo|dory)|the\s+dark\s+knight|alien|terminator|mad\s+max|back\s+to\s+the\s+future|die\s+hard|lethal\s+weapon|home\s+alone|rocky|rambo|the\s+godfather|twin\s+peaks|blade\s+runner|john\s+wick|planet\s+of\s+the\s+apes|dune|jlg\s*\/?\s*jlg|bookish|halloween\s+(?:iii|h20)|dracula$|elvis$|evangelion$)/i.test(beforeColon);
 
     // Check if before-colon is a known event-type word pattern
     const isEventPattern = /^(season|series|part|episode|chapter|vol(ume)?|act|double\s+feature|marathon|retrospective|tribute|celebration|anniversary|special|presents?|screening|showing|feature)/i.test(beforeColon);
