@@ -6,7 +6,6 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { ScreeningFilters } from "./screening";
 
 // Create a chainable mock that handles all query patterns.
 // The chain is thenable so `await` terminates at any step (mimics Drizzle).
@@ -29,40 +28,6 @@ vi.mock("@/db", () => ({
     select: vi.fn(() => createQueryChain()),
   },
 }));
-
-describe("ScreeningFilters", () => {
-  describe("type validation", () => {
-    it("should accept valid filter object", () => {
-      const filters: ScreeningFilters = {
-        startDate: new Date("2024-01-01"),
-        endDate: new Date("2024-01-31"),
-        cinemaIds: ["cinema-1", "cinema-2"],
-        formats: ["35mm", "dcp"],
-        isRepertory: true,
-        festivalOnly: false,
-      };
-
-      expect(filters.startDate).toBeInstanceOf(Date);
-      expect(filters.endDate).toBeInstanceOf(Date);
-      expect(filters.cinemaIds).toHaveLength(2);
-      expect(filters.formats).toHaveLength(2);
-      expect(filters.isRepertory).toBe(true);
-      expect(filters.festivalOnly).toBe(false);
-    });
-
-    it("should allow optional filters", () => {
-      const filters: ScreeningFilters = {
-        startDate: new Date(),
-        endDate: new Date(),
-      };
-
-      expect(filters.cinemaIds).toBeUndefined();
-      expect(filters.formats).toBeUndefined();
-      expect(filters.isRepertory).toBeUndefined();
-      expect(filters.festivalOnly).toBeUndefined();
-    });
-  });
-});
 
 describe("screeningWithDetailsSelect", () => {
   it("should export the select object", async () => {
@@ -162,21 +127,5 @@ describe("getScreeningsBySeason", () => {
     expect(result).toHaveProperty("season");
     expect(result).toHaveProperty("screenings");
     expect(Array.isArray(result.screenings)).toBe(true);
-  });
-});
-
-describe("getRecentScreeningsForCinema", () => {
-  it("should be an async function", async () => {
-    const { getRecentScreeningsForCinema } = await import("./screening");
-
-    expect(typeof getRecentScreeningsForCinema).toBe("function");
-  });
-
-  it("should return an array", async () => {
-    const { getRecentScreeningsForCinema } = await import("./screening");
-
-    const result = await getRecentScreeningsForCinema("test-cinema-id");
-
-    expect(Array.isArray(result)).toBe(true);
   });
 });

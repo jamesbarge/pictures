@@ -310,23 +310,3 @@ export async function getScreeningsWithCursor(
     hasMore,
   };
 }
-
-/**
- * Get recent screenings for a specific cinema
- * Used for cinema health checks and verification
- */
-export async function getRecentScreeningsForCinema(
-  cinemaId: string,
-  limit = 50
-): Promise<ScreeningWithDetails[]> {
-  const now = new Date();
-
-  return db
-    .select(screeningWithDetailsSelect)
-    .from(screenings)
-    .innerJoin(films, eq(screenings.filmId, films.id))
-    .innerJoin(cinemas, eq(screenings.cinemaId, cinemas.id))
-    .where(and(eq(screenings.cinemaId, cinemaId), gte(screenings.datetime, now)))
-    .orderBy(screenings.datetime)
-    .limit(limit);
-}

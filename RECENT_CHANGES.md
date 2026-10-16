@@ -1,3 +1,12 @@
+## 2026-10-04: Remove dead exports and fields in src/lib and src/db
+**PR**: #788 | **Files**: `src/lib/posthog-api.ts`, `src/lib/scrape-quarantine.ts`, `src/lib/scrape-run-summary.ts`, `src/lib/event-classifier.ts`, `src/lib/api-errors.ts`, `src/lib/tmdb/*`, `src/lib/posters/*`, `src/db/backfill-posters.ts`, `src/db/enrich-letterboxd.ts`, `src/db/schema/*.ts`
+- Deletes exports, fields and helpers that nothing calls or that only their own tests call: `batchMatchFilms`, `getBackdropUrl`, `getFilmVideos`, `findPostersForMany`, `verifyCronSecret`, `RateLimitError`, four PostHog REST wrappers, the two classifier memo caches, the unread `cleanTitle`/`confidence`/`posterStrategy` fields and 36 unused Drizzle type aliases.
+- `scrape-progress`, `scrape-checkpoint` and `scrape-run-summary` now share one `atomicWrite` with the same pid+counter temp names. A progress stamp after `tmp/` is deleted mid-run now succeeds on the first write.
+- `db:classify-events` drops the 13 s per-film sleep left from the Gemini rate limit; the classifier is pure regex.
+- 66 files, about 1,560 net lines removed. 2,502 tests pass, lint 0 errors / 61 warnings, tsc clean.
+
+---
+
 ## 2026-10-04: Remove the legacy React site from the root Next.js app
 **PR**: #787 | **Files**: `next.config.ts`, `src/app/layout.tsx`, `public/robots.txt`, `.github/workflows/test.yml`, `package.json`
 - api.pictures.london now serves only the API, the admin dashboard and Clerk sign-in. The 16 legacy page routes, 82 React components, the zustand stores, 7 hooks and the helpers only they used are deleted: 190 files and about 32,700 lines.

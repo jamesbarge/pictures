@@ -115,7 +115,5 @@ export const seasonFilms = pgTable(
 
 // Type exports
 export type SeasonInsert = typeof seasons.$inferInsert;
-export type SeasonSelect = typeof seasons.$inferSelect;
 
 export type SeasonFilmInsert = typeof seasonFilms.$inferInsert;
-export type SeasonFilmSelect = typeof seasonFilms.$inferSelect;
