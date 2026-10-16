@@ -7,17 +7,15 @@
  *   - Elements exceeding viewport bounds
  *   - Touch target sizing (WCAG 2.5.8: 24px minimum)
  *   - Dropdown/panel containment
- *   - AI visual assessment via Stagehand extract()
  *
  * Usage:
  *   npx tsx scripts/audit/mobile-audit.ts                 # test against localhost:5173
  *   npx tsx scripts/audit/mobile-audit.ts --prod          # test against pictures.london
- *   npx tsx scripts/audit/mobile-audit.ts --no-ai         # skip Stagehand visual checks
+ *   npx tsx scripts/audit/mobile-audit.ts --no-ai         # accepted and ignored (the AI check was removed)
  *   npx tsx scripts/audit/mobile-audit.ts --screenshots   # save screenshots for each page
  *
  * Prerequisites:
  *   - Frontend dev server running (npm run dev in frontend/)
- *   - @browserbasehq/stagehand installed (for --ai visual checks)
  */
 
 import { chromium, type Browser, type BrowserContext, type Page } from "rebrowser-playwright";
@@ -28,7 +26,6 @@ import * as path from "path";
 
 const args = process.argv.slice(2);
 const USE_PROD = args.includes("--prod");
-const SKIP_AI = args.includes("--no-ai");
 const SAVE_SCREENSHOTS = args.includes("--screenshots");
 
 const BASE_URL = USE_PROD ? "https://pictures.london" : "http://localhost:5173";
@@ -322,63 +319,6 @@ async function checkDropdowns(page: Page, route: string, viewport: Viewport): Pr
   return issues;
 }
 
-// ── Stagehand AI Visual Check ──────────────────────────────────────
-
-async function runAiVisualCheck(
-  page: Page,
-  route: string,
-  viewport: Viewport,
-  stagehandInstance: InstanceType<typeof StagehandClass> | null
-): Promise<MobileIssue[]> {
-  if (SKIP_AI || !stagehandInstance) return [];
-
-  const issues: MobileIssue[] = [];
-
-  try {
-    // Stagehand uses its own browser — access its page via internal context API.
-    // Note: .context is not part of Stagehand's public API; wrapped in try/catch for safety.
-    const stagehandPages = stagehandInstance.context.pages();
-    const stagehandPage = stagehandPages[0];
-    await stagehandPage.setViewportSize({ width: viewport.width, height: viewport.height });
-    await stagehandPage.goto(`${BASE_URL}${route}`, { waitUntil: "networkidle", timeout: 15000 });
-    await stagehandPage.waitForTimeout(1500);
-
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const z3 = require("zod/v3");
-    const VisualSchema = z3.object({
-      hasOverflow: z3.boolean().describe("Does any content appear cut off or extend beyond the right edge of the screen?"),
-      hasReadabilityIssues: z3.boolean().describe("Is any text too small to read comfortably on a phone, or overlapping other text?"),
-      hasTouchIssues: z3.boolean().describe("Are any buttons, links, or interactive elements too small to tap easily with a finger?"),
-      hasLayoutIssues: z3.boolean().describe("Are any elements misaligned, overlapping, or poorly spaced for a mobile screen?"),
-      observations: z3.array(z3.string()).describe("List specific visual issues you notice. Be concise."),
-    });
-
-    const result = await stagehandInstance.extract({
-      instruction: `You are reviewing a mobile website at ${viewport.width}px width. Look at the visible page and identify any visual issues with the layout, readability, touch targets, or content overflow. Be specific about what looks wrong.`,
-      schema: VisualSchema,
-    });
-
-    if (result.hasOverflow || result.hasReadabilityIssues || result.hasTouchIssues || result.hasLayoutIssues) {
-      for (const obs of result.observations) {
-        issues.push({
-          severity: "warning",
-          viewport: viewport.name,
-          route,
-          category: "ai_visual",
-          message: obs,
-        });
-      }
-    }
-  } catch (err) {
-    log(`  ⚠ AI visual check failed for ${route}@${viewport.name}: ${err instanceof Error ? err.message : err}`);
-  }
-
-  return issues;
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let StagehandClass: any = null;
-
 // ── Report Generator ───────────────────────────────────────────────
 
 function generateReport(issues: MobileIssue[], durationMs: number): string {
@@ -448,29 +388,6 @@ async function main() {
   log(`Target: ${BASE_URL}`);
   log(`Viewports: ${VIEWPORTS.map((v) => `${v.name} (${v.width}x${v.height})`).join(", ")}`);
   log(`Routes: ${ROUTES.length}`);
-  log(`AI visual checks: ${SKIP_AI ? "disabled" : "enabled"}`);
-
-  // Optionally init Stagehand for AI visual checks
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let stagehand: any = null;
-  if (!SKIP_AI) {
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const mod = require("@browserbasehq/stagehand");
-      StagehandClass = mod.Stagehand;
-      stagehand = new StagehandClass({
-        env: "LOCAL",
-        model: "google/gemini-2.0-flash",
-        verbose: 0,
-        localBrowserLaunchOptions: { headless: true },
-      });
-      await stagehand.init();
-      log("Stagehand initialized for AI visual checks");
-    } catch (err) {
-      log(`⚠ Stagehand not available — skipping AI visual checks (${err instanceof Error ? err.message : err})`);
-      stagehand = null;
-    }
-  }
 
   // Create screenshot dir if needed
   if (SAVE_SCREENSHOTS) {
@@ -512,11 +429,10 @@ async function main() {
         const boundsIssues = await checkElementBounds(page, route, viewport);
         const touchIssues = await checkTouchTargets(page, route, viewport);
         const dropdownIssues = await checkDropdowns(page, route, viewport);
-        const aiIssues = await runAiVisualCheck(page, route, viewport, stagehand);
 
-        allIssues.push(...overflowIssues, ...boundsIssues, ...touchIssues, ...dropdownIssues, ...aiIssues);
+        allIssues.push(...overflowIssues, ...boundsIssues, ...touchIssues, ...dropdownIssues);
 
-        const routeTotal = overflowIssues.length + boundsIssues.length + touchIssues.length + dropdownIssues.length + aiIssues.length;
+        const routeTotal = overflowIssues.length + boundsIssues.length + touchIssues.length + dropdownIssues.length;
         if (routeTotal > 0) {
           log(`    → ${routeTotal} issues found`);
         }
@@ -536,10 +452,6 @@ async function main() {
   }
 
   await browser.close();
-
-  if (stagehand) {
-    try { await stagehand.close(); } catch { /* ignore */ }
-  }
 
   // ── Report ─────────────────────────────────────────────────────
 

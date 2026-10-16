@@ -25,7 +25,9 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/db", () => ({
   db: {
-    select: () => ({ from: () => Promise.resolve(mocks.filmRows) }),
+    select: () => ({ from: () => Object.assign(Promise.resolve(mocks.filmRows), {
+      where: () => ({ groupBy: () => Promise.resolve([]) }),
+    }) }),
     execute: async () => mocks.pgRows,
   },
   withDbTimeout: <T>(promise: Promise<T>) => promise,

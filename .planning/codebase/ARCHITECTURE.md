@@ -9,7 +9,6 @@
 **Key Characteristics:**
 - Next.js App Router for SSR/SSG pages and API routes
 - Data scraping pipeline separate from web serving
-- Event-driven background jobs via Inngest
 - Client-side state with cloud sync capability
 - Multi-source data enrichment (TMDB, OMDB, Fanart.tv)
 
@@ -48,7 +47,7 @@
 - Contains: Scraper classes, pipeline, validators
 - Location: `src/scrapers/`
 - Depends on: Cheerio, Playwright, pipeline
-- Used by: CLI commands, Inngest jobs
+- Used by: CLI commands
 
 **Agent Layer:**
 - Purpose: AI-powered data quality automation
@@ -78,7 +77,7 @@
 
 **Scraping Flow:**
 
-1. CLI: `npm run scrape:bfi` or Inngest event
+1. CLI: `npm run scrape:bfi`
 2. `src/scrapers/run-bfi.ts` orchestrates
 3. Scraper fetches pages (Playwright or Cheerio)
 4. Raw screenings extracted and validated

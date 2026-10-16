@@ -35,10 +35,9 @@ filmcal2/
 │   │   ├── cinemas/            # Independent cinemas (BFI, PCC, ICA, etc.)
 │   │   └── utils/              # Date parsing, title extraction
 │   │
-│   ├── agents/                 # Data quality agents (Claude SDK)
-│   │   ├── enrichment/         # TMDB matching, title extraction
-│   │   ├── link-validator/     # Booking URL verification
-│   │   └── scraper-health/     # Anomaly detection
+│   ├── agents/                 # Data quality agents
+│   │   ├── enrichment/         # TMDB matching via DeepSeek
+│   │   └── data-quality/       # Deterministic checks (agents:verify)
 │   │
 │   ├── db/                     # Database layer
 │   │   ├── schema/             # Drizzle schema (films, screenings, cinemas)
