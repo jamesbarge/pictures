@@ -1,3 +1,9 @@
+## 2026-10-16: Remove Inngest from the docs
+**PR**: #817 | **Files**: `README.md`, `.planning/codebase/*.md`
+- The README no longer lists Inngest (daily) and GitHub Actions (weekly) as the scrape schedule. Every scrape runs from the Mac via `npm run scrape:unified`.
+- The codebase maps drop the deleted `src/inngest/` and `/api/inngest`. The orphaned Inngest app itself was archived on 16 Oct.
+
+---
 ## 2026-10-16: Title cleaner keeps the film half of screening-description colons
 **PR**: #816 | **Files**: `src/scrapers/utils/film-title-cleaner.ts`, `src/scrapers/utils/film-title-cleaner.test.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`
 - A colon suffix of two or more screening words (anniversary, restoration, uncut, roadshow, tour, marathon, VHS, 35mm, 4K and similar) is stripped before the generic colon rule runs. "Short Cuts : 35mm Roadshow Tour" now cleans to Short Cuts and "Dracula: 4K Restoration" to Dracula. This replaces the one-off ": 4K Restoration Premiere" rule.
