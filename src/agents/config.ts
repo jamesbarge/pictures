@@ -1,14 +1,5 @@
 /**
- * Agent SDK configuration and setup
- *
- * This module provides the configuration for running Claude agents
- * with cinema-specific tools and capabilities.
- */
-
-import type { AgentConfig } from "./types";
-
-/**
- * System prompt for all cinema data quality agents
+ * System prompt for the DeepSeek enrichment agent
  */
 export const CINEMA_AGENT_SYSTEM_PROMPT = `You are a data quality agent for a London cinema calendar application.
 Your job is to ensure listing accuracy, link validity, and data integrity.
@@ -49,49 +40,3 @@ Your job is to ensure listing accuracy, link validity, and data integrity.
 - Only flag for human review when truly uncertain
 
 When in doubt, err on the side of fixing issues. The user prefers fast iteration over perfect accuracy.`;
-
-/**
- * Environment check for API key
- */
-export function validateEnvironment(): void {
-  if (!process.env.GEMINI_API_KEY) {
-    throw new Error(
-      "GEMINI_API_KEY environment variable is required for agents"
-    );
-  }
-}
-
-/**
- * Cost tracking for agent runs
- */
-interface CostTracker {
-  inputTokens: number;
-  outputTokens: number;
-  estimatedCostUsd: number;
-}
-
-/**
- * Calculate estimated cost based on token usage
- * Prices as of 2025 (approximate)
- */
-export function calculateCost(
-  model: AgentConfig["model"],
-  inputTokens: number,
-  outputTokens: number
-): CostTracker {
-  const prices = {
-    "claude-opus-4-5-20251101": { input: 0.015, output: 0.075 }, // per 1K tokens
-    "claude-sonnet-4-20250514": { input: 0.003, output: 0.015 },
-    "claude-3-5-haiku-20241022": { input: 0.0008, output: 0.004 },
-  };
-
-  const price = prices[model];
-  const cost =
-    (inputTokens / 1000) * price.input + (outputTokens / 1000) * price.output;
-
-  return {
-    inputTokens,
-    outputTokens,
-    estimatedCostUsd: Math.round(cost * 10000) / 10000, // 4 decimal places
-  };
-}

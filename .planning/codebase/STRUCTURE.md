@@ -14,7 +14,6 @@ filmcal2/
 │   ├── scrapers/             # Cinema data extraction
 │   ├── stores/               # Zustand state stores
 │   ├── agents/               # AI data quality agents
-│   ├── inngest/              # Background job definitions
 │   ├── hooks/                # React hooks
 │   ├── types/                # TypeScript type definitions
 │   └── test/                 # Test utilities and setup
@@ -112,13 +111,6 @@ filmcal2/
   - `link-validator/` - Booking URL verification
   - `scraper-health/` - Anomaly detection
   - `enrichment/` - Film metadata enrichment
-
-**src/inngest/**
-- Purpose: Background job definitions
-- Contains: Inngest function definitions
-- Key files:
-  - `client.ts` - Inngest client configuration
-  - `functions.ts` - Job definitions (scraping, enrichment)
 
 **src/hooks/**
 - Purpose: Custom React hooks

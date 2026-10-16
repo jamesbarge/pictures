@@ -10,10 +10,9 @@
  *   2. Identify & reclassify non-film content
  *   3. Duplicate detection & merge (shells out to cleanup-duplicate-films)
  *   4. Title cleanup + TMDB matching + metadata fill + Letterboxd (shells out to cleanup:upcoming)
- *   5. Fallback enrichment (shells out to agents:fallback-enrich)
- *   6. Poster audit & fix (shells out to poster:audit)
- *   7. Dodgy entry detection & flagging
- *   8. Final audit (comparison report)
+ *   5. Poster audit & fix (shells out to poster:audit)
+ *   6. Dodgy entry detection & flagging
+ *   7. Final audit (comparison report)
  *
  * Usage:
  *   npx dotenv -e .env.local -- npx tsx scripts/audit-and-fix-upcoming.ts
@@ -112,13 +111,9 @@ function shouldRun(pass: number): boolean {
  * Shell out to an npm script safely using execFileSync (no shell injection).
  * All arguments are passed as array elements, never interpolated into a shell string.
  */
-function runNpmScript(
-  script: string,
-  extraArgs: string[] = [],
-  forwardsExecute = true,
-): void {
+function runNpmScript(script: string, extraArgs: string[] = []): void {
   const scriptArgs = ["run", script, "--"];
-  if (!DRY_RUN && forwardsExecute) scriptArgs.push("--execute");
+  if (!DRY_RUN) scriptArgs.push("--execute");
   scriptArgs.push(...extraArgs);
 
   console.log(`\n  $ npm ${scriptArgs.join(" ")}\n`);
@@ -263,35 +258,20 @@ function pass4CleanupUpcoming(): void {
 }
 
 // ---------------------------------------------------------------------------
-// Pass 5: Fallback Enrichment
+// Pass 5: Poster Audit & Fix
 // ---------------------------------------------------------------------------
 
-function pass5FallbackEnrichment(): void {
-  banner(5, "Fallback Enrichment for Remaining Unmatched Films");
-
-  if (DRY_RUN) {
-    console.log("  [dry-run] Would run: npm run agents:fallback-enrich -- --dry");
-    return;
-  }
-
-  runNpmScript("agents:fallback-enrich", ["100"], false);
-}
-
-// ---------------------------------------------------------------------------
-// Pass 6: Poster Audit & Fix
-// ---------------------------------------------------------------------------
-
-function pass6PosterAudit(): void {
-  banner(6, "Poster Audit & Fix");
+function pass5PosterAudit(): void {
+  banner(5, "Poster Audit & Fix");
   runNpmScript("poster:audit", ["--upcoming-only"]);
 }
 
 // ---------------------------------------------------------------------------
-// Pass 7: Dodgy Entry Detection
+// Pass 6: Dodgy Entry Detection
 // ---------------------------------------------------------------------------
 
-async function pass7DodgyDetection(): Promise<DodgyEntry[]> {
-  banner(7, "Dodgy Entry Detection & Flagging");
+async function pass6DodgyDetection(): Promise<DodgyEntry[]> {
+  banner(6, "Dodgy Entry Detection & Flagging");
 
   const now = new Date();
 
@@ -418,11 +398,11 @@ async function pass7DodgyDetection(): Promise<DodgyEntry[]> {
 }
 
 // ---------------------------------------------------------------------------
-// Pass 8: Final Audit (comparison)
+// Pass 7: Final Audit (comparison)
 // ---------------------------------------------------------------------------
 
-async function pass8FinalAudit(baseline: AuditSummary | null): Promise<void> {
-  banner(8, "Final Audit & Comparison");
+async function pass7FinalAudit(baseline: AuditSummary | null): Promise<void> {
+  banner(7, "Final Audit & Comparison");
 
   const { auditFilmData } = await import("../src/scripts/audit-film-data");
   const result = await auditFilmData(true);
@@ -532,37 +512,28 @@ async function main() {
     }
   }
 
-  // Pass 5: Fallback enrichment
+  // Pass 5: Poster audit
   if (shouldRun(5)) {
     try {
-      pass5FallbackEnrichment();
-    } catch (error) {
-      console.error("  [Error] Fallback enrichment failed:", error);
-    }
-  }
-
-  // Pass 6: Poster audit
-  if (shouldRun(6)) {
-    try {
-      pass6PosterAudit();
+      pass5PosterAudit();
     } catch (error) {
       console.error("  [Error] Poster audit failed:", error);
     }
   }
 
-  // Pass 7: Dodgy entry detection
-  if (shouldRun(7)) {
+  // Pass 6: Dodgy entry detection
+  if (shouldRun(6)) {
     try {
-      await pass7DodgyDetection();
+      await pass6DodgyDetection();
     } catch (error) {
       console.error("  [Error] Dodgy detection failed:", error);
     }
   }
 
-  // Pass 8: Final audit (comparison)
-  if (shouldRun(8)) {
+  // Pass 7: Final audit (comparison)
+  if (shouldRun(7)) {
     try {
-      await pass8FinalAudit(baseline);
+      await pass7FinalAudit(baseline);
     } catch (error) {
       console.error("  [Error] Final audit failed:", error);
     }
