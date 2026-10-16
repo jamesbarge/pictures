@@ -4,8 +4,6 @@ const isDev = process.env.NODE_ENV === "development";
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
-  // Increase timeout for ISR static generation (querying 3000 screenings)
-  staticPageGenerationTimeout: 120,
   // Fix Turbopack root detection (stray lockfile in home directory)
   turbopack: {
     root: __dirname,
@@ -22,31 +20,6 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ["lucide-react", "date-fns"],
   },
-  images: {
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "image.tmdb.org",
-        pathname: "/t/p/**",
-      },
-      {
-        protocol: "https",
-        hostname: "images.savoysystems.co.uk",
-      },
-      {
-        protocol: "https",
-        hostname: "player.bfi.org.uk",
-      },
-      {
-        protocol: "https",
-        hostname: "d13jj08vfqimqg.cloudfront.net",
-      },
-      {
-        protocol: "https",
-        hostname: "ticketlab.co.uk",
-      },
-    ],
-  },
   // Security headers — CSP, HSTS, clickjacking protection, etc.
   async headers() {
     return [
@@ -61,7 +34,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: https://image.tmdb.org https://images.savoysystems.co.uk https://player.bfi.org.uk https://d13jj08vfqimqg.cloudfront.net https://ticketlab.co.uk https://img.clerk.com",
               "font-src 'self' https://fonts.gstatic.com",
-              "connect-src 'self' https://eu.i.posthog.com https://eu-assets.i.posthog.com https://*.clerk.accounts.dev https://clerk.pictures.london https://clerk.com https://vitals.vercel-insights.com https://va.vercel-scripts.com https://maps.googleapis.com",
+              "connect-src 'self' https://*.clerk.accounts.dev https://clerk.pictures.london https://clerk.com",
               "frame-src https://*.clerk.accounts.dev https://clerk.pictures.london https://challenges.cloudflare.com",
               "worker-src 'self' blob:",
               "frame-ancestors 'none'",
@@ -93,30 +66,18 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-  // Redirect old static manifest path to Next.js dynamic manifest route
+  // pictures.london (frontend/) is the public site. This app keeps the API,
+  // admin and Clerk sign-in, and sends every legacy page URL there.
   async redirects() {
     return [
+      // SvelteKit has no page for these three; send them to the nearest parent.
+      { source: "/cinemas/:slug/tonight", destination: "https://pictures.london/cinemas/:slug", permanent: true },
+      { source: "/directors/:id", destination: "https://pictures.london/directors", permanent: true },
+      { source: "/seasons/:slug", destination: "https://pictures.london/seasons", permanent: true },
       {
-        source: "/manifest.json",
-        destination: "/manifest.webmanifest",
+        source: "/:path((?!api/|admin|sign-in|_next/|robots\\.txt|favicon\\.ico|google7ea8fa19954d5e86\\.html).*)",
+        destination: "https://pictures.london/:path",
         permanent: true,
-      },
-    ];
-  },
-  // Reverse proxy for PostHog to avoid ad blockers
-  async rewrites() {
-    return [
-      {
-        source: "/ingest/static/:path*",
-        destination: "https://eu-assets.i.posthog.com/static/:path*",
-      },
-      {
-        source: "/ingest/:path*",
-        destination: "https://eu.i.posthog.com/:path*",
-      },
-      {
-        source: "/ingest/decide",
-        destination: "https://eu.i.posthog.com/decide",
       },
     ];
   },

@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  analyzeTitleAmbiguity,
-  hasSufficientMetadata,
-  isAmbiguousTitle,
-} from "./ambiguity";
+import { analyzeTitleAmbiguity, hasSufficientMetadata } from "./ambiguity";
 
 describe("analyzeTitleAmbiguity", () => {
   it("flags single-word titles with high ambiguity score", () => {
@@ -65,16 +61,6 @@ describe("analyzeTitleAmbiguity", () => {
   it("flags year-pattern titles", () => {
     const result = analyzeTitleAmbiguity("1984");
     expect(result.reasons).toContain("Year-based title");
-  });
-});
-
-describe("isAmbiguousTitle", () => {
-  it("returns true for single-word titles", () => {
-    expect(isAmbiguousTitle("Crash")).toBe(true);
-  });
-
-  it("returns false for long descriptive titles", () => {
-    expect(isAmbiguousTitle("The Unbearable Lightness of Being")).toBe(false);
   });
 });
 

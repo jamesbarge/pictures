@@ -2,7 +2,7 @@
 /**
  * Backfill cinema_baselines from recent scraper_runs history.
  *
- * The 2026-04-26 audit (`scripts/audit/trigger-runs-audit.ts`) found
+ * The 2026-04-26 scraper-runs audit (tasks/trigger-audit-2026-04-26.md) found
  * 66 of 67 cinemas have no `cinema_baselines` row, which means
  * `runner-factory.detectAnomaly()` returns null for all of them and
  * never flags low/zero-count runs. The local-scraping rebuild's anomaly

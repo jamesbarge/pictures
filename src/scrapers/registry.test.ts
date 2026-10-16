@@ -121,6 +121,15 @@ describe("SCRAPER_REGISTRY", () => {
       expect(scraper.config.cinemaId).toBe(cinemaId);
       expect(config.venue.id).toBe(cinemaId);
     }
+    const nickelVenueIds = SCRAPER_REGISTRY.filter((entry) => entry.wave !== "enrichment")
+      .flatMap((entry) => {
+        const built = entry.buildConfig();
+        if (built.type === "chain") return built.venues.map((venue) => venue.id);
+        if (built.type === "multi") return built.venues.map((venue) => venue.id);
+        return [built.venue.id];
+      })
+      .filter((id) => id === "nickel" || id === "the-nickel");
+    expect(nickelVenueIds).toEqual(["the-nickel"]);
   });
 
   it("buildConfig is lazy — calling it succeeds without throwing for every non-enrichment entry", () => {

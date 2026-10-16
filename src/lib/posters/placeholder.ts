@@ -139,18 +139,6 @@ function escapeXml(str: string): string {
 }
 
 /**
- * Generate a data URL for the placeholder SVG
- */
-export function getPosterPlaceholderDataUrl(
-  title: string,
-  year?: number | null
-): string {
-  const svg = generatePosterPlaceholder(title, year);
-  const base64 = Buffer.from(svg).toString("base64");
-  return `data:image/svg+xml;base64,${base64}`;
-}
-
-/**
  * Get URL for server-generated placeholder
  * This can be served from an API route for better caching
  */

@@ -17,7 +17,7 @@ import { getTMDBClient, matchFilmToTMDB } from "@/lib/tmdb";
 import { getOMDBClient } from "./omdb";
 import { getFanartClient } from "./fanart";
 import { getPosterPlaceholderUrl } from "./placeholder";
-import { classifyContentCached } from "@/lib/content-classifier";
+import { classifyContent } from "@/lib/content-classifier";
 import { isImageAccessible } from "@/lib/image-processor";
 import type { PosterResult, PosterSearchParams, PosterSource } from "./types";
 
@@ -138,44 +138,6 @@ export class PosterService {
     };
   }
 
-  /**
-   * Batch find posters for multiple films
-   * Useful for initial data enrichment
-   */
-  async findPostersForMany(
-    films: PosterSearchParams[],
-    onProgress?: (completed: number, total: number) => void
-  ): Promise<Map<string, PosterResult>> {
-    const results = new Map<string, PosterResult>();
-
-    for (let i = 0; i < films.length; i++) {
-      const film = films[i];
-      const key = `${film.title}-${film.year || ""}`;
-
-      try {
-        const result = await this.findPoster(film);
-        results.set(key, result);
-      } catch (error) {
-        console.error(`Error finding poster for ${film.title}:`, error);
-        results.set(key, {
-          url: getPosterPlaceholderUrl(film.title, film.year),
-          source: "placeholder",
-          quality: "placeholder",
-        });
-      }
-
-      // Rate limiting
-      await this.delay(250);
-
-      // Progress callback
-      if (onProgress) {
-        onProgress(i + 1, films.length);
-      }
-    }
-
-    return results;
-  }
-
   // ============= Private Methods =============
 
   private async tryTMDB(tmdbId: number): Promise<string | null> {
@@ -225,7 +187,7 @@ export class PosterService {
 
       // Event titles bury the real film ("Classic Matinee: Sunset Boulevard").
       // Retry the cleaned title, through the same verification.
-      const classification = await classifyContentCached(title);
+      const classification = await classifyContent(title);
       if (classification.cleanTitle !== title && classification.confidence !== "low") {
         const cleanedMatch = await matchFilmToTMDB(classification.cleanTitle, { year, director });
         if (cleanedMatch?.posterPath) {
@@ -259,7 +221,7 @@ export class PosterService {
       }
 
       // If no results, try AI-powered content classification
-      const classification = await classifyContentCached(title);
+      const classification = await classifyContent(title);
       if (classification.cleanTitle !== title && classification.confidence !== "low") {
         const cleanedResult = await this.omdb.searchByTitle(classification.cleanTitle, year);
         if (cleanedResult?.Poster && cleanedResult.Poster !== "N/A") {
@@ -286,10 +248,6 @@ export class PosterService {
       console.error("Fanart.tv lookup error:", error);
     }
     return null;
-  }
-
-  private delay(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
 
