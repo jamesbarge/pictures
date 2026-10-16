@@ -30,3 +30,30 @@ describe("classifyScreening: scraper-supplied event type", () => {
     expect(metadata.isRelaxedScreening).toBe(false);
   });
 });
+
+describe("classifyScreening: accessibility in the title", () => {
+  const disclosure =
+    "Disclosure Day (with subtitles for the D/deaf and those experiencing hearing loss)";
+
+  it("flags subtitles when the title is the only signal", async () => {
+    const metadata = await classifyScreening({
+      filmTitle: disclosure,
+      datetime: new Date("2026-10-26T16:15:00Z"),
+      bookingUrl: "https://whatson.bfi.org.uk/imax/example",
+    });
+
+    expect(metadata.hasSubtitles).toBe(true);
+  });
+
+  it("keeps a scraper-supplied format and still flags subtitles", async () => {
+    const metadata = await classifyScreening({
+      filmTitle: disclosure,
+      datetime: new Date("2026-10-26T16:15:00Z"),
+      bookingUrl: "https://whatson.bfi.org.uk/imax/example",
+      format: "imax",
+    });
+
+    expect(metadata.format).toBe("imax");
+    expect(metadata.hasSubtitles).toBe(true);
+  });
+});

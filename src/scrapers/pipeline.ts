@@ -26,6 +26,8 @@ import {
   matchAndCreateFromTMDB,
   createFilmWithoutTMDB,
   tryUpdatePoster,
+  releaseYearHint,
+  yearConflicts,
   type FilmCache,
 } from "./utils/film-matching";
 import {
@@ -558,7 +560,10 @@ export async function processScreenings(
     if ((extraction?.confidence === "low" || extraction?.confidence === "medium") && !extraction.canonicalTitle) {
       matchingTitle = cleanFilmTitle(screening.filmTitle);
     }
-    const key = normalizeTitle(matchingTitle);
+    // The release year is part of a film's identity: a venue showing Hammer's
+    // Dracula (1958) and Jude's (2025) needs two groups, or one year wins both.
+    const releaseYear = releaseYearHint(screening.year);
+    const key = normalizeTitle(matchingTitle) + (releaseYear ? ` (${releaseYear})` : "");
     if (!screeningsByFilm.has(key)) {
       screeningsByFilm.set(key, []);
     }
@@ -772,6 +777,9 @@ async function getOrCreateFilm(
   }
 
   // Extract year from title as a hint for TMDB matching if scraper didn't provide one
+  // A decoration year ("Akira (2025 Re-release)") dates the re-release, so it
+  // may inform TMDB on a cache miss but must not pick between cached namesakes.
+  let yearFromDecoration = false;
   if (!scraperYear) {
     const yearMatch = title.match(/\((\d{4})\)\s*$/);
     if (yearMatch) {
@@ -783,9 +791,11 @@ async function getOrCreateFilm(
       const { extractedYear } = cleanFilmTitleWithMetadata(title);
       if (extractedYear && extractedYear < new Date().getFullYear()) {
         scraperYear = extractedYear;
+        yearFromDecoration = !title.includes(`(${extractedYear})`);
       }
     }
   }
+  const cacheYear = yearFromDecoration ? undefined : scraperYear;
 
   // Use canonical title for matching (without version suffixes like "Final Cut").
   // This ensures "Apocalypse Now" and "Apocalypse Now : Final Cut" match to the
@@ -814,7 +824,37 @@ async function getOrCreateFilm(
   const normalized = normalizeTitle(matchingTitle);
 
   // Try to find existing film using the pre-loaded cache (O(1) lookup)
-  const existing = lookupFilmInCache(filmCache, normalized);
+  const existing = lookupFilmInCache(filmCache, normalized, cacheYear);
+
+  if (existing && yearConflicts(existing, cacheYear)) {
+    // Every cached film of this title disagrees with the scraper's release year
+    // (Riverside's Hammer "Dracula" 1958 vs the cached 2025 film). Ask TMDB with
+    // the year, and keep the cached film unless TMDB finds one that year vouches
+    // for, so the worst case is the old match. Its own 8s ceiling keeps a slow
+    // TMDB inside the caller's 20s, so a timeout also falls back.
+    try {
+      const tmdbFilmId = await withDbTimeout(
+        matchAndCreateFromTMDB(
+          filmCache,
+          matchingTitle,
+          cacheYear,
+          scraperDirector,
+          scraperPosterUrl,
+          scraperRuntime,
+          venueLanguages,
+          allowCurrentRelease,
+          true
+        ),
+        8_000,
+        `getOrCreateFilm: year-conflict TMDB "${title}"`
+      );
+      if (tmdbFilmId) {
+        return tmdbFilmId;
+      }
+    } catch (error) {
+      console.warn(`[Pipeline] TMDB lookup failed for "${title}":`, error);
+    }
+  }
 
   if (existing) {
     // If existing film lacks a poster, try to find one
