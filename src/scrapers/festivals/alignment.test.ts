@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { FESTIVAL_CONFIGS, WATCHDOG_PROBES } from "./festival-config";
+import { FESTIVAL_CONFIGS } from "./festival-config";
 import { londonFestivals } from "@/db/seed-festivals";
 import { CINEMA_REGISTRY } from "@/config/cinema-registry";
 
@@ -59,16 +59,6 @@ describe("Festival config ↔ seed alignment", () => {
           ).toBe(true);
         }
       }
-    }
-  });
-
-  it("every config should have a matching watchdog probe", () => {
-    for (const slugBase of Object.keys(FESTIVAL_CONFIGS)) {
-      const probe = WATCHDOG_PROBES.find((p) => p.slugBase === slugBase);
-      expect(
-        probe,
-        `Config "${slugBase}" has no watchdog probe`
-      ).toBeDefined();
     }
   });
 });

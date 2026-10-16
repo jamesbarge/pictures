@@ -4,39 +4,12 @@
  */
 
 import * as cheerio from "cheerio";
-import { readFile } from "fs/promises";
-import { join } from "path";
 import type { RawScreening, ScraperConfig, CinemaScraper } from "./types";
 import { CHROME_USER_AGENT_FULL } from "./constants";
 import type { PreFilterReason, PreFilterReport } from "./utils/screening-accounting";
 
-/**
- * Runtime config overlay for AutoScrape experiments.
- * Primary storage: `autoresearch_config` DB table (key: `autoscrape/overlay/{cinemaId}`).
- * Fallback: JSON files in .autoresearch/overlays/{cinemaId}.json (local dev).
- */
-export interface ConfigOverlay {
-  /** CSS selector overrides keyed by purpose */
-  selectorOverrides?: Record<string, string>;
-  /** URL pattern overrides */
-  urlOverrides?: Record<string, string>;
-  /** Date format overrides */
-  dateFormatOverrides?: Record<string, string>;
-}
-
-const OVERLAY_DIR = join(process.cwd(), ".autoresearch", "overlays");
-
-/**
- * Module-level cache of DB overlay keys, populated on first lookup.
- * Avoids hitting the DB for every scraper run (~59 cinemas) when no overlays exist.
- */
-let dbOverlayCache: Map<string, ConfigOverlay> | null = null;
-
 export abstract class BaseScraper implements CinemaScraper {
   abstract config: ScraperConfig;
-
-  /** Runtime config overlay loaded from DB/disk (null if none exists) */
-  protected configOverlay: ConfigOverlay | null = null;
 
   /**
    * Pre-filter accounting for the most recent `scrape()`.
@@ -61,13 +34,12 @@ export abstract class BaseScraper implements CinemaScraper {
     this.fetchedPayloadCount = null;
 
     try {
-      await this.loadConfigOverlay();
       await this.initialize();
       const pages = await this.fetchPages();
       this.fetchedPayloadCount = pages.length;
       const screenings = await this.parsePages(pages);
       const validated = this.validate(screenings);
-      // `validate()` is overridable and three subclasses call super and then
+      // `validate()` is overridable and a subclass may call super and then
       // filter further, so the report recorded inside the base implementation
       // can describe a larger surviving set than the one actually returned.
       this.reconcilePreFilterReport(validated.length);
@@ -85,9 +57,8 @@ export abstract class BaseScraper implements CinemaScraper {
    * Bring the pre-filter report into line with what `validate()` returned.
    *
    * `BaseScraper.validate` records its report from its own predicates, but the
-   * method is overridable: `nickel-v2.ts`, `genesis-v2.ts` and `lexi-v2.ts` all
-   * call `super.validate()` and then filter the result again. Nickel's override
-   * drops `MYSTERY MOVIE` titles, so a batch of one mystery screening reported
+   * method is overridable: `nickel-v2.ts` calls `super.validate()` and then
+   * filters the result again. Nickel's override drops `MYSTERY MOVIE` titles, so a batch of one mystery screening reported
    * `parsed: 1, accepted: 1, rejected: 0` while `scrape()` returned nothing and
    * the pipeline accepted nothing — a conservation failure that was an
    * accounting artefact rather than a real one.
@@ -266,75 +237,6 @@ export abstract class BaseScraper implements CinemaScraper {
   }
 
   /**
-   * Load a config overlay if one exists for this cinema.
-   * Called automatically at the start of scrape().
-   * Checks DB first (AutoScrape persists learned overlays there),
-   * then falls back to filesystem (local dev).
-   */
-  protected async loadConfigOverlay(): Promise<void> {
-    // Try DB first (survives the cloud orchestrator container restarts).
-    // Uses a module-level cache so only 1 DB query per process, not per scraper.
-    try {
-      if (dbOverlayCache === null) {
-        const { db, isDatabaseAvailable } = await import("@/db");
-        if (isDatabaseAvailable) {
-          const { autoresearchConfig } = await import("@/db/schema/admin");
-          const { like } = await import("drizzle-orm");
-          const rows = await db
-            .select()
-            .from(autoresearchConfig)
-            .where(like(autoresearchConfig.key, "autoscrape/overlay/%"));
-          dbOverlayCache = new Map(
-            rows.map((r) => [r.key, r.value as unknown as ConfigOverlay])
-          );
-        } else {
-          dbOverlayCache = new Map();
-        }
-      }
-
-      const dbKey = `autoscrape/overlay/${this.config.cinemaId}`;
-      const cached = dbOverlayCache.get(dbKey);
-      if (cached) {
-        this.configOverlay = cached;
-        console.log(`[${this.config.cinemaId}] Loaded config overlay from DB`);
-        return;
-      }
-    } catch {
-      dbOverlayCache = new Map(); // Mark as checked, no overlays available
-    }
-
-    // Fall back to filesystem (local dev)
-    const overlayPath = join(OVERLAY_DIR, `${this.config.cinemaId}.json`);
-    try {
-      const raw = await readFile(overlayPath, "utf-8");
-      this.configOverlay = JSON.parse(raw) as ConfigOverlay;
-      console.log(`[${this.config.cinemaId}] Loaded config overlay from disk`);
-    } catch (err) {
-      if (err instanceof Error && (err as NodeJS.ErrnoException).code === "ENOENT") {
-        this.configOverlay = null; // Expected: no overlay for this cinema
-        return;
-      }
-      console.error(`[${this.config.cinemaId}] Failed to load config overlay:`, err);
-      this.configOverlay = null;
-    }
-  }
-
-  /**
-   * Get a selector, preferring the overlay value if one exists.
-   * Subclasses call this instead of hardcoding selectors to enable AutoScrape.
-   */
-  protected getSelector(purpose: string, defaultSelector: string): string {
-    return this.configOverlay?.selectorOverrides?.[purpose] ?? defaultSelector;
-  }
-
-  /**
-   * Get a URL, preferring the overlay value if one exists.
-   */
-  protected getUrl(purpose: string, defaultUrl: string): string {
-    return this.configOverlay?.urlOverrides?.[purpose] ?? defaultUrl;
-  }
-
-  /**
    * Health check — verify the website is accessible.
    *
    * ADVISORY ONLY. The runner logs a failure and scrapes anyway
@@ -355,9 +257,7 @@ export abstract class BaseScraper implements CinemaScraper {
    * path is 3 attempts × 30s timeout × 4s gap ≈ 98s, and that is paid at most
    * ONCE per venue per run: runSingleVenue probes outside its retry loop, so a
    * host that black-holes packets can no longer spend ~400s here and blow the
-   * venue wall-clock cap. The internal retry stays because runScraperForYield
-   * still treats a `false` as a hard veto, and a spurious veto there scores an
-   * AutoScrape candidate config at zero yield.
+   * venue wall-clock cap.
    *
    * Subclasses may still override to provide cheaper or different checks
    * (e.g. Curzon HEADs the API endpoint with a 401-is-healthy contract).

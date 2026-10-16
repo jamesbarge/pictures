@@ -29,14 +29,6 @@ export interface Thresholds {
     maxYear: number;
     maxRuntime: number;
   };
-  nonFilmDetection: {
-    maxPatternsPerCategory: number;
-  };
-  safetyFloors: {
-    minAutoMergeSimilarity: number;
-    minTmdbConfidence: number;
-    maxNewNonFilmPatterns: number;
-  };
 }
 
 const STATIC_THRESHOLDS: Thresholds = (() => {
@@ -47,10 +39,5 @@ const STATIC_THRESHOLDS: Thresholds = (() => {
 
 /** Return the static thresholds. Synchronous, no I/O. */
 export function loadThresholds(): Thresholds {
-  return STATIC_THRESHOLDS;
-}
-
-/** Same as loadThresholds — kept as an alias for the few callers that used the async variant. */
-export async function loadThresholdsAsync(): Promise<Thresholds> {
   return STATIC_THRESHOLDS;
 }

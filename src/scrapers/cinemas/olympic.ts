@@ -10,7 +10,6 @@
  * Cheerio-based scraper - suitable for serverless cloud execution
  */
 
-import { getYear } from "date-fns";
 
 import { BaseScraper } from "../base";
 import type { RawScreening, ScraperConfig } from "../types";
@@ -22,9 +21,6 @@ import {
 export class OlympicScraper extends BaseScraper {
   config: ScraperConfig = {
     // Canonical registry id is "olympic-studios" ("olympic" is a legacyId).
-    // The registry path injects the canonical venue id, but the standalone
-    // run-olympic-v2.ts runner uses this config id directly — so it MUST be the
-    // canonical id or standalone runs create a duplicate `olympic` cinema row.
     cinemaId: "olympic-studios",
     baseUrl: "https://www.olympiccinema.com",
     requestsPerMinute: 10,
@@ -43,7 +39,7 @@ export class OlympicScraper extends BaseScraper {
     const screenings: RawScreening[] = [];
     const $ = this.parseHtml(htmlPages[0]);
     const now = new Date();
-    const currentYear = getYear(now);
+    const currentYear = now.getFullYear();
 
     // Find all date headers
     const dateHeaders = $("h3.date-day");

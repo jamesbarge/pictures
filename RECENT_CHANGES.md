@@ -7,6 +7,109 @@
 
 ---
 
+## 2026-10-04: Trim dead scraper code
+**PR**: #791 | **Files**: `src/scrapers/chains/*.ts`, `src/scrapers/platforms/{savoy,indy}.ts`, `src/scrapers/runner-factory.ts`, `src/scrapers/cinemas/{barbican,garden,peckhamplex,cinema-museum,bertha-dochouse,ica,olympic,prince-charles,riverside-v2,rich-mix-v2}.ts`, `src/scrapers/utils/{screening-accounting,screening-accounting-report,fetch-with-retry,metadata-parser,ical-parser,screening-classification}.ts`
+- Removes code nothing reaches: five chain venue helpers, `ChainScraper.scrapeAll`, the `chains/index.ts` barrel, `ScraperResult`, Savoy's `filmTypeOnly` option, the runner's unread `verbose` and always-true `continueOnError`, `PRE_FILTER_REASONS`, the `supplementary` accounting flag, two always-`"unavailable"` attribution fields and their log tokens, and `maxResponseSize`.
+- Curzon, INDY and Barbican use `addDaysToDateString(londonDateString(...))` from `src/lib/london-date.ts` in place of three private `londonDateKey` copies. Garden and Peckhamplex parse through the shared `parseUKLocalDateTime`. Scratch comparisons of old and new code over 1.27M (instant, offset) pairs and 5.7M date/time inputs, BST transition days and venue fixtures included, found zero differences.
+- Bertha DocHouse and Cinema Museum stop preloading the festival cache they never read, which saves one festivals query per run each.
+- 102 insertions and 580 deletions across 32 code files. Screening output is unchanged.
+
+---
+
+## 2026-10-04: Delete dead seasons, festivals and BFI PDF code
+**PR**: #790 | **Files**: `src/scrapers/seasons/run-seasons.ts` (new), `src/scrapers/seasons/base.ts`, `src/scrapers/festivals/eventive-scraper.ts`, `src/scrapers/bfi-pdf/programme-changes-parser.ts`, `src/scrapers/bfi-pdf/pdf-parser.ts`, `package.json`
+- Deletes code with no caller since the Trigger.dev and Bree schedulers went (#469, #472): the festival watchdog and its probes, the persisting Eventive ingest `scrapeActiveEventiveFestivals`, the BFI ghost cleanup (`bfi-pdf/cleanup.ts`, 423 lines), two unimported barrels and a dozen unused helpers.
+- The five copy-paste seasons runners become one `run-seasons.ts <venue>`; the five `npm run scrape:<venue>-seasons` names still work. The seasons scrapers share one `resolveUrl` built on `new URL` and one `splitYear`, and lose fields nothing read (`sourceId`, `filmUrl`, `requestsPerMinute`, `seasonSlugs`).
+- The two BFI parsers drop write-only fields (cast, runtime, countries, accessibility flags, notes, `parseErrors`) and share one venue map, month map and title cleaner.
+- 1,867 fewer lines of code. The seasons feature, the Eventive dry-run admin route, the reverse-tagger and the standalone BFI import path all stay.
+
+---
+
+## 2026-10-04: Every venue scrape runs through the unified CLI
+**PR**: #789 | **Files**: `src/scrapers/cli.ts`, `package.json`, `src/scrapers/runner-factory.ts`, `src/scrapers/base.ts`, `src/scrapers/cinemas/nickel-v2.ts`, `src/scrapers/cinemas/barbican.ts`
+- The 26 `scrape:<venue>` scripts keep their names and run `src/scrapers/cli.ts <id>`, which now takes sub-venue args (`npm run scrape:curzon -- soho`) and exits 1 on a failed run. `scrape:all`, `scrape:chains` and `scrape:independents` call `npm run scrape -- --all|--chains|--independents`.
+- Deleted the 27 `run-*.ts` runners, `scrape:local`, `load:bfi-manual`, `scrape:snapshot`, five `debug-*.ts` probes, `fetchWithBrowser`, six unregistered scrapers (genesis-v2, electric, rich-mix, lexi-v2, the-nickel, riverside-studios) and the AutoScrape overlay lookup in `BaseScraper`.
+- Manual runs now use registry venue metadata, which the runners overwrote with stale copies (for example "Olympic Cinema" for Olympic Studios). About 8,800 lines removed.
+
+---
+
+## 2026-10-04: Remove dead exports and fields in src/lib and src/db
+**PR**: #788 | **Files**: `src/lib/posthog-api.ts`, `src/lib/scrape-quarantine.ts`, `src/lib/scrape-run-summary.ts`, `src/lib/event-classifier.ts`, `src/lib/api-errors.ts`, `src/lib/tmdb/*`, `src/lib/posters/*`, `src/db/backfill-posters.ts`, `src/db/enrich-letterboxd.ts`, `src/db/schema/*.ts`
+- Deletes exports, fields and helpers that nothing calls or that only their own tests call: `batchMatchFilms`, `getBackdropUrl`, `getFilmVideos`, `findPostersForMany`, `verifyCronSecret`, `RateLimitError`, four PostHog REST wrappers, the two classifier memo caches, the unread `cleanTitle`/`confidence`/`posterStrategy` fields and 36 unused Drizzle type aliases.
+- `scrape-progress`, `scrape-checkpoint` and `scrape-run-summary` now share one `atomicWrite` with the same pid+counter temp names. A progress stamp after `tmp/` is deleted mid-run now succeeds on the first write.
+- `db:classify-events` drops the 13 s per-film sleep left from the Gemini rate limit; the classifier is pure regex.
+- 66 files, about 1,560 net lines removed. 2,502 tests pass, lint 0 errors / 61 warnings, tsc clean.
+
+---
+
+## 2026-10-04: Remove the legacy React site from the root Next.js app
+**PR**: #787 | **Files**: `next.config.ts`, `src/app/layout.tsx`, `public/robots.txt`, `.github/workflows/test.yml`, `package.json`
+- api.pictures.london now serves only the API, the admin dashboard and Clerk sign-in. The 16 legacy page routes, 82 React components, the zustand stores, 7 hooks and the helpers only they used are deleted: 190 files and about 32,700 lines.
+- Legacy page URLs return a 308 to the same path on pictures.london; `/cinemas/:slug/tonight`, `/directors/:id` and `/seasons/:slug` go to the nearest parent page. `robots.txt` disallows all crawling of the API host.
+- 15 dependencies leave package.json (react-query, zustand, posthog-js, Vercel Analytics, Google Maps, Testing Library, `@playwright/test` and others), and 57 packages leave the lockfile.
+- The required "E2E Tests" check builds the root app with `npm run build`. The old job skipped itself without a database secret and reported green.
+
+---
+
+## 2026-10-04: Delete 72 finished one-shot scripts
+**PR**: #786 | **Files**: `scripts/`, `src/scripts/`, `scripts/audit/`, `src/db/`, `scripts/destructive-script-guards.test.ts`, `scripts/data-check.ts`
+- Deleted 72 scripts (10,867 lines) that no npm script, workflow, slash command or import reaches: the `/goal` measurement family (10), May incident probes (14), screening-dedupe one-shots made unreachable by the `(cinema_id, source_id)` unique index or the report-only proximity policy (6), row-pinned repairs (9), search/BST verification harnesses (6), other stale top-level scripts (5), unwired `src/scripts` one-shots (6), the React-era front-end audit suite and two April audits (9), and hand-rolled `src/db` runners and seeds (7).
+- `destructive-script-guards.test.ts` moves the 18 deleted destructive scripts into its absence list, so none can come back unnoticed.
+- Small reuses: `data-check.ts` uses the shared `levenshteinSimilarity`, `CHROME_USER_AGENT_FULL` and `AbortSignal.timeout`; `dedup-judgement/run.ts` uses `mapConcurrent`, which stops pulling new pairs after the first failure.
+- Every remaining `npm run` command still works. `npm run reconcile:plan` / `reconcile:apply` cover future phantom-screening cleanup, and `npm run db:seed` covers seeding.
+
+---
+
+## 2026-10-16: New-filter poster test survives repeated cards late in the evening
+**PR**: #825 | **Files**: `frontend/test-all.spec.ts`
+- The "persisted New filter renders matching posters and titles" test required the first five cards to have five different titles. After about 21:00 today has fewer than five New films left, so the first five cards run on into tomorrow's section and repeat titles, and Frontend E2E failed on every PR until midnight.
+- The check now asserts that no title shows two different posters, which is the render glitch it was there to catch. The persisted-filter comparison after reload is unchanged.
+
+---
+## 2026-10-04: Remove Gemini-dependent code
+**PR**: #785 | **Files**: `src/lib/gemini.ts`, `src/agents/run-agents.ts`, `src/app/admin/agents/`, `src/app/api/admin/anomalies/verify/`, `src/scrapers/pipeline.ts`, `scripts/audit-and-fix-upcoming.ts`, `scripts/data-check.ts`, `package.json`
+- Deleted the Gemini client and everything that called it: the scraper-health, link-validator and fallback enrichment agents, the `/admin/agents` page and routes, AI Verify, the data-quality enrichment route, the `ENABLE_AGENTS` pipeline hook and the Stagehand booking verifier. About 4,985 lines go, plus 249 lockfile packages including `@google/genai`.
+- `npm run agents:enrich` (DeepSeek) now runs without a Gemini key check. `agents:links`, `agents:health` and `agents:fallback-enrich` are removed, and `audit:fix-upcoming` drops its fallback pass, so its passes run 1 to 7.
+
+---
+
+## 2026-10-04: Remove retired-scheduler, QA and never-wired modules from src/lib
+**PR**: #784 | **Files**: `src/lib/jobs/`, `src/lib/qa/`, `src/lib/enrichment/`, `src/lib/embeddings.ts`, `src/lib/scraper-health/`, `src/lib/data-quality/`, `scripts/qa-dry-run.ts`, `src/app/api/admin/qa/route.ts`
+- Deleted 4,119 lines of code with zero callers: the daily-sweep, post-scrape and post-deploy-verify jobs left behind when Trigger.dev went in #469, `data-quality/index.ts`, `enrichment/`, the whole `src/lib/qa/` pipeline with `scripts/qa-dry-run.ts` and the 501 `/api/admin/qa` stub, `scraper-health/alerts.ts` with the two snapshot writers, and the bge-m3 `embeddings.ts` module.
+- `thresholds.json` drops the unread `nonFilmDetection` and `safetyFloors` sections; `loadThresholdsAsync` is gone. Unit tests go from 2,566 to 2,503 because the deleted code's tests went with it. The one visible change is `POST /api/admin/qa` returning 404 where it returned 501.
+
+---
+
+
+---
+
+## 2026-10-16: Film cache picks namesakes by release year
+**PR**: #820 | **Files**: `src/scrapers/utils/film-matching.ts`, `src/scrapers/pipeline.ts`, `src/scrapers/cinemas/riverside-v2.ts`, `src/scrapers/cinemas/riverside-v2.test.ts` (new), `src/scrapers/utils/film-matching-cache.test.ts`, `src/scrapers/utils/film-matching-tmdb.test.ts`, `src/scrapers/pipeline-namesake-years.test.ts` (new), two pipeline test mocks, `src/scrapers/SCRAPING_PLAYBOOK.md`
+- The pipeline's film cache kept one film per title and ignored the scraper's year, so PCC's Heat (1995), Tenet (2020), Blue Velvet (1986), Possession (1981) and Halloween (1978) sat on the 1972, 2026, 2011, 2012 and 2007 films of the same name. The cache now keeps every namesake and returns the one within a year of the scraper's release year.
+- When no cached namesake fits, the pipeline asks TMDB with the year and keeps the cached film unless TMDB's match agrees with it. Riverside now sends year and director from its feed, so its Hammer Dracula (1958) can reach the right film.
+- A listing with no year keeps the film its title already resolves to (the namesake with the most upcoming screenings), so venues that send no year see no change; measured on 2026-10-16, no title's default moves. The next `/scrape` re-points the affected screenings through the existing upsert.
+
+---
+## 2026-10-16: Remove Inngest from the docs
+**PR**: #817 | **Files**: `README.md`, `.planning/codebase/*.md`
+- The README no longer lists Inngest (daily) and GitHub Actions (weekly) as the scrape schedule. Every scrape runs from the Mac via `npm run scrape:unified`.
+- The codebase maps drop the deleted `src/inngest/` and `/api/inngest`. The orphaned Inngest app itself was archived on 16 Oct.
+
+---
+## 2026-10-16: Title cleaner keeps the film half of screening-description colons
+**PR**: #816 | **Files**: `src/scrapers/utils/film-title-cleaner.ts`, `src/scrapers/utils/film-title-cleaner.test.ts`, `src/scrapers/SCRAPING_PLAYBOOK.md`
+- A colon suffix of two or more screening words (anniversary, restoration, uncut, roadshow, tour, marathon, VHS, 35mm, 4K and similar) is stripped before the generic colon rule runs. "Short Cuts : 35mm Roadshow Tour" now cleans to Short Cuts and "Dracula: 4K Restoration" to Dracula. This replaces the one-off ": 4K Restoration Premiere" rule.
+- Halloween III, Halloween H20, Dracula, Elvis and Evangelion join the franchise list, so "Halloween III: Season of the Witch" and "Elvis: That's the Way It Is" keep their full titles.
+- In the 2026-10-15 run this left 7 films (12 upcoming screenings) without a TMDB match, among them PCC's four Short Cuts screenings filed as "Roadshow Tour", and matched "That's the Way It Is" to a 2018 film. A replay of 2,520 titles changes only the 11 intended titles.
+
+---
+## 2026-10-16: One Nickel, and titles without access notes
+**PR**: #815 | **Files**: `src/db/migrations/canonicalize-cinema-ids.ts`, `src/lib/title-extraction/patterns.ts`, `src/scrapers/utils/screening-classification.ts`
+- The duplicate Nickel rows and Rio's `Paddington &amp; Storytime` come from the orphaned Inngest cron (06:00 UTC daily) running a pre-#478 deployment. Current scrapers write `the-nickel` and already decode the entity.
+- The cinema-id migration now treats the same source id, or the same booking URL at the same instant, as a collision, deletes those copies, and deletes the empty legacy cinema row (its cascaded children go too). Run it after the Inngest app is archived.
+- Title cleaning drops access notes such as `(with subtitles for the D/deaf and those experiencing hearing loss)`. A format already set on the screening no longer hides the subtitle flag.
+
+---
 ## 2026-10-04: JW3 film nights outside the Cinema genre
 **PR**: #783 | **Files**: `src/scrapers/cinemas/jw3.ts`, `src/scrapers/cinemas/jw3.test.ts` (new), `src/scrapers/SCRAPING_PLAYBOOK.md`
 - JW3 now keeps film nights filed under other Spektrix genres when the name labels them, e.g. `Young JW3 Queer Movie & Pizza Night: Call Me By Your Name`, listed as the film after the colon. This adds Call Me By Your Name (21 Oct) and Theater Camp (16 Dec).

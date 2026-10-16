@@ -17,8 +17,8 @@
  *   full run.
  */
 import { promises as fs } from "node:fs";
-import { dirname, join } from "node:path";
-import type { PhaseId, RunSummaryArgs } from "@/lib/scrape-run-summary";
+import { join } from "node:path";
+import { atomicWrite, type PhaseId, type RunSummaryArgs } from "@/lib/scrape-run-summary";
 
 export interface ScrapeCheckpoint {
   runId: string;
@@ -36,19 +36,12 @@ const MAX_AGE_MS = 24 * 60 * 60 * 1000;
 /** In-memory state for the current run; persisted on every mutation. */
 let current: ScrapeCheckpoint | null = null;
 
-/** Monotonic counter so concurrent writers in one process never share a temp file. */
-let writeSeq = 0;
-
 /** Atomic write, swallow-and-warn — checkpointing must never fail the run. */
 async function persist(): Promise<void> {
   if (!current) return;
-  const tmp = `${CHECKPOINT_PATH}.${process.pid}.${writeSeq++}.tmp`;
   try {
-    await fs.mkdir(dirname(CHECKPOINT_PATH), { recursive: true });
-    await fs.writeFile(tmp, JSON.stringify(current, null, 2) + "\n");
-    await fs.rename(tmp, CHECKPOINT_PATH);
+    await atomicWrite(CHECKPOINT_PATH, JSON.stringify(current, null, 2) + "\n");
   } catch (err) {
-    await fs.unlink(tmp).catch(() => {});
     console.warn(
       `[scrape-checkpoint] write failed: ${err instanceof Error ? err.message : String(err)}`,
     );

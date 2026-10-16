@@ -35,23 +35,6 @@ describe("TMDBClient.getPosterUrl", () => {
   });
 });
 
-describe("TMDBClient.getBackdropUrl", () => {
-  it("returns null for null input", () => {
-    expect(TMDBClient.getBackdropUrl(null)).toBeNull();
-  });
-
-  it("builds a TMDB image CDN URL with default size w780", () => {
-    const url = TMDBClient.getBackdropUrl("/bg.jpg");
-    expect(url).toMatch(/^https:\/\/image\.tmdb\.org\/t\/p\/w780\/bg\.jpg$/);
-  });
-
-  it("respects an explicit size override (w300/w780/w1280/original)", () => {
-    expect(TMDBClient.getBackdropUrl("/bg.jpg", "w300")).toContain("/w300/");
-    expect(TMDBClient.getBackdropUrl("/bg.jpg", "w1280")).toContain("/w1280/");
-    expect(TMDBClient.getBackdropUrl("/bg.jpg", "original")).toContain("/original/");
-  });
-});
-
 describe("TMDBClient.getProfileUrl", () => {
   it("returns null for null input", () => {
     expect(TMDBClient.getProfileUrl(null)).toBeNull();

@@ -58,6 +58,3 @@ export const bfiImportRuns = pgTable(
     ),
   })
 );
-
-export type BfiImportRunInsert = typeof bfiImportRuns.$inferInsert;
-export type BfiImportRunSelect = typeof bfiImportRuns.$inferSelect;

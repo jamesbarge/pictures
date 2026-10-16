@@ -112,6 +112,3 @@ export const enrichmentCorrections = pgTable("enrichment_corrections", {
     .notNull()
     .defaultNow(),
 });
-
-export type EnrichmentCorrection = typeof enrichmentCorrections.$inferSelect;
-export type NewEnrichmentCorrection = typeof enrichmentCorrections.$inferInsert;
