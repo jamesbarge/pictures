@@ -1,3 +1,13 @@
+## 2026-10-04: Remove retired-scheduler, QA and never-wired modules from src/lib
+**PR**: #784 | **Files**: `src/lib/jobs/`, `src/lib/qa/`, `src/lib/enrichment/`, `src/lib/embeddings.ts`, `src/lib/scraper-health/`, `src/lib/data-quality/`, `scripts/qa-dry-run.ts`, `src/app/api/admin/qa/route.ts`
+- Deleted 4,119 lines of code with zero callers: the daily-sweep, post-scrape and post-deploy-verify jobs left behind when Trigger.dev went in #469, `data-quality/index.ts`, `enrichment/`, the whole `src/lib/qa/` pipeline with `scripts/qa-dry-run.ts` and the 501 `/api/admin/qa` stub, `scraper-health/alerts.ts` with the two snapshot writers, and the bge-m3 `embeddings.ts` module.
+- `thresholds.json` drops the unread `nonFilmDetection` and `safetyFloors` sections; `loadThresholdsAsync` is gone. Unit tests go from 2,566 to 2,503 because the deleted code's tests went with it. The one visible change is `POST /api/admin/qa` returning 404 where it returned 501.
+
+---
+
+
+---
+
 ## 2026-10-16: Film cache picks namesakes by release year
 **PR**: #820 | **Files**: `src/scrapers/utils/film-matching.ts`, `src/scrapers/pipeline.ts`, `src/scrapers/cinemas/riverside-v2.ts`, `src/scrapers/cinemas/riverside-v2.test.ts` (new), `src/scrapers/utils/film-matching-cache.test.ts`, `src/scrapers/utils/film-matching-tmdb.test.ts`, `src/scrapers/pipeline-namesake-years.test.ts` (new), two pipeline test mocks, `src/scrapers/SCRAPING_PLAYBOOK.md`
 - The pipeline's film cache kept one film per title and ignored the scraper's year, so PCC's Heat (1995), Tenet (2020), Blue Velvet (1986), Possession (1981) and Halloween (1978) sat on the 1972, 2026, 2011, 2012 and 2007 films of the same name. The cache now keeps every namesake and returns the one within a year of the scraper's release year.

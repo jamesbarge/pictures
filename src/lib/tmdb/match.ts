@@ -49,9 +49,7 @@ const CURRENT_RELEASE_CONFIDENCE = 0.75;
 const CURRENT_RELEASE_YEAR_TOLERANCE = 1;
 
 /**
- * Get TMDB matching thresholds from the AutoQuality-tuned config.
- * Reads from in-process cache (populated from DB by loadThresholdsAsync
- * at the start of enrichment runs). Falls back to bundled defaults.
+ * Get TMDB matching thresholds from the bundled thresholds.json config.
  */
 function getTmdbThresholds() {
   const t = loadThresholds().tmdb;
