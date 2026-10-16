@@ -7,8 +7,8 @@
  */
 
 import { db, withDbTimeout } from "@/db";
-import { films } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { films, screenings } from "@/db/schema";
+import { and, count, eq, gte, inArray } from "drizzle-orm";
 import { matchFilmToTMDB, getTMDBClient, isRepertoryFilm, getDecade } from "@/lib/tmdb";
 import { getPosterService } from "@/lib/posters";
 import {
@@ -112,12 +112,7 @@ export async function initFilmCache(
 
   let blockedCount = 0;
   for (const film of allFilms) {
-    const normalized = normalizeTitle(film.title);
-    addNamesake(cache, normalized, film);
-    const existing = cache.byTitle.get(normalized);
-    if (!existing || prefersForTitle(film, existing)) {
-      cache.byTitle.set(normalized, film);
-    }
+    addNamesake(cache, normalizeTitle(film.title), film);
     // Build TMDB ID index — two films with same TMDB ID are always the same film.
     // Preventive blocklist (plan 008): a film carrying a blocklisted (known
     // wrong) TMDB id must NOT be reachable through the tmdb-id index, so the
@@ -135,6 +130,12 @@ export async function initFilmCache(
         cache.byTmdbId.set(film.tmdbId, film);
       }
     }
+  }
+
+  // Each title's default film, for listings that send no year.
+  const upcoming = await countUpcomingForNamesakes(cache);
+  for (const [normalized, list] of cache.namesakes) {
+    cache.byTitle.set(normalized, list.reduce((best, film) => (prefersForTitle(film, best, upcoming) ? film : best)));
   }
 
   const aliasCount = addOriginalTitleAliases(cache, allFilms);
@@ -200,13 +201,15 @@ export function lookupFilmInCache(
   if (cached) {
     cache.stats.hits++;
     const hint = releaseYearHint(scraperYear);
-    if (hint !== undefined && yearConflicts(cached, hint)) {
-      const sameYear = cache.namesakes
-        .get(normalizedTitle)
-        ?.find((film) => film.year != null && Math.abs(film.year - hint) <= 1);
-      if (sameYear) return sameYear;
+    if (hint === undefined) return cached;
+    // Closest year wins, so 1995 vs 1996 can't depend on row order, and a
+    // default with no year can't hide a dated namesake.
+    let best: FilmRecord | null = null;
+    for (const film of cache.namesakes.get(normalizedTitle) ?? []) {
+      if (film.year == null || Math.abs(film.year - hint) > 1) continue;
+      if (!best || Math.abs(film.year - hint) < Math.abs(best.year! - hint)) best = film;
     }
-    return cached;
+    return best ?? cached;
   }
   cache.stats.misses++;
   return null;
@@ -230,18 +233,43 @@ export function yearConflicts(film: Pick<FilmRecord, "year">, scraperYear?: numb
 }
 
 /**
- * Which same-title film a listing with NO year gets: the one with TMDB data,
- * then, between two TMDB films, the newer. Everyman and Picturehouse send no
- * year and mostly show new releases, so "Dracula" there stays Radu Jude's 2025
- * film after Hammer's 1958 one gets a row. Two rows without TMDB data keep the
- * first loaded: the newer one is usually a screening-year stub ("Nostalghia"
- * 2026 next to Tarkovsky's 1983 row).
- * ponytail: a repertory venue that sends no year also gets the newer TMDB film;
- * it has to send a year to reach an older namesake.
+ * Which same-title film a listing with NO year gets: the one holding the most
+ * upcoming screenings, then the one with TMDB data, then the first loaded.
+ * That is the film the title already resolves to, so venues that send no year
+ * keep their matches: Everyman's "Dracula" stays Radu Jude's 2025 film after
+ * Hammer's 1958 one gets a row. As year-sending venues move screenings to the
+ * right namesake, the default follows them.
  */
-function prefersForTitle(film: FilmRecord, current: FilmRecord): boolean {
-  if (!!film.tmdbId !== !!current.tmdbId) return !!film.tmdbId;
-  return !!film.tmdbId && (film.year ?? 0) > (current.year ?? 0);
+function prefersForTitle(film: FilmRecord, current: FilmRecord, upcoming: Map<string, number>): boolean {
+  const diff = (upcoming.get(film.id) ?? 0) - (upcoming.get(current.id) ?? 0);
+  if (diff !== 0) return diff > 0;
+  return !!film.tmdbId && !current.tmdbId;
+}
+
+/**
+ * Upcoming-screening counts for films that share a title with another film,
+ * a few hundred ids, so the extra query stays small. On failure every count is
+ * zero and the old rule (TMDB data, then first loaded) decides.
+ */
+async function countUpcomingForNamesakes(cache: FilmCache): Promise<Map<string, number>> {
+  const ids = [...cache.namesakes.values()].filter((list) => list.length > 1).flat().map((film) => film.id);
+  if (ids.length === 0) return new Map();
+  try {
+    const rows = await withDbTimeout(
+      db
+        .select({ filmId: screenings.filmId, n: count() })
+        .from(screenings)
+        .where(and(inArray(screenings.filmId, ids), gte(screenings.datetime, new Date())))
+        .groupBy(screenings.filmId),
+      10_000,
+      "initFilmCache: namesake screening counts",
+    );
+    cache.stats.dbQueries++;
+    return new Map(rows.map((row) => [row.filmId, Number(row.n)]));
+  } catch (error) {
+    console.warn("[Pipeline] Namesake screening counts failed; using TMDB-then-load-order defaults:", error);
+    return new Map();
+  }
 }
 
 function addNamesake(cache: FilmCache, normalized: string, film: FilmRecord) {
@@ -263,8 +291,9 @@ export function logCacheStats(cache: FilmCache): void {
 function addToFilmCache(cache: FilmCache, film: FilmRecord) {
   const normalized = cache.normalizeTitle(film.title);
   addNamesake(cache, normalized, film);
-  const existing = cache.byTitle.get(normalized);
-  if (!existing || prefersForTitle(film, existing)) {
+  // A film created this run has no screenings yet, so it never displaces the
+  // title's default (the Hammer Dracula row leaves Jude's as the default).
+  if (!cache.byTitle.has(normalized)) {
     cache.byTitle.set(normalized, film);
   }
   if (film.tmdbId) {
