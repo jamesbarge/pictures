@@ -88,6 +88,23 @@ export async function classifyScreening(
       console.warn(`[Pipeline] Event classification failed:`, error);
       // Continue with scraper-provided data
     }
+  } else if (likelyNeedsClassification(screening.filmTitle)) {
+    // The scraper already named a format or event type, so the block above
+    // does not run. Accessibility is still read off the title: BFI IMAX keeps
+    // its screen format and a title like "Disclosure Day (with subtitles for
+    // the D/deaf and those experiencing hearing loss)".
+    try {
+      const classification = await classifyEventCached(screening.filmTitle);
+      if (classification.hasSubtitles) {
+        hasSubtitles = true;
+        subtitleLanguage = classification.subtitleLanguage;
+      }
+      if (classification.hasAudioDescription) hasAudioDescription = true;
+      if (classification.isRelaxedScreening) isRelaxedScreening = true;
+      if (classification.is3D) is3D = true;
+    } catch (error) {
+      console.warn(`[Pipeline] Accessibility classification failed:`, error);
+    }
   }
 
   return {

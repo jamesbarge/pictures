@@ -19,14 +19,27 @@
  * - picturehouse-ritzy → ritzy-brixton
  * - everyman-screen-on-the-green → screen-on-the-green
  *
+ * A legacy row collides with a canonical row when they are the same showing:
+ * the same film at the same time, the same source id, or the same booking URL
+ * at the same time. The Nickel split stored one showing twice, once under a
+ * dirtier film title (`THE UNKNOWN (ON 16MM` vs `The Unknown`), so film id
+ * alone did not see the collision and the update then hit the
+ * (cinema_id, source_id) unique index.
+ *
+ * Legacy cinema rows with no screenings left are deleted. Every foreign key to
+ * cinemas.id cascades, so the delete also removes that row's scraper runs,
+ * baselines and health snapshots.
+ *
  * Usage:
  *   npm run db:migrate-cinema-ids             # Dry run (shows what would change)
  *   npm run db:migrate-cinema-ids -- --execute  # Apply changes
+ *
+ * The flag is `--execute`. `--apply` is a dry run.
  */
 
 import { db } from "../index";
 import { screenings, cinemas } from "../schema";
-import { eq, sql, count, and, inArray } from "drizzle-orm";
+import { eq, count, inArray } from "drizzle-orm";
 import { getLegacyIdMappings, getCinemaById, getCinemasSeedData } from "@/config/cinema-registry";
 
 // ============================================================================
@@ -34,6 +47,32 @@ import { getLegacyIdMappings, getCinemaById, getCinemasSeedData } from "@/config
 // ============================================================================
 
 const DRY_RUN = !process.argv.includes("--execute");
+
+/** Identity used to decide whether a legacy screening is already stored canonically. */
+export interface ScreeningIdentity {
+  filmId: string;
+  datetime: Date;
+  sourceId: string | null;
+  bookingUrl: string;
+}
+
+/**
+ * True when the legacy row is the same showing as one already under the
+ * canonical cinema. Those rows are deleted. The rest are moved.
+ *
+ * Booking URL is only a collision at the same instant. Rio reuses one film-page
+ * URL for every performance, and those are different showings.
+ */
+export function legacyScreeningCollides(
+  legacy: ScreeningIdentity,
+  canonical: ScreeningIdentity,
+): boolean {
+  const sameInstant = legacy.datetime.getTime() === canonical.datetime.getTime();
+  if (legacy.filmId === canonical.filmId && sameInstant) return true;
+  if (legacy.sourceId && legacy.sourceId === canonical.sourceId) return true;
+  if (legacy.bookingUrl && sameInstant && legacy.bookingUrl === canonical.bookingUrl) return true;
+  return false;
+}
 
 // ============================================================================
 // Migration Steps
@@ -99,6 +138,8 @@ async function migrateScreeningIds(): Promise<void> {
         id: screenings.id,
         filmId: screenings.filmId,
         datetime: screenings.datetime,
+        sourceId: screenings.sourceId,
+        bookingUrl: screenings.bookingUrl,
       })
       .from(screenings)
       .where(eq(screenings.cinemaId, legacyId));
@@ -108,27 +149,34 @@ async function migrateScreeningIds(): Promise<void> {
       continue;
     }
 
-    // Check for collisions: legacy screenings that would conflict with existing canonical ones
+    const canonicalScreenings = await db
+      .select({
+        filmId: screenings.filmId,
+        datetime: screenings.datetime,
+        sourceId: screenings.sourceId,
+        bookingUrl: screenings.bookingUrl,
+      })
+      .from(screenings)
+      .where(eq(screenings.cinemaId, canonicalId));
+
+    // Check for collisions: legacy screenings that would conflict with existing
+    // canonical ones, including the same showing stored under a different film.
     const collisionIds: string[] = [];
     const migrateIds: string[] = [];
+    const reserved: ScreeningIdentity[] = [...canonicalScreenings];
 
     for (const ls of legacyScreenings) {
-      const [existing] = await db
-        .select({ id: screenings.id })
-        .from(screenings)
-        .where(
-          and(
-            eq(screenings.filmId, ls.filmId),
-            eq(screenings.cinemaId, canonicalId),
-            eq(screenings.datetime, ls.datetime)
-          )
-        )
-        .limit(1);
-
-      if (existing) {
+      const identity: ScreeningIdentity = {
+        filmId: ls.filmId,
+        datetime: ls.datetime,
+        sourceId: ls.sourceId,
+        bookingUrl: ls.bookingUrl,
+      };
+      if (reserved.some((existing) => legacyScreeningCollides(identity, existing))) {
         collisionIds.push(ls.id);
       } else {
         migrateIds.push(ls.id);
+        reserved.push(identity);
       }
     }
 
@@ -159,42 +207,41 @@ async function migrateScreeningIds(): Promise<void> {
   console.log(`\n  Total: ${totalMigrated} migrated, ${totalCollisions} collisions deleted ${DRY_RUN ? "(would be) " : ""}`);
 }
 
-async function reportOrphanedCinemas(): Promise<void> {
-  console.log("\n📍 Step 3: Checking for orphaned cinema records...\n");
+async function retireLegacyCinemas(): Promise<void> {
+  console.log("\n📍 Step 3: Retiring legacy cinema rows with no screenings left...\n");
 
   const legacyMappings = getLegacyIdMappings();
-  const orphaned: string[] = [];
 
-  for (const [legacyId] of legacyMappings) {
-    // Check if legacy cinema still exists
+  for (const [legacyId, canonicalId] of legacyMappings) {
     const [legacyCinema] = await db
       .select({ id: cinemas.id, name: cinemas.name })
       .from(cinemas)
       .where(eq(cinemas.id, legacyId));
 
-    if (legacyCinema) {
-      // Check if it has any screenings
-      const [result] = await db
-        .select({ count: count() })
-        .from(screenings)
-        .where(eq(screenings.cinemaId, legacyId));
-
-      const screeningCount = Number(result?.count) || 0;
-
-      if (screeningCount === 0) {
-        orphaned.push(`${legacyId} (${legacyCinema.name})`);
-      }
+    if (!legacyCinema) {
+      console.log(`  ⏭️  ${legacyId}: no cinema row`);
+      continue;
     }
-  }
 
-  if (orphaned.length === 0) {
-    console.log("  ✅ No orphaned cinema records found");
-  } else {
-    console.log("  ⚠️  Orphaned cinema records (no screenings):");
-    for (const cinema of orphaned) {
-      console.log(`     - ${cinema}`);
+    // Step 2 moves or deletes every legacy screening, but only with --execute.
+    if (DRY_RUN) {
+      console.log(`  [DRY RUN] Would delete ${legacyId} (${legacyCinema.name}) once step 2 empties it; canonical is ${canonicalId}`);
+      continue;
     }
-    console.log(`\n  These can be manually deleted after verification.`);
+
+    const [result] = await db
+      .select({ count: count() })
+      .from(screenings)
+      .where(eq(screenings.cinemaId, legacyId));
+
+    const screeningCount = Number(result?.count) || 0;
+    if (screeningCount > 0) {
+      console.log(`  ⚠️  ${legacyId}: ${screeningCount} screenings remain; cinema row kept`);
+      continue;
+    }
+
+    await db.delete(cinemas).where(eq(cinemas.id, legacyId));
+    console.log(`  🗑️  Deleted ${legacyId} (${legacyCinema.name})`);
   }
 }
 
@@ -263,7 +310,7 @@ async function main() {
   try {
     await ensureCanonicalCinemasExist();
     await migrateScreeningIds();
-    await reportOrphanedCinemas();
+    await retireLegacyCinemas();
     await verifyMigration();
 
     console.log("\n══════════════════════════════════════════════════════════════");
@@ -279,4 +326,10 @@ async function main() {
   }
 }
 
-main().then(() => process.exit(0));
+// Vitest imports the collision helper from this file. Only the CLI should run.
+const invokedDirectly = /canonicalize-cinema-ids\.(ts|js|mjs|cjs)$/.test(
+  process.argv[1]?.replace(/\\/g, "/") ?? "",
+);
+if (invokedDirectly) {
+  main().then(() => process.exit(0));
+}
