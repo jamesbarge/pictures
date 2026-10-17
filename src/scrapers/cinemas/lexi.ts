@@ -23,17 +23,6 @@ export const LEXI_CONFIG: ScraperConfig = {
   delayBetweenRequests: 500,
 };
 
-export const LEXI_VENUE = {
-  id: "lexi",
-  name: "The Lexi Cinema",
-  shortName: "Lexi",
-  area: "Kensal Rise",
-  postcode: "NW10 5SN",
-  address: "194b Chamberlayne Road",
-  features: ["independent", "charity", "single_screen", "repertory"],
-  website: "https://thelexicinema.co.uk",
-};
-
 // Types for the embedded JSON structure
 interface LexiPerformance {
   ID: number;

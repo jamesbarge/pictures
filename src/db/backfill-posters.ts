@@ -18,7 +18,7 @@
 
 import { db } from "./index";
 import { films, screenings } from "./schema";
-import { eq, isNull, or, and } from "drizzle-orm";
+import { eq, isNull, or } from "drizzle-orm";
 import { matchFilmToTMDB, getTMDBClient } from "@/lib/tmdb";
 import { getPosterService } from "@/lib/posters";
 import {
@@ -38,10 +38,6 @@ const DRY_RUN = !args.includes("--execute");
 const VERBOSE = args.includes("--verbose");
 const limitArg = args.find(a => a.startsWith("--limit="));
 const LIMIT = limitArg ? parseInt(limitArg.split("=")[1]) : undefined;
-
-// ============================================================================
-// Title Cleaning Patterns
-// ============================================================================
 
 // ============================================================================
 // Title Processing Functions
@@ -182,18 +178,11 @@ export function processTitle(rawTitle: string): ProcessedTitle {
 // ============================================================================
 
 interface BackfillResult {
-  filmId: string;
   originalTitle: string;
   cleanedTitle: string;
   extractedYear: number | null;
-  previousTmdbId: number | null;
-  newTmdbId: number | null;
   posterFound: boolean;
   posterSource: string | null;
-  skipped: boolean;
-  skipReason: string | null;
-  merged: boolean;
-  mergedIntoId: string | null;
 }
 
 /**
@@ -250,12 +239,7 @@ async function backfillPosters(): Promise<void> {
       or(
         // Films without posters
         isNull(films.posterUrl),
-        eq(films.posterUrl, ""),
-        // Films without TMDB ID (might find better matches)
-        and(
-          isNull(films.tmdbId),
-          or(isNull(films.posterUrl), eq(films.posterUrl, ""))
-        )
+        eq(films.posterUrl, "")
       )
     )
     .limit(LIMIT ?? 1000);
@@ -269,7 +253,6 @@ async function backfillPosters(): Promise<void> {
     tmdbMatched: 0,
     merged: 0,
     skippedNonFilm: 0,
-    skippedLiveBroadcast: 0,
     skippedCompilation: 0,
     failed: 0,
   };
@@ -294,20 +277,6 @@ async function backfillPosters(): Promise<void> {
     // Skip non-films
     if (processed.isNonFilm) {
       stats.skippedNonFilm++;
-      results.push({
-        filmId: film.id,
-        originalTitle: film.title,
-        cleanedTitle: processed.cleanedTitle,
-        extractedYear: null,
-        previousTmdbId: film.tmdbId,
-        newTmdbId: null,
-        posterFound: false,
-        posterSource: null,
-        skipped: true,
-        skipReason: "Non-film event",
-        merged: false,
-        mergedIntoId: null,
-      });
       if (VERBOSE) console.log(`  ⏭️  Skipped: Non-film event`);
       continue;
     }
@@ -315,20 +284,6 @@ async function backfillPosters(): Promise<void> {
     // Skip compilations (unless they already have TMDB ID)
     if (processed.isCompilation && !film.tmdbId) {
       stats.skippedCompilation++;
-      results.push({
-        filmId: film.id,
-        originalTitle: film.title,
-        cleanedTitle: processed.cleanedTitle,
-        extractedYear: null,
-        previousTmdbId: film.tmdbId,
-        newTmdbId: null,
-        posterFound: false,
-        posterSource: null,
-        skipped: true,
-        skipReason: "Festival compilation",
-        merged: false,
-        mergedIntoId: null,
-      });
       if (VERBOSE) console.log(`  ⏭️  Skipped: Festival compilation`);
       continue;
     }
@@ -340,8 +295,6 @@ async function backfillPosters(): Promise<void> {
     let newTmdbId: number | null = film.tmdbId;
     let posterUrl: string | null = film.posterUrl;
     let posterSource: string | null = null;
-    let wasMerged = false;
-    let mergedIntoId: string | null = null;
 
     try {
       // If no TMDB ID, try to match
@@ -366,26 +319,15 @@ async function backfillPosters(): Promise<void> {
           if (existingFilm) {
             // This is a duplicate! Merge instead of update
             await mergeDuplicateFilm(film.id, existingFilm.id, film.title, existingFilm.title);
-            wasMerged = true;
-            mergedIntoId = existingFilm.id;
-            posterUrl = existingFilm.posterUrl; // Use the canonical film's poster
-            posterSource = "merged";
             stats.merged++;
             if (existingFilm.posterUrl) stats.postersFound++; // Count as found since the canonical has it
 
             results.push({
-              filmId: film.id,
               originalTitle: film.title,
               cleanedTitle: processed.cleanedTitle,
               extractedYear: processed.extractedYear,
-              previousTmdbId: film.tmdbId,
-              newTmdbId: match.tmdbId,
               posterFound: !!existingFilm.posterUrl,
               posterSource: "merged",
-              skipped: false,
-              skipReason: null,
-              merged: true,
-              mergedIntoId: existingFilm.id,
             });
             continue; // Move to next film
           }
@@ -487,36 +429,22 @@ async function backfillPosters(): Promise<void> {
       }
 
       results.push({
-        filmId: film.id,
         originalTitle: film.title,
         cleanedTitle: processed.cleanedTitle,
         extractedYear: processed.extractedYear,
-        previousTmdbId: film.tmdbId,
-        newTmdbId,
         posterFound: !!posterUrl && posterUrl !== film.posterUrl,
         posterSource,
-        skipped: false,
-        skipReason: null,
-        merged: wasMerged,
-        mergedIntoId,
       });
 
     } catch (error) {
       stats.failed++;
       console.error(`  ✗ Error processing "${film.title}":`, error);
       results.push({
-        filmId: film.id,
         originalTitle: film.title,
         cleanedTitle: processed.cleanedTitle,
         extractedYear: processed.extractedYear,
-        previousTmdbId: film.tmdbId,
-        newTmdbId: null,
         posterFound: false,
         posterSource: null,
-        skipped: false,
-        skipReason: `Error: ${error}`,
-        merged: false,
-        mergedIntoId: null,
       });
     }
 
@@ -533,7 +461,6 @@ async function backfillPosters(): Promise<void> {
   console.log(`Duplicates merged:   ${stats.merged}`);
   console.log(`Posters found:       ${stats.postersFound}`);
   console.log(`Skipped (non-film):  ${stats.skippedNonFilm}`);
-  console.log(`Skipped (broadcast): ${stats.skippedLiveBroadcast}`);
   console.log(`Skipped (compile):   ${stats.skippedCompilation}`);
   console.log(`Failed:              ${stats.failed}`);
 
@@ -554,7 +481,7 @@ async function backfillPosters(): Promise<void> {
   }
 
   // Show films that still need attention
-  const stillMissing = results.filter(r => !r.posterFound && !r.skipped);
+  const stillMissing = results.filter(r => !r.posterFound);
   if (stillMissing.length > 0) {
     console.log(`\n⚠️  ${stillMissing.length} films still need posters:`);
     for (const r of stillMissing.slice(0, 15)) {

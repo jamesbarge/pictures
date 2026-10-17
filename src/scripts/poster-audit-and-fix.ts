@@ -69,6 +69,14 @@ interface PhaseResult {
   remaining: FilmWithScreeningCount[]; // films still missing posters
 }
 
+const emptyPhase = (remaining: FilmWithScreeningCount[] = []): PhaseResult => ({
+  fixed: 0,
+  skipped: 0,
+  merged: 0,
+  failed: 0,
+  remaining,
+});
+
 // ============================================================================
 // Helpers
 // ============================================================================
@@ -237,13 +245,7 @@ async function phase2TmdbDirect(
   log("─".repeat(60));
   log(`Processing ${filmsToProcess.length} films with tmdbId but no poster`);
 
-  const result: PhaseResult = {
-    fixed: 0,
-    skipped: 0,
-    merged: 0,
-    failed: 0,
-    remaining: [],
-  };
+  const result = emptyPhase();
 
   if (filmsToProcess.length === 0) return result;
 
@@ -297,13 +299,7 @@ async function phase3TmdbMatch(
   log("─".repeat(60));
   log(`Processing ${filmsToProcess.length} films without tmdbId`);
 
-  const result: PhaseResult = {
-    fixed: 0,
-    skipped: 0,
-    merged: 0,
-    failed: 0,
-    remaining: [],
-  };
+  const result = emptyPhase();
 
   if (filmsToProcess.length === 0) return result;
 
@@ -442,13 +438,7 @@ async function phase4WebSearch(
   log("─".repeat(60));
   log(`Processing ${filmsToProcess.length} films through web fallback chain`);
 
-  const result: PhaseResult = {
-    fixed: 0,
-    skipped: 0,
-    merged: 0,
-    failed: 0,
-    remaining: [],
-  };
+  const result = emptyPhase();
 
   if (filmsToProcess.length === 0) return result;
 
@@ -683,27 +673,9 @@ async function main(): Promise<void> {
   const audit = await phase1Audit();
 
   // Initialize empty results for skipped phases
-  let phase2Result: PhaseResult = {
-    fixed: 0,
-    skipped: 0,
-    merged: 0,
-    failed: 0,
-    remaining: audit.groupA,
-  };
-  let phase3Result: PhaseResult = {
-    fixed: 0,
-    skipped: 0,
-    merged: 0,
-    failed: 0,
-    remaining: audit.groupB,
-  };
-  let phase4Result: PhaseResult = {
-    fixed: 0,
-    skipped: 0,
-    merged: 0,
-    failed: 0,
-    remaining: [],
-  };
+  let phase2Result = emptyPhase(audit.groupA);
+  let phase3Result = emptyPhase(audit.groupB);
+  let phase4Result = emptyPhase();
 
   // Phase 2: TMDB Direct Fetch
   if (!PHASE_ONLY || PHASE_ONLY === 2) {

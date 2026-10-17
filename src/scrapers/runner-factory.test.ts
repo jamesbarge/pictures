@@ -258,7 +258,7 @@ describe("empty run results", () => {
       createScraper: () => ({ scrape: scrapeVenue }) as unknown as CinemaScraper,
     };
 
-    const result = await runScraper(config, { useValidation: true, continueOnError: true });
+    const result = await runScraper(config, { useValidation: true });
 
     expect(result.success).toBe(false);
     expect(result.venueResults.map((r) => r.venueId).sort()).toEqual([
@@ -287,7 +287,6 @@ describe("chain venue initialisation failures", () => {
   const chainScraperFor = (scrapeVenues: ReturnType<typeof vi.fn>) =>
     ({
       scrapeVenues,
-      scrapeAll: vi.fn(),
       scrapeVenue: vi.fn(),
       healthCheck: vi.fn(async () => true),
       venueErrors: new Map<string, string>(),

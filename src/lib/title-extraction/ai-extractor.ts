@@ -7,9 +7,8 @@
  * which already powered the enrichment agent's hot path.
  *
  * This file now exists purely as an async adapter so that callers expecting
- * the previous API (`extractFilmTitleAI`, `hasWordOverlap`, `AIExtractionResult`)
- * keep compiling unchanged. New callers should prefer `extractFilmTitleSync`
- * directly.
+ * the previous API (`extractFilmTitle`, `AIExtractionResult`) keep compiling
+ * unchanged. New callers should prefer `extractFilmTitleSync` directly.
  */
 
 import { VERSION_SUFFIX_PATTERNS, EVENT_PREFIX_PATTERNS, FRANCHISE_PATTERN } from "./patterns";
@@ -29,28 +28,6 @@ export interface AIExtractionResult {
 }
 
 /**
- * Check whether two titles share meaningful word overlap.
- *
- * Originally a hallucination guard against AI output; retained because
- * other modules (e.g. similarity matchers) still call it as a generic
- * title-similarity helper.
- */
-export function hasWordOverlap(rawTitle: string, candidate: string, threshold = 0.3): boolean {
-  const normalize = (s: string) =>
-    s
-      .toLowerCase()
-      .replace(/[^a-z0-9\s]/g, "")
-      .split(/\s+/)
-      .filter((w) => w.length > 1);
-  const rawWords = normalize(rawTitle);
-  const candidateWords = new Set(normalize(candidate));
-  if (rawWords.length === 0 || candidateWords.size === 0) return true;
-  const overlapping = rawWords.filter((w) => candidateWords.has(w)).length;
-  const denominator = Math.min(rawWords.length, candidateWords.size);
-  return overlapping / denominator >= threshold;
-}
-
-/**
  * Extract the version suffix (e.g. "Final Cut") from a title.
  */
 function extractVersionSuffix(title: string): { baseTitle: string; version: string } | null {
@@ -67,11 +44,8 @@ function extractVersionSuffix(title: string): { baseTitle: string; version: stri
 
 /**
  * Whether a title can skip extraction entirely (i.e. it's already clean).
- *
- * Retained as a public export because `pattern-extractor` and
- * `title-extraction/index.ts` both branch on it for batch processing.
  */
-export function isLikelyCleanTitle(title: string): boolean {
+function isLikelyCleanTitle(title: string): boolean {
   const normalized = title.toLowerCase().trim();
 
   for (const pattern of EVENT_PREFIX_PATTERNS) {
@@ -128,7 +102,7 @@ function bucketConfidence(numeric: number): "high" | "medium" | "low" {
  * listing. Async signature retained for caller compatibility; the work
  * itself is synchronous.
  */
-export async function extractFilmTitleAI(rawTitle: string): Promise<AIExtractionResult> {
+export async function extractFilmTitle(rawTitle: string): Promise<AIExtractionResult> {
   // Hot path: titles that look already clean skip the regex pipeline.
   if (isLikelyCleanTitle(rawTitle)) {
     const displayTitle = cleanBasicCruft(rawTitle);

@@ -1,0 +1,20 @@
+# Trim dead scraper code
+
+**PR**: #791
+**Date**: 2026-10-04
+
+## Changes
+- Chains: deleted `getActiveCurzonVenues`, `getLondonCurzonVenues`, `getActivePicturehouseVenues`, `getLondonPicturehouseVenues` and `getActiveEverymanVenues` (zero callers), `ChainScraper.scrapeAll` with its three implementations and test mock (the runner only calls `scrapeVenues`), the unimported `chains/index.ts` barrel, and the unimported `ScraperResult` type.
+- `platforms/savoy.ts`: dropped the `filmTypeOnly` option, its filter, the unread `SavoyPerformance.TypeDescription` field and three tests. Rio and Phoenix, the two callers, never set it. The header now says "Used by Rio and Phoenix".
+- `runner-factory.ts`: dropped `RunnerOptions.verbose` (never read) and `continueOnError` (never set to false, so both `break` paths were unreachable).
+- Date helpers: `chains/curzon.ts`, `platforms/indy.ts` and `cinemas/barbican.ts` each carried a private `londonDateKey(from, offset)`. All three now call `addDaysToDateString(londonDateString(from), offset)` from `src/lib/london-date.ts`, which uses the same noon-UTC anchoring. A scratch script compared the old bodies with the new call over 1,271,115 (instant, offset) pairs: every 37 minutes from 2024 to 2027, every minute within 26 hours of the eight BST transitions, and the 23:00 to 01:00 UTC window on every day of 2026, with offsets 0 to 366. It found zero differences. A second pass over 300,549 instants confirmed `londonDateString(d)` equals the old `londonDateKey(d, 0)` used by the INDY health check.
+- `cinemas/garden.ts` and `cinemas/peckhamplex.ts` parse through `parseUKLocalDateTime`. Garden keeps its `HH:MM` format check and early-hour warning and adds an `isNaN` guard. Peckhamplex skips an attribute with no time part, which the shared helper would read as midnight. A scratch script ran the old parsers against the real new methods over 2,675,253 Garden and 3,019,056 Peckhamplex inputs: every calendar date from 2024 to 2028 at every minute, the venue fixtures, malformed dates and times, and 300,000 fuzzed attribute strings. It found zero differences. Calendar-impossible `data-date` values such as `2026-02-57` can land an hour apart, since the old Garden path normalised the date before the BST check. The venue's CMS emits real dates only.
+- Cinemas: deleted the `parseVEvents` re-export from `cinema-museum.ts` and the five test cases that duplicated `utils/ical-parser.test.ts`; removed `FestivalDetector.preload()` from `bertha-dochouse.ts` and `cinema-museum.ts`, which never call `detect()`; removed Prince Charles's no-op `unreserved` branch; `olympic.ts` reads `now.getFullYear()` in place of date-fns `getYear`; `riverside-v2.ts` and `rich-mix-v2.ts` drop their own sourceId sets because `BaseScraper.validate` already keeps the first row per sourceId; `ica.ts` drops the unread `FilmInfo.country` and `FilmInfo.url`.
+- Utils: removed `PRE_FILTER_REASONS`, the `supplementary` flag, the `insertUpdateAttribution` and `affectedRowAttribution` fields and their `insertUpdate=unavailable affectedRows=unavailable` log tokens, the `formatAccounting`/`checkAccounting` re-exports from `screening-accounting-report.ts`, the `maxResponseSize` option in `fetch-with-retry.ts`, an unreachable `(Year, Country, Director)` branch in `metadata-parser.ts` (`parseParenthetical` handles that format first), and `ical-parser.ts`'s `_open` flag; its two unfold passes become one `/\r?\n[ \t]/g`. `classifyScreening` builds one scraper-provided defaults object in place of ten `let`s.
+- `SCRAPING_PLAYBOOK.md` updated for the Savoy, london-date and accounting changes.
+
+## Impact
+- Screening output is unchanged for every venue. The comparisons above cover the date paths; the remaining edits remove code nothing reached.
+- The `[Accounting]` log line and `scraper_runs.metadata.accounting` lose two constant `"unavailable"` fields and `supplementary: false`. Nothing in the repo reads them.
+- Bertha DocHouse and Cinema Museum make one fewer database query per run, so a festivals-table outage stops failing those two scrapes.
+- Code diff: 102 insertions and 580 deletions across 32 files, changelogs excluded.

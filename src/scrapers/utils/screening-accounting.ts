@@ -70,15 +70,6 @@ export type PreFilterReason =
   | "duplicate_source_id"
   | "subclass_filter";
 
-export const PRE_FILTER_REASONS: readonly PreFilterReason[] = [
-  "missing_title",
-  "invalid_datetime",
-  "past_screening",
-  "missing_booking_url",
-  "duplicate_source_id",
-  "subclass_filter",
-] as const;
-
 export interface PreFilterReport {
   /** Candidates handed to validate(). */
   parsed: number;
@@ -97,8 +88,8 @@ export interface PreFilterReport {
  * the statement as written does not report which. Splitting it would need
  * `RETURNING xmax = 0` or a per-row pre-read; the first changes a production
  * write statement and the second is a per-row lookup added purely for a
- * counter. Both were declined, so the distinction is recorded as unavailable
- * (see `insertUpdateAttribution`) rather than guessed.
+ * counter. Both were declined, so the distinction is left unrecorded rather
+ * than guessed.
  *
  * `updated` and `unchanged` are exact: they come from the branch where
  * `checkForDuplicate` already identified the target row, so the code knows
@@ -207,26 +198,6 @@ export interface ScreeningAccounting {
    * branch returns before reaching it.
    */
   postWriteFailures: number;
-  /** Always unavailable while the upsert path stays a single statement. */
-  insertUpdateAttribution: "unavailable";
-  /**
-   * Always unavailable: no write statement carries RETURNING or reads a row
-   * count, so `upserted` and `updated` are statement completions rather than
-   * verified row changes.
-   */
-  affectedRowAttribution: "unavailable";
-  /**
-   * True for a deliberately partial batch (L-CUT gap-fill and similar), which
-   * is not the venue's full listing and whose counts therefore must not be
-   * added into a full run's totals.
-   *
-   * A MARKER AWAITING A CONSUMER. Nothing sets it outside tests today —
-   * `scripts/lcut-gapfill.ts`, the named example, does not call
-   * `buildAccounting` at all — and nothing enforces the exclusion. It is
-   * printed by `formatAccounting` and otherwise unread. Do not rely on it as a
-   * guarantee until a producer wires it.
-   */
-  supplementary: boolean;
   /** The diff check blocked the batch; nothing was written. */
   blocked: boolean;
 }
@@ -369,10 +340,7 @@ export function formatAccounting(a: ScreeningAccounting): string {
     `unchanged=${a.write.unchanged}`,
     `failed=${a.write.failed}`,
     `postWriteFailures=${a.postWriteFailures}`,
-    "insertUpdate=unavailable",
-    "affectedRows=unavailable",
   ];
-  if (a.supplementary) parts.push("supplementary");
   if (a.blocked) parts.push("blocked");
   return parts.join(" ");
 }

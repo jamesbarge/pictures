@@ -1,6 +1,6 @@
 /**
  * Admin Screenings API Tests
- * Tests Zod validation on PUT and PATCH endpoints
+ * Tests Zod validation on the PUT endpoint
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
@@ -17,7 +17,6 @@ vi.mock("@/db", () => {
       limit: mockLimit,
       update: vi.fn().mockReturnThis(),
       set: vi.fn().mockReturnThis(),
-      delete: vi.fn().mockReturnThis(),
       // Expose mockLimit for test access
       __mockLimit: mockLimit,
     },
@@ -25,19 +24,16 @@ vi.mock("@/db", () => {
 });
 
 // Import after mocks are set up
-import { PUT, PATCH, DELETE } from "./route";
+import { PUT } from "./route";
 import { db } from "@/db";
 
 // Access the mock function
 const mockLimit = (db as unknown as { __mockLimit: ReturnType<typeof vi.fn> }).__mockLimit;
 
 // Helper to create mock Request
-function createRequest(
-  body: unknown,
-  method: "PUT" | "PATCH" | "DELETE" = "PUT"
-): Request {
+function createRequest(body: unknown): Request {
   return new Request("http://localhost/api/admin/screenings/test-id", {
-    method,
+    method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
@@ -190,104 +186,6 @@ describe("Admin Screenings API", () => {
 
         expect(response.status).toBe(200);
       });
-    });
-  });
-
-  describe("PATCH /api/admin/screenings/[id]", () => {
-    describe("authentication", () => {
-      it("should return 401 without auth", async () => {
-        vi.mocked(auth).mockResolvedValueOnce({ userId: null } as never);
-
-        const response = await PATCH(createRequest({}, "PATCH"), createParams());
-
-        expect(response.status).toBe(401);
-        const data = await response.json();
-        expect(data.error).toBe("Unauthorized");
-      });
-    });
-
-    describe("validation", () => {
-      beforeEach(() => {
-        vi.mocked(auth).mockResolvedValue({ userId: "test-user" } as never);
-      });
-
-      it("should accept valid body", async () => {
-        const body = {
-          format: "IMAX",
-          screen: "Screen 3",
-        };
-
-        const response = await PATCH(createRequest(body, "PATCH"), createParams());
-
-        expect(response.status).toBe(200);
-        const data = await response.json();
-        expect(data.success).toBe(true);
-      });
-
-      it("should reject invalid datetime format", async () => {
-        const body = {
-          datetime: "2026/01/15 14:00",
-        };
-
-        const response = await PATCH(createRequest(body, "PATCH"), createParams());
-
-        expect(response.status).toBe(400);
-        const data = await response.json();
-        expect(data.error).toBe("Invalid request body");
-      });
-
-      it("should accept valid datetime (ISO 8601)", async () => {
-        const body = {
-          datetime: "2026-01-15T14:00:00.000Z",
-        };
-
-        const response = await PATCH(createRequest(body, "PATCH"), createParams());
-
-        expect(response.status).toBe(200);
-      });
-
-      it("should accept null for nullable fields", async () => {
-        const body = {
-          format: null,
-          screen: null,
-          eventType: null,
-        };
-
-        const response = await PATCH(createRequest(body, "PATCH"), createParams());
-
-        expect(response.status).toBe(200);
-      });
-    });
-  });
-
-  describe("DELETE /api/admin/screenings/[id]", () => {
-    it("should return 401 without auth", async () => {
-      vi.mocked(auth).mockResolvedValueOnce({ userId: null } as never);
-
-      const response = await DELETE(new Request("http://localhost", { method: "DELETE" }), createParams());
-
-      expect(response.status).toBe(401);
-    });
-
-    it("should succeed with valid auth", async () => {
-      vi.mocked(auth).mockResolvedValueOnce({ userId: "test-user" } as never);
-
-      const response = await DELETE(new Request("http://localhost", { method: "DELETE" }), createParams());
-
-      expect(response.status).toBe(200);
-      const data = await response.json();
-      expect(data.success).toBe(true);
-    });
-
-    it("should return 404 for non-existent screening", async () => {
-      vi.mocked(auth).mockResolvedValueOnce({ userId: "test-user" } as never);
-      mockLimit.mockResolvedValueOnce([]); // No screening found
-
-      const response = await DELETE(new Request("http://localhost", { method: "DELETE" }), createParams());
-
-      expect(response.status).toBe(404);
-      const data = await response.json();
-      expect(data.error).toBe("Screening not found");
     });
   });
 });

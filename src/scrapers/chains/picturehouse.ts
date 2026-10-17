@@ -364,14 +364,6 @@ export class PicturehouseScraper implements ChainScraper {
   }
 
   /**
-   * Scrape all active venues
-   */
-  async scrapeAll(): Promise<Map<string, RawScreening[]>> {
-    const activeVenues = this.chainConfig.venues.filter(v => v.active !== false);
-    return this.scrapeVenues(activeVenues.map(v => v.id));
-  }
-
-  /**
    * Scrape specific venues by ID
    */
   async scrapeVenues(venueIds: string[]): Promise<Map<string, RawScreening[]>> {
@@ -438,14 +430,4 @@ export class PicturehouseScraper implements ChainScraper {
 // Factory function
 export function createPicturehouseScraper(): PicturehouseScraper {
   return new PicturehouseScraper();
-}
-
-/** Returns all Picturehouse venues that are currently active (not disabled). */
-export function getActivePicturehouseVenues(): VenueConfig[] {
-  return PICTUREHOUSE_VENUES.filter(v => v.active !== false);
-}
-
-/** Returns all Picturehouse venues in London (all venues are London-based). */
-export function getLondonPicturehouseVenues(): VenueConfig[] {
-  return PICTUREHOUSE_VENUES; // All are in London
 }
