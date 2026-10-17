@@ -19,20 +19,13 @@
 
 import { test, expect } from '@playwright/test';
 
-import { BASE } from './base-url';
+import { BASE, dismissConsent } from './base-url';
 
-test.beforeEach(async ({ context }) => {
+test.beforeEach(async ({ context, page }) => {
 	// Pre-reject cookies so the banner doesn't shadow the palette.
-	await context.addInitScript(() => {
-		try {
-			localStorage.setItem(
-				'pictures-cookie-consent',
-				JSON.stringify({ status: 'rejected', updatedAt: new Date().toISOString() })
-			);
-		} catch {
-			/* ignore */
-		}
-	});
+	await dismissConsent(context);
+	await page.goto(BASE);
+	await waitForPaletteBinding(page);
 });
 
 /**
@@ -83,9 +76,6 @@ async function openPalette(page: import('@playwright/test').Page) {
 
 test.describe('Command Palette — cmd+k', () => {
 	test('⌘K opens the palette and Esc closes it', async ({ page }) => {
-		await page.goto(BASE);
-		await waitForPaletteBinding(page);
-
 		await openPalette(page);
 		const dialog = page.getByRole('dialog', { name: 'Search pictures.london' });
 		await expect(dialog).toBeVisible();
@@ -98,9 +88,6 @@ test.describe('Command Palette — cmd+k', () => {
 	});
 
 	test('typing a fuzzy query surfaces matching films (typo + accent tolerant)', async ({ page }) => {
-		await page.goto(BASE);
-		await waitForPaletteBinding(page);
-
 		await openPalette(page);
 		const dialog = page.getByRole('dialog', { name: 'Search pictures.london' });
 		const input = dialog.getByRole('combobox');
@@ -118,9 +105,6 @@ test.describe('Command Palette — cmd+k', () => {
 	});
 
 	test('Enter on a film row navigates to /film/[id]', async ({ page }) => {
-		await page.goto(BASE);
-		await waitForPaletteBinding(page);
-
 		await openPalette(page);
 		const dialog = page.getByRole('dialog', { name: 'Search pictures.london' });
 		await dialog.getByRole('combobox').fill('akira');
@@ -136,9 +120,6 @@ test.describe('Command Palette — cmd+k', () => {
 	});
 
 	test('composite filter-action surfaces for a multi-slice query', async ({ page }) => {
-		await page.goto(BASE);
-		await waitForPaletteBinding(page);
-
 		await openPalette(page);
 		const dialog = page.getByRole('dialog', { name: 'Search pictures.london' });
 		await dialog.getByRole('combobox').fill('horror 70mm tonight');
@@ -159,8 +140,6 @@ test.describe('Command Palette — cmd+k', () => {
 		// (chromium + mobile-small) run this file, so we pin the viewport here
 		// rather than relying on the device default (mirrors test-all.spec.ts).
 		await page.setViewportSize({ width: 1440, height: 900 });
-		await page.goto(BASE);
-		await waitForPaletteBinding(page);
 
 		await openPalette(page);
 		const dialog = page.getByRole('dialog', { name: 'Search pictures.london' });

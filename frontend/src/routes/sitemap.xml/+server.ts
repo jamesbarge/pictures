@@ -11,9 +11,7 @@ import { apiFetch } from '$lib/server/api';
  * Resilience: a sitemap must never 500 — every upstream fetch degrades to an
  * empty list so a single failing API call can't take the whole sitemap down.
  *
- * Film coverage is forward-compatible: it prefers a backend enumerator
- * (`/api/films/sitemap`, which returns ALL ~1,000+ films) and falls back to the
- * top-200 `browse` payload until that endpoint is deployed.
+ * Films come from the top-200 `browse` payload.
  */
 
 // Apex host — must match the canonical URLs the app declares everywhere
@@ -29,7 +27,6 @@ const PEOPLE_WINDOW_DAYS = 60;
 
 interface UrlEntry {
 	loc: string;
-	lastmod?: string;
 	changefreq?: 'daily' | 'weekly' | 'monthly' | 'yearly';
 	priority?: number;
 }
@@ -59,25 +56,9 @@ function xmlEscape(value: string): string {
 		.replace(/'/g, '&apos;');
 }
 
-/** Run an upstream fetch, degrading to `fallback` rather than throwing. */
-async function safe<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
-	try {
-		return await fn();
-	} catch {
-		return fallback;
-	}
-}
-
-function toLastmod(iso: string | undefined): string | undefined {
-	if (!iso) return undefined;
-	const d = new Date(iso);
-	return Number.isNaN(d.getTime()) ? undefined : d.toISOString().slice(0, 10);
-}
-
 async function cinemaEntries(fetch: typeof globalThis.fetch): Promise<UrlEntry[]> {
-	const data = await safe(
-		() => apiFetch<{ cinemas: Array<{ id: string }> }>('/api/cinemas', fetch),
-		{ cinemas: [] }
+	const data = await apiFetch<{ cinemas: Array<{ id: string }> }>('/api/cinemas', fetch).catch(
+		() => ({ cinemas: [] })
 	);
 	return data.cinemas
 		.filter((c) => c.id)
@@ -89,10 +70,10 @@ async function cinemaEntries(fetch: typeof globalThis.fetch): Promise<UrlEntry[]
 }
 
 async function festivalEntries(fetch: typeof globalThis.fetch): Promise<UrlEntry[]> {
-	const data = await safe(
-		() => apiFetch<{ festivals: Array<{ slug: string }> }>('/api/festivals', fetch),
-		{ festivals: [] }
-	);
+	const data = await apiFetch<{ festivals: Array<{ slug: string }> }>(
+		'/api/festivals',
+		fetch
+	).catch(() => ({ festivals: [] }));
 	return data.festivals
 		.filter((f) => f.slug)
 		.map((f) => ({
@@ -103,14 +84,10 @@ async function festivalEntries(fetch: typeof globalThis.fetch): Promise<UrlEntry
 }
 
 async function peopleEntries(fetch: typeof globalThis.fetch): Promise<UrlEntry[]> {
-	const data = await safe(
-		() =>
-			apiFetch<{ directors: Array<{ name: string }> }>(
-				`/api/directors?days=${PEOPLE_WINDOW_DAYS}`,
-				fetch
-			),
-		{ directors: [] }
-	);
+	const data = await apiFetch<{ directors: Array<{ name: string }> }>(
+		`/api/directors?days=${PEOPLE_WINDOW_DAYS}`,
+		fetch
+	).catch(() => ({ directors: [] }));
 	return data.directors
 		.filter((d) => d.name)
 		.map((d) => ({
@@ -120,36 +97,15 @@ async function peopleEntries(fetch: typeof globalThis.fetch): Promise<UrlEntry[]
 		}));
 }
 
-// One consistent shape for both film sources. The fallback's `results` items
-// just lack `updatedAt` at runtime — `toLastmod` already guards undefined.
-// (Keeping a single type avoids a union where `'updatedAt' in f` would narrow
-// the no-updatedAt branch to `unknown`.)
-interface FilmRef {
-	id: string;
-	updatedAt?: string;
-}
-
 async function filmEntries(fetch: typeof globalThis.fetch): Promise<UrlEntry[]> {
-	// Preferred: full enumerator (lands with the next backend promote).
-	const full = await safe(
-		() => apiFetch<{ films: FilmRef[] }>('/api/films/sitemap', fetch),
-		null as { films: FilmRef[] } | null
-	);
-	const films: FilmRef[] = full?.films?.length
-		? full.films
-		: // Fallback: top-200 from the unified browse payload (`results` key).
-			(
-				await safe(
-					() => apiFetch<{ results: FilmRef[] }>('/api/films/search?browse=true', fetch),
-					{ results: [] as FilmRef[] }
-				)
-			).results;
-
-	return films
+	const data = await apiFetch<{ results: Array<{ id: string }> }>(
+		'/api/films/search?browse=true',
+		fetch
+	).catch(() => ({ results: [] }));
+	return data.results
 		.filter((f) => f.id)
 		.map((f) => ({
 			loc: `/film/${encodeURIComponent(f.id)}`,
-			lastmod: toLastmod(f.updatedAt),
 			changefreq: 'weekly' as const,
 			priority: 0.6
 		}));
@@ -157,13 +113,10 @@ async function filmEntries(fetch: typeof globalThis.fetch): Promise<UrlEntry[]> 
 
 function renderUrl(entry: UrlEntry): string {
 	const lines = [`    <loc>${xmlEscape(SITE + entry.loc)}</loc>`];
-	if (entry.lastmod) lines.push(`    <lastmod>${entry.lastmod}</lastmod>`);
 	if (entry.changefreq) lines.push(`    <changefreq>${entry.changefreq}</changefreq>`);
 	if (entry.priority !== undefined) lines.push(`    <priority>${entry.priority.toFixed(1)}</priority>`);
 	return `  <url>\n${lines.join('\n')}\n  </url>`;
 }
-
-export const prerender = false;
 
 export const GET: RequestHandler = async ({ fetch, setHeaders }) => {
 	const [cinemas, festivals, people, films] = await Promise.all([
