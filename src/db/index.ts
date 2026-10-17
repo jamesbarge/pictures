@@ -64,9 +64,6 @@ export const isDatabaseAvailable = hasValidDatabaseUrl;
 // Export schema for use in queries
 export { schema };
 
-// Type exports for convenience
-export type Database = typeof db;
-
 /**
  * Client-side hard ceiling on a DB call. Rejects after `ms` if the underlying
  * postgres-js promise hasn't settled.

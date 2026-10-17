@@ -48,9 +48,3 @@ export interface Film {
 	createdAt: string;
 	updatedAt: string;
 }
-
-export interface UserFilmStatus {
-	filmId: string;
-	status: FilmStatus;
-	updatedAt: string;
-}

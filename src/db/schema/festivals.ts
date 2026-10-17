@@ -209,14 +209,6 @@ export const userFestivalSchedule = pgTable(
 );
 
 // Type exports
-export type FestivalInsert = typeof festivals.$inferInsert;
 export type FestivalSelect = typeof festivals.$inferSelect;
 
-export type FestivalScreeningInsert = typeof festivalScreenings.$inferInsert;
-export type FestivalScreeningSelect = typeof festivalScreenings.$inferSelect;
-
-export type UserFestivalInterestInsert = typeof userFestivalInterests.$inferInsert;
 export type UserFestivalInterestSelect = typeof userFestivalInterests.$inferSelect;
-
-export type UserFestivalScheduleInsert = typeof userFestivalSchedule.$inferInsert;
-export type UserFestivalScheduleSelect = typeof userFestivalSchedule.$inferSelect;

@@ -8,7 +8,6 @@ import type {
   TMDBSearchResult,
   TMDBMovieDetails,
   TMDBCredits,
-  TMDBVideosResponse,
   TMDBReleaseDates,
   TMDBPersonSearchResponse,
   TMDBPersonDetails,
@@ -137,13 +136,6 @@ export class TMDBClient {
    */
   async getFilmCredits(tmdbId: number): Promise<TMDBCredits> {
     return this.fetch<TMDBCredits>(`/movie/${tmdbId}/credits`);
-  }
-
-  /**
-   * Get videos (trailers, etc.) for a film
-   */
-  async getFilmVideos(tmdbId: number): Promise<TMDBVideosResponse> {
-    return this.fetch<TMDBVideosResponse>(`/movie/${tmdbId}/videos`);
   }
 
   /**
@@ -307,19 +299,6 @@ export class TMDBClient {
   ): string | null {
     if (!posterPath) return null;
     return `${TMDB_IMAGE_BASE}/${size}${posterPath}`;
-  }
-
-  /**
-   * Get backdrop URL for a film
-   * @param backdropPath - The backdrop_path from TMDB
-   * @param size - Image size: w300, w780, w1280, original
-   */
-  static getBackdropUrl(
-    backdropPath: string | null,
-    size: "w300" | "w780" | "w1280" | "original" = "w780"
-  ): string | null {
-    if (!backdropPath) return null;
-    return `${TMDB_IMAGE_BASE}/${size}${backdropPath}`;
   }
 
   /**

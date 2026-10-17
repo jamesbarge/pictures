@@ -35,75 +35,36 @@
 	src: url('/fonts/InterVariable.woff2') format('woff2');
 }
 
-@font-face {
-	font-family: 'Inter';
-	font-style: normal;
-	font-weight: 100 900;
-	font-display: swap;
-	src: url('/fonts/InterVariable.woff2') format('woff2');
-}
-
 @theme {
-	/* ── Spacing (4px base) ── */
-	--spacing-0: 0;
-	--spacing-px: 1px;
-	--spacing-0\.5: 0.125rem;
-	--spacing-1: 0.25rem;
-	--spacing-2: 0.5rem;
-	--spacing-3: 0.75rem;
-	--spacing-4: 1rem;
-	--spacing-5: 1.25rem;
-	--spacing-6: 1.5rem;
-	--spacing-8: 2rem;
-	--spacing-10: 2.5rem;
-	--spacing-12: 3rem;
-	--spacing-16: 4rem;
-	--spacing-20: 5rem;
-	--spacing-24: 6rem;
-
 	/* ── Typography Scale ── */
 	--font-size-xs: 0.625rem;   /* 10px — director micro */
 	--font-size-sm: 0.75rem;    /* 12px */
 	--font-size-base: 0.875rem; /* 14px — year/format chips */
 	--font-size-lg: 1rem;       /* 16px — body, screening row */
-	--font-size-xl: 1.25rem;    /* 20px — day header */
-	--font-size-2xl: 1.5rem;    /* 24px — film title */
 	--font-size-3xl: 2rem;      /* 32px — brand wordmark */
-	--font-size-4xl: 2.5rem;
-	--font-size-5xl: 3.5rem;
-	--font-size-6xl: 5rem;
-	--font-size-7xl: 6.5rem;
 
 	/* ── Border Radius (Figma neo-brutalist) ── */
-	--radius-none: 0;
 	--radius-sm: 4px;
-	--radius-md: 4px;
 	--radius-lg: 16px;
-	--radius-xl: 16px;
-	--radius-2xl: 42px;
-	--radius-full: 9999px;
 
 	/* ── Drop shadow ── */
 	--shadow-brutalist: 4px 4px 0 0 #1f1f1f;
 	--shadow-brutalist-sm: 2px 2px 0 0 #1f1f1f;
 
 	/* ── Font Families ── */
-	--font-sans: "Spline Sans", "Inter Variable", "Inter", system-ui, -apple-system, sans-serif;
-	--font-display: "Spline Sans", "Inter Variable", "Inter", system-ui, sans-serif;
-	--font-serif: "Spline Sans", "Inter Variable", "Inter", system-ui, sans-serif;
-	--font-serif-italic: "Spline Sans", "Inter Variable", "Inter", system-ui, sans-serif;
+	--font-sans: "Spline Sans", "Inter Variable", system-ui, -apple-system, sans-serif;
+	--font-display: "Spline Sans", "Inter Variable", system-ui, sans-serif;
+	--font-serif: "Spline Sans", "Inter Variable", system-ui, sans-serif;
+	--font-serif-italic: "Spline Sans", "Inter Variable", system-ui, sans-serif;
 	--font-mono: "Spline Sans", ui-monospace, SFMono-Regular, monospace;
 	--font-mono-plex: "Spline Sans", ui-monospace, SFMono-Regular, monospace;
 
 	/* ── Animation ── */
-	--duration-instant: 0ms;
 	--duration-fast: 80ms;
 	--duration-normal: 160ms;
 	--duration-slow: 280ms;
-	--duration-slower: 500ms;
 
 	--ease-sharp: cubic-bezier(0.4, 0, 0.2, 1);
-	--ease-snap: cubic-bezier(0.2, 0, 0, 1);
 }
 
 /* ── Color System ── */
@@ -162,29 +123,8 @@ body {
 }
 
 /* ── Typography Utilities ── */
-.font-display { font-family: var(--font-display); }
-.font-serif { font-family: var(--font-sans); }
-.font-serif-italic { font-family: var(--font-sans); font-style: normal; }
-.font-mono-plex { font-family: var(--font-sans); }
-
-.tracking-swiss { letter-spacing: -0.02em; }
 .tracking-tight-swiss { letter-spacing: -0.05em; }
 .tracking-wide-swiss { letter-spacing: 0.08em; }
-
-/* ── Card primitives ── */
-.brutal-card {
-	background: var(--color-surface);
-	border: 1px solid var(--color-border);
-	border-radius: var(--radius-md);
-	box-shadow: var(--shadow-brutalist);
-}
-
-.brutal-card-sm {
-	background: var(--color-surface);
-	border: 1px solid var(--color-border);
-	border-radius: var(--radius-md);
-	box-shadow: var(--shadow-brutalist-sm);
-}
 
 /* ── Screening Pill ── */
 .screening-pill {
@@ -213,17 +153,55 @@ body {
 	outline-offset: 2px;
 }
 
-/* ── Screen Reader Only ── */
-.sr-only {
-	position: absolute;
-	width: 1px;
-	height: 1px;
-	padding: 0;
-	margin: -1px;
-	overflow: hidden;
-	clip: rect(0, 0, 0, 0);
-	white-space: nowrap;
-	border-width: 0;
+/* ── Long-form text (about, privacy, terms) ── */
+.prose {
+	font-size: var(--font-size-base);
+	line-height: 1.7;
+	color: var(--color-text-secondary);
+}
+
+.prose p { margin-bottom: 1.25rem; }
+
+.prose h2 {
+	font-size: var(--font-size-xs);
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	color: var(--color-text);
+	margin-top: 2rem;
+	margin-bottom: 0.75rem;
+}
+
+.prose a {
+	color: var(--color-text);
+	text-decoration: underline;
+	text-underline-offset: 2px;
+}
+
+.prose strong {
+	color: var(--color-text);
+	font-weight: 600;
+}
+
+/* ── Poster grid (tonight, this-weekend, festival detail) ── */
+.poster-grid {
+	display: grid;
+	grid-template-columns: repeat(2, 1fr);
+	column-gap: 1rem;
+	content-visibility: auto;
+	contain-intrinsic-size: auto 900px;
+}
+
+@media (min-width: 768px) {
+	.poster-grid { grid-template-columns: repeat(3, 1fr); column-gap: 1.25rem; }
+}
+
+@media (min-width: 1024px) {
+	.poster-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+@media (min-width: 1280px) {
+	.poster-grid { grid-template-columns: repeat(6, 1fr); }
 }
 
 /* ── Selection ── */
@@ -235,12 +213,7 @@ body {
 /* ── Responsive Typography ── */
 @media (max-width: 767px) {
 	:root {
-		--font-size-2xl: 1.25rem;
 		--font-size-3xl: 1.625rem;
-		--font-size-4xl: 2rem;
-		--font-size-5xl: 2.5rem;
-		--font-size-6xl: 3.5rem;
-		--font-size-7xl: 4.5rem;
 	}
 }
 

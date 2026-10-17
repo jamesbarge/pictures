@@ -8,6 +8,7 @@ import {
   isUKSummerTime,
   ukLocalToUTC,
   parseUKLocalDateTime,
+  formatUKLocalDateTime,
   londonParts,
 } from "./date-parser";
 
@@ -107,6 +108,17 @@ describe("parseUKLocalDateTime", () => {
     expect(result.getUTCDate()).toBe(15);
     expect(result.getUTCHours()).toBe(17);
     expect(result.getUTCMinutes()).toBe(30);
+  });
+});
+
+describe("formatUKLocalDateTime", () => {
+  it("formats a UTC instant as UK local time and round-trips through parseUKLocalDateTime", () => {
+    const gmt = new Date("2026-01-15T14:00:00.000Z");
+    const bst = new Date("2026-07-15T18:30:00.000Z");
+    expect(formatUKLocalDateTime(gmt)).toBe("2026-01-15T14:00");
+    expect(formatUKLocalDateTime(bst)).toBe("2026-07-15T19:30");
+    expect(parseUKLocalDateTime(formatUKLocalDateTime(gmt)).toISOString()).toBe(gmt.toISOString());
+    expect(parseUKLocalDateTime(formatUKLocalDateTime(bst)).toISOString()).toBe(bst.toISOString());
   });
 });
 

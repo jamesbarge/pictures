@@ -135,6 +135,16 @@ export function parseUKLocalDateTime(isoString: string): Date {
   return ukLocalToUTC(year, month - 1, day, hours, minutes);
 }
 
+/**
+ * Inverse of parseUKLocalDateTime: a UTC instant as "YYYY-MM-DDTHH:mm" in UK
+ * local time, the value format of <input type="datetime-local">.
+ */
+export function formatUKLocalDateTime(date: Date): string {
+  const { year, month, day, hours, minutes } = londonParts(date);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${year}-${pad(month + 1)}-${pad(day)}T${pad(hours)}:${pad(minutes)}`;
+}
+
 /** A calendar day, month 0-indexed, as returned by londonParts(). */
 interface CalendarDay {
   year: number;

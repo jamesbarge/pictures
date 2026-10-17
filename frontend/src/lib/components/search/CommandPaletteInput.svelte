@@ -11,14 +11,12 @@
 	interface Props {
 		listboxId: string;
 		activeDescendant: string | undefined;
-		placeholder?: string;
 		inputRef?: HTMLInputElement | null;
 	}
 
 	let {
 		listboxId,
 		activeDescendant,
-		placeholder = 'Search films · cinemas · tonight · 70mm…',
 		inputRef = $bindable<HTMLInputElement | null>(null)
 	}: Props = $props();
 
@@ -62,7 +60,7 @@
 		autocapitalize="off"
 		autocomplete="off"
 		spellcheck="false"
-		{placeholder}
+		placeholder="Search films · cinemas · tonight · 70mm…"
 		class="input"
 		aria-label="Search films, cinemas, directors, screenings, festivals"
 		aria-expanded="true"

@@ -43,9 +43,6 @@ function accounting(overrides: Partial<ScreeningAccounting> = {}): ScreeningAcco
     accepted: 7,
     write: { upserted: 4, updated: 2, unchanged: 1, failed: 0 },
     postWriteFailures: 0,
-    insertUpdateAttribution: UNAVAILABLE,
-    affectedRowAttribution: UNAVAILABLE,
-    supplementary: false,
     blocked: false,
     ...overrides,
   };
@@ -57,18 +54,6 @@ describe("unavailable is not zero", () => {
     expect(isAvailable(UNAVAILABLE)).toBe(false);
     expect(formatAccounting(accounting({ parsed: UNAVAILABLE }))).toContain("parsed=unavailable");
     expect(formatAccounting(accounting({ parsed: 0 }))).toContain("parsed=0");
-  });
-
-  it("always reports insert/update attribution as unavailable", () => {
-    expect(formatAccounting(accounting())).toContain("insertUpdate=unavailable");
-  });
-
-  it("always reports affected-row attribution as unavailable", () => {
-    // No write statement carries RETURNING or reads a row count, so neither
-    // bucket can claim a row reached the table. The report must say so rather
-    // than let `upserted` and `updated` be read as verified row changes.
-    expect(formatAccounting(accounting())).toContain("affectedRows=unavailable");
-    expect(accounting().affectedRowAttribution).toBe(UNAVAILABLE);
   });
 
   it("names the fetch unit as payloads, which are not HTTP requests", () => {

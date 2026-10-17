@@ -28,7 +28,6 @@ const BFI_SEASON_CONFIG: SeasonScraperConfig = {
   baseUrl: "https://whatson.bfi.org.uk/Online",
   seasonsPath:
     "/default.asp?BOparam::WScontent::loadArticle::permalink=seasons",
-  requestsPerMinute: 6, // Conservative for Cloudflare
   delayBetweenRequests: 5000,
 };
 
@@ -323,7 +322,6 @@ export class BFISeasonScraper extends BaseSeasonScraper {
       websiteUrl: card.detailUrl,
       sourceCinema: this.config.cinemaId,
       films,
-      sourceId: card.permalink,
     };
   }
 
@@ -419,23 +417,7 @@ export class BFISeasonScraper extends BaseSeasonScraper {
         if (!seenTitles.has(normalized)) {
           seenTitles.add(normalized);
 
-          // Extract year from title if present (e.g., "Film Title (1992)")
-          const yearMatch = title.match(/\((\d{4})\)/);
-          const year = yearMatch ? parseInt(yearMatch[1]) : undefined;
-          const cleanTitle = title.replace(/\s*\(\d{4}\)\s*$/, "").trim();
-
-          // Get film URL if available
-          const filmLink = $parent.find('a[href*="permalink="]').first();
-          const filmUrl = filmLink.attr("href");
-
-          films.push({
-            title: cleanTitle,
-            year,
-            orderIndex: index,
-            filmUrl: filmUrl
-              ? this.resolveUrl(filmUrl)
-              : undefined,
-          });
+          films.push({ ...this.splitYear(title), orderIndex: index });
         }
       }
     });
@@ -458,16 +440,7 @@ export class BFISeasonScraper extends BaseSeasonScraper {
           if (!seenTitles.has(normalized)) {
             seenTitles.add(normalized);
 
-            const yearMatch = title.match(/\((\d{4})\)/);
-            const year = yearMatch ? parseInt(yearMatch[1]) : undefined;
-            const cleanTitle = title.replace(/\s*\(\d{4}\)\s*$/, "").trim();
-
-            films.push({
-              title: cleanTitle,
-              year,
-              orderIndex: index,
-              filmUrl: this.resolveUrl(href),
-            });
+            films.push({ ...this.splitYear(title), orderIndex: index });
           }
         }
       );
@@ -492,17 +465,6 @@ export class BFISeasonScraper extends BaseSeasonScraper {
     if (lower.startsWith("bfi ") && !lower.includes(":")) return true;
 
     return false;
-  }
-
-  /**
-   * Resolve a relative URL to absolute
-   */
-  private resolveUrl(url: string): string {
-    if (url.startsWith("http")) return url;
-    if (url.startsWith("/")) {
-      return `https://whatson.bfi.org.uk${url}`;
-    }
-    return `${this.config.baseUrl}/${url}`;
   }
 
   /**
@@ -544,11 +506,4 @@ interface SeasonCard {
   permalink: string;
   detailUrl: string;
   posterUrl?: string;
-}
-
-/**
- * Factory function for creating BFI season scraper
- */
-export function createBFISeasonScraper(): BFISeasonScraper {
-  return new BFISeasonScraper();
 }
