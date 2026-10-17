@@ -192,6 +192,8 @@ function isLikelyDirectorName(name: string): boolean {
   if (/\b(?:nft|screen|room|studio)\s*\d/i.test(trimmed)) return false;
   // Reject ALL CAPS strings with 4+ words (likely venue/event names, not "JEAN-LUC GODARD")
   if (trimmed === trimmed.toUpperCase() && trimmed.split(/\s+/).length >= 4) return false;
+  // A colon or a plus is an event line ("Blake's 7: Series 3 + Q&A"), not a person.
+  if (/[:+]/.test(trimmed)) return false;
   // Reject if it contains date/time-like patterns (scraped schedule text)
   if (/\b\d{1,2}:\d{2}\b/.test(trimmed)) return false;
   if (/\b(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i.test(trimmed)) return false;
@@ -241,8 +243,11 @@ function parseStatsLine(text: string): FilmMetadata {
   const directorFromPattern = extractDirector(text);
   if (directorFromPattern) {
     result.director = directorFromPattern;
-  } else {
-    // Fallback: first part before comma (if not a country or year)
+  } else if (text.includes(",")) {
+    // Fallback: first part before comma (if not a country or year).
+    // A title with no comma — "Blake's 7: Series 3 + Q&A" — is not a stats
+    // line. Taking the whole string as the director is how BFI event titles
+    // landed in films.directors.
     const parts = text.split(",").map((s) => s.trim());
     const firstPart = parts[0];
 

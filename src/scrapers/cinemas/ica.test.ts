@@ -100,6 +100,22 @@ describe("ICAScraper — title and booking URL", () => {
     expect(screenings[0].filmTitle).toBe("UK PREMIERE The Night is Fading Away + Q&A");
   });
 
+  it("keeps the film name after an Experimenta strand split by </br>", async () => {
+    // Live markup on the LFF Shab-Nameh page, 17 Oct 2026. The strand and the
+    // film are one span.title broken by a malformed </br>. Taking only the
+    // first text node stored "Experimenta Special Presentation".
+    const screenings = await parse(
+      fixturePage({
+        title: "Experimenta Special Presentation</br>Shab-Nameh: Women of Iran\u2019s Forgotten Left",
+        colophon: "<i>Shab-Nameh: Women of Iran\u2019s Forgotten Left,</i> dir. Maryam Tafakory, UK/Iran 2026, 41 min.",
+      })
+    );
+    expect(screenings[0].filmTitle).toBe(
+      "Experimenta Special Presentation Shab-Nameh: Women of Iran\u2019s Forgotten Left",
+    );
+    expect(screenings[0].director).toBe("Maryam Tafakory");
+  });
+
   it("keeps the ICA /book/{id} link when the page has one", async () => {
     const screenings = await parse(
       fixturePage({

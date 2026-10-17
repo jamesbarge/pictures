@@ -85,6 +85,12 @@ describe("extractFilmTitleSync", () => {
       expect(result.extractedTitle).toBe("The Gruffalo");
       expect(result.extractionMethod).toContain("double_feature");
     });
+
+    it("does not split a colon event that names the film after the plus", () => {
+      const result = extractFilmTitleSync("Vampire Ball: Live Violin, Cocktails + The Hunger");
+      expect(result.extractedTitle).toBe("Vampire Ball: Live Violin, Cocktails + The Hunger");
+      expect(result.extractionMethod).not.toContain("double_feature");
+    });
   });
 
   describe("live broadcasts", () => {

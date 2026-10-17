@@ -124,7 +124,9 @@ export const EVENT_PREFIXES = [
   /^saturday\s+morning\s+picture\s+club[:\s]+/i,
   /^kids['\s]*club[:\s]+/i,
   /^family\s+film\s+club[:\s]+/i,
-  /^family\s+film[:\s]+/i,
+  // Colon required. A bare space used to eat "Family Film" out of
+  // "Family Film Week: A Shuffle of Shorts!", leaving "Week: …".
+  /^family\s+film\s*:\s*/i,
   /^toddler\s+time[:\s]+/i,
   /^big\s+scream[:\s]+/i,
   /^baby\s+club[:\s]+/i,
@@ -236,9 +238,14 @@ export const EVENT_PREFIXES = [
   /^encore[:\s]+/i,
   /^rbo[:\s]+/i,
   /^nt\s+live[:\s]+/i,
-  // "Met Opera: Tosca" and "Met Opera 2026-27: Tosca". The season code must go
-  // in the same match, or the colon handler keeps "2026-27" as the title.
-  /^met\s+opera(?:\s+live)?(?:\s+20\d{2}[-–/]\d{2})?[:\s]+/i,
+  // "Met Opera: Tosca", "Met Opera 2026-27: Tosca", and the Picturehouse form
+  // "Met Opera Encore 2026-27: Macbeth". Encore/Live and the season code have
+  // to go in the same match: a space-only separator used to stop after
+  // "Met Opera" and leave "Encore 2026-27: Macbeth", and a second clean then
+  // stopped on "2026-27: Macbeth" because the year made the colon handler
+  // keep the left side. The colon is required so "Met Opera" is not peeled
+  // off a longer name.
+  /^met\s+opera(?:\s+(?:live|encore))?(?:\s+20\d{2}[-–/]\d{2})?\s*:\s*/i,
   // The season code on its own, where the venue dropped the company name:
   // "2026-27: Tosca", "Live 2026-27: Gotterdammerung", and the venue's own
   // "2026-26" typo. The dash-year form leaves "2001: A Space Odyssey" alone.
@@ -469,7 +476,7 @@ const EXTRA_TAIL = String.raw`(?=\s*$|\s*[:;,.(…–+-]|\s+(?:with|by|from|and|
 /** "+ Q&A" / "+ Q+A" (including HTML-encoded &amp;), "+ Introduction", "+ Director Introduction",
  * "+ discussion with ...", "+ Panel Discussion", "+ ScreenTalk", "+ talk", "+ Book Launch", "+ Live Music" */
 const PLUS_EXTRA = new RegExp(
-  String.raw`\s*\+\s*(?:q\s*(?:&amp;|&|\+)\s*a|(?:panel\s+)?discussion|(?:director\s+)?introduction|screen\s?talk|talk|book\s+launch|live\s+music)${EXTRA_TAIL}.*$`,
+  String.raw`\s*\+\s*(?:q\s*(?:&amp;|&|\+)\s*a|(?:panel\s+)?discussion|(?:director\s+)?introduction|screen\s?talk|talk|book\s+launch|live\s+music|pre-?film\s+\w+)${EXTRA_TAIL}.*$`,
   "i",
 );
 
@@ -510,16 +517,26 @@ export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
 
   let strippedPrefix: string | null = null;
 
-  // Strip known event prefixes to extract actual film title
-  for (const prefix of EVENT_PREFIXES) {
-    const match = cleaned.match(prefix);
-    if (match) {
-      strippedPrefix = match[0].replace(/[:\s]+$/, "").trim();
-      cleaned = cleaned.replace(prefix, "").trim();
+  // Strip known event prefixes. Repeat so "Met Opera Encore 2026-27: Macbeth"
+  // can lose the company, then "Encore", then the season code, in one clean.
+  // A single pass used to stop after the first hit and store the leftover.
+  // Never let a prefix consume the whole title.
+  for (let pass = 0; pass < 4; pass++) {
+    let matched = false;
+    for (const prefix of EVENT_PREFIXES) {
+      const match = cleaned.match(prefix);
+      if (!match?.[0]) continue;
+      const piece = match[0].replace(/[:\s]+$/, "").trim();
+      let next = cleaned.replace(prefix, "").trim();
       // "Funeral Parade presents "The Long Day Closes"" leaves the quotes behind
-      if (REVIEWED_WRAPPER_PREFIXES.includes(prefix)) cleaned = unwrapQuotedTitle(cleaned);
+      if (REVIEWED_WRAPPER_PREFIXES.includes(prefix)) next = unwrapQuotedTitle(next);
+      if (!piece || !next || next === cleaned) continue;
+      strippedPrefix = strippedPrefix ? `${strippedPrefix} / ${piece}` : piece;
+      cleaned = next;
+      matched = true;
       break;
     }
+    if (!matched) break;
   }
 
   // A "Special Preview of" event usually ends with its guest: "Fatherland with
@@ -573,9 +590,34 @@ export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
     // "Vol." keeps "Kill Bill: Vol. 2" whole; it used to come out as "Vol. 2".
     const isSubtitle = /^(the|a|an|new|last|final|return|rise|fall|revenge|attack|empire|phantom|force|rogue|solo|part|vol(?:ume)?\.?)\s/i.test(afterColon);
 
+    // The part after the colon with a trailing "+ extra" removed, so
+    // "Series 3 + Q&A" and "Youth Edition + Q+A" can be judged on their own.
+    const afterCore = afterColon.replace(/\s+\+\s+.*$/, "").replace(/\s+plus\s+.*$/i, "").trim();
+    const plusParts = afterColon.match(/^(.+?)\s+\+\s+(.+)$/);
+    const plusTail = plusParts?.[2].trim() ?? "";
+    const plusTailIsExtra = /^(?:q\s*(?:&|\+|and)\s*a|(?:panel\s+)?discussion|(?:director\s+)?introduction|screen\s?talk|talk|book\s+launch|live\s+music|pre-?film\b|(?:(?:pre-?)?recorded\s+|extended\s+)?intro\b)/i.test(plusTail);
+    // "Live Violin, Cocktails + The Hunger": the comma-list is the evening's
+    // extras and the film is after the plus. A plain double bill has no comma,
+    // so "Saturday Night Live + Wayne's World" is left for the rules below.
+    const decorationIsExtras = !!plusParts && /[,&]/.test(plusParts[1]);
+
     // If before colon is a film series or after-colon is a subtitle, keep the full title
     if (isFilmSeries || isSubtitle) {
       // Keep as-is (it's a legitimate film title with subtitle)
+    } else if (/^\p{Ll}/u.test(afterColon)) {
+      // "The Brixton Reel: in commemoration of Black History Month" — the
+      // lowercase tail is a note, not a replacement title.
+      cleaned = beforeColon;
+    } else if (/^(?:series|season)\s+\d+\b/i.test(afterCore)) {
+      // "Blake's 7: Series 3 + Q&A" — the show name is the whole title.
+      // The "+ Q&A" is removed by the extras rules below.
+    } else if (/\bedition\b/i.test(afterCore) && beforeColon.split(/\s+/).length <= 2) {
+      // "Mixtape: Youth Edition" after "MilkTea Presents:" is stripped.
+      // "Youth Edition" is the subtitle, not the programme.
+    } else if (
+      plusParts && !plusTailIsExtra && decorationIsExtras && beforeColon.split(/\s+/).length <= 4
+    ) {
+      cleaned = plusTail;
     } else if (!isEventPattern) {
       // For other cases, check if it looks like an event name vs film title
       const hasYear = /\b(19|20)\d{2}\b/.test(beforeColon);
@@ -688,6 +730,8 @@ export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
     // "Che - Part 2", "Dune: Part Two") is the film's identity and stays.
     .replace(/(?<=\p{L})\s*\(pt\.?\s*\d+\)\s*$/iu, "")
     .replace(/(?<=\p{L})\s+[-–]\s*part\s*\d+\s*$/u, "")
+    // Remove a venue strand glued on after the title: "Halloween (1978)- Halloween at Genesis"
+    .replace(/\s*-\s+\S.*\s+at\s+Genesis\s*$/i, "")
     // Remove "Presented by ..." suffixes
     .replace(/\s+presented\s+by\s+.*$/i, "")
     // Remove "• Nth Anniversary" suffixes
@@ -771,4 +815,99 @@ export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
  */
 export function cleanFilmTitle(title: string): string {
   return cleanFilmTitleWithMetadata(title).cleanedTitle;
+}
+
+/**
+ * A stored film whose title is a fragment of a venue event line, and the
+ * fields a repair may rewrite. `bookingUrl` is any one of the film's
+ * screening URLs; it disambiguates short titles that could be real works.
+ */
+export interface FragmentFilmRecord {
+  title: string;
+  directors: string[];
+  year: number | null;
+  bookingUrl?: string | null;
+}
+
+export interface FragmentFilmRepair {
+  title: string;
+  directors: string[];
+  year: number | null;
+}
+
+interface ExactFragmentRepair {
+  title: string;
+  to: string;
+  year?: number;
+  when?: (film: FragmentFilmRecord) => boolean;
+}
+
+/**
+ * Stored titles the cleaner cannot rebuild, because the scrape already
+ * threw away the other half. Each row is an exact title from the 17 Oct 2026
+ * listings QA. Guards keep a short title ("Youth Edition", "Live Violin,
+ * Cocktails") from being rewritten unless the screening URL or the credits
+ * are the ones from that bad row.
+ */
+const EXACT_FRAGMENT_REPAIRS: ExactFragmentRepair[] = [
+  { title: "in commemoration of Black History Month", to: "The Brixton Reel" },
+  { title: "2026-27: Macbeth", to: "Macbeth" },
+  { title: "Encore 2026-27: Macbeth", to: "Macbeth" },
+  {
+    title: "Youth Edition",
+    to: "Mixtape: Youth Edition",
+    when: (film) => (film.bookingUrl ?? "").includes("milktea-presents-mixtape"),
+  },
+  { title: "Week: A Shuffle of Shorts!", to: "Family Film Week: A Shuffle of Shorts!" },
+  {
+    title: "FFW x All Kaiju Attack: Ghidorah, The Three-Headed...",
+    to: "Ghidorah, The Three-Headed Monster",
+  },
+  {
+    title: "Live Violin, Cocktails",
+    to: "The Hunger",
+    when: (film) => film.year === 1983 && film.directors.includes("Tony Scott"),
+  },
+  {
+    title: "Experimenta Special Presentation",
+    to: "Experimenta Special Presentation Shab-Nameh: Women of Iran\u2019s Forgotten Left",
+    when: (film) =>
+      (film.bookingUrl ?? "").includes("shab-nameh") || film.directors.includes("Maryam Tafakory"),
+  },
+  { title: "Halloween (1978)- Halloween at Genesis", to: "Halloween", year: 1978 },
+];
+
+/** Exact stored titles the repair script looks up. Leaked-director rows are found separately. */
+export const FRAGMENT_REPAIR_TITLES = EXACT_FRAGMENT_REPAIRS.map((entry) => entry.title);
+
+/**
+ * BFI's metadata parser used to store the raw event line as the director
+ * ("Blake’s 7: Series 3 + Q&A") while the title kept only the part after the
+ * colon. The leaked line still has the real name.
+ */
+function titleFromLeakedDirector(film: FragmentFilmRecord): FragmentFilmRepair | null {
+  if (film.directors.length !== 1) return null;
+  const leaked = film.directors[0];
+  if (!/[:+]/.test(leaked) || !leaked.includes(film.title)) return null;
+  const recovered = cleanFilmTitle(leaked);
+  if (!recovered || recovered === leaked || recovered === film.title) return null;
+  return { title: recovered, directors: [], year: film.year };
+}
+
+/**
+ * Decide how to rewrite one already-stored film, or return null when this
+ * row is not one of the fragment titles. Idempotent: a title that is already
+ * the repair target returns null. Does not delete rows.
+ */
+export function repairFragmentFilm(film: FragmentFilmRecord): FragmentFilmRepair | null {
+  const leaked = titleFromLeakedDirector(film);
+  if (leaked) return leaked;
+
+  const exact = EXACT_FRAGMENT_REPAIRS.find(
+    (entry) => entry.title === film.title && (!entry.when || entry.when(film)),
+  );
+  if (!exact) return null;
+  const year = film.year ?? exact.year ?? null;
+  if (exact.to === film.title && year === film.year) return null;
+  return { title: exact.to, directors: film.directors, year };
 }
