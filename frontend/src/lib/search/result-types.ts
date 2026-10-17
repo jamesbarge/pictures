@@ -29,22 +29,6 @@ export interface CinemaResult {
   chain?: string | null;
 }
 
-export interface ScreeningResult {
-  kind: "screening";
-  id: string;
-  datetime: string;
-  format: string | null;
-  eventType: string | null;
-  bookingUrl: string;
-  isSoldOut: boolean;
-  filmId: string;
-  filmTitle: string;
-  filmPosterUrl: string | null;
-  cinemaId: string;
-  cinemaName: string;
-  cinemaShortName: string | null;
-}
-
 export interface FestivalResult {
   kind: "festival";
   id: string;
@@ -76,23 +60,6 @@ export interface FilterActionResult {
   shortcut?: string;
 }
 
-export interface RecentResult {
-  kind: "recent";
-  id: string;
-  query: string;
-}
-
-export interface UserStatusResult {
-  kind: "user-status";
-  id: string;
-  filmId: string;
-  filmTitle: string;
-  filmYear: number | null;
-  filmPosterUrl: string | null;
-  status: "want_to_see" | "seen" | "not_interested";
-  addedAt?: string;
-}
-
 export interface PersonResult {
   kind: "person";
   /** Person's name — also the route param for /people/[name]. */
@@ -105,12 +72,9 @@ export interface PersonResult {
 export type ResultRow =
   | FilmResult
   | CinemaResult
-  | ScreeningResult
   | FestivalResult
   | SeasonResult
   | FilterActionResult
-  | RecentResult
-  | UserStatusResult
   | PersonResult;
 
 /**
@@ -119,35 +83,27 @@ export type ResultRow =
  * keyboard navigation.
  */
 export interface PaletteResults {
-  recents?: RecentResult[];
   actions?: FilterActionResult[];
-  screenings?: ScreeningResult[];
   films?: FilmResult[];
   people?: PersonResult[];
   cinemas?: CinemaResult[];
   festivals?: FestivalResult[];
   seasons?: SeasonResult[];
-  userStatuses?: UserStatusResult[];
 }
 
 export const EMPTY_RESULTS: PaletteResults = {};
 
 /**
  * Section ordering for the palette. Sections with empty arrays don't
- * render their header. The order is intentional: when temporal intent
- * is present, screenings are most relevant; otherwise films lead.
+ * render their header. Synthesised filter actions lead, then films.
  */
 export const SECTION_ORDER: Array<keyof PaletteResults> = [
-  "recents",
   "actions",
-  // "screenings" intentionally omitted — those rows linked OUT to cinema
-  // booking sites; search is internal-only now. Type retained but unused.
   "films",
   "people",
   "cinemas",
   "festivals",
   "seasons",
-  "userStatuses",
 ];
 
 /**
@@ -155,15 +111,12 @@ export const SECTION_ORDER: Array<keyof PaletteResults> = [
  * design system.
  */
 export const SECTION_LABELS: Record<keyof PaletteResults, string> = {
-  recents: "RECENT",
   actions: "JUMP TO",
-  screenings: "SCREENINGS",
   films: "FILMS",
   people: "PEOPLE",
   cinemas: "CINEMAS",
   festivals: "FESTIVALS",
   seasons: "SEASONS",
-  userStatuses: "YOUR LIST",
 };
 
 /**

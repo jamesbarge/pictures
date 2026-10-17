@@ -28,20 +28,7 @@ interface CinemaResponse {
 		datetime: string;
 		format: string | null;
 		bookingUrl: string;
-		screen: string | null;
-		film: {
-			id: string;
-			title: string;
-			year: number | null;
-			directors: string[];
-			runtime: number | null;
-			posterUrl: string | null;
-		};
-		cinema: {
-			id: string;
-			name: string;
-			shortName: string | null;
-		};
+		film: { id: string; title: string; year: number | null };
 	}>;
 }
 

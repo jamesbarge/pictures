@@ -17,8 +17,8 @@
  *  - **Multi-word phrases first**. A 2/3-word scan over the tokens runs
  *    before single-token lookups so "this weekend" doesn't get split.
  *
- * The parser greedily consumes tokens. Whatever is unconsumed becomes
- * `freeText`, which is what the server's tsvector + trigram match uses.
+ * The parser greedily consumes tokens. The server search still receives the
+ * raw query.
  */
 
 import { FORMAT_TOKENS, FORMAT_PHRASES_BY_LENGTH } from "./vocab/formats";
@@ -43,6 +43,7 @@ import {
   WATCHLIST_PHRASES_BY_LENGTH,
 } from "./vocab/specials";
 import { TIME_PRESETS, TIME_PHRASES_BY_LENGTH } from "./vocab/time";
+import { formatHour } from "../constants/filters";
 import {
   addDaysToDateString,
   londonDateString,
@@ -61,7 +62,6 @@ export interface ChipDescriptor {
 }
 
 export interface ParsedIntent {
-  freeText: string;
   dateFrom?: Date;
   dateTo?: Date;
   timeFrom?: number;
@@ -88,7 +88,6 @@ export interface ParsedIntent {
 
 function emptyIntent(): ParsedIntent {
   return {
-    freeText: "",
     formats: [],
     genres: [],
     decades: [],
@@ -104,10 +103,7 @@ function emptyIntent(): ParsedIntent {
 }
 
 interface Token {
-  raw: string;
   lower: string;
-  start: number;
-  end: number;
   consumed: boolean;
 }
 
@@ -118,58 +114,28 @@ function tokenize(input: string): Token[] {
   // Split on whitespace + most punctuation, but KEEP intra-word digits
   // and hyphens (so "35mm", "4dx", "70mm-imax", "sci-fi" stay intact).
   for (const match of input.matchAll(TOKEN_RE)) {
-    const start = match.index ?? 0;
-    tokens.push({
-      raw: match[0],
-      lower: match[0].toLowerCase(),
-      start,
-      end: start + match[0].length,
-      consumed: false,
-    });
+    tokens.push({ lower: match[0].toLowerCase(), consumed: false });
   }
   return tokens;
 }
 
 // ===== Phrase scanning =====
 
-// `scanPhrases` runs ~9x per keystroke over constant module-level tables.
-// Memoize the derived `maxLen` and per-length `Set` lookups per table so the
-// constant data is only processed once, not rebuilt on every call.
-interface CompiledPhrases {
-  maxLen: number;
-  sets: Map<number, Set<string>>;
-}
-const COMPILED_PHRASES = new WeakMap<Record<number, string[]>, CompiledPhrases>();
-
-function compilePhrases(phrasesByLength: Record<number, string[]>): CompiledPhrases {
-  let compiled = COMPILED_PHRASES.get(phrasesByLength);
-  if (!compiled) {
-    const sets = new Map<number, Set<string>>();
-    let maxLen = 0;
-    for (const key of Object.keys(phrasesByLength)) {
-      const len = Number(key);
-      if (len > maxLen) maxLen = len;
-      sets.set(len, new Set(phrasesByLength[len]));
-    }
-    compiled = { maxLen, sets };
-    COMPILED_PHRASES.set(phrasesByLength, compiled);
-  }
-  return compiled;
-}
-
+// The phrase tables hold at most 16 strings, so a linear `includes` costs
+// about the same as a Set lookup.
 function scanPhrases(
   tokens: Token[],
   phrasesByLength: Record<number, string[]>,
   onMatch: (matchedPhrase: string, startIdx: number, endIdx: number) => boolean,
 ) {
-  const { maxLen, sets } = compilePhrases(phrasesByLength);
+  const maxLen = Math.max(...Object.keys(phrasesByLength).map(Number));
   for (let len = maxLen; len >= 2; len--) {
-    const phraseSet = sets.get(len);
-    if (!phraseSet || phraseSet.size === 0) continue;
+    const phrases = phrasesByLength[len];
+    if (!phrases?.length) continue;
     for (let i = 0; i <= tokens.length - len; i++) {
       if (tokens.slice(i, i + len).some((t) => t.consumed)) continue;
       const joined = tokens.slice(i, i + len).map((t) => t.lower).join(" ");
-      if (phraseSet.has(joined)) {
+      if (phrases.includes(joined)) {
         const accepted = onMatch(joined, i, i + len - 1);
         if (accepted) {
           for (let j = i; j < i + len; j++) tokens[j].consumed = true;
@@ -200,72 +166,20 @@ const NEXT_DAY_PHRASES_BY_LENGTH: Record<number, string[]> = {
   2: Object.keys(DAY_NAMES).map((d) => `next ${d}`),
 };
 
-function applyTonight(intent: ParsedIntent, now: Date) {
-  const today = londonDateString(now);
-  intent.dateFrom = londonDateTime(today);
-  intent.dateTo = londonDateTime(addDaysToDateString(today, 1));
-  intent.timeFrom = 18;
-  intent.chipDescriptors.push({ id: "date:tonight", kind: "date", label: "TONIGHT" });
+/**
+ * Set the date range to `days` London days starting at `from` (YYYY-MM-DD)
+ * and push its chip. `dateTo` is the exclusive London midnight after the range.
+ */
+function setDays(intent: ParsedIntent, from: string, days: number, id: string, label: string) {
+  intent.dateFrom = londonDateTime(from);
+  intent.dateTo = londonDateTime(addDaysToDateString(from, days));
+  intent.chipDescriptors.push({ id, kind: "date", label });
 }
 
-function applyToday(intent: ParsedIntent, now: Date) {
-  const today = londonDateString(now);
-  intent.dateFrom = londonDateTime(today);
-  intent.dateTo = londonDateTime(addDaysToDateString(today, 1));
-  intent.chipDescriptors.push({ id: "date:today", kind: "date", label: "TODAY" });
-}
-
-function applyTomorrow(intent: ParsedIntent, now: Date) {
-  const today = londonDateString(now);
-  const tomorrow = addDaysToDateString(today, 1);
-  intent.dateFrom = londonDateTime(tomorrow);
-  intent.dateTo = londonDateTime(addDaysToDateString(tomorrow, 1));
-  intent.chipDescriptors.push({ id: "date:tomorrow", kind: "date", label: "TOMORROW" });
-}
-
-function applyWeekendOffset(intent: ParsedIntent, now: Date, offsetWeeks: number) {
-  const weekend = londonWeekendRange(now, offsetWeeks);
-  intent.dateFrom = londonDateTime(weekend.from);
-  intent.dateTo = londonDateTime(addDaysToDateString(weekend.to, 1));
-  intent.chipDescriptors.push({
-    id: `date:weekend${offsetWeeks > 0 ? `+${offsetWeeks}` : ""}`,
-    kind: "date",
-    label: offsetWeeks > 0 ? "NEXT WEEKEND" : "THIS WEEKEND",
-  });
-}
-
-function applyThisWeek(intent: ParsedIntent, now: Date) {
-  const today = londonDateString(now);
-  intent.dateFrom = londonDateTime(today);
-  intent.dateTo = londonDateTime(addDaysToDateString(today, 7));
-  intent.chipDescriptors.push({ id: "date:thisweek", kind: "date", label: "THIS WEEK" });
-}
-
-function applyNextDay(intent: ParsedIntent, now: Date, dayIdx: number) {
-  const today = londonDateString(now);
-  const todayDow = londonDayOfWeek(now);
-  let offset = (dayIdx - todayDow + 7) % 7;
-  if (offset === 0) offset = 7;
-  const target = addDaysToDateString(today, offset);
-  intent.dateFrom = londonDateTime(target);
-  intent.dateTo = londonDateTime(addDaysToDateString(target, 1));
-  const dayName = WEEKDAY_LABELS[dayIdx];
-  intent.chipDescriptors.push({
-    id: `date:next-${dayIdx}`,
-    kind: "date",
-    label: `NEXT ${dayName}`,
-  });
-}
-
-function applyDayThisWeek(intent: ParsedIntent, now: Date, dayIdx: number) {
-  const today = londonDateString(now);
-  const todayDow = londonDayOfWeek(now);
-  const offset = (dayIdx - todayDow + 7) % 7;
-  const target = addDaysToDateString(today, offset);
-  intent.dateFrom = londonDateTime(target);
-  intent.dateTo = londonDateTime(addDaysToDateString(target, 1));
-  const dayName = WEEKDAY_LABELS[dayIdx];
-  intent.chipDescriptors.push({ id: `date:${dayIdx}`, kind: "date", label: dayName });
+/** London date of the next `dayIdx` weekday; `skipToday` moves today's match a week on. */
+function nextWeekday(now: Date, dayIdx: number, skipToday: boolean): string {
+  const offset = (dayIdx - londonDayOfWeek(now) + 7) % 7;
+  return addDaysToDateString(londonDateString(now), offset === 0 && skipToday ? 7 : offset);
 }
 
 // ===== Time =====
@@ -285,23 +199,17 @@ function applyTimePreset(intent: ParsedIntent, presetKey: string) {
 function applyTimeLiteral(intent: ParsedIntent, hour: number, mode: "after" | "before" | "at") {
   if (mode === "after") {
     intent.timeFrom = hour;
-    intent.chipDescriptors.push({ id: `time:after-${hour}`, kind: "time", label: `AFTER ${formatHourLabel(hour)}` });
+    intent.chipDescriptors.push({ id: `time:after-${hour}`, kind: "time", label: `AFTER ${formatHour(hour).toUpperCase()}` });
   } else if (mode === "before") {
     intent.timeTo = hour;
-    intent.chipDescriptors.push({ id: `time:before-${hour}`, kind: "time", label: `BEFORE ${formatHourLabel(hour)}` });
+    intent.chipDescriptors.push({ id: `time:before-${hour}`, kind: "time", label: `BEFORE ${formatHour(hour).toUpperCase()}` });
   } else {
     intent.timeFrom = hour;
     intent.timeTo = Math.min(23, hour + 1);
-    intent.chipDescriptors.push({ id: `time:at-${hour}`, kind: "time", label: `AT ${formatHourLabel(hour)}` });
+    intent.chipDescriptors.push({ id: `time:at-${hour}`, kind: "time", label: `AT ${formatHour(hour).toUpperCase()}` });
   }
 }
 
-function formatHourLabel(h: number): string {
-  if (h === 0) return "12AM";
-  if (h < 12) return `${h}AM`;
-  if (h === 12) return "12PM";
-  return `${h - 12}PM`;
-}
 
 function parseHourLiteral(raw: string): number | null {
   const m1 = raw.match(/^(\d{1,2})(am|pm)$/i);
@@ -330,20 +238,20 @@ export function parseQuery(input: string, now: Date): ParsedIntent {
 
   // --- Pass 1: multi-word phrases ---
 
+  const today = londonDateString(now);
+
   scanPhrases(tokens, { 2: ["this weekend", "next weekend"] }, (phrase) => {
-    if (phrase === "this weekend") applyWeekendOffset(intent, now, 0);
-    else applyWeekendOffset(intent, now, 1);
+    if (phrase === "this weekend") {
+      setDays(intent, londonWeekendRange(now, 0).from, 2, "date:weekend", "THIS WEEKEND");
+    } else {
+      setDays(intent, londonWeekendRange(now, 1).from, 2, "date:weekend+1", "NEXT WEEKEND");
+    }
     return true;
   });
 
   scanPhrases(tokens, { 2: ["this week", "next week"] }, (phrase) => {
-    if (phrase === "this week") applyThisWeek(intent, now);
-    else {
-      const today = londonDateString(now);
-      intent.dateFrom = londonDateTime(addDaysToDateString(today, 7));
-      intent.dateTo = londonDateTime(addDaysToDateString(today, 14));
-      intent.chipDescriptors.push({ id: "date:nextweek", kind: "date", label: "NEXT WEEK" });
-    }
+    if (phrase === "this week") setDays(intent, today, 7, "date:thisweek", "THIS WEEK");
+    else setDays(intent, addDaysToDateString(today, 7), 7, "date:nextweek", "NEXT WEEK");
     return true;
   });
 
@@ -354,7 +262,7 @@ export function parseQuery(input: string, now: Date): ParsedIntent {
       const dayPart = phrase.replace(/^next /, "");
       const idx = DAY_NAMES[dayPart];
       if (idx === undefined) return false;
-      applyNextDay(intent, now, idx);
+      setDays(intent, nextWeekday(now, idx, true), 1, `date:next-${idx}`, `NEXT ${WEEKDAY_LABELS[idx]}`);
       return true;
     },
   );
@@ -429,23 +337,25 @@ export function parseQuery(input: string, now: Date): ParsedIntent {
     const w = t.lower;
 
     if (w === "tonight" && !intent.dateFrom) {
-      applyTonight(intent, now);
+      setDays(intent, today, 1, "date:tonight", "TONIGHT");
+      intent.timeFrom = 18;
       t.consumed = true;
       continue;
     }
     if (w === "today" && !intent.dateFrom) {
-      applyToday(intent, now);
+      setDays(intent, today, 1, "date:today", "TODAY");
       t.consumed = true;
       continue;
     }
     if (w === "tomorrow" && !intent.dateFrom) {
-      applyTomorrow(intent, now);
+      setDays(intent, addDaysToDateString(today, 1), 1, "date:tomorrow", "TOMORROW");
       t.consumed = true;
       continue;
     }
 
     if (DAY_NAMES[w] !== undefined && !intent.dateFrom) {
-      applyDayThisWeek(intent, now, DAY_NAMES[w]);
+      const idx = DAY_NAMES[w];
+      setDays(intent, nextWeekday(now, idx, false), 1, `date:${idx}`, WEEKDAY_LABELS[idx]);
       t.consumed = true;
       continue;
     }
@@ -585,13 +495,6 @@ export function parseQuery(input: string, now: Date): ParsedIntent {
       continue;
     }
   }
-
-  // --- Pass 3: leftovers → freeText ---
-  intent.freeText = tokens
-    .filter((t) => !t.consumed)
-    .map((t) => input.slice(t.start, t.end))
-    .join(" ")
-    .trim();
 
   return intent;
 }

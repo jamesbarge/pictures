@@ -6,7 +6,7 @@ interface CinemasResponse {
 		id: string;
 		name: string;
 		shortName: string | null;
-		address: { street?: string; area?: string; postcode?: string } | null;
+		address: { area?: string } | null;
 		coordinates: { lat: number; lng: number } | null;
 	}>;
 }

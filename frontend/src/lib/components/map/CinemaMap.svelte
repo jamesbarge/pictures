@@ -20,7 +20,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
-	import type { Cinema } from '$lib/types';
+	import type { Cinema as FullCinema } from '$lib/types';
+
+	// The fields the map reads; the root layout's trimmed cinema rows carry exactly these.
+	type Cinema = Pick<FullCinema, 'id' | 'name' | 'coordinates'> & { address: { area?: string } | null };
 
 	let { cinemas = [] }: { cinemas: Cinema[] } = $props();
 

@@ -11,18 +11,10 @@ interface FestivalsResponse {
 		id: string;
 		name: string;
 		slug: string;
-		shortName: string | null;
-		year: number;
 		description: string | null;
-		websiteUrl: string | null;
-		logoUrl: string | null;
 		startDate: string;
 		endDate: string;
-		genreFocus: string[];
 		venues: string[];
-		isActive: boolean;
-		status: string;
-		ticketStatus: string | null;
 	}>;
 }
 
