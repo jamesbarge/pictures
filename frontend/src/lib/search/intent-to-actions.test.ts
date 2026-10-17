@@ -16,7 +16,7 @@ describe("intentToActions", () => {
     expect(intentToActions(parseQuery("", NOW))).toEqual([]);
   });
 
-  it("returns empty array for pure freeText (no slices)", () => {
+  it("returns empty array for plain text (no slices)", () => {
     expect(intentToActions(parseQuery("akira kurosawa", NOW))).toEqual([]);
   });
 
@@ -34,18 +34,6 @@ describe("intentToActions", () => {
     expect(r[0].label).toMatch(/70MM/);
     expect(r[0].label).toMatch(/horror/);
     expect(r[0].label).toMatch(/TONIGHT/);
-  });
-
-  it("uses a stable id when the intent is unchanged", () => {
-    const a = intentToActions(parseQuery("horror 70mm tonight", NOW));
-    const b = intentToActions(parseQuery("horror 70mm tonight", NOW));
-    expect(a[0].id).toBe(b[0].id);
-  });
-
-  it("changes the id when a slice changes", () => {
-    const a = intentToActions(parseQuery("horror 70mm tonight", NOW));
-    const b = intentToActions(parseQuery("horror 35mm tonight", NOW));
-    expect(a[0].id).not.toBe(b[0].id);
   });
 
   it("includes decade when present", () => {

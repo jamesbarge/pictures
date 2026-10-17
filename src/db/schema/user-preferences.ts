@@ -1,6 +1,6 @@
 import { pgTable, text, timestamp, jsonb } from "drizzle-orm/pg-core";
 import { users } from "./users";
-import type { ProgrammingType, TimeOfDay } from "@/stores/filters";
+import type { ProgrammingType, TimeOfDay } from "@/lib/filter-constants";
 
 /**
  * Types matching the Zustand stores for JSON storage
@@ -70,6 +70,3 @@ export const userPreferences = pgTable("user_preferences", {
     .notNull()
     .defaultNow(),
 });
-
-export type UserPreferencesInsert = typeof userPreferences.$inferInsert;
-export type UserPreferencesSelect = typeof userPreferences.$inferSelect;

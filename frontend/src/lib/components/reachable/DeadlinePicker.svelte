@@ -1,14 +1,8 @@
 <script module lang="ts">
 	// Hoisted to module scope: built once per module load and shared across
 	// every DeadlinePicker instead of reconstructed on each formatSelectedTime
-	// call. The configs are constant so the formatted output is byte-identical
-	// to the per-call builders they replace.
-	const TIME_FORMATTER = new Intl.DateTimeFormat('en-GB', {
-		hour: '2-digit',
-		minute: '2-digit',
-		hour12: false,
-		timeZone: 'Europe/London'
-	});
+	// call. The config is constant so the formatted output is byte-identical
+	// to the per-call builder it replaces.
 	const DAY_MONTH_FORMATTER = new Intl.DateTimeFormat('en-GB', {
 		weekday: 'short',
 		day: 'numeric',
@@ -24,6 +18,7 @@
 		londonDateString,
 		nextLondonDateTime
 	} from '$lib/london-date';
+	import { formatTime } from '$lib/utils';
 
 	let {
 		value = null,
@@ -51,10 +46,7 @@
 	const selectedPresetLabel = $derived.by(() => {
 		if (!value) return null;
 		const { hour, minute } = londonClock(value);
-		const found = PRESETS.find((p) => {
-			const presetHour = p.nextDay ? 0 : p.hour;
-			return presetHour === hour && p.minute === minute;
-		});
+		const found = PRESETS.find((p) => p.hour === hour && p.minute === minute);
 		return found?.label ?? null;
 	});
 
@@ -83,7 +75,7 @@
 		const tomorrowStr = addDaysToDateString(todayStr, 1);
 		const targetStr = londonDateString(date);
 
-		const timeStr = TIME_FORMATTER.format(date);
+		const timeStr = formatTime(date);
 
 		if (targetStr === todayStr) return `Today at ${timeStr}`;
 		if (targetStr === tomorrowStr) return `Tomorrow at ${timeStr}`;

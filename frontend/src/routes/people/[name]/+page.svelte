@@ -124,7 +124,7 @@
 		font-size: 0.75rem;
 		text-transform: uppercase;
 		letter-spacing: 0.08em;
-		color: var(--color-muted);
+		color: var(--color-text-tertiary);
 		text-decoration: none;
 	}
 	.back:hover {
@@ -141,7 +141,7 @@
 		font-size: 0.85rem;
 		text-transform: uppercase;
 		letter-spacing: 0.06em;
-		color: var(--color-muted);
+		color: var(--color-text-tertiary);
 		margin: 0;
 	}
 	.section-label {
@@ -149,9 +149,9 @@
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.1em;
-		color: var(--color-muted);
+		color: var(--color-text-tertiary);
 		margin: 2rem 0 1rem;
-		border-bottom: 1px solid var(--color-border, var(--color-muted));
+		border-bottom: 1px solid var(--color-border, var(--color-text-tertiary));
 		padding-bottom: 0.5rem;
 	}
 	.film-grid {
@@ -204,7 +204,7 @@
 		padding: 0.5rem;
 		font-size: 0.75rem;
 		text-align: center;
-		color: var(--color-muted);
+		color: var(--color-text-tertiary);
 	}
 	.info {
 		display: flex;
@@ -217,13 +217,13 @@
 		line-height: 1.2;
 	}
 	.year {
-		color: var(--color-muted);
+		color: var(--color-text-tertiary);
 		font-weight: 400;
 	}
 	.next {
 		font-size: 0.7rem;
 		text-transform: uppercase;
 		letter-spacing: 0.04em;
-		color: var(--color-muted);
+		color: var(--color-text-tertiary);
 	}
 </style>

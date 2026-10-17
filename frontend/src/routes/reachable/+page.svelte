@@ -8,31 +8,7 @@
 
 	let { data } = $props();
 
-	type LoadedScreening = (typeof data.screenings)[number];
-
-	// Map API screenings to the shape travel-time expects
-	const mappedScreenings: Screening[] = $derived(
-		data.screenings
-			.filter((s: LoadedScreening) => s.film && s.cinema)
-			.map((s: LoadedScreening) => ({
-				id: s.id,
-				datetime: s.datetime,
-				format: s.format,
-				bookingUrl: s.bookingUrl,
-				cinema: {
-					id: s.cinema.id,
-					name: s.cinema.name,
-					shortName: s.cinema.shortName
-				},
-				film: {
-					id: s.film.id,
-					title: s.film.title,
-					year: s.film.year,
-					runtime: s.film.runtime,
-					posterUrl: s.film.posterUrl
-				}
-			}))
-	);
+	const mappedScreenings: Screening[] = $derived(data.screenings);
 
 	// Compute reachable screenings reactively
 	const reachableScreenings = $derived.by(() => {

@@ -15,10 +15,11 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { handleApiError } from "@/lib/api-errors";
+import { BadRequestError, handleApiError } from "@/lib/api-errors";
 import { RATE_LIMITS, withRateLimit } from "@/lib/rate-limit";
 import { getFilmById, findByTmdbIds } from "@/db/repositories/film";
 import { getTMDBClient } from "@/lib/tmdb/client";
+import { CACHE_5MIN } from "@/lib/cache-headers";
 
 const paramsSchema = z.object({
   id: z.string().uuid(),
@@ -32,11 +33,8 @@ const CACHE_24H = {
   "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=86400",
 } as const;
 
-// 5 min edge cache on empty/fallback responses so a transient TMDB outage
+// Empty/fallback responses use CACHE_5MIN so a transient TMDB outage
 // doesn't freeze an empty rail on this film for 24 hours.
-const CACHE_EMPTY = {
-  "Cache-Control": "public, s-maxage=300, stale-while-revalidate=300",
-} as const;
 
 export const GET = withRateLimit(RATE_LIMITS.public, "films-similar")(async (
   _request: NextRequest,
@@ -46,10 +44,7 @@ export const GET = withRateLimit(RATE_LIMITS.public, "films-similar")(async (
     const { id } = await params;
     const parseResult = paramsSchema.safeParse({ id });
     if (!parseResult.success) {
-      return NextResponse.json(
-        { error: "Invalid film ID", details: parseResult.error.flatten() },
-        { status: 400 }
-      );
+      throw new BadRequestError("Invalid film ID", parseResult.error.flatten());
     }
 
     const film = await getFilmById(id);
@@ -67,11 +62,11 @@ export const GET = withRateLimit(RATE_LIMITS.public, "films-similar")(async (
       tmdbIds = response.results.map((r) => r.id);
     } catch (e) {
       console.error("TMDB similar lookup failed", e);
-      return NextResponse.json({ similar: [] }, { headers: CACHE_EMPTY });
+      return NextResponse.json({ similar: [] }, { headers: CACHE_5MIN });
     }
 
     if (tmdbIds.length === 0) {
-      return NextResponse.json({ similar: [] }, { headers: CACHE_EMPTY });
+      return NextResponse.json({ similar: [] }, { headers: CACHE_5MIN });
     }
 
     // Intersect with films we carry. Preserve TMDB's similarity ordering.
@@ -86,7 +81,7 @@ export const GET = withRateLimit(RATE_LIMITS.public, "films-similar")(async (
     // a recommendation. Short-cache this too in case we later acquire a
     // related film and want the rail to pop back faster.
     if (ordered.length < MIN_RESULTS) {
-      return NextResponse.json({ similar: [] }, { headers: CACHE_EMPTY });
+      return NextResponse.json({ similar: [] }, { headers: CACHE_5MIN });
     }
 
     return NextResponse.json(

@@ -64,7 +64,7 @@ if (browser) {
 /**
  * Calculate travel times from user location to all cinemas.
  */
-async function calculateTravelTimes(cinemas: Cinema[]): Promise<void> {
+async function calculateTravelTimes(cinemas: Pick<Cinema, 'id' | 'coordinates'>[]): Promise<void> {
 	if (!coordinates) {
 		error = 'Enter a postcode first';
 		return;
@@ -155,15 +155,5 @@ export const reachableStore = {
 		return Object.keys(travelTimes).length > 0;
 	},
 
-	calculateTravelTimes,
-
-	clear() {
-		postcode = '';
-		coordinates = null;
-		finishedByTime = null;
-		travelMode = 'transit';
-		travelTimes = {};
-		isCalculating = false;
-		error = null;
-	}
+	calculateTravelTimes
 };

@@ -3,11 +3,11 @@
  * Unified Scraper CLI
  *
  * Usage:
- *   npm run scrape <cinema-id>       Run a single cinema scraper
- *   npm run scrape --all             Run all scrapers
- *   npm run scrape --list            List available scrapers
- *   npm run scrape --chains          Run chain scrapers only
- *   npm run scrape --independents    Run independent cinema scrapers only
+ *   npm run scrape -- <cinema-id> [venue...]  Run one scraper (optionally named chain/multi venues)
+ *   npm run scrape -- --all                   Run all scrapers
+ *   npm run scrape -- --list                  List available scrapers
+ *   npm run scrape -- --chains                Run chain scrapers only
+ *   npm run scrape -- --independents          Run independent cinema scrapers only
  */
 
 import {
@@ -43,17 +43,18 @@ function printHelp(): void {
 Unified Scraper CLI
 
 Usage:
-  npm run scrape <cinema-id>       Run a single cinema scraper
-  npm run scrape --all             Run all scrapers
-  npm run scrape --list            List available scrapers
-  npm run scrape --chains          Run chain scrapers only
-  npm run scrape --independents    Run independent cinema scrapers only
+  npm run scrape -- <cinema-id> [venue...]  Run one scraper (optionally named chain/multi venues)
+  npm run scrape -- --all                   Run all scrapers
+  npm run scrape -- --list                  List available scrapers
+  npm run scrape -- --chains                Run chain scrapers only
+  npm run scrape -- --independents          Run independent cinema scrapers only
 
 Examples:
-  npm run scrape rio
-  npm run scrape pcc
-  npm run scrape --list
-  npm run scrape --all
+  npm run scrape -- rio
+  npm run scrape -- pcc
+  npm run scrape -- curzon soho mayfair
+  npm run scrape -- --list
+  npm run scrape -- --all
 `);
 }
 
@@ -76,11 +77,11 @@ function listScrapers(): void {
   console.log(`\nTotal: ${independents.length + chains.length} scrapers\n`);
 }
 
-async function runSingle(id: string): Promise<void> {
+async function runSingle(id: string, venueArgs: string[]): Promise<void> {
   const entry = getScraperByCliId(id);
   if (!entry) {
     console.error(`Unknown scraper: ${id}`);
-    console.log("Run 'npm run scrape --list' to see available scrapers");
+    console.log("Run 'npm run scrape -- --list' to see available scrapers");
     process.exit(1);
   }
 
@@ -88,8 +89,13 @@ async function runSingle(id: string): Promise<void> {
   const name = getConfigName(config);
   console.log(`Running ${name} scraper...\n`);
 
+  // Shorthand venue args for chain/multi scrapers: `curzon soho` -> `curzon-soho`.
+  const prefix = `${getScraperCliId(entry)}-`;
+  const venueIds = venueArgs.map((v) => (v.startsWith(prefix) ? v : prefix + v));
+
   try {
-    await runScraper(config, { useValidation: true });
+    const result = await runScraper(config, { useValidation: true, venueIds });
+    if (!result.success) process.exit(1);
   } catch (error) {
     console.error(`Error running ${name}:`, error);
     process.exit(1);
@@ -139,6 +145,8 @@ async function runMultiple(filter?: CliScraperType): Promise<void> {
 
   if (failed.length > 0) {
     console.log(`\nFailed scrapers: ${failed.map((result) => result.id).join(", ")}`);
+    // Every venue still runs; a non-zero exit keeps failures visible to callers.
+    process.exitCode = 1;
   }
 }
 
@@ -172,7 +180,7 @@ async function main(): Promise<void> {
 
   const scraperId = args[0];
   if (scraperId && !scraperId.startsWith("-")) {
-    await runSingle(scraperId);
+    await runSingle(scraperId, args.slice(1));
     return;
   }
 

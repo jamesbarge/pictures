@@ -70,25 +70,6 @@ export function setServerUserProperties(
 }
 
 /**
- * Capture an exception server-side
- * Useful for API routes, server actions, and background jobs
- */
-export function captureServerException(
-  error: Error,
-  distinctId?: string,
-  properties?: Record<string, unknown>
-) {
-  const client = getPostHogServer();
-  if (!client) return;
-
-  client.captureException(error, distinctId, {
-    ...properties,
-    $lib: "posthog-node",
-    source: "server",
-  });
-}
-
-/**
  * Extract PostHog distinct_id from cookie string
  * Used to link server-side errors to client sessions
  */
@@ -112,13 +93,4 @@ export function extractDistinctIdFromCookies(
   }
 
   return undefined;
-}
-
-/**
- * Flush all pending events (call during graceful shutdown)
- */
-export async function flushPostHogServer() {
-  if (posthogClient) {
-    await posthogClient.shutdown();
-  }
 }

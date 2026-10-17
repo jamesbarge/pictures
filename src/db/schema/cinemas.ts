@@ -56,6 +56,3 @@ export const cinemas = pgTable("cinemas", {
     .notNull()
     .defaultNow(),
 });
-
-export type CinemaInsert = typeof cinemas.$inferInsert;
-export type CinemaSelect = typeof cinemas.$inferSelect;

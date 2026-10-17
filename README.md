@@ -99,9 +99,6 @@ POSTHOG_API_KEY=phx_...
 
 # AI Enrichment (optional, npm run agents:enrich)
 DEEPSEEK_API_KEY=your_key
-
-# Cron Security
-CRON_SECRET=random_string
 ```
 
 See `.env.local.example` for the full list with documentation.
@@ -123,7 +120,7 @@ npm run lint         # Run ESLint
 ```bash
 npm run test         # Run unit tests (watch mode)
 npm run test:run     # Run unit tests once
-npm run test:e2e     # Run Playwright E2E tests
+cd frontend && npx playwright test   # Frontend E2E (pictures.london)
 ```
 
 ### Database
@@ -171,14 +168,12 @@ Every scrape runs from the Mac. `npm run scrape:unified` (the `/scrape` command)
 ## Architecture
 
 ```
-src/
-├── app/                 # Next.js App Router pages
+frontend/                # SvelteKit public site (pictures.london)
+src/                     # Next.js app (api.pictures.london)
+├── app/                 # App Router: API routes, admin, sign-in
 │   ├── api/             # API routes
-│   ├── film/[id]/       # Film detail pages
-│   └── ...
-├── components/          # React components
-│   ├── calendar/        # Calendar view components
-│   └── ...
+│   └── admin/           # Admin dashboard
+├── components/          # Admin UI primitives and Clerk wrappers
 ├── db/                  # Database schema & utilities
 │   └── schema/          # Drizzle schema files
 ├── scrapers/            # Cinema scrapers
@@ -186,7 +181,6 @@ src/
 │   ├── cinemas/         # Individual venues
 │   └── utils/           # Shared scraping utilities
 ├── agents/              # Data quality agents
-├── stores/              # Zustand state stores
 └── lib/                 # Utilities & helpers
 ```
 

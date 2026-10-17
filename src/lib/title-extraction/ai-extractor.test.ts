@@ -7,7 +7,6 @@
  *  - Cruft removal (BBFC ratings, format suffixes, Q&A markers)
  *  - Canonical extraction (version suffixes stripped)
  *  - Batch + caching wrappers
- *  - hasWordOverlap utility
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
@@ -16,7 +15,6 @@ import {
   batchExtractTitles,
   extractFilmTitleCached,
   clearTitleCache,
-  hasWordOverlap,
 } from "./index";
 
 // ---------------------------------------------------------------------------
@@ -288,6 +286,12 @@ describe("extractFilmTitleCached", () => {
 
     expect(result1.filmTitle).not.toBe(result2.filmTitle);
   });
+
+  it("keys the cache on the raw input, so different cases are different entries", async () => {
+    const lower = await extractFilmTitleCached("vertigo");
+    const upper = await extractFilmTitleCached("Vertigo");
+    expect(lower).not.toBe(upper);
+  });
 });
 
 describe("clearTitleCache", () => {
@@ -331,37 +335,5 @@ describe("extractFilmTitle - edge cases", () => {
       "Dr. Strangelove or: How I Learned to Stop Worrying and Love the Bomb";
     const result = await extractFilmTitle(longTitle);
     expect(result.filmTitle).toBeTruthy();
-  });
-});
-
-// ---------------------------------------------------------------------------
-// hasWordOverlap utility
-// ---------------------------------------------------------------------------
-
-describe("hasWordOverlap", () => {
-  it("detects overlap between similar titles", () => {
-    expect(hasWordOverlap("Dune: Part Two", "Dune: Part Two")).toBe(true);
-    expect(hasWordOverlap("Dune Part Two", "Part Two")).toBe(true);
-  });
-
-  it("rejects titles with no overlap", () => {
-    expect(hasWordOverlap("New: Moonlight Sonata Screening", "Slayer Part Two")).toBe(false);
-  });
-
-  it("returns true for empty strings (conservative)", () => {
-    expect(hasWordOverlap("", "Something")).toBe(true);
-    expect(hasWordOverlap("Something", "")).toBe(true);
-  });
-
-  it("handles special characters", () => {
-    expect(hasWordOverlap("Star Wars: A New Hope", "Star Wars A New Hope")).toBe(true);
-  });
-
-  it("ignores single-character words", () => {
-    expect(hasWordOverlap("A Film", "Film")).toBe(true);
-  });
-
-  it("is case-insensitive", () => {
-    expect(hasWordOverlap("THE MATRIX", "the matrix")).toBe(true);
   });
 });

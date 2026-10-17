@@ -11,12 +11,12 @@ Use this file as the single navigation entry point for AI agents and contributor
 ## Task Routing
 | Task | Start Here | Then Check |
 | --- | --- | --- |
-| UI/Page changes | `src/app/`, `src/components/` | `src/stores/`, `src/lib/` |
+| UI/Page changes | `frontend/src/routes/`, `frontend/src/lib/components/` | `frontend/src/lib/stores/`, `.claude/rules/frontend.md` |
+| Admin pages | `src/app/admin/` | `src/components/ui/`, `src/app/api/admin/` |
 | Scraper fixes | `src/scrapers/` | `src/scrapers/SCRAPING_PLAYBOOK.md`, `src/config/cinema-registry.ts` |
 | DB/schema/scripts | `src/db/` | `drizzle.config.ts`, `src/db/schema/` |
 | API behavior | `src/app/api/` | `src/lib/`, `src/db/` |
 | Data quality agents | `src/agents/` | `src/agents/data-quality/run-verify.ts` |
-| Outreach pipeline | `scripts/social-outreach/README.md` | `.github/workflows/social-outreach.yml` |
 
 ## Documentation Map
 - Canonical rules: `CLAUDE.md`

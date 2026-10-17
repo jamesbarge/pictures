@@ -55,12 +55,7 @@ const redis = hasRedis ? new Redis({ url: redisUrl!, token: redisToken! }) : nul
  */
 const ratelimiters = new Map<string, Ratelimit>();
 
-function getOrCreateRatelimiter(config: RateLimitConfig): Ratelimit {
-  if (!redis) {
-    // checkRateLimit guards this; enforce the invariant here too so a future
-    // direct caller fails loudly instead of constructing a broken Ratelimit.
-    throw new Error("getOrCreateRatelimiter requires a configured Redis client");
-  }
+function getOrCreateRatelimiter(redis: Redis, config: RateLimitConfig): Ratelimit {
   const key = `${config.prefix ?? ""}:${config.limit}:${config.windowSec}`;
   let rl = ratelimiters.get(key);
   if (!rl) {
@@ -158,7 +153,7 @@ export async function checkRateLimit(
     return checkRateLimitInMemory(identifier, config);
   }
 
-  const rl = getOrCreateRatelimiter(config);
+  const rl = getOrCreateRatelimiter(redis, config);
 
   // Fail OPEN if the backing store is unavailable. A rate limiter must never
   // take down the whole API: if Upstash is unreachable, rate-limited, or over
@@ -257,8 +252,6 @@ export const RATE_LIMITS = {
   public: { limit: 100, windowSec: 60 },
   // Search endpoints - moderate limits
   search: { limit: 30, windowSec: 60 },
-  // User endpoints - stricter limits
-  user: { limit: 20, windowSec: 60 },
   // Auth/sync endpoints - strict limits
   sync: { limit: 10, windowSec: 60 },
   // Endpoints that trigger paid third-party API requests

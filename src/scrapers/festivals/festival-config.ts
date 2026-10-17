@@ -8,7 +8,7 @@
  * - Title keywords and URL patterns for TITLE-strategy festivals
  */
 
-import type { FestivalTaggingConfig, WatchdogProbe } from "./types";
+import type { FestivalTaggingConfig } from "./types";
 
 /**
  * Per-festival tagging configuration.
@@ -117,82 +117,3 @@ export const FESTIVAL_CONFIGS: Record<string, FestivalTaggingConfig> = {
     typicalMonths: [9], // October
   },
 };
-
-/**
- * Get all festival config entries as an array.
- */
-export function getAllFestivalConfigs(): FestivalTaggingConfig[] {
-  return Object.values(FESTIVAL_CONFIGS);
-}
-
-/**
- * Get festival configs relevant to a specific cinema.
- */
-export function getFestivalConfigsForVenue(
-  cinemaId: string
-): FestivalTaggingConfig[] {
-  return Object.values(FESTIVAL_CONFIGS).filter((config) =>
-    config.venues.includes(cinemaId)
-  );
-}
-
-/**
- * Watchdog probe configurations for detecting programme announcements.
- */
-export const WATCHDOG_PROBES: WatchdogProbe[] = [
-  {
-    slugBase: "bfi-lff",
-    probeUrl: "https://www.bfi.org.uk/london-film-festival/programme",
-    signal: "content-hash",
-  },
-  {
-    slugBase: "bfi-flare",
-    probeUrl: "https://whatson.bfi.org.uk/flare/Online/default.asp",
-    signal: "content-hash",
-  },
-  {
-    slugBase: "frightfest",
-    probeUrl: (year) => `https://frightfest${String(year).slice(-2)}.eventive.org/films`,
-    signal: "page-exists",
-  },
-  {
-    slugBase: "raindance",
-    probeUrl: "https://raindance.org/festival/programme",
-    signal: "content-hash",
-  },
-  {
-    slugBase: "ukjff",
-    probeUrl: (year) => `https://ukjewishfilmfestival${year}.eventive.org/films`,
-    signal: "page-exists",
-  },
-  {
-    slugBase: "liff",
-    probeUrl: "https://liff.org/programme",
-    signal: "content-hash",
-  },
-  {
-    slugBase: "lsff",
-    probeUrl: "https://shortfilms.org.uk/programme",
-    signal: "content-hash",
-  },
-  {
-    slugBase: "lkff",
-    probeUrl: "https://koreanfilm.co.uk/programme",
-    signal: "content-hash",
-  },
-  {
-    slugBase: "open-city",
-    probeUrl: "https://opencitylondon.com/festival/full-programme",
-    signal: "content-hash",
-  },
-  {
-    slugBase: "liaf",
-    probeUrl: "https://liaf.org.uk/programme",
-    signal: "content-hash",
-  },
-  {
-    slugBase: "docnroll",
-    probeUrl: "https://www.docnrollfestival.com/programme",
-    signal: "content-hash",
-  },
-];
