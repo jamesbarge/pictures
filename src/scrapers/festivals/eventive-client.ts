@@ -8,6 +8,8 @@
  * An optional API key can be provided via EVENTIVE_API_KEY env var for higher rate limits.
  */
 
+import { setTimeout as delay } from "node:timers/promises";
+
 const EVENTIVE_API_BASE = "https://api.eventive.org";
 const DELAY_MS = 500;
 
@@ -66,10 +68,6 @@ function getHeaders(): Record<string, string> {
   return headers;
 }
 
-async function delay(): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, DELAY_MS));
-}
-
 async function fetchEventive<T>(path: string): Promise<T> {
   const url = `${EVENTIVE_API_BASE}${path}`;
   const response = await fetch(url, { headers: getHeaders() });
@@ -97,7 +95,7 @@ export async function getFilms(eventBucketId: string): Promise<EventiveFilm[]> {
  * Get all events (screenings) for an event bucket.
  */
 export async function getEvents(eventBucketId: string): Promise<EventiveEvent[]> {
-  await delay();
+  await delay(DELAY_MS);
   const result = await fetchEventive<{ events: EventiveEvent[] }>(
     `/event_buckets/${eventBucketId}/events`
   );

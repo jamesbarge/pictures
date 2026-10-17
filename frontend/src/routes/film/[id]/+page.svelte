@@ -12,9 +12,9 @@
 		toLondonDateStr,
 		groupBy,
 		getPosterImageAttributes,
-		filmByline,
-		formatScreeningFormat
+		filmByline
 	} from '$lib/utils';
+	import { formatLabel } from '$lib/components/calendar/card-shapes';
 	import { trackFilmView, trackBookingClick, trackFilmStatusChange } from '$lib/analytics/posthog';
 	import { onMount } from 'svelte';
 	import type { FilmStatus } from '$lib/types';
@@ -350,7 +350,7 @@
 				<div class="row-slot">
 					<time class="slot-time" datetime={s.datetime}>{formatTime(s.datetime)}</time>
 					{#if s.format && s.format !== 'unknown'}
-						<span class="slot-format">{formatScreeningFormat(s.format)}</span>
+						<span class="slot-format">{formatLabel(s.format) || 'DCP'}</span>
 					{/if}
 				</div>
 			</a>
@@ -392,21 +392,7 @@
 		</div>
 	</section>
 
-	<FilmSidebar
-		film={{
-			id: film.id,
-			title: film.title,
-			year: film.year,
-			genres: film.genres,
-			directors: film.directors,
-			cast: film.cast,
-			countries: film.countries,
-			languages: film.languages,
-			tagline: film.tagline
-		}}
-		{currentStatus}
-		onToggleStatus={toggleStatus}
-	/>
+	<FilmSidebar {film} {currentStatus} onToggleStatus={toggleStatus} />
 </div>
 
 {#if SimilarRail && similar.length >= 2}

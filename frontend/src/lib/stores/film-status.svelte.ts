@@ -21,21 +21,6 @@ function loadStatuses(): Record<string, FilmStatusEntry> {
 
 let statuses = $state<Record<string, FilmStatusEntry>>(loadStatuses());
 
-// Sole write path for status changes. Must preserve `addedAt` on existing rows
-// and stamp a fresh `updatedAt` — keeping it in one helper means future schema
-// changes only touch one place.
-function writeStatusLocally(filmId: string, status: FilmStatus) {
-	const now = new Date().toISOString();
-	statuses = {
-		...statuses,
-		[filmId]: {
-			status,
-			addedAt: statuses[filmId]?.addedAt ?? now,
-			updatedAt: now
-		}
-	};
-}
-
 if (browser) {
 	$effect.root(() => {
 		$effect(() => {
@@ -45,14 +30,22 @@ if (browser) {
 }
 
 export const filmStatuses = {
-	get all() { return statuses; },
-
 	getStatus(filmId: string): FilmStatus | null {
 		return statuses[filmId]?.status ?? null;
 	},
 
+	// Sole write path for status changes. Preserves `addedAt` on existing rows
+	// and stamps a fresh `updatedAt`.
 	setStatus(filmId: string, status: FilmStatus) {
-		writeStatusLocally(filmId, status);
+		const now = new Date().toISOString();
+		statuses = {
+			...statuses,
+			[filmId]: {
+				status,
+				addedAt: statuses[filmId]?.addedAt ?? now,
+				updatedAt: now
+			}
+		};
 	},
 
 	toggleStatus(filmId: string, status: FilmStatus) {
@@ -73,10 +66,6 @@ export const filmStatuses = {
 		return Object.entries(statuses)
 			.filter(([, entry]) => entry.status === status)
 			.map(([id]) => id);
-	},
-
-	get wantToSeeCount(): number {
-		return Object.values(statuses).filter((e) => e.status === 'want_to_see').length;
 	},
 
 	clearAll() {

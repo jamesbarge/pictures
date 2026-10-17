@@ -43,10 +43,11 @@ export const FORMAT_TOKENS: Record<string, string> = {
 
   // Digital and 3D — not surfaced in FORMAT_OPTIONS but commonly typed
   // We intentionally do NOT add these to filters.formats since the
-  // existing UI doesn't surface them; they end up in freeText so
-  // the server can still match via screenings.format tsvector.
+  // existing UI doesn't surface them; the server still receives the raw
+  // query, so it can match via screenings.format tsvector.
 };
 
+// Hyphenated keys stay single tokens, so only the spaced keys are phrases.
 export const FORMAT_PHRASES_BY_LENGTH: Record<number, string[]> = {
-  2: ["70mm imax", "70 mm", "70mm-imax", "dcp 4k", "imax laser", "imax-laser", "35 mm", "dolby cinema", "dolby vision", "dolby atmos", "4 dx"],
+  2: Object.keys(FORMAT_TOKENS).filter((k) => k.includes(" ")),
 };

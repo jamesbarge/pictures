@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { NotFoundError, handleApiError } from "@/lib/api-errors";
+import { BadRequestError, NotFoundError, handleApiError } from "@/lib/api-errors";
 import { RATE_LIMITS, withRateLimit } from "@/lib/rate-limit";
 import { getFilmById, getUpcomingScreeningsForFilm } from "@/db/repositories/film";
 import { CACHE_5MIN } from "@/lib/cache-headers";
@@ -22,10 +22,7 @@ export const GET = withRateLimit(RATE_LIMITS.public, "films")(async (
     const { id } = await params;
     const parseResult = paramsSchema.safeParse({ id });
     if (!parseResult.success) {
-      return NextResponse.json(
-        { error: "Invalid film ID", details: parseResult.error.flatten() },
-        { status: 400 }
-      );
+      throw new BadRequestError("Invalid film ID", parseResult.error.flatten());
     }
 
     const [film, filmScreenings] = await Promise.all([

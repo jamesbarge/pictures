@@ -14,7 +14,7 @@
 import { db } from "@/db";
 import { userFilmStatuses, userPreferences } from "@/db/schema";
 import { eq, count, desc, asc } from "drizzle-orm";
-import { getPostHogServer, setServerUserProperties, captureServerEvent } from "./posthog-server";
+import { getPostHogServer, setServerUserProperties } from "./posthog-server";
 
 interface UserProductData {
   // Watchlist metrics
@@ -53,7 +53,7 @@ function calculateEngagementTier(
 /**
  * Fetch user product data from Supabase
  */
-export async function getUserProductData(userId: string): Promise<UserProductData | null> {
+async function getUserProductData(userId: string): Promise<UserProductData | null> {
   try {
     // Get film status counts
     const statusCounts = await db
@@ -155,66 +155,4 @@ export async function syncUserToPostHog(userId: string): Promise<boolean> {
   });
 
   return true;
-}
-
-/**
- * Sync all users to PostHog (batch job)
- * Run this periodically (e.g., daily via cron) to keep PostHog in sync
- */
-export async function syncAllUsersToPostHog(): Promise<{
-  synced: number;
-  failed: number;
-}> {
-  const client = getPostHogServer();
-  if (!client) {
-    console.warn("[PostHog Sync] PostHog client not available");
-    return { synced: 0, failed: 0 };
-  }
-
-  // Get all unique user IDs from film statuses
-  const users = await db
-    .selectDistinct({ userId: userFilmStatuses.userId })
-    .from(userFilmStatuses);
-
-  let synced = 0;
-  let failed = 0;
-
-  for (const { userId } of users) {
-    const success = await syncUserToPostHog(userId);
-    if (success) {
-      synced++;
-    } else {
-      failed++;
-    }
-  }
-
-  // Track the sync event
-  captureServerEvent("system", "supabase_posthog_sync_completed", {
-    users_synced: synced,
-    users_failed: failed,
-    total_users: users.length,
-  });
-
-  return { synced, failed };
-}
-
-/**
- * Track a server-side event with product context
- * Use this for events that happen on the server (API routes, webhooks)
- */
-export async function trackServerEventWithContext(
-  userId: string,
-  event: string,
-  properties?: Record<string, unknown>
-): Promise<void> {
-  const productData = await getUserProductData(userId);
-
-  captureServerEvent(userId, event, {
-    ...properties,
-    // Include product context
-    $set: productData ? {
-      watchlist_count: productData.watchlistCount,
-      engagement_tier: productData.engagementTier,
-    } : undefined,
-  });
 }

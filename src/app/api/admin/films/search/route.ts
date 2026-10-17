@@ -8,6 +8,7 @@ import { withAdminAuth } from "@/lib/auth";
 import { db } from "@/db";
 import { films } from "@/db/schema";
 import { ilike, or, sql, asc } from "drizzle-orm";
+import { handleApiError } from "@/lib/api-errors";
 
 export const GET = withAdminAuth(async (req) => {
   const request = req as NextRequest;
@@ -41,7 +42,6 @@ export const GET = withAdminAuth(async (req) => {
 
     return Response.json({ films: filmResults });
   } catch (error) {
-    console.error("Admin film search error:", error);
-    return Response.json({ error: "Search failed" }, { status: 500 });
+    return handleApiError(error, "GET /api/admin/films/search");
   }
 });

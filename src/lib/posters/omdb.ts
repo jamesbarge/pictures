@@ -93,30 +93,6 @@ export class OMDBClient {
   }
 
   /**
-   * Get poster URL for a movie
-   * Returns null if poster is "N/A" or not found
-   */
-  async getPosterUrl(
-    titleOrImdbId: string,
-    year?: number
-  ): Promise<string | null> {
-    let result: OMDBSearchResult | OMDBMovieDetails | null = null;
-
-    // If it looks like an IMDb ID, use direct lookup
-    if (titleOrImdbId.startsWith("tt")) {
-      result = await this.getByImdbId(titleOrImdbId);
-    } else {
-      result = await this.searchByTitle(titleOrImdbId, year);
-    }
-
-    if (!result || !result.Poster || result.Poster === "N/A") {
-      return null;
-    }
-
-    return result.Poster;
-  }
-
-  /**
    * Check if the API key is configured
    */
   isConfigured(): boolean {

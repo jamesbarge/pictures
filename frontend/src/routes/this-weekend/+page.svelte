@@ -80,8 +80,7 @@
 									director: film.director ?? null,
 									runtime: film.runtime,
 									genres: [],
-									posterUrl: film.posterUrl,
-									tmdbId: null
+									posterUrl: film.posterUrl
 								}}
 								screenings={screenings.map(toCardScreening)}
 								priority={dayIndex === 0 && i === 0}

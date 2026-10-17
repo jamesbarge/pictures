@@ -16,7 +16,7 @@
 import { BaseScraper } from "../base";
 import type { RawScreening, ScraperConfig } from "../types";
 import { FestivalDetector } from "../festivals/festival-detector";
-import { combineDateAndTime } from "../utils/date-parser";
+import { parseUKLocalDateTime } from "../utils/date-parser";
 import { normalizeUrl, slugify } from "../utils/url";
 import { sanitizeRuntime } from "../utils/metadata-parser";
 import { escapeRegex } from "@/lib/title-extraction/patterns";
@@ -56,14 +56,6 @@ export class GardenCinemaScraper extends BaseScraper {
 
       if (!dateStr) {
         console.warn(`[${this.config.cinemaId}] Date block missing data-date attribute`);
-        return;
-      }
-
-      // Parse the date
-      const [y, m, d] = dateStr.split("-").map(Number);
-      const date = new Date(Date.UTC(y, m - 1, d));
-      if (isNaN(date.getTime())) {
-        console.warn(`[${this.config.cinemaId}] Invalid date: ${dateStr}`);
         return;
       }
 
@@ -207,37 +199,21 @@ export class GardenCinemaScraper extends BaseScraper {
   }
 
   /**
-   * Parse date and time into a Date object
-   * @param dateStr - Date in YYYY-MM-DD format
-   * @param timeStr - Time in HH:MM 24-hour format
+   * "YYYY-MM-DD" + "HH:MM" (UK-local) -> UTC Date, or null when either is malformed.
+   * Garden prints 24-hour times, so no PM heuristic: parseScreeningTime would
+   * turn "9:30" into 21:30.
    */
   private parseDateTime(dateStr: string, timeStr: string): Date | null {
-    // Parse time - already in 24-hour format like "11:00", "17:45"
-    const timeMatch = timeStr.match(/^(\d{1,2}):(\d{2})$/);
-    if (!timeMatch) {
+    if (!/^\d{1,2}:\d{2}$/.test(timeStr)) {
       console.warn(`[${this.config.cinemaId}] Invalid time format: ${timeStr}`);
       return null;
     }
-
-    const hours = parseInt(timeMatch[1], 10);
-    const minutes = parseInt(timeMatch[2], 10);
-
-    // Validate time - cinema screenings should be between 10:00 and 23:59
-    // Times before 10:00 might be errors unless they're special morning screenings
-    if (hours < 10 && hours !== 0) {
-      console.warn(
-        `[${this.config.cinemaId}] Unusual early time: ${timeStr} - verify this is correct`
-      );
+    const hours = parseInt(timeStr, 10);
+    if (hours > 0 && hours < 10) {
+      console.warn(`[${this.config.cinemaId}] Unusual early time: ${timeStr} - verify this is correct`);
     }
-
-    // Create date from ISO date string
-    const [year, month, day] = dateStr.split("-").map(Number);
-    const date = new Date(Date.UTC(year, month - 1, day));
-    if (isNaN(date.getTime())) {
-      return null;
-    }
-
-    return combineDateAndTime(date, { hours, minutes });
+    const datetime = parseUKLocalDateTime(`${dateStr}T${timeStr}`);
+    return isNaN(datetime.getTime()) ? null : datetime;
   }
 
 

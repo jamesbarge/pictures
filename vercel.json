@@ -9,15 +9,6 @@
   },
   "headers": [
     {
-      "source": "/api/screenings",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, s-maxage=300, stale-while-revalidate=600"
-        }
-      ]
-    },
-    {
       "source": "/api/films/(.*)",
       "headers": [
         {

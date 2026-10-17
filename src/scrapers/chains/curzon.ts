@@ -23,6 +23,7 @@ import { FestivalDetector } from "../festivals/festival-detector";
 import { getBrowser, closeBrowser, createPage } from "../utils/browser";
 import { parseUKLocalDateTime } from "../utils/date-parser";
 import { sanitizeRuntime } from "../utils/metadata-parser";
+import { addDaysToDateString, londonDateString } from "@/lib/london-date";
 import type { Page } from "rebrowser-playwright";
 
 /**
@@ -33,30 +34,6 @@ import type { Page } from "rebrowser-playwright";
  * most HORIZON_DAYS + 1 showtime calls.
  */
 const HORIZON_DAYS = 70;
-
-/**
- * YYYY-MM-DD in Europe/London, `offset` calendar days after `from`'s London
- * date. Anchors the arithmetic at NOON UTC (12:00/13:00 London — always inside
- * the same calendar day) so stepping never skips or duplicates a day across a
- * BST↔GMT transition, the way `+ offset * 86_400_000` from a near-midnight
- * `now` would (spring-forward's 23-hour day gets jumped clean over).
- *
- * NOTE: near-identical local copies live in cinemas/barbican.ts and
- * platforms/indy.ts. Worth promoting to utils/date-parser.ts and pointing all
- * three at it, but that is a wider change than the horizon fix this sits in.
- */
-function londonDateKey(from: Date, offset: number): string {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/London",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(from);
-  const num = (t: string) => Number(parts.find((p) => p.type === t)!.value);
-  // Date.UTC normalizes day-of-month overflow (e.g. day 32 → next month).
-  const anchored = new Date(Date.UTC(num("year"), num("month") - 1, num("day") + offset, 12));
-  return anchored.toISOString().slice(0, 10);
-}
 
 // ============================================================================
 // Curzon Venue Configurations
@@ -300,14 +277,6 @@ export class CurzonScraper implements ChainScraper {
   private apiBase = "https://digital-api.curzon.com/ocapi/v1";
 
   /**
-   * Scrape all active venues
-   */
-  async scrapeAll(): Promise<Map<string, RawScreening[]>> {
-    const activeVenues = this.chainConfig.venues.filter(v => v.active !== false);
-    return this.scrapeVenues(activeVenues.map(v => v.id));
-  }
-
-  /**
    * Scrape specific venues by ID
    */
   async scrapeVenues(venueIds: string[]): Promise<Map<string, RawScreening[]>> {
@@ -404,7 +373,7 @@ export class CurzonScraper implements ChainScraper {
     //
     // Filtering by date is also self-bounding: at most HORIZON_DAYS + 1 requests
     // per venue, versus a count cap that says nothing about calendar reach.
-    const cutoff = londonDateKey(new Date(), HORIZON_DAYS);
+    const cutoff = addDaysToDateString(londonDateString(new Date()), HORIZON_DAYS);
     const datesToFetch = dates.filter((d) => d <= cutoff);
     console.log(
       `[curzon] ${venue.name}: ${dates.length} dates published, ` +
@@ -703,17 +672,4 @@ export class CurzonScraper implements ChainScraper {
 // Factory function
 export function createCurzonScraper(): CurzonScraper {
   return new CurzonScraper();
-}
-
-/** Returns all Curzon venues that are currently active (not disabled). */
-export function getActiveCurzonVenues(): VenueConfig[] {
-  return CURZON_VENUES.filter(v => v.active !== false);
-}
-
-/** Returns Curzon venues located in London, filtered by postcode prefix. */
-export function getLondonCurzonVenues(): VenueConfig[] {
-  const londonPostcodes = ["W1", "WC", "EC", "E1", "N1", "SW", "SE", "NW", "KT", "TW"];
-  return CURZON_VENUES.filter(v =>
-    v.postcode && londonPostcodes.some(p => v.postcode!.startsWith(p))
-  );
 }

@@ -8,7 +8,7 @@
  */
 
 /** Parsed postcode data returned by postcodes.io */
-export interface PostcodeResult {
+interface PostcodeResult {
 	postcode: string;
 	latitude: number;
 	longitude: number;
@@ -96,14 +96,4 @@ export function isWithinLondon(lat: number, lng: number): boolean {
 	};
 
 	return lat >= bounds.south && lat <= bounds.north && lng >= bounds.west && lng <= bounds.east;
-}
-
-/**
- * Get a friendly location name from postcode result
- */
-export function getLocationName(result: PostcodeResult): string {
-	if (result.admin_district) {
-		return result.admin_district;
-	}
-	return formatPostcode(result.postcode);
 }

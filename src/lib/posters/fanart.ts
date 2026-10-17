@@ -9,7 +9,7 @@
  * Personal API key: Higher rate limits
  */
 
-import type { FanartMovieImages, FanartImage } from "./types";
+import type { FanartMovieImages } from "./types";
 
 const FANART_BASE_URL = "https://webservice.fanart.tv/v3/movies";
 
@@ -89,20 +89,6 @@ export class FanartClient {
     });
 
     return sorted[0].url;
-  }
-
-  /**
-   * Get all available poster URLs for a movie
-   */
-  async getAllPosters(
-    tmdbIdOrImdbId: number | string
-  ): Promise<FanartImage[]> {
-    const images =
-      typeof tmdbIdOrImdbId === "number"
-        ? await this.getByTmdbId(tmdbIdOrImdbId)
-        : await this.getByImdbId(tmdbIdOrImdbId);
-
-    return images?.movieposter || [];
   }
 
   /**

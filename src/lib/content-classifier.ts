@@ -2,8 +2,7 @@
  * Content Classifier
  *
  * Classifies cinema listings into a content type (film, concert,
- * live_broadcast, event), extracts the clean title and year, and recommends
- * a poster sourcing strategy.
+ * live_broadcast, event) and extracts the clean title and year.
  *
  * Implementation is a deterministic rules engine — heuristics first, with a
  * sane "treat as film, look up via TMDB" default for genuinely ambiguous
@@ -15,15 +14,11 @@
 
 import type { ContentType } from "@/types/film";
 
-/** Strategy for sourcing a poster image: TMDB lookup or scraper-provided URL */
-type PosterStrategy = "tmdb" | "scraper_image" | "generate";
-
-/** Output of the content classifier: clean title, type, year, and poster strategy */
+/** Output of the content classifier: clean title, type and year */
 interface ClassificationResult {
   cleanTitle: string;
   year: number | null;
   contentType: ContentType;
-  posterStrategy: PosterStrategy;
   confidence: "high" | "medium" | "low";
   eventType?: string;
 }
@@ -57,7 +52,6 @@ function quickClassify(rawTitle: string): ClassificationResult | null {
         cleanTitle: rawTitle.trim(),
         year: null,
         contentType: type,
-        posterStrategy: type === "film" ? "tmdb" : "scraper_image",
         confidence: "high",
       };
     }
@@ -90,7 +84,6 @@ function quickClassify(rawTitle: string): ClassificationResult | null {
           : cleanTitle,
         year: yearMatch ? parseInt(yearMatch[1]) : null,
         contentType: "live_broadcast",
-        posterStrategy: "scraper_image",
         confidence: "high",
         eventType: "live broadcast",
       };
@@ -110,7 +103,6 @@ function quickClassify(rawTitle: string): ClassificationResult | null {
         cleanTitle: rawTitle.trim(),
         year: null,
         contentType: "concert",
-        posterStrategy: "scraper_image",
         confidence: "high",
         eventType: "concert",
       };
@@ -128,7 +120,6 @@ function quickClassify(rawTitle: string): ClassificationResult | null {
       cleanTitle: cleanBasicCruft(cleanTitle),
       year: yearMatch ? parseInt(yearMatch[1]) : null,
       contentType: "film",
-      posterStrategy: "tmdb",
       confidence: "high",
     };
   }
@@ -265,28 +256,7 @@ export async function classifyContent(rawTitle: string): Promise<ClassificationR
     cleanTitle: cleanBasicCruft(stripped.title),
     year: yearMatch ? parseInt(yearMatch[1]) : null,
     contentType: "film",
-    posterStrategy: "tmdb",
     confidence: "medium",
     eventType: stripped.eventType,
   };
-}
-
-/**
- * Cache for classification results.
- */
-const classificationCache = new Map<string, ClassificationResult>();
-
-export async function classifyContentCached(
-  rawTitle: string
-): Promise<ClassificationResult> {
-  const cached = classificationCache.get(rawTitle);
-  if (cached) return cached;
-
-  const result = await classifyContent(rawTitle);
-  classificationCache.set(rawTitle, result);
-  return result;
-}
-
-export function clearClassificationCache(): void {
-  classificationCache.clear();
 }

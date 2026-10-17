@@ -15,7 +15,6 @@ import { parseSavoyEvents, type SavoyVenue } from "../platforms/savoy";
 const RIO_VENUE: SavoyVenue = {
   cinemaId: "rio-dalston",
   baseUrl: "https://riocinema.org.uk",
-  // Rio has no per-performance TypeDescription — take all performances.
   buildSourceId: (event, _perf, datetime) => `rio-dalston-${event.ID}-${datetime.toISOString()}`,
   // The film-page URL is stable and shows all showtimes; the performance URL
   // (perf.URL) carries session params that expire.
