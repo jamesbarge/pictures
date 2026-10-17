@@ -32,7 +32,6 @@
   ],
   "exclude": [
     "node_modules",
-    "packages",
     "frontend",
     "scripts/typesafe-experiments/discovery.ts",
     "scripts/typesafe-experiments/discovery.test.ts",
