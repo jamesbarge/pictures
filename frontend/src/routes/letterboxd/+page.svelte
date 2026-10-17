@@ -110,7 +110,7 @@
 
 		{#if pageState === 'idle' || pageState === 'loading'}
 			<div class="max-w-lg">
-				<p class="text-sm text-[var(--color-muted)] mb-4">
+				<p class="text-sm text-[var(--color-text-tertiary)] mb-4">
 					Enter your Letterboxd username to find which films on your watchlist are showing in London
 					cinemas.
 				</p>
@@ -121,20 +121,20 @@
 						bind:value={username}
 						placeholder="your-username"
 						disabled={pageState === 'loading'}
-						class="flex-1 px-3 py-2 text-sm font-mono bg-[var(--color-surface)] border-2 border-[var(--color-border)] text-[var(--color-foreground)] placeholder:text-[var(--color-muted)] focus:outline-none focus:border-[var(--color-foreground)] transition-colors"
+						class="flex-1 px-3 py-2 text-sm font-mono bg-[var(--color-surface)] border-2 border-[var(--color-border)] text-[var(--color-text)] placeholder:text-[var(--color-text-tertiary)] focus:outline-none focus:border-[var(--color-text)] transition-colors"
 					/>
 					<button
 						type="submit"
 						disabled={pageState === 'loading' || !username.trim()}
-						class="px-5 py-2 text-xs font-bold tracking-wide-swiss uppercase bg-[var(--color-foreground)] text-[var(--color-background)] border-2 border-[var(--color-foreground)] hover:bg-transparent hover:text-[var(--color-foreground)] transition-colors disabled:opacity-40 disabled:pointer-events-none"
+						class="px-5 py-2 text-xs font-bold tracking-wide-swiss uppercase bg-[var(--color-text)] text-[var(--color-bg)] border-2 border-[var(--color-text)] hover:bg-transparent hover:text-[var(--color-text)] transition-colors disabled:opacity-40 disabled:pointer-events-none"
 					>
 						{pageState === 'loading' ? 'SCANNING...' : 'IMPORT'}
 					</button>
 				</form>
 
 				{#if pageState === 'loading'}
-					<div class="mt-6 flex items-center gap-3 text-sm text-[var(--color-muted)]">
-						<div class="w-4 h-4 border-2 border-[var(--color-muted)] border-t-transparent animate-spin"></div>
+					<div class="mt-6 flex items-center gap-3 text-sm text-[var(--color-text-tertiary)]">
+						<div class="w-4 h-4 border-2 border-[var(--color-text-tertiary)] border-t-transparent animate-spin"></div>
 						Scraping your Letterboxd watchlist...
 					</div>
 				{/if}
@@ -146,15 +146,15 @@
 				</div>
 				<button
 					onclick={reset}
-					class="px-4 py-2 text-xs font-bold tracking-wide-swiss uppercase border-2 border-[var(--color-border)] hover:border-[var(--color-foreground)] transition-colors"
+					class="px-4 py-2 text-xs font-bold tracking-wide-swiss uppercase border-2 border-[var(--color-border)] hover:border-[var(--color-text)] transition-colors"
 				>
 					TRY AGAIN
 				</button>
 			</div>
 		{:else if pageState === 'results' && results}
 			<div class="mb-6 flex items-baseline justify-between flex-wrap gap-4">
-				<div class="text-sm text-[var(--color-muted)]">
-					<span class="font-bold text-[var(--color-foreground)]">{results.matched.length}</span>
+				<div class="text-sm text-[var(--color-text-tertiary)]">
+					<span class="font-bold text-[var(--color-text)]">{results.matched.length}</span>
 					matched of {results.total} watchlist films
 					{#if results.pendingLookup > 0}
 						· {results.pendingLookup} pending lookup
@@ -169,14 +169,14 @@
 						<button
 							onclick={addAllToWatchlist}
 							disabled={addedIds.size === results.matched.length}
-							class="px-4 py-2 text-xs font-bold tracking-wide-swiss uppercase bg-[var(--color-foreground)] text-[var(--color-background)] border-2 border-[var(--color-foreground)] hover:bg-transparent hover:text-[var(--color-foreground)] transition-colors disabled:opacity-40"
+							class="px-4 py-2 text-xs font-bold tracking-wide-swiss uppercase bg-[var(--color-text)] text-[var(--color-bg)] border-2 border-[var(--color-text)] hover:bg-transparent hover:text-[var(--color-text)] transition-colors disabled:opacity-40"
 						>
 							{addedIds.size === results.matched.length ? 'ALL ADDED' : 'ADD ALL TO WATCHLIST'}
 						</button>
 					{/if}
 					<button
 						onclick={reset}
-						class="px-4 py-2 text-xs font-bold tracking-wide-swiss uppercase border-2 border-[var(--color-border)] hover:border-[var(--color-foreground)] transition-colors"
+						class="px-4 py-2 text-xs font-bold tracking-wide-swiss uppercase border-2 border-[var(--color-border)] hover:border-[var(--color-text)] transition-colors"
 					>
 						NEW IMPORT
 					</button>
@@ -184,13 +184,13 @@
 			</div>
 
 			{#if matchedWithScreenings.length > 0}
-				<h2 class="text-xs font-bold tracking-wide-swiss uppercase text-[var(--color-muted)] mb-3">
+				<h2 class="text-xs font-bold tracking-wide-swiss uppercase text-[var(--color-text-tertiary)] mb-3">
 					SHOWING IN LONDON ({matchedWithScreenings.length})
 				</h2>
 				<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-8">
 					{#each matchedWithScreenings as film (film.filmId)}
 						<div
-							class="border-2 border-[var(--color-border)] p-4 flex gap-4 hover:border-[var(--color-foreground)] transition-colors"
+							class="border-2 border-[var(--color-border)] p-4 flex gap-4 hover:border-[var(--color-text)] transition-colors"
 						>
 							{#if film.posterUrl}
 								{@const posterImage = getPosterImageAttributes(film.posterUrl, {
@@ -213,7 +213,7 @@
 								<div
 									class="w-16 h-24 bg-[var(--color-surface)] flex items-center justify-center flex-shrink-0"
 								>
-									<span class="text-[8px] font-mono text-[var(--color-muted)] text-center px-1"
+									<span class="text-[8px] font-mono text-[var(--color-text-tertiary)] text-center px-1"
 										>{film.title}</span
 									>
 								</div>
@@ -226,7 +226,7 @@
 								>
 									{film.title}
 								</a>
-								<p class="text-xs text-[var(--color-muted)] mt-0.5">
+								<p class="text-xs text-[var(--color-text-tertiary)] mt-0.5">
 									{film.year ?? ''}{film.directors.length > 0
 										? ` · ${film.directors[0]}`
 										: ''}
@@ -240,7 +240,7 @@
 									{/if}
 								</div>
 								{#if film.screenings.next}
-									<p class="text-[10px] font-mono text-[var(--color-muted)] mt-1">
+									<p class="text-[10px] font-mono text-[var(--color-text-tertiary)] mt-1">
 										NEXT: {new Date(film.screenings.next.datetime).toLocaleDateString('en-GB', {
 											weekday: 'short',
 											day: 'numeric',
@@ -253,7 +253,7 @@
 								<button
 									onclick={() => addToWatchlist(film.filmId)}
 									disabled={addedIds.has(film.filmId)}
-									class="mt-2 text-[10px] font-bold tracking-wide-swiss uppercase px-2 py-1 border border-[var(--color-border)] hover:border-[var(--color-foreground)] transition-colors disabled:opacity-40"
+									class="mt-2 text-[10px] font-bold tracking-wide-swiss uppercase px-2 py-1 border border-[var(--color-border)] hover:border-[var(--color-text)] transition-colors disabled:opacity-40"
 								>
 									{addedIds.has(film.filmId) ? 'ADDED' : 'ADD TO WATCHLIST'}
 								</button>
@@ -264,14 +264,14 @@
 			{/if}
 
 			{#if matchedNoScreenings.length > 0}
-				<h2 class="text-xs font-bold tracking-wide-swiss uppercase text-[var(--color-muted)] mb-3">
+				<h2 class="text-xs font-bold tracking-wide-swiss uppercase text-[var(--color-text-tertiary)] mb-3">
 					NOT CURRENTLY SHOWING ({matchedNoScreenings.length})
 				</h2>
 				<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
 					{#each matchedNoScreenings as film (film.filmId)}
 						<a
 							href="/film/{film.filmId}"
-							class="text-xs text-[var(--color-muted)] hover:text-[var(--color-foreground)] transition-colors"
+							class="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text)] transition-colors"
 						>
 							<span class="font-bold uppercase">{film.title}</span>
 							{#if film.year}

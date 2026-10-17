@@ -1,20 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
 
-	// `cinemas` and `showFilters` were previously used to feed the in-header
-	// FilterBar. They're kept on the prop type for backwards compatibility with
-	// call sites, but the header no longer renders filters itself — the
-	// homepage owns them via its sidebar / bottom sheet.
-	interface HeaderCinema {
-		id: string;
-		name: string;
-		shortName: string | null;
-		address: { area: string } | null;
-	}
-
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	let { cinemas: _cinemas = [], showFilters: _showFilters = true }: { cinemas?: HeaderCinema[]; showFilters?: boolean } = $props();
-
 	// Single source of truth for nav links. Desktop nav uses items flagged
 	// `desktop: true`; the burger menu uses `mobile: true`. The two surfaces
 	// historically diverged (desktop omitted Cinemas/Tonight/Directors, mobile

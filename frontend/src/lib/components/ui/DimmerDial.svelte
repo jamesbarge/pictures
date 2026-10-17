@@ -31,25 +31,20 @@
 	// The pre-paint boot script in app.html duplicates this table — keep the
 	// two in sync when tokens change.
 	const L = {
-		bg: [239, 233, 220], bgSubtle: [229, 223, 208], surface: [255, 255, 255],
-		text: [31, 31, 31], textSecondary: [42, 42, 42], textTertiary: [90, 90, 90],
-		border: [31, 31, 31], borderSubtle: [202, 197, 186], accent: [31, 31, 31],
-		screenBg: [31, 31, 31], screenText: [234, 229, 194],
+		'--color-bg': [239, 233, 220], '--color-bg-subtle': [229, 223, 208], '--color-surface': [255, 255, 255],
+		'--color-text': [31, 31, 31], '--color-text-secondary': [42, 42, 42], '--color-text-tertiary': [90, 90, 90],
+		'--color-border': [31, 31, 31], '--color-border-subtle': [202, 197, 186], '--color-accent': [31, 31, 31],
+		'--color-screening-bg': [31, 31, 31], '--color-screening-text': [234, 229, 194],
 	} as const;
 
-	const D = {
-		bg: [14, 12, 10], bgSubtle: [24, 21, 18], surface: [30, 27, 24],
-		text: [240, 235, 220], textSecondary: [185, 175, 160], textTertiary: [115, 108, 98],
-		border: [240, 235, 220], borderSubtle: [50, 44, 38], accent: [240, 235, 220],
-		screenBg: [240, 235, 220], screenText: [14, 12, 10],
-	} as const;
+	const D: Record<keyof typeof L, readonly [number, number, number]> = {
+		'--color-bg': [14, 12, 10], '--color-bg-subtle': [24, 21, 18], '--color-surface': [30, 27, 24],
+		'--color-text': [240, 235, 220], '--color-text-secondary': [185, 175, 160], '--color-text-tertiary': [115, 108, 98],
+		'--color-border': [240, 235, 220], '--color-border-subtle': [50, 44, 38], '--color-accent': [240, 235, 220],
+		'--color-screening-bg': [240, 235, 220], '--color-screening-text': [14, 12, 10],
+	};
 
-	const THEME_PROPS = [
-		'--color-bg', '--color-bg-subtle', '--color-surface', '--color-text',
-		'--color-text-secondary', '--color-text-tertiary', '--color-border',
-		'--color-border-subtle', '--color-accent', '--color-screening-bg',
-		'--color-screening-text',
-	] as const;
+	const THEME_PROPS = Object.keys(L) as Array<keyof typeof L>;
 
 	function applyTheme(t: number) {
 		if (!browser) return;
@@ -78,17 +73,7 @@
 			return;
 		}
 		// No warmth bias — dim is purely a darkening lerp, no amber cast.
-		target.style.setProperty('--color-bg', lerpColor(L.bg, D.bg, t));
-		target.style.setProperty('--color-bg-subtle', lerpColor(L.bgSubtle, D.bgSubtle, t));
-		target.style.setProperty('--color-surface', lerpColor(L.surface, D.surface, t));
-		target.style.setProperty('--color-text', lerpColor(L.text, D.text, t));
-		target.style.setProperty('--color-text-secondary', lerpColor(L.textSecondary, D.textSecondary, t));
-		target.style.setProperty('--color-text-tertiary', lerpColor(L.textTertiary, D.textTertiary, t));
-		target.style.setProperty('--color-border', lerpColor(L.border, D.border, t));
-		target.style.setProperty('--color-border-subtle', lerpColor(L.borderSubtle, D.borderSubtle, t));
-		target.style.setProperty('--color-accent', lerpColor(L.accent, D.accent, t));
-		target.style.setProperty('--color-screening-bg', lerpColor(L.screenBg, D.screenBg, t));
-		target.style.setProperty('--color-screening-text', lerpColor(L.screenText, D.screenText, t));
+		for (const prop of THEME_PROPS) target.style.setProperty(prop, lerpColor(L[prop], D[prop], t));
 	}
 
 	// Reactive — `applyTheme` runs on mount (initial value) and on every

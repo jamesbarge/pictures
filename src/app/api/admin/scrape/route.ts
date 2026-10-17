@@ -8,6 +8,7 @@
  */
 
 import { withAdminAuth } from "@/lib/auth";
+import { handleApiError } from "@/lib/api-errors";
 import {
   getCinemaById,
   getCanonicalId,
@@ -76,10 +77,6 @@ export const POST = withAdminAuth(async (request, admin) => {
       { status: 202 },
     );
   } catch (error) {
-    console.error("Error starting scraper:", error);
-    return Response.json(
-      { error: "Failed to start scraper" },
-      { status: 500 },
-    );
+    return handleApiError(error, "POST /api/admin/scrape");
   }
 });

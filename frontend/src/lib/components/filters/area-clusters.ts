@@ -40,34 +40,3 @@ export function cinemasInCluster(label: string, cinemas: ClusterableCinema[]): s
 	}
 	return ids;
 }
-
-/**
- * A cluster is "active" when every cinema it covers is selected — partial
- * selections don't light up the chip. Returns `false` for unknown labels.
- */
-export function isAreaActive(
-	label: string,
-	cinemas: ClusterableCinema[],
-	activeCinemaIds: string[]
-): boolean {
-	const ids = cinemasInCluster(label, cinemas);
-	return ids.length > 0 && ids.every((id) => activeCinemaIds.includes(id));
-}
-
-/**
- * Compute the new active cinema-id set after toggling a cluster. If every
- * cinema in the cluster was already active, all are removed; otherwise all
- * are added (idempotent on already-active members). Returns the *current*
- * list unchanged when the cluster is empty.
- */
-export function toggleArea(
-	label: string,
-	cinemas: ClusterableCinema[],
-	activeCinemaIds: string[]
-): string[] {
-	const ids = cinemasInCluster(label, cinemas);
-	if (ids.length === 0) return activeCinemaIds;
-	const allActive = ids.every((id) => activeCinemaIds.includes(id));
-	if (allActive) return activeCinemaIds.filter((id) => !ids.includes(id));
-	return Array.from(new Set([...activeCinemaIds, ...ids]));
-}

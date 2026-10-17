@@ -1,13 +1,7 @@
 <script lang="ts">
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
 
-	interface DirectorEntry {
-		name: string;
-		filmCount: number;
-		films: string[];
-	}
-
-	let { data }: { data: { directors: DirectorEntry[] } } = $props();
+	let { data } = $props();
 	let search = $state('');
 
 	const filtered = $derived.by(() => {

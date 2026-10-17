@@ -23,9 +23,9 @@
 
 ## Design System
 - Tailwind CSS 4 with custom theme in `frontend/src/app.css`
-- Colors via CSS custom properties: `var(--color-text)`, `var(--color-muted)`, `var(--color-surface)`, `var(--color-screening-bg)`
+- Colors via CSS custom properties: `var(--color-text)`, `var(--color-text-tertiary)` (muted), `var(--color-bg)`, `var(--color-surface)`, `var(--color-screening-bg)`. Only use tokens defined in `app.css`; an undefined `var()` renders transparent or inherited
 - Fonts: Inter (sans), Space Grotesk (display), JetBrains Mono (mono)
-- Uppercase headings with `tracking-wide-swiss` or `tracking-swiss`
+- Uppercase headings with `tracking-wide-swiss`
 - Zero border-radius everywhere (Swiss brutalist)
 - Light/dark mode via `data-theme` attribute
 
