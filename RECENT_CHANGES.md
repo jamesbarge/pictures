@@ -1,3 +1,9 @@
+## 2026-10-17: maplibre-gl 6.12 with a bundled tile worker
+**PR**: #813 | **Files**: `frontend/package.json`, `frontend/package-lock.json`, `frontend/src/lib/components/map/CinemaMap.svelte`
+- Bumps maplibre-gl from 5.24 to 6.12, which closes the critical DOM.sanitize XSS advisory (fixed in 6.4.1).
+- maplibre-gl 6 loads its tile worker from a file next to its own module. After Vite bundles it that file is missing, so the map showed pins on a blank background. `CinemaMap.svelte` now imports the worker with `?worker&url` and passes it to `setWorkerUrl()`.
+
+---
 ## 2026-10-04: JW3 film nights outside the Cinema genre
 **PR**: #783 | **Files**: `src/scrapers/cinemas/jw3.ts`, `src/scrapers/cinemas/jw3.test.ts` (new), `src/scrapers/SCRAPING_PLAYBOOK.md`
 - JW3 now keeps film nights filed under other Spektrix genres when the name labels them, e.g. `Young JW3 Queer Movie & Pizza Night: Call Me By Your Name`, listed as the film after the colon. This adds Call Me By Your Name (21 Oct) and Theater Camp (16 Dec).

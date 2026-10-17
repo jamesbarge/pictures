@@ -97,6 +97,10 @@
 
 		(async () => {
 			const maplibregl = await import('maplibre-gl');
+			// maplibre-gl 6 finds its tile worker next to its own module file, which
+			// stops resolving once Vite bundles it; hand it a bundled worker instead.
+			const { default: workerUrl } = await import('maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url');
+			maplibregl.setWorkerUrl(workerUrl);
 			await import('maplibre-gl/dist/maplibre-gl.css');
 			if (cancelled || !mapContainer) return;
 
