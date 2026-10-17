@@ -22,7 +22,7 @@ vi.mock("../festivals/festival-detector", () => ({
   },
 }));
 
-import { BarbicanScraper } from "./barbican";
+import { BarbicanScraper, titleFromBarbicanEventHtml } from "./barbican";
 import type { RawScreening } from "../types";
 import type { CheerioAPI } from "../utils/cheerio-types";
 
@@ -154,5 +154,45 @@ describe("Barbican parseDayPage", () => {
     const screenings = parse("2026-08-19");
     expect(new Set(screenings.map((s) => s.sourceId)).size).toBe(screenings.length);
     expect(screenings[0].sourceId).toBe("barbican-2026-08-19-1100-the-odyssey");
+  });
+});
+
+const TRUNCATED_DAY = `
+<div class="cinema-listing-card">
+  <div class="cinema-listing-card__title"><a href="/whats-on/2026/event/ffw-x-all-kaiju-attack-ghidorah-the-three-headed">FFW x All Kaiju Attack: Ghidorah, The Three-Headed...</a></div>
+  <div class="cinema-instance-list__instance">
+    <a href="https://tickets.barbican.org.uk/choose-seats/3744001"><span>3.00pm</span></a>
+  </div>
+</div>`;
+
+const GHIDORAH_EVENT = `
+<h1 class="heading-group__primary"><span>Ghidorah, The Three-Headed Monster + Introduction from curators Alex Davidson and Susie Evans</span>
+<span class="_classification">(PG)</span></h1>`;
+
+describe("Barbican truncated card titles", () => {
+  it("reads the film from the event-page h1", () => {
+    expect(titleFromBarbicanEventHtml(GHIDORAH_EVENT)).toBe(
+      "Ghidorah, The Three-Headed Monster + Introduction from curators Alex Davidson and Susie Evans",
+    );
+  });
+
+  it("replaces an ellipsis card title with the event-page h1", async () => {
+    const scraper = new BarbicanScraper() as unknown as PrivBarbican & {
+      parsePages: (pages: string[]) => Promise<RawScreening[]>;
+      fetchUrl: (url: string) => Promise<string>;
+    };
+    vi.spyOn(scraper, "fetchUrl").mockImplementation(async (url: string) => {
+      expect(url).toBe(
+        "https://www.barbican.org.uk/whats-on/2026/event/ffw-x-all-kaiju-attack-ghidorah-the-three-headed",
+      );
+      return GHIDORAH_EVENT;
+    });
+    const screenings = await scraper.parsePages([
+      JSON.stringify({ date: "2026-10-30", html: TRUNCATED_DAY }),
+    ]);
+    expect(screenings).toHaveLength(1);
+    expect(screenings[0].filmTitle).toBe(
+      "Ghidorah, The Three-Headed Monster + Introduction from curators Alex Davidson and Susie Evans",
+    );
   });
 });

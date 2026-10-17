@@ -41,6 +41,11 @@ describe("parseFilmMetadata — director validation", () => {
   it("still extracts director from 'directed by' pattern", () => {
     expect(parseFilmMetadata("directed by Denis Villeneuve, 2024, 166 mins").director).toBe("Denis Villeneuve");
   });
+
+  it("does not treat a BFI event title as a director", () => {
+    expect(parseFilmMetadata("Blake\u2019s 7: Series 3 + Q&A").director).toBeUndefined();
+    expect(parseFilmMetadata("Dracula: Restored and Uncut + extended intro").director).toBeUndefined();
+  });
 });
 
 describe("sanitizeRuntime — 1-600 minute band guard (plan 006)", () => {

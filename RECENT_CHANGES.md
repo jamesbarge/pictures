@@ -1,3 +1,10 @@
+## 2026-10-17: Fragment film titles from the listings QA
+**PR**: #829 | **Files**: `src/scrapers/utils/film-title-cleaner.ts`, `src/scrapers/utils/metadata-parser.ts`, `src/lib/title-extraction/pattern-extractor.ts`, `src/scrapers/cinemas/barbican.ts`, `scripts/repair-fragment-film-titles.ts`
+- The colon cleaner was keeping the note after the colon. A lowercase tail, `Series N` and `Edition` now stay with the name, so The Brixton Reel, Blake’s 7: Series 3 and Mixtape: Youth Edition survive. `Family Film` no longer eats `Family Film Week`. Met Opera Encore plus the season code clean to Macbeth in one pass.
+- A comma-list of extras before a plus is the evening, not the film (`The Hunger`). A Genesis `at Genesis` strand is stripped and the hidden year is kept. BFI no longer stores the raw event line as the director. Barbican cards ending in `...` take the event-page title.
+- Rows already stored as those fragments can be rewritten in place by `scripts/repair-fragment-film-titles.ts` (dry-run unless `--execute`). It does not delete anything and was not run against production.
+
+---
 ## 2026-10-16: Five fixes from the code review
 **PR**: #827 | **Files**: `frontend/src/routes/{letterboxd,search,map,people/[name]}/+page.svelte`, `.claude/rules/frontend.md`, `src/db/seed-festivals.ts`, `src/db/seed-festivals.test.ts` (new), `src/app/admin/screenings/components/screening-form-modal.tsx`, `src/scrapers/utils/date-parser.ts`, `src/scrapers/utils/date-parser.test.ts`, `scripts/data-check.ts`
 - The Letterboxd, search, map and people pages used `--color-muted`, `--color-foreground` and `--color-background`, which `app.css` has never defined. They now use `--color-text-tertiary`, `--color-text` and `--color-bg`, so the Letterboxd IMPORT button has its dark fill and muted text is grey in light mode, dark mode and under the house-lights dimmer.

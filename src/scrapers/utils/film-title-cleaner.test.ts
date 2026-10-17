@@ -5,6 +5,7 @@ import {
   EVENT_PREFIXES,
   extractEnglishFromBracket,
   getKnownNonFilmTypeFromEntries,
+  repairFragmentFilm,
 } from "./film-title-cleaner";
 import unmatchedTitles from "./fixtures/unmatched-titles-2026-10-04.json";
 
@@ -1039,5 +1040,105 @@ describe("colon suffixes that only describe the screening (2026-10-15 run)", () 
     ["Halloween Special: Hocus Pocus", "Hocus Pocus"],
   ])("still strips the event prefix in %s", (raw, expected) => {
     expect(cleanFilmTitle(raw)).toBe(expected);
+  });
+});
+
+describe("fragment titles from the 17 Oct 2026 listings QA", () => {
+  it.each([
+    // Ritzy. The lowercase tail is a note; the event is The Brixton Reel.
+    ["The Brixton Reel: in commemoration of Black History Month", "The Brixton Reel"],
+    // Picturehouse. Encore sits between the company and the season code.
+    ["Met Opera Encore 2026-27: Macbeth", "Macbeth"],
+    ["Met Opera Encore 2026-26: Silent Night", "Silent Night"],
+    ["Met Opera Live 2026-27: Macbeth", "Macbeth"],
+    ["Encore 2026-27: Macbeth", "Macbeth"],
+    ["2026-27: Macbeth", "Macbeth"],
+    // Everyman already stores the company name. Leave that form alone.
+    ["The Metropolitan Opera 2026/27: Macbeth", "The Metropolitan Opera 2026/27: Macbeth"],
+    // Finsbury Park. "Youth Edition" is the subtitle of Mixtape.
+    ["MilkTea Presents: Mixtape: Youth Edition + Q+A", "Mixtape: Youth Edition"],
+    ["MilkTea presents: Linda Linda Linda + Q+A", "Linda Linda Linda"],
+    // BFI. The show name stays; the screening note does not become the title.
+    ["Blake\u2019s 7: Series 3 + Q&A", "Blake\u2019s 7: Series 3"],
+    ["Dracula: Restored and Uncut + extended intro", "Dracula"],
+    // Barbican family programme. "Family Film" is not a prefix of "Family Film Week".
+    ["Family Film Week: A Shuffle of Shorts! + Pre-film Crafting", "Family Film Week: A Shuffle of Shorts!"],
+    ["Ghidorah, The Three-Headed Monster + Introduction from curators Alex Davidson and Susie Evans", "Ghidorah, The Three-Headed Monster"],
+    // ICA detail page once the </br> has been turned into a space.
+    [
+      "Experimenta Special Presentation Shab-Nameh: Women of Iran\u2019s Forgotten Left",
+      "Experimenta Special Presentation Shab-Nameh: Women of Iran\u2019s Forgotten Left",
+    ],
+    // Garden. The film is after the plus; the colon side is the evening.
+    ["Vampire Ball: Live Violin, Cocktails + The Hunger", "The Hunger"],
+    // A double bill with no comma stays a double bill, even when one title says Live.
+    ["Broadcast: Saturday Night Live + Wayne's World", "Saturday Night Live + Wayne's World"],
+    // Genesis strand suffix, with the release year kept as a hint.
+    ["Halloween (1978)- Halloween at Genesis", "Halloween"],
+  ])("cleans %s", (raw, expected) => {
+    expect(cleanFilmTitle(raw)).toBe(expected);
+    expect(cleanFilmTitle(cleanFilmTitle(raw))).toBe(expected);
+  });
+
+  it("keeps 1978 as the year hint for the Genesis Halloween strand", () => {
+    const result = cleanFilmTitleWithMetadata("Halloween (1978)- Halloween at Genesis");
+    expect(result.cleanedTitle).toBe("Halloween");
+    expect(result.extractedYear).toBe(1978);
+  });
+
+  it("rebuilds a BFI title from the event line that leaked into directors", () => {
+    expect(repairFragmentFilm({
+      title: "Series 3",
+      directors: ["Blake\u2019s 7: Series 3 + Q&A"],
+      year: null,
+    })).toEqual({
+      title: "Blake\u2019s 7: Series 3",
+      directors: [],
+      year: null,
+    });
+    expect(repairFragmentFilm({
+      title: "Restored and Uncut",
+      directors: ["Dracula: Restored and Uncut + extended intro"],
+      year: null,
+    })).toEqual({ title: "Dracula", directors: [], year: null });
+  });
+
+  it("rewrites stored fragments only when the row is the QA case", () => {
+    expect(repairFragmentFilm({
+      title: "Youth Edition",
+      directors: [],
+      year: null,
+      bookingUrl: "https://www.picturehouses.com/movie-details/029/HO00018768/milktea-presents-mixtape-youth-edition-q-a",
+    })?.title).toBe("Mixtape: Youth Edition");
+    expect(repairFragmentFilm({ title: "Youth Edition", directors: [], year: null })).toBeNull();
+
+    expect(repairFragmentFilm({
+      title: "Live Violin, Cocktails",
+      directors: ["Tony Scott"],
+      year: 1983,
+    })).toEqual({ title: "The Hunger", directors: ["Tony Scott"], year: 1983 });
+    expect(repairFragmentFilm({
+      title: "Live Violin, Cocktails",
+      directors: ["Someone Else"],
+      year: 2024,
+    })).toBeNull();
+
+    expect(repairFragmentFilm({
+      title: "Experimenta Special Presentation",
+      directors: ["Maryam Tafakory"],
+      year: null,
+    })?.title).toBe("Experimenta Special Presentation Shab-Nameh: Women of Iran\u2019s Forgotten Left");
+
+    expect(repairFragmentFilm({
+      title: "Halloween (1978)- Halloween at Genesis",
+      directors: [],
+      year: null,
+    })).toEqual({ title: "Halloween", directors: [], year: 1978 });
+
+    expect(repairFragmentFilm({
+      title: "The Brixton Reel",
+      directors: [],
+      year: null,
+    })).toBeNull();
   });
 });

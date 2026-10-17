@@ -149,10 +149,14 @@ export function extractFilmTitleSync(title: string): PatternExtractionResult {
     }
   }
 
-  // Handle double features — extract first film
+  // Handle double features — extract first film. A colon in the left half
+  // means the plus is inside one event title ("Vampire Ball: Live Violin,
+  // Cocktails + The Hunger", "Family Film Week: … + Pre-film Crafting").
+  // Splitting there drops the film or the programme name before the cleaner
+  // can see them. A plain "The Gruffalo + The Gruffalo's Child" still splits.
   if (extracted.includes(" + ") && !method.includes("suffix")) {
     const doubleMatch = extracted.match(DOUBLE_FEATURE_PATTERN);
-    if (doubleMatch) {
+    if (doubleMatch && !doubleMatch[1].includes(":")) {
       extracted = doubleMatch[1].trim();
       method = method === "none" ? "double_feature" : method + "+double_feature";
       confidence = Math.min(confidence, DOUBLE_FEATURE_MAX_CONFIDENCE);
