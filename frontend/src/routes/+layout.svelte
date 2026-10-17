@@ -10,7 +10,7 @@
 	import { palette } from '$lib/stores/palette.svelte';
 	import GlobalCmdkBinding from '$lib/components/search/GlobalCmdkBinding.svelte';
 
-	let { data, children } = $props();
+	let { children } = $props();
 
 	const canonicalUrl = $derived(`https://pictures.london${page.url.pathname}`);
 
@@ -56,7 +56,7 @@
 <a href="#main-content" class="skip-link">Skip to content</a>
 
 <div class="min-h-dvh flex flex-col">
-	<Header cinemas={data?.cinemas ?? []} />
+	<Header />
 	<main id="main-content" class="flex-1" tabindex="-1">
 		{@render children()}
 	</main>

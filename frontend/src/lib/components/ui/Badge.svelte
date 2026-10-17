@@ -1,18 +1,14 @@
 <script lang="ts">
-	import { clsx } from 'clsx';
-
 	let {
 		variant = 'default',
-		class: className = '',
 		children
 	}: {
-		variant?: 'default' | 'accent' | 'muted';
-		class?: string;
+		variant?: 'default' | 'muted';
 		children: import('svelte').Snippet;
 	} = $props();
 </script>
 
-<span class={clsx('badge', `badge-${variant}`, className)}>
+<span class={['badge', `badge-${variant}`]}>
 	{@render children()}
 </span>
 
@@ -32,11 +28,6 @@
 	.badge-default {
 		color: var(--color-text);
 		border-color: var(--color-border);
-	}
-
-	.badge-accent {
-		color: var(--color-accent);
-		border-color: var(--color-accent);
 	}
 
 	.badge-muted {

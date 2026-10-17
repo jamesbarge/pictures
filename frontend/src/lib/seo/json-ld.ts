@@ -4,7 +4,6 @@
  */
 
 import type { Film } from '$lib/types/film';
-import type { Cinema } from '$lib/types/cinema';
 
 const BASE_URL = 'https://pictures.london';
 const BRAND_NAME = 'pictures · london';
@@ -101,52 +100,6 @@ export function movieSchema(film: Film) {
 	return data;
 }
 
-// ── ScreeningEvent (film detail page) ───────────────────────────
-
-export function screeningEventSchema(
-	screening: { id: string; datetime: string; bookingUrl: string; format: string | null },
-	film: { title: string; posterUrl: string | null },
-	cinema: Cinema
-) {
-	const data: Record<string, unknown> = {
-		'@context': 'https://schema.org',
-		'@type': 'ScreeningEvent',
-		name: `${film.title} at ${cinema.name}`,
-		startDate: screening.datetime,
-		location: {
-			'@type': 'MovieTheater',
-			name: cinema.name,
-			url: cinema.website,
-			...(cinema.address && {
-				address: {
-					'@type': 'PostalAddress',
-					streetAddress: cinema.address.street,
-					addressLocality: cinema.address.area,
-					postalCode: cinema.address.postcode,
-					addressRegion: cinema.address.borough,
-					addressCountry: 'GB'
-				}
-			})
-		},
-		workPresented: { '@type': 'Movie', name: film.title, image: film.posterUrl },
-		url: screening.bookingUrl,
-		eventStatus: 'https://schema.org/EventScheduled',
-		eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
-		offers: {
-			'@type': 'Offer',
-			url: screening.bookingUrl,
-			availability: 'https://schema.org/InStock',
-			priceCurrency: 'GBP'
-		}
-	};
-
-	if (screening.format && screening.format !== 'unknown') {
-		data.videoFormat = screening.format.toUpperCase();
-	}
-
-	return data;
-}
-
 // ── Breadcrumb ──────────────────────────────────────────────────
 
 export function breadcrumbSchema(items: { name: string; url: string }[]) {
@@ -186,27 +139,5 @@ export function personSchema(name: string, roles: string[], filmTitles: string[]
 		...(roles.length ? { jobTitle: roles } : {}),
 		url: absoluteUrl(`/people/${encodeURIComponent(name)}`),
 		...(filmTitles.length ? { knowsAbout: filmTitles } : {})
-	};
-}
-
-// ── ItemList (directory pages) ──────────────────────────────────
-
-export function itemListSchema(
-	name: string,
-	description: string,
-	items: { name: string; url: string; position: number }[]
-) {
-	return {
-		'@context': 'https://schema.org',
-		'@type': 'ItemList',
-		name,
-		description,
-		numberOfItems: items.length,
-		itemListElement: items.map((item) => ({
-			'@type': 'ListItem',
-			position: item.position,
-			name: item.name,
-			url: absoluteUrl(item.url)
-		}))
 	};
 }

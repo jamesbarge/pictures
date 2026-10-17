@@ -142,67 +142,11 @@ export function filmByline(film: {
 }
 
 /**
- * Build the meta line shown under the byline on calendar cards:
- * `"<runtime>m"`, country, certification — joined with " · " by the caller.
- *
- * The film detail page uses a longer-form variant (`"<runtime> min"`, genres,
- * full country list) so it deliberately doesn't share this helper.
- */
-export function cardFilmMetaParts(film: {
-	runtime?: number | null;
-	country?: string | null;
-	certification?: string | null;
-}): string[] {
-	const parts: string[] = [];
-	if (film.runtime) parts.push(`${film.runtime}m`);
-	if (film.country) parts.push(film.country);
-	if (film.certification) parts.push(film.certification);
-	return parts;
-}
-
-/**
- * Normalise a backend screening-format token into a display label.
- *
- * Tokens like `dcp` and `unknown` collapse to "DCP" (the default 2K digital
- * projection) because they're not worth surfacing as distinct labels; every
- * other token is uppercased and underscores become spaces (`dolby_cinema`
- * → `DOLBY CINEMA`).
- */
-export function formatScreeningFormat(fmt: string | null | undefined): string {
-	if (!fmt || fmt === 'unknown' || fmt === 'dcp') return 'DCP';
-	return fmt.toUpperCase().replace('_', ' ');
-}
-
-const ORDINAL_DAYS = [
-	'',
-	'first', 'second', 'third', 'fourth', 'fifth',
-	'sixth', 'seventh', 'eighth', 'ninth', 'tenth',
-	'eleventh', 'twelfth', 'thirteenth', 'fourteenth', 'fifteenth',
-	'sixteenth', 'seventeenth', 'eighteenth', 'nineteenth', 'twentieth',
-	'twenty-first', 'twenty-second', 'twenty-third', 'twenty-fourth', 'twenty-fifth',
-	'twenty-sixth', 'twenty-seventh', 'twenty-eighth', 'twenty-ninth', 'thirtieth',
-	'thirty-first'
-];
-
-/**
- * Spell out a day number (1-31) as an editorial ordinal: `1` → "first",
- * `21` → "twenty-first". Falls back to numeric `${n}th` for invalid inputs.
- */
-export function formatOrdinalDay(dayNum: number): string {
-	return ORDINAL_DAYS[dayNum] ?? `${dayNum}th`;
-}
-
-/** Two-digit zero-pad for date-component formatting. */
-export function padTwo(n: number): string {
-	return n < 10 ? '0' + n : String(n);
-}
-
-/**
  * Build a YYYY-MM-DD string from numeric Y / 0-indexed M / D triplet.
  * Calendar grid builders use this hot — kept allocation-free (no Date object).
  */
 export function toISODate(year: number, monthZeroIndexed: number, day: number): string {
-	return `${year}-${padTwo(monthZeroIndexed + 1)}-${padTwo(day)}`;
+	return `${year}-${String(monthZeroIndexed + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
 const MODAL_FOCUSABLE_SELECTOR = [

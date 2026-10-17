@@ -79,15 +79,14 @@
 		}
 		return map;
 	});
-	function isAreaActive(label: string) {
-		const ids = clusterMembership.get(label) ?? [];
+	// A chip is active only when every cinema it covers is selected. Toggling
+	// removes them all when they are, and adds them all otherwise.
+	function allSelected(ids: string[]) {
 		return ids.length > 0 && ids.every((id) => filters.cinemaIds.includes(id));
 	}
-	function toggleArea(label: string) {
-		const ids = clusterMembership.get(label) ?? [];
+	function toggleIds(ids: string[]) {
 		if (ids.length === 0) return;
-		const allActive = ids.every((id) => filters.cinemaIds.includes(id));
-		filters.cinemaIds = allActive
+		filters.cinemaIds = allSelected(ids)
 			? filters.cinemaIds.filter((id) => !ids.includes(id))
 			: Array.from(new Set([...filters.cinemaIds, ...ids]));
 	}
@@ -111,23 +110,16 @@
 			.filter(c => haversineMiles(here, c.coordinates!) <= radius)
 			.map(c => c.id);
 	}
-	const withinActive = $derived.by(() => {
-		if (userLocation.status !== 'granted') return false;
-		const ids = cinemasWithinRadius(WITHIN_RADIUS);
-		return ids.length > 0 && ids.every(id => filters.cinemaIds.includes(id));
-	});
+	const withinActive = $derived(
+		userLocation.status === 'granted' && allSelected(cinemasWithinRadius(WITHIN_RADIUS))
+	);
 	async function toggleWithin() {
 		if (userLocation.status !== 'granted') {
 			await userLocation.request();
 			const s: string = userLocation.status;
 			if (s !== 'granted') return;
 		}
-		const ids = cinemasWithinRadius(WITHIN_RADIUS);
-		if (ids.length === 0) return;
-		const allActive = ids.every(id => filters.cinemaIds.includes(id));
-		filters.cinemaIds = allActive
-			? filters.cinemaIds.filter(id => !ids.includes(id))
-			: Array.from(new Set([...filters.cinemaIds, ...ids]));
+		toggleIds(cinemasWithinRadius(WITHIN_RADIUS));
 	}
 
 	// When — derived from the shared London-midnight-ticking store so the
@@ -253,8 +245,9 @@
 				{/if}
 				<div class="chips">
 					{#each AREA_CLUSTERS as cluster (cluster.label)}
-						{@const active = isAreaActive(cluster.label)}
-						<button type="button" class="chip" class:active onclick={() => toggleArea(cluster.label)} aria-pressed={active}>{cluster.label}</button>
+						{@const ids = clusterMembership.get(cluster.label) ?? []}
+						{@const active = allSelected(ids)}
+						<button type="button" class="chip" class:active onclick={() => toggleIds(ids)} aria-pressed={active}>{cluster.label}</button>
 					{/each}
 					<button
 						type="button"
