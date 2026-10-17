@@ -6,6 +6,15 @@
 - `data-check` verifies Close-Up screenings. Its verifier was keyed by the legacy id `close-up`, and screenings carry `close-up-cinema`.
 
 ---
+## 2026-10-04: Remove social outreach pipeline, duplicate CI test run and unused dependencies
+**PR**: #792 | **Files**: `.github/workflows/social-outreach.yml` (deleted), `scripts/social-outreach/` (deleted), `.github/workflows/test.yml`, `package.json`, `package-lock.json`, `tsconfig.json`, `src/app/api/admin/screenings/route.ts`, `AI_CONTEXT.md`
+- Deleted the social outreach pipeline: its workflow, the five files under `scripts/social-outreach/`, the `outreach` and `outreach:dry-run` npm scripts and `apify-client`. It ran 13 times between 2026-02-08 and 2026-05-03 and failed all 13; the repo holds no Apify or Attio secret, and the Apify actors it needs are paid.
+- The unit-tests CI job ran the suite twice. `npm run test:coverage` already runs all 2,884 tests and exits 1 on any failure, so the separate "Run tests" step is gone. The frontend E2E job sets `PUBLIC_POSTHOG_KEY` and `PUBLIC_POSTHOG_HOST` to `''` directly, because neither secret exists.
+- Removed seven unused packages: `apify-client`, `@turf/turf`, `lottie-react`, `@esbuild-plugins/tsconfig-paths`, `@supabase/supabase-js`, `@types/cheerio` and `eslint-plugin-jsx-a11y`. The lockfile drops 189 entries (axios among them) with zero version changes. eslint-config-next still installs and registers jsx-a11y, so every a11y lint rule keeps firing.
+- The admin "create screening" route generates ids with `crypto.randomUUID()`. It used to import `nanoid`, which package.json never listed and which resolved only through another package's copy.
+
+---
+
 ## 2026-10-04: Trim dead scraper code
 **PR**: #791 | **Files**: `src/scrapers/chains/*.ts`, `src/scrapers/platforms/{savoy,indy}.ts`, `src/scrapers/runner-factory.ts`, `src/scrapers/cinemas/{barbican,garden,peckhamplex,cinema-museum,bertha-dochouse,ica,olympic,prince-charles,riverside-v2,rich-mix-v2}.ts`, `src/scrapers/utils/{screening-accounting,screening-accounting-report,fetch-with-retry,metadata-parser,ical-parser,screening-classification}.ts`
 - Removes code nothing reaches: five chain venue helpers, `ChainScraper.scrapeAll`, the `chains/index.ts` barrel, `ScraperResult`, Savoy's `filmTypeOnly` option, the runner's unread `verbose` and always-true `continueOnError`, `PRE_FILTER_REASONS`, the `supplementary` accounting flag, two always-`"unavailable"` attribution fields and their log tokens, and `maxResponseSize`.

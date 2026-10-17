@@ -11,11 +11,6 @@ vi.mock("@clerk/nextjs/server", () => ({
   currentUser: vi.fn(),
 }));
 
-// Mock nanoid
-vi.mock("nanoid", () => ({
-  nanoid: vi.fn(() => "test-screening-id"),
-}));
-
 // Mock database
 const mockSelect = vi.fn();
 const mockUpdate = vi.fn();
@@ -186,7 +181,7 @@ describe("Admin Screenings API", () => {
 
       const data = await response.json();
       expect(data.success).toBe(true);
-      expect(data.id).toBe("test-screening-id");
+      expect(data.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
     });
   });
 
