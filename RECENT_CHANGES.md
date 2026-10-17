@@ -1,3 +1,12 @@
+## 2026-10-04: Delete dead API code
+**PR**: #793 | **Files**: `src/app/api/festivals/route.ts`, `src/app/api/festivals/[slug]/route.ts`, `src/app/api/festivals/festivals.test.ts` (new), `src/app/api/admin/screenings/[id]/route.ts`, `src/app/api/travel-times/route.ts`, `src/lib/cache-headers.ts`, `vercel.json`
+- Deleted four handlers nobody calls: `/api/admin/bfi/status`, PATCH and DELETE on `/api/admin/screenings/[id]`, and the GET help stub on `/api/travel-times`.
+- The festival routes drop their signed-in branches, the five unused list filters and the two detail flags. The SvelteKit frontend calls both anonymously with no params, and a new route test pins every field it reads. `getUserAwareCacheHeaders` and `PRIVATE_NO_STORE` lost their last callers and are gone.
+- Ten routes reuse `BadRequestError` or `handleApiError` for their 400 and 500 bodies. Smaller trims cover `letterboxd/preview` (lookup table), the `toRows` shim, three unused admin analytics types, the empty `register()`, the `trpc` middleware matcher and a `vercel.json` header that repeated the route's own `CACHE_5MIN`.
+- The API layer is about 760 lines shorter, and every response field the frontend reads is unchanged.
+
+---
+
 ## 2026-10-04: Remove social outreach pipeline, duplicate CI test run and unused dependencies
 **PR**: #792 | **Files**: `.github/workflows/social-outreach.yml` (deleted), `scripts/social-outreach/` (deleted), `.github/workflows/test.yml`, `package.json`, `package-lock.json`, `tsconfig.json`, `src/app/api/admin/screenings/route.ts`, `AI_CONTEXT.md`
 - Deleted the social outreach pipeline: its workflow, the five files under `scripts/social-outreach/`, the `outreach` and `outreach:dry-run` npm scripts and `apify-client`. It ran 13 times between 2026-02-08 and 2026-05-03 and failed all 13; the repo holds no Apify or Attio secret, and the Apify actors it needs are paid.
