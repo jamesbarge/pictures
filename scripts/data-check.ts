@@ -1421,7 +1421,7 @@ const CINEMA_VERIFIERS: Record<string, (s: ScreeningToVerify) => Promise<CinemaV
   "rio-dalston": verifyRioScreening,
   "ica": verifyIcaScreening,
   "barbican": verifyBarbicanScreening,
-  "close-up": verifyCloseUpScreening,
+  "close-up-cinema": verifyCloseUpScreening,
   "genesis": verifyGenesisScreening,
   "rich-mix": verifyRichMixScreening,
   // Ritzy and The Gate sit under the Picturehouse chain (see

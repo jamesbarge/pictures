@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { X, Loader2, CheckCircle, Search, Film } from "lucide-react";
 import { FORMAT_OPTIONS } from "@/lib/filter-constants";
+import { formatUKLocalDateTime, parseUKLocalDateTime } from "@/scrapers/utils/date-parser";
 import { cn } from "@/lib/cn";
 import { useDebouncedCallback } from "use-debounce";
 
@@ -349,10 +350,10 @@ export function ScreeningFormModal({
             <input
               id="admin-screening-datetime"
               type="datetime-local"
-              value={formData.datetime ? formData.datetime.slice(0, 16) : ""}
+              value={formData.datetime ? formatUKLocalDateTime(new Date(formData.datetime)) : ""}
               onChange={(e) => setFormData(prev => ({
                 ...prev,
-                datetime: e.target.value ? new Date(e.target.value).toISOString() : ""
+                datetime: e.target.value ? parseUKLocalDateTime(e.target.value).toISOString() : ""
               }))}
               className="w-full px-3 py-2 bg-background-secondary border border-border-subtle rounded-lg text-text-primary"
             />

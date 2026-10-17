@@ -1,3 +1,11 @@
+## 2026-10-16: Five fixes from the code review
+**PR**: #827 | **Files**: `frontend/src/routes/{letterboxd,search,map,people/[name]}/+page.svelte`, `.claude/rules/frontend.md`, `src/db/seed-festivals.ts`, `src/db/seed-festivals.test.ts` (new), `src/app/admin/screenings/components/screening-form-modal.tsx`, `src/scrapers/utils/date-parser.ts`, `src/scrapers/utils/date-parser.test.ts`, `scripts/data-check.ts`
+- The Letterboxd, search, map and people pages used `--color-muted`, `--color-foreground` and `--color-background`, which `app.css` has never defined. They now use `--color-text-tertiary`, `--color-text` and `--color-bg`, so the Letterboxd IMPORT button has its dark fill and muted text is grey in light mode, dark mode and under the house-lights dimmer.
+- Importing `src/db/seed-festivals.ts`, as `alignment.test.ts` does, leaves the database alone. The seeder runs only when the file is executed directly.
+- The admin screening form shows and saves London time. It used to show UTC, so a BST screening looked an hour early.
+- `data-check` verifies Close-Up screenings. Its verifier was keyed by the legacy id `close-up`, and screenings carry `close-up-cinema`.
+
+---
 ## 2026-10-04: Frontend routes share their screening, CSS and test helpers
 **PR**: #795 | **Files**: `frontend/src/lib/server/api.ts`, `frontend/src/routes/+page.server.ts`, `frontend/src/routes/sitemap.xml/+server.ts`, `frontend/src/app.css`, `frontend/test-all.spec.ts`, `frontend/tests/mobile.spec.ts`
 - Home, tonight and this-weekend trim screening rows through one `slimScreening` helper. Map and reachable read cinemas from the root layout, so each makes one fewer `/api/cinemas` call per render.

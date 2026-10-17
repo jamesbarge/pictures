@@ -299,10 +299,17 @@ async function seedFestivals() {
   console.log(`\nFestival seeding complete! Added ${londonFestivals.length} festivals.`);
 }
 
-// Run if called directly
-seedFestivals()
-  .then(() => process.exit(0))
-  .catch((error) => {
-    console.error("Seeding failed:", error);
-    process.exit(1);
-  });
+// Run only when executed directly: alignment.test.ts imports londonFestivals,
+// and an unguarded call here seeded whatever DATABASE_URL the test run had.
+const isDirectRun =
+  process.argv[1]?.endsWith("seed-festivals.ts") ||
+  process.argv[1]?.endsWith("seed-festivals.js");
+
+if (isDirectRun) {
+  seedFestivals()
+    .then(() => process.exit(0))
+    .catch((error) => {
+      console.error("Seeding failed:", error);
+      process.exit(1);
+    });
+}
