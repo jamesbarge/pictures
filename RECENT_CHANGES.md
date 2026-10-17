@@ -1,5 +1,5 @@
 ## 2026-10-17: Fragment film titles from the listings QA
-**PR**: pending | **Files**: `src/scrapers/utils/film-title-cleaner.ts`, `src/scrapers/utils/metadata-parser.ts`, `src/lib/title-extraction/pattern-extractor.ts`, `src/scrapers/cinemas/barbican.ts`, `scripts/repair-fragment-film-titles.ts`
+**PR**: #829 | **Files**: `src/scrapers/utils/film-title-cleaner.ts`, `src/scrapers/utils/metadata-parser.ts`, `src/lib/title-extraction/pattern-extractor.ts`, `src/scrapers/cinemas/barbican.ts`, `scripts/repair-fragment-film-titles.ts`
 - The colon cleaner was keeping the note after the colon. A lowercase tail, `Series N` and `Edition` now stay with the name, so The Brixton Reel, Blake’s 7: Series 3 and Mixtape: Youth Edition survive. `Family Film` no longer eats `Family Film Week`. Met Opera Encore plus the season code clean to Macbeth in one pass.
 - A comma-list of extras before a plus is the evening, not the film (`The Hunger`). A Genesis `at Genesis` strand is stripped and the hidden year is kept. BFI no longer stores the raw event line as the director. Barbican cards ending in `...` take the event-page title.
 - Rows already stored as those fragments can be rewritten in place by `scripts/repair-fragment-film-titles.ts` (dry-run unless `--execute`). It does not delete anything and was not run against production.

@@ -1,6 +1,6 @@
 # Fragment film titles from the 17 Oct 2026 listings QA
 
-**PR**: pending
+**PR**: #829
 **Date**: 2026-10-17
 
 ## Changes
