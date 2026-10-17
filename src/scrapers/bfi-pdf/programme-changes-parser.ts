@@ -64,8 +64,8 @@ async function proxyFetch(url: string): Promise<Response> {
 
 const PROGRAMME_CHANGES_URL = "https://whatson.bfi.org.uk/Online/default.asp?BOparam::WScontent::loadArticle::permalink=programme-changes";
 
-// Venue mapping
-const VENUE_MAP: Record<string, string> = {
+// Screen name to cinema ID, shared with the PDF parser
+export const VENUE_MAP: Record<string, string> = {
   "NFT1": "bfi-southbank",
   "NFT2": "bfi-southbank",
   "NFT3": "bfi-southbank",
@@ -73,31 +73,27 @@ const VENUE_MAP: Record<string, string> = {
   "STUDIO": "bfi-southbank",
   "BFI IMAX": "bfi-imax",
   "IMAX": "bfi-imax",
+  "BFI REUBEN LIBRARY": "bfi-southbank",
 };
 
-// Month name to number mapping
-const MONTHS: Record<string, number> = {
-  jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
-  jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
-  january: 0, february: 1, march: 2, april: 3,
-  june: 5, july: 6, august: 7, september: 8,
-  october: 9, november: 10, december: 11,
+// Upper-case month name to number, shared with the PDF parser
+export const MONTHS: Record<string, number> = {
+  JAN: 0, FEB: 1, MAR: 2, APR: 3, MAY: 4, JUN: 5,
+  JUL: 6, AUG: 7, SEP: 8, OCT: 9, NOV: 10, DEC: 11,
+  JANUARY: 0, FEBRUARY: 1, MARCH: 2, APRIL: 3,
+  JUNE: 5, JULY: 6, AUGUST: 7, SEPTEMBER: 8,
+  OCTOBER: 9, NOVEMBER: 10, DECEMBER: 11,
 };
 
 export interface ProgrammeChange {
   filmTitle: string;
   changeType: "addition" | "modification" | "cancellation" | "venue_change" | "certificate" | "other";
-  note: string;
   screenings: ParsedChangeScreening[];
   /** Full metadata for new additions */
   metadata?: {
     year?: number;
     director?: string;
-    cast?: string[];
-    runtime?: number;
     format?: string;
-    countries?: string[];
-    description?: string;
   };
 }
 
@@ -105,16 +101,12 @@ export interface ParsedChangeScreening {
   datetime: Date;
   venue: string;
   cinemaId: string;
-  accessibilityFlags: string[];
-  /** Page reference in the printed guide */
-  pageRef?: string;
 }
 
 export interface ProgrammeChangesResult {
   changes: ProgrammeChange[];
   screenings: RawScreening[];
   lastUpdated: string | null;
-  parseErrors: string[];
 }
 
 /**
@@ -150,7 +142,6 @@ export async function fetchProgrammeChanges(): Promise<ProgrammeChangesResult> {
 export function parseChangesPage(html: string): ProgrammeChangesResult {
   const $ = cheerio.load(html);
   const changes: ProgrammeChange[] = [];
-  const parseErrors: string[] = [];
 
   // Find the "Updated:" date
   const pageText = $("body").text();
@@ -202,14 +193,10 @@ export function parseChangesPage(html: string): ProgrammeChangesResult {
     // Extract metadata for new additions
     const metadata = changeType === "addition" ? parseMetadataFromText(nextText) : undefined;
 
-    // Extract the note
-    const note = extractNote(nextText);
-
     if (title && (screenings.length > 0 || changeType === "cancellation" || changeType === "certificate")) {
       changes.push({
-        filmTitle: cleanTitle(title),
+        filmTitle: cleanBfiTitle(title),
         changeType,
-        note,
         screenings,
         metadata,
       });
@@ -225,7 +212,6 @@ export function parseChangesPage(html: string): ProgrammeChangesResult {
     changes,
     screenings,
     lastUpdated,
-    parseErrors,
   };
 }
 
@@ -334,9 +320,9 @@ function parseScreeningsFromText(text: string): ParsedChangeScreening[] {
 
   let match;
   while ((match = regex1.exec(text)) !== null) {
-    const [fullMatch, , date, month, hours, minutes, venue, pageRef] = match;
+    const [, , date, month, hours, minutes, venue] = match;
 
-    const monthNum = MONTHS[month.toLowerCase()];
+    const monthNum = MONTHS[month.toUpperCase()];
     if (monthNum === undefined) continue;
 
     // Determine year - if month is in the past, assume next year
@@ -352,13 +338,6 @@ function parseScreeningsFromText(text: string): ParsedChangeScreening[] {
     // Skip past screenings
     if (datetime < now) continue;
 
-    // Extract accessibility flags
-    const accessibilityFlags: string[] = [];
-    if (/\bAD\b/.test(fullMatch)) accessibilityFlags.push("AD");
-    if (/\bDS\b|\(DS\)/.test(fullMatch)) accessibilityFlags.push("DS");
-    if (/\bCC\b/.test(fullMatch)) accessibilityFlags.push("CC");
-    if (/\bBSL\b/.test(fullMatch)) accessibilityFlags.push("BSL");
-
     // Map venue — reject unknown venues instead of defaulting
     const venueUpper = venue.toUpperCase().replace("BFI ", "");
     const cinemaId = VENUE_MAP[venueUpper];
@@ -371,8 +350,6 @@ function parseScreeningsFromText(text: string): ParsedChangeScreening[] {
       datetime,
       venue: venueUpper,
       cinemaId,
-      accessibilityFlags,
-      pageRef: pageRef?.replace(/\s+p/, "p").trim(),
     });
   }
 
@@ -391,22 +368,10 @@ function parseMetadataFromText(text: string): ProgrammeChange["metadata"] {
     metadata.year = parseInt(yearMatch[0], 10);
   }
 
-  // Runtime: "120min" or "2h 5min"
-  const runtimeMatch = text.match(/\b(\d{2,3})min\b/i);
-  if (runtimeMatch) {
-    metadata.runtime = parseInt(runtimeMatch[1], 10);
-  }
-
   // Director
   const directorMatch = text.match(/Director\s+([^.]+)\./i);
   if (directorMatch) {
     metadata.director = directorMatch[1].trim();
-  }
-
-  // Cast
-  const castMatch = text.match(/With\s+([^.]+)\./);
-  if (castMatch) {
-    metadata.cast = castMatch[1].split(",").map(s => s.trim());
   }
 
   // Format
@@ -418,53 +383,13 @@ function parseMetadataFromText(text: string): ProgrammeChange["metadata"] {
     }
   }
 
-  // Countries (at start of metadata line)
-  const countryMatch = text.match(/([A-Za-z\-\/]+(?:-[A-Za-z]+)*)\s+\d{4}/);
-  if (countryMatch && countryMatch[1].length < 50) {
-    metadata.countries = countryMatch[1].split("-").map(s => s.trim());
-  }
-
   return metadata;
 }
 
 /**
- * Extract the change note from text
+ * Clean film title (shared with the PDF parser)
  */
-function extractNote(text: string): string {
-  // Look for common note patterns
-  const notePatterns = [
-    /Please note[^.]+\./i,
-    /This has been given[^.]+\./i,
-    /This screening is now[^.]+\./i,
-    /will now take place[^.]+\./i,
-    /We apologise[^.]+\./i,
-    /We are delighted[^.]+\./i,
-  ];
-
-  for (const pattern of notePatterns) {
-    const match = text.match(pattern);
-    if (match) {
-      return match[0].trim();
-    }
-  }
-
-  // Fallback: first sentence that's not screening info
-  const sentences = text.split(/[.!]/).filter(s => s.trim().length > 10);
-  for (const sentence of sentences) {
-    if (!/\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+\d{1,2}/i.test(sentence) &&
-        !/Screenings?:/i.test(sentence) &&
-        !/^\d{4}\./.test(sentence.trim())) {
-      return sentence.trim() + ".";
-    }
-  }
-
-  return "";
-}
-
-/**
- * Clean film title
- */
-function cleanTitle(title: string): string {
+export function cleanBfiTitle(title: string): string {
   return title
     .replace(/\s*\+\s*(Q\s*&?\s*A|intro|discussion|panel).*$/i, "")
     // Only strip prefix when followed by colon (e.g. "Preview: Film Title")

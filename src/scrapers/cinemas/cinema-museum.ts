@@ -27,13 +27,8 @@
 import { BaseScraper } from "../base";
 import { CALENDAR_CLIENT_USER_AGENT } from "../constants";
 import type { RawScreening, ScraperConfig } from "../types";
-import { FestivalDetector } from "../festivals/festival-detector";
 import { ukLocalToUTC } from "../utils/date-parser";
 import { parseVEvents } from "../utils/ical-parser";
-
-// Re-export so existing tests / imports of `parseVEvents` from this module
-// keep working. New code should import directly from `../utils/ical-parser`.
-export { parseVEvents } from "../utils/ical-parser";
 
 const ICAL_URL = "https://cinemamuseum.org.uk/schedule/?ical=1";
 const BASE_URL = "https://cinemamuseum.org.uk";
@@ -98,7 +93,6 @@ export class CinemaMuseumScraper extends BaseScraper {
   }
 
   protected async parsePages(htmlPages: string[]): Promise<RawScreening[]> {
-    await FestivalDetector.preload();
     const screenings: RawScreening[] = [];
 
     for (const ical of htmlPages) {

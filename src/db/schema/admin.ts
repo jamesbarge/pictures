@@ -259,19 +259,3 @@ export const dqsSnapshots = pgTable("dqs_snapshots", {
     .notNull()
     .defaultNow(),
 });
-
-// Type exports
-export type ScraperRunInsert = typeof scraperRuns.$inferInsert;
-export type ScraperRunSelect = typeof scraperRuns.$inferSelect;
-export type AdminActionInsert = typeof adminActions.$inferInsert;
-export type AdminActionSelect = typeof adminActions.$inferSelect;
-export type CinemaBaselineInsert = typeof cinemaBaselines.$inferInsert;
-export type CinemaBaselineSelect = typeof cinemaBaselines.$inferSelect;
-export type AutoresearchExperimentInsert =
-  typeof autoresearchExperiments.$inferInsert;
-export type AutoresearchExperimentSelect =
-  typeof autoresearchExperiments.$inferSelect;
-export type AutoresearchConfigInsert = typeof autoresearchConfig.$inferInsert;
-export type AutoresearchConfigSelect = typeof autoresearchConfig.$inferSelect;
-export type DqsSnapshotInsert = typeof dqsSnapshots.$inferInsert;
-export type DqsSnapshotSelect = typeof dqsSnapshots.$inferSelect;

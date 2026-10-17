@@ -1,10 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  FESTIVAL_CONFIGS,
-  getAllFestivalConfigs,
-  getFestivalConfigsForVenue,
-  WATCHDOG_PROBES,
-} from "./festival-config";
+import { FESTIVAL_CONFIGS } from "./festival-config";
 
 describe("FESTIVAL_CONFIGS", () => {
   it("should have configs for all currently supported London festivals", () => {
@@ -59,78 +54,6 @@ describe("FESTIVAL_CONFIGS", () => {
         expect(month).toBeGreaterThanOrEqual(0);
         expect(month).toBeLessThanOrEqual(11);
       }
-    }
-  });
-});
-
-describe("getAllFestivalConfigs", () => {
-  it("should return all configs as an array", () => {
-    const configs = getAllFestivalConfigs();
-    expect(configs).toHaveLength(11);
-  });
-});
-
-describe("getFestivalConfigsForVenue", () => {
-  it("should return configs for BFI Southbank (hosts multiple festivals)", () => {
-    const configs = getFestivalConfigsForVenue("bfi-southbank");
-    const slugs = configs.map((c) => c.slugBase);
-    expect(slugs).toContain("bfi-flare");
-    expect(slugs).toContain("bfi-lff");
-    expect(slugs).toContain("lsff");
-    expect(slugs).toContain("lkff");
-    expect(slugs).toContain("docnroll");
-  });
-
-  it("should return configs for Prince Charles (exclusive FrightFest venue)", () => {
-    const configs = getFestivalConfigsForVenue("prince-charles");
-    expect(configs).toHaveLength(1);
-    expect(configs[0].slugBase).toBe("frightfest");
-  });
-
-  it("should return configs for Genesis (LIFF only)", () => {
-    const configs = getFestivalConfigsForVenue("genesis");
-    const slugs = configs.map((c) => c.slugBase);
-    expect(slugs).toContain("liff");
-    expect(configs).toHaveLength(1);
-  });
-
-  it("should return empty for non-festival venues", () => {
-    const configs = getFestivalConfigsForVenue("electric-cinema");
-    expect(configs).toHaveLength(0);
-  });
-
-  it("should return configs for Barbican (hosts UKJFF, LIAF, Doc'n Roll, Open City)", () => {
-    const configs = getFestivalConfigsForVenue("barbican");
-    const slugs = configs.map((c) => c.slugBase);
-    expect(slugs).toContain("ukjff");
-    expect(slugs).toContain("liaf");
-    expect(slugs).toContain("docnroll");
-    expect(slugs).toContain("open-city");
-  });
-});
-
-describe("WATCHDOG_PROBES", () => {
-  it("should have probes for all currently supported festivals", () => {
-    expect(WATCHDOG_PROBES).toHaveLength(11);
-  });
-
-  it("should have valid probeUrls", () => {
-    for (const probe of WATCHDOG_PROBES) {
-      if (typeof probe.probeUrl === "string") {
-        expect(probe.probeUrl).toMatch(/^https?:\/\//);
-      } else {
-        expect(typeof probe.probeUrl).toBe("function");
-        const url = probe.probeUrl(2026);
-        expect(url).toMatch(/^https?:\/\//);
-      }
-    }
-  });
-
-  it("should have valid signal types", () => {
-    for (const probe of WATCHDOG_PROBES) {
-      expect(["content-hash", "page-exists", "element-count"]).toContain(
-        probe.signal
-      );
     }
   });
 });

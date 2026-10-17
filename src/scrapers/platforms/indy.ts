@@ -20,6 +20,7 @@
 
 import { sanitizeRuntime } from "../utils/metadata-parser";
 import type { RawScreening } from "../types";
+import { addDaysToDateString, londonDateString } from "@/lib/london-date";
 
 export interface IndyVenue {
   /** Our cinema id, e.g. "regent-street" — also the sourceId prefix. */
@@ -82,29 +83,6 @@ const DEFAULT_ATTEMPTS = 3;
 const DEFAULT_RETRY_DELAY_MS = 500;
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-/**
- * YYYY-MM-DD in Europe/London, `offset` calendar days after `from`'s London
- * date. Anchors arithmetic at NOON UTC (12:00/13:00 London — always inside the
- * same calendar day) so stepping never skips or duplicates a day across a
- * BST↔GMT transition, the way raw `+ offset*86_400_000` from a near-midnight
- * `now` would (spring-forward's 23h day gets jumped clean over).
- */
-function londonDateKey(from: Date, offset: number): string {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/London",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(from);
-  const num = (t: string) => Number(parts.find((p) => p.type === t)!.value);
-  // Date.UTC normalizes day-of-month overflow (e.g. day 32 → next month).
-  const anchored = new Date(Date.UTC(num("year"), num("month") - 1, num("day") + offset, 12));
-  const yyyy = anchored.getUTCFullYear();
-  const mm = String(anchored.getUTCMonth() + 1).padStart(2, "0");
-  const dd = String(anchored.getUTCDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-}
 
 /**
  * Deterministic failure (bad site headers, GraphQL error, HTTP 4xx) that won't
@@ -204,7 +182,7 @@ export async function fetchIndyShowings(
   const screenings: RawScreening[] = [];
 
   for (let offset = 0; offset < days; offset++) {
-    const date = londonDateKey(now, offset);
+    const date = addDaysToDateString(londonDateString(now), offset);
     const showings = await postShowingsForDate(venue, date, fetchFn, attempts, retryDelayMs);
     for (const s of showings) {
       if (seen.has(s.id)) continue;
@@ -242,7 +220,7 @@ function mapShowing(venue: IndyVenue, s: IndyShowing, datetime: Date): RawScreen
  */
 export async function checkIndyHealth(venue: IndyVenue, fetchImpl?: IndyFetch): Promise<boolean> {
   try {
-    const today = londonDateKey(new Date(), 0);
+    const today = londonDateString(new Date());
     await postShowingsForDate(venue, today, fetchImpl ?? fetch, 1, 0);
     return true;
   } catch {

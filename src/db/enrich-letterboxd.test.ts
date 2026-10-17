@@ -30,34 +30,10 @@ vi.mock("./index", () => ({
 }));
 
 import {
-  buildTitleCandidates,
   enrichLetterboxdRatings,
   isLikelyEvent,
   parseRatingWithVerification,
 } from "./enrich-letterboxd";
-
-describe("buildTitleCandidates", () => {
-  it("extracts useful variants from noisy programming titles", () => {
-    const candidates = buildTitleCandidates("UK PREMIERE MACDO");
-    expect(candidates).toContain("MACDO");
-  });
-
-  it("keeps short canonical title when alternate title is in parentheses", () => {
-    const candidates = buildTitleCandidates(
-      "Amelie (Le fabuleux destin d'Amélie Poulain)"
-    );
-
-    expect(candidates).toContain("Amelie");
-  });
-
-  it("strips partnership suffix", () => {
-    const candidates = buildTitleCandidates(
-      "My Father's Shadow in association with We Are Parable"
-    );
-
-    expect(candidates).toContain("My Father's Shadow");
-  });
-});
 
 describe("parseRatingWithVerification", () => {
   const baseHtml = `
@@ -90,7 +66,7 @@ describe("parseRatingWithVerification", () => {
       2000
     );
 
-    expect(parsed?.rating).toBe(3.4);
+    expect(parsed).toMatchObject({ rating: 3.4 });
   });
 
   it("rejects mismatched year", () => {
@@ -100,7 +76,7 @@ describe("parseRatingWithVerification", () => {
       1990
     );
 
-    expect(parsed).toBeNull();
+    expect(parsed).toEqual({ failureReason: "year_mismatch" });
   });
 });
 

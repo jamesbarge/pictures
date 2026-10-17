@@ -29,41 +29,6 @@ export function titleToSlug(title: string): string {
   return slug;
 }
 
-// Build title variants for noisy programming labels before Letterboxd lookup.
-export function buildTitleCandidates(rawTitle: string): string[] {
-  const candidates = new Set<string>();
-  const trimmed = rawTitle.trim();
-
-  if (!trimmed) return [];
-
-  candidates.add(trimmed);
-
-  // Example: "UK PREMIERE MACDO" -> "MACDO"
-  const withoutPremierePrefix = trimmed.replace(
-    /^(UK|WORLD|LONDON)\s+PREMIERE[:\s-]*/i,
-    ""
-  );
-  if (withoutPremierePrefix && withoutPremierePrefix !== trimmed) {
-    candidates.add(withoutPremierePrefix.trim());
-  }
-
-  // Example: "Amelie (Le fabuleux...)" -> "Amelie"
-  const withoutParenTitle = trimmed.replace(/\s*\([^)]*\)\s*$/, "").trim();
-  if (withoutParenTitle && withoutParenTitle !== trimmed) {
-    candidates.add(withoutParenTitle);
-  }
-
-  // Example: "... in association with X" -> main title only
-  const withoutAssociation = trimmed
-    .replace(/\s+in association with\s+.+$/i, "")
-    .trim();
-  if (withoutAssociation && withoutAssociation !== trimmed) {
-    candidates.add(withoutAssociation);
-  }
-
-  return [...candidates];
-}
-
 type FailureReason =
   | "slug_404"
   | "year_mismatch"
@@ -94,13 +59,7 @@ async function fetchLetterboxdRating(
         return { failureReason: "slug_404" };
       }
       const html = await slugResponse.text();
-      const result = parseRatingWithVerification(
-        html,
-        slugResponse.url || slugUrl,
-        null
-      );
-      if (result) return result;
-      return { failureReason: "no_rating_meta" };
+      return parseRatingWithVerification(html, slugResponse.url || slugUrl, null);
     }
 
     const slug = titleToSlug(title);
@@ -120,7 +79,7 @@ async function fetchLetterboxdRating(
           yearResponse.url || urlWithYear,
           year
         );
-        if (result) return result;
+        if ("rating" in result) return result;
       }
     }
 
@@ -133,25 +92,7 @@ async function fetchLetterboxdRating(
     }
 
     const html = await response.text();
-    const result = parseRatingWithVerification(html, response.url || url, year);
-    if (result) return result;
-
-    // Determine why verification failed
-    const $ = cheerio.load(html);
-    const ogTitle = $('meta[property="og:title"]').attr("content") || "";
-    const yearMatch = ogTitle.match(/\((\d{4})\)$/);
-    const pageYear = yearMatch ? parseInt(yearMatch[1], 10) : null;
-
-    if (year && pageYear && Math.abs(pageYear - year) > 1) {
-      return { failureReason: "year_mismatch" };
-    }
-
-    const ratingMeta = $('meta[name="twitter:data2"]').attr("content");
-    if (!ratingMeta) {
-      return { failureReason: "no_rating_meta" };
-    }
-
-    return { failureReason: "rating_parse_error" };
+    return parseRatingWithVerification(html, response.url || url, year);
   } catch {
     return { failureReason: "fetch_error" };
   }
@@ -159,13 +100,14 @@ async function fetchLetterboxdRating(
 
 /**
  * Parse rating and verify year matches expected year
- * Letterboxd URLs can match wrong films with same title but different year
+ * Letterboxd URLs can match wrong films with same title but different year.
+ * On failure, returns the reason so callers can report it without re-parsing.
  */
 export function parseRatingWithVerification(
   html: string,
   url: string,
   expectedYear?: number | null
-): { rating: number; url: string } | null {
+): { rating: number; url: string } | { failureReason: FailureReason } {
   const $ = cheerio.load(html);
 
   // Extract year from page to verify we have the right film
@@ -177,25 +119,25 @@ export function parseRatingWithVerification(
 
   // If we expect a year and the page year doesn't match (within 1 year tolerance), reject
   if (expectedYear && pageYear && Math.abs(pageYear - expectedYear) > 1) {
-    return null;
+    return { failureReason: "year_mismatch" };
   }
 
   // Rating is in meta tag: <meta name="twitter:data2" content="4.53 out of 5">
   const ratingMeta = $('meta[name="twitter:data2"]').attr("content");
 
   if (!ratingMeta) {
-    return null;
+    return { failureReason: "no_rating_meta" };
   }
 
   // Parse both "4.53 out of 5" and "4.53 out of 5 stars" formats.
   const match = ratingMeta.match(/^([\d.]+)\s+out\s+of\s+5(?:\s+stars)?$/);
   if (!match) {
-    return null;
+    return { failureReason: "rating_parse_error" };
   }
 
   const rating = parseFloat(match[1]);
   if (isNaN(rating) || rating < 0 || rating > 5) {
-    return null;
+    return { failureReason: "rating_parse_error" };
   }
 
   return { rating, url };

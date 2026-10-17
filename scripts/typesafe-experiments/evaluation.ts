@@ -23,10 +23,6 @@ export function fingerprint(value: unknown): string {
   return createHash("sha256").update(JSON.stringify(value)).digest("hex");
 }
 
-export function percent(value: number | null | undefined): string {
-  return value == null ? "n/a" : `${(value * 100).toFixed(1)}%`;
-}
-
 export function latencySummary(records: EvaluationRecord[]) {
   const values = records.map(r => r.elapsedMs).sort((a, b) => a - b);
   return {

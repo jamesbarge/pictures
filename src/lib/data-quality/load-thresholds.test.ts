@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { loadThresholds, loadThresholdsAsync } from "./load-thresholds";
+import { loadThresholds } from "./load-thresholds";
 
 describe("loadThresholds", () => {
   it("returns the full Thresholds shape", () => {
@@ -7,8 +7,6 @@ describe("loadThresholds", () => {
     expect(t.tmdb).toBeDefined();
     expect(t.duplicateDetection).toBeDefined();
     expect(t.dodgyDetection).toBeDefined();
-    expect(t.nonFilmDetection).toBeDefined();
-    expect(t.safetyFloors).toBeDefined();
   });
 
   it("exposes all tmdb fields as numbers", () => {
@@ -39,28 +37,5 @@ describe("loadThresholds", () => {
     // don't see the JSON metadata field as a Thresholds property.
     const t = loadThresholds() as unknown as Record<string, unknown>;
     expect(t.$comment).toBeUndefined();
-  });
-
-  it("safetyFloors values are in [0,1] range (similarities) or sensible positives (counts)", () => {
-    const { safetyFloors } = loadThresholds();
-    expect(safetyFloors.minAutoMergeSimilarity).toBeGreaterThanOrEqual(0);
-    expect(safetyFloors.minAutoMergeSimilarity).toBeLessThanOrEqual(1);
-    expect(safetyFloors.minTmdbConfidence).toBeGreaterThanOrEqual(0);
-    expect(safetyFloors.minTmdbConfidence).toBeLessThanOrEqual(1);
-    expect(safetyFloors.maxNewNonFilmPatterns).toBeGreaterThan(0);
-  });
-});
-
-describe("loadThresholdsAsync", () => {
-  it("resolves with the same value as the synchronous variant", async () => {
-    const sync = loadThresholds();
-    const asyncResult = await loadThresholdsAsync();
-    expect(asyncResult).toBe(sync);
-  });
-
-  it("never throws (no I/O under the hood since module-scope load)", async () => {
-    // Pinning: a future refactor adding I/O back must NOT silently change
-    // the throw semantics that callers depend on.
-    await expect(loadThresholdsAsync()).resolves.toBeDefined();
   });
 });

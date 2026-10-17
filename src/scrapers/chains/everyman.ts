@@ -302,14 +302,6 @@ export class EverymanScraper implements ChainScraper {
   private movieCache = new Map<string, MovieInfo>();
 
   /**
-   * Scrape all active venues
-   */
-  async scrapeAll(): Promise<Map<string, RawScreening[]>> {
-    const activeVenues = this.chainConfig.venues.filter(v => v.active !== false);
-    return this.scrapeVenues(activeVenues.map(v => v.id));
-  }
-
-  /**
    * Scrape specific venues by ID
    */
   async scrapeVenues(venueIds: string[]): Promise<Map<string, RawScreening[]>> {
@@ -515,9 +507,4 @@ export class EverymanScraper implements ChainScraper {
 // Factory function
 export function createEverymanScraper(): EverymanScraper {
   return new EverymanScraper();
-}
-
-/** Returns all Everyman venues that are currently active (not disabled). */
-export function getActiveEverymanVenues(): VenueConfig[] {
-  return EVERYMAN_VENUES.filter(v => v.active !== false);
 }
