@@ -1,5 +1,5 @@
 ## 2026-10-18: Listings QA — duplicate showings, possessive credits, Rio caps
-**PR**: pending | **Files**: `src/scrapers/utils/listing-title.ts`, `src/scrapers/utils/film-title-cleaner.ts`, `src/scrapers/utils/film-matching.ts`, `src/scrapers/pipeline.ts`, `src/scrapers/cinemas/rio.ts`, `src/scrapers/platforms/savoy.ts`, `scripts/repair-listings-qa-2026-10-18.ts`
+**PR**: #830 | **Files**: `src/scrapers/utils/listing-title.ts`, `src/scrapers/utils/film-title-cleaner.ts`, `src/scrapers/utils/film-matching.ts`, `src/scrapers/pipeline.ts`, `src/scrapers/cinemas/rio.ts`, `src/scrapers/platforms/savoy.ts`, `scripts/repair-listings-qa-2026-10-18.ts`
 - Se7en and Seven (Fincher) resolve to one film, and a film-id collision now drops the extra screening instead of keeping both.
 - Possessive credits match the canonical film when the credit is the director or an initialled author. Audience prefixes, Film Africa and a quoted title after a person's name come off the film title.
 - Rio's capitalised titles are title-cased for storage and the public API. Return to the Tatler + Variety is one Variety screening. A truncated Rio director is recovered from the HTML credit.

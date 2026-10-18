@@ -1,6 +1,6 @@
 # Listings QA 18 Oct 2026
 
-**PR**: pending
+**PR**: #830
 **Date**: 2026-10-18
 
 ## Changes
