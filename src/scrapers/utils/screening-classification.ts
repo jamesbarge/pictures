@@ -15,6 +15,7 @@ import {
 } from "@/lib/event-classifier";
 import type { EventType, ScreeningFormat } from "@/types/screening";
 import type { RawScreening } from "../types";
+import { bookingUrlNamesTitle, isSpecificBookingUrl, sameListingTitle } from "./listing-title";
 
 // ============================================================================
 // Screening Metadata
@@ -76,7 +77,7 @@ export async function classifyScreening(
       eventDescription =
         classification.eventTypes.length > 1
           ? `Also: ${classification.eventTypes.slice(1).join(", ")}`
-          : classification.eventDescription ?? undefined;
+          : eventDescription ?? classification.eventDescription ?? undefined;
       format = classification.format || format;
       is3D = classification.is3D;
       hasSubtitles = classification.hasSubtitles;
@@ -152,7 +153,8 @@ export async function checkForDuplicate(
   cinemaId: string,
   datetime: Date,
   normalizeTitle: (title: string) => string,
-  sourceId?: string
+  sourceId?: string,
+  bookingUrl?: string,
 ): Promise<DuplicateCheckResult> {
   // Layer 0: same (cinemaId, sourceId) regardless of filmId or datetime.
   //
@@ -179,6 +181,51 @@ export async function checkForDuplicate(
     }
   }
 
+  const windowStart = new Date(datetime.getTime() - 120_000);
+  const windowEnd = new Date(datetime.getTime() + 120_000);
+
+  // Same event page, different film row. Only when the URL names the incoming
+  // film, so a shared calendar URL cannot collapse a real double bill.
+  if (bookingUrl && isSpecificBookingUrl(bookingUrl)) {
+    const byUrl = await db
+      .select()
+      .from(screeningsTable)
+      .where(
+        and(
+          eq(screeningsTable.cinemaId, cinemaId),
+          eq(screeningsTable.bookingUrl, bookingUrl),
+          gte(screeningsTable.datetime, windowStart),
+          lte(screeningsTable.datetime, windowEnd),
+        ),
+      )
+      .limit(4);
+
+    const named = byUrl.find((row) => row.filmId !== filmId) ?? byUrl[0];
+    if (named && byUrl.length > 0) {
+      const [incoming] = await db
+        .select({ title: films.title, directors: films.directors })
+        .from(films)
+        .where(eq(films.id, filmId))
+        .limit(1);
+      if (incoming && bookingUrlNamesTitle(bookingUrl, incoming.title)) {
+        return { duplicate: named.filmId === filmId ? byUrl[0] : named, shouldSkip: false };
+      }
+      if (incoming && byUrl.length === 1 && byUrl[0].filmId !== filmId) {
+        const [other] = await db
+          .select({ title: films.title, directors: films.directors })
+          .from(films)
+          .where(eq(films.id, byUrl[0].filmId))
+          .limit(1);
+        if (other && sameListingTitle(incoming, other, normalizeTitle)) {
+          return { duplicate: byUrl[0], shouldSkip: false };
+        }
+      }
+      if (byUrl.some((row) => row.filmId === filmId)) {
+        return { duplicate: byUrl.find((row) => row.filmId === filmId) ?? byUrl[0], shouldSkip: false };
+      }
+    }
+  }
+
   // Check for existing screening using exact composite key
   const [duplicate] = await db
     .select()
@@ -197,8 +244,6 @@ export async function checkForDuplicate(
   }
 
   // Layer 1.5: Same filmId + cinemaId within ±2 minutes (catches sub-minute timestamp drift)
-  const windowStart = new Date(datetime.getTime() - 120_000);
-  const windowEnd = new Date(datetime.getTime() + 120_000);
   const [nearDuplicate] = await db
     .select()
     .from(screeningsTable)
@@ -219,7 +264,7 @@ export async function checkForDuplicate(
   // Secondary dedup guard: check for same (cinemaId, ±2min window) with a different filmId
   // Widened from exact datetime to catch sub-minute timestamp drift across duplicate film records
   const [sameTimeDifferentFilm] = await db
-    .select({ filmId: screeningsTable.filmId })
+    .select()
     .from(screeningsTable)
     .where(
       and(
@@ -233,12 +278,12 @@ export async function checkForDuplicate(
   if (sameTimeDifferentFilm && sameTimeDifferentFilm.filmId !== filmId) {
     // Look up both film titles and compare normalized versions
     const [existingFilm] = await db
-      .select({ title: films.title })
+      .select({ title: films.title, directors: films.directors })
       .from(films)
       .where(eq(films.id, sameTimeDifferentFilm.filmId))
       .limit(1);
     const [newFilm] = await db
-      .select({ title: films.title })
+      .select({ title: films.title, directors: films.directors })
       .from(films)
       .where(eq(films.id, filmId))
       .limit(1);
@@ -252,6 +297,9 @@ export async function checkForDuplicate(
           `(already exists under different filmId with title "${existingFilm.title}")`
         );
         return { duplicate: null, shouldSkip: true };
+      }
+      if (sameListingTitle(existingFilm, newFilm, normalizeTitle)) {
+        return { duplicate: sameTimeDifferentFilm, shouldSkip: false };
       }
     }
   }

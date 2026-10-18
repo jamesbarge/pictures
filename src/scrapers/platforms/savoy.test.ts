@@ -9,7 +9,7 @@ vi.mock("@/scrapers/festivals/festival-detector", () => ({
   },
 }));
 
-import { parseSavoyEvents, extractSavoyEventsJson, type SavoyVenue } from "./savoy";
+import { parseSavoyEvents, extractSavoyEventsJson, recoverTruncatedDirector, type SavoyVenue } from "./savoy";
 
 const RIO: SavoyVenue = {
   cinemaId: "rio-dalston",
@@ -89,6 +89,23 @@ describe("parseSavoyEvents (Rio config)", () => {
     await expect(
       parseSavoyEvents(page('{"Events":[{"ID":1'), RIO, NOW),
     ).rejects.toThrow(/unbalanced/);
+  });
+});
+
+describe("recoverTruncatedDirector", () => {
+  it("keeps a director the JSON already has in full", () => {
+    const html = "<li>Director: Hype Williams</li>";
+    expect(recoverTruncatedDirector("Hype Williams", html)).toBe("Hype Williams");
+  });
+
+  it("restores letters the JSON dropped when the HTML credit ends with that value", () => {
+    const html = `<ul><li>Director: Hype Williams</li></ul><script>{"Director":"ype Williams"}</script>`;
+    expect(recoverTruncatedDirector("ype Williams", html)).toBe("Hype Williams");
+  });
+
+  it("ignores a longer credit that is not the same name", () => {
+    const html = "<li>Director: Someone Else Entirely</li>";
+    expect(recoverTruncatedDirector("Williams", html)).toBe("Williams");
   });
 });
 

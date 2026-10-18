@@ -79,6 +79,15 @@ describe("sanitizeScreening", () => {
     expect(result.screen).toBe("Screen 1");
   });
 
+  it("restores a one-letter tag that truncated a director", () => {
+    const screening = makeScreening({
+      filmTitle: "Belly",
+      director: "<H>ype Williams",
+    });
+    expect(sanitizeScreening(screening).director).toBe("Hype Williams");
+    expect(sanitizeScreening(makeScreening({ director: "<h>ype Williams" })).director).toBe("Hype Williams");
+  });
+
   it("should strip HTML from all text fields", () => {
     const screening = makeScreening({
       filmTitle: "<b>Test</b> Film",

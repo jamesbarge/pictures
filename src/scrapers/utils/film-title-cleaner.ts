@@ -299,6 +299,8 @@ export const EVENT_PREFIXES = [
 
   // Screening format prefixes (Rio, etc.)
   /^naturist\s+screening[:\s]+/i,
+  // Cinema Museum charity strand. The film title follows the second dash.
+  /^horror\s+for\s+a\s+cause\s*[-–—]\s*save\s+the\s+cinema\s+museum\s*[-–—]\s+/i,
 
   // Doc'n Roll festival prefix, including the spaced curly form "Doc’ n Roll"
   /^doc\s*['’]?\s*n\s+roll\b[^:]*[:\s]+/i,
@@ -308,6 +310,10 @@ export const EVENT_PREFIXES = [
   /^phoenix\s+classics?\s*\+\s*ysp\s+pizza\s+night[:\s]+/i,
   /^spare\s+ribs\s+club[:\s]+/i,
   /^parents?\s+and\s+bab(?:y|ies)\s+screening[:\s]+/i,
+  // Audience strands that name the film after a colon, without the word "screening".
+  /^parents?\s+(?:&|and)\s+bab(?:y|ies)\s*:\s*/i,
+  /^carers\s+(?:&|and)\s+babies\s*:\s*/i,
+  /^hard\s+of\s+hearing\s*:\s*/i,
   /^the\s+gate[''\u2019]?s?\s+\d+(?:th|st|nd|rd)?\s+birthday[:\s]+/i,
   /^reece\s+shearsmith\s+presents[:\s]+/i,
   /^bloody\s+mary\s+film\s+club[:\s]+/i,
@@ -342,6 +348,9 @@ export const EVENT_PREFIXES = [
   // seen in listings are stripped, so a title such as "Christmas Presents" is
   // safe.
   /^(?:[\w'\u2019&.!-]+\s+){1,4}presents\s*:\s*/i,
+  // "Akinola Davies presents BELLY" has no colon. The following word has to
+  // start with a capital, so "Christmas Presents" is left alone.
+  /^(?:\p{Lu}[\p{L}'.-]*\s+){1,3}presents\s+(?=\p{Lu})/u,
   /^(?:cinecarib|peer|evolution\s+of\s+horror)\s+presents?\s+/i,
   // A presenter the venue already cut, leaving "presents MIRACLE MILE"
   /^presents\s+/i,
@@ -548,7 +557,7 @@ export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
   // two- or three-word possessive credit ("Ken Russell's The Devils: The
   // Director's Cut"). Elsewhere that credit can be the film's own TMDB title
   // ("Lee Cronin's The Mummy", "Bram Stoker's Dracula"), so it stays.
-  const directorsCut = cleaned.match(/\s*:\s*(?:the\s+)?director['’]?s\s+cut\s*$/i);
+  const directorsCut = cleaned.match(/\s*(?::|[•·])\s*(?:the\s+)?director['’]?s\s+cut\s*$/i);
   if (directorsCut) {
     cleaned = cleaned
       .slice(0, directorsCut.index)
@@ -635,6 +644,9 @@ export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
     // "Between Worlds (LPFF)". Case-sensitive so real words never match
     // ("The Meaning of Liff").
     .replace(/\s+(?:[-–]\s+)?(?:FFFL|FFF|LIFF|LPFF|LoLaFF)\s*$|\s*\((?:FFFL|LIFF|LPFF|LoLaFF)\)\s*$/, "")
+    // Film Africa festival tags: "Clarissa (Film Africa)", "Caméra Arabe - Film Africa Film Festival"
+    .replace(/\s*\(film\s+africa\)\s*$/i, "")
+    .replace(/\s*[-–]\s*film\s+africa(?:\s+film\s+festival)?\s*$/i, "")
     // Remove London Breeze Film Festival notes, often with the closing bracket
     // cut off: "The Crowd (London Breeze Film Festival UK Premiere"
     .replace(/\s*\(london\s+breeze\s+film\s+festival\b[^)]*\)?\s*$/i, "")
@@ -756,11 +768,35 @@ export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
     if (cleaned === beforePass) break;
   }
 
+  // "Amy Winehouse 'Back To Black'" — a person's name, then a quoted title.
+  // The quote is often missing its close. Runs after anniversary stripping.
+  cleaned = unwrapPresenterQuote(cleaned);
+
   const strippedSuffix = beforeSuffixStrip !== cleaned
     ? beforeSuffixStrip.slice(cleaned.length).trim()
     : null;
 
   return { cleanedTitle: cleaned, strippedPrefix, strippedSuffix, extractedYear };
+}
+
+const QUOTE_TITLE_SMALL = new Set(["a", "an", "the", "of", "and", "or", "in", "on", "for", "to", "with", "at", "by", "from"]);
+
+/** "Amy Winehouse 'Back To Black" → "Back to Black". The prefix is 2–4 capitalised words. */
+function unwrapPresenterQuote(title: string): string {
+  const match = title.match(/^(.+?)\s+['\u2018"]([^'"\u2019]+)['\u2019"]?\s*$/u);
+  if (!match) return title;
+  const words = match[1].trim().split(/\s+/);
+  const inner = match[2].trim();
+  if (words.length < 2 || words.length > 4 || inner.length < 2) return title;
+  if (!words.every((word) => /^\p{Lu}[\p{L}'.-]*$/u.test(word))) return title;
+  const innerWords = inner.split(/\s+/);
+  return innerWords.map((word, index) => {
+    const core = word.replace(/^[^\p{L}]+|[^\p{L}]+$/gu, "");
+    if (index > 0 && index < innerWords.length - 1 && QUOTE_TITLE_SMALL.has(core.toLowerCase()) && core !== core.toLowerCase()) {
+      return word.replace(core, core.toLowerCase());
+    }
+    return word;
+  }).join(" ");
 }
 
 /**

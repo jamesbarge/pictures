@@ -1,3 +1,11 @@
+## 2026-10-18: Listings QA — duplicate showings, possessive credits, Rio caps
+**PR**: pending | **Files**: `src/scrapers/utils/listing-title.ts`, `src/scrapers/utils/film-title-cleaner.ts`, `src/scrapers/utils/film-matching.ts`, `src/scrapers/pipeline.ts`, `src/scrapers/cinemas/rio.ts`, `src/scrapers/platforms/savoy.ts`, `scripts/repair-listings-qa-2026-10-18.ts`
+- Se7en and Seven (Fincher) resolve to one film, and a film-id collision now drops the extra screening instead of keeping both.
+- Possessive credits match the canonical film when the credit is the director or an initialled author. Audience prefixes, Film Africa and a quoted title after a person's name come off the film title.
+- Rio's capitalised titles are title-cased for storage and the public API. Return to the Tatler + Variety is one Variety screening. A truncated Rio director is recovered from the HTML credit.
+- `scripts/repair-listings-qa-2026-10-18.ts` rewrites rows already stored (dry-run unless `--execute`). It was not run against production.
+
+---
 ## 2026-10-16: Five fixes from the code review
 **PR**: #827 | **Files**: `frontend/src/routes/{letterboxd,search,map,people/[name]}/+page.svelte`, `.claude/rules/frontend.md`, `src/db/seed-festivals.ts`, `src/db/seed-festivals.test.ts` (new), `src/app/admin/screenings/components/screening-form-modal.tsx`, `src/scrapers/utils/date-parser.ts`, `src/scrapers/utils/date-parser.test.ts`, `scripts/data-check.ts`
 - The Letterboxd, search, map and people pages used `--color-muted`, `--color-foreground` and `--color-background`, which `app.css` has never defined. They now use `--color-text-tertiary`, `--color-text` and `--color-bg`, so the Letterboxd IMPORT button has its dark fill and muted text is grey in light mode, dark mode and under the house-lights dimmer.

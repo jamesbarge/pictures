@@ -670,7 +670,9 @@ Use this format when recording cinema-specific quirks:
 - sourceId format: `rio-dalston-{event.ID}-{ISO datetime}`.
 - Known pitfalls:
   - `RunningTime` is the venue's stated event length: for event screenings (film + Q&A/intro) it can exceed the film's true runtime (e.g. "LITTLE SHOP OF HORRORS + event" = 150 vs the film's 94 — a 56 min gap that exceeds the matcher's 30 min tolerance and triggers the −0.15 penalty; exact-year matches typically survive it). See the shared runtime-capture rule above for the asymmetric-tolerance follow-up idea.
-  - Titles often carry event prefixes ("Classic Matinee:", "Pink Palace:") — handled downstream by title cleaning.
+  - Titles often carry event prefixes ("Classic Matinee:", "Pink Palace:") — handled downstream by title cleaning. Rio also sets the display title in capitals (`EMPIRE RECORDS`); storage and the public API title-case those, and a TMDB match keeps the TMDB title.
+  - `RETURN TO THE TATLER + VARIETY` is a talk plus the film Variety (Bette Gordon, 1983). The Rio scraper keeps Variety as the film and "Return to the Tatler" as the event note. It is one screening, not a double bill.
+  - `Director` in the Events JSON has been seen with its first letters missing (`ype Williams`) while the HTML `Director:` line on the same page is complete. `recoverTruncatedDirector` uses the HTML credit when it is the JSON value plus one to three letters.
 - Last verified (2026-06-12): live run — 38/38 films emitted runtime, all within 1–600; JAWS=124, RINGU=96 match the venue JSON and canonical runtimes.
 
 ### ICA

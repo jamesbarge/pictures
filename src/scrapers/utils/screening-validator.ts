@@ -17,7 +17,10 @@ import type { RawScreening } from "../types";
  * Strip HTML tags from text to prevent stored XSS
  */
 function stripHtml(text: string): string {
-  return text.replace(/<[^>]*>/g, "").trim();
+  // A one-letter tag glued to a lowercase word is a truncated credit
+  // ("<H>ype Williams"), not markup. Put the letter back.
+  const restored = text.replace(/<([A-Za-z])>(?=[a-z])/g, (_match, letter: string) => letter.toUpperCase());
+  return restored.replace(/<[^>]*>/g, "").trim();
 }
 
 /**

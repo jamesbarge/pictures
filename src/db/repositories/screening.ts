@@ -15,6 +15,7 @@ import {
 } from "@/db/schema";
 import { eq, gte, lte, and, inArray, or, isNull, sql, SQL } from "drizzle-orm";
 import type { ScreeningFormat } from "@/types/screening";
+import { shoutedTitleToDisplay } from "@/scrapers/utils/listing-title";
 
 /**
  * Standard screening select with film and cinema data
@@ -148,6 +149,14 @@ function buildConditions(filters: ScreeningFilters): SQL[] {
   return conditions;
 }
 
+function withDisplayTitles<T extends { film: { title: string } }>(rows: T[]): T[] {
+  return rows.map((row) => {
+    const title = shoutedTitleToDisplay(row.film.title);
+    if (title === row.film.title) return row;
+    return { ...row, film: { ...row.film, title } };
+  });
+}
+
 /**
  * Get screenings with film and cinema details
  */
@@ -156,13 +165,14 @@ export async function getScreenings(
 ): Promise<ScreeningWithDetails[]> {
   const conditions = buildConditions(filters);
 
-  return db
+  const rows = await db
     .select(screeningWithDetailsSelect)
     .from(screenings)
     .innerJoin(films, eq(screenings.filmId, films.id))
     .innerJoin(cinemas, eq(screenings.cinemaId, cinemas.id))
     .where(and(...conditions))
     .orderBy(screenings.datetime);
+  return withDisplayTitles(rows);
 }
 
 /**
@@ -194,7 +204,7 @@ export async function getScreeningsByFestival(
     .where(and(eq(festivalScreenings.festivalId, festival.id), ...conditions))
     .orderBy(screenings.datetime);
 
-  return { festival, screenings: results };
+  return { festival, screenings: withDisplayTitles(results) };
 }
 
 /**
@@ -305,7 +315,7 @@ export async function getScreeningsWithCursor(
       : null;
 
   return {
-    screenings: screeningsPage,
+    screenings: withDisplayTitles(screeningsPage),
     cursor: nextCursor,
     hasMore,
   };

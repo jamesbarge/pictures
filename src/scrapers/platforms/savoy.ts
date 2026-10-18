@@ -111,6 +111,25 @@ function parseSavoyDateTime(dateStr: string, timeStr: string): Date {
 }
 
 /**
+ * The Events JSON sometimes drops the first letters of `Director` while the
+ * HTML credit on the same page is whole ("ype Williams" vs "Director: Hype
+ * Williams"). Use the HTML credit when it is the JSON value plus 1–3 letters.
+ */
+export function recoverTruncatedDirector(director: string | undefined, html: string): string | undefined {
+  if (!director) return director;
+  const pattern = /Director:\s*([^<\n\r]{2,80})/gi;
+  let best = director;
+  for (const match of html.matchAll(pattern)) {
+    const credit = match[1].replace(/\s+/g, " ").trim();
+    const extra = credit.length - director.length;
+    if (extra < 1 || extra > 3 || !credit.endsWith(director)) continue;
+    if (!/^[\p{L}]+$/u.test(credit.slice(0, extra))) continue;
+    if (credit.length > best.length) best = credit;
+  }
+  return best;
+}
+
+/**
  * Parse a Savoy modern-JSON homepage into future RawScreenings. Throws on a
  * missing/malformed Events blob (via extractSavoyEventsJson) — never empty-as-
  * success. Skips past screenings.
@@ -137,7 +156,7 @@ export async function parseSavoyEvents(
         bookingUrl,
         sourceId: venue.buildSourceId(event, perf, datetime),
         year: event.Year ? parseInt(event.Year, 10) : undefined,
-        director: event.Director || undefined,
+        director: recoverTruncatedDirector(event.Director || undefined, html),
         runtime: sanitizeRuntime(event.RunningTime),
         ...FestivalDetector.detect(venue.cinemaId, event.Title, datetime, bookingUrl),
       });
