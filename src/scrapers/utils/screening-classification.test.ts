@@ -31,6 +31,27 @@ describe("classifyScreening: scraper-supplied event type", () => {
   });
 });
 
+describe("classifyScreening: stripped listing notes", () => {
+  it("keeps Final Shows as the event note when the title is the only source", async () => {
+    const metadata = await classifyScreening({
+      filmTitle: "Final Shows - The Odyssey",
+      datetime: new Date("2026-10-25T13:10:00Z"),
+      bookingUrl: "https://web1.empire.mycloudcinema.com/#/book/62475",
+    });
+    expect(metadata.eventDescription).toBe("Final Shows");
+  });
+
+  it("does not replace a note the scraper already set", async () => {
+    const metadata = await classifyScreening({
+      filmTitle: "Final Shows - The Odyssey",
+      datetime: new Date("2026-10-25T13:10:00Z"),
+      bookingUrl: "https://example.com/book",
+      eventDescription: "Last screening",
+    });
+    expect(metadata.eventDescription).toBe("Last screening");
+  });
+});
+
 describe("classifyScreening: accessibility in the title", () => {
   const disclosure =
     "Disclosure Day (with subtitles for the D/deaf and those experiencing hearing loss)";

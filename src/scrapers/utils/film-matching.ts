@@ -519,11 +519,14 @@ export async function createFilmWithoutTMDB(
 
   const filmId = uuidv4();
 
-  // Clean director: strip "Starring ..." suffix that cinema websites sometimes include
+  // Clean director: strip "Starring ..." suffix that cinema websites sometimes include.
+  // sanitizeDirectors then drops a runtime token, splits "A / B" double-bill
+  // credits and title-cases an all-lowercase name.
   const cleanedDirector = scraperDirector
     ?.replace(/\s+Starring\s+.*/i, "")
     .replace(/\s+With\s+.*/i, "")
     .trim() || undefined;
+  const cleanedDirectors = sanitizeDirectors(cleanedDirector ? [cleanedDirector] : []);
 
   // isRepertory is intentionally false when we have no year — enrichment will
   // overwrite it from the TMDB release date. Don't guess.
@@ -533,7 +536,7 @@ export async function createFilmWithoutTMDB(
     id: filmId,
     title: matchingTitle,
     year: cleanYear,
-    directors: cleanedDirector ? [cleanedDirector] : [],
+    directors: cleanedDirectors,
     posterUrl,
     isRepertory,
     cast: [],

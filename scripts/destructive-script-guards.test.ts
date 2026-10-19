@@ -17,6 +17,7 @@ const defaultDryScripts = [
   "src/scripts/poster-audit-and-fix.ts",
   "src/scripts/enrich-upcoming-films.ts",
   "src/scripts/cleanup-upcoming-films.ts",
+  "scripts/repair-listings-qa-2026-10-19.ts",
 ];
 
 const removedHazardousScripts = [

@@ -142,6 +142,21 @@ describe("GardenCinemaScraper — stats-line runtime → RawScreening.runtime", 
     expect(screenings[0].runtime).toBeUndefined();
   });
 
+  it("does not store a runtime-only stats line as the director", async () => {
+    for (const [stats, runtime] of [["180m.", 180], ["90m.", 90], ["120m.", 120]] as const) {
+      const screenings = await parse(stats);
+      expect(screenings[0].director).toBeUndefined();
+      expect(screenings[0].runtime).toBe(runtime);
+    }
+  });
+
+  it("title-cases an all-lowercase director", async () => {
+    const screenings = await parse("mohsen enayati, Iran, 2025, 86m.");
+    expect(screenings[0].director).toBe("Mohsen Enayati");
+    expect(screenings[0].year).toBe(2025);
+    expect(screenings[0].runtime).toBe(86);
+  });
+
   it("bails on hour formats instead of capturing the minute component", async () => {
     // "3h 21m" must NOT become runtime=21 (a confidently wrong hint)
     const screenings = await parse("Chantal Akerman, Belgium, 1975, 3h 21m");

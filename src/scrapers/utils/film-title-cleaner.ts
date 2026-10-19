@@ -276,7 +276,14 @@ export const EVENT_PREFIXES = [
   // never match.
   /^(?:LPFF|UKJFF|HKFF|LIFF|FFFL|LoLaFF)(?:\s+\d{4})?(?:\s+[^:]{1,30}?)?(?:\s*:|\s+[-–])\s+/,
   /^london\s+palestine\s+film\s+festival(?:\s+\d{4})?\s*:\s*/i,
-  /^london\s+breeze\s+film\s+festival(?:\s+shorts)?\s*:\s*/i,
+  // "London Breeze: …" and "London Breeze Film Festival Gala Closing Film + Awards: …".
+  // The optional festival words stop at the colon, so a film subtitle is not eaten.
+  /^london\s+breeze(?:\s+film\s+festival\b[^:]*)?\s*:\s*/i,
+  /^london\s+festival\s+of\s+queer\s+spanish\s+culture\s*:\s*/i,
+  /^category\s+h\b[^:]*:\s*/i,
+  /^queer\s+horror\s+nights\s*:\s*/i,
+  // Olympic's run-out strand. The dash is required, so "Final Destination" stays.
+  /^final\s+shows\s*[-–—]\s+/i,
   /^sheffield\s+docfest(?:\s+spotlights?)?\s*:\s*/i,
   /^hackney\s+children['’]?s\s+film\s+fest(?:ival)?\s*:\s*/i,
 
@@ -483,6 +490,41 @@ const PLUS_WORD_QA = new RegExp(
   "i",
 );
 
+/** "+ Dorothy Dean Book Launch", "+ Recorded Charles Burnett Introduction".
+ * A name of 1–4 capitalised words sits between the plus and the extra, so
+ * "+ Book Launch" still belongs to PLUS_EXTRA and "+ Talk Radio" stays. */
+const PLUS_NAMED_EXTRA =
+  /\s*\+\s*(?:\p{Lu}[\p{L}'.’\-]*\s+){1,4}(?:book\s+launch|introduction)\b.*$/iu;
+
+/** "MS. 45 PLUS ✝✝✝ BASEMENT NUNSPLOITATION COSTUME PARTY ✝✝✝". */
+const PLUS_COSTUME_PARTY = /\s+plus\s+.*\bcostume\s+party\b.*$/i;
+
+/** "+ Networking" after a titled event. */
+const PLUS_NETWORKING = /\s*\+\s*networking\b.*$/i;
+
+const RIGHT_SIDE_EXTRA =
+  /\b(?:book\s+launch|introduction|intro|panel|discussion|q\s*&\s*a|live\s+score|networking|awards?|screen\s?talk|costume\s+party)\b/i;
+
+/**
+ * "Arrows of Desire Book Launch + Friendship's Death": the launch is the
+ * evening and the film is after the plus. A plus whose right side is itself
+ * an extra ("+ Panel Discussion", "+ Dorothy Dean Book Launch") is left for
+ * the suffix rules, and a plain double bill has neither signal.
+ */
+function peelLeadingExtra(title: string): { title: string; note: string | null } {
+  const match = title.match(/^(.+?)\s+\+\s+(.+)$/);
+  if (!match) return { title, note: null };
+  const left = match[1].trim();
+  const right = match[2].trim();
+  const leftIsEvent =
+    /\bbook\s+launch\b/i.test(left) ||
+    (/\bawards?\b/i.test(left) && /\b(?:gala|festival|closing)\b/i.test(left));
+  if (!RIGHT_SIDE_EXTRA.test(right) && leftIsEvent && /[\p{L}\p{N}]/u.test(right)) {
+    return { title: right, note: left };
+  }
+  return { title, note: null };
+}
+
 /**
  * ": 35mm Roadshow Tour" / ": 4K Restoration" — a colon suffix of 2+ words that only describe
  * the screening. "and"/"&" may join two of them ("Restored and Uncut"). It may be followed by
@@ -555,6 +597,13 @@ export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
       .replace(/^(?:\p{Lu}[\p{L}.-]*\s+){1,2}\p{Lu}[\p{L}.-]*['’][sS]?\s+/u, "")
       .trim();
   }
+  // "(director’s Cut)" / "(Director's Cut)". Same edition note as the colon
+  // form, any case, curly or straight apostrophe. An empty result is kept.
+  const directorsCutParen = cleaned.match(/\s*\(\s*(?:the\s+)?director['’]s\s+cut\s*\)\s*$/i);
+  if (directorsCutParen?.index) {
+    const withoutCut = cleaned.slice(0, directorsCutParen.index).trim();
+    if (withoutCut) cleaned = withoutCut;
+  }
 
   // Handle remaining colon-separated titles where film is after colon
   // but only if the part before colon looks like an event name (not a film title)
@@ -590,6 +639,14 @@ export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
         cleaned = afterColon;
       }
     }
+  }
+
+  // "Book Launch + Friendship's Death" keeps the film. A plus whose right
+  // side is the extra is left for the suffix rules below.
+  const peeled = peelLeadingExtra(cleaned);
+  if (peeled.note) {
+    strippedPrefix = strippedPrefix ? `${strippedPrefix} / ${peeled.note}` : peeled.note;
+    cleaned = peeled.title;
   }
 
   // Strip trailing year like "(1997)" or "(2026)" — captured as a TMDB year
@@ -656,10 +713,24 @@ export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
     .replace(PLUS_INTRO, "")
     .replace(PLUS_EXTRA, "")
     .replace(PLUS_WORD_QA, "")
+    .replace(PLUS_NAMED_EXTRA, "")
+    .replace(PLUS_COSTUME_PARTY, "")
+    .replace(PLUS_NETWORKING, "")
     // Remove a bracketed "(+Q&A)"
     .replace(/\s*\(\s*\+\s*q\s*(?:&amp;|&|\+)\s*a\s*\)\s*$/i, "")
-    // Remove live-score notes: "Nosferatu with Live Score", "(Live Score)"
-    .replace(/\s+with\s+live\s+score\s*$|\s*\(live\s+score\)\s*$/i, "")
+    // Remove live-score notes: "Nosferatu with Live Score", "(Live Score)",
+    // "Nosferatu live score by Hugo Max". A title that merely ends "Live Score"
+    // stays; the bare form needs "with" or "by".
+    .replace(/\s+with\s+live\s+score(?:\s+by\s+.+)?\s*$|\s+live\s+score\s+by\s+.+$|\s*\(live\s+score\)\s*$/i, "")
+    // "Moonlight 10th anniversary with recorded intro". A bare "30th Anniversary"
+    // has no leading word, so it stays.
+    .replace(/\s+\d+(?:st|nd|rd|th)\s+anniversary\s+with\s+.+$/i, "")
+    // Encore screenings whose title the franchise list kept whole
+    // ("Avengers Endgame: Encore"). One word, so it is not screening-noise.
+    .replace(/\s*:\s*encore\s*$/i, "")
+    // Festival country tag left after a strand prefix.
+    .replace(/\s*\(uk\)\s*$/i, "")
+    .replace(/\s+with\s+shadow\s+cast\s*$/i, "")
     // Remove programme notes: "- Preview", "- Black History Month 2026",
     // "I Trans Awareness programme 2026" (the I stands in for a pipe),
     // "Edition w/ Bonus Footage"
@@ -752,6 +823,10 @@ export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
     // A stripped decoration can expose a trailing "(YYYY)" that was hidden
     // mid-string on entry — capture it too.
     cleaned = stripTrailingYear(cleaned);
+
+    // The Nickel party title reduces to the shouted stylization. Two letters
+    // is below the all-caps title-caser, so the film's own spelling is set here.
+    if (/^ms\.\s*45$/i.test(cleaned)) cleaned = "Ms. 45";
 
     if (cleaned === beforePass) break;
   }

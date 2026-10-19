@@ -19,6 +19,7 @@ import { FestivalDetector } from "../festivals/festival-detector";
 import { parseUKLocalDateTime } from "../utils/date-parser";
 import { normalizeUrl, slugify } from "../utils/url";
 import { sanitizeRuntime } from "../utils/metadata-parser";
+import { normalizePersonCredit } from "../utils/film-write-guards";
 import { escapeRegex } from "@/lib/title-extraction/patterns";
 
 export class GardenCinemaScraper extends BaseScraper {
@@ -173,13 +174,12 @@ export class GardenCinemaScraper extends BaseScraper {
       : lastPart.match(/\b(\d{1,3})\s*m(?:ins?)?\.?(?=[\s,]|$)/i);
     const runtime = runtimeMatch ? sanitizeRuntime(runtimeMatch[1]) : undefined;
 
-    // Director is typically the first part before the first comma
+    // Director is typically the first part before the first comma.
+    // A card with no credit is just the runtime ("180m.", "90m.", "120m.");
+    // that token is not a director. An all-lowercase name is title-cased.
     const firstPart = parts[0];
-    // First part is typically the director unless it's a country or year
     const director =
-      firstPart && !firstPart.match(/^\d{4}$/) && !this.isCountry(firstPart)
-        ? firstPart
-        : undefined;
+      firstPart && !this.isCountry(firstPart) ? normalizePersonCredit(firstPart) : undefined;
 
     return { year, director, runtime };
   }

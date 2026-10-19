@@ -1,3 +1,11 @@
+## 2026-10-19: Listings QA — strands, extras, Garden credits, Electric ticket links
+**PR**: (this PR) | **Files**: `src/scrapers/utils/film-title-cleaner.ts`, `src/scrapers/utils/listings-qa-2026-10-19.ts`, `src/scrapers/cinemas/garden.ts`, `src/scrapers/cinemas/electric-v2.ts`, `scripts/repair-listings-qa-2026-10-19.ts`
+- Strand prefixes and screening extras come off the film title, and the removed text is kept as the screening note.
+- A Garden stats line that is only a runtime is no longer stored as the director. All-lowercase credits are title-cased. Slash-separated double-bill credits are split.
+- Sold-out Electric showings keep `/tickets/<id>` instead of the programme index.
+- `scripts/repair-listings-qa-2026-10-19.ts` rewrites rows already stored. Dry-run unless `--execute`. It was not run against production.
+
+---
 ## 2026-10-16: Five fixes from the code review
 **PR**: #827 | **Files**: `frontend/src/routes/{letterboxd,search,map,people/[name]}/+page.svelte`, `.claude/rules/frontend.md`, `src/db/seed-festivals.ts`, `src/db/seed-festivals.test.ts` (new), `src/app/admin/screenings/components/screening-form-modal.tsx`, `src/scrapers/utils/date-parser.ts`, `src/scrapers/utils/date-parser.test.ts`, `scripts/data-check.ts`
 - The Letterboxd, search, map and people pages used `--color-muted`, `--color-foreground` and `--color-background`, which `app.css` has never defined. They now use `--color-text-tertiary`, `--color-text` and `--color-bg`, so the Letterboxd IMPORT button has its dark fill and muted text is grey in light mode, dark mode and under the house-lights dimmer.
