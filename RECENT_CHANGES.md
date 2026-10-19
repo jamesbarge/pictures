@@ -1,5 +1,5 @@
 ## 2026-10-19: Listings QA — strands, extras, Garden credits, Electric ticket links
-**PR**: (this PR) | **Files**: `src/scrapers/utils/film-title-cleaner.ts`, `src/scrapers/utils/listings-qa-2026-10-19.ts`, `src/scrapers/cinemas/garden.ts`, `src/scrapers/cinemas/electric-v2.ts`, `scripts/repair-listings-qa-2026-10-19.ts`
+**PR**: #835 | **Files**: `src/scrapers/utils/film-title-cleaner.ts`, `src/scrapers/utils/listings-qa-2026-10-19.ts`, `src/scrapers/cinemas/garden.ts`, `src/scrapers/cinemas/electric-v2.ts`, `scripts/repair-listings-qa-2026-10-19.ts`
 - Strand prefixes and screening extras come off the film title, and the removed text is kept as the screening note.
 - A Garden stats line that is only a runtime is no longer stored as the director. All-lowercase credits are title-cased. Slash-separated double-bill credits are split.
 - Sold-out Electric showings keep `/tickets/<id>` instead of the programme index.
