@@ -1,6 +1,6 @@
 # DocHouse duplicates and event extras stored as titles
 
-**PR**: (this PR)
+**PR**: #837
 **Date**: 2026-10-23
 
 ## Changes

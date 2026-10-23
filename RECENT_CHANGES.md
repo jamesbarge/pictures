@@ -1,5 +1,5 @@
 ## 2026-10-23: DocHouse duplicates and event extras stored as titles
-**PR**: (this PR) | **Files**: `src/scrapers/chains/curzon.ts`, `src/scrapers/utils/film-title-cleaner.ts`, `src/scrapers/pipeline.ts`, `scripts/repair-listings-qa-2026-10-23.ts`
+**PR**: #837 | **Files**: `src/scrapers/chains/curzon.ts`, `src/scrapers/utils/film-title-cleaner.ts`, `src/scrapers/pipeline.ts`, `scripts/repair-listings-qa-2026-10-23.ts`
 - Curzon Bloomsbury no longer stores DocHouse-strand showtimes. That screen is already scraped as Bertha DocHouse, so each showing was listed twice.
 - Food and drink before `+`, a trailing `+ … LIVE!` act, and `(YYYY)- … at Venue` come off the film title. The extra is kept as the screening note. Double bills stay whole.
 - DocHouse's "Title, Part N: Subtitle" listings attach to an existing "Title: Part I" row when one is already stored.
