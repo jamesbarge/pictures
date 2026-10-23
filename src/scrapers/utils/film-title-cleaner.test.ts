@@ -1005,6 +1005,56 @@ describe("idempotency over the 534 unmatched titles of 2026-10-04", () => {
   });
 });
 
+describe("19 Oct 2026 listings QA", () => {
+  const cases: Array<{ input: string; cleaned: string }> = [
+    { input: "Final Shows - The Odyssey", cleaned: "The Odyssey" },
+    { input: "MS. 45 PLUS ✝✝✝ BASEMENT NUNSPLOITATION COSTUME PARTY ✝✝✝", cleaned: "Ms. 45" },
+    { input: "LONDON FESTIVAL OF QUEER SPANISH CULTURE: LA BOLA NEGRA", cleaned: "LA BOLA NEGRA" },
+    { input: "LONDON FESTIVAL OF QUEER SPANISH CULTURE: ON THE ROAD", cleaned: "ON THE ROAD" },
+    { input: "Category H Halloween Special: BLACULA + MA", cleaned: "BLACULA + MA" },
+    { input: "Category H: THE LURE + PHANTOM OF THE PARADISE", cleaned: "THE LURE + PHANTOM OF THE PARADISE" },
+    { input: "Queer Horror Nights: THE ROCKY HORROR PICTURE SHOW with Shadow Cast", cleaned: "THE ROCKY HORROR PICTURE SHOW" },
+    { input: "My Brother's Wedding + Recorded Charles Burnett Introduction", cleaned: "My Brother's Wedding" },
+    { input: "Moonlight 10th anniversary with recorded intro", cleaned: "Moonlight" },
+    { input: "Avengers Endgame: Encore", cleaned: "Avengers Endgame" },
+    { input: "Nosferatu live score by Hugo Max", cleaned: "Nosferatu" },
+    { input: "Arrows of Desire Book Launch + Friendship\u2019s Death", cleaned: "Friendship\u2019s Death" },
+    { input: "Andy Warhol's Prison + Dorothy Dean Book Launch", cleaned: "Andy Warhol's Prison" },
+    { input: "London Breeze Film Festival Gala Closing Film + Awards: Such a Vivid Imagination (UK)", cleaned: "Such a Vivid Imagination" },
+    { input: "London Breeze: The Sound of Storytelling + Networking", cleaned: "The Sound of Storytelling" },
+    { input: "Little Shop of Horrors (director\u2019s Cut)", cleaned: "Little Shop of Horrors" },
+    { input: "Little Shop of Horrors (Director's Cut)", cleaned: "Little Shop of Horrors" },
+    {
+      input: "Peven Everett: Voice of a Generation + ScreenTalk with director Denholm Hewlett and Peven Everett (12A*)",
+      cleaned: "Voice of a Generation",
+    },
+  ];
+
+  it.each(cases)("$input → $cleaned", ({ input, cleaned }) => {
+    expect(cleanFilmTitle(input)).toBe(cleaned);
+    expect(cleanFilmTitle(cleaned)).toBe(cleaned);
+  });
+
+  it("leaves genuine titles and double bills whole", () => {
+    for (const title of [
+      "The Odyssey",
+      "The Party",
+      "Final Destination",
+      "Manhunter: The Final Cut",
+      "Avengers: Endgame",
+      "Saturday Night Live + Wayne's World",
+      "Tony Takitani + Talk Radio",
+      "Andy Warhol's Prison",
+      "The Live Score",
+      "30th Anniversary",
+      "CHAMPAGNE AND BULLETS",
+      "THE MAD BOMBER",
+    ]) {
+      expect(cleanFilmTitle(title)).toBe(title);
+    }
+  });
+});
+
 describe("colon suffixes that only describe the screening (2026-10-15 run)", () => {
   it.each([
     ["Short Cuts : 35mm Roadshow Tour", "Short Cuts"],

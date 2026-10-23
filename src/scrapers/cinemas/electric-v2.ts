@@ -130,10 +130,16 @@ export class ElectricScraperV2 extends BaseScraper {
         continue;
       }
 
-      // Build booking URL
+      // The API sets `link` to false when the showing is not bookable. The
+      // ticket shell is still /tickets/<screening id> — the same path the
+      // bookable rows use — so a sold-out White City showing must not fall
+      // back to the venue programme index.
       const bookingUrl = screening.link
         ? `${this.config.baseUrl}${screening.link}`
-        : `${this.config.baseUrl}/programme/`;
+        : `${this.config.baseUrl}/tickets/${screeningId}`;
+      const availabilityStatus = /sold out/i.test(screening.message || "")
+        ? "sold_out"
+        : undefined;
 
       // Get screening type info
       const screeningType = data.screeningTypes[screening.st];
@@ -154,6 +160,7 @@ export class ElectricScraperV2 extends BaseScraper {
         director: film.director || undefined,
         posterUrl: film.image ? `${this.config.baseUrl}${film.image}` : undefined,
         eventDescription,
+        availabilityStatus,
       });
     }
 

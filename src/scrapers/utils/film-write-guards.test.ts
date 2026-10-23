@@ -68,4 +68,19 @@ describe("sanitizeDirectors", () => {
   it("preserves multiple legitimate directors", () => {
     expect(sanitizeDirectors(["Joel Coen", "Ethan Coen"])).toEqual(["Joel Coen", "Ethan Coen"]);
   });
+
+  it("drops a runtime token, splits a slash credit and title-cases a lowercase name", () => {
+    expect(sanitizeDirectors(["180m."])).toEqual([]);
+    expect(sanitizeDirectors(["90m."])).toEqual([]);
+    expect(sanitizeDirectors(["mohsen enayati"])).toEqual(["Mohsen Enayati"]);
+    expect(sanitizeDirectors(["lars von trier"])).toEqual(["Lars von Trier"]);
+    expect(sanitizeDirectors(["F. W. Murnau"])).toEqual(["F. W. Murnau"]);
+    expect(sanitizeDirectors(["William Crain / Tate Taylor"])).toEqual(["William Crain", "Tate Taylor"]);
+    expect(sanitizeDirectors(["Michael Benveniste + Howard Ziehm / Robert J Kaplan"])).toEqual([
+      "Michael Benveniste",
+      "Howard Ziehm",
+      "Robert J Kaplan",
+    ]);
+    expect(sanitizeDirectors(["Javier Calvo & Javier Ambrossi"])).toEqual(["Javier Calvo & Javier Ambrossi"]);
+  });
 });

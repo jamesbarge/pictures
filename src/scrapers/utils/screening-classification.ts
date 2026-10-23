@@ -15,6 +15,7 @@ import {
 } from "@/lib/event-classifier";
 import type { EventType, ScreeningFormat } from "@/types/screening";
 import type { RawScreening } from "../types";
+import { eventNoteFromTitle } from "./listings-qa-2026-10-19";
 
 // ============================================================================
 // Screening Metadata
@@ -105,6 +106,13 @@ export async function classifyScreening(
     } catch (error) {
       console.warn(`[Pipeline] Accessibility classification failed:`, error);
     }
+  }
+
+  // A strand or extra the cleaner removed ("Final Shows", "live score by
+  // Hugo Max") is the screening note when nothing else supplied one.
+  if (!eventDescription) {
+    const note = eventNoteFromTitle(screening.filmTitle);
+    if (note) eventDescription = note;
   }
 
   return {
