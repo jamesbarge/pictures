@@ -18,12 +18,34 @@
  * Times are displayed in UK local format like "12.00pm", "5.55pm".
  */
 
+import * as cheerio from "cheerio";
 import { BaseScraper } from "../base";
 import type { RawScreening, ScraperConfig } from "../types";
 import type { CheerioAPI } from "../utils/cheerio-types";
 import { parseScreeningTime, ukLocalToUTC } from "../utils/date-parser";
 import { FestivalDetector } from "../festivals/festival-detector";
 import { addDaysToDateString, londonDateString } from "@/lib/london-date";
+
+/**
+ * The day-page card cuts long titles ("Ghidorah, The Three-Headed...").
+ * The event page's h1 has the rest.
+ */
+export function isTruncatedListingTitle(title: string): boolean {
+  return /(?:\.{3}|…)\s*$/.test(title);
+}
+
+/** Read the event-page h1, dropping the BBFC classification span. */
+export function titleFromBarbicanEventHtml(html: string): string | null {
+  const $ = cheerio.load(html);
+  const $heading = $("h1.heading-group__primary").first().clone();
+  $heading.find("._classification, .classification").remove();
+  const text = $heading
+    .text()
+    .replace(/\s+/g, " ")
+    .replace(/\s*\((?:U|PG|12A?|15|18)\*?\)\s*$/i, "")
+    .trim();
+  return text || null;
+}
 
 /**
  * Number of days ahead to scrape from today (London calendar days).
@@ -148,8 +170,9 @@ export class BarbicanScraper extends BaseScraper {
       try {
         const { date, html } = JSON.parse(page);
         const $ = this.parseHtml(html);
+        const expandedTitles = await this.expandTruncatedTitles($);
 
-        const dayScreenings = this.parseDayPage($, date);
+        const dayScreenings = this.parseDayPage($, date, expandedTitles);
         screenings.push(...dayScreenings);
 
         if (dayScreenings.length > 0) {
@@ -181,7 +204,37 @@ export class BarbicanScraper extends BaseScraper {
    *         — OR for sold-out screenings —
    *         span containing "X.XXpm (Sold out)"
    */
-  private parseDayPage($: CheerioAPI, dateStr: string): RawScreening[] {
+  /**
+   * Day cards truncate with an ellipsis. Fetch those event pages and map the
+   * absolute event URL to the h1. A failed fetch keeps the card title.
+   */
+  private async expandTruncatedTitles($: CheerioAPI): Promise<Map<string, string>> {
+    const urls = new Set<string>();
+    $(".cinema-listing-card__title a").each((_, el) => {
+      const title = $(el).text().replace(/\s+/g, " ").trim();
+      const href = $(el).attr("href") || "";
+      if (!href || !isTruncatedListingTitle(title)) return;
+      urls.add(href.startsWith("http") ? href : `${this.config.baseUrl}${href}`);
+    });
+
+    const full = new Map<string, string>();
+    for (const url of urls) {
+      try {
+        const html = await this.fetchUrl(url);
+        const resolved = titleFromBarbicanEventHtml(html);
+        if (resolved && !isTruncatedListingTitle(resolved)) full.set(url, resolved);
+      } catch (error) {
+        console.warn(`[${this.config.cinemaId}] Could not expand truncated title from ${url}:`, error);
+      }
+    }
+    return full;
+  }
+
+  private parseDayPage(
+    $: CheerioAPI,
+    dateStr: string,
+    expandedTitles: Map<string, string> = new Map(),
+  ): RawScreening[] {
     const screenings: RawScreening[] = [];
     const [year, month, day] = dateStr.split("-").map(Number);
     /**
@@ -202,16 +255,19 @@ export class BarbicanScraper extends BaseScraper {
 
       if (!rawTitle) return;
 
-      // Clean title: normalize whitespace and strip BBFC ratings
-      const title = rawTitle
+      // Clean title: normalize whitespace and strip BBFC ratings.
+      // A trailing ellipsis is the card truncating the h1; the event page
+      // has the full line when expandTruncatedTitles fetched it.
+      const eventUrl = eventHref.startsWith("http")
+        ? eventHref
+        : eventHref
+          ? `${this.config.baseUrl}${eventHref}`
+          : "";
+      const expanded = eventUrl ? expandedTitles.get(eventUrl) : undefined;
+      const title = (expanded || rawTitle)
         .replace(/\s+/g, " ")
         .replace(/\s*\((U|PG|12A?|15|18)\*?\)\s*$/i, "")
         .trim();
-
-      // Build the event page URL for fallback booking links
-      const eventUrl = eventHref.startsWith("http")
-        ? eventHref
-        : `${this.config.baseUrl}${eventHref}`;
 
       // Parse each showtime instance within this film card
       $card
