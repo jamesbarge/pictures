@@ -11,6 +11,7 @@
 import { BaseScraper } from "../base";
 import type { RawScreening, ScraperConfig } from "../types";
 import { parseSavoyEvents, type SavoyVenue } from "../platforms/savoy";
+import { decodeHtmlEntities } from "@/lib/title-patterns";
 
 const RIO_VENUE: SavoyVenue = {
   cinemaId: "rio-dalston",
@@ -39,6 +40,15 @@ export class RioScraper extends BaseScraper {
 
   protected async parsePages(htmlPages: string[]): Promise<RawScreening[]> {
     const screenings = await parseSavoyEvents(htmlPages[0], RIO_VENUE);
+    for (const screening of screenings) {
+      // "RETURN TO THE TATLER + VARIETY" is a talk plus the film Variety.
+      // The event's year and director belong to Variety. One screening.
+      const title = decodeHtmlEntities(screening.filmTitle);
+      const tatler = title.match(/^return to the tatler\s*\+\s*(.+)$/i);
+      if (!tatler) continue;
+      screening.filmTitle = tatler[1].trim();
+      if (!screening.eventDescription) screening.eventDescription = "Return to the Tatler";
+    }
     console.log(`[${this.config.cinemaId}] Found ${screenings.length} future screenings`);
     return screenings;
   }

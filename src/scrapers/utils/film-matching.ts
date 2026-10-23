@@ -15,6 +15,12 @@ import { findMatchingFilm } from "@/lib/film-similarity";
 import { v4 as uuidv4 } from "uuid";
 import { isBlockedTmdbId } from "@/lib/tmdb/blocklist";
 import { sanitizeDirectors, sanitizeYear } from "./film-write-guards";
+import {
+  preferStrippedPossessive,
+  splitPossessiveCredit,
+  storageTitle,
+  stylizedLookupKeys,
+} from "./listing-title";
 
 /**
  * The cache stores only the columns its consumers actually read, NOT the whole
@@ -32,6 +38,7 @@ import { sanitizeDirectors, sanitizeYear } from "./film-write-guards";
  *   - `posterUrl`, `year`, `imdbId` — pipeline.ts getOrCreateFilm's
  *     tryUpdatePoster backfill for a cached film with no poster
  *   - `originalTitle` — initFilmCache's original-title alias keys
+ *   - `directors` — possessive-credit matching ("Ken Russell's The Devils")
  *
  * Adding a consumer that needs another column means adding it to BOTH this Pick
  * and the select projection in initFilmCache. Correctness beats the byte count:
@@ -39,7 +46,7 @@ import { sanitizeDirectors, sanitizeYear } from "./film-write-guards";
  */
 type FilmRecord = Pick<
   typeof films.$inferSelect,
-  "id" | "title" | "originalTitle" | "year" | "tmdbId" | "imdbId" | "posterUrl"
+  "id" | "title" | "originalTitle" | "year" | "tmdbId" | "imdbId" | "posterUrl" | "directors"
 >;
 
 // ============================================================================
@@ -101,6 +108,7 @@ export async function initFilmCache(
         tmdbId: films.tmdbId,
         imdbId: films.imdbId,
         posterUrl: films.posterUrl,
+        directors: films.directors,
       })
       .from(films),
     15_000,
@@ -210,6 +218,43 @@ export function lookupFilmInCache(
   }
   cache.stats.misses++;
   return null;
+}
+
+function preferListedFilm(current: FilmRecord | null, candidate: FilmRecord | null): FilmRecord | null {
+  if (!current) return candidate;
+  if (!candidate) return current;
+  if (!!current.tmdbId !== !!candidate.tmdbId) return current.tmdbId ? current : candidate;
+  if (/se7en/i.test(current.title) !== /se7en/i.test(candidate.title)) {
+    return /se7en/i.test(current.title) ? current : candidate;
+  }
+  if (current.year != null && candidate.year == null) return current;
+  if (candidate.year != null && current.year == null) return candidate;
+  return current;
+}
+
+/**
+ * Cache lookup that also tries Se7en/Seven and a possessive credit
+ * ("Ken Russell's The Devils") when that credit is the director or author.
+ */
+export function lookupListingFilm(
+  cache: FilmCache,
+  title: string,
+  scraperYear?: number,
+  scraperDirector?: string,
+): FilmRecord | null {
+  const normalized = cache.normalizeTitle(title);
+  let best = lookupFilmInCache(cache, normalized, scraperYear);
+  for (const key of stylizedLookupKeys(normalized, scraperDirector)) {
+    best = preferListedFilm(best, lookupFilmInCache(cache, key, scraperYear));
+  }
+  const split = splitPossessiveCredit(title);
+  if (split) {
+    const stripped = lookupFilmInCache(cache, cache.normalizeTitle(split.rest), scraperYear);
+    if (stripped && preferStrippedPossessive(split.credit, stripped.directors, scraperDirector)) {
+      best = stripped;
+    }
+  }
+  return best;
 }
 
 /**
@@ -471,6 +516,7 @@ export async function matchAndCreateFromTMDB(
     tmdbId: match.tmdbId,
     imdbId: details.details.imdb_id,
     posterUrl,
+    directors: guardedDirectors,
   });
 
   console.log(`[Pipeline] Created film: ${details.details.title} (${match.year})`);
@@ -518,6 +564,7 @@ export async function createFilmWithoutTMDB(
   }
 
   const filmId = uuidv4();
+  const titleForStorage = storageTitle(matchingTitle, scraperDirector);
 
   // Clean director: strip "Starring ..." suffix that cinema websites sometimes include
   const cleanedDirector = scraperDirector
@@ -531,7 +578,7 @@ export async function createFilmWithoutTMDB(
 
   await db.insert(films).values({
     id: filmId,
-    title: matchingTitle,
+    title: titleForStorage,
     year: cleanYear,
     directors: cleanedDirector ? [cleanedDirector] : [],
     posterUrl,
@@ -546,15 +593,16 @@ export async function createFilmWithoutTMDB(
   // column set — the row we just INSERTed above carries the rest.
   addToFilmCache(cache, {
     id: filmId,
-    title: matchingTitle,
+    title: titleForStorage,
     originalTitle: null,
     year: cleanYear ?? null,
     tmdbId: null,
     imdbId: null,
     posterUrl,
+    directors: cleanedDirector ? [cleanedDirector] : [],
   });
 
-  console.log(`[Pipeline] Created film without TMDB: ${matchingTitle}${posterUrl ? " (with poster)" : ""}`);
+  console.log(`[Pipeline] Created film without TMDB: ${titleForStorage}${posterUrl ? " (with poster)" : ""}`);
   return filmId;
 }
 

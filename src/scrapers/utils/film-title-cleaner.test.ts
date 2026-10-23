@@ -995,6 +995,46 @@ describe("2026-10-04 unmatched-coverage decorations", () => {
   });
 });
 
+describe("listings QA 2026-10-18", () => {
+  it.each([
+    ["Horror for a Cause - Save the Cinema Museum - The Evil Dead", "The Evil Dead"],
+    ["Horror for a Cause – Save the Cinema Museum – The Return of the Living Dead (1985)", "The Return of the Living Dead"],
+    ["Carers & Babies: THE SOCIAL RECKONING", "THE SOCIAL RECKONING"],
+    ["Carers &amp; Babies: THE SOCIAL RECKONING", "THE SOCIAL RECKONING"],
+    ["Parent and Baby: The Social Reckoning", "The Social Reckoning"],
+    ["Hard of Hearing: THE SOCIAL RECKONING", "THE SOCIAL RECKONING"],
+    ["Akinola Davies presents BELLY", "BELLY"],
+    ["Akinola Davies presents ROCKERS", "ROCKERS"],
+    ["Clarissa (Film Africa)", "Clarissa"],
+    ["Congo Boy (Film Africa)", "Congo Boy"],
+    ["Amy Winehouse 'Back To Black", "Back to Black"],
+    ["Amy Winehouse 'Back To Black'", "Back to Black"],
+    ["Rob Zombie's Halloween II (2009) • Director's Cut", "Halloween II"],
+  ])("cleans %s", (raw, expected) => {
+    expect(cleanFilmTitle(raw)).toBe(expected);
+  });
+
+  it("keeps the release year on the director's-cut bullet", () => {
+    const result = cleanFilmTitleWithMetadata("Rob Zombie's Halloween II (2009) • Director's Cut");
+    expect(result.cleanedTitle).toBe("Halloween II");
+    expect(result.extractedYear).toBe(2009);
+  });
+
+  it("keeps a possessive credit that is not a director's cut", () => {
+    expect(cleanFilmTitle("Ken Russell's The Devils")).toBe("Ken Russell's The Devils");
+    expect(cleanFilmTitle("J.G.Ballard’s CRASH")).toBe("J.G.Ballard’s CRASH");
+    expect(cleanFilmTitle("Bram Stoker's Dracula")).toBe("Bram Stoker's Dracula");
+    expect(cleanFilmTitle("Schindler's List")).toBe("Schindler's List");
+    expect(cleanFilmTitle("Rosemary's Baby")).toBe("Rosemary's Baby");
+  });
+
+  it("records the audience strand as the stripped prefix", () => {
+    const result = cleanFilmTitleWithMetadata("Carers & Babies: THE SOCIAL RECKONING");
+    expect(result.cleanedTitle).toBe("THE SOCIAL RECKONING");
+    expect(result.strippedPrefix).toBe("Carers & Babies");
+  });
+});
+
 describe("idempotency over the 534 unmatched titles of 2026-10-04", () => {
   it("cleaning a cleaned title changes nothing", () => {
     expect(unmatchedTitles).toHaveLength(534);

@@ -42,6 +42,7 @@ vi.mock("@/lib/title-extraction", () => ({
 vi.mock("./utils/film-matching", () => ({
   initFilmCache: async () => ({}),
   lookupFilmInCache: () => ({ id: "film-tony", posterUrl: "https://example.com/poster.jpg" }),
+  lookupListingFilm: () => ({ id: "film-tony", posterUrl: "https://example.com/poster.jpg" }),
   yearConflicts: () => false,
   releaseYearHint: () => undefined,
   logCacheStats: vi.fn(),

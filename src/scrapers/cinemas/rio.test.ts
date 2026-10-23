@@ -80,6 +80,31 @@ describe("RioScraper — RunningTime → RawScreening.runtime", () => {
     expect(screenings[0].sourceId).toMatch(/^rio-dalston-12345-/);
   });
 
+  it("stores Variety once when the event is Return to the Tatler plus the film", async () => {
+    const screenings = await parse([
+      fixtureEvent({
+        ID: 2796447,
+        Title: "RETURN TO THE TATLER + VARIETY",
+        Director: "Bette Gordon",
+        Year: "1983",
+        Performances: [
+          {
+            StartDate: "2030-10-18",
+            StartTime: "1720",
+            AuditoriumName: "Screen 1",
+            URL: "/Rio.dll/Booking?x=1",
+          },
+        ],
+      }),
+    ]);
+    expect(screenings).toHaveLength(1);
+    expect(screenings[0].filmTitle).toBe("VARIETY");
+    expect(screenings[0].eventDescription).toBe("Return to the Tatler");
+    expect(screenings[0].year).toBe(1983);
+    expect(screenings[0].director).toBe("Bette Gordon");
+    expect(screenings[0].bookingUrl).toBe("https://riocinema.org.uk/Rio.dll/WhatsOn?f=2796447");
+  });
+
   it("skips past performances entirely", async () => {
     const screenings = await parse([
       fixtureEvent({

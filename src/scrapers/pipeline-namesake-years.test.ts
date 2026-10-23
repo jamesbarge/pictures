@@ -42,6 +42,7 @@ vi.mock("./utils/film-matching", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./utils/film-matching")>()),
   initFilmCache: async () => ({}),
   lookupFilmInCache: mocks.lookup,
+  lookupListingFilm: mocks.lookup,
   logCacheStats: () => {},
   matchAndCreateFromTMDB: mocks.tmdb,
   tryUpdatePoster: async () => {},

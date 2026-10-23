@@ -5,7 +5,7 @@
 
 import { db, withDbTimeout } from "@/db";
 import { screenings as screeningsTable, cinemas, festivals, festivalScreenings } from "@/db/schema";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, gte, lte } from "drizzle-orm";
 import { extractFilmTitleCached, batchExtractTitles } from "@/lib/title-extraction";
 import type { RawScreening } from "./types";
 import { v4 as uuidv4 } from "uuid";
@@ -20,7 +20,7 @@ import { VENUE_LANGUAGE_PRIORS, allowsCurrentReleaseMatching, resolveCinemaId } 
 // Extracted utility modules
 import {
   initFilmCache,
-  lookupFilmInCache,
+  lookupListingFilm,
   logCacheStats,
   findFilmBySimilarity,
   matchAndCreateFromTMDB,
@@ -42,6 +42,7 @@ import {
 
 // Import for local use + re-export for external consumers
 import { cleanFilmTitle, cleanFilmTitleWithMetadata, extractEnglishFromBracket } from "./utils/film-title-cleaner";
+import { isSpecificBookingUrl } from "./utils/listing-title";
 export { cleanFilmTitle } from "./utils/film-title-cleaner";
 
 export interface PipelineResult {
@@ -821,10 +822,10 @@ async function getOrCreateFilm(
     console.log(`[Pipeline] Cleaned: "${title}" → "${cleanedTitle}"${versionNote} (${extraction.confidence})`);
   }
 
-  const normalized = normalizeTitle(matchingTitle);
-
-  // Try to find existing film using the pre-loaded cache (O(1) lookup)
-  const existing = lookupFilmInCache(filmCache, normalized, cacheYear);
+  // Try to find existing film using the pre-loaded cache (O(1) lookup).
+  // Possessive credits and Se7en/Seven are resolved here; the cache key is
+  // still the normalized title.
+  const existing = lookupListingFilm(filmCache, matchingTitle, cacheYear, scraperDirector);
 
   if (existing && yearConflicts(existing, cacheYear)) {
     // Every cached film of this title disagrees with the scraper's release year
@@ -904,8 +905,25 @@ async function insertScreening(
   screening: RawScreening,
   onPostWriteFailure?: (error: unknown) => void
 ): Promise<ScreeningWriteOutcome> {
+  // A stripped strand ("Carers & Babies", "Film Africa") is the screening's
+  // event, not part of the film title. Keep it when the scraper didn't.
+  const titleMeta = cleanFilmTitleWithMetadata(screening.filmTitle);
+  const festivalNote = titleMeta.strippedSuffix && /film africa/i.test(titleMeta.strippedSuffix)
+    ? titleMeta.strippedSuffix
+    : undefined;
+  const carriedDescription = screening.eventDescription
+    ?? titleMeta.strippedPrefix
+    ?? festivalNote
+    ?? (/director['’]?s\s+cut/i.test(screening.filmTitle) && !/director['’]?s\s+cut/i.test(titleMeta.cleanedTitle)
+      ? "Director's Cut"
+      : undefined);
+  const screeningForWrite = carriedDescription && carriedDescription !== screening.eventDescription
+    ? { ...screening, eventDescription: carriedDescription }
+    : screening;
+
   // Classify screening metadata (event type, format, accessibility)
-  const metadata = await classifyScreening(screening);
+  const metadata = await classifyScreening(screeningForWrite);
+  const eventDescription = metadata.eventDescription ?? screeningForWrite.eventDescription;
 
   // Check for duplicate screenings (exact match + normalized title dedup + source_id).
   // The sourceId match (Layer 0 of checkForDuplicate) lets us update an existing
@@ -915,7 +933,8 @@ async function insertScreening(
     cinemaId,
     screening.datetime,
     normalizeTitle,
-    screening.sourceId
+    screening.sourceId,
+    screening.bookingUrl,
   );
 
   if (shouldSkip) {
@@ -950,7 +969,7 @@ async function insertScreening(
           screen: screening.screen,
           isSpecialEvent: metadata.isSpecialEvent,
           eventType: metadata.eventType,
-          eventDescription: metadata.eventDescription,
+          eventDescription,
           is3D: metadata.is3D,
           hasSubtitles: metadata.hasSubtitles,
           subtitleLanguage: metadata.subtitleLanguage,
@@ -975,6 +994,43 @@ async function insertScreening(
       const pgCode = (err as { cause?: { code?: string }; code?: string })?.cause?.code
         ?? (err as { code?: string })?.code;
       if (pgCode === "23505") {
+        const removed = await deleteFilmSlotOccupant(duplicate.id, filmId, cinemaId, screening.datetime);
+        if (removed) {
+          try {
+            await db
+              .update(screeningsTable)
+              .set({
+                filmId,
+                datetime: screening.datetime,
+                format: metadata.format,
+                screen: screening.screen,
+                isSpecialEvent: metadata.isSpecialEvent,
+                eventType: metadata.eventType,
+                eventDescription,
+                is3D: metadata.is3D,
+                hasSubtitles: metadata.hasSubtitles,
+                subtitleLanguage: metadata.subtitleLanguage,
+                hasAudioDescription: metadata.hasAudioDescription,
+                isRelaxedScreening: metadata.isRelaxedScreening,
+                season: metadata.season,
+                bookingUrl: screening.bookingUrl,
+                ...(screening.availabilityStatus && {
+                  availabilityStatus: screening.availabilityStatus,
+                  availabilityCheckedAt: now,
+                }),
+                scrapedAt: now,
+                updatedAt: now,
+              })
+              .where(eq(screeningsTable.id, duplicate.id));
+            await collapseCinemaMuseumUrlDupes(cinemaId, screening, duplicate.id);
+            return "updated";
+          } catch (retryErr) {
+            console.warn(
+              `[Pipeline] Retry after removing the occupant still failed for ${duplicate.id.slice(0, 8)}:`,
+              retryErr,
+            );
+          }
+        }
         console.warn(
           `[Pipeline] Skipping update for duplicate ${duplicate.id.slice(0, 8)} ` +
             `(${cinemaId}/${screening.sourceId ?? "<nosrc>"}@${screening.datetime.toISOString()}): ` +
@@ -987,6 +1043,7 @@ async function insertScreening(
       throw err;
     }
 
+    await collapseCinemaMuseumUrlDupes(cinemaId, screening, duplicate.id);
     return "updated";
   }
 
@@ -1008,7 +1065,7 @@ async function insertScreening(
     screen: screening.screen,
     isSpecialEvent: metadata.isSpecialEvent,
     eventType: metadata.eventType,
-    eventDescription: metadata.eventDescription,
+    eventDescription,
     is3D: metadata.is3D,
     hasSubtitles: metadata.hasSubtitles,
     subtitleLanguage: metadata.subtitleLanguage,
@@ -1056,8 +1113,80 @@ async function insertScreening(
   // Handle festival linking. The row above is already committed, so a failure
   // here is a post-write failure and must not be reported as a lost write.
   await linkFestivalBestEffort(filmId, cinemaId, screening, onPostWriteFailure);
+  await collapseCinemaMuseumUrlDupes(cinemaId, screening);
 
   return "upserted";
+}
+
+/**
+ * A film_id flip onto a row that already holds (film, cinema, datetime) used
+ * to abort and leave both screenings. Drop the occupant and let the source
+ * row take the slot. One occupant, one try.
+ */
+async function deleteFilmSlotOccupant(
+  keepId: string,
+  filmId: string,
+  cinemaId: string,
+  datetime: Date,
+): Promise<boolean> {
+  const [occupant] = await db
+    .select({ id: screeningsTable.id })
+    .from(screeningsTable)
+    .where(
+      and(
+        eq(screeningsTable.filmId, filmId),
+        eq(screeningsTable.cinemaId, cinemaId),
+        eq(screeningsTable.datetime, datetime),
+      ),
+    )
+    .limit(1);
+  if (!occupant || occupant.id === keepId) return false;
+  await db.delete(screeningsTable).where(eq(screeningsTable.id, occupant.id));
+  console.warn(
+    `[Pipeline] Removed screening ${occupant.id.slice(0, 8)} occupying ` +
+      `(${filmId}, ${cinemaId}, ${datetime.toISOString()}) so ${keepId.slice(0, 8)} can take the slot`,
+  );
+  return true;
+}
+
+/**
+ * Cinema Museum retitles a WordPress event in place and the iCal UID (which
+ * embeds the start epoch) changes, leaving the old screening beside the new
+ * one on the same page URL. After this cinema's write, keep one row.
+ */
+async function collapseCinemaMuseumUrlDupes(
+  cinemaId: string,
+  screening: RawScreening,
+  keepId?: string,
+): Promise<void> {
+  if (cinemaId !== "cinema-museum" || !screening.bookingUrl || !isSpecificBookingUrl(screening.bookingUrl)) {
+    return;
+  }
+  const windowStart = new Date(screening.datetime.getTime() - 120_000);
+  const windowEnd = new Date(screening.datetime.getTime() + 120_000);
+  const rows = await db
+    .select({ id: screeningsTable.id, sourceId: screeningsTable.sourceId })
+    .from(screeningsTable)
+    .where(
+      and(
+        eq(screeningsTable.cinemaId, cinemaId),
+        eq(screeningsTable.bookingUrl, screening.bookingUrl),
+        gte(screeningsTable.datetime, windowStart),
+        lte(screeningsTable.datetime, windowEnd),
+      ),
+    )
+    .limit(4);
+  if (rows.length < 2) return;
+  const keep = rows.find((row) => row.id === keepId)
+    ?? rows.find((row) => row.sourceId && row.sourceId === screening.sourceId)
+    ?? rows[0];
+  for (const row of rows) {
+    if (row.id === keep.id) continue;
+    await db.delete(screeningsTable).where(eq(screeningsTable.id, row.id));
+    console.warn(
+      `[Pipeline] Removed Cinema Museum duplicate ${row.id.slice(0, 8)} sharing ${screening.bookingUrl}`,
+    );
+  }
 }
 
 /**
