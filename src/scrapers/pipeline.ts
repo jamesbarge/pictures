@@ -41,7 +41,7 @@ import {
 } from "./utils/screening-accounting";
 
 // Import for local use + re-export for external consumers
-import { cleanFilmTitle, cleanFilmTitleWithMetadata, extractEnglishFromBracket } from "./utils/film-title-cleaner";
+import { cleanFilmTitle, cleanFilmTitleWithMetadata, existingPartListingTitles, extractEnglishFromBracket } from "./utils/film-title-cleaner";
 export { cleanFilmTitle } from "./utils/film-title-cleaner";
 
 export interface PipelineResult {
@@ -742,6 +742,31 @@ export async function processScreenings(
 }
 
 /**
+ * When a listing is "Title, Part N: Subtitle" and the cache already holds
+ * "Title: Part I" or "Title: Part N" with TMDB data or a year, that row is
+ * the film. The long unmatched title loses. Returns null when nothing
+ * stronger is cached, so a first listing of the long title is stored as-is.
+ */
+export function cachedPartListingId(
+  cache: FilmCache,
+  title: string,
+  scraperYear: number | undefined,
+  directId: string | null,
+): string | null {
+  const aliases = existingPartListingTitles(title);
+  if (aliases.length === 0) return null;
+  let best: { id: string; score: number } | null = null;
+  for (const alias of aliases) {
+    const hit = lookupFilmInCache(cache, normalizeTitle(alias), scraperYear);
+    if (!hit || hit.id === directId) continue;
+    if (!hit.tmdbId && hit.year == null) continue;
+    const score = (hit.tmdbId ? 2 : 0) + (hit.year != null ? 1 : 0);
+    if (!best || score > best.score) best = { id: hit.id, score };
+  }
+  return best?.id ?? null;
+}
+
+/**
  * Get existing film or create new one with TMDB enrichment
  * Uses multi-source poster fallback when TMDB poster unavailable
  * Uses AI-powered title extraction for event-style titles
@@ -805,6 +830,15 @@ async function getOrCreateFilm(
     ? cleanFilmTitle(extraction.canonicalTitle)
     : cleanedTitle;
 
+  // The sync extractor splits on "+" and keeps the left half. A hospitality
+  // lead-in or a LIVE! act is that left half, so the film is whatever the
+  // cleaner reads from the original listing.
+  const listing = cleanFilmTitleWithMetadata(title);
+  if (listing.eventNote && listing.cleanedTitle) {
+    cleanedTitle = listing.cleanedTitle;
+    matchingTitle = listing.cleanedTitle;
+  }
+
   // Foreign-title-bracket: when the title is `Original (English Translation)`
   // and `Original` contains non-ASCII chars (Garden Cinema / Cine Lumière /
   // BFI repertory), route the LOOKUP through the English form so TMDB can
@@ -855,6 +889,12 @@ async function getOrCreateFilm(
       console.warn(`[Pipeline] TMDB lookup failed for "${title}":`, error);
     }
   }
+
+  // "Title, Part 1: Subtitle" resolves to an existing "Title: Part I" row
+  // (DocHouse's Battle of Chile parts vs the Curzon/TMDB rows). A direct hit
+  // on the long unmatched title loses to that row. No row is created.
+  const partListingId = cachedPartListingId(filmCache, matchingTitle, cacheYear, existing?.id ?? null);
+  if (partListingId) return partListingId;
 
   if (existing) {
     // If existing film lacks a poster, try to find one

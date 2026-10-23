@@ -15,6 +15,7 @@ import {
 } from "@/lib/event-classifier";
 import type { EventType, ScreeningFormat } from "@/types/screening";
 import type { RawScreening } from "../types";
+import { cleanFilmTitleWithMetadata } from "./film-title-cleaner";
 
 // ============================================================================
 // Screening Metadata
@@ -105,6 +106,14 @@ export async function classifyScreening(
     } catch (error) {
       console.warn(`[Pipeline] Accessibility classification failed:`, error);
     }
+  }
+
+  // A hospitality lead-in, LIVE! act, or "(YYYY)- … at Venue" strand the
+  // cleaner peeled. Only when the scraper did not already name a note.
+  // #835 writes its own note in this same spot; keep both, each guarded.
+  if (!eventDescription) {
+    const note = cleanFilmTitleWithMetadata(screening.filmTitle).eventNote;
+    if (note) eventDescription = note;
   }
 
   return {

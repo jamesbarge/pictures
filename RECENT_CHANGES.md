@@ -1,3 +1,10 @@
+## 2026-10-23: DocHouse duplicates and event extras stored as titles
+**PR**: #837 | **Files**: `src/scrapers/chains/curzon.ts`, `src/scrapers/utils/film-title-cleaner.ts`, `src/scrapers/pipeline.ts`, `scripts/repair-listings-qa-2026-10-23.ts`
+- Curzon Bloomsbury no longer stores DocHouse-strand showtimes. That screen is already scraped as Bertha DocHouse, so each showing was listed twice.
+- Food and drink before `+`, a trailing `+ … LIVE!` act, and `(YYYY)- … at Venue` come off the film title. The extra is kept as the screening note. Double bills stay whole.
+- DocHouse's "Title, Part N: Subtitle" listings attach to an existing "Title: Part I" row when one is already stored.
+
+---
 ## 2026-10-16: Five fixes from the code review
 **PR**: #827 | **Files**: `frontend/src/routes/{letterboxd,search,map,people/[name]}/+page.svelte`, `.claude/rules/frontend.md`, `src/db/seed-festivals.ts`, `src/db/seed-festivals.test.ts` (new), `src/app/admin/screenings/components/screening-form-modal.tsx`, `src/scrapers/utils/date-parser.ts`, `src/scrapers/utils/date-parser.test.ts`, `scripts/data-check.ts`
 - The Letterboxd, search, map and people pages used `--color-muted`, `--color-foreground` and `--color-background`, which `app.css` has never defined. They now use `--color-text-tertiary`, `--color-text` and `--color-bg`, so the Letterboxd IMPORT button has its dark fill and muted text is grey in light mode, dark mode and under the house-lights dimmer.

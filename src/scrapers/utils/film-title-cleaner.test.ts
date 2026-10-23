@@ -1005,6 +1005,38 @@ describe("idempotency over the 534 unmatched titles of 2026-10-04", () => {
   });
 });
 
+describe("23 Oct 2026 listings: hospitality, live acts, venue strands", () => {
+  it.each([
+    ["'Wicker Sour' cocktails, straw man making + Wicker", "Wicker", null, "'Wicker Sour' cocktails, straw man making"],
+    ["Taiwanese nibbles, traditional drinks + The Dull Ice Flower", "The Dull Ice Flower", null, "Taiwanese nibbles, traditional drinks"],
+    ["Endless Night (1972) + The Swinging Christies LIVE!", "Endless Night", 1972, "The Swinging Christies LIVE!"],
+    ["Halloween (1978)- Halloween at Genesis", "Halloween", 1978, "Halloween at Genesis"],
+    // Same family as #829's Garden colon case. This peel runs before the colon handler.
+    ["Vampire Ball: Live Violin, Cocktails + The Hunger", "The Hunger", null, "Vampire Ball: Live Violin, Cocktails"],
+  ])("cleans %s", (raw, title, year, note) => {
+    const result = cleanFilmTitleWithMetadata(raw);
+    expect(result.cleanedTitle).toBe(title);
+    expect(result.extractedYear ?? null).toBe(year);
+    expect(result.eventNote).toBe(note);
+    expect(cleanFilmTitle(cleanFilmTitle(raw))).toBe(title);
+  });
+
+  it.each([
+    "Blacula + Ma",
+    "Nishi Ginza Station + My Second Brother",
+    "Saturday Night Live + Wayne's World",
+    "The Good, the Bad and the Ugly + For a Few Dollars More",
+    "Tony Takitani + Talk Radio",
+    "Film (1935)- A Night at the Opera",
+    "Halloween II",
+    "Dune: Part Two",
+  ])("leaves the double bill %s whole", (title) => {
+    const result = cleanFilmTitleWithMetadata(title);
+    expect(result.cleanedTitle).toBe(title);
+    expect(result.eventNote).toBeNull();
+  });
+});
+
 describe("colon suffixes that only describe the screening (2026-10-15 run)", () => {
   it.each([
     ["Short Cuts : 35mm Roadshow Tour", "Short Cuts"],

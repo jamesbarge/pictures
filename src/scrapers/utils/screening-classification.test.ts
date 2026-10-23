@@ -31,6 +31,24 @@ describe("classifyScreening: scraper-supplied event type", () => {
   });
 });
 
+describe("classifyScreening: listing extras from 23 Oct 2026", () => {
+  it("stores the live act as the note and leaves a double bill alone", async () => {
+    const live = await classifyScreening({
+      filmTitle: "Endless Night (1972) + The Swinging Christies LIVE!",
+      datetime: new Date("2026-11-04T18:30:00Z"),
+      bookingUrl: "https://thecastlecinema.com/bookings/17081/",
+    });
+    expect(live.eventDescription).toBe("The Swinging Christies LIVE!");
+
+    const bill = await classifyScreening({
+      filmTitle: "Blacula + Ma",
+      datetime: new Date("2026-11-04T18:30:00Z"),
+      bookingUrl: "https://example.com/bill",
+    });
+    expect(bill.eventDescription).toBeUndefined();
+  });
+});
+
 describe("classifyScreening: accessibility in the title", () => {
   const disclosure =
     "Disclosure Day (with subtitles for the D/deaf and those experiencing hearing loss)";

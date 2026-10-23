@@ -216,6 +216,7 @@ Use this format when recording cinema-specific quirks:
   - **healthCheck**: Cloudflare blocks HEAD to `www.curzon.com`; use API endpoint instead (401 = healthy)
   - **BST timezone (fixed 2026-05-12)**: `schedule.startsAt` is TZ-less. Original `new Date(startsAt)` silently added 1h under `TZ=UTC` during BST. Migrated to `parseUKLocalDateTime`. Duplicate-pair probe confirmed 15 ghost rows existed; cleaned in same change. Same fix class as #484 (Everyman) and #485 (Picturehouse).
   - **Failure handling**: total auth failure throws; failed venue/date API calls are recorded as venue failures rather than successful empty results.
+  - **DocHouse screen belongs to Bertha DocHouse (2026-10-23).** Vista lists that screen on site `BLO1` with titles `DocHouse: …`, which slugify to `/films/dochouse-…`. Those showtimes are the same physical shows as the `bertha-dochouse` scraper (`bertha-BLO1-…`, dochouse.org). `convertToRawScreenings` drops a `DocHouse` title at `curzon-bloomsbury` only. Other Curzon sites are unchanged. The dedicated scraper stays the source of truth.
   - **"Boutique venue shows only ~2 films live" is NOT under-scraping (audit 2026-07-20):**
     Mayfair's `curzon.com/venues/mayfair/` day-view surfaces only first-run films ~1 week out
     and returns "NO SHOWTIMES AVAILABLE" further out, but the Vista API for `MAY1` genuinely

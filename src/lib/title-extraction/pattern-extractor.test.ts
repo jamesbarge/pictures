@@ -85,6 +85,23 @@ describe("extractFilmTitleSync", () => {
       expect(result.extractedTitle).toBe("The Gruffalo");
       expect(result.extractionMethod).toContain("double_feature");
     });
+
+    it("does not split a hospitality lead-in or a LIVE! act", () => {
+      for (const raw of [
+        "'Wicker Sour' cocktails, straw man making + Wicker",
+        "Taiwanese nibbles, traditional drinks + The Dull Ice Flower",
+        "Endless Night (1972) + The Swinging Christies LIVE!",
+      ]) {
+        const result = extractFilmTitleSync(raw);
+        expect(result.extractionMethod).not.toContain("double_feature");
+        expect(result.extractedTitle).toContain(" + ");
+      }
+      const bill = extractFilmTitleSync("Blacula + Ma");
+      expect(bill.extractedTitle).toBe("Blacula");
+      expect(extractFilmTitleSync("Nishi Ginza Station + My Second Brother").extractedTitle).toBe(
+        "Nishi Ginza Station",
+      );
+    });
   });
 
   describe("live broadcasts", () => {

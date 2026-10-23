@@ -442,11 +442,107 @@ export function extractEnglishFromBracket(title: string): { display: string; loo
   return { display, lookup: english.trim() };
 }
 
+/**
+ * Food, drink or a hands-on activity listed before the film
+ * ("'Wicker Sour' cocktails, straw man making + Wicker"). The comma is
+ * required, and so is a hospitality word, so "The Good, the Bad and the Ugly
+ * + For a Few Dollars More" and "Blacula + Ma" stay double bills.
+ */
+const HOSPITALITY_LEAD_IN =
+  /\b(?:cocktails?|nibbles|drinks?|wines?|beers?|pizzas?|suppers?|dinners?|brunches?|breakfasts?|tastings?|snacks?|canap[eé]s?|mocktails?|teas?|coffees?|popcorn|bites|platters?|straw\s+man|afternoon\s+tea|high\s+tea|food)\b/i;
+
+/** Right-hand side of "+" is itself the extra, so the film stays on the left. */
+const PLUS_RIGHT_IS_EXTRA =
+  /^(?:q\s*(?:&|\+|and)\s*a|(?:panel\s+)?discussion|(?:director\s+)?introduction|screen\s?talk|talk|intro|book\s+launch|live\s+music|networking)\b/i;
+
+/**
+ * Peel a listing whose "+" is an extra rather than a second film.
+ * "Endless Night (1972) + The Swinging Christies LIVE!" keeps the film and
+ * returns the act. Mixed-case "Saturday Night Live" is not an act.
+ */
+export function peelListingPlus(title: string): { title: string; note: string | null } {
+  const match = title.match(/^(.+?)\s+\+\s+(.+)$/);
+  if (!match) return { title, note: null };
+  const left = match[1].trim();
+  const right = match[2].trim();
+  if (!left || !right || right.includes(" + ")) return { title, note: null };
+
+  if (/\bLIVE!?\s*$/.test(right)) return { title: left, note: right };
+
+  if (
+    left.includes(",") &&
+    HOSPITALITY_LEAD_IN.test(left) &&
+    !PLUS_RIGHT_IS_EXTRA.test(right) &&
+    /[\p{L}\p{N}]/u.test(right)
+  ) {
+    return { title: right, note: left };
+  }
+
+  return { title, note: null };
+}
+
+/**
+ * "(1978)- Halloween at Genesis": a release year, a dash, then a short event
+ * at a venue. A leading article on the tail ("A Night at the Opera") stays,
+ * because that shape is a title.
+ */
+function peelVenueEventSuffix(title: string): { title: string; note: string | null } {
+  const match = title.match(/^(.*?)(\(\d{4}\))\s*-\s+(\S.{0,80}?\s+at\s+\p{Lu}[\p{L}'’.-]{1,})\s*$/u);
+  if (!match) return { title, note: null };
+  const note = match[3].trim();
+  const words = note.split(/\s+/);
+  if (note.includes("+") || words.length < 3 || words.length > 8) return { title, note: null };
+  if (/^(?:a|an|the)\b/i.test(note)) return { title, note: null };
+  const base = match[1].trim();
+  if (!base) return { title, note: null };
+  return { title: `${base} ${match[2]}`.trim(), note };
+}
+
+const PART_ROMAN = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
+const PART_WORD: Record<string, number> = {
+  one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
+};
+
+function partIndex(token: string): number | null {
+  if (/^\d+$/.test(token)) {
+    const n = Number.parseInt(token, 10);
+    return n >= 1 && n <= 10 ? n : null;
+  }
+  const roman = PART_ROMAN.indexOf(token.toUpperCase());
+  if (roman > 0) return roman;
+  return PART_WORD[token.toLowerCase()] ?? null;
+}
+
+/**
+ * "The Battle of Chile, Part 1: The Insurrection of the Bourgeoisie" is how
+ * DocHouse lists the film Curzon/TMDB store as "The Battle of Chile: Part I".
+ * Only this comma-then-subtitle shape. "Dune: Part Two" and "Halloween II"
+ * are not rewritten, and nothing is created when the short row is absent.
+ */
+export function existingPartListingTitles(title: string): string[] {
+  const match = title.match(
+    /^(.+?),\s*part\s+(\d+|[ivxlcdm]+|one|two|three|four|five|six|seven|eight|nine|ten)\s*:\s+\S.+$/i,
+  );
+  if (!match) return [];
+  const base = match[1].trim();
+  const n = partIndex(match[2]);
+  if (!base || n == null) return [];
+  const forms = [`${base}: Part ${PART_ROMAN[n]}`, `${base}: Part ${n}`];
+  return [...new Set(forms)].filter((form) => form.toLowerCase() !== title.trim().toLowerCase());
+}
+
 /** Result of cleaning a film title with metadata about what was stripped */
 interface CleanTitleResult {
   cleanedTitle: string;
   strippedPrefix: string | null;
   strippedSuffix: string | null;
+  /**
+   * The extra this cleaner peeled off (a hospitality lead-in, a LIVE! act,
+   * or a "(YYYY)- … at Venue" strand). Null for every other strip, so a
+   * caller can store it as the screening note without republishing old
+   * prefixes.
+   */
+  eventNote: string | null;
   /**
    * Year extracted from a stripped trailing "(YYYY)" or from a decoration
    * suffix like "(2026 Re-release)". A plain trailing release year wins over
@@ -509,6 +605,7 @@ export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
     .trim();
 
   let strippedPrefix: string | null = null;
+  let eventNote: string | null = null;
 
   // Strip known event prefixes to extract actual film title
   for (const prefix of EVENT_PREFIXES) {
@@ -527,6 +624,15 @@ export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
   // words, so "Dances with Wolves" keeps its wolves.
   if (strippedPrefix && /preview\s+of$/i.test(strippedPrefix)) {
     cleaned = cleaned.replace(/\s+with\s+\p{Lu}[\p{L}'’-]+(?:\s+\p{Lu}[\p{L}'’-]+){1,2}$/u, "").trim();
+  }
+
+  // Hospitality lead-ins and LIVE! acts sit around a plus. Peel them before
+  // the colon handler, which would otherwise keep the evening and drop the film
+  // ("Vampire Ball: Live Violin, Cocktails + The Hunger").
+  const peeledPlus = peelListingPlus(cleaned);
+  if (peeledPlus.note) {
+    eventNote = peeledPlus.note;
+    cleaned = peeledPlus.title;
   }
 
   // Strip pagination artifacts from BFI titles (e.g. "The Chronology of Water p17")
@@ -590,6 +696,14 @@ export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
         cleaned = afterColon;
       }
     }
+  }
+
+  // "(1978)- Halloween at Genesis". The year stays trailing so the strip
+  // below can record it. #829 strips the Genesis-only form of this same tail.
+  const peeledVenue = peelVenueEventSuffix(cleaned);
+  if (peeledVenue.note) {
+    eventNote = eventNote ? `${eventNote} / ${peeledVenue.note}` : peeledVenue.note;
+    cleaned = peeledVenue.title;
   }
 
   // Strip trailing year like "(1997)" or "(2026)" — captured as a TMDB year
@@ -760,7 +874,27 @@ export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
     ? beforeSuffixStrip.slice(cleaned.length).trim()
     : null;
 
-  return { cleanedTitle: cleaned, strippedPrefix, strippedSuffix, extractedYear };
+  return { cleanedTitle: cleaned, strippedPrefix, strippedSuffix, extractedYear, eventNote };
+}
+
+export interface StoredListingTitlePlan {
+  title: string;
+  year: number | null;
+  eventNote: string;
+}
+
+/**
+ * A stored title this cleaner's new peels can rebuild. Null when the title
+ * is already the film, so a repair does not rewrite every historical prefix.
+ */
+export function planStoredListingTitle(title: string): StoredListingTitlePlan | null {
+  const cleaned = cleanFilmTitleWithMetadata(title);
+  if (!cleaned.eventNote || !cleaned.cleanedTitle || cleaned.cleanedTitle === title) return null;
+  return {
+    title: cleaned.cleanedTitle,
+    year: cleaned.extractedYear ?? null,
+    eventNote: cleaned.eventNote,
+  };
 }
 
 /**
