@@ -100,7 +100,7 @@
     "date-fns": "^4.4.0",
     "drizzle-orm": "^0.45.3",
     "lucide-react": "^1.55.0",
-    "next": "^16.4.0",
+    "next": "^16.4.3",
     "postgres": "^3.4.7",
     "posthog-node": "^5.55.2",
     "react": "^19.3.0",
