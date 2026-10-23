@@ -122,6 +122,53 @@ describe("CurzonScraper.convertToRawScreenings — runtime capture", () => {
  * through and the API is up (just needs a JWT) → healthy. Only 5xx / network
  * failures mean the service is actually down. (PIC-29)
  */
+describe("Curzon Bloomsbury DocHouse strand", () => {
+  const bloomsbury = CURZON_VENUES.find((v) => v.id === "curzon-bloomsbury")!;
+  const soho = CURZON_VENUES.find((v) => v.id === "curzon-soho")!;
+
+  function rows(title: string, venue: typeof bloomsbury) {
+    const scraper = createCurzonScraper();
+    const internals = scraper as unknown as {
+      convertToRawScreenings: (
+        data: {
+          showtimes: Array<Record<string, unknown>>;
+          relatedData: { films: Array<Record<string, unknown>> };
+        },
+        v: typeof venue,
+      ) => Array<{ filmTitle: string; bookingUrl: string }>;
+    };
+    return internals.convertToRawScreenings(
+      {
+        showtimes: [{
+          id: "ST-DOC",
+          schedule: { startsAt: "2030-06-20T18:30:00" },
+          filmId: "HO00007406",
+          isSoldOut: false,
+          attributeIds: [],
+        }],
+        relatedData: {
+          films: [{ id: "HO00007406", title: { text: title }, releaseDate: "2025-01-01" }],
+        },
+      },
+      venue,
+    );
+  }
+
+  it("drops DocHouse-branded films at Bloomsbury and keeps the rest", () => {
+    expect(rows("DocHouse: The Eyes of Ghana", bloomsbury)).toEqual([]);
+    expect(rows("DocHouse: The Battle of Chile: Part 1", bloomsbury)).toEqual([]);
+    expect(rows("The Drama", bloomsbury)).toHaveLength(1);
+  });
+
+  it("keeps a DocHouse-branded title at any other Curzon site", () => {
+    const kept = rows("DocHouse: The Eyes of Ghana", soho);
+    expect(kept).toHaveLength(1);
+    expect(kept[0].bookingUrl).toBe(
+      "https://www.curzon.com/films/dochouse-the-eyes-of-ghana/HO00007406/",
+    );
+  });
+});
+
 describe("Curzon healthCheck (401-is-healthy contract)", () => {
   afterEach(() => {
     vi.unstubAllGlobals();

@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 
-import { normalizeTitle, cleanFilmTitle } from "./pipeline";
+import { cachedPartListingId, normalizeTitle, cleanFilmTitle } from "./pipeline";
+import type { FilmCache } from "./utils/film-matching";
 
 // =============================================================================
 // normalizeTitle — Unicode-safe normalization
@@ -464,6 +465,70 @@ describe("cleanFilmTitle — event prefixes", () => {
         cleanFilmTitle("Planet of the Apes: Kingdom")
       ).toBe("Planet of the Apes: Kingdom");
     });
+  });
+});
+
+describe("cachedPartListingId", () => {
+  function cacheOf(
+    films: Array<{ id: string; title: string; year: number | null; tmdbId: number | null }>,
+  ): FilmCache {
+    const cache: FilmCache = {
+      byTitle: new Map(),
+      namesakes: new Map(),
+      byTmdbId: new Map(),
+      stats: { hits: 0, misses: 0, dbQueries: 0 },
+      normalizeTitle,
+    };
+    for (const film of films) {
+      const record = {
+        id: film.id,
+        title: film.title,
+        originalTitle: null,
+        year: film.year,
+        tmdbId: film.tmdbId,
+        imdbId: null,
+        posterUrl: null,
+      };
+      const key = normalizeTitle(film.title);
+      cache.byTitle.set(key, record);
+      cache.namesakes.set(key, [record]);
+    }
+    return cache;
+  }
+
+  const weak = { id: "long", title: "The Battle of Chile, Part 1: The Insurrection of the Bourgeoisie", year: null, tmdbId: null };
+  const strong = { id: "part-i", title: "The Battle of Chile: Part I", year: 1975, tmdbId: 1234 };
+
+  it("resolves each Battle of Chile part onto the existing short title", () => {
+    const cache = cacheOf([
+      weak,
+      strong,
+      { id: "part-ii", title: "The Battle of Chile: Part II", year: 1976, tmdbId: 1235 },
+      { id: "part-iii", title: "The Battle of Chile: Part III", year: 1979, tmdbId: 1236 },
+    ]);
+    expect(cachedPartListingId(cache, weak.title, undefined, weak.id)).toBe("part-i");
+    expect(cachedPartListingId(
+      cache,
+      "The Battle of Chile, Part 2: The Coup D’Etat",
+      undefined,
+      "long-2",
+    )).toBe("part-ii");
+    expect(cachedPartListingId(
+      cache,
+      "The Battle of Chile, Part 3: The Power of the People",
+      undefined,
+      "long-3",
+    )).toBe("part-iii");
+  });
+
+  it("does not invent a row, and does not collapse sequel spellings", () => {
+    const cache = cacheOf([
+      { id: "h2", title: "Halloween 2", year: 1981, tmdbId: 99 },
+      { id: "dune", title: "Dune: Part Two", year: 2024, tmdbId: 100 },
+    ]);
+    expect(cachedPartListingId(cache, "Halloween II", undefined, null)).toBeNull();
+    expect(cachedPartListingId(cache, "Dune: Part Two", undefined, "dune")).toBeNull();
+    expect(cachedPartListingId(cache, weak.title, undefined, null)).toBeNull();
   });
 });
 

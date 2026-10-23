@@ -269,6 +269,11 @@ function classifyAccessibilityFeatures(
 // Curzon Scraper Implementation (Hybrid: Playwright for auth, API for data)
 // ============================================================================
 
+/** Vista titles the DocHouse screen as "DocHouse: …" (slug `dochouse-…`). */
+export function isDocHouseStrandTitle(title: string): boolean {
+  return /^dochouse\b/i.test(title.trim());
+}
+
 export class CurzonScraper implements ChainScraper {
   chainConfig = CURZON_CONFIG;
   venueErrors = new Map<string, string>();
@@ -493,6 +498,15 @@ export class CurzonScraper implements ChainScraper {
       // Get film title
       const filmTitle = film.title?.text || "";
       if (!filmTitle) continue;
+
+      // Bertha DocHouse is a screen inside Bloomsbury with its own scraper
+      // (bertha-dochouse, booking pages on dochouse.org). Vista also returns
+      // that screen under site BLO1, titled "DocHouse: …", which slugifies to
+      // /films/dochouse-… and double-lists every showing. The dedicated
+      // scraper is the source of truth. Other Curzon sites are left alone.
+      if (venue.id === "curzon-bloomsbury" && isDocHouseStrandTitle(filmTitle)) {
+        continue;
+      }
 
       const director = extractDirector(film, castMap);
 

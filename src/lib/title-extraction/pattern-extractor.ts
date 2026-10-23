@@ -25,6 +25,7 @@ import {
   escapeRegex,
 } from "./patterns";
 import { decodeHtmlEntities } from "../title-patterns";
+import { peelListingPlus } from "@/scrapers/utils/film-title-cleaner";
 
 /** Confidence when no extraction is needed — title used as-is */
 const FULL_CONFIDENCE = 1.0;
@@ -149,8 +150,12 @@ export function extractFilmTitleSync(title: string): PatternExtractionResult {
     }
   }
 
-  // Handle double features — extract first film
-  if (extracted.includes(" + ") && !method.includes("suffix")) {
+  // Handle double features — extract first film. A hospitality lead-in or a
+  // LIVE! act uses the same plus ("cocktails, straw man making + Wicker",
+  // "Endless Night + The Swinging Christies LIVE!"). Leave those whole so
+  // the scraper cleaner keeps the film instead of the extra. #829 also
+  // refuses the split when the left half contains a colon.
+  if (extracted.includes(" + ") && !method.includes("suffix") && !peelListingPlus(extracted).note) {
     const doubleMatch = extracted.match(DOUBLE_FEATURE_PATTERN);
     if (doubleMatch) {
       extracted = doubleMatch[1].trim();

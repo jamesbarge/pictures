@@ -11,6 +11,7 @@ const defaultDryScripts = [
   "scripts/check-duplicates.ts",
   "scripts/cleanup-duplicate-films.ts",
   "scripts/patrol-autofix.ts",
+  "scripts/repair-listings-qa-2026-10-23.ts",
   "src/db/backfill-posters.ts",
   "src/db/backfill-tmdb-popularity.ts",
   "src/db/migrations/canonicalize-cinema-ids.ts",
