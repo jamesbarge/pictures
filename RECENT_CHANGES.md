@@ -1,3 +1,9 @@
+## 2026-10-17: maplibre-gl 6.12 with a bundled tile worker
+**PR**: #813 | **Files**: `frontend/package.json`, `frontend/package-lock.json`, `frontend/src/lib/components/map/CinemaMap.svelte`
+- Bumps maplibre-gl from 5.24 to 6.12, which closes the critical DOM.sanitize XSS advisory (fixed in 6.4.1).
+- maplibre-gl 6 loads its tile worker from a file next to its own module. After Vite bundles it that file is missing, so the map showed pins on a blank background. `CinemaMap.svelte` now imports the worker with `?worker&url` and passes it to `setWorkerUrl()`.
+
+---
 ## 2026-10-16: Five fixes from the code review
 **PR**: #827 | **Files**: `frontend/src/routes/{letterboxd,search,map,people/[name]}/+page.svelte`, `.claude/rules/frontend.md`, `src/db/seed-festivals.ts`, `src/db/seed-festivals.test.ts` (new), `src/app/admin/screenings/components/screening-form-modal.tsx`, `src/scrapers/utils/date-parser.ts`, `src/scrapers/utils/date-parser.test.ts`, `scripts/data-check.ts`
 - The Letterboxd, search, map and people pages used `--color-muted`, `--color-foreground` and `--color-background`, which `app.css` has never defined. They now use `--color-text-tertiary`, `--color-text` and `--color-bg`, so the Letterboxd IMPORT button has its dark fill and muted text is grey in light mode, dark mode and under the house-lights dimmer.
