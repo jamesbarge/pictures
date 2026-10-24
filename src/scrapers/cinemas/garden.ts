@@ -20,6 +20,12 @@ import { parseUKLocalDateTime } from "../utils/date-parser";
 import { normalizeUrl, slugify } from "../utils/url";
 import { sanitizeRuntime } from "../utils/metadata-parser";
 import { escapeRegex } from "@/lib/title-extraction/patterns";
+import {
+  gardenPerformanceId,
+  parseGardenBookingHeading,
+  resolveSharedGardenPerformance,
+  type GardenBookingHeading,
+} from "./garden-performance";
 
 export class GardenCinemaScraper extends BaseScraper {
   config: ScraperConfig = {
@@ -123,8 +129,67 @@ export class GardenCinemaScraper extends BaseScraper {
       });
     });
 
-    console.log(`[${this.config.cinemaId}] Found ${screenings.length} future screenings`);
-    return screenings;
+    const reconciled = await this.dropSharedPerformanceMismatches(screenings);
+    console.log(`[${this.config.cinemaId}] Found ${reconciled.length} future screenings`);
+    return reconciled;
+  }
+
+  /**
+   * The same Savoy performance id must not be stored under two films. The
+   * booking page names the real one ("The Social Reckoning (15)" at 3:45pm).
+   * A failed lookup keeps every row: a booking outage must not drop a showing.
+   */
+  private async dropSharedPerformanceMismatches(
+    screenings: RawScreening[],
+  ): Promise<RawScreening[]> {
+    const groups = new Map<string, RawScreening[]>();
+    for (const screening of screenings) {
+      const id = gardenPerformanceId(screening.bookingUrl);
+      if (!id) continue;
+      const list = groups.get(id) ?? [];
+      list.push(screening);
+      groups.set(id, list);
+    }
+
+    const drop = new Set<RawScreening>();
+    for (const [id, group] of groups) {
+      const distinct = new Set(
+        group.map((screening) => `${screening.filmTitle}\0${screening.datetime.toISOString()}`),
+      );
+      if (distinct.size < 2) continue;
+
+      let heading: GardenBookingHeading | null = null;
+      try {
+        heading = parseGardenBookingHeading(await this.fetchPerformancePage(group[0].bookingUrl));
+      } catch (error) {
+        console.warn(
+          `[${this.config.cinemaId}] shared performance ${id} not checked (${group.length} rows kept):`,
+          error,
+        );
+        continue;
+      }
+
+      const { drop: losers } = resolveSharedGardenPerformance(group, heading);
+      if (losers.length === 0) {
+        console.warn(
+          `[${this.config.cinemaId}] shared performance ${id} (${group.length} rows) did not match the booking page; keeping all`,
+        );
+        continue;
+      }
+      for (const screening of losers) {
+        console.warn(
+          `[${this.config.cinemaId}] dropping "${screening.filmTitle}" at ${screening.datetime.toISOString()} — TcsPerformance_${id} is "${heading?.title}" ${heading?.date} ${heading?.time}`,
+        );
+        drop.add(screening);
+      }
+    }
+
+    return screenings.filter((screening) => !drop.has(screening));
+  }
+
+  /** Booking-page HTML for one performance. Overridden in tests. */
+  protected async fetchPerformancePage(url: string): Promise<string> {
+    return this.fetchUrl(url);
   }
 
   /**
