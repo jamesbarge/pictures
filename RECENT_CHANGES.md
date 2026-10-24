@@ -1,3 +1,11 @@
+## 2026-10-24: Listings QA — preview prefixes, Garden performance ids, Traces
+**PR**: pending | **Files**: `src/scrapers/utils/film-title-cleaner.ts`, `src/scrapers/utils/screening-classification.ts`, `src/scrapers/cinemas/bfi.ts`, `src/scrapers/cinemas/garden.ts`, `src/scrapers/cinemas/garden-performance.ts`, `scripts/repair-listings-qa-2026-10-24.ts`
+- `BFI IMAX exclusive preview: Godzilla Minus Zero` and `Special preview: La Bola Negra` clean to the film title. The prefix is the screening note. A BFI director equal to the raw title is dropped.
+- Garden drops a second film attached to the same Savoy performance when the booking page names the other one. Performance 6266328 is The Social Reckoning (15), Tuesday 27 Oct 2026, 3:45pm; the Fatherland 16:00 row is the extra.
+- `Women and the World Festival: Traces` cleans to Traces. Other `X: Y` titles are left alone. The Curzon / DocHouse duplicate is left for #837.
+- `scripts/repair-listings-qa-2026-10-24.ts` is a dry run unless `--execute`, and was not run.
+
+---
 ## 2026-10-16: Five fixes from the code review
 **PR**: #827 | **Files**: `frontend/src/routes/{letterboxd,search,map,people/[name]}/+page.svelte`, `.claude/rules/frontend.md`, `src/db/seed-festivals.ts`, `src/db/seed-festivals.test.ts` (new), `src/app/admin/screenings/components/screening-form-modal.tsx`, `src/scrapers/utils/date-parser.ts`, `src/scrapers/utils/date-parser.test.ts`, `scripts/data-check.ts`
 - The Letterboxd, search, map and people pages used `--color-muted`, `--color-foreground` and `--color-background`, which `app.css` has never defined. They now use `--color-text-tertiary`, `--color-text` and `--color-bg`, so the Letterboxd IMPORT button has its dark fill and muted text is grey in light mode, dark mode and under the house-lights dimmer.

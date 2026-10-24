@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   cleanFilmTitle,
   cleanFilmTitleWithMetadata,
+  listingEventNote,
   EVENT_PREFIXES,
   extractEnglishFromBracket,
   getKnownNonFilmTypeFromEntries,
@@ -1039,5 +1040,40 @@ describe("colon suffixes that only describe the screening (2026-10-15 run)", () 
     ["Halloween Special: Hocus Pocus", "Hocus Pocus"],
   ])("still strips the event prefix in %s", (raw, expected) => {
     expect(cleanFilmTitle(raw)).toBe(expected);
+  });
+});
+
+describe("24 Oct 2026 listings QA — preview and festival prefixes", () => {
+  it.each([
+    ["BFI IMAX exclusive preview: Godzilla Minus Zero", "Godzilla Minus Zero", "BFI IMAX exclusive preview"],
+    ["Special preview: La Bola Negra", "La Bola Negra", "Special preview"],
+    ["Women and the World Festival: Traces", "Traces", "Women and the World Festival"],
+  ])("%s → %s, note %s", (raw, title, note) => {
+    const result = cleanFilmTitleWithMetadata(raw);
+    expect(result.cleanedTitle).toBe(title);
+    expect(result.strippedPrefix).toBe(note);
+    expect(listingEventNote(raw)).toBe(note);
+    expect(cleanFilmTitle(result.cleanedTitle)).toBe(title);
+  });
+
+  it.each([
+    "Preview",
+    "Godzilla Minus Zero",
+    "La Bola Negra",
+    "Traces",
+    "Dracula: Prince of Darkness",
+    "Dune: Part Two",
+    "Sundance Film Festival: The First 25 Years",
+    "Women and the World",
+    "Special Preview of Fatherland",
+  ])("does not take a note from %s", (title) => {
+    expect(listingEventNote(title)).toBeNull();
+    if (title !== "Special Preview of Fatherland") {
+      expect(cleanFilmTitle(title)).toBe(title);
+    }
+  });
+
+  it("still peels Special Preview of Fatherland down to the film", () => {
+    expect(cleanFilmTitle("Special Preview of Fatherland")).toBe("Fatherland");
   });
 });

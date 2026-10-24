@@ -386,6 +386,15 @@ export class BFIScraper {
 
       const cleanTitle = this.cleanTitle(rawTitle);
       const metadata = parseFilmMetadata(rawTitle);
+      // A comma-less listing title is not a person. "Special preview: La Bola
+      // Negra" was stored as the film's only director. A stats line
+      // ("Greta Gerwig, USA, 2019, 135m.") still yields the name before the comma.
+      const director =
+        metadata.director &&
+        metadata.director.trim() !== rawTitle.trim() &&
+        !/[:+]/.test(metadata.director)
+          ? metadata.director
+          : undefined;
 
       // Canonical, path-agnostic sourceId (see buildBfiSourceId): identical
       // shape across Playwright/PDF/changes so a path flip cannot duplicate,
@@ -402,7 +411,7 @@ export class BFIScraper {
         availabilityStatus,
         sourceId,
         year: metadata.year,
-        director: metadata.director,
+        director,
         ...FestivalDetector.detect(this.config.cinemaId, cleanTitle, datetime, bookingUrl),
       });
     }

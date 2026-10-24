@@ -149,6 +149,13 @@ export const EVENT_PREFIXES = [
   // dropped after the loop, only for titles this rule matched. No "A Preview
   // of" form: after "MilkTea Presents:" it would only strip on a second clean.
   /^(?:special\s+)?preview\s+of\s+/i,
+  // "BFI IMAX exclusive preview: Godzilla Minus Zero" and "exclusive preview: …".
+  // The colon is required. A bare "Preview" stays a title, and "Special Preview
+  // of …" is the rule above.
+  /^(?:bfi\s+imax\s+)?exclusive\s+preview\s*:\s*/i,
+  // "Special preview: La Bola Negra". Colon required so the "preview of" rule
+  // keeps "Special Preview of Fatherland".
+  /^special\s+preview\s*:\s*/i,
   /^preview[:\s]+/i,
   /^sneak\s+preview[:\s]+/i,
   /^advance\s+screening[:\s]+/i,
@@ -279,6 +286,9 @@ export const EVENT_PREFIXES = [
   /^london\s+breeze\s+film\s+festival(?:\s+shorts)?\s*:\s*/i,
   /^sheffield\s+docfest(?:\s+spotlights?)?\s*:\s*/i,
   /^hackney\s+children['’]?s\s+film\s+fest(?:ival)?\s*:\s*/i,
+  // One named strand. A general "X Festival: Y" strip would also cut real
+  // titles such as "Sundance Film Festival: The First 25 Years".
+  /^women\s+and\s+the\s+world\s+festival\s*:\s*/i,
 
   // Venue strands found in the 2026-10-04 coverage pass. Most are followed by
   // a title starting "The", which the colon handler keeps as a subtitle.
@@ -771,4 +781,20 @@ export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
  */
 export function cleanFilmTitle(title: string): string {
   return cleanFilmTitleWithMetadata(title).cleanedTitle;
+}
+
+/**
+ * Prefixes this cleaner peels that should survive as the screening note.
+ * Anything else the cleaner strips stays out of eventDescription: a blanket
+ * copy would label every "Film Club:" showing.
+ */
+const LISTING_NOTE_PREFIX =
+  /^(?:bfi imax exclusive preview|exclusive preview|special preview|women and the world festival)$/i;
+
+/** The peeled preview or festival label, or null when the title is not one of those. */
+export function listingEventNote(title: string): string | null {
+  const { strippedPrefix, cleanedTitle } = cleanFilmTitleWithMetadata(title);
+  if (!strippedPrefix || cleanedTitle.length < 2) return null;
+  if (!LISTING_NOTE_PREFIX.test(strippedPrefix)) return null;
+  return strippedPrefix;
 }
