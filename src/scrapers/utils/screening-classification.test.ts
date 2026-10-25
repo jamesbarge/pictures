@@ -31,6 +31,53 @@ describe("classifyScreening: scraper-supplied event type", () => {
   });
 });
 
+describe("classifyScreening: preview and festival labels from 24 Oct 2026", () => {
+  it("keeps a BFI preview label when the scraper already set the event type", async () => {
+    const metadata = await classifyScreening({
+      filmTitle: "BFI IMAX exclusive preview: Godzilla Minus Zero",
+      datetime: new Date("2026-11-02T20:30:00Z"),
+      bookingUrl: "https://whatson.bfi.org.uk/imax/Online/example",
+      eventType: "preview",
+    });
+
+    expect(metadata.eventType).toBe("preview");
+    expect(metadata.eventDescription).toBe("BFI IMAX exclusive preview");
+  });
+
+  it("keeps Special preview as the note and does not invent a director", async () => {
+    const metadata = await classifyScreening({
+      filmTitle: "Special preview: La Bola Negra",
+      datetime: new Date("2026-11-04T20:30:00Z"),
+      bookingUrl: "https://whatson.bfi.org.uk/imax/Online/example",
+      eventType: "preview",
+    });
+
+    expect(metadata.eventDescription).toBe("Special preview");
+  });
+
+  it("keeps the festival name as the note on Traces", async () => {
+    const metadata = await classifyScreening({
+      filmTitle: "Women and the World Festival: Traces",
+      datetime: new Date("2026-11-07T18:00:00Z"),
+      bookingUrl: "https://dochouse.org/event/women-and-the-world-festival-traces/",
+    });
+
+    expect(metadata.eventDescription).toBe("Women and the World Festival");
+  });
+
+  it("does not replace a note the scraper already supplied", async () => {
+    const metadata = await classifyScreening({
+      filmTitle: "Special preview: La Bola Negra",
+      datetime: new Date("2026-11-04T20:30:00Z"),
+      bookingUrl: "https://whatson.bfi.org.uk/imax/Online/example",
+      eventType: "preview",
+      eventDescription: "Sold out preview",
+    });
+
+    expect(metadata.eventDescription).toBe("Sold out preview");
+  });
+});
+
 describe("classifyScreening: Trans Awareness programme strand", () => {
   it("keeps Castle's strand as the note and leaves the film title to the cleaner", async () => {
     const metadata = await classifyScreening({

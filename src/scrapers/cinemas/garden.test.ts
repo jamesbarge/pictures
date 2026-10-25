@@ -154,3 +154,63 @@ describe("GardenCinemaScraper — stats-line runtime → RawScreening.runtime", 
     expect(screenings[0].runtime).toBeUndefined();
   });
 });
+
+const SOCIAL_URL =
+  "https://bookings.thegardencinema.co.uk/TheGardenCinema.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_0.TcsWebTab_0.TcsPerformance_6266328.TcsSection_971";
+const FATHERLAND_URL =
+  "https://bookings.thegardencinema.co.uk/TheGardenCinema.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_0.TcsWebTab_0.TcsPerformance_6266332.TcsSection_638";
+
+function sharedPerformancePage(): string {
+  return `<html><body>
+    <div class="date-block" data-date="2030-06-20">
+      <div class="films-list__by-date__film">
+        <div class="films-list__by-date__film__title"><a href="/film/fatherland/">Fatherland</a></div>
+        <div class="films-list__by-date__film__rating">12A</div>
+        <div class="films-list__by-date__film__stats">Paweł Pawlikowski, Poland, 2026, 82m.</div>
+        <a class="screening" href="${FATHERLAND_URL}">15:30</a>
+        <a class="screening" href="${SOCIAL_URL}">16:00</a>
+      </div>
+      <div class="films-list__by-date__film">
+        <div class="films-list__by-date__film__title"><a href="/film/the-social-reckoning/">The Social Reckoning</a></div>
+        <div class="films-list__by-date__film__rating">15</div>
+        <div class="films-list__by-date__film__stats">Aaron Sorkin, USA, 2026, 112m.</div>
+        <a class="screening" href="${SOCIAL_URL}">15:45</a>
+      </div>
+    </div>
+  </body></html>`;
+}
+
+describe("GardenCinemaScraper — one Savoy performance, one film", () => {
+  beforeEach(() => {
+    vi.spyOn(FestivalDetector, "preload").mockResolvedValue();
+  });
+
+  it("drops the Fatherland 16:00 row that reuses performance 6266328", async () => {
+    const scraper = new GardenCinemaScraper();
+    vi.spyOn(scraper as unknown as { fetchPerformancePage(url: string): Promise<string> }, "fetchPerformancePage")
+      .mockResolvedValue(`<h1 class="title">The Social Reckoning (15)</h1><p class="perf-time">Thursday 20 Jun 2030, 3:45pm</p>`);
+    const screenings = await (
+      scraper as unknown as { parsePages(pages: string[]): Promise<RawScreening[]> }
+    ).parsePages([sharedPerformancePage()]);
+
+    const labelled = screenings.map((screening) => [
+      screening.filmTitle,
+      screening.datetime.toISOString(),
+      screening.bookingUrl.includes("6266328") ? "6266328" : "6266332",
+    ]);
+    expect(labelled).toEqual([
+      ["Fatherland", "2030-06-20T14:30:00.000Z", "6266332"],
+      ["The Social Reckoning", "2030-06-20T14:45:00.000Z", "6266328"],
+    ]);
+  });
+
+  it("keeps both rows when the booking page cannot be fetched", async () => {
+    const scraper = new GardenCinemaScraper();
+    vi.spyOn(scraper as unknown as { fetchPerformancePage(url: string): Promise<string> }, "fetchPerformancePage")
+      .mockRejectedValue(new Error("timeout"));
+    const screenings = await (
+      scraper as unknown as { parsePages(pages: string[]): Promise<RawScreening[]> }
+    ).parsePages([sharedPerformancePage()]);
+    expect(screenings).toHaveLength(3);
+  });
+});

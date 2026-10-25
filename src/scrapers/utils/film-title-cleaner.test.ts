@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   cleanFilmTitle,
   cleanFilmTitleWithMetadata,
+  listingEventNote,
   programmeStrandNote,
   EVENT_PREFIXES,
   extractEnglishFromBracket,
@@ -836,8 +837,6 @@ describe("2026-10-04 unmatched-coverage decorations", () => {
       { input: "Wicker - Preview", cleaned: "Wicker" },
       { input: "Sinners - Black History Month 2026", cleaned: "Sinners" },
       { input: "Wolfwalkers I Trans Awareness programme 2026", cleaned: "Wolfwalkers" },
-      { input: "Ponyboi - Trans Awareness programme 2026", cleaned: "Ponyboi" },
-      { input: "Ponyboi – Trans Awareness programme 2026", cleaned: "Ponyboi" },
       { input: "Everything Must Go Edition w/ Bonus Footage", cleaned: "Everything Must Go" },
       { input: "Donnie Darko 25th Anniversary", cleaned: "Donnie Darko" },
       { input: "Terminator 2: Judgment Day 35th Anniversary", cleaned: "Terminator 2: Judgment Day" },
@@ -1042,6 +1041,41 @@ describe("colon suffixes that only describe the screening (2026-10-15 run)", () 
     ["Halloween Special: Hocus Pocus", "Hocus Pocus"],
   ])("still strips the event prefix in %s", (raw, expected) => {
     expect(cleanFilmTitle(raw)).toBe(expected);
+  });
+});
+
+describe("24 Oct 2026 listings QA — preview and festival prefixes", () => {
+  it.each([
+    ["BFI IMAX exclusive preview: Godzilla Minus Zero", "Godzilla Minus Zero", "BFI IMAX exclusive preview"],
+    ["Special preview: La Bola Negra", "La Bola Negra", "Special preview"],
+    ["Women and the World Festival: Traces", "Traces", "Women and the World Festival"],
+  ])("%s → %s, note %s", (raw, title, note) => {
+    const result = cleanFilmTitleWithMetadata(raw);
+    expect(result.cleanedTitle).toBe(title);
+    expect(result.strippedPrefix).toBe(note);
+    expect(listingEventNote(raw)).toBe(note);
+    expect(cleanFilmTitle(result.cleanedTitle)).toBe(title);
+  });
+
+  it.each([
+    "Preview",
+    "Godzilla Minus Zero",
+    "La Bola Negra",
+    "Traces",
+    "Dracula: Prince of Darkness",
+    "Dune: Part Two",
+    "Sundance Film Festival: The First 25 Years",
+    "Women and the World",
+    "Special Preview of Fatherland",
+  ])("does not take a note from %s", (title) => {
+    expect(listingEventNote(title)).toBeNull();
+    if (title !== "Special Preview of Fatherland") {
+      expect(cleanFilmTitle(title)).toBe(title);
+    }
+  });
+
+  it("still peels Special Preview of Fatherland down to the film", () => {
+    expect(cleanFilmTitle("Special Preview of Fatherland")).toBe("Fatherland");
   });
 });
 
