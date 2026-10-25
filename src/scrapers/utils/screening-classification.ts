@@ -15,7 +15,7 @@ import {
 } from "@/lib/event-classifier";
 import type { EventType, ScreeningFormat } from "@/types/screening";
 import type { RawScreening } from "../types";
-import { listingEventNote } from "./film-title-cleaner";
+import { listingEventNote, programmeStrandNote } from "./film-title-cleaner";
 
 // ============================================================================
 // Screening Metadata
@@ -111,8 +111,12 @@ export async function classifyScreening(
   // A preview or festival label peeled off the title is the screening note.
   // Applied when the scraper left the note empty, including when it already
   // named the event type (BFI sets "preview" and used to drop the label).
+  // Castle appends " - Trans Awareness programme 2026" to the film instead;
+  // that strand is the note when no label came first.
   if (!eventDescription) {
-    const note = listingEventNote(screening.filmTitle);
+    const note =
+      listingEventNote(screening.filmTitle) ||
+      programmeStrandNote(screening.filmTitle);
     if (note) eventDescription = note;
   }
 
