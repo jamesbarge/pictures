@@ -1,5 +1,5 @@
 ## 2026-10-25: drizzle-orm 0.45.4
-**PR**: #PRNUM | **Files**: `package.json`, `package-lock.json`
+**PR**: #843 | **Files**: `package.json`, `package-lock.json`
 - Bumps drizzle-orm from 0.45.3 to 0.45.4, replacing Dependabot's #832, which conflicted with main and could not be rebased or recreated.
 - 0.45.4 only changes explicit `.prepare(name)` calls on postgres-js. Nothing in `src/` or `scripts/` calls it, and `src/db/index.ts` keeps `prepare: false` for the Supabase pooler.
 

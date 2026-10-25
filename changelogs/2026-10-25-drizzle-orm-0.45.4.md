@@ -1,6 +1,6 @@
 # drizzle-orm 0.45.4
 
-**PR**: #PRNUM
+**PR**: #843
 **Date**: 2026-10-25
 
 ## Changes
