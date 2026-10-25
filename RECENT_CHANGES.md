@@ -1,5 +1,5 @@
 ## 2026-10-25: Remove the homepage STARTING SOON strip
-**PR**: #TBD | **Files**: `frontend/src/routes/+page.svelte`, `frontend/src/lib/components/calendar/FigmaTextDay.svelte`, `frontend/src/lib/analytics/posthog.ts`, `frontend/test-all.spec.ts`, `frontend/tests/mobile.spec.ts`
+**PR**: #845 | **Files**: `frontend/src/routes/+page.svelte`, `frontend/src/lib/components/calendar/FigmaTextDay.svelte`, `frontend/src/lib/analytics/posthog.ts`, `frontend/test-all.spec.ts`, `frontend/tests/mobile.spec.ts`
 - The homepage opens on the first day of poster cards again. The STARTING SOON strip from #762 is gone, with its once-a-minute clock and `.soon` CSS.
 - `FigmaTextDay` drops the `until`, `limit`, `label` and `source` props that only the strip used. TEXT mode is unchanged.
 - `calendar-soon` leaves `DiscoverySource`, and the strip's desktop and iPhone E2E tests are removed.

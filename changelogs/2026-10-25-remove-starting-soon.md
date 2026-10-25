@@ -1,6 +1,6 @@
 # Remove the homepage STARTING SOON strip
 
-**PR**: #TBD
+**PR**: #845
 **Date**: 2026-10-25
 
 ## Changes
