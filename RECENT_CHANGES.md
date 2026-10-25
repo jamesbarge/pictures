@@ -1,5 +1,5 @@
 ## 2026-10-25: Season subtitles, BFI intro credits, Trans Awareness dash
-**PR**: #XX | **Files**: `src/scrapers/utils/film-title-cleaner.ts`, `src/scrapers/cinemas/bfi.ts`, `src/scrapers/utils/screening-classification.ts`
+**PR**: #844 | **Files**: `src/scrapers/utils/film-title-cleaner.ts`, `src/scrapers/cinemas/bfi.ts`, `src/scrapers/utils/screening-classification.ts`
 - `Heated Rivalry: Season One All-Dayer` stays whole. The colon cleaner was treating the show name as a strand and storing `Season One All-Dayer`.
 - BFI no longer stores `Be My Baby + intro by programmer Anton Bitel` as a director. A stats-line credit is unchanged.
 - Castle's `Ponyboi - Trans Awareness programme 2026` stores `Ponyboi`, with the strand as the screening note.
