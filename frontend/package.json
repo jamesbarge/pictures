@@ -30,7 +30,7 @@
 	"dependencies": {
 		"@sveltejs/adapter-vercel": "^6.3.4",
 		"bits-ui": "^2.19.5",
-		"maplibre-gl": "^5.21.1",
+		"maplibre-gl": "^6.12.0",
 		"minisearch": "^7.2.0",
 		"posthog-js": "^1.438.7",
 		"web-vitals": "^6.2.3"
