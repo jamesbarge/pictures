@@ -15,6 +15,7 @@ import {
 } from "@/lib/event-classifier";
 import type { EventType, ScreeningFormat } from "@/types/screening";
 import type { RawScreening } from "../types";
+import { listingEventNote } from "./film-title-cleaner";
 
 // ============================================================================
 // Screening Metadata
@@ -105,6 +106,14 @@ export async function classifyScreening(
     } catch (error) {
       console.warn(`[Pipeline] Accessibility classification failed:`, error);
     }
+  }
+
+  // A preview or festival label peeled off the title is the screening note.
+  // Applied when the scraper left the note empty, including when it already
+  // named the event type (BFI sets "preview" and used to drop the label).
+  if (!eventDescription) {
+    const note = listingEventNote(screening.filmTitle);
+    if (note) eventDescription = note;
   }
 
   return {
