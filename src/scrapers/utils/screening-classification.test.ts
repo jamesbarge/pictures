@@ -31,6 +31,29 @@ describe("classifyScreening: scraper-supplied event type", () => {
   });
 });
 
+describe("classifyScreening: Trans Awareness programme strand", () => {
+  it("keeps Castle's strand as the note and leaves the film title to the cleaner", async () => {
+    const metadata = await classifyScreening({
+      filmTitle: "Ponyboi - Trans Awareness programme 2026",
+      datetime: new Date("2026-11-08T11:00:00Z"),
+      bookingUrl: "https://thecastlecinema.com/bookings/17938/",
+    });
+
+    expect(metadata.eventDescription).toBe("Trans Awareness programme 2026");
+  });
+
+  it("does not replace a note the scraper already supplied", async () => {
+    const metadata = await classifyScreening({
+      filmTitle: "Ponyboi - Trans Awareness programme 2026",
+      datetime: new Date("2026-11-08T11:00:00Z"),
+      bookingUrl: "https://thecastlecinema.com/bookings/17938/",
+      eventDescription: "Sold out",
+    });
+
+    expect(metadata.eventDescription).toBe("Sold out");
+  });
+});
+
 describe("classifyScreening: accessibility in the title", () => {
   const disclosure =
     "Disclosure Day (with subtitles for the D/deaf and those experiencing hearing loss)";

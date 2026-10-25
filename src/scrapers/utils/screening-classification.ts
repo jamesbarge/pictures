@@ -15,6 +15,7 @@ import {
 } from "@/lib/event-classifier";
 import type { EventType, ScreeningFormat } from "@/types/screening";
 import type { RawScreening } from "../types";
+import { programmeStrandNote } from "./film-title-cleaner";
 
 // ============================================================================
 // Screening Metadata
@@ -105,6 +106,14 @@ export async function classifyScreening(
     } catch (error) {
       console.warn(`[Pipeline] Accessibility classification failed:`, error);
     }
+  }
+
+  // Castle appends " - Trans Awareness programme 2026" to the film. The
+  // cleaner peels it off the title; the strand is the screening note when
+  // the scraper did not already supply one.
+  if (!eventDescription) {
+    const note = programmeStrandNote(screening.filmTitle);
+    if (note) eventDescription = note;
   }
 
   return {

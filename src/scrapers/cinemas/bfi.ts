@@ -145,6 +145,24 @@ export function isUnambiguous24hClock(value: string): boolean {
   return m !== null;
 }
 
+/**
+ * Drop a BFI credit that is the listing line copied into directors.
+ *
+ * "Be My Baby + intro by programmer Anton Bitel" has no comma, so
+ * parseFilmMetadata returns the whole line. A real name from a stats line
+ * ("Greta Gerwig, USA, 2019, 135m.") has neither a colon nor a plus.
+ */
+export function bfiDirectorCredit(
+  director: string | undefined,
+  rawTitle: string,
+): string | undefined {
+  if (!director) return undefined;
+  const credit = director.trim();
+  if (!credit || credit === rawTitle.trim()) return undefined;
+  if (/[:+]/.test(credit)) return undefined;
+  return credit;
+}
+
 
 export class BFIScraper {
   private venue: BFIVenueConfig;
@@ -386,6 +404,11 @@ export class BFIScraper {
 
       const cleanTitle = this.cleanTitle(rawTitle);
       const metadata = parseFilmMetadata(rawTitle);
+      // A listing line is not a person. "Be My Baby + intro by programmer
+      // Anton Bitel" was stored as the film's only director, because the
+      // metadata parser treats a comma-less string as a credit. A stats line
+      // ("Greta Gerwig, USA, 2019, 135m.") still yields the name before the comma.
+      const director = bfiDirectorCredit(metadata.director, rawTitle);
 
       // Canonical, path-agnostic sourceId (see buildBfiSourceId): identical
       // shape across Playwright/PDF/changes so a path flip cannot duplicate,
@@ -402,7 +425,7 @@ export class BFIScraper {
         availabilityStatus,
         sourceId,
         year: metadata.year,
-        director: metadata.director,
+        director,
         ...FestivalDetector.detect(this.config.cinemaId, cleanTitle, datetime, bookingUrl),
       });
     }

@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   cleanFilmTitle,
   cleanFilmTitleWithMetadata,
+  programmeStrandNote,
   EVENT_PREFIXES,
   extractEnglishFromBracket,
   getKnownNonFilmTypeFromEntries,
@@ -835,6 +836,8 @@ describe("2026-10-04 unmatched-coverage decorations", () => {
       { input: "Wicker - Preview", cleaned: "Wicker" },
       { input: "Sinners - Black History Month 2026", cleaned: "Sinners" },
       { input: "Wolfwalkers I Trans Awareness programme 2026", cleaned: "Wolfwalkers" },
+      { input: "Ponyboi - Trans Awareness programme 2026", cleaned: "Ponyboi" },
+      { input: "Ponyboi – Trans Awareness programme 2026", cleaned: "Ponyboi" },
       { input: "Everything Must Go Edition w/ Bonus Footage", cleaned: "Everything Must Go" },
       { input: "Donnie Darko 25th Anniversary", cleaned: "Donnie Darko" },
       { input: "Terminator 2: Judgment Day 35th Anniversary", cleaned: "Terminator 2: Judgment Day" },
@@ -1039,5 +1042,72 @@ describe("colon suffixes that only describe the screening (2026-10-15 run)", () 
     ["Halloween Special: Hocus Pocus", "Hocus Pocus"],
   ])("still strips the event prefix in %s", (raw, expected) => {
     expect(cleanFilmTitle(raw)).toBe(expected);
+  });
+});
+
+describe("25 Oct 2026 listings QA — season subtitles and programme strands", () => {
+  it("keeps Heated Rivalry with its season subtitle", () => {
+    const raw = "Heated Rivalry: Season One All-Dayer";
+    const result = cleanFilmTitleWithMetadata(raw);
+    expect(result.cleanedTitle).toBe("Heated Rivalry: Season One All-Dayer");
+    expect(result.strippedPrefix).toBeNull();
+    expect(result.strippedSuffix).toBeNull();
+    expect(cleanFilmTitle(result.cleanedTitle)).toBe(raw);
+    expect(programmeStrandNote(raw)).toBeNull();
+  });
+
+  it("keeps a season subtitle that also carries a year", () => {
+    const result = cleanFilmTitleWithMetadata("Heated Rivalry: Season One (2026)");
+    expect(result.cleanedTitle).toBe("Heated Rivalry: Season One");
+    expect(result.extractedYear).toBe(2026);
+  });
+
+  it.each([
+    "Blake's 7: Series 3",
+    "Blake's 7: Series 3 + Q&A",
+    "Show Name: Season 2",
+    "Show Name: Season Twelve",
+    "Halloween III: Season of the Witch",
+    "Dracula: Prince of Darkness",
+    "2001: A Space Odyssey",
+  ])("keeps %s", (title) => {
+    const expected = title.endsWith("+ Q&A") ? title.replace(/\s+\+\s+Q&A$/, "") : title;
+    expect(cleanFilmTitle(title)).toBe(expected);
+  });
+
+  it.each([
+    ["2026-27: Macbeth", "Macbeth"],
+    ["Met Opera: Tosca", "Tosca"],
+    ["Mystery Strand: Carrie", "Carrie"],
+    ["Film Club: Restoration", "Restoration"],
+    ["Halloween Special: Hocus Pocus", "Hocus Pocus"],
+  ])("still peels the strand in %s", (raw, expected) => {
+    expect(cleanFilmTitle(raw)).toBe(expected);
+  });
+
+  it("peels Castle's Trans Awareness programme off Ponyboi and keeps it as the note", () => {
+    const raw = "Ponyboi - Trans Awareness programme 2026";
+    const result = cleanFilmTitleWithMetadata(raw);
+    expect(result.cleanedTitle).toBe("Ponyboi");
+    expect(result.strippedSuffix).toBe("- Trans Awareness programme 2026");
+    expect(programmeStrandNote(raw)).toBe("Trans Awareness programme 2026");
+    expect(cleanFilmTitle(result.cleanedTitle)).toBe("Ponyboi");
+  });
+
+  it("peels the en-dash and pipe forms of the same strand", () => {
+    expect(cleanFilmTitle("Ponyboi – Trans Awareness programme 2026")).toBe("Ponyboi");
+    expect(programmeStrandNote("Ponyboi – Trans Awareness programme 2026")).toBe(
+      "Trans Awareness programme 2026",
+    );
+    expect(programmeStrandNote("Wolfwalkers I Trans Awareness programme 2026")).toBe(
+      "Trans Awareness programme 2026",
+    );
+  });
+
+  it("does not take a programme note from an unrelated suffix", () => {
+    expect(programmeStrandNote("Wicker - Preview")).toBeNull();
+    expect(programmeStrandNote("Sinners - Black History Month 2026")).toBeNull();
+    expect(programmeStrandNote("Ponyboi")).toBeNull();
+    expect(cleanFilmTitle("Ponyboi")).toBe("Ponyboi");
   });
 });
