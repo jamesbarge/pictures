@@ -2,35 +2,33 @@ import { test, expect, devices } from '@playwright/test';
 
 import { BASE, dismissConsent } from './base-url';
 
-// The FILTERS button wires its onclick (which lazy-imports MobileFilterSheet)
-// only after Svelte hydrates. Clicking before hydration silently drops the
-// event, so the sheet never opens — flaky on slower engines (webkit). Waiting
-// for the first rendered film card is a reliable "app is interactive" signal.
 async function gotoHomeHydrated(page: import('@playwright/test').Page) {
 	await page.goto(BASE);
 	await page.locator('section.day .film-row article.card').first().waitFor({ timeout: 10000 });
 }
 
-// Hydration-race-proof openers. A single pre-hydration click is silently
-// dropped (the handler isn't wired yet), so we re-click until the target
-// surface actually appears. Playwright's toPass retries the whole block.
-async function openFilterSheet(page: import('@playwright/test').Page) {
-	const sheet = page.getByRole('dialog', { name: 'Filter programme' });
-	await expect(async () => {
-		await page.getByRole('button', { name: 'Open filters' }).click();
-		await expect(sheet).toBeVisible({ timeout: 2000 });
-	}).toPass({ timeout: 15000 });
-	return sheet;
-}
+const burger = (page: import('@playwright/test').Page) =>
+	page.getByRole('button', { name: /^Open menu/ });
 
-// The burger button toggles, so re-clicking would close it again — instead we
-// wait for the app to be interactive (a rendered card) before a single click.
-async function openBurgerMenu(page: import('@playwright/test').Page) {
-	await page.locator('section.day .film-row article.card').first().waitFor({ timeout: 10000 });
-	await page.locator('.mobile-menu-btn').click();
-	const nav = page.locator('.mobile-nav');
-	await expect(nav).toBeVisible();
-	return nav;
+// The burger wires its onclick only after Svelte hydrates, so a pre-hydration
+// press is silently dropped. Re-press until the drawer actually appears; never
+// once it has, since the open drawer covers the burger. `keyboard` opens it as
+// a keyboard user would: WebKit does not focus a tapped button, so only a
+// keyboard open gives the drawer a trigger to hand focus back to.
+async function openDrawer(page: import('@playwright/test').Page, { keyboard = false } = {}) {
+	const drawer = page.getByRole('dialog', { name: 'Menu and filters' });
+	await expect(async () => {
+		if (!(await drawer.isVisible())) {
+			if (keyboard) {
+				await burger(page).focus();
+				await page.keyboard.press('Enter');
+			} else {
+				await burger(page).click();
+			}
+		}
+		await expect(drawer).toBeVisible({ timeout: 2000 });
+	}).toPass({ timeout: 15000 });
+	return drawer;
 }
 
 // Load `path`, let late layout settle, and assert the page never scrolls sideways.
@@ -49,47 +47,43 @@ test.beforeEach(({ context }) => dismissConsent(context));
 test.describe('Mobile Responsive — iPhone 12 Pro (390x844)', () => {
 
 	// ═══════════════════════════════════════════════
-	// HEADER
+	// TOP BAR
 	// ═══════════════════════════════════════════════
 
-	test.describe('Header', () => {
-		test('brand logo fits within the brand link without overflowing the viewport', async ({ page }) => {
+	test.describe('Top bar', () => {
+		test('small logo fits within its home link without overflowing the viewport', async ({ page }) => {
 			await page.goto(BASE);
-			const header = page.getByRole('banner');
-			await expect(header).toBeVisible();
-
-			// The masthead now renders a single <img class="brand-logo"> inside the
-			// home link — the old breathing-grid wordmark is gone.
-			const logo = page.locator('.brand-logo');
-			await expect(logo).toBeVisible();
+			// Below 1024px the sidebar is a closed drawer, so the only visible home
+			// link is the small logo beside ALL / NEW / REP in the top bar.
+			const home = page.getByRole('link', { name: 'pictures london, what’s on' });
+			await expect(home).toBeVisible();
+			await expect(home.locator('img')).toBeVisible();
 
 			const bodyWidth = await page.evaluate(() => document.body.scrollWidth);
 			const viewportWidth = await page.evaluate(() => window.innerWidth);
 			expect(bodyWidth).toBeLessThanOrEqual(viewportWidth + 1);
 
 			// Logo must not spill past its containing home link (no clipping/overflow).
-			const rightOverflow = await page.evaluate(() => {
-				const link = document.querySelector('.brand-link') as HTMLElement | null;
-				const img = document.querySelector('.brand-logo') as HTMLElement | null;
-				if (!link || !img) return null;
-				return img.getBoundingClientRect().right - link.getBoundingClientRect().right;
+			const rightOverflow = await home.evaluate((link) => {
+				const img = link.querySelector('img');
+				return img ? img.getBoundingClientRect().right - link.getBoundingClientRect().right : null;
 			});
 			expect(
 				rightOverflow,
-				`logo extends ${rightOverflow}px past the right edge of brand-link (clipped)`
+				`logo extends ${rightOverflow}px past the right edge of its link (clipped)`
 			).toBeLessThanOrEqual(1);
 		});
 
-		test('sign-in is gone: burger menu has no SIGN IN entry and /sign-in redirects home', async ({ page }) => {
+		test('sign-in is gone: the drawer has no SIGN IN entry and /sign-in redirects home', async ({ page }) => {
 			// /sign-in 307-redirects to the homepage site-wide.
 			const resp = await page.goto(`${BASE}/sign-in`, { waitUntil: 'commit' });
 			await page.waitForURL(`${BASE}/`);
 			expect(resp?.status()).toBeLessThan(400);
 			expect(new URL(page.url()).pathname).toBe('/');
 
-			// The burger menu carries no sign-in link.
-			await openBurgerMenu(page);
-			await expect(page.locator('.mobile-nav-link', { hasText: /sign\s*in/i })).toHaveCount(0);
+			// The drawer carries no sign-in link.
+			const drawer = await openDrawer(page);
+			await expect(drawer.getByRole('link', { name: /sign\s*in/i })).toHaveCount(0);
 			await expect(page.locator('a[href="/sign-in"]')).toHaveCount(0);
 		});
 	});
@@ -110,32 +104,29 @@ test.describe('Mobile Responsive — iPhone 12 Pro (390x844)', () => {
 			expect(text).toMatch(/today|monday|tuesday|wednesday|thursday|friday|saturday|sunday/);
 		});
 
-		test('toolbar segmented controls are visible on mobile', async ({ page }) => {
+		test('top bar keeps ALL / NEW / REP and search on screen', async ({ page }) => {
 			await page.goto(BASE);
-			// Behaviour change: on phone widths the ALL/NEW/REP film-type segment
-			// collapses into the FILTERS sheet (display:none in the toolbar), while
-			// the date-range (TODAY/TOMORROW/THIS WEEK) and display-mode
-			// (POSTERS/TEXT) segments stay on the toolbar. Assert the controls that
-			// remain mobile-visible plus that the FILTERS chip is the entry point.
-			const dateRange = page.getByRole('tablist', { name: 'Date range' });
-			await expect(dateRange.getByRole('tab', { name: 'TODAY', exact: true })).toBeVisible();
-			await expect(dateRange.getByRole('tab', { name: 'TOMORROW', exact: true })).toBeVisible();
-			await expect(dateRange.getByRole('tab', { name: 'THIS WEEK', exact: true })).toBeVisible();
+			// On phone widths the top bar carries the burger, ALL / NEW / REP and
+			// search; the day pills and deeper filters wait in the closed drawer.
+			const programme = page.getByRole('radiogroup', { name: 'Programme' });
+			for (const label of ['All', 'New', 'Rep']) {
+				await expect(programme.getByRole('radio', { name: new RegExp(`^${label}`) })).toBeVisible();
+			}
+			await expect(
+				page.getByRole('searchbox', { name: 'Search films, cinemas and directors' })
+			).toBeVisible();
+			await expect(burger(page)).toBeVisible();
 
-			await expect(page.getByRole('button', { name: 'Open filters' })).toBeVisible();
-
-			// The film-type segment still exists in the DOM, just hidden on phone
-			// (display:none, so it drops out of the a11y tree) — its controls now
-			// live in the FILTERS sheet.
-			const filmType = page.locator('.seg-film-type[aria-label="Film type"]');
-			await expect(filmType).toBeAttached();
-			await expect(filmType).toBeHidden();
+			// The day pills exist in the DOM inside the hidden drawer, out of the
+			// a11y tree until the burger opens it.
+			const days = page.locator('[role="group"][aria-label="Day"]');
+			await expect(days).toBeAttached();
+			await expect(days).toBeHidden();
 		});
 
-		test('toolbar search input is ≥16px (prevents iOS auto-zoom)', async ({ page }) => {
+		test('top bar search input is ≥16px (prevents iOS auto-zoom)', async ({ page }) => {
 			await page.goto(BASE);
-			// Search now lives inline in the FigmaToolbar.
-			const searchInput = page.getByRole('searchbox', { name: 'Search films, directors, cast' });
+			const searchInput = page.getByRole('searchbox', { name: 'Search films, cinemas and directors' });
 			await expect(searchInput).toBeVisible();
 			const fontSize = await searchInput.evaluate(
 				(el) => parseFloat(window.getComputedStyle(el as HTMLElement).fontSize)
@@ -143,56 +134,55 @@ test.describe('Mobile Responsive — iPhone 12 Pro (390x844)', () => {
 			expect(fontSize).toBeGreaterThanOrEqual(16);
 		});
 
-		test('Close button dismisses the filter sheet', async ({ page }) => {
+		test('Done button closes the drawer', async ({ page }) => {
 			await gotoHomeHydrated(page);
-			const sheet = await openFilterSheet(page);
-			await page.getByRole('button', { name: 'Close filters' }).click();
-			await expect(sheet).toBeHidden();
+			const drawer = await openDrawer(page);
+			await drawer.getByRole('button', { name: /^Done/ }).click();
+			await expect(drawer).toBeHidden();
 		});
 
-		test('filter sheet traps focus and restores it to the trigger', async ({ page }) => {
+		test('drawer traps focus and restores it to the burger', async ({ page }) => {
 			await gotoHomeHydrated(page);
-			const trigger = page.getByRole('button', { name: 'Open filters' });
-			const sheet = await openFilterSheet(page);
-			const close = page.getByRole('button', { name: 'Close filters' });
-			const show = sheet.locator('.show');
+			const drawer = await openDrawer(page, { keyboard: true });
+			const first = drawer.getByRole('link', { name: 'pictures london, what’s on' });
+			const done = drawer.getByRole('button', { name: /^Done/ });
 
-			await expect(close).toBeFocused();
+			await expect(first).toBeFocused();
 			await page.keyboard.press('Shift+Tab');
-			await expect(show).toBeFocused();
+			await expect(done).toBeFocused();
 			await page.keyboard.press('Tab');
-			await expect(close).toBeFocused();
+			await expect(first).toBeFocused();
 
-			await close.click();
-			await expect(sheet).toBeHidden();
-			await expect(trigger).toBeFocused();
+			await done.click();
+			await expect(drawer).toBeHidden();
+			await expect(burger(page)).toBeFocused();
 		});
 
-		test('Escape key dismisses the filter sheet', async ({ page }) => {
+		test('Escape key dismisses the drawer', async ({ page }) => {
 			await gotoHomeHydrated(page);
-			const sheet = await openFilterSheet(page);
+			const drawer = await openDrawer(page);
 			await page.keyboard.press('Escape');
-			await expect(sheet).toBeHidden();
+			await expect(drawer).toBeHidden();
 		});
 
-		test('body scroll is locked while filter sheet is open', async ({ page }) => {
+		test('body scroll is locked while the drawer is open', async ({ page }) => {
 			await gotoHomeHydrated(page);
 			const prev = await page.evaluate(() => document.body.style.overflow);
-			const sheet = await openFilterSheet(page);
+			const drawer = await openDrawer(page);
 			const locked = await page.evaluate(() => document.body.style.overflow);
 			expect(locked).toBe('hidden');
-			await page.getByRole('button', { name: 'Close filters' }).click();
-			await expect(sheet).toBeHidden();
+			await drawer.getByRole('button', { name: /^Done/ }).click();
+			await expect(drawer).toBeHidden();
 			const restored = await page.evaluate(() => document.body.style.overflow);
 			expect(restored).toBe(prev);
 		});
 
 		test('cinema search exposes selectable matching cinemas', async ({ page }) => {
 			await gotoHomeHydrated(page);
-			const sheet = await openFilterSheet(page);
-			await sheet.getByRole('searchbox', { name: 'Search cinemas by name' }).fill('Curzon');
+			const drawer = await openDrawer(page);
+			await drawer.getByRole('searchbox', { name: 'Search cinemas or areas' }).fill('Curzon');
 
-			const results = sheet.locator('.cinema-results .chip');
+			const results = drawer.locator('.results .chip');
 			await expect(results.first()).toBeVisible();
 			expect(await results.count()).toBeGreaterThan(0);
 
@@ -203,10 +193,10 @@ test.describe('Mobile Responsive — iPhone 12 Pro (390x844)', () => {
 			await expect(results.first()).toHaveAttribute('aria-pressed', 'true');
 		});
 
-		test('Pick a date chip inside sheet opens mobile date picker', async ({ page }) => {
+		test('Pick a date inside the drawer opens the date picker over it', async ({ page }) => {
 			await gotoHomeHydrated(page);
-			const sheet = await openFilterSheet(page);
-			const trigger = sheet.getByRole('button', { name: 'Pick a date' });
+			const drawer = await openDrawer(page);
+			const trigger = drawer.getByRole('button', { name: 'Pick a date' });
 			await trigger.click();
 
 			const datePicker = page.getByRole('dialog', { name: 'Pick a date' });
@@ -216,7 +206,7 @@ test.describe('Mobile Responsive — iPhone 12 Pro (390x844)', () => {
 			await page.keyboard.press('Escape');
 			await expect(datePicker).toBeHidden();
 			await expect(trigger).toBeFocused();
-			await expect(sheet).toBeVisible();
+			await expect(drawer).toBeVisible();
 		});
 	});
 
@@ -316,20 +306,21 @@ test.describe('Mobile Responsive — iPhone 12 Pro (390x844)', () => {
 	// ═══════════════════════════════════════════════
 
 	test.describe('Mobile Navigation', () => {
-		test('hamburger menu opens and shows nav links', async ({ page }) => {
+		test('burger opens the drawer and shows nav links', async ({ page }) => {
 			await page.goto(BASE);
-			await openBurgerMenu(page);
+			const drawer = await openDrawer(page);
 
-			await expect(page.locator('.mobile-nav-link').filter({ hasText: 'ABOUT' })).toBeVisible();
-			await expect(page.locator('.mobile-nav-link').filter({ hasText: 'MAP' })).toBeVisible();
-			await expect(page.locator('.mobile-nav-link').filter({ hasText: 'REACHABLE' })).toBeVisible();
+			const nav = drawer.getByRole('navigation', { name: 'Main' });
+			for (const name of ['What’s on', 'Cinemas', 'Reachable', 'Watchlist']) {
+				await expect(nav.getByRole('link', { name, exact: true })).toBeVisible();
+			}
 		});
 
-		test('mobile nav links have adequate touch targets (44px min)', async ({ page }) => {
+		test('drawer nav links have adequate touch targets (44px min)', async ({ page }) => {
 			await page.goto(BASE);
-			await openBurgerMenu(page);
+			const drawer = await openDrawer(page);
 
-			const links = page.locator('.mobile-nav-link');
+			const links = drawer.getByRole('navigation', { name: 'Main' }).getByRole('link');
 			const count = await links.count();
 			expect(count).toBeGreaterThan(0);
 
@@ -339,13 +330,14 @@ test.describe('Mobile Responsive — iPhone 12 Pro (390x844)', () => {
 			}
 		});
 
-		test('hamburger menu closes after navigation', async ({ page }) => {
+		test('drawer closes after navigation', async ({ page }) => {
 			await page.goto(BASE);
-			await openBurgerMenu(page);
+			const drawer = await openDrawer(page);
 
-			await page.locator('.mobile-nav-link').filter({ hasText: 'ABOUT' }).click();
+			await drawer.getByRole('navigation', { name: 'More' }).getByRole('link', { name: 'About' }).click();
 			await page.waitForURL(/\/about/);
-			await expect(page.locator('.mobile-nav')).not.toBeVisible();
+			await expect(drawer).toBeHidden();
+			await expect(page.locator('#site-sidebar')).toBeHidden();
 		});
 	});
 

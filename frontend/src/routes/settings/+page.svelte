@@ -36,14 +36,6 @@
 			/>
 		</div>
 
-		<!-- Theme -->
-		<div class="setting-row">
-			<div class="setting-info">
-				<h2 class="setting-label">THEME</h2>
-				<p class="setting-desc">Use the House Lights dimmer in the header to adjust brightness</p>
-			</div>
-		</div>
-
 		<!-- Not Interested -->
 		<div class="setting-row">
 			<div class="setting-info">

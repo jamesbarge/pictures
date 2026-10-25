@@ -2,26 +2,27 @@ import { test, expect, type Locator, type Page } from '@playwright/test';
 
 import { BASE, dismissConsent } from './tests/base-url';
 
-// Open a toolbar Dropdown (WHERE / FORMAT / the WHEN custom-date control) and
-// wait for its `role="group"` panel to appear. The Dropdown registers a
-// capture-phase document click-listener the moment it opens, so under the
-// mobile-small project's touch emulation the very tap that opened the panel can
-// be re-read as an outside-click and close it again. Re-tapping via toPass()
-// absorbs that race without weakening the assertion — the panel MUST end up
-// open. Desktop chromium opens first try and skips the retry.
-async function openToolbarPanel(page: Page, trigger: Locator, panelName: string) {
-	const panel = page.getByRole('group', { name: panelName });
+// Turn a sidebar control on: a Programme or View radio (`aria-checked`) or a
+// toggle chip (`aria-pressed`). Handlers are wired only after hydration, so a
+// click that lands first is silently dropped; re-click until the state flips.
+// Never re-clicks once on, because the Day pills and chips toggle back off.
+async function switchOn(control: Locator, attr: 'aria-checked' | 'aria-pressed') {
 	await expect(async () => {
-		if (!(await panel.isVisible())) await trigger.click();
-		await expect(panel).toBeVisible({ timeout: 1000 });
+		if ((await control.getAttribute(attr)) !== 'true') await control.click();
+		await expect(control).toHaveAttribute(attr, 'true', { timeout: 1000 });
 	}).toPass({ timeout: 8000 });
-	return panel;
 }
 
-// This spec covers desktop-first UX — force a desktop viewport so the desktop
-// shell (the FigmaToolbar filter bar, poster card grid, split header masthead)
-// is the one being asserted regardless of which project runs the file (e.g.
-// the mobile-small device project).
+const programme = (page: Page) => page.getByRole('radiogroup', { name: 'Programme' });
+// Radio names carry the live count ("Rep 214"), so match the label prefix.
+const programmeRadio = (page: Page, label: 'All' | 'New' | 'Rep') =>
+	programme(page).getByRole('radio', { name: new RegExp(`^${label}`) });
+const textView = (page: Page) => page.getByRole('radio', { name: 'Text view', exact: true });
+
+// This spec covers desktop-first UX — force a desktop viewport so the open
+// sidebar (filters beside the poster card grid) is the one being asserted
+// regardless of which project runs the file (e.g. the mobile-small device
+// project).
 test.use({ viewport: { width: 1440, height: 900 } });
 
 // Dismiss cookie consent before every test so assertions aren't blocked by
@@ -32,7 +33,7 @@ test.beforeEach(({ context }) => dismissConsent(context));
 test.describe('Pictures London — SvelteKit Frontend', () => {
 
 	// ═══════════════════════════════════════════════
-	// HOMEPAGE (Spline redesign — FigmaToolbar + poster cards)
+	// HOMEPAGE (sidebar filters + poster cards)
 	// ═══════════════════════════════════════════════
 
 	test.describe('Homepage', () => {
@@ -60,12 +61,11 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 			expect(text).toMatch(/today|monday|tuesday|wednesday|thursday|friday|saturday|sunday/);
 		});
 
-		test('shows date-range tablist with Today tab', async ({ page }) => {
+		test('shows the Day pills with Today', async ({ page }) => {
 			await page.goto(BASE);
-			// The day-strip date controls were replaced by the toolbar's
-			// "Date range" tablist (TODAY / TOMORROW / THIS WEEK).
-			const tablist = page.locator('[role="tablist"][aria-label="Date range"]');
-			await expect(tablist.getByRole('tab', { name: 'TODAY', exact: true })).toBeVisible();
+			// The sidebar's "Day" group (Today / Tomorrow / This week + calendar).
+			const days = page.getByRole('group', { name: 'Day' });
+			await expect(days.getByRole('button', { name: 'Today', exact: true })).toBeVisible();
 		});
 
 		test('listings default to a rolling multi-day window from today onwards', async ({ page }) => {
@@ -103,13 +103,13 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 				`expected no screening before ${today} (London); ${beforeToday.length} leaked: ${beforeToday.slice(0, 3).join(', ')}`
 			).toEqual([]);
 
-			// Click the toolbar's TOMORROW date-range tab — the rolling window now
-			// anchors to tomorrow only. Every visible screening must resolve to a
-			// London date > today (no past leakage).
-			await page
-				.locator('[role="tablist"][aria-label="Date range"]')
-				.getByRole('tab', { name: 'TOMORROW', exact: true })
-				.click();
+			// Press the sidebar's Tomorrow pill — the rolling window now anchors to
+			// tomorrow only. Every visible screening must resolve to a London
+			// date > today (no past leakage).
+			await switchOn(
+				page.getByRole('group', { name: 'Day' }).getByRole('button', { name: 'Tomorrow', exact: true }),
+				'aria-pressed'
+			);
 			await page.waitForTimeout(400);
 			const after = await collectDates();
 			if (after.length > 0) {
@@ -117,7 +117,7 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 				const earliest = [...dates].sort()[0];
 				expect(
 					earliest > today,
-					`after selecting the TOMORROW tab, earliest visible date should be > today (${today}), got ${earliest}`
+					`after selecting Tomorrow, earliest visible date should be > today (${today}), got ${earliest}`
 				).toBe(true);
 			}
 		});
@@ -125,61 +125,57 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 		test('custom-date control opens the calendar popover', async ({ page }) => {
 			await page.goto(BASE);
 			await page.waitForSelector('article.card', { timeout: 10000 });
-			// The day-strip "Pick date" button was replaced by the toolbar's
-			// custom-date control: a calendar-icon tab in the "Date range" group
-			// that opens a "Pick date" panel, from which OPEN CALENDAR reveals the
-			// month grid.
-			await openToolbarPanel(
-				page,
-				page.getByRole('button', { name: 'Pick a custom date' }),
-				'Pick date'
-			);
-			await page.getByRole('button', { name: 'OPEN CALENDAR' }).click();
-			await expect(page.locator('.cal-grid')).toBeVisible();
-			await expect(page.getByRole('button', { name: 'Previous month' })).toBeVisible();
+			// The calendar button at the end of the Day pills opens the month grid
+			// in a "Pick a date" dialog. Re-click until it opens: a click before
+			// hydration is dropped.
+			const picker = page.getByRole('dialog', { name: 'Pick a date' });
+			await expect(async () => {
+				if (!(await picker.isVisible())) await page.getByRole('button', { name: 'Pick a date' }).click();
+				await expect(picker).toBeVisible({ timeout: 1000 });
+			}).toPass({ timeout: 8000 });
+			await expect(picker.locator('.cal-grid')).toBeVisible();
+			await expect(picker.getByRole('button', { name: 'Previous month' })).toBeVisible();
 		});
 
-		test('clicking the wordmark logo navigates home', async ({ page }) => {
-			// The BreathingGrid wordmark is gone from the homepage; the masthead
-			// logo is now the home affordance. Verify it carries the home a11y
-			// label and routes home from another page.
+		test('clicking the sidebar logo navigates home', async ({ page }) => {
+			// The logo at the top of the sidebar is the home affordance. Verify it
+			// carries the home a11y label and routes home from another page.
 			await page.goto(`${BASE}/about`);
-			const home = page.locator('[aria-label="pictures london — home"]');
+			const home = page.getByRole('link', { name: 'pictures london, what’s on' });
 			await expect(home).toBeVisible();
 			await home.click();
 			await expect(page).toHaveURL(BASE + '/');
 		});
 
-		test('toolbar exposes the filter controls', async ({ page }) => {
+		test('sidebar exposes the filter controls', async ({ page }) => {
 			await page.goto(BASE);
-			// The homepage filter sidebar was replaced by the FigmaToolbar. Assert
-			// its accessible shape: the search input, the WHERE / FORMAT chip
-			// panels, and the date/film-type/display tablists.
-			const toolbar = page.getByRole('toolbar', { name: 'Film filters' });
-			await expect(toolbar).toBeVisible();
+			// Every homepage filter lives in the sidebar, open beside the grid at
+			// desktop width. Assert its accessible shape: search, programme, day
+			// pills, the filter sections and the view switch.
+			const sidebar = page.getByRole('complementary', { name: 'Menu and filters' });
+			await expect(sidebar).toBeVisible();
 			await expect(
-				toolbar.getByRole('searchbox', { name: 'Search films, directors, cast' })
+				sidebar.getByRole('searchbox', { name: 'Search films, cinemas and directors' })
 			).toBeVisible();
-			await expect(page.locator('[role="tablist"][aria-label="Date range"]')).toBeVisible();
-			await expect(page.locator('[role="tablist"][aria-label="Film type"]')).toBeVisible();
-			await expect(page.locator('[role="tablist"][aria-label="Display mode"]')).toBeVisible();
-			await expect(toolbar.locator('button.chip', { hasText: 'WHERE' })).toBeVisible();
-			await expect(toolbar.locator('button.chip', { hasText: 'FORMAT' })).toBeVisible();
+			await expect(sidebar.getByRole('radiogroup', { name: 'Programme' })).toBeVisible();
+			await expect(sidebar.getByRole('group', { name: 'Day' })).toBeVisible();
+			for (const name of ['Time of day', 'Where', 'Format', 'Genre', 'Era']) {
+				await expect(sidebar.getByRole('region', { name, exact: true })).toBeVisible();
+			}
+			await expect(sidebar.getByRole('radiogroup', { name: 'View' })).toBeVisible();
 		});
 
-		test('ALL / NEW / REP film-type tabs visible', async ({ page }) => {
+		test('ALL / NEW / REP programme radios visible', async ({ page }) => {
 			await page.goto(BASE);
-			const tablist = page.locator('[role="tablist"][aria-label="Film type"]');
-			await expect(tablist.getByRole('tab', { name: 'ALL', exact: true })).toBeVisible();
-			await expect(tablist.getByRole('tab', { name: 'NEW', exact: true })).toBeVisible();
-			await expect(tablist.getByRole('tab', { name: 'REP', exact: true })).toBeVisible();
+			for (const label of ['All', 'New', 'Rep'] as const) {
+				await expect(programmeRadio(page, label)).toBeVisible();
+			}
 		});
 
-		test('REP tab filters to repertory-only films', async ({ page }) => {
+		test('REP filters to repertory-only films', async ({ page }) => {
 			await page.goto(BASE);
 			await page.waitForSelector('article.card', { timeout: 10000 });
 
-			const filmType = page.locator('[role="tablist"][aria-label="Film type"]');
 			const titles = () => page.locator('article.card h3.title').allTextContents();
 
 			// NOTE: a raw count comparison (rep <= all) no longer holds. The
@@ -189,14 +185,12 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 			// The windowing-independent invariant is that REP and NEW partition
 			// the catalogue: a repertory film is never a new release, so the two
 			// filtered title sets must be disjoint.
-			await filmType.getByRole('tab', { name: 'REP', exact: true }).click();
-			await expect(filmType.locator('[role="tab"][aria-selected="true"]')).toHaveText('REP');
+			await switchOn(programmeRadio(page, 'Rep'), 'aria-checked');
 			await page.waitForTimeout(500);
 			const repTitles = await titles();
 			expect(repTitles.length).toBeGreaterThan(0);
 
-			await filmType.getByRole('tab', { name: 'NEW', exact: true }).click();
-			await expect(filmType.locator('[role="tab"][aria-selected="true"]')).toHaveText('NEW');
+			await switchOn(programmeRadio(page, 'New'), 'aria-checked');
 			await page.waitForTimeout(500);
 			const newTitles = new Set(await titles());
 
@@ -213,7 +207,7 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 			// updated to the new film set but <img src> attributes stayed bound
 			// to the SSR'd "All" view's films. This test loads the page with a
 			// New filter persisted in localStorage and confirms each card's
-			// poster URL matches the title set produced by clicking the tab.
+			// poster URL matches the title set produced by picking New.
 
 			const readPairs = () =>
 				page.evaluate(() =>
@@ -223,13 +217,10 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 					}))
 				);
 
-			const filmType = page.locator('[role="tablist"][aria-label="Film type"]');
-
-			// Capture title→poster pairs from clicking the NEW tab on a fresh page.
+			// Capture title→poster pairs from picking New on a fresh page.
 			await page.goto(BASE);
 			await page.waitForSelector('article.card', { timeout: 10000 });
-			await filmType.getByRole('tab', { name: 'NEW', exact: true }).click();
-			await expect(filmType.locator('[role="tab"][aria-selected="true"]')).toHaveText('NEW');
+			await switchOn(programmeRadio(page, 'New'), 'aria-checked');
 			await page.waitForTimeout(800);
 			const expected = await readPairs();
 			expect(expected.length).toBe(5);
@@ -259,7 +250,7 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 			});
 			await page.goto(BASE);
 			await page.waitForSelector('article.card', { timeout: 10000 });
-			await expect(filmType.locator('[role="tab"][aria-selected="true"]')).toHaveText('NEW');
+			await expect(programmeRadio(page, 'New')).toHaveAttribute('aria-checked', 'true');
 			// Poll for the deferred persisted-state apply to settle.
 			await expect.poll(readPairs, { timeout: 5000 }).toEqual(expected);
 		});
@@ -268,15 +259,16 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 			await page.goto(BASE);
 			await page.waitForSelector('article.card', { timeout: 10000 });
 			const allCount = await page.locator('article.card').count();
-			// The Soho/West End area-cluster chip lived in the old sidebar; the
-			// redesign moves location filtering into the toolbar's WHERE chip,
-			// which opens a panel of per-cinema checkboxes grouped by area.
-			const wherePanel = await openToolbarPanel(
-				page,
-				page.locator('button.chip', { hasText: 'WHERE' }),
-				'Where'
-			);
-			await wherePanel.locator('.checkbox-row').first().click();
+			// The sidebar's Where section finds a cinema by name and selects it.
+			// Re-fill until results show: input before hydration never reaches
+			// the bound state.
+			const where = page.getByRole('region', { name: 'Where', exact: true });
+			const results = where.locator('.results .chip');
+			await expect(async () => {
+				await where.getByRole('searchbox', { name: 'Search cinemas or areas' }).fill('Curzon');
+				await expect(results.first()).toBeVisible({ timeout: 1000 });
+			}).toPass({ timeout: 8000 });
+			await switchOn(results.first(), 'aria-pressed');
 			await page.waitForTimeout(500);
 			const filteredCount = await page.locator('article.card').count();
 			// Skip the assertion when the data can't actually exhibit narrowing —
@@ -301,25 +293,21 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 				(await page.locator('article.card').filter({ hasText: '35MM' }).count()) > 0;
 			test.skip(!hasAny35mm, 'no 35mm films currently visible on homepage');
 			const allCount = await page.locator('article.card').count();
-			// Open via the shared helper so a click that lands before the toolbar
-			// hydrates is retried rather than lost.
-			const formatPanel = await openToolbarPanel(
-				page,
-				page.locator('button.chip', { hasText: 'FORMAT' }),
-				'Format'
+			await switchOn(
+				page
+					.getByRole('region', { name: 'Format', exact: true })
+					.getByRole('button', { name: '35MM', exact: true }),
+				'aria-pressed'
 			);
-			// Click the visible row, not the checkbox: the input is `.sr-only` and
-			// the painted `.checkbox-box` span intercepts the pointer, so targeting
-			// the input directly can never land. This mirrors the WHERE test above.
-			await formatPanel.locator('.checkbox-row').filter({ hasText: '35MM' }).first().click();
 			await page.waitForTimeout(500);
 			const filteredCount = await page.locator('article.card').count();
 			expect(filteredCount).toBeLessThan(allCount);
 		});
 
 		test('search matches film titles', async ({ page }, testInfo) => {
-			// Unlike the desktop-toolbar tests above, exercise this input at the
-			// mobile project's real viewport as well as the desktop viewport.
+			// Unlike the desktop-sidebar tests above, exercise this input at the
+			// mobile project's real viewport (the top bar's search) as well as the
+			// desktop viewport (the sidebar's).
 			if (testInfo.project.use.viewport) await page.setViewportSize(testInfo.project.use.viewport);
 			await page.goto(BASE);
 			const cards = page.getByRole('article');
@@ -327,7 +315,7 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 			const title = await cards.first().getAttribute('aria-label');
 			expect(title, 'a loaded film provides the positive search case').toBeTruthy();
 			const matchingFilm = page.getByRole('article', { name: title!, exact: true }).first();
-			const search = page.getByRole('searchbox', { name: 'Search films, directors, cast' });
+			const search = page.getByRole('searchbox', { name: 'Search films, cinemas and directors' });
 			const noMatch = '__pictures_e2e_nonexistent_film__';
 
 			// Filtering can ADD visible cards: the rolling calendar includes more
@@ -365,7 +353,7 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 				.filter({ hasText: /Prince Charles/i })
 				.count();
 			test.skip(baselinePcc === 0, 'no Prince Charles films on homepage right now');
-			await page.getByRole('searchbox', { name: 'Search films, directors, cast' }).fill('Prince Charles');
+			await page.getByRole('searchbox', { name: 'Search films, cinemas and directors' }).fill('Prince Charles');
 			await page.waitForTimeout(400);
 			// Every visible card should have at least one Prince Charles screening
 			const count = await page.locator('article.card').count();
@@ -375,17 +363,14 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 		});
 
 		test('display-mode toggle switches between posters and text', async ({ page }) => {
-			// Replaces the old sidebar collapse/persist test. The homepage filter
-			// sidebar no longer exists; the toolbar's "Display mode" tablist now
-			// owns the POSTERS/TEXT view switch. POSTERS renders poster cards,
-			// TEXT renders the screenings table.
+			// The sidebar's "View" radiogroup owns the poster/text switch. Poster
+			// view renders poster cards, Text view renders the screenings table.
 			await page.goto(BASE);
 			await page.waitForSelector('article.card', { timeout: 10000 });
-			const displayMode = page.locator('[role="tablist"][aria-label="Display mode"]');
-			await displayMode.getByRole('tab', { name: 'TEXT', exact: true }).click();
+			await switchOn(textView(page), 'aria-checked');
 			await expect(page.getByRole('table', { name: 'Screenings list' }).first()).toBeVisible();
 			await expect(page.locator('article.card')).toHaveCount(0);
-			await displayMode.getByRole('tab', { name: 'POSTERS', exact: true }).click();
+			await switchOn(page.getByRole('radio', { name: 'Poster view', exact: true }), 'aria-checked');
 			await expect(page.locator('article.card').first()).toBeVisible();
 		});
 
@@ -427,28 +412,21 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 			const firstDayBox = (await page.locator('section.day').first().boundingBox())!;
 			expect(stripBox.y).toBeLessThan(firstDayBox.y);
 
-			// TEXT mode is already a timetable, so the strip steps aside. The tab's
-			// onclick is wired only after hydration, so retry the click.
+			// TEXT mode is already a timetable, so the strip steps aside. The
+			// radio's onclick is wired only after hydration, so retry the click.
 			await expect(async () => {
-				await page
-					.getByRole('tablist', { name: 'Display mode' })
-					.getByRole('tab', { name: 'TEXT', exact: true })
-					.click();
+				await textView(page).click();
 				await expect(strip).toHaveCount(0, { timeout: 2000 });
 			}).toPass({ timeout: 20000 });
 		});
 
-		test('House lights dimmer label is visible', async ({ page }) => {
+		test('sidebar More nav carries About, Privacy and Terms', async ({ page }) => {
+			// The footer's links moved to the foot of the sidebar.
 			await page.goto(BASE);
-			await expect(page.getByText('house lights')).toBeVisible();
-		});
-
-		test('footer is visible with correct links', async ({ page }) => {
-			await page.goto(BASE);
-			await expect(page.locator('footer')).toBeVisible();
-			await expect(page.locator('footer').getByText('about')).toBeVisible();
-			await expect(page.locator('footer').getByText('privacy')).toBeVisible();
-			await expect(page.locator('footer').getByText('terms')).toBeVisible();
+			const more = page.getByRole('navigation', { name: 'More' });
+			for (const name of ['About', 'Privacy', 'Terms']) {
+				await expect(more.getByRole('link', { name, exact: true })).toBeVisible();
+			}
 		});
 	});
 
@@ -457,19 +435,59 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 	// ═══════════════════════════════════════════════
 
 	test.describe('Navigation', () => {
-		test('header nav links are visible at desktop width', async ({ page }) => {
+		test('sidebar nav links are visible at desktop width', async ({ page }) => {
 			await page.goto(BASE);
-			const nav = page.locator('nav[aria-label="Main"]');
-			await expect(nav.getByRole('link', { name: 'About' })).toBeVisible();
-			await expect(nav.getByRole('link', { name: 'Map' })).toBeVisible();
-			await expect(nav.getByRole('link', { name: 'Reachable' })).toBeVisible();
-			await expect(nav.getByRole('link', { name: 'Watchlist' })).toBeVisible();
+			const nav = page.getByRole('navigation', { name: 'Main' });
+			for (const name of ['What’s on', 'Cinemas', 'Reachable', 'Watchlist']) {
+				await expect(nav.getByRole('link', { name, exact: true })).toBeVisible();
+			}
+			await expect(nav.getByRole('link', { name: 'What’s on' })).toHaveAttribute('aria-current', 'page');
 		});
 
-		test('footer about link navigates to about page', async ({ page }) => {
+		test('sidebar about link navigates to about page', async ({ page }) => {
 			await page.goto(BASE);
-			await page.locator('footer a[href="/about"]').click();
+			await page.getByRole('navigation', { name: 'More' }).getByRole('link', { name: 'About' }).click();
 			await expect(page).toHaveURL(`${BASE}/about`);
+		});
+
+		test('sidebar collapses to the burger, and the choice survives a reload', async ({ page }) => {
+			// At desktop width the sidebar sits beside the page; Hide menu folds it
+			// into the top bar's burger and stores the choice in
+			// `pictures-sidebar-collapsed`. Focus follows to the counterpart control.
+			await page.goto(BASE);
+			await page.waitForSelector('article.card', { timeout: 10000 });
+			const sidebar = page.getByRole('complementary', { name: 'Menu and filters' });
+			const hide = page.getByRole('button', { name: 'Hide menu' });
+			const burger = page.getByRole('button', { name: /^Open menu/ });
+			const stored = () => page.evaluate(() => localStorage.getItem('pictures-sidebar-collapsed'));
+			await expect(sidebar).toBeVisible();
+			await expect(burger).toBeHidden();
+
+			// Retry: a click before hydration is dropped.
+			await expect(async () => {
+				if (await hide.isVisible()) await hide.click();
+				await expect(sidebar).toBeHidden({ timeout: 1000 });
+			}).toPass({ timeout: 8000 });
+			await expect(burger).toBeVisible();
+			await expect(burger).toBeFocused();
+			expect(await stored()).toBe('1');
+
+			await page.reload();
+			await page.waitForSelector('article.card', { timeout: 10000 });
+			await expect(sidebar).toBeHidden();
+			await expect(burger).toBeVisible();
+
+			await expect(async () => {
+				if (await burger.isVisible()) await burger.click();
+				await expect(sidebar).toBeVisible({ timeout: 1000 });
+			}).toPass({ timeout: 8000 });
+			await expect(hide).toBeFocused();
+			expect(await stored()).toBe('0');
+
+			await page.reload();
+			await page.waitForSelector('article.card', { timeout: 10000 });
+			await expect(sidebar).toBeVisible();
+			await expect(burger).toBeHidden();
 		});
 	});
 
@@ -646,7 +664,6 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 			await expect(page.locator('h1')).toContainText('SETTINGS');
 			await expect(page).toHaveTitle(/Settings/);
 			await expect(page.getByText('DEFAULT VIEW')).toBeVisible();
-			await expect(page.getByText('THEME')).toBeVisible();
 			await expect(page.getByText('CLEAR ALL DATA')).toBeVisible();
 		});
 
@@ -873,39 +890,6 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 			expect(Math.abs(hb.x + hb.width - firstRowRight)).toBeLessThanOrEqual(2);
 		});
 
-		test('stays legible with the house lights fully dimmed', async ({ page }) => {
-			// Regression guard for the cream-on-cream class of bug: `.more-rail`
-			// uses var(--color-text)/var(--color-cream), which the DimmerDial
-			// collapses to ~1.05:1 because it lerps one token and not the other.
-			// This marker must use hardcoded hex.
-			await page.addInitScript(() => localStorage.setItem('pictures-dimmer', '1'));
-			await page.goto(BASE);
-			await page.locator('section.day .film-row article.card').first().waitFor({ timeout: 15000 });
-
-			// GUARD: prove the dimmer actually engaged before asserting anything.
-			// Without this the test runs at dimmer 0, where the token pair happens
-			// to equal the hardcoded pair — so it would pass against the very CSS
-			// it claims to reject, and prove nothing at all.
-			await expect(async () => {
-				const lerped = await page.evaluate(() => {
-					const main = document.querySelector('main');
-					return main ? getComputedStyle(main).getPropertyValue('--color-text').trim() : '';
-				});
-				expect(lerped).not.toBe('');
-				expect(lerped).not.toBe('#1f1f1f');
-			}).toPass({ timeout: 10000 });
-
-			const marker = page.locator('article.card .rail-sleeper').first();
-			test.skip((await marker.count()) === 0, 'no sleeper pick in the current window');
-
-			const { bg, fg } = await marker.evaluate((el) => {
-				const s = getComputedStyle(el);
-				return { bg: s.backgroundColor, fg: s.color };
-			});
-			expect(bg).toBe('rgb(31, 31, 31)');
-			expect(fg).toBe('rgb(234, 229, 194)');
-		});
-
 		test('survives the switch to TEXT display mode', async ({ page }) => {
 			await page.goto(BASE);
 			await page.locator('section.day .film-row article.card').first().waitFor({ timeout: 15000 });
@@ -914,17 +898,12 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 				'no sleeper pick in the current window'
 			);
 
-			// The tab's onclick is wired only after hydration, so a single early
-			// click is silently dropped — same race the filter-sheet helpers
-			// absorb at the top of this file.
+			// The radio's onclick is wired only after hydration, so a single early
+			// click is silently dropped — the race `switchOn` absorbs at the top
+			// of this file.
 			const tables = page.getByRole('table', { name: 'Screenings list' });
-			await expect(async () => {
-				await page
-					.getByRole('tablist', { name: 'Display mode' })
-					.getByRole('tab', { name: 'TEXT', exact: true })
-					.click();
-				await expect(tables.first()).toBeVisible({ timeout: 2000 });
-			}).toPass({ timeout: 20000 });
+			await switchOn(textView(page), 'aria-checked');
+			await expect(tables.first()).toBeVisible();
 
 			// One chip per day at most — never once per screening of the same film.
 			for (let i = 0; i < (await tables.count()); i++) {

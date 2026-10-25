@@ -27,8 +27,8 @@
 		bottom: 0;
 		left: 0;
 		right: 0;
-		/* Above page chrome (header 40, dimmer 60) but BELOW modal layers
-		   (MobileFilterSheet 80, palette 90+) — at 9999 the banner sat over
+		/* Above page chrome (top bar 30) but BELOW modal layers
+		   (sidebar drawer 80, palette 90+) — at 9999 the banner sat over
 		   the filter sheet's footer and stole taps from its primary CTA. */
 		z-index: 70;
 		display: flex;

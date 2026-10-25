@@ -1,9 +1,9 @@
 <script lang="ts">
 	import FigmaFilmCard from '$lib/components/calendar/FigmaFilmCard.svelte';
 	import FigmaTextDay from '$lib/components/calendar/FigmaTextDay.svelte';
-	import FigmaToolbar, { type DisplayMode } from '$lib/components/filters/FigmaToolbar.svelte';
-	import DimmerDial from '$lib/components/ui/DimmerDial.svelte';
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
+	import { activeChoices } from '$lib/components/filters/active-choices';
+	import { shell } from '$lib/stores/shell.svelte';
 	import JsonLd from '$lib/seo/JsonLd.svelte';
 	import { webSiteSchema, faqSchema } from '$lib/seo/json-ld';
 	import { filters } from '$lib/stores/filters.svelte';
@@ -19,15 +19,8 @@
 
 	const cinemas = $derived(data.cinemas);
 
-	let mobileFilterOpen = $state(false);
-	let mobileFilterTrigger = $state<HTMLButtonElement>();
-	let displayMode = $state<DisplayMode>('posters');
-
-	// Lazy-load the mobile filter sheet on first open. It never renders until
-	// the user taps Filter in the toolbar, so keep it out of the home route's
-	// client chunk until then. Mirrors the FilmSimilarRail lazy pattern.
-	let MobileFilterSheet =
-		$state<typeof import('$lib/components/filters/MobileFilterSheet.svelte').default | null>(null);
+	// Posters / Text lives in the sidebar's View row; the listing reads it here.
+	const displayMode = $derived(shell.displayMode);
 
 	// Clock for the screening filter below. Reports the instant the ISR-cached
 	// payload was built until hydration commits, so the first client render
@@ -37,24 +30,38 @@
 	// Group screenings by film + apply filters via the pure helper in
 	// `$lib/calendar-filter`. The helper owns the one-sided-range invariant
 	// warning internally — see calendar-filter.ts.
+	const currentFilters = $derived({
+		filmSearch: filters.filmSearch,
+		cinemaIds: filters.cinemaIds,
+		dateFrom: filters.dateFrom,
+		dateTo: filters.dateTo,
+		formats: filters.formats,
+		timeFrom: filters.timeFrom,
+		timeTo: filters.timeTo,
+		programmingTypes: filters.programmingTypes,
+		genres: filters.genres,
+		decades: filters.decades
+	});
+
 	const filmMap = $derived.by(() =>
-		buildFilmMap(
-			data.screenings,
-			{
-				filmSearch: filters.filmSearch,
-				cinemaIds: filters.cinemaIds,
-				dateFrom: filters.dateFrom,
-				dateTo: filters.dateTo,
-				formats: filters.formats,
-				timeFrom: filters.timeFrom,
-				timeTo: filters.timeTo,
-				programmingTypes: filters.programmingTypes,
-				genres: filters.genres,
-				decades: filters.decades
-			},
-			{ today: clock.today, now: clock.now }
-		)
+		buildFilmMap(data.screenings, currentFilters, { today: clock.today, now: clock.now })
 	);
+
+	// Live film counts for ALL / NEW / REP (every other filter applied), and the
+	// total for the sidebar's Done button. Published from an effect, so the
+	// server render and the first client render both show no counts.
+	const programmeCounts = $derived.by(() => {
+		const count = (programmingTypes: typeof filters.programmingTypes) =>
+			buildFilmMap(data.screenings, { ...currentFilters, programmingTypes }, { today: clock.today, now: clock.now }).size;
+		return { all: count([]), new: count(['new_release']), rep: count(['repertory']) };
+	});
+	$effect(() => {
+		shell.setCounts(filmMap.size, programmeCounts);
+		return () => shell.setCounts(null, null);
+	});
+
+	// Every active filter in words, for the first day header.
+	const choices = $derived(activeChoices(filters, cinemas, todayStore.value));
 
 	// Build day-grouped films in a single pass over `filmMap`. The previous
 	// implementation flatMapped every screening into a flat list, groupBy'd
@@ -251,31 +258,6 @@
 ])} />
 
 <div class="page-chrome">
-	<FigmaToolbar
-		{cinemas}
-		{displayMode}
-		onDisplayModeChange={(m) => (displayMode = m)}
-		onOpenFilters={(trigger) => {
-			mobileFilterTrigger = trigger;
-			if (MobileFilterSheet) {
-				mobileFilterOpen = true;
-				return;
-			}
-			import('$lib/components/filters/MobileFilterSheet.svelte')
-				.then((m) => {
-					MobileFilterSheet = m.default;
-					mobileFilterOpen = true;
-				})
-				.catch((err) => {
-					// Most likely deploy skew: this HTML references a chunk hash
-					// that no longer exists. Reloading fetches the current
-					// manifest — without this the FILTERS button is silently dead.
-					console.error('[filters] filter sheet chunk failed to load', err);
-					location.reload();
-				});
-		}}
-	/>
-
 	{#if visibleDayGroups.length === 0}
 		<EmptyState
 			title="No screenings found"
@@ -318,6 +300,12 @@
 								{parts.weekday} THE <span class="day-ord">{parts.ordinal}</span> OF {parts.month}
 							{/if}
 						</h2>
+						{#if di === 0 && choices.length > 0}
+							<div class="query">
+								<p aria-live="polite">{choices.join(' · ')} · {filmMap.size} {filmMap.size === 1 ? 'film' : 'films'}</p>
+								<button type="button" onclick={() => filters.clearAll()}>Clear</button>
+							</div>
+						{/if}
 					</header>
 					{#if displayMode === 'text'}
 						<FigmaTextDay
@@ -351,20 +339,6 @@
 	{/if}
 </div>
 
-<div class="dimmer-anchor">
-	<DimmerDial />
-</div>
-
-{#if MobileFilterSheet}
-	<MobileFilterSheet
-		cinemas={cinemas}
-		filmCount={filmMap.size}
-		open={mobileFilterOpen}
-		onClose={() => (mobileFilterOpen = false)}
-		returnFocusTo={mobileFilterTrigger}
-	/>
-{/if}
-
 <style>
 	/* Page chrome hugs the cards row exactly so the toolbar above and the day
 	   section below share the same left/right edges. Width staircase mirrors
@@ -385,25 +359,6 @@
 
 	@media (min-width: 1357px) {
 		.page-chrome { max-width: calc(1309px + 48px); }
-	}
-
-	.dimmer-anchor {
-		position: fixed;
-		top: 32px;
-		right: 24px;
-		z-index: 60;
-		transition: opacity var(--duration-normal) var(--ease-sharp), visibility 0s linear;
-	}
-
-	/* The dial shares the header's top-right corner; when the header compacts
-	   the nav row moves up into that space, so fade the dial out. It returns
-	   when the user scrolls back to the top. */
-	:global(html[data-header-compact]) .dimmer-anchor {
-		opacity: 0;
-		visibility: hidden;
-		transition:
-			opacity var(--duration-normal) var(--ease-sharp),
-			visibility 0s linear var(--duration-normal);
 	}
 
 	@media (min-width: 768px) {
@@ -497,6 +452,51 @@
 
 	.day-header .day-ord {
 		font-weight: 700;
+	}
+
+	/* Every active filter, so the listing never looks thin for a hidden reason. */
+	.query {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
+		margin: 2px 0 4px;
+	}
+
+	.query p {
+		margin: 0;
+		min-width: 0;
+		font-family: var(--font-sans);
+		font-size: 11px;
+		font-weight: 600;
+		line-height: 1.45;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		font-variant-numeric: tabular-nums;
+		color: #eae5c2;
+	}
+
+	.query button {
+		flex: 0 0 auto;
+		min-height: 44px;
+		margin: -10px -4px;
+		padding: 0 4px;
+		background: transparent;
+		border: 0;
+		color: #eae5c2;
+		font-family: var(--font-sans);
+		font-size: 11px;
+		font-weight: 700;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		text-decoration: underline;
+		text-underline-offset: 3px;
+		cursor: pointer;
+	}
+
+	.query button:focus-visible {
+		outline: 2px solid #eae5c2;
+		outline-offset: -2px;
 	}
 
 	@media (min-width: 768px) {

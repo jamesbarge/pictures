@@ -1,3 +1,11 @@
+## 2026-10-25: Header, nav and filters move into a sidebar
+**PR**: #TBD | **Files**: `frontend/src/routes/+layout.svelte`, `frontend/src/routes/+page.svelte`, `frontend/src/lib/components/layout/{Sidebar,TopBar,PaletteButton}.svelte`, `frontend/src/lib/components/filters/{ProgrammeToggle,SearchBox,DayPills,FilterSections}.svelte`, `frontend/src/lib/components/filters/active-choices.ts`, `frontend/src/lib/stores/shell.svelte.ts`, E2E specs
+- One sidebar on every page holds the logo, the nav (What's on, Cinemas, Reachable, Watchlist) and, on the homepage, every filter. From 1024px it sits beside the page and collapses to a burger; below that it opens as a drawer from the left.
+- ALL / NEW / REP leads the page with live film counts, next to the burger and a small logo, with the search box underneath on phones. Posters / Text is two icons in the sidebar.
+- The first day header names every active filter and the film count, with a Clear button. Filters apply as you tap, and every change sends `filter_changed`, phones included.
+- The header, footer, toolbar, mobile filter sheet and house-lights dimmer are gone. The design is the approved "Classic, sidebar only" prototype.
+
+---
 ## 2026-10-25: Season subtitles, BFI intro credits, Trans Awareness dash
 **PR**: #844 | **Files**: `src/scrapers/utils/film-title-cleaner.ts`, `src/scrapers/cinemas/bfi.ts`, `src/scrapers/utils/screening-classification.ts`
 - `Heated Rivalry: Season One All-Dayer` stays whole. The colon cleaner was treating the show name as a strand and storing `Season One All-Dayer`.
