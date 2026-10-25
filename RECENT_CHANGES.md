@@ -1,3 +1,9 @@
+## 2026-10-25: drizzle-orm 0.45.4
+**PR**: #PRNUM | **Files**: `package.json`, `package-lock.json`
+- Bumps drizzle-orm from 0.45.3 to 0.45.4, replacing Dependabot's #832, which conflicted with main and could not be rebased or recreated.
+- 0.45.4 only changes explicit `.prepare(name)` calls on postgres-js. Nothing in `src/` or `scripts/` calls it, and `src/db/index.ts` keeps `prepare: false` for the Supabase pooler.
+
+---
 ## 2026-10-16: Five fixes from the code review
 **PR**: #827 | **Files**: `frontend/src/routes/{letterboxd,search,map,people/[name]}/+page.svelte`, `.claude/rules/frontend.md`, `src/db/seed-festivals.ts`, `src/db/seed-festivals.test.ts` (new), `src/app/admin/screenings/components/screening-form-modal.tsx`, `src/scrapers/utils/date-parser.ts`, `src/scrapers/utils/date-parser.test.ts`, `scripts/data-check.ts`
 - The Letterboxd, search, map and people pages used `--color-muted`, `--color-foreground` and `--color-background`, which `app.css` has never defined. They now use `--color-text-tertiary`, `--color-text` and `--color-bg`, so the Letterboxd IMPORT button has its dark fill and muted text is grey in light mode, dark mode and under the house-lights dimmer.
