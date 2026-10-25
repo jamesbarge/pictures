@@ -5,6 +5,13 @@
 - `calendar-soon` leaves `DiscoverySource`, and the strip's desktop and iPhone E2E tests are removed.
 
 ---
+## 2026-10-25: Season subtitles, BFI intro credits, Trans Awareness dash
+**PR**: #844 | **Files**: `src/scrapers/utils/film-title-cleaner.ts`, `src/scrapers/cinemas/bfi.ts`, `src/scrapers/utils/screening-classification.ts`
+- `Heated Rivalry: Season One All-Dayer` stays whole. The colon cleaner was treating the show name as a strand and storing `Season One All-Dayer`.
+- BFI no longer stores `Be My Baby + intro by programmer Anton Bitel` as a director. A stats-line credit is unchanged.
+- Castle's `Ponyboi - Trans Awareness programme 2026` stores `Ponyboi`, with the strand as the screening note.
+
+---
 ## 2026-10-24: Listings QA — preview prefixes, Garden performance ids, Traces
 **PR**: #840 | **Files**: `src/scrapers/utils/film-title-cleaner.ts`, `src/scrapers/utils/screening-classification.ts`, `src/scrapers/cinemas/bfi.ts`, `src/scrapers/cinemas/garden.ts`, `src/scrapers/cinemas/garden-performance.ts`, `scripts/repair-listings-qa-2026-10-24.ts`
 - `BFI IMAX exclusive preview: Godzilla Minus Zero` and `Special preview: La Bola Negra` clean to the film title. The prefix is the screening note. A BFI director equal to the raw title is dropped.

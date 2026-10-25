@@ -505,6 +505,16 @@ const SCREENING_NOISE_COLON_SUFFIX = new RegExp(
 );
 
 /**
+ * Right-hand side of a colon that is the show's own season or series, not a
+ * replacement title. "Heated Rivalry: Season One All-Dayer" and
+ * "Blake's 7: Series 3". Digits and the words one–twelve. Words after the
+ * number ("All-Dayer") stay with the show. A short name before the colon is
+ * otherwise treated as a strand, which is how "Season One All-Dayer" was stored.
+ */
+const SEASON_SUBTITLE =
+  /^(?:series|season)\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\b/i;
+
+/**
  * Clean a film title and return metadata about what was stripped.
  *
  * Returns the cleaned title along with the stripped prefix and suffix,
@@ -592,11 +602,15 @@ export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
       const isVeryShort = beforeColon.split(/\s+/).length <= 3; // 3 words or less
       const afterColonHasYear = /\b(19|20)\d{2}\b/.test(afterColon);
 
-      // Use after-colon if: before is very short event-like name without year
-      if (isVeryShort && !hasYear && afterColon.length > 3) {
+      // Use after-colon if: before is very short event-like name without year.
+      // A season or series number is the show's subtitle, so the short name
+      // stays: "Heated Rivalry: Season One All-Dayer". "Season Finale" has
+      // no number and still follows the short-name rule.
+      if (isVeryShort && !hasYear && afterColon.length > 3 && !SEASON_SUBTITLE.test(afterColon)) {
         cleaned = afterColon;
-      } else if (afterColonHasYear) {
-        // After-colon has a year, so it's probably the real title
+      } else if (afterColonHasYear && !SEASON_SUBTITLE.test(afterColon)) {
+        // After-colon has a year, so it's probably the real title.
+        // A season subtitle that also carries a year stays with the show.
         cleaned = afterColon;
       }
     }
@@ -672,10 +686,11 @@ export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
     .replace(/\s+with\s+live\s+score\s*$|\s*\(live\s+score\)\s*$/i, "")
     // Remove programme notes: "- Preview", "- Black History Month 2026",
     // "I Trans Awareness programme 2026" (the I stands in for a pipe),
+    // "Ponyboi - Trans Awareness programme 2026" (Castle's spaced dash),
     // "Edition w/ Bonus Footage"
     .replace(/\s+[-–]\s+preview\s*$/i, "")
     .replace(/\s+[-–]\s+black\s+history\s+month(?:\s+\d{4})?\s*$/i, "")
-    .replace(/\s+[I|]\s+trans\s+awareness\s+programme(?:\s+\d{4})?\s*$/i, "")
+    .replace(/\s+(?:[-–]|[I|])\s+trans\s+awareness\s+programme(?:\s+\d{4})?\s*$/i, "")
     .replace(/\s+edition\s+w\/\s*bonus\s+footage\s*$/i, "")
     // Remove trailing format parentheticals like "(ON VHS)", "(ON 16MM)", and
     // the unclosed "(ON 16MM" some listings truncate to
@@ -771,6 +786,23 @@ export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
     : null;
 
   return { cleanedTitle: cleaned, strippedPrefix, strippedSuffix, extractedYear };
+}
+
+/**
+ * The Trans Awareness programme strand, once the cleaner has peeled it.
+ * "Ponyboi - Trans Awareness programme 2026" and the older pipe form
+ * "Wolfwalkers I Trans Awareness programme 2026" both land here. Other
+ * suffixes stay out of the screening note.
+ */
+const PROGRAMME_STRAND_NOTE =
+  /^[-–|I]\s+(trans\s+awareness\s+programme(?:\s+\d{4})?)$/i;
+
+/** The peeled Trans Awareness programme label, or null when the title is not that strand. */
+export function programmeStrandNote(title: string): string | null {
+  const { strippedSuffix, cleanedTitle } = cleanFilmTitleWithMetadata(title);
+  if (!strippedSuffix || cleanedTitle.length < 2) return null;
+  const match = strippedSuffix.match(PROGRAMME_STRAND_NOTE);
+  return match ? match[1] : null;
 }
 
 /**
