@@ -78,184 +78,144 @@ test.describe('Resize ratchet — day section grows back after shrinking', () =>
 });
 
 // ═══════════════════════════════════════════════════════════════
-// 2. HEADER SELECTOR UNIQUENESS — exactly one of each at any scroll
+// 2. ONE ACCESSIBLE COPY — duplicated chrome never doubles a selector
 // ═══════════════════════════════════════════════════════════════
 //
-// The split header keeps an in-flow masthead and a fixed compact bar. The bug:
-// both surfaces exposed the same accessible labels at once, so Playwright
-// strict-mode locators matched two elements. The fix hands the labels from the
-// masthead to the bar on the `stuck` crossing — exactly one element owns each
-// selector at every scroll position. Asserted on a mobile viewport so the
-// burger (`.mobile-menu-btn`, phone-only) is the live product surface.
+// The logo, ALL / NEW / REP and search each render twice: once in the top bar
+// and once in the sidebar. CSS hides whichever copy the current width does not
+// use (display:none or visibility:hidden), which also drops it from the
+// accessibility tree. If that hiding slips, role-based locators match two
+// elements (strict mode fails across the suite) and screen readers announce
+// every control twice. Replaces the split masthead/bar uniqueness test.
 
-test.describe('Header selector uniqueness — split masthead/bar', () => {
+for (const width of [390, 1440]) {
+	test.describe(`One accessible copy of each control at ${width}px`, () => {
+		test.use({ viewport: { width, height: 900 } });
+
+		test.beforeEach(async ({ context }) => {
+			await dismissConsent(context);
+		});
+
+		test('exactly one logo / programme / search / burger at top and after scrolling', async ({
+			page
+		}) => {
+			await page.goto(BASE);
+			await page.locator('.film-row .card').first().waitFor({ timeout: 15000 });
+
+			const assertUnique = async () => {
+				await expect(page.getByRole('link', { name: 'pictures london, what’s on' })).toHaveCount(1);
+				await expect(page.getByRole('radiogroup', { name: 'Programme' })).toHaveCount(1);
+				await expect(
+					page.getByRole('searchbox', { name: 'Search films, cinemas and directors' })
+				).toHaveCount(1);
+				// The burger exists only where the sidebar is not already open.
+				await expect(page.getByRole('button', { name: /^Open menu/ })).toHaveCount(
+					width < 1024 ? 1 : 0
+				);
+			};
+
+			await assertUnique();
+			await page.evaluate(() => window.scrollTo(0, 600));
+			await page.waitForFunction(() => window.scrollY > 0, undefined, { timeout: 5000 });
+			await assertUnique();
+		});
+	});
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 3. TOP BAR PINS, DRAWER COVERS — mobile chrome once scrolled
+// ═══════════════════════════════════════════════════════════════
+//
+// Replaces the --header-height contract, which existed so the old burger menu
+// could anchor below a masthead that changed height on scroll. The top bar is
+// now one sticky row and the drawer a full-height panel from the left edge.
+// The guarantees: the bar stays at the top of the viewport after scrolling
+// (an `overflow` on an ancestor silently breaks `position: sticky`), and the
+// open drawer spans the viewport from its top.
+
+test.describe('Top bar and drawer position (mobile)', () => {
 	test.use({ viewport: { width: 390, height: 844 } });
 
 	test.beforeEach(async ({ context }) => {
 		await dismissConsent(context);
 	});
 
-	const assertUnique = async (page: import('@playwright/test').Page) => {
-		await expect(page.locator('nav[aria-label="Main"]')).toHaveCount(1);
-		await expect(page.locator('[aria-label="pictures london — home"]')).toHaveCount(1);
-		await expect(page.locator('.mobile-menu-btn')).toHaveCount(1);
-	};
-
-	test('exactly one nav / home link / burger at top and after scrolling', async ({ page }) => {
+	test('bar stays pinned when scrolled and the drawer spans the viewport', async ({ page }) => {
 		await page.goto(BASE);
 		await page.locator('.film-row .card').first().waitFor({ timeout: 15000 });
 
-		// At rest: the masthead owns every selector.
-		await expect(page.locator('header.header')).not.toHaveClass(/stuck/);
-		await assertUnique(page);
-
-		// Scroll past the masthead so the header sticks (the bar fades in and the
-		// masthead goes inert). Wait for the crossing via the compact attribute.
 		await page.evaluate(() => window.scrollTo(0, 600));
-		await page.waitForFunction(
-			() => document.documentElement.hasAttribute('data-header-compact'),
-			undefined,
-			{ timeout: 5000 }
-		);
-		await expect(page.locator('header.header')).toHaveClass(/stuck/);
+		await page.waitForFunction(() => window.scrollY >= 600, undefined, { timeout: 5000 });
 
-		// While stuck: the bar now owns every selector — still exactly one each.
-		await assertUnique(page);
+		const burger = page.getByRole('button', { name: /^Open menu/ });
+		await expect(burger).toBeVisible();
+		const burgerBox = (await burger.boundingBox())!;
+		expect(burgerBox.y, 'top bar scrolled away instead of sticking').toBeGreaterThanOrEqual(0);
+		expect(burgerBox.y).toBeLessThan(40);
+
+		// A tap before hydration is dropped, so re-tap until the drawer opens.
+		const drawer = page.getByRole('dialog', { name: 'Menu and filters' });
+		await expect(async () => {
+			if (!(await drawer.isVisible())) await burger.click();
+			await expect(drawer).toBeVisible({ timeout: 2000 });
+		}).toPass({ timeout: 15000 });
+
+		// Let the slide-in finish, then check the panel's edges.
+		await expect.poll(async () => (await drawer.boundingBox())?.x, { timeout: 5000 }).toBe(0);
+		const box = (await drawer.boundingBox())!;
+		expect(box.y).toBe(0);
+		expect(Math.abs(box.height - 844)).toBeLessThanOrEqual(1);
 	});
 });
 
 // ═══════════════════════════════════════════════════════════════
-// 3. --header-height CONTRACT — sane at rest, bar height when stuck,
-//    and the burger menu anchors below the current chrome
+// 4. BANNER Z-ORDER — consent banner must not steal the drawer's CTA
 // ═══════════════════════════════════════════════════════════════
 //
-// The --header-height custom property drives every fixed consumer (mobile
-// Dropdown panels, DimmerDial vignette, the burger menu). It must be the
-// masthead's height at rest and the bar's height (~56px) once stuck, and the
-// mobile-nav panel must sit flush below whichever chrome is current.
+// The cookie consent banner is a bottom-anchored fixed bar. The bug it guards:
+// at z-9999 it sat above the old filter sheet's footer and intercepted taps on
+// the primary CTA. The banner is z-70, below the drawer's z-80, so the drawer's
+// "Done · N films" button must win. This describe deliberately does NOT dismiss
+// the banner — it must be present to prove it no longer steals the tap.
 
-test.describe('--header-height contract (mobile)', () => {
+test.describe('Banner z-order — drawer CTA wins the tap (banner not dismissed)', () => {
 	test.use({ viewport: { width: 390, height: 844 } });
 
-	test.beforeEach(async ({ context }) => {
-		await dismissConsent(context);
-	});
-
-	const headerHeightPx = (page: import('@playwright/test').Page) =>
-		page.evaluate(() =>
-			parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--header-height'))
-		);
-
-	test('property tracks chrome and anchors the burger menu', async ({ page }) => {
-		await page.goto(BASE);
-		await page.locator('.film-row .card').first().waitFor({ timeout: 15000 });
-
-		// At rest: a sane, masthead-sized pixel value. The property is set by a
-		// post-hydration $effect (masthead ResizeObserver), which can lag the
-		// first paint — wait for it to be a real number before asserting.
-		await page.waitForFunction(
-			() => {
-				const v = parseFloat(
-					getComputedStyle(document.documentElement).getPropertyValue('--header-height')
-				);
-				return Number.isFinite(v) && v >= 40;
-			},
-			undefined,
-			{ timeout: 5000 }
-		);
-		const atRest = await headerHeightPx(page);
-		expect(atRest, '--header-height should be a real px value at rest').toBeGreaterThanOrEqual(40);
-
-		// Scroll past the crossing: property collapses to the bar height (~56px).
-		// The compact attribute and the --header-height update live in separate
-		// $effects, so wait on the property itself collapsing below the resting
-		// masthead height rather than racing the attribute toggle.
-		await page.evaluate(() => window.scrollTo(0, 600));
-		await page.waitForFunction(
-			() => document.documentElement.hasAttribute('data-header-compact'),
-			undefined,
-			{ timeout: 5000 }
-		);
-		await page.waitForFunction(
-			(rest) => {
-				const v = parseFloat(
-					getComputedStyle(document.documentElement).getPropertyValue('--header-height')
-				);
-				return Number.isFinite(v) && v < rest;
-			},
-			atRest,
-			{ timeout: 5000 }
-		);
-		const stuck = await headerHeightPx(page);
-		expect(stuck, '--header-height should equal the compact bar height when stuck').toBeGreaterThan(
-			40
-		);
-		expect(stuck).toBeLessThanOrEqual(72);
-
-		// Open the burger: the mobile-nav panel must anchor exactly at
-		// --header-height (below the current chrome, not floating over it).
-		await page.locator('.mobile-menu-btn').click();
-		const mobileNav = page.locator('.mobile-nav');
-		await expect(mobileNav).toBeVisible();
-
-		const navBox = await mobileNav.boundingBox();
-		const currentHeaderHeight = await headerHeightPx(page);
-		expect(
-			Math.abs(navBox!.y - currentHeaderHeight),
-			'mobile-nav panel should sit flush below the current chrome (top === --header-height)'
-		).toBeLessThanOrEqual(1);
-	});
-});
-
-// ═══════════════════════════════════════════════════════════════
-// 4. BANNER Z-ORDER — consent banner must not steal the sheet's CTA
-// ═══════════════════════════════════════════════════════════════
-//
-// The cookie consent banner is a bottom-anchored fixed bar. The bug: at
-// z-9999 it sat above the MobileFilterSheet footer and intercepted taps on the
-// primary "Show N films" CTA. The fix drops it to z-70 (below the sheet's
-// z-80). This describe deliberately does NOT dismiss the banner — it must be
-// present to prove it no longer steals the tap.
-
-test.describe('Banner z-order — sheet CTA wins the tap (banner not dismissed)', () => {
-	test.use({ viewport: { width: 390, height: 844 } });
-
-	test('Show-films CTA receives the tap, not the consent banner', async ({ page }) => {
+	test('Done receives the tap, not the consent banner', async ({ page }) => {
 		await page.goto(BASE);
 		await page.locator('.film-row .card').first().waitFor({ timeout: 15000 });
 
 		// The banner must be present for this test to mean anything.
 		await expect(page.locator('.consent-banner')).toBeVisible();
 
-		// Open the FILTERS sheet — lazy-loaded via dynamic import, so allow time
-		// for the chunk to resolve and the dialog to mount.
-		await page.getByRole('button', { name: 'Open filters' }).click();
-		const sheet = page.getByRole('dialog', { name: 'Filter programme' });
-		await expect(sheet).toBeVisible({ timeout: 5000 });
+		const drawer = page.getByRole('dialog', { name: 'Menu and filters' });
+		await expect(async () => {
+			if (!(await drawer.isVisible())) await page.getByRole('button', { name: /^Open menu/ }).click();
+			await expect(drawer).toBeVisible({ timeout: 2000 });
+		}).toPass({ timeout: 15000 });
+		await expect.poll(async () => (await drawer.boundingBox())?.x, { timeout: 5000 }).toBe(0);
 
-		// The footer's primary CTA.
-		const showBtn = page.locator('.sheet-foot button.show');
-		await showBtn.scrollIntoViewIfNeeded();
-		await expect(showBtn).toBeVisible();
-		await expect(showBtn).toContainText('films');
+		// The drawer foot's primary CTA.
+		const done = drawer.getByRole('button', { name: /^Done/ });
+		await expect(done).toBeVisible();
 
 		// document.elementFromPoint at the CTA's centre must hit the button (or a
-		// descendant span), NOT the consent banner sitting at the bottom edge.
-		const box = (await showBtn.boundingBox())!;
+		// descendant), NOT the consent banner sitting at the bottom edge.
+		const box = (await done.boundingBox())!;
 		const hit = await page.evaluate(
 			({ cx, cy }) => {
 				const el = document.elementFromPoint(cx, cy);
 				return {
-					inShow: !!el?.closest('button.show'),
+					inDone: !!el?.closest('.done'),
 					inBanner: !!el?.closest('.consent-banner')
 				};
 			},
 			{ cx: box.x + box.width / 2, cy: box.y + box.height / 2 }
 		);
 
-		expect(hit.inBanner, 'consent banner intercepted the sheet CTA tap (z-order regression)').toBe(
+		expect(hit.inBanner, 'consent banner intercepted the drawer CTA tap (z-order regression)').toBe(
 			false
 		);
-		expect(hit.inShow, 'Show-films CTA should receive the tap at its own centre').toBe(true);
+		expect(hit.inDone, 'Done CTA should receive the tap at its own centre').toBe(true);
 	});
 });

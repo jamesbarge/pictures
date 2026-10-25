@@ -9,42 +9,13 @@
 		     covers first paint; latin-ext loads on demand via unicode-range). -->
 		<link rel="preload" href="/fonts/SplineSans.woff2" as="font" type="font/woff2" crossorigin />
 		<script>
-			// Prevent flash of un-dimmed content — apply the saved house-lights
-			// value before first paint. Injects a <main>-scoped stylesheet (the
-			// header deliberately stays light, and <main> doesn't exist yet when
-			// this runs). DimmerDial removes #dimmer-boot-style on mount and
-			// takes over with inline styles. The palette table mirrors L/D in
-			// lib/components/ui/DimmerDial.svelte — keep the two in sync.
-			(function() {
-				try {
-					var t = parseFloat(localStorage.getItem('pictures-dimmer') || '0');
-					if (t > 0.01) {
-						function c(l, d) {
-							return 'rgb(' + Math.round(l[0] + (d[0] - l[0]) * t) + ',' + Math.round(l[1] + (d[1] - l[1]) * t) + ',' + Math.round(l[2] + (d[2] - l[2]) * t) + ')';
-						}
-						var P = [
-							['--color-bg', [239,233,220], [14,12,10]],
-							['--color-bg-subtle', [229,223,208], [24,21,18]],
-							['--color-surface', [255,255,255], [30,27,24]],
-							['--color-text', [31,31,31], [240,235,220]],
-							['--color-text-secondary', [42,42,42], [185,175,160]],
-							['--color-text-tertiary', [90,90,90], [115,108,98]],
-							['--color-border', [31,31,31], [240,235,220]],
-							['--color-border-subtle', [202,197,186], [50,44,38]],
-							['--color-accent', [31,31,31], [240,235,220]],
-							['--color-screening-bg', [31,31,31], [240,235,220]],
-							['--color-screening-text', [234,229,194], [14,12,10]]
-						];
-						var css = 'main{';
-						for (var i = 0; i < P.length; i++) css += P[i][0] + ':' + c(P[i][1], P[i][2]) + ';';
-						css += '}';
-						var s = document.createElement('style');
-						s.id = 'dimmer-boot-style';
-						s.textContent = css;
-						document.head.appendChild(s);
-					}
-				} catch(e) {}
-			})();
+			// Apply a collapsed desktop sidebar before first paint, so it never
+			// shows open and then snaps shut. Kept in sync by stores/shell.svelte.ts.
+			try {
+				if (localStorage.getItem('pictures-sidebar-collapsed') === '1') {
+					document.documentElement.setAttribute('data-sidebar-collapsed', '');
+				}
+			} catch (e) {}
 		</script>
 		%sveltekit.head%
 	</head>

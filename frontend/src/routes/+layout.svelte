@@ -1,7 +1,7 @@
 <script lang="ts">
 	import '../app.css';
-	import Header from '$lib/components/layout/Header.svelte';
-	import Footer from '$lib/components/layout/Footer.svelte';
+	import Sidebar from '$lib/components/layout/Sidebar.svelte';
+	import TopBar from '$lib/components/layout/TopBar.svelte';
 	import PostHogProvider from '$lib/analytics/PostHogProvider.svelte';
 	import JsonLd from '$lib/seo/JsonLd.svelte';
 	import { organizationSchema } from '$lib/seo/json-ld';
@@ -13,6 +13,8 @@
 	let { children } = $props();
 
 	const canonicalUrl = $derived(`https://pictures.london${page.url.pathname}`);
+	// Loaded by +layout.server.ts on every route; the sidebar's WHERE filter needs it.
+	const cinemas = $derived(page.data.cinemas ?? []);
 
 	// Lazy-mount the command palette: its UI (bits-ui Dialog + ~1500 lines of
 	// row components) never renders on first paint (palette.open starts false),
@@ -55,18 +57,35 @@
 
 <a href="#main-content" class="skip-link">Skip to content</a>
 
-<div class="min-h-dvh flex flex-col">
-	<Header />
-	<main id="main-content" class="flex-1" tabindex="-1">
-		{@render children()}
-	</main>
-	<Footer />
+<div class="shell">
+	<Sidebar {cinemas} />
+	<div class="shell-main">
+		<TopBar {cinemas} />
+		<main id="main-content" tabindex="-1">
+			{@render children()}
+		</main>
+	</div>
 </div>
 
 <style>
-	/* Main carries the dimmable background so the area below the header tracks
-	   the house-lights value (header stays on the html bg). */
+	/* The sidebar is a drawer below 1024px (fixed, out of flow) and a column
+	   beside the page from 1024px up. */
+	.shell {
+		display: flex;
+		align-items: flex-start;
+		min-height: 100dvh;
+	}
+
+	.shell-main {
+		flex: 1 1 auto;
+		min-width: 0;
+		min-height: 100dvh;
+		display: flex;
+		flex-direction: column;
+	}
+
 	main {
+		flex: 1 1 auto;
 		background-color: var(--color-bg);
 	}
 
