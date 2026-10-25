@@ -51,7 +51,7 @@ async function waitForPaletteBinding(page: import('@playwright/test').Page) {
  * body first, then dispatch the platform-correct modifier+k.
  */
 async function openPalette(page: import('@playwright/test').Page) {
-	// A small-position click avoids hitting any header link. This also
+	// A small-position click avoids hitting any sidebar or top-bar link. This also
 	// dismisses any open menus/popovers that might still be in the DOM.
 	await page.locator('body').click({ position: { x: 1, y: 1 } });
 	// Detect platform once per test to send Meta on darwin, Control elsewhere.
@@ -134,11 +134,11 @@ test.describe('Command Palette — cmd+k', () => {
 	});
 
 	test('Enter on the composite action applies filters to the calendar', async ({ page }) => {
-		// Force the desktop layout: the redesigned FigmaToolbar collapses the
-		// FORMAT/GENRE chips into a bottom-sheet below 840px, so the visible
-		// confirmation only exists at desktop width. Both Playwright projects
-		// (chromium + mobile-small) run this file, so we pin the viewport here
-		// rather than relying on the device default (mirrors test-all.spec.ts).
+		// Force the desktop layout: the sidebar, with its Format and Genre chips,
+		// sits open beside the calendar only at 1024px and up; below that it is a
+		// closed drawer. Both Playwright projects (chromium + mobile-small) run
+		// this file, so we pin the viewport here rather than relying on the
+		// device default (mirrors test-all.spec.ts).
 		await page.setViewportSize({ width: 1440, height: 900 });
 
 		await openPalette(page);
@@ -151,19 +151,19 @@ test.describe('Command Palette — cmd+k', () => {
 		await page.keyboard.press('Enter');
 		await expect(dialog).toBeHidden({ timeout: 5000 });
 
-		// Visible confirmation in the redesigned toolbar: a single applied
-		// format/genre collapses the chip label to that value, and the chip
-		// flips to its `.active` (inverted) state. These chips are <button>s
-		// that open Dropdown panels — the label is their accessible name.
-		const toolbar = page.getByRole('toolbar', { name: 'Film filters' });
-		const formatChip = toolbar.getByRole('button', { name: '70MM' });
-		const genreChip = toolbar.getByRole('button', { name: 'HORROR' });
-		await expect(formatChip).toBeVisible({ timeout: 5000 });
-		await expect(genreChip).toBeVisible();
-
-		// Open the FORMAT panel and confirm the 70MM option is checked — the
-		// store mutation propagated all the way to the filter UI's checkboxes.
-		await formatChip.click();
-		await expect(page.getByRole('checkbox', { name: '70MM', exact: true })).toBeChecked();
+		// Visible confirmation in the sidebar: the 70MM format chip and the
+		// Horror genre chip are pressed — the store mutation propagated all the
+		// way to the filter UI.
+		const sidebar = page.getByRole('complementary', { name: 'Menu and filters' });
+		await expect(
+			sidebar
+				.getByRole('region', { name: 'Format', exact: true })
+				.getByRole('button', { name: '70MM', exact: true })
+		).toHaveAttribute('aria-pressed', 'true', { timeout: 5000 });
+		await expect(
+			sidebar
+				.getByRole('region', { name: 'Genre', exact: true })
+				.getByRole('button', { name: 'Horror', exact: true })
+		).toHaveAttribute('aria-pressed', 'true');
 	});
 });

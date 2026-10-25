@@ -15,7 +15,7 @@
 			<p>We use PostHog for anonymous usage analytics, and only after you accept analytics cookies. No personal data is shared with third parties.</p>
 
 			<h2>COOKIES</h2>
-			<p>We set no cookies until you accept them. If you do, PostHog sets an analytics cookie so repeat visits are not double-counted; if you decline, none is set. Your "House Lights" dimmer setting, theme and film preferences are stored in localStorage, not cookies, and never leave your device.</p>
+			<p>We set no cookies until you accept them. If you do, PostHog sets an analytics cookie so repeat visits are not double-counted; if you decline, none is set. Your theme, sidebar and film preferences are stored in localStorage, not cookies, and never leave your device.</p>
 
 			<h2>CONTACT</h2>
 			<p>For privacy questions: <a href="mailto:hello@pictures.london">hello@pictures.london</a></p>

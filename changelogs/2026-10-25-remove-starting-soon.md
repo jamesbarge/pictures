@@ -12,5 +12,6 @@
 - The strip's two E2E tests (desktop order and window, iPhone first-screen time) are removed.
 
 ## Impact
-- Homepage visitors see poster cards first. By #762's measurements the first showtime moves back to about 895px down a 1440x900 screen and about 940px down a 390x844 phone.
+- Homepage visitors see poster cards first. By #762's measurements, on the pre-sidebar page, the first showtime moved back to about 895px down a 1440x900 screen and about 940px down a 390x844 phone.
 - TEXT mode, the card grid and the other routes are unchanged.
+- Reconciled with #846, which merged first and left the strip in place on the new sidebar layout. The strip, its clock and its `.soon` CSS come off that layout. #846 rewrote the strip's E2E tests onto the View radio; those tests are dropped here.

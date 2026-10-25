@@ -57,9 +57,10 @@
 - Mobile tests use `devices['iPhone 12 Pro']` (390x844)
 
 ## Mobile
-- Filter bar: search on top, ALL/NEW/REPERTORY + FILTERS toggle on mobile
-- Dropdowns: `position: fixed` on mobile with `top: 49px`
-- DimmerDial hidden below 768px
+- Shell: `layout/Sidebar.svelte` (logo, nav, homepage filters) is a left drawer below 1024px and a
+  collapsible 320px column from 1024px; `layout/TopBar.svelte` (burger, ALL/NEW/REP, search) shows
+  whenever the sidebar is closed. State in `stores/shell.svelte.ts`; desktop collapse is the
+  `data-sidebar-collapsed` attribute on `<html>`, set pre-paint in `app.html`
 - Touch targets: minimum 44px (2.75rem)
 - No horizontal scroll — use `overflow-x: hidden` on html
 
