@@ -1,3 +1,11 @@
+## 2026-10-25: Remove the homepage STARTING SOON strip
+**PR**: #845 | **Files**: `frontend/src/routes/+page.svelte`, `frontend/src/lib/components/calendar/FigmaTextDay.svelte`, `frontend/src/lib/analytics/posthog.ts`, `frontend/test-all.spec.ts`, `frontend/tests/mobile.spec.ts`
+- The homepage opens on the first day of poster cards again. The STARTING SOON strip from #762 is gone, with its once-a-minute clock and `.soon` CSS.
+- `FigmaTextDay` drops the `until`, `limit`, `label` and `source` props that only the strip used. TEXT mode is unchanged.
+- `calendar-soon` leaves `DiscoverySource`, and the strip's desktop and iPhone E2E tests are removed.
+- Reconciled with #846: the strip comes off the sidebar layout. #846 left the strip in place and rewrote its E2E tests; those tests are dropped.
+
+---
 ## 2026-10-25: Header, nav and filters move into a sidebar
 **PR**: #846 | **Files**: `frontend/src/routes/+layout.svelte`, `frontend/src/routes/+page.svelte`, `frontend/src/lib/components/layout/{Sidebar,TopBar,PaletteButton}.svelte`, `frontend/src/lib/components/filters/{ProgrammeToggle,SearchBox,DayPills,FilterSections}.svelte`, `frontend/src/lib/components/filters/active-choices.ts`, `frontend/src/lib/stores/shell.svelte.ts`, E2E specs
 - One sidebar on every page holds the logo, the nav (What's on, Cinemas, Reachable, Watchlist) and, on the homepage, every filter. From 1024px it sits beside the page and collapses to a burger; below that it opens as a drawer from the left.

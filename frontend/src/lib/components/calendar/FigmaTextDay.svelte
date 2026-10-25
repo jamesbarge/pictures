@@ -1,27 +1,15 @@
 <script lang="ts">
 	import { formatTime } from '$lib/utils';
-	import { trackScreeningClick, type DiscoverySource } from '$lib/analytics/posthog';
+	import { trackScreeningClick } from '$lib/analytics/posthog';
 	import { formatLabel, type CardFilm, type CardScreening } from './card-shapes';
 
 	let {
 		films,
-		now,
-		until = Infinity,
-		limit = Infinity,
-		label = 'Screenings list',
-		source = 'calendar-text'
+		now
 	}: {
 		films: Array<{ film: CardFilm; screenings: CardScreening[]; sleeper?: boolean }>;
 		/** Epoch ms to judge "upcoming" against — see the note in FigmaFilmCard. */
 		now: number;
-		/** Epoch ms; screenings starting later are left out. */
-		until?: number;
-		/** Maximum rows, soonest first. */
-		limit?: number;
-		/** Accessible name for the table; must differ when two share a page. */
-		label?: string;
-		/** Analytics source for row clicks, so each placement is measured apart. */
-		source?: DiscoverySource;
 	} = $props();
 
 	// Flatten film+screenings into one row per upcoming screening, sorted by time.
@@ -29,8 +17,7 @@
 		const out: Array<{ film: CardFilm; screening: CardScreening; sleeper: boolean }> = [];
 		for (const { film, screenings, sleeper } of films) {
 			for (const s of screenings) {
-				const t = new Date(s.datetime).getTime();
-				if (t <= now || t > until) continue;
+				if (new Date(s.datetime).getTime() <= now) continue;
 				out.push({ film, screening: s, sleeper: Boolean(sleeper) });
 			}
 		}
@@ -46,7 +33,7 @@
 			if (marked) row.sleeper = false;
 			else marked = true;
 		}
-		return out.slice(0, limit);
+		return out;
 	});
 
 	function clickRow(film: CardFilm, s: CardScreening) {
@@ -59,12 +46,12 @@
 				screeningTime: s.datetime,
 				cinemaName: s.cinemaName
 			},
-			source
+			'calendar-text'
 		);
 	}
 </script>
 
-<div class="text-table" role="table" aria-label={label}>
+<div class="text-table" role="table" aria-label="Screenings list">
 	<div class="text-thead" role="row">
 		<span role="columnheader">TIME</span>
 		<span role="columnheader">TITLE</span>
