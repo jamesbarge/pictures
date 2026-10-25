@@ -1,6 +1,6 @@
 # Header, nav and filters move into a sidebar
 
-**PR**: #TBD
+**PR**: #846
 **Date**: 2026-10-25
 
 ## Changes
