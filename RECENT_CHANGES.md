@@ -1,3 +1,10 @@
+## 2026-10-25: Remove the homepage STARTING SOON strip
+**PR**: #TBD | **Files**: `frontend/src/routes/+page.svelte`, `frontend/src/lib/components/calendar/FigmaTextDay.svelte`, `frontend/src/lib/analytics/posthog.ts`, `frontend/test-all.spec.ts`, `frontend/tests/mobile.spec.ts`
+- The homepage opens on the first day of poster cards again. The STARTING SOON strip from #762 is gone, with its once-a-minute clock and `.soon` CSS.
+- `FigmaTextDay` drops the `until`, `limit`, `label` and `source` props that only the strip used. TEXT mode is unchanged.
+- `calendar-soon` leaves `DiscoverySource`, and the strip's desktop and iPhone E2E tests are removed.
+
+---
 ## 2026-10-24: Listings QA — preview prefixes, Garden performance ids, Traces
 **PR**: #840 | **Files**: `src/scrapers/utils/film-title-cleaner.ts`, `src/scrapers/utils/screening-classification.ts`, `src/scrapers/cinemas/bfi.ts`, `src/scrapers/cinemas/garden.ts`, `src/scrapers/cinemas/garden-performance.ts`, `scripts/repair-listings-qa-2026-10-24.ts`
 - `BFI IMAX exclusive preview: Godzilla Minus Zero` and `Special preview: La Bola Negra` clean to the film title. The prefix is the screening note. A BFI director equal to the raw title is dropped.
