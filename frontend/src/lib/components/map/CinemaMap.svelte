@@ -20,10 +20,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
-	import type { Cinema as FullCinema } from '$lib/types';
-
-	// The fields the map reads; the root layout's trimmed cinema rows carry exactly these.
-	type Cinema = Pick<FullCinema, 'id' | 'name' | 'coordinates'> & { address: { area?: string } | null };
+	import type { Cinema } from '$lib/types';
 
 	let { cinemas = [] }: { cinemas: Cinema[] } = $props();
 
@@ -100,6 +97,10 @@
 
 		(async () => {
 			const maplibregl = await import('maplibre-gl');
+			// maplibre-gl 6 finds its tile worker next to its own module file, which
+			// stops resolving once Vite bundles it; hand it a bundled worker instead.
+			const { default: workerUrl } = await import('maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url');
+			maplibregl.setWorkerUrl(workerUrl);
 			await import('maplibre-gl/dist/maplibre-gl.css');
 			if (cancelled || !mapContainer) return;
 
