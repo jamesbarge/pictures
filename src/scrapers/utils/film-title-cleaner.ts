@@ -515,6 +515,38 @@ const SEASON_SUBTITLE =
   /^(?:series|season)\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\b/i;
 
 /**
+ * "Spider (2002) with Peter Suschitzky". The parenthetical year is the
+ * release year and the capitalised name is a guest at the screening.
+ * "with" has to follow the year, and the guest is two or three capitalised
+ * words (the same shape as "Special Preview of Fatherland with Katja Hoyer"),
+ * so "Dances with Wolves" and "Interview with the Vampire (1994)" stay.
+ * A second year in the film half is a double bill and stays whole.
+ */
+const YEAR_THEN_GUEST =
+  /^(.+?)\s+\(((?:19|20)\d{2})\)\s+with\s+(\p{Lu}[\p{L}'’-]+(?:\s+\p{Lu}[\p{L}'’-]+){1,2})$/u;
+
+/**
+ * Two capitalised words that are an event, not a person. Left for the
+ * live-score strip in this loop, and for the shadow-cast strip on draft #835.
+ */
+const GUEST_EVENT_TAIL =
+  /^(?:live\s+score|live\s+music|shadow\s+cast|(?:(?:pre-?)?recorded|extended)\s+intro)$/i;
+
+function matchYearThenGuest(
+  input: string,
+): { title: string; year: number; guest: string } | null {
+  const match = input.match(YEAR_THEN_GUEST);
+  if (!match) return null;
+  const title = match[1].trim();
+  if (title.length < 1) return null;
+  if (/\((?:19|20)\d{2}\)/.test(title)) return null;
+  if (GUEST_EVENT_TAIL.test(match[3])) return null;
+  const year = parseInt(match[2], 10);
+  if (!Number.isFinite(year)) return null;
+  return { title, year, guest: match[3] };
+}
+
+/**
  * Clean a film title and return metadata about what was stripped.
  *
  * Returns the cleaned title along with the stripped prefix and suffix,
@@ -640,6 +672,12 @@ export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
   // suffix strips iteratively until fixpoint, max 3 passes (plan 008).
   for (let pass = 0; pass < 3; pass++) {
     const beforePass = cleaned;
+
+    // "Spider (2002) with Peter Suschitzky" → "Spider (2002)", so the year
+    // strip at the end of this pass records 2002. A trailing "(PG)" or
+    // "+ Q&A" is removed on an earlier pass; three passes cover that stack.
+    const guest = matchYearThenGuest(cleaned);
+    if (guest) cleaned = `${guest.title} (${guest.year})`;
 
     // Capture the year inside "(2026 Re-release)"-style decorations as a
     // year hint before the chain below discards it. `??=` so a plain
@@ -803,6 +841,22 @@ export function programmeStrandNote(title: string): string | null {
   if (!strippedSuffix || cleanedTitle.length < 2) return null;
   const match = strippedSuffix.match(PROGRAMME_STRAND_NOTE);
   return match ? match[1] : null;
+}
+
+/**
+ * "with Peter Suschitzky" when the title is a release year followed by a
+ * guest. Null for "Dances with Wolves" and "Interview with the Vampire (1994)".
+ * The cleaner has to agree, so a title it keeps whole does not gain a note.
+ */
+export function guestAppearanceNote(title: string): string | null {
+  const normalized = decodeHtmlEntities(title)
+    .replace(/\u00c2([\u0080-\u00bf])/g, "$1")
+    .replace(/\s+/g, " ")
+    .trim();
+  const guest = matchYearThenGuest(normalized);
+  if (!guest) return null;
+  if (cleanFilmTitle(title) !== guest.title) return null;
+  return `with ${guest.guest}`;
 }
 
 /**

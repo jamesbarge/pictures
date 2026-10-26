@@ -101,6 +101,42 @@ describe("classifyScreening: Trans Awareness programme strand", () => {
   });
 });
 
+describe("classifyScreening: Garden guest after a release year", () => {
+  const spider = "Spider (2002) with Peter Suschitzky";
+
+  it("keeps Peter Suschitzky as the note on Spider", async () => {
+    const metadata = await classifyScreening({
+      filmTitle: spider,
+      datetime: new Date("2026-11-09T20:00:00Z"),
+      bookingUrl:
+        "https://bookings.thegardencinema.co.uk/TheGardenCinema.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_0.TcsWebTab_0.TcsPerformance_6265917.TcsSection_638",
+    });
+
+    expect(metadata.eventDescription).toBe("with Peter Suschitzky");
+  });
+
+  it("does not replace a note the scraper already supplied", async () => {
+    const metadata = await classifyScreening({
+      filmTitle: spider,
+      datetime: new Date("2026-11-09T20:00:00Z"),
+      bookingUrl: "https://bookings.thegardencinema.co.uk/example",
+      eventDescription: "Sold out",
+    });
+
+    expect(metadata.eventDescription).toBe("Sold out");
+  });
+
+  it("does not invent a note for a title that uses with", async () => {
+    const metadata = await classifyScreening({
+      filmTitle: "Interview with the Vampire (1994)",
+      datetime: new Date("2026-11-09T20:00:00Z"),
+      bookingUrl: "https://example.com/book",
+    });
+
+    expect(metadata.eventDescription).toBeUndefined();
+  });
+});
+
 describe("classifyScreening: accessibility in the title", () => {
   const disclosure =
     "Disclosure Day (with subtitles for the D/deaf and those experiencing hearing loss)";
