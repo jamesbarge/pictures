@@ -1,5 +1,5 @@
 ## 2026-10-26: Garden guest credits leave the film title
-**PR**: #XX | **Files**: `src/scrapers/utils/film-title-cleaner.ts`, `src/scrapers/utils/screening-classification.ts`, `scripts/repair-listings-qa-2026-10-26.ts`
+**PR**: #853 | **Files**: `src/scrapers/utils/film-title-cleaner.ts`, `src/scrapers/utils/screening-classification.ts`, `scripts/repair-listings-qa-2026-10-26.ts`
 - `Spider (2002) with Peter Suschitzky` stores as Spider (2002). The guest credit is the screening note.
 - `Dances with Wolves` and `Interview with the Vampire (1994)` stay whole. The year has to sit in front of `with`, and the name is two or three capitalised words.
 - `scripts/repair-listings-qa-2026-10-26.ts` rewrites the stored row. Dry-run unless `--execute`. It was not run.
