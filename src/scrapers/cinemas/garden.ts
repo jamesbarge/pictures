@@ -21,6 +21,8 @@ import { normalizeUrl, slugify } from "../utils/url";
 import { sanitizeRuntime } from "../utils/metadata-parser";
 import { escapeRegex } from "@/lib/title-extraction/patterns";
 import {
+  collapseGardenTranslationDuplicates,
+  gardenListingTitle,
   gardenPerformanceId,
   parseGardenBookingHeading,
   resolveSharedGardenPerformance,
@@ -77,9 +79,12 @@ export class GardenCinemaScraper extends BaseScraper {
 
         const $rating = $film.find(".films-list__by-date__film__rating");
         const rating = $rating.text().trim();
-        const title = GardenCinemaScraper.cleanTitle(rawTitle, rating);
+        // The listed string, before "Original (English)" is folded to the
+        // English title. The source id stays on this string so a re-scrape
+        // updates the existing screening instead of inserting another.
+        const listed = GardenCinemaScraper.cleanTitle(rawTitle, rating);
 
-        if (!title) {
+        if (!listed) {
           return;
         }
 
@@ -111,11 +116,11 @@ export class GardenCinemaScraper extends BaseScraper {
           }
 
           // Create sourceId for deduplication
-          const sourceId = `garden-${slugify(title)}-${datetime.toISOString()}`;
+          const sourceId = `garden-${slugify(listed)}-${datetime.toISOString()}`;
 
           const normalizedBookingUrl = normalizeUrl(bookingUrl, this.config.baseUrl);
           screenings.push({
-            filmTitle: title,
+            filmTitle: listed,
             datetime,
             bookingUrl: normalizedBookingUrl,
             sourceId,
@@ -123,15 +128,34 @@ export class GardenCinemaScraper extends BaseScraper {
             year,
             director,
             runtime,
-            ...FestivalDetector.detect("garden", title, datetime, normalizedBookingUrl),
+            ...FestivalDetector.detect("garden", listed, datetime, normalizedBookingUrl),
           });
         });
       });
     });
 
-    const reconciled = await this.dropSharedPerformanceMismatches(screenings);
-    console.log(`[${this.config.cinemaId}] Found ${reconciled.length} future screenings`);
-    return reconciled;
+    // Same performance listed as "Original (English)" and as the English
+    // title. Folding both to English first would hide the duplicate from
+    // the booking-page check, so the bilingual row is dropped while the
+    // listed title is still intact.
+    const collapsed = collapseGardenTranslationDuplicates(screenings);
+    for (const screening of collapsed.drop) {
+      console.warn(
+        `[${this.config.cinemaId}] dropping "${screening.filmTitle}" at ${screening.datetime.toISOString()} — same showing as "${gardenListingTitle(screening.filmTitle)}"`,
+      );
+    }
+    const reconciled = await this.dropSharedPerformanceMismatches(collapsed.keep);
+    const titled = reconciled.map((screening) => {
+      const title = gardenListingTitle(screening.filmTitle);
+      if (title === screening.filmTitle) return screening;
+      return {
+        ...screening,
+        filmTitle: title,
+        ...FestivalDetector.detect("garden", title, screening.datetime, screening.bookingUrl),
+      };
+    });
+    console.log(`[${this.config.cinemaId}] Found ${titled.length} future screenings`);
+    return titled;
   }
 
   /**

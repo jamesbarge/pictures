@@ -40,6 +40,20 @@ export const GENESIS_VENUE = {
 };
 
 /**
+ * Genesis appends a programme strand with a spaced dash. Only this strand:
+ * "The Crow - Seasonal Affective Cinema" is the film The Crow. A dash that
+ * belongs to the title ("Raft - A London Story", "Rammstein - Live in Mexico
+ * City") does not match, and neither does "Halloween (1978)- Halloween at
+ * Genesis" (no space before the dash, and a different strand).
+ */
+export function peelGenesisStrand(title: string): { title: string; note: string } | null {
+  const match = title.match(/^(.+?)\s+[-–]\s+(Seasonal Affective Cinema)$/);
+  const film = match?.[1].trim();
+  if (!film || film.length < 2 || !match) return null;
+  return { title: film, note: match[2] };
+}
+
+/**
  * Decode a response body with the charset its Content-Type declares, falling
  * back to UTF-8 when the header names none or names one TextDecoder rejects.
  */
@@ -140,11 +154,13 @@ export class GenesisScraper implements CinemaScraper {
     const screenings: RawScreening[] = [];
 
     // Extract film title from page
-    const filmTitle = this.extractFilmTitle($);
-    if (!filmTitle) {
+    const rawTitle = this.extractFilmTitle($);
+    if (!rawTitle) {
       console.log(`[genesis] Could not extract title from ${filmPath}`);
       return [];
     }
+    const strand = peelGenesisStrand(rawTitle);
+    const filmTitle = strand?.title ?? rawTitle;
 
     // Find all showtime links
     // Genesis format: <a href="https://genesis.admit-one.co.uk/seats/?perfCode=XXXX">HH:MM</a>
@@ -183,6 +199,7 @@ export class GenesisScraper implements CinemaScraper {
         format,
         bookingUrl,
         eventType,
+        eventDescription: strand?.note,
         sourceId: `genesis-${perfCode}`,
         ...FestivalDetector.detect("genesis", filmTitle, datetime, bookingUrl),
       });
