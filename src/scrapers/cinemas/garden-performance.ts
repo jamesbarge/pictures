@@ -83,6 +83,68 @@ function looseTitle(title: string): string {
     .trim();
 }
 
+/**
+ * A parenthetical that describes the print, not an English translation.
+ * "The Godfather (Part II)" and "Cabaret (1972 Restoration)" stay whole.
+ */
+const NOT_AN_ENGLISH_TITLE =
+  /\b(?:parts?|volumes?|chapters?|cuts?|restorations?|anniversar(?:y|ies)|premieres?|subtitled|dubbed|remasters?|remastered|editions?|versions?|16mm|35mm|70mm|imax|4k|screenings?)\b/i;
+
+/**
+ * ASCII originals need a function word that is not an ordinary English title
+ * word. "de" covers "El canto de las manos" and "La guitarra flamenca de …".
+ * "la" / "el" / "die" are not in the list: "La La Land" and "Die Hard" are
+ * English titles.
+ */
+const ROMANCE_FUNCTION_WORD = /\b(?:de|del|los|las|une|gli)\b/iu;
+
+function stripGardenDecoration(title: string): string {
+  let current = title.trim();
+  for (let pass = 0; pass < 2; pass++) {
+    const next = current
+      .replace(/\s+\((?:U|PG|12A?|15|18)\)\s*$/i, "")
+      .replace(/\s+\((?:19|20)\d{2}\)\s*$/, "")
+      .trim();
+    if (next === current) break;
+    current = next;
+  }
+  return current;
+}
+
+/**
+ * Garden's `Original title (English title)`, or null when the title is not
+ * that shape.
+ *
+ * The booking page puts a strand in front of the same shape:
+ * "In-Edit Cine-Documental: La guitarra flamenca de Yerai Cortés (The
+ * Flamenco Guitar of Yerai Cortés) (PG)". The parenthetical is still the
+ * English title. A trailing year — "El canto de las manos (Song of the
+ * Hands) (2025)" — is decoration, not the translation.
+ */
+export function gardenEnglishTitle(title: string): string | null {
+  const stripped = stripGardenDecoration(title);
+  const match = stripped.match(/^(.+?)\s+\(([^()]+)\)\s*$/u);
+  if (!match) return null;
+
+  const original = match[1].trim();
+  const english = match[2].trim();
+  if (original.split(/\s+/).length < 2 || english.split(/\s+/).length < 2) return null;
+  if (!/^\p{L}/u.test(english)) return null;
+  if (!/^[\p{L}\p{N}][\p{L}\p{N}\s,:'’!?.&\-]*$/u.test(english)) return null;
+  if (NOT_AN_ENGLISH_TITLE.test(english)) return null;
+  if (looseTitle(original) === looseTitle(english)) return null;
+
+  const foreign =
+    /[^\u0000-\u007f]/u.test(original) || ROMANCE_FUNCTION_WORD.test(original);
+  if (!foreign) return null;
+  return english;
+}
+
+/** Film title to store: the English parenthetical when Garden printed one. */
+export function gardenListingTitle(title: string): string {
+  return gardenEnglishTitle(title) ?? title;
+}
+
 function londonTime(date: Date): string {
   const parts = Object.fromEntries(
     LONDON_TIME.formatToParts(date).map((part) => [part.type, part.value]),
@@ -96,7 +158,8 @@ export function screeningMatchesGardenHeading(
   heading: GardenBookingHeading,
 ): boolean {
   return (
-    looseTitle(screening.filmTitle) === looseTitle(heading.title) &&
+    looseTitle(gardenListingTitle(screening.filmTitle)) ===
+      looseTitle(gardenListingTitle(heading.title)) &&
     londonDateString(screening.datetime) === heading.date &&
     londonTime(screening.datetime) === heading.time
   );
@@ -111,6 +174,12 @@ export interface SharedPerformancePlan<T> {
  * A performance id claimed by two different showings. When the booking page
  * names one of them, the others are dropped. When the page can't be read,
  * nothing is dropped.
+ *
+ * A heading can match both the bilingual listing and the English title inside
+ * it ("In-Edit Cine-Documental: … (The Flamenco Guitar of Yerai Cortés)").
+ * The row whose title already is that English title is the one kept. Exact
+ * equality used to match neither, because of the strand prefix, and the
+ * empty-keep guard then left both rows in place.
  */
 export function resolveSharedGardenPerformance<T extends { filmTitle: string; datetime: Date }>(
   group: T[],
@@ -119,6 +188,47 @@ export function resolveSharedGardenPerformance<T extends { filmTitle: string; da
   if (group.length < 2 || !heading) return { keep: group, drop: [] };
   const keep = group.filter((screening) => screeningMatchesGardenHeading(screening, heading));
   if (keep.length === 0) return { keep: group, drop: [] };
-  const kept = new Set(keep);
-  return { keep, drop: group.filter((screening) => !kept.has(screening)) };
+  const wanted = looseTitle(gardenListingTitle(heading.title));
+  const preferred = keep.filter((screening) => looseTitle(screening.filmTitle) === wanted);
+  const chosen = preferred.length > 0 ? preferred : keep;
+  const kept = new Set(chosen);
+  return { keep: chosen, drop: group.filter((screening) => !kept.has(screening)) };
+}
+
+/**
+ * Two listings of one performance that are the same film once Garden's
+ * "Original (English)" parenthetical is read. The English title stays.
+ * Different films that share an id (the booking page is what separates
+ * those) are left for {@link resolveSharedGardenPerformance}.
+ */
+export function collapseGardenTranslationDuplicates<
+  T extends { filmTitle: string; datetime: Date; bookingUrl?: string },
+>(screenings: T[]): SharedPerformancePlan<T> {
+  const drop = new Set<T>();
+  const groups = new Map<string, T[]>();
+  for (const screening of screenings) {
+    const id = screening.bookingUrl ? gardenPerformanceId(screening.bookingUrl) : null;
+    if (!id) continue;
+    const key = `${id}\0${screening.datetime.toISOString()}`;
+    const list = groups.get(key) ?? [];
+    list.push(screening);
+    groups.set(key, list);
+  }
+
+  for (const group of groups.values()) {
+    if (group.length < 2) continue;
+    const translated = group.map((screening) => looseTitle(gardenListingTitle(screening.filmTitle)));
+    if (new Set(translated).size !== 1) continue;
+    const wanted = translated[0];
+    const preferred = group.filter((screening) => looseTitle(screening.filmTitle) === wanted);
+    const keep = preferred[0] ?? group[0];
+    for (const screening of group) {
+      if (screening !== keep) drop.add(screening);
+    }
+  }
+
+  return {
+    keep: screenings.filter((screening) => !drop.has(screening)),
+    drop: screenings.filter((screening) => drop.has(screening)),
+  };
 }
