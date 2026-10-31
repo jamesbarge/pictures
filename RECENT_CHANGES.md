@@ -1,5 +1,5 @@
 ## 2026-10-31: Peppa duplicates, SLA titles, Garden extras, Bubblegum club
-**PR**: #XX | **Files**: `src/scrapers/utils/film-title-cleaner.ts`, `src/scrapers/utils/screening-classification.ts`, `src/scrapers/pipeline.ts`, `scripts/repair-listings-qa-2026-10-31.ts`
+**PR**: #855 | **Files**: `src/scrapers/utils/film-title-cleaner.ts`, `src/scrapers/utils/screening-classification.ts`, `src/scrapers/pipeline.ts`, `scripts/repair-listings-qa-2026-10-31.ts`
 - `Festive Fun with Peppa Cinema Experience` stores as `Festive Fun with Peppa`. A second row with the same ticketing link, screen, and time is the same showing when the cleaner agrees, and the extra source row is deleted when the unique index collides.
 - `SLA 2026:` and `All Out Of Bubblegum Film Club:` come off the film title. The strand is the screening note and `screenings.season`.
 - Garden's `cocktails, intro + Ennio` shape stores the film, with the extras as the note. `28 Years Later: The Bone Temple` and `Master and Commander: The Far Side of the World` stay whole.
