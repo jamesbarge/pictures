@@ -1,3 +1,11 @@
+## 2026-10-31: Peppa duplicates, SLA titles, Garden extras, Bubblegum club
+**PR**: #XX | **Files**: `src/scrapers/utils/film-title-cleaner.ts`, `src/scrapers/utils/screening-classification.ts`, `src/scrapers/pipeline.ts`, `scripts/repair-listings-qa-2026-10-31.ts`
+- `Festive Fun with Peppa Cinema Experience` stores as `Festive Fun with Peppa`. A second row with the same ticketing link, screen, and time is the same showing when the cleaner agrees, and the extra source row is deleted when the unique index collides.
+- `SLA 2026:` and `All Out Of Bubblegum Film Club:` come off the film title. The strand is the screening note and `screenings.season`.
+- Garden's `cocktails, intro + Ennio` shape stores the film, with the extras as the note. `28 Years Later: The Bone Temple` and `Master and Commander: The Far Side of the World` stay whole.
+- `scripts/repair-listings-qa-2026-10-31.ts` rewrites the rows already stored. Dry-run unless `--execute`. It was not run.
+
+---
 ## 2026-10-25: Remove the homepage STARTING SOON strip
 **PR**: #845 | **Files**: `frontend/src/routes/+page.svelte`, `frontend/src/lib/components/calendar/FigmaTextDay.svelte`, `frontend/src/lib/analytics/posthog.ts`, `frontend/test-all.spec.ts`, `frontend/tests/mobile.spec.ts`
 - The homepage opens on the first day of poster cards again. The STARTING SOON strip from #762 is gone, with its once-a-minute clock and `.soon` CSS.
