@@ -182,6 +182,9 @@ export const EVENT_PREFIXES = [
   /^throwback\s+thursday[:\s]+/i,
   /^flashback[:\s]+/i,
   /^film\s+club[:\s]+/i,
+  // Rio's club strand. The name is six words, so the short-prefix colon
+  // rule leaves it in the title ("All Out Of Bubblegum Film Club: THE SHINING").
+  /^all\s+out\s+of\s+bubblegum\s+film\s+club\s*:\s*/i,
   /^cinema\s+club[:\s]+/i,
   /^late\s+night[:\s]+/i,
   /^midnight\s+madness[:\s]+/i,
@@ -279,9 +282,9 @@ export const EVENT_PREFIXES = [
   /^re:?mind\s+film\s+festival\s+presents?[:\s]+/i,
   // Festival programme tags: the acronym, an optional year and an optional
   // strand name, then a colon or a spaced dash ("LPFF 2026 Short Session: …",
-  // "UKJFF: …", "FFFL Opening Gala - …"). Case-sensitive so ordinary words
-  // never match.
-  /^(?:LPFF|UKJFF|HKFF|LIFF|FFFL|LoLaFF)(?:\s+\d{4})?(?:\s+[^:]{1,30}?)?(?:\s*:|\s+[-–])\s+/,
+  // "UKJFF: …", "FFFL Opening Gala - …", "SLA 2026: …"). Case-sensitive so
+  // ordinary words never match.
+  /^(?:LPFF|UKJFF|HKFF|LIFF|FFFL|LoLaFF|SLA)(?:\s+\d{4})?(?:\s+[^:]{1,30}?)?(?:\s*:|\s+[-–])\s+/,
   /^london\s+palestine\s+film\s+festival(?:\s+\d{4})?\s*:\s*/i,
   /^london\s+breeze\s+film\s+festival(?:\s+shorts)?\s*:\s*/i,
   /^sheffield\s+docfest(?:\s+spotlights?)?\s*:\s*/i,
@@ -515,6 +518,28 @@ const SEASON_SUBTITLE =
   /^(?:series|season)\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\b/i;
 
 /**
+ * Garden lists the film after the hospitality: "Italian cocktails, Morricone
+ * musical intro + Ennio". The left side is a comma-separated list of extras
+ * and names a cocktail, an intro, or a making activity. The right side is the
+ * film. A double bill has no comma list ("Tony Takitani + Talk Radio") and
+ * stays whole. A right-hand extra ("+ Q&A") is left for the suffix rules.
+ */
+const HOSPITALITY_KEYWORD = /\b(?:cocktails?|intro|making)\b/i;
+const HOSPITALITY_RIGHT_IS_EXTRA =
+  /^(?:q\s*(?:&|\+)\s*a|(?:panel\s+)?discussion|(?:director\s+)?introduction|intro|screen\s?talk|talk|book\s+launch|live(?:\s+music)?|panel)\b/i;
+
+function peelHospitalityLeadIn(title: string): { extras: string; film: string } | null {
+  const match = title.match(/^(.+,.+)\s+\+\s+([^+]+)$/);
+  if (!match) return null;
+  const extras = match[1].trim();
+  const film = match[2].trim();
+  if (!HOSPITALITY_KEYWORD.test(extras) || HOSPITALITY_KEYWORD.test(film)) return null;
+  if (HOSPITALITY_RIGHT_IS_EXTRA.test(film)) return null;
+  if (film.length < 2 || film.split(/\s+/).length > 8) return null;
+  return { extras, film };
+}
+
+/**
  * Clean a film title and return metadata about what was stripped.
  *
  * Returns the cleaned title along with the stripped prefix and suffix,
@@ -547,6 +572,16 @@ export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
   // words, so "Dances with Wolves" keeps its wolves.
   if (strippedPrefix && /preview\s+of$/i.test(strippedPrefix)) {
     cleaned = cleaned.replace(/\s+with\s+\p{Lu}[\p{L}'’-]+(?:\s+\p{Lu}[\p{L}'’-]+){1,2}$/u, "").trim();
+  }
+
+  // Garden's "cocktails, intro + Film" shape. The extras stay the prefix so
+  // the screening note can keep them. A prefix already peeled above wins.
+  if (!strippedPrefix) {
+    const hospitality = peelHospitalityLeadIn(cleaned);
+    if (hospitality) {
+      strippedPrefix = hospitality.extras;
+      cleaned = hospitality.film;
+    }
   }
 
   // Strip pagination artifacts from BFI titles (e.g. "The Chronology of Water p17")
@@ -768,6 +803,14 @@ export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
     .replace(/\s*-\s*weird\s+wednesdays?\s*$/i, "")
     .trim();
 
+    // Everyman's marketing tail: "Festive Fun with Peppa Cinema Experience".
+    // A one-word remainder ("The Cinema Experience" → "The") can be the film,
+    // so only a remainder of four or more characters is peeled.
+    const cinemaExperience = cleaned.match(/^(.*\S)\s+cinema\s+experience$/i);
+    if (cinemaExperience && cinemaExperience[1].trim().length >= 4) {
+      cleaned = cinemaExperience[1].trim();
+    }
+
     // Apply patrol-learned suffixes after the hand-curated list, since the
     // hand-curated patterns are tighter and should win on collision.
     for (const re of LEARNED_SUFFIX_REGEXES) {
@@ -821,12 +864,33 @@ export function cleanFilmTitle(title: string): string {
  * copy would label every "Film Club:" showing.
  */
 const LISTING_NOTE_PREFIX =
-  /^(?:bfi imax exclusive preview|exclusive preview|special preview|women and the world festival)$/i;
+  /^(?:bfi imax exclusive preview|exclusive preview|special preview|women and the world festival|all out of bubblegum film club)$/i;
+
+/** Scotland Loves Anime's programme code, with or without the edition year. */
+const SLA_STRAND_NOTE = /^sla(?:\s+\d{4})?$/i;
+
+function isHospitalityExtras(prefix: string): boolean {
+  return prefix.includes(",") && HOSPITALITY_KEYWORD.test(prefix);
+}
 
 /** The peeled preview or festival label, or null when the title is not one of those. */
 export function listingEventNote(title: string): string | null {
   const { strippedPrefix, cleanedTitle } = cleanFilmTitleWithMetadata(title);
   if (!strippedPrefix || cleanedTitle.length < 2) return null;
-  if (!LISTING_NOTE_PREFIX.test(strippedPrefix)) return null;
-  return strippedPrefix;
+  if (LISTING_NOTE_PREFIX.test(strippedPrefix)) return strippedPrefix;
+  if (SLA_STRAND_NOTE.test(strippedPrefix)) return strippedPrefix;
+  if (isHospitalityExtras(strippedPrefix)) return strippedPrefix;
+  return null;
+}
+
+/**
+ * Strand label for `screenings.season`. Preview labels and hospitality extras
+ * stay on the event note only. The listings payload reads `eventDescription`;
+ * `season` is the column the schema already has for a programme name.
+ */
+export function strandSeasonNote(title: string): string | null {
+  const note = listingEventNote(title);
+  if (!note) return null;
+  if (SLA_STRAND_NOTE.test(note) || /^all out of bubblegum film club$/i.test(note)) return note;
+  return null;
 }
