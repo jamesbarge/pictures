@@ -1,6 +1,6 @@
 # MUBI Fest titles and Director's Cut casing
 
-**PR**: #PENDING
+**PR**: #856
 **Date**: 2026-11-01
 
 ## Changes
