@@ -28,7 +28,7 @@ dotenv.config({ path: ".env.local" });
 import * as fs from "fs";
 import postgres from "postgres";
 import { decodeHtmlEntities } from "../src/lib/title-patterns";
-import { cleanFilmTitleWithMetadata, getKnownNonFilmType } from "../src/scrapers/utils/film-title-cleaner";
+import { cleanFilmTitleWithMetadata, getKnownNonFilmType, smartTitleCase } from "../src/scrapers/utils/film-title-cleaner";
 
 // Warn early when learnings file is missing — Pass 4 silently becomes a no-op
 // on fresh checkouts / CI without this signal.
@@ -58,15 +58,6 @@ const DIRTY_FORMAT_SUFFIX_RE = /\((?:35mm|70mm|16mm|IMAX|Q&A|with intro|VHS SCRE
 const DIRTY_HTML_ENTITY_RE = /&(?:amp|quot|nbsp|hellip|mdash|ndash|rsquo|lsquo|apos|#\d+);/;
 const DIRTY_ALL_CAPS_RE = /^[A-Z0-9\s\-:.,'!?&()'’–—\/#]+$/u;
 
-// Acronyms preserved during smart-title-case
-const ACRONYMS = new Set([
-  "LVSFF", "SXSW", "BFI", "BAFTA", "IMAX", "UK", "USA", "US", "UFO",
-  "FBI", "CIA", "NYC", "LA", "MI6", "NTL", "RSC", "ROH", "NT", "MET",
-  "RAF", "WWI", "WWII", "DJ", "MC", "VHS", "DVD", "TV", "AM", "PM",
-  "3D", "2D", "4K", "8K", "QC", "EU", "USSR", "GB", "PCC", "AC",
-  "Q&A", "Q+A", "BBC", "ITV", "HBO", "MGM", "ABC", "CBS", "NBC",
-]);
-
 interface FilmRow {
   id: string;
   title: string;
@@ -92,18 +83,6 @@ const stats: Stats = {
   reclassifiedNonFilm: 0,
   collisionsSkipped: 0,
 };
-
-function smartTitleCase(s: string): string {
-  const lowers = new Set(["of", "the", "and", "a", "an", "to", "in", "on", "for", "with", "by", "at", "from", "or", "nor", "but", "vs", "as", "is", "de", "la", "le", "du", "des"]);
-  const words = s.split(/(\s+|-|:|;|\/)/);
-  return words.map((w, i) => {
-    if (!w.match(/\w/)) return w;
-    const upper = w.toUpperCase();
-    if (ACRONYMS.has(upper)) return upper;
-    if (i > 0 && lowers.has(w.toLowerCase())) return w.toLowerCase();
-    return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
-  }).join("");
-}
 
 function shouldFlagAllCaps(title: string): boolean {
   return (
