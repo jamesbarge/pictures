@@ -282,6 +282,10 @@ export const EVENT_PREFIXES = [
   // "UKJFF: …", "FFFL Opening Gala - …"). Case-sensitive so ordinary words
   // never match.
   /^(?:LPFF|UKJFF|HKFF|LIFF|FFFL|LoLaFF)(?:\s+\d{4})?(?:\s+[^:]{1,30}?)?(?:\s*:|\s+[-–])\s+/,
+  // Picturehouse's MUBI Fest strand. The colon handler would keep this whole
+  // when the film starts with "A" or "The" ("MUBI FEST LIVE: A LONG WINTER").
+  // The colon is required, so a title that merely mentions MUBI stays.
+  /^mubi\s+fest(?:\s+live)?(?:\s+\d{4})?\s*:\s*/i,
   /^london\s+palestine\s+film\s+festival(?:\s+\d{4})?\s*:\s*/i,
   /^london\s+breeze\s+film\s+festival(?:\s+shorts)?\s*:\s*/i,
   /^sheffield\s+docfest(?:\s+spotlights?)?\s*:\s*/i,
@@ -514,6 +518,9 @@ const SCREENING_NOISE_COLON_SUFFIX = new RegExp(
 const SEASON_SUBTITLE =
   /^(?:series|season)\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\b/i;
 
+/** Picturehouse MUBI Fest, with or without the "Live" tag and an edition year. */
+const MUBI_FEST_NOTE = /^mubi\s+fest(?:\s+live)?(?:\s+\d{4})?$/i;
+
 /**
  * Clean a film title and return metadata about what was stripped.
  *
@@ -698,8 +705,11 @@ export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
     // Remove "(16mm)" / "(35mm)" / "(70mm)" / "(35 mm)" format parentheticals
     .replace(/\s*\((?:16|35|70)\s?mm\)\s*$/i, "")
     // Remove undated version notes: "(Re-release)", "(Remastered)",
-    // "(Theatrical Cut)", "(North American Cut)"
+    // "(Theatrical Cut)", "(North American Cut)", "(Director's Cut)".
+    // The apostrophe may be straight or curly, and the words may already have
+    // been title-cased badly ("director’s Cut"). The colon form is earlier.
     .replace(/\s*\((?:re-?release|remastered|theatrical\s+cut|north\s+american\s+cut)\)\s*$/i, "")
+    .replace(/\s*\((?:the\s+)?director['’]?s\s+cut\)\s*$/i, "")
     // Remove 4K notes: "(4K reissue)", "(4K Re-release)", "- 4K Restoration",
     // "Sexy Beast- 4K Restoration", "Halloween 4K Restoration", "La Boum 4K"
     .replace(/(?:\s*[-–]\s*|\s*\(|\s+)4k(?:\s+(?:restoration|re-?release|reissue))?\)?\s*$/i, "")
@@ -785,7 +795,85 @@ export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
     ? beforeSuffixStrip.slice(cleaned.length).trim()
     : null;
 
+  // Picturehouse sends the MUBI Fest film in capitals. "A LONG WINTER" does not
+  // match the title people and TMDB use. Other shouty titles stay as scraped:
+  // a blanket title-case would rewrite "THE SECRET AGENT" and "AKIRA".
+  if (strippedPrefix && MUBI_FEST_NOTE.test(strippedPrefix) && isShoutyTitle(cleaned)) {
+    cleaned = smartTitleCase(cleaned);
+  }
+
   return { cleanedTitle: cleaned, strippedPrefix, strippedSuffix, extractedYear };
+}
+
+const TITLE_CASE_SMALL_WORDS = new Set([
+  "of", "the", "and", "a", "an", "to", "in", "on", "for", "with", "by", "at",
+  "from", "or", "nor", "but", "vs", "as", "is", "de", "la", "le", "du", "des",
+]);
+
+const TITLE_CASE_ACRONYMS = new Set([
+  "LVSFF", "SXSW", "BFI", "BAFTA", "IMAX", "UK", "USA", "US", "UFO",
+  "FBI", "CIA", "NYC", "LA", "MI6", "NTL", "RSC", "ROH", "NT", "MET",
+  "RAF", "WWI", "WWII", "DJ", "MC", "VHS", "DVD", "TV", "AM", "PM",
+  "3D", "2D", "4K", "8K", "QC", "EU", "USSR", "GB", "PCC", "AC",
+  "Q&A", "Q+A", "BBC", "ITV", "HBO", "MGM", "ABC", "CBS", "NBC", "MUBI",
+]);
+
+const APOSTROPHE = /['’‘]/;
+
+function isShoutyTitle(title: string): boolean {
+  return /\p{L}/u.test(title) && !/[a-z]/.test(title);
+}
+
+/**
+ * Title-case one token. The first letter is the first letter, not the first
+ * character, so "(DIRECTOR'S" becomes "(Director's" rather than "(director's".
+ * A letter after an apostrophe is capitalised when it starts a name ("O'Brien").
+ * A possessive "'s" stays lowercase.
+ */
+function titleCaseToken(token: string): string {
+  const chars = Array.from(token);
+  let seenLetter = false;
+  let out = "";
+  for (let i = 0; i < chars.length; i++) {
+    const ch = chars[i];
+    if (!/\p{L}/u.test(ch)) {
+      out += ch;
+      continue;
+    }
+    const prev = i > 0 ? chars[i - 1] : "";
+    const afterApostrophe = APOSTROPHE.test(prev);
+    const rest = chars.slice(i + 1).join("");
+    const possessiveS = afterApostrophe && /^s$/i.test(ch) && !/\p{L}/u.test(rest);
+    const capitalize = !seenLetter || (afterApostrophe && !possessiveS);
+    out += capitalize ? ch.toUpperCase() : ch.toLowerCase();
+    seenLetter = true;
+  }
+  return out;
+}
+
+/**
+ * Smart title-case for ALL CAPS listings. Articles stay lower in the middle.
+ * Acronyms stay upper. Parentheses and apostrophes do not swallow the next
+ * capital: "(DIRECTOR'S CUT)" → "(Director's Cut)", "O'BRIEN" → "O'Brien".
+ */
+export function smartTitleCase(s: string): string {
+  const words = s.split(/(\s+|-|:|;|\/)/);
+  let wordIndex = 0;
+  return words.map((word) => {
+    if (!/[\p{L}\p{N}]/u.test(word)) return word;
+    const upper = word.toUpperCase();
+    const letters = upper.replace(/[^\p{L}\p{N}&+]/gu, "");
+    if (TITLE_CASE_ACRONYMS.has(upper) || TITLE_CASE_ACRONYMS.has(letters)) {
+      wordIndex++;
+      return upper;
+    }
+    if (wordIndex > 0 && TITLE_CASE_SMALL_WORDS.has(word.toLowerCase())) {
+      wordIndex++;
+      return word.toLowerCase();
+    }
+    wordIndex++;
+    return titleCaseToken(word);
+  }).join("");
 }
 
 /**
@@ -823,10 +911,33 @@ export function cleanFilmTitle(title: string): string {
 const LISTING_NOTE_PREFIX =
   /^(?:bfi imax exclusive preview|exclusive preview|special preview|women and the world festival)$/i;
 
+/** A peeled "(Director's Cut)", straight or curly apostrophe, any case. */
+const DIRECTORS_CUT_SUFFIX = /^\((?:the\s+)?director['’]?s\s+cut\)$/i;
+
 /** The peeled preview or festival label, or null when the title is not one of those. */
 export function listingEventNote(title: string): string | null {
   const { strippedPrefix, cleanedTitle } = cleanFilmTitleWithMetadata(title);
   if (!strippedPrefix || cleanedTitle.length < 2) return null;
-  if (!LISTING_NOTE_PREFIX.test(strippedPrefix)) return null;
-  return strippedPrefix;
+  if (LISTING_NOTE_PREFIX.test(strippedPrefix) || MUBI_FEST_NOTE.test(strippedPrefix)) {
+    return strippedPrefix;
+  }
+  return null;
+}
+
+/** Programme name for `screenings.season`. Preview labels stay on the event note. */
+export function listingSeasonNote(title: string): string | null {
+  const note = listingEventNote(title);
+  if (!note || !MUBI_FEST_NOTE.test(note)) return null;
+  return note;
+}
+
+/**
+ * The cut name to keep once "(Director's Cut)" has left the film title.
+ * Other version parentheticals stay off the screening note, as before.
+ */
+export function versionScreeningNote(title: string): string | null {
+  const { strippedSuffix, cleanedTitle } = cleanFilmTitleWithMetadata(title);
+  if (!strippedSuffix || cleanedTitle.length < 2) return null;
+  if (!DIRECTORS_CUT_SUFFIX.test(strippedSuffix)) return null;
+  return "Director's Cut";
 }

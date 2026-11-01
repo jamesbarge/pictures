@@ -146,6 +146,9 @@ describe("extractFilmTitleSync", () => {
       ["Casablanca (London Premiere + Q&A with director)", "Casablanca"],
       ["Casablanca (VHS) (B&W)", "Casablanca"],
       ["Casablanca (B&W) (VHS)", "Casablanca"],
+      ["Little Shop of Horrors (Director's Cut)", "Little Shop of Horrors"],
+      ["Little Shop of Horrors (director\u2019s Cut)", "Little Shop of Horrors"],
+      ["Little Shop of Horrors (The Director\u2019s Cut)", "Little Shop of Horrors"],
       [
         "Disclosure Day (with subtitles for the D/deaf and those experiencing hearing loss)",
         "Disclosure Day",

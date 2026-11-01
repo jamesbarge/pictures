@@ -101,6 +101,69 @@ describe("classifyScreening: Trans Awareness programme strand", () => {
   });
 });
 
+describe("classifyScreening: 1 Nov 2026 MUBI Fest and Director's Cut", () => {
+  it("keeps the Q&A event type and uses MUBI Fest as the visible note", async () => {
+    const metadata = await classifyScreening({
+      filmTitle: "MUBI FEST LIVE: A LONG WINTER + Q&A",
+      datetime: new Date("2026-11-15T17:30:00Z"),
+      bookingUrl: "https://www.picturehouses.com/movie-details/022/HO00018916/mubi-fest-live-a-long-winter-q-a",
+    });
+
+    expect(metadata.eventType).toBe("q_and_a");
+    expect(metadata.eventDescription).toBe("MUBI FEST LIVE");
+    expect(metadata.season).toBe("MUBI FEST LIVE");
+  });
+
+  it("uses the festival name as the note when the listing has no Q&A", async () => {
+    const metadata = await classifyScreening({
+      filmTitle: "MUBI FEST LIVE: A LONG WINTER",
+      datetime: new Date("2026-11-15T17:30:00Z"),
+      bookingUrl: "https://www.picturehouses.com/movie-details/022/HO00018916/mubi-fest-live-a-long-winter",
+    });
+
+    expect(metadata.eventDescription).toBe("MUBI FEST LIVE");
+    expect(metadata.season).toBe("MUBI FEST LIVE");
+  });
+
+  it("does not replace a note the scraper already supplied", async () => {
+    const metadata = await classifyScreening({
+      filmTitle: "MUBI FEST LIVE: A LONG WINTER + Q&A",
+      datetime: new Date("2026-11-15T17:30:00Z"),
+      bookingUrl: "https://www.picturehouses.com/example",
+      eventType: "q_and_a",
+      eventDescription: "Sold out",
+    });
+
+    expect(metadata.eventType).toBe("q_and_a");
+    expect(metadata.eventDescription).toBe("Sold out");
+    expect(metadata.season).toBe("MUBI FEST LIVE");
+  });
+
+  it("keeps a scraper Q&A type and still records the festival", async () => {
+    const metadata = await classifyScreening({
+      filmTitle: "MUBI FEST LIVE: A LONG WINTER + Q&A",
+      datetime: new Date("2026-11-15T17:30:00Z"),
+      bookingUrl: "https://www.picturehouses.com/example",
+      eventType: "q_and_a",
+    });
+
+    expect(metadata.eventType).toBe("q_and_a");
+    expect(metadata.eventDescription).toBe("MUBI FEST LIVE");
+    expect(metadata.season).toBe("MUBI FEST LIVE");
+  });
+
+  it("keeps Director's Cut as the note and the film title for the cleaner", async () => {
+    const metadata = await classifyScreening({
+      filmTitle: "Little Shop of Horrors (director\u2019s Cut)",
+      datetime: new Date("2026-11-15T15:30:00Z"),
+      bookingUrl: "https://whatson.bfi.org.uk/Online/example",
+    });
+
+    expect(metadata.eventDescription).toBe("Director's Cut");
+    expect(metadata.season).toBeNull();
+  });
+});
+
 describe("classifyScreening: accessibility in the title", () => {
   const disclosure =
     "Disclosure Day (with subtitles for the D/deaf and those experiencing hearing loss)";

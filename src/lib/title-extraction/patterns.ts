@@ -181,7 +181,7 @@ export const TITLE_SUFFIXES: RegExp[] = [
   /\s*\(4K\s+Re-?release\)$/i,
   /\s*\(Restored\)$/i,
   /\s*\(Digital\s+Restoration\)$/i,
-  /\s*\(Director'?s?\s+Cut\)$/i,
+  /\s*\((?:the\s+)?director['’]?s\s+cut\)$/i,
   /\s*\(Extended\s+(?:Edition|Cut)\)$/i,
   /\s*\(Original\s+Cut\)$/i,
   /\s*\(Theatrical\s+Cut\)$/i,
@@ -236,7 +236,7 @@ export const TITLE_SUFFIXES: RegExp[] = [
 export const VERSION_SUFFIX_PATTERNS: RegExp[] = [
   // Colon-separated versions (most common at PCC)
   /\s*:\s*(?:The\s+)?Final\s+Cut$/i,
-  /\s*:\s*Director'?s?\s+Cut$/i,
+  /\s*:\s*(?:the\s+)?director['’]?s?\s+cut$/i,
   /\s*:\s*Extended\s+(?:Edition|Cut)$/i,
   /\s*:\s*Original\s+(?:Edition|Cut)$/i,
   /\s*:\s*Theatrical\s+(?:Edition|Cut)$/i,
@@ -246,7 +246,7 @@ export const VERSION_SUFFIX_PATTERNS: RegExp[] = [
   /\s*:\s*Special\s+Edition$/i,
   // Hyphen-separated versions
   /\s+-\s*(?:The\s+)?Final\s+Cut$/i,
-  /\s+-\s*Director'?s?\s+Cut$/i,
+  /\s+-\s*(?:the\s+)?director['’]?s?\s+cut$/i,
   /\s+-\s*Extended\s+(?:Edition|Cut)$/i,
   /\s+-\s*(?:Redux|Remastered|Restored)$/i,
 ];

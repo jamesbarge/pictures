@@ -1,3 +1,10 @@
+## 2026-11-01: MUBI Fest titles and Director's Cut casing
+**PR**: #PENDING | **Files**: `src/scrapers/utils/film-title-cleaner.ts`, `src/scrapers/utils/screening-classification.ts`, `scripts/patrol-autofix.ts`, `scripts/repair-listings-qa-2026-11-01.ts`
+- `MUBI FEST LIVE: A LONG WINTER` cleans to `A Long Winter`. The festival name is the screening note and the season. A note that is only `Q&A` is replaced; the event type stays `q_and_a`.
+- `(director’s Cut)` is peeled like other version notes, and the note is `Director's Cut`. Title-casing no longer lowercases the first letter inside parentheses or the letter after an apostrophe in a name.
+- `scripts/repair-listings-qa-2026-11-01.ts` rewrites the two stored rows. Dry run unless `--execute`. Not run against production.
+
+---
 ## 2026-10-25: Remove the homepage STARTING SOON strip
 **PR**: #845 | **Files**: `frontend/src/routes/+page.svelte`, `frontend/src/lib/components/calendar/FigmaTextDay.svelte`, `frontend/src/lib/analytics/posthog.ts`, `frontend/test-all.spec.ts`, `frontend/tests/mobile.spec.ts`
 - The homepage opens on the first day of poster cards again. The STARTING SOON strip from #762 is gone, with its once-a-minute clock and `.soon` CSS.
