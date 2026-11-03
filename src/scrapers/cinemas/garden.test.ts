@@ -204,6 +204,42 @@ describe("GardenCinemaScraper — one Savoy performance, one film", () => {
     ]);
   });
 
+  it("collapses the two Cosmopolis listings of performance 6283015 before asking the booking page", async () => {
+    const url =
+      "https://bookings.thegardencinema.co.uk/TheGardenCinema.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_0.TcsWebTab_0.TcsPerformance_6283015.TcsSection_638";
+    const html = `<html><body>
+      <div class="date-block" data-date="2026-11-17">
+        <div class="films-list__by-date__film">
+          <div class="films-list__by-date__film__title"><a href="/film/delillo/">Don DeLillo at 90: Cosmopolis with Ben Rivers</a></div>
+          <div class="films-list__by-date__film__rating">15</div>
+          <div class="films-list__by-date__film__stats">David Cronenberg, Canada, 2012, 109m.</div>
+          <a class="screening" href="${url}">20:00</a>
+        </div>
+        <div class="films-list__by-date__film">
+          <div class="films-list__by-date__film__title"><a href="/film/cosmopolis/">Cosmopolis (2012) with Ben Rivers</a></div>
+          <div class="films-list__by-date__film__rating">15</div>
+          <div class="films-list__by-date__film__stats">David Cronenberg, Canada, 2012, 109m.</div>
+          <a class="screening" href="${url}">20:00</a>
+        </div>
+      </div>
+    </body></html>`;
+    const scraper = new GardenCinemaScraper();
+    const fetchPage = vi
+      .spyOn(scraper as unknown as { fetchPerformancePage(url: string): Promise<string> }, "fetchPerformancePage")
+      .mockRejectedValue(new Error("should not be fetched"));
+    const screenings = await (
+      scraper as unknown as { parsePages(pages: string[]): Promise<RawScreening[]> }
+    ).parsePages([html]);
+
+    expect(fetchPage).not.toHaveBeenCalled();
+    expect(screenings).toHaveLength(1);
+    expect(screenings[0].filmTitle).toBe("Don DeLillo at 90: Cosmopolis with Ben Rivers");
+    expect(screenings[0].year).toBe(2012);
+    expect(screenings[0].director).toBe("David Cronenberg");
+    expect(screenings[0].bookingUrl).toContain("TcsPerformance_6283015");
+    expect(screenings[0].datetime.toISOString()).toBe("2026-11-17T20:00:00.000Z");
+  });
+
   it("keeps both rows when the booking page cannot be fetched", async () => {
     const scraper = new GardenCinemaScraper();
     vi.spyOn(scraper as unknown as { fetchPerformancePage(url: string): Promise<string> }, "fetchPerformancePage")

@@ -2,8 +2,11 @@ import { describe, it, expect } from "vitest";
 import {
   cleanFilmTitle,
   cleanFilmTitleWithMetadata,
+  guestAppearanceNote,
   listingEventNote,
+  londonPreviewNote,
   programmeStrandNote,
+  strandSeasonNote,
   EVENT_PREFIXES,
   extractEnglishFromBracket,
   getKnownNonFilmTypeFromEntries,
@@ -972,8 +975,10 @@ describe("2026-10-04 unmatched-coverage decorations", () => {
       "Harry Potter and the Deathly Hallows: Part 2",
       "Part 2",
       "Toy Story 5 (Pt1)",
-      // Possessive credits stay unless the title is a director's cut: TMDB
-      // keeps some as part of the title.
+      // Possessive credits stay in the regex cleaner unless the title is a
+      // director's cut. "Ken Russell's The Devils" is resolved onto The
+      // Devils only when that film's director is Ken Russell (3 Nov 2026).
+      // TMDB keeps some credits as the title.
       "Lee Cronin's The Mummy",
       "Ken Russell's The Devils",
       "Bram Stoker's Dracula",
@@ -1143,5 +1148,68 @@ describe("25 Oct 2026 listings QA — season subtitles and programme strands", (
     expect(programmeStrandNote("Sinners - Black History Month 2026")).toBeNull();
     expect(programmeStrandNote("Ponyboi")).toBeNull();
     expect(cleanFilmTitle("Ponyboi")).toBe("Ponyboi");
+  });
+});
+
+describe("3 Nov 2026 listings QA — seasons, previews and guests", () => {
+  it("peels Garden's season and the year-and-guest form down to Cosmopolis", () => {
+    expect(cleanFilmTitle("Don DeLillo at 90: Cosmopolis with Ben Rivers")).toBe("Cosmopolis");
+    expect(strandSeasonNote("Don DeLillo at 90: Cosmopolis with Ben Rivers")).toBe("Don DeLillo at 90");
+    expect(guestAppearanceNote("Don DeLillo at 90: Cosmopolis with Ben Rivers")).toBe("with Ben Rivers");
+
+    const dated = cleanFilmTitleWithMetadata("Cosmopolis (2012) with Ben Rivers");
+    expect(dated.cleanedTitle).toBe("Cosmopolis");
+    expect(dated.extractedYear).toBe(2012);
+    expect(guestAppearanceNote("Cosmopolis (2012) with Ben Rivers")).toBe("with Ben Rivers");
+    expect(cleanFilmTitle(dated.cleanedTitle)).toBe("Cosmopolis");
+  });
+
+  it("leaves titles that use with, and a guest with no year and no season", () => {
+    expect(cleanFilmTitle("Dances with Wolves")).toBe("Dances with Wolves");
+    expect(cleanFilmTitle("Interview with the Vampire")).toBe("Interview with the Vampire");
+    expect(cleanFilmTitleWithMetadata("Interview with the Vampire (1994)")).toMatchObject({
+      cleanedTitle: "Interview with the Vampire",
+      extractedYear: 1994,
+    });
+    expect(cleanFilmTitle("Gone with the Wind")).toBe("Gone with the Wind");
+    expect(cleanFilmTitle("From Russia with Love")).toBe("From Russia with Love");
+    expect(cleanFilmTitle("Cosmopolis with Ben Rivers")).toBe("Cosmopolis with Ben Rivers");
+    expect(guestAppearanceNote("Cosmopolis with Ben Rivers")).toBeNull();
+    expect(guestAppearanceNote("Dances with Wolves")).toBeNull();
+    expect(cleanFilmTitle("Bar Shorts with Darren Walsh & Russell McLean")).toBe(
+      "Bar Shorts with Darren Walsh & Russell McLean",
+    );
+    expect(cleanFilmTitle("Nosferatu (1922) with Live Score")).toBe("Nosferatu");
+    expect(cleanFilmTitleWithMetadata("Nosferatu (1922) with Live Score").extractedYear).toBe(1922);
+    expect(guestAppearanceNote("Nosferatu (1922) with Live Score")).toBeNull();
+  });
+
+  it("peels Genesis's quoted London Preview and keeps the label", () => {
+    const raw = '"Terrorists" - London Preview';
+    expect(cleanFilmTitle(raw)).toBe("Terrorists");
+    expect(londonPreviewNote(raw)).toBe("London Preview");
+    expect(cleanFilmTitle(cleanFilmTitle(raw))).toBe("Terrorists");
+    expect(cleanFilmTitle("“Terrorists” – London Preview")).toBe("Terrorists");
+    expect(cleanFilmTitle("Raft - A London Story")).toBe("Raft - A London Story");
+    expect(londonPreviewNote("Raft - A London Story")).toBeNull();
+    expect(cleanFilmTitle("London Preview")).toBe("London Preview");
+  });
+
+  it("peels Castle's capitalised Trans Awareness programme", () => {
+    const raw = "My Political Biography - Trans Awareness Programme 2026";
+    expect(cleanFilmTitle(raw)).toBe("My Political Biography");
+    expect(programmeStrandNote(raw)).toBe("Trans Awareness Programme 2026");
+    expect(cleanFilmTitle(cleanFilmTitle(raw))).toBe("My Political Biography");
+  });
+
+  it("does not split Hell on Earth or a possessive that is the film's name", () => {
+    const hell = "Hell on Earth: The Desecration and Resurrection of The Devils";
+    expect(cleanFilmTitle(hell)).toBe(hell);
+    expect(cleanFilmTitle("Ken Russell's The Devils")).toBe("Ken Russell's The Devils");
+    expect(cleanFilmTitle("Schindler's List")).toBe("Schindler's List");
+    expect(cleanFilmTitle("Ferris Bueller's Day Off")).toBe("Ferris Bueller's Day Off");
+    expect(cleanFilmTitle("Rosemary's Baby")).toBe("Rosemary's Baby");
+    expect(cleanFilmTitle("My Brother's Wedding")).toBe("My Brother's Wedding");
+    expect(strandSeasonNote(hell)).toBeNull();
   });
 });

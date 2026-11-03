@@ -25,6 +25,7 @@ import {
   findFilmBySimilarity,
   matchAndCreateFromTMDB,
   createFilmWithoutTMDB,
+  resolveDirectorPossessiveId,
   tryUpdatePoster,
   releaseYearHint,
   yearConflicts,
@@ -822,6 +823,15 @@ async function getOrCreateFilm(
   }
 
   const normalized = normalizeTitle(matchingTitle);
+
+  // "Ken Russell's The Devils" is a director credit in front of The Devils,
+  // not a separate film. A real title in that shape (Bram Stoker's Dracula)
+  // stays on the ordinary lookup below.
+  const possessiveId = await resolveDirectorPossessiveId(filmCache, matchingTitle);
+  if (possessiveId) {
+    console.log(`[Pipeline] Director credit: "${matchingTitle}" → ${possessiveId}`);
+    return possessiveId;
+  }
 
   // Try to find existing film using the pre-loaded cache (O(1) lookup)
   const existing = lookupFilmInCache(filmCache, normalized, cacheYear);
