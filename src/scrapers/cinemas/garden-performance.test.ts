@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
+import { cleanFilmTitle, listedGardenFilmRank } from "../utils/film-title-cleaner";
 import {
+  collapseSameGardenFilm,
   gardenPerformanceId,
   parseGardenBookingHeading,
   resolveSharedGardenPerformance,
@@ -89,5 +91,53 @@ describe("Garden performance 6266328", () => {
         heading!,
       ),
     ).toBe(false);
+  });
+});
+
+const COSMOPOLIS_URL =
+  "https://bookings.thegardencinema.co.uk/TheGardenCinema.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_0.TcsWebTab_0.TcsPerformance_6283015.TcsSection_638";
+
+describe("Garden performance 6283015", () => {
+  it("keeps one row when both listings clean to Cosmopolis at the same instant", () => {
+    const strand = {
+      filmTitle: "Don DeLillo at 90: Cosmopolis with Ben Rivers",
+      datetime: new Date("2026-11-17T20:00:00.000Z"),
+      bookingUrl: COSMOPOLIS_URL,
+    };
+    const dated = {
+      filmTitle: "Cosmopolis (2012) with Ben Rivers",
+      datetime: new Date("2026-11-17T20:00:00.000Z"),
+      bookingUrl: COSMOPOLIS_URL,
+    };
+    const plan = collapseSameGardenFilm(
+      [strand, dated],
+      cleanFilmTitle,
+      (row) => listedGardenFilmRank(row.filmTitle),
+    );
+    expect(plan.keep.map((row) => row.filmTitle)).toEqual([
+      "Don DeLillo at 90: Cosmopolis with Ben Rivers",
+    ]);
+    expect(plan.drop.map((row) => row.filmTitle)).toEqual(["Cosmopolis (2012) with Ben Rivers"]);
+    expect(cleanFilmTitle(plan.keep[0].filmTitle)).toBe("Cosmopolis");
+  });
+
+  it("leaves two films that share an id for the booking page", () => {
+    const plan = collapseSameGardenFilm(
+      [
+        {
+          filmTitle: "Fatherland",
+          datetime: new Date("2026-10-27T16:00:00.000Z"),
+          bookingUrl: fatherlandUrl.replace("6266332", "6266328"),
+        },
+        {
+          filmTitle: "The Social Reckoning",
+          datetime: new Date("2026-10-27T15:45:00.000Z"),
+          bookingUrl: socialUrl,
+        },
+      ],
+      cleanFilmTitle,
+    );
+    expect(plan.drop).toEqual([]);
+    expect(plan.keep).toHaveLength(2);
   });
 });

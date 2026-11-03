@@ -127,3 +127,54 @@ describe("classifyScreening: accessibility in the title", () => {
     expect(metadata.hasSubtitles).toBe(true);
   });
 });
+
+describe("classifyScreening: 3 Nov 2026 guest, preview and strand notes", () => {
+  it("keeps Ben Rivers as the note and Don DeLillo at 90 as the season", async () => {
+    const metadata = await classifyScreening({
+      filmTitle: "Don DeLillo at 90: Cosmopolis with Ben Rivers",
+      datetime: new Date("2026-11-17T20:00:00Z"),
+      bookingUrl: "https://bookings.thegardencinema.co.uk/TheGardenCinema.dll/TcsPerformance_6283015",
+    });
+    expect(metadata.eventDescription).toBe("with Ben Rivers");
+    expect(metadata.season).toBe("Don DeLillo at 90");
+  });
+
+  it("keeps the year-and-guest credit as the note", async () => {
+    const metadata = await classifyScreening({
+      filmTitle: "Cosmopolis (2012) with Ben Rivers",
+      datetime: new Date("2026-11-17T20:00:00Z"),
+      bookingUrl: "https://bookings.thegardencinema.co.uk/TheGardenCinema.dll/TcsPerformance_6283015",
+    });
+    expect(metadata.eventDescription).toBe("with Ben Rivers");
+    expect(metadata.season).toBeNull();
+  });
+
+  it("keeps London Preview as the note", async () => {
+    const metadata = await classifyScreening({
+      filmTitle: '"Terrorists" - London Preview',
+      datetime: new Date("2026-11-16T18:30:00Z"),
+      bookingUrl: "https://genesis.admit-one.co.uk/seats/?perfCode=14072",
+    });
+    expect(metadata.eventDescription).toBe("London Preview");
+  });
+
+  it("keeps Castle's capitalised programme as the note", async () => {
+    const metadata = await classifyScreening({
+      filmTitle: "My Political Biography - Trans Awareness Programme 2026",
+      datetime: new Date("2026-11-17T18:30:00Z"),
+      bookingUrl: "https://thecastlecinema.com/interstitial/pwyc/17940/show",
+    });
+    expect(metadata.eventDescription).toBe("Trans Awareness Programme 2026");
+  });
+
+  it("does not replace a note the scraper already supplied", async () => {
+    const metadata = await classifyScreening({
+      filmTitle: '"Terrorists" - London Preview',
+      datetime: new Date("2026-11-16T18:30:00Z"),
+      bookingUrl: "https://genesis.admit-one.co.uk/seats/?perfCode=14072",
+      eventType: "q_and_a",
+      eventDescription: "Also: preview",
+    });
+    expect(metadata.eventDescription).toBe("Also: preview");
+  });
+});
