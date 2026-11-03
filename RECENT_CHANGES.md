@@ -1,5 +1,5 @@
 ## 2026-11-03: Listings QA — director credits, Garden Cosmopolis, London Preview
-**PR**: (this change) | **Files**: `src/scrapers/utils/film-title-cleaner.ts`, `src/scrapers/utils/listings-qa-2026-11-03.ts`, `src/scrapers/utils/film-matching.ts`, `src/scrapers/cinemas/garden.ts`, `src/scrapers/cinemas/garden-performance.ts`, `scripts/repair-listings-qa-2026-11-03.ts`
+**PR**: #859 | **Files**: `src/scrapers/utils/film-title-cleaner.ts`, `src/scrapers/utils/listings-qa-2026-11-03.ts`, `src/scrapers/utils/film-matching.ts`, `src/scrapers/cinemas/garden.ts`, `src/scrapers/cinemas/garden-performance.ts`, `scripts/repair-listings-qa-2026-11-03.ts`
 - `Ken Russell's The Devils` resolves to The Devils (1971) when Ken Russell directed that film. Possessive titles that are the film's own name stay.
 - Garden's `Don DeLillo at 90:` season and `(2012) with Ben Rivers` guest both store Cosmopolis. A repeated TcsPerformance of the same film is one screening.
 - `"Terrorists" - London Preview` stores Terrorists. Castle's Trans Awareness programme title was already peeled; the repair renames the stored row.
