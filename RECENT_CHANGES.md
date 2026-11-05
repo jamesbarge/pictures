@@ -1,5 +1,5 @@
 ## 2026-11-05: Listings QA — leaked directors, Hejira quote, Babka
-**PR**: pending | **Files**: `src/scrapers/utils/film-write-guards.ts`, `src/scrapers/pipeline.ts`, `src/scrapers/cinemas/prince-charles.ts`, `src/scrapers/cinemas/bfi.ts`, `src/scrapers/cinemas/jw3.ts`, `src/scrapers/platforms/indy.ts`, `src/lib/title-extraction/pattern-extractor.ts`
+**PR**: #860 | **Files**: `src/scrapers/utils/film-write-guards.ts`, `src/scrapers/pipeline.ts`, `src/scrapers/cinemas/prince-charles.ts`, `src/scrapers/cinemas/bfi.ts`, `src/scrapers/cinemas/jw3.ts`, `src/scrapers/platforms/indy.ts`, `src/lib/title-extraction/pattern-extractor.ts`
 - Directors that copy the listing title are dropped. PCC's The Room keeps 2003 and Tommy Wiseau; Monkey Tennis does not.
 - BFI `The Trip: Director's Cut` resolves to Roger Corman, 1967. Chiswick's 161-minute Silence resolves to Scorsese, 2016.
 - Castle's `Joni Mitchell 'Hejira'` keeps its closing quote. JW3 stores Babka, not the lowercase screening description.
