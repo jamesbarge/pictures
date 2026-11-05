@@ -11,6 +11,26 @@ import { slugify } from "../utils/url";
 import type { CheerioAPI, CheerioSelection } from "../utils/cheerio-types";
 import { FestivalDetector } from "../festivals/festival-detector";
 
+/**
+ * PCC prints the release year in `.running-time` and the credit in
+ * `.film-info` ("Directed by Tommy Wiseau"). Parsing `.film-info` alone hid
+ * the year: The Room was stored as the 2019 namesake. "Directed by Monkey
+ * Tennis" is what the page prints; the write-time guard drops it because
+ * the name is inside the title. Dropping it here would hide that credit
+ * from the guard, and the stored director would stay.
+ */
+export function pccListingCredits(
+  runningTime: string,
+  filmInfo: string,
+): { year?: number; director?: string } {
+  const yearMatch = runningTime.match(/\b(19\d{2}|20\d{2})\b/);
+  const year = yearMatch ? parseInt(yearMatch[1], 10) : undefined;
+  const directed = filmInfo.match(/\bdirected\s+by\s+(.+?)(?=\bstarring\b|$)/i);
+  const director = directed?.[1]?.replace(/[.\s]+$/, "").trim() || undefined;
+  if (director || year) return { year, director };
+  return parseFilmMetadata(`${filmInfo} ${runningTime}`);
+}
+
 export class PrinceCharlesScraper extends BaseScraper {
   config: ScraperConfig = {
     cinemaId: "prince-charles",
@@ -59,11 +79,13 @@ export class PrinceCharlesScraper extends BaseScraper {
     const title = $film.find(".liveeventtitle").first().text().trim();
     if (!title) return screenings;
 
-    // Extract metadata (director, year) from film description
-    // PCC often has film info in .synopsis or the film block text
-    const synopsisText = $film.find(".synopsis, .film-info, .description").text().trim();
-    const filmBlockText = $film.text();
-    const metadata = parseFilmMetadata(synopsisText || filmBlockText);
+    // Year lives in .running-time; "Directed by …" lives in .film-info.
+    // The credit is passed through. The write-time guard drops one that
+    // repeats the title ("Directed by Monkey Tennis").
+    const metadata = pccListingCredits(
+      $film.find(".running-time").text(),
+      $film.find(".film-info").text(),
+    );
 
     // Detect format from film classes
     const filmClasses = $film.attr("class") || "";

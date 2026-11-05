@@ -14,7 +14,7 @@ import { getPosterService } from "@/lib/posters";
 import { findMatchingFilm } from "@/lib/film-similarity";
 import { v4 as uuidv4 } from "uuid";
 import { isBlockedTmdbId } from "@/lib/tmdb/blocklist";
-import { sanitizeDirectors, sanitizeYear } from "./film-write-guards";
+import { dropTitleLeakDirectors, sanitizeDirectors, sanitizeYear } from "./film-write-guards";
 
 /**
  * The cache stores only the columns its consumers actually read, NOT the whole
@@ -519,11 +519,15 @@ export async function createFilmWithoutTMDB(
 
   const filmId = uuidv4();
 
-  // Clean director: strip "Starring ..." suffix that cinema websites sometimes include
+  // Clean director: strip "Starring ..." suffix that cinema websites sometimes include.
+  // A credit that is the title itself ("The Silence") is the listing, not a person.
   const cleanedDirector = scraperDirector
     ?.replace(/\s+Starring\s+.*/i, "")
     .replace(/\s+With\s+.*/i, "")
     .trim() || undefined;
+  const directorCredit = cleanedDirector && dropTitleLeakDirectors([cleanedDirector], [matchingTitle]).length
+    ? cleanedDirector
+    : undefined;
 
   // isRepertory is intentionally false when we have no year — enrichment will
   // overwrite it from the TMDB release date. Don't guess.
@@ -533,7 +537,7 @@ export async function createFilmWithoutTMDB(
     id: filmId,
     title: matchingTitle,
     year: cleanYear,
-    directors: cleanedDirector ? [cleanedDirector] : [],
+    directors: directorCredit ? [directorCredit] : [],
     posterUrl,
     isRepertory,
     cast: [],
@@ -595,6 +599,34 @@ async function findPosterFromService(params: PosterSearchParams): Promise<string
   }
 
   return null;
+}
+
+/**
+ * Remove directors that are the listing title from a film the next scrape
+ * is about to reuse. The cache does not carry directors, so this reads the
+ * one row. Called only when this scrape's own credit was rejected as a leak.
+ */
+export async function clearTitleLeakDirectors(filmId: string, titles: readonly string[]): Promise<void> {
+  const rows = await withDbTimeout(
+    db
+      .select({ title: films.title, directors: films.directors })
+      .from(films)
+      .where(eq(films.id, filmId))
+      .limit(1),
+    10_000,
+    `clearTitleLeakDirectors: ${filmId}`,
+  );
+  const row = rows[0];
+  if (!row) return;
+  const against = [row.title, ...titles];
+  const kept = dropTitleLeakDirectors(row.directors ?? [], against);
+  if (kept.length === (row.directors ?? []).length) return;
+  await withDbTimeout(
+    db.update(films).set({ directors: kept, updatedAt: new Date() }).where(eq(films.id, filmId)),
+    10_000,
+    `clearTitleLeakDirectors update: ${filmId}`,
+  );
+  console.log(`[Pipeline] Cleared a title-leak director on film ${filmId} ("${row.title}")`);
 }
 
 /**

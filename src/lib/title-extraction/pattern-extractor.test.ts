@@ -9,6 +9,8 @@
 import { describe, it, expect } from "vitest";
 import { extractFilmTitleSync } from "./pattern-extractor";
 import { generateSearchVariations } from "./search-variants";
+import { cleanFilmTitle } from "@/scrapers/utils/film-title-cleaner";
+import { classifyEvent } from "@/lib/event-classifier";
 
 describe("extractFilmTitleSync", () => {
   describe("event prefix removal", () => {
@@ -47,6 +49,17 @@ describe("extractFilmTitleSync", () => {
     it("should strip anniversary suffix", () => {
       const result = extractFilmTitleSync("Charlie's Angels - 25th Anniversary");
       expect(result.extractedTitle).toBe("Charlie's Angels");
+    });
+
+    it("keeps the closing quote on Castle's Joni Mitchell 'Hejira'", async () => {
+      const raw = "Pitchblack Playback: Joni Mitchell 'Hejira' (50th Anniversary)";
+      const result = extractFilmTitleSync(raw);
+      expect(result.extractedTitle).toBe("Pitchblack Playback: Joni Mitchell 'Hejira'");
+      expect(cleanFilmTitle(result.extractedTitle)).toBe("Joni Mitchell 'Hejira'");
+      expect(cleanFilmTitle(raw)).toBe("Joni Mitchell 'Hejira'");
+      const classified = await classifyEvent(raw);
+      expect(classified.eventTypes).toContain("anniversary");
+      expect(classified.eventDescription).toBe("(50th Anniversary)");
     });
   });
 

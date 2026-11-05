@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fetchIndyShowings, checkIndyHealth, type IndyVenue, type IndyFetch } from "./indy";
+import { fetchIndyShowings, checkIndyHealth, indyListingIdentity, type IndyVenue, type IndyFetch } from "./indy";
 
 const VENUE: IndyVenue = {
   cinemaId: "regent-street",
@@ -69,6 +69,19 @@ describe("fetchIndyShowings", () => {
     expect(first.timeSource).toBe("iso");
     expect(first.runtime).toBe(173);
     expect(first.year).toBe(2026); // from releaseDate 2026-07-17
+  });
+
+  it("identifies Chiswick's 161-minute Silence as Scorsese's 2016 film", () => {
+    // Live GraphQL on 5 Nov 2026: name "Silence", duration 161, releaseDate
+    // equal to the showing day. That date is not the release year.
+    expect(
+      indyListingIdentity({
+        id: "34907",
+        name: "Silence",
+        duration: 161,
+        releaseDate: "2026-11-19",
+      }),
+    ).toEqual({ year: 2016, director: "Martin Scorsese" });
   });
 
   it("returns empty when the venue has no showings in the horizon", async () => {

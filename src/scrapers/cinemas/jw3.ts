@@ -47,9 +47,32 @@ interface SpektrixEvent {
 const FILM_NIGHT_LABEL = /\b(?:movie|film)\b.*\b(?:night|club)\b/i;
 
 /**
+ * Cinema-genre names sometimes put the film before a generic description:
+ * "Babka: short film screening and panel discussion". The colon heuristic
+ * then keeps the lowercase right side, because "Babka" is one word. A
+ * right side with no capital letter that starts as a screening note is
+ * that description. "Hamnet" and any capitalised subtitle stay whole.
+ */
+const GENERIC_CINEMA_TAIL =
+  /^(?:short\s+film\s+)?(?:screening|panel|discussion|talk)\b/i;
+
+export function jw3CinemaTitle(name: string): { title: string; note: string | null } {
+  const trimmed = name.trim();
+  const colon = trimmed.indexOf(":");
+  if (colon < 0) return { title: trimmed, note: null };
+  const left = trimmed.slice(0, colon).trim();
+  const right = trimmed.slice(colon + 1).trim();
+  if (!left || !right || /\p{Lu}/u.test(right) || !GENERIC_CINEMA_TAIL.test(right)) {
+    return { title: trimmed, note: null };
+  }
+  return { title: left, note: right };
+}
+
+/**
  * The film title to list for a Spektrix event, or null when it is not a film.
  *
- * Every "Cinema" genre event is a film under its own name. Film nights also
+ * Every "Cinema" genre event is a film under its own name, except a generic
+ * lowercase description after a colon (see `jw3CinemaTitle`). Film nights also
  * appear under other genres (two under "Young Professionals" on 2026-10-04),
  * and no structured field marks them: genre, seating plan and every
  * attribute_* field match the workshops around them, and descriptions
@@ -59,7 +82,9 @@ const FILM_NIGHT_LABEL = /\b(?:movie|film)\b.*\b(?:night|club)\b/i;
  */
 export function jw3FilmTitle(event: SpektrixEvent): string | null {
   const name = (event.name || "").trim();
-  if ((event.attribute_Genre || "").trim().toLowerCase() === "cinema") return name || null;
+  if ((event.attribute_Genre || "").trim().toLowerCase() === "cinema") {
+    return jw3CinemaTitle(name).title || null;
+  }
 
   const colon = name.lastIndexOf(":");
   if (colon === -1) return null;
@@ -110,6 +135,7 @@ export class JW3Scraper implements CinemaScraper {
       if (!film) continue; // not a film event
       if (inst.cancelled) continue;
       const { event, filmTitle } = film;
+      const note = jw3CinemaTitle(event.name).note;
 
       const datetime = this.parseUtc(inst.startUtc);
       if (!datetime || datetime < now) continue;
@@ -119,7 +145,9 @@ export class JW3Scraper implements CinemaScraper {
       seen.add(sourceId);
 
       const bookingUrl = `${this.config.baseUrl}/spektrix/ChooseSeats?EventInstanceId=${inst.id}`;
-      const eventType = this.detectEventType(filmTitle);
+      const eventType =
+        this.detectEventType(event.name) ??
+        (note && /\b(?:panel|discussion)\b/i.test(note) ? "discussion" : undefined);
 
       screenings.push({
         filmTitle,
@@ -129,6 +157,7 @@ export class JW3Scraper implements CinemaScraper {
         posterUrl: event.imageUrl || undefined,
         availabilityStatus: inst.isOnSale ? "available" : "unknown",
         ...(eventType ? { eventType } : {}),
+        ...(note ? { eventDescription: note } : {}),
         ...FestivalDetector.detect("jw3", filmTitle, datetime, bookingUrl),
       });
     }

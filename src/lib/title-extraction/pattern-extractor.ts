@@ -18,6 +18,7 @@ import {
   PRESENTS_PATTERN,
   REVIEWED_WRAPPER_PREFIXES,
   stripTerminalDecorations,
+  unwrapQuotedTitle,
   SINGALONG_PATTERN,
   DOUBLE_FEATURE_PATTERN,
   FESTIVAL_PREFIXES,
@@ -159,11 +160,11 @@ export function extractFilmTitleSync(title: string): PatternExtractionResult {
     }
   }
 
-  // Clean up remaining artifacts
-  extracted = extracted
-    .replace(/\s+/g, " ")
-    .replace(/^["'"'\u201C\u201D]+|["'"'\u201C\u201D]+$/g, "")
-    .trim();
+  // Unwrap one pair of quotes around the whole title ("Film" after a
+  // presents-wrapper). A quote that only closes an inner title stays:
+  // "Joni Mitchell 'Hejira'" used to lose the closing quote because it
+  // sat at the end once "(50th Anniversary)" was removed.
+  extracted = unwrapQuotedTitle(extracted.replace(/\s+/g, " ").trim());
 
   // If we extracted something meaningful
   if (extracted !== original && extracted.length > 0) {

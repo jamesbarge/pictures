@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { sanitizeDirectors, sanitizeYear } from "./film-write-guards";
+import { isTitleLeakDirector, sanitizeDirectors, sanitizeYear, undatedStubNeedsMatch } from "./film-write-guards";
 
 describe("sanitizeYear", () => {
   it("returns null for empty / zero / negative", () => {
@@ -63,6 +63,23 @@ describe("sanitizeDirectors", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     sanitizeDirectors(["John Woo Starring Chow Yun-fat"], "test");
     expect(warn).toHaveBeenCalled();
+  });
+
+  it("drops a credit that is the title, or that contains it, or that the title contains", () => {
+    expect(isTitleLeakDirector("The Silence", "The Silence")).toBe(true);
+    expect(isTitleLeakDirector("The Trip: Director’s Cut", "The Trip")).toBe(true);
+    expect(isTitleLeakDirector("Monkey Tennis", "Ten Years of Monkey Tennis (with Peter Serafinowicz)")).toBe(true);
+    expect(isTitleLeakDirector("Ken Russell", "Ken Russell's The Devils")).toBe(false);
+    expect(isTitleLeakDirector("Tommy Wiseau", "The Room")).toBe(false);
+    expect(isTitleLeakDirector("Greta Gerwig", "Little Women")).toBe(false);
+    expect(isTitleLeakDirector("Roger Corman", "The Trip: Director's Cut")).toBe(false);
+  });
+
+  it("asks TMDB again only for an undated stub that now has a release year", () => {
+    expect(undatedStubNeedsMatch({ year: null, tmdbId: null }, 1967)).toBe(true);
+    expect(undatedStubNeedsMatch({ year: null, tmdbId: 22694 }, 1967)).toBe(false);
+    expect(undatedStubNeedsMatch({ year: 2019, tmdbId: null }, 2003)).toBe(false);
+    expect(undatedStubNeedsMatch({ year: null, tmdbId: null }, undefined)).toBe(false);
   });
 
   it("preserves multiple legitimate directors", () => {
