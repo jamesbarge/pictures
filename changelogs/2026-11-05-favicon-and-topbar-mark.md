@@ -1,6 +1,6 @@
 # Favicon and P mark in the collapsed top bar
 
-**PR**: TBD
+**PR**: #862
 **Date**: 2026-11-05
 
 ## Changes

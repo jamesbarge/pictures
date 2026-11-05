@@ -1,5 +1,5 @@
 ## 2026-11-05: Favicon, and the P mark in the collapsed top bar
-**PR**: TBD | **Files**: `frontend/src/app.html`, `frontend/static/{favicon.ico,favicon-32.png,icon-192.png,icon-512.png,apple-touch-icon.png}`, `frontend/src/lib/components/layout/TopBar.svelte`
+**PR**: #862 | **Files**: `frontend/src/app.html`, `frontend/static/{favicon.ico,favicon-32.png,icon-192.png,icon-512.png,apple-touch-icon.png}`, `frontend/src/lib/components/layout/TopBar.svelte`
 - The site has a favicon: the hand-drawn P with a red dot, in .ico, PNG and Apple touch sizes. The 16/32 px sizes are cropped tighter and contrast-boosted so they stay legible.
 - On desktop with the sidebar collapsed, the P is the top bar's first cell. On the homepage the bar now starts at the TODAY box's left edge. Phones are unchanged.
 
