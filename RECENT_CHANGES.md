@@ -1,5 +1,5 @@
 ## 2026-11-05: Scrape v2 — tiered fetch, indies-first runner, Claude Code review
-**PR**: TBD | **Files**: `src/scrapers/fetch/tiered-fetch.ts`, `src/scrapers/base.ts`, `src/scrapers/utils/browser.ts`, `src/scrapers/cinemas/bfi.ts`, `src/lib/jobs/scrape-all.ts`, `src/scripts/run-scrape-and-enrich.ts`, `src/lib/scrape-horizon.ts`, `scripts/enrichment-gaps.ts`, `.claude/commands/scrape.md`, `.gitignore`
+**PR**: #861 | **Files**: `src/scrapers/fetch/tiered-fetch.ts`, `src/scrapers/base.ts`, `src/scrapers/utils/browser.ts`, `src/scrapers/cinemas/bfi.ts`, `src/lib/jobs/scrape-all.ts`, `src/scripts/run-scrape-and-enrich.ts`, `src/lib/scrape-horizon.ts`, `scripts/enrichment-gaps.ts`, `.claude/commands/scrape.md`, `.gitignore`
 - Blocked pages escalate from a direct fetch to Firecrawl (GB proxy), and BFI to a Browserbase browser. Both tiers fail soft without keys and are budget-capped. Usage is recorded in `scraper_runs.metadata.fetchTiers`.
 - Independents (8 at once) and chains (3) run as parallel pools, so independents never wait behind chains.
 - `/scrape` adds a horizon check (≥30 days), poster and rematch passes, and a Claude Code review of `tmp/enrichment-gaps.json`. Approved decisions persist in `data/enrichment/manual-decisions.json` and are re-applied every run.
