@@ -18,6 +18,7 @@ import {
   reportAccounting,
   type ScreeningAccounting,
 } from "./utils/screening-accounting-report";
+import { consumeTierUsage } from "./fetch/tiered-fetch";
 import { db, isDatabaseAvailable } from "../db";
 import { scraperRuns, cinemaBaselines } from "../db/schema/admin";
 import { eq } from "drizzle-orm";
@@ -379,6 +380,8 @@ async function recordScraperRun(params: {
     }
 
     const failureKind = classifyFailureKind(params.error);
+    const fetchTiers = consumeTierUsage(params.cinemaId);
+    const proxyUsed = Boolean(fetchTiers && ((fetchTiers.firecrawl ?? 0) > 0 || (fetchTiers.browserbase ?? 0) > 0));
 
     await db.insert(scraperRuns).values({
       cinemaId: params.cinemaId,
@@ -397,6 +400,8 @@ async function recordScraperRun(params: {
         ...(params.diffFailed ? { diffFailed: params.diffFailed } : {}),
         ...(params.precheckFailed ? { precheckFailed: true } : {}),
         ...(params.accounting ? { accounting: params.accounting } : {}),
+        ...(fetchTiers ? { fetchTiers } : {}),
+        ...(proxyUsed ? { proxyUsed } : {}),
       },
     });
   } catch (err) {

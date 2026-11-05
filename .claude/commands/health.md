@@ -1,0 +1,1 @@
+Run the health skill to audit Claude Code configuration health across all layers (CLAUDE.md, rules, skills, hooks, MCP).

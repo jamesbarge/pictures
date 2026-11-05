@@ -32,9 +32,13 @@ export type PhaseId =
   | "cleanup"
   | "audit"
   | "rematch"
+  | "decisions"
+  | "posters"
   | "sleeper"
   | "health"
-  | "yield-delta";
+  | "yield-delta"
+  | "horizon"
+  | "gaps";
 
 export interface SummaryPhase {
   id: PhaseId;
@@ -90,6 +94,12 @@ export interface RunSummary {
   screeningsBefore: number | null;
   screeningsAfter: number | null;
   health: RunHealth;
+  /** Scrape v2: active cinemas below the 30-day horizon target. */
+  shortHorizons?: Array<{ cinemaId: string; chain: string | null; daysAhead: number; furthest: string | null; next30: number }>;
+  /** Scrape v2: screening-weighted enrichment coverage at run start and end. */
+  coverage?: { before: unknown; after: unknown };
+  /** Scrape v2: paid fetch-tier usage this run. */
+  paidUsage?: { firecrawlPages: number; browserbaseSessions: number };
 }
 
 const DEFAULT_PATH = join(process.cwd(), "tmp", "scrape-run-summary.json");

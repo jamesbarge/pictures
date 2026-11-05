@@ -13,6 +13,10 @@
  *   3. audit:films            — validation pass over the cleaned data
  *   4. detectSilentBreakers() — surface cinemas in success+0 state
  *
+ * Scrape v2 (2026-11) adds: re-apply approved enrichment decisions before
+ * cleanup, rematch sweep default-on, poster audit, horizon check (>=30 days)
+ * and an enrichment-gaps dump that the /scrape command hands to Claude Code.
+ *
  * Designed to be invoked from the `/scrape` slash command in the foreground
  * so the user sees live output. Each enrichment pass is a child process so
  * a crash in one phase doesn't take down the others.
@@ -70,6 +74,11 @@ import {
   readRecentDqs,
   formatDqsSnapshot,
 } from "@/lib/scrape-quarantine";
+import { measureHorizons, shortHorizons, formatHorizonReport } from "@/lib/scrape-horizon";
+import { getPaidUsage } from "@/scrapers/fetch/tiered-fetch";
+import { getBrowserbaseSessionsUsed } from "@/scrapers/utils/browser";
+import { computeCoverage, formatCoverage, writeEnrichmentGaps, type Coverage } from "../../scripts/enrichment-gaps";
+import { readFileSync } from "node:fs";
 
 const SKIP_SCRAPE = process.argv.includes("--skip-scrape");
 const SKIP_ENRICH = process.argv.includes("--skip-enrich");
@@ -82,7 +91,31 @@ const RESUME = process.argv.includes("--resume");
  * seconds and feed the run summary's health section, so they always re-run:
  * skipping them on resume would persist a summary with empty health data.
  */
-const CHECKPOINTABLE = new Set<PhaseId>(["scrape", "lcut", "cleanup", "audit", "rematch"]);
+const CHECKPOINTABLE = new Set<PhaseId>(["scrape", "lcut", "decisions", "cleanup", "audit", "rematch", "posters"]);
+
+/** Approved Claude Code enrichment decisions, re-applied every run. */
+const DECISIONS_FILE = "data/enrichment/manual-decisions.json";
+
+/** Rematch sweep: default ON since scrape v2; SCRAPE_REMATCH_SWEEP=0 disables. */
+const REMATCH_ON = process.env.SCRAPE_REMATCH_SWEEP !== "0";
+
+function decisionsCount(): number {
+  try {
+    const d = JSON.parse(readFileSync(DECISIONS_FILE, "utf8")) as { match?: object; reclassify?: object };
+    return Object.keys(d.match ?? {}).length + Object.keys(d.reclassify ?? {}).length;
+  } catch {
+    return 0;
+  }
+}
+
+async function safeCoverage(): Promise<Coverage | null> {
+  try {
+    return await withDbTimeout(computeCoverage(), 30_000, "coverage");
+  } catch (err) {
+    console.warn("[scrape-and-enrich] coverage query failed:", err);
+    return null;
+  }
+}
 
 /** A scraped venue behind L-CUT by more than this many screenings is flagged
  * as a possible scraper regression (matches Phase 1 of the coverage plan). */
@@ -175,6 +208,10 @@ async function main(): Promise<void> {
   };
   const summaryArgs = { skipScrape: SKIP_SCRAPE, skipEnrich: SKIP_ENRICH, skipLcut: SKIP_LCUT };
   const screeningsBefore = await countScreenings();
+  const coverageBefore = await safeCoverage();
+  let coverageAfter: Coverage | null = null;
+  let short: ReturnType<typeof shortHorizons> = [];
+  if (coverageBefore) console.log(`[scrape-and-enrich] before: ${formatCoverage(coverageBefore)}`);
 
   // Persist the run summary on EVERY exit path (ok / failed / crashed) so
   // the /scrape skill can report without re-querying the DB. Never throws.
@@ -190,6 +227,18 @@ async function main(): Promise<void> {
       screeningsBefore,
       screeningsAfter: await countScreenings(),
       health,
+      shortHorizons: short.map(({ cinemaId, chain, daysAhead, furthest, next30 }) => ({
+        cinemaId,
+        chain,
+        daysAhead,
+        furthest,
+        next30,
+      })),
+      coverage: { before: coverageBefore, after: coverageAfter },
+      paidUsage: {
+        firecrawlPages: getPaidUsage().firecrawlPages,
+        browserbaseSessions: getBrowserbaseSessionsUsed(),
+      },
     });
   };
   persistCrashSummary = () => persistSummary("crashed");
@@ -218,8 +267,9 @@ async function main(): Promise<void> {
   const phaseSequence: PhaseId[] = [];
   if (!SKIP_SCRAPE) phaseSequence.push("scrape");
   if (!SKIP_SCRAPE && !SKIP_LCUT) phaseSequence.push("lcut");
-  if (!SKIP_ENRICH) phaseSequence.push("cleanup", "audit");
-  if (!SKIP_ENRICH && process.env.SCRAPE_REMATCH_SWEEP === "1") phaseSequence.push("rematch");
+  if (!SKIP_ENRICH) phaseSequence.push("decisions", "cleanup", "audit");
+  if (!SKIP_ENRICH && REMATCH_ON) phaseSequence.push("rematch");
+  if (!SKIP_ENRICH) phaseSequence.push("posters");
   const honored = honoredPhasePrefix(phaseSequence, resumeFrom?.completedPhases ?? []);
   if (resumeFrom && honored.length < resumeFrom.completedPhases.length) {
     console.log(
@@ -378,6 +428,17 @@ async function main(): Promise<void> {
 
   // Phase 2-3: Enrichment (unless skipped)
   if (!SKIP_ENRICH) {
+    // Re-apply approved Claude Code decisions first: a re-scrape re-creates
+    // unmatched rows for venue titles a previous merge removed, and this puts
+    // them back before cleanup spends TMDB calls on them.
+    phases.push(
+      await runOrSkipPhase("decisions", "Re-apply approved enrichment decisions", async () => {
+        const n = decisionsCount();
+        if (n === 0) return { ok: true, detail: "none recorded yet" };
+        const ok = await runNpmScript("enrich:apply", [`--file=${DECISIONS_FILE}`, "--execute"]);
+        return { ok, detail: `${n} decision(s)` };
+      }),
+    );
     phases.push(
       await runOrSkipPhase("cleanup", "Cleanup upcoming films (4 sub-phases)", async () => {
         // The unified scrape command is already a live operational workflow.
@@ -397,11 +458,10 @@ async function main(): Promise<void> {
       }),
     );
 
-    // Optional phase: re-match sweep for unmatched films (plan 008).
-    // Default OFF — opt in with SCRAPE_REMATCH_SWEEP=1 once the operator has
-    // reviewed a few manual `npm run rematch:unmatched` dry runs. Capped at
-    // 100 films per run to bound TMDB usage and blast radius.
-    if (process.env.SCRAPE_REMATCH_SWEEP === "1") {
+    // Re-match sweep for unmatched films (plan 008). Default ON since scrape
+    // v2 (SCRAPE_REMATCH_SWEEP=0 disables). Capped at 100 films per run to
+    // bound TMDB usage and blast radius.
+    if (REMATCH_ON) {
       phases.push(
         await runOrSkipPhase("rematch", "Rematch sweep (unmatched films, capped)", async () => {
           const ok = await runNpmScript("rematch:unmatched", ["--execute", "--limit", "100"]);
@@ -409,10 +469,17 @@ async function main(): Promise<void> {
         }),
       );
     } else {
-      console.log(
-        "[scrape-and-enrich] rematch sweep disabled (set SCRAPE_REMATCH_SWEEP=1 to enable)",
-      );
+      console.log("[scrape-and-enrich] rematch sweep disabled (SCRAPE_REMATCH_SWEEP=0)");
     }
+
+    // Posters for upcoming films that still lack one (TMDB → OMDB/Fanart →
+    // booking page), so cards don't render text-only.
+    phases.push(
+      await runOrSkipPhase("posters", "Poster audit + fix (upcoming only)", async () => {
+        const ok = await runNpmScript("poster:audit", ["--upcoming-only", "--execute"]);
+        return { ok };
+      }),
+    );
   } else {
     console.log("[scrape-and-enrich] --skip-enrich: skipping enrichment phases");
   }
@@ -517,6 +584,38 @@ async function main(): Promise<void> {
       return { ok: true, warn: deltas.length > 0, detail: `${deltas.length} below baseline` };
     }),
   );
+
+  // Phase 6: Horizon — every active cinema should list >=30 days ahead.
+  // Read-only; short venues are spot-checked by Claude Code in /scrape to
+  // separate "venue publishes short" from "scraper stops early".
+  phases.push(
+    await runPhase("horizon", "Horizon check (>=30 days ahead)", async () => {
+      const horizons = await measureHorizons();
+      short = shortHorizons(horizons);
+      console.log(formatHorizonReport(horizons));
+      const shortIndies = short.filter((h) => h.chain === null).length;
+      return { ok: true, warn: short.length > 0, detail: `${short.length} short (${shortIndies} independent)` };
+    }),
+  );
+
+  // Phase 7: Enrichment gaps for the Claude Code review step of /scrape.
+  // Read-only (plus TMDB search); writes tmp/enrichment-gaps.json.
+  if (!SKIP_ENRICH) {
+    phases.push(
+      await runPhase("gaps", "Enrichment gaps dump (for Claude Code review)", async () => {
+        const { coverage, problems } = await writeEnrichmentGaps({ tmdb: true, limit: 150 });
+        coverageAfter = coverage;
+        console.log(formatCoverage(coverage));
+        return {
+          ok: true,
+          warn: coverage.pct.tmdb < 95 || coverage.pct.poster < 95,
+          detail: `${problems} problem film(s); TMDB ${coverage.pct.tmdb}%, poster ${coverage.pct.poster}%`,
+        };
+      }),
+    );
+  } else {
+    coverageAfter = await safeCoverage();
+  }
 
   // Final summary
   const totalMin = (Date.now() - startedAt.getTime()) / 60_000;

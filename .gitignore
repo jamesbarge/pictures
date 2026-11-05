@@ -74,7 +74,12 @@ docs/private/
 .mcp.json
 .cursor/
 .tessl/
-.claude/
+# .claude/ is local except the shared commands, rules and enrichment learnings
+# (a fresh clone lost /scrape on 2026-11-03 because these were ignored).
+.claude/*
+!.claude/commands/
+!.claude/rules/
+!.claude/data-check-learnings.json
 tessl.json
 .agent/
 .agents/

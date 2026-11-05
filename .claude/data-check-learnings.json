@@ -1,0 +1,1171 @@
+{
+  "version": 1,
+  "lastUpdated": "2026-07-20T14:40:36.677Z",
+  "wrongTmdbMatches": {
+    "men in black": {
+      "wrong": 979490,
+      "correct": 607,
+      "year": 1997,
+      "usedCount": 0
+    },
+    "persepolis": {
+      "wrong": 322021,
+      "correct": 5765,
+      "year": 2007,
+      "usedCount": 1
+    },
+    "working girls": {
+      "wrong": 1517813,
+      "correct": 96349,
+      "year": 1986,
+      "usedCount": 0
+    },
+    "good night, and good luck": {
+      "wrong": 1481851,
+      "correct": 3291,
+      "year": 2005,
+      "usedCount": 0
+    },
+    "the razor's edge": {
+      "wrong": 330377,
+      "correct": 45739,
+      "year": 1946,
+      "usedCount": 0
+    },
+    "christmas in july": {
+      "wrong": 779104,
+      "correct": 25510,
+      "year": 1940,
+      "usedCount": 0
+    },
+    "love is colder than death": {
+      "wrong": 24925,
+      "correct": 12482,
+      "year": 1969,
+      "usedCount": 0
+    },
+    "the game": {
+      "wrong": 1352012,
+      "correct": 2649,
+      "year": 1997,
+      "usedCount": 0
+    },
+    "metropolis": {
+      "wrong": 243819,
+      "correct": 19,
+      "year": 1927,
+      "usedCount": 0
+    },
+    "8 1/2": {
+      "wrong": 50621,
+      "correct": 422,
+      "year": 1963,
+      "usedCount": 0
+    },
+    "8½": {
+      "wrong": 50621,
+      "correct": 422,
+      "year": 1963,
+      "usedCount": 0
+    },
+    "dracula": {
+      "wrong": 1246049,
+      "correct": 1323409,
+      "year": 2025,
+      "usedCount": 0,
+      "note": "Two Dracula 2025 films exist on TMDB. Besson (1246049, popularity 36) is the obvious search hit; Radu Jude (1323409, popularity 1.7) is the Romanian art-house version programmed by ICA/Curzon/BFI. Disambiguate by directors[] field on the DB row OR by cinema (art-house venue → likely Jude). Patrol script safeSetTmdb() now refuses to write when DB directors[] does not intersect candidate."
+    },
+    "cronos": {
+      "wrong": 1549315,
+      "correct": 11655,
+      "year": 1993,
+      "usedCount": 3,
+      "note": "TMDB 1549315 is a 2026 Spanish stub by Fernando González Molina with runtime=0 and empty overview. The actual programmed Cronos at BFI Southbank (May 2026) is del Toro 1993 (TMDB 11655). Auto-matcher latched onto the 2026 stub because screening year matched. Same junk-stub pattern as Member Library Lates: del Toro (TMDB 1264957) and Agnes Varda Lecon (TMDB 1220205)."
+    },
+    "my father's shadow": {
+      "wrong": 377626,
+      "correct": 1432605,
+      "year": 2025,
+      "usedCount": 0,
+      "note": "TMDB 377626 is a 1998 American TV movie (My Fathers Shadow: The Sam Sheppard Story, dir. Peter Levin). The currently-programmed film at BFI/Barbican (May 2026) is the 2025 Cannes premiere by Akinola Davies Jr. (TMDB 1432605). Same wrong-popularity-vs-recency pattern as Cronos and Dracula."
+    },
+    "tenet": {
+      "wrong": 1383668,
+      "correct": 577922,
+      "year": 2020,
+      "usedCount": 0,
+      "note": "TMDB 1383668 is TENET: The Lost ZX Spectrum Network (2024 Portuguese stub, runtime=0). Actual programmed Tenet at BFI IMAX is Christopher Nolan 2020 (TMDB 577922, 150min). Same runtime=0 + year-mismatch pattern as Cronos, Dracula, My Fathers Shadow. Fourth wrong-TMDB this cycle."
+    },
+    "the old ways: a century in sound": {
+      "wrong": 752505,
+      "correct": 1249264,
+      "year": 2024,
+      "usedCount": 0,
+      "note": "TMDB 752505 is The Old Ways 2021 horror by Christopher Alender. The Barbican screening is A Century in Sound (2024 Tu Neill/Nick Dwyer doc) — Old Ways is the Barbican Senior Community Cinema curatorial prefix. Fifth wrong-TMDB this cycle from prefix-as-title auto-matching."
+    },
+    "throwback: top gun (40th anniversary)": {
+      "wrong": 1482511,
+      "correct": 744,
+      "year": 1986,
+      "usedCount": 0,
+      "note": "TMDB 1482511 is Top Gun: The Real Story (1987 documentary about the actual fighter pilots). Everyman/Picturehouse 'Throwback' anniversary screenings are the canonical Top Gun (1986 Tony Scott, TMDB 744). The auto-matcher latched onto the doc because the year tag matched. Same prefix-as-title pattern as Cape Fear, Cronos, Dracula. Caught 2026-05-03."
+    },
+    "throwback: legally blonde (25th anniversary)": {
+      "wrong": 484847,
+      "correct": 8835,
+      "year": 2001,
+      "usedCount": 0,
+      "note": "TMDB 484847 is Legally Blonde: The Musical (2007 stage musical TV broadcast). Picturehouse 'Throwback' 25th anniversary screening is the canonical 2001 Legally Blonde (Robert Luketic, TMDB 8835). The auto-matcher matched the musical broadcast because the title contains 'Legally Blonde'. Caught 2026-05-03."
+    },
+    "top gun": {
+      "wrong": 1482511,
+      "correct": 744,
+      "year": 1986,
+      "usedCount": 0,
+      "note": "Plain 'Top Gun' should always resolve to Tony Scott 1986 (TMDB 744), NOT to Top Gun: The Real Story doc (1482511) or any sequel. Top Gun: Maverick is TMDB 361743 — explicit when needed."
+    },
+    "legally blonde": {
+      "wrong": 484847,
+      "correct": 8835,
+      "year": 2001,
+      "usedCount": 0,
+      "note": "Plain 'Legally Blonde' should always resolve to Robert Luketic 2001 (TMDB 8835), NOT to Legally Blonde: The Musical (484847) or any sequel."
+    }
+  },
+  "knownNonFilmTitles": [
+    {
+      "title": "The Big Ritzy Quiz",
+      "type": "event",
+      "exact": true
+    },
+    {
+      "title": "Prince Charles Cinema Film Quiz",
+      "type": "event",
+      "exact": true
+    },
+    {
+      "title": "Slept On Comedy Night",
+      "type": "event",
+      "exact": true
+    },
+    {
+      "title": "Club Room Comedy",
+      "type": "event",
+      "exact": true
+    },
+    {
+      "title": "Soul at The Ritzy",
+      "type": "event",
+      "exact": true
+    },
+    {
+      "title": "Vinyl Reggae",
+      "type": "event",
+      "exact": true
+    },
+    {
+      "title": "Spark Storytelling Open Mic",
+      "type": "event",
+      "exact": true
+    },
+    {
+      "title": "Young Filmmakers Club",
+      "type": "event",
+      "exact": true
+    },
+    {
+      "title": "TBC",
+      "type": "event",
+      "exact": true
+    },
+    {
+      "title": "Magica Film Festival",
+      "type": "event",
+      "exact": true
+    },
+    {
+      "title": "Hackney Film Quiz",
+      "type": "event",
+      "exact": true
+    },
+    {
+      "title": "Music Video Preservation Society",
+      "type": "event",
+      "exact": true
+    },
+    {
+      "pattern": "^Mystery Album Club",
+      "type": "event",
+      "regex": true
+    },
+    {
+      "pattern": "^ROH:",
+      "type": "live_broadcast",
+      "regex": true
+    },
+    {
+      "pattern": "^RBO:",
+      "type": "live_broadcast",
+      "regex": true
+    },
+    {
+      "pattern": "^Royal Opera House:",
+      "type": "live_broadcast",
+      "regex": true
+    },
+    {
+      "pattern": "^Royal Ballet:",
+      "type": "live_broadcast",
+      "regex": true
+    },
+    {
+      "pattern": "^EPiC:",
+      "type": "live_broadcast",
+      "regex": true
+    },
+    {
+      "pattern": "^EXHIBITION ON SCREEN:",
+      "type": "live_broadcast",
+      "regex": true
+    },
+    {
+      "pattern": "^NT Live",
+      "type": "live_broadcast",
+      "regex": true
+    },
+    {
+      "pattern": "^Met Opera",
+      "type": "live_broadcast",
+      "regex": true
+    },
+    {
+      "pattern": "^Bolshoi",
+      "type": "live_broadcast",
+      "regex": true
+    },
+    {
+      "pattern": "^La Scala Milan:",
+      "type": "live_broadcast",
+      "regex": true
+    },
+    {
+      "pattern": "SCREEN IN USE",
+      "type": "event",
+      "regex": true
+    },
+    {
+      "pattern": "^TV Preview:",
+      "type": "event",
+      "regex": true
+    },
+    {
+      "pattern": "^Reading Group",
+      "type": "event",
+      "regex": true
+    },
+    {
+      "pattern": "^Workshop with",
+      "type": "event",
+      "regex": true
+    },
+    {
+      "pattern": "What is .* Cinema\\?$",
+      "type": "event",
+      "regex": true
+    },
+    {
+      "pattern": "^From Frame to Page",
+      "type": "event",
+      "regex": true
+    },
+    {
+      "pattern": "^Misty Moon Presents",
+      "type": "event",
+      "regex": true
+    },
+    {
+      "title": "Pitchblack Playback",
+      "type": "event",
+      "prefix": true
+    },
+    {
+      "title": "MYSTERY DOJO",
+      "type": "event",
+      "prefix": true
+    },
+    {
+      "title": "SCI-FI-LONDON SHORTS",
+      "type": "event",
+      "prefix": true
+    },
+    {
+      "title": "SCI-FI-LONDON 48HOUR",
+      "type": "event",
+      "prefix": true
+    },
+    {
+      "title": "Landmarks",
+      "type": "event",
+      "exact": true
+    },
+    {
+      "title": "Animal Visits",
+      "type": "event",
+      "exact": true
+    },
+    {
+      "title": "Mystery Movie",
+      "type": "event",
+      "exact": true
+    },
+    {
+      "title": "Mystery Movie Marathon",
+      "type": "event",
+      "exact": true
+    },
+    {
+      "title": "Private Hire - 2 hour",
+      "type": "event",
+      "exact": true
+    },
+    {
+      "title": "Private Hire - 3 hour",
+      "type": "event",
+      "exact": true
+    },
+    {
+      "title": "Sing in French !",
+      "type": "event",
+      "exact": true
+    },
+    {
+      "title": "Sing in French!",
+      "type": "event",
+      "exact": true
+    },
+    {
+      "title": "Language Activity",
+      "type": "event",
+      "exact": true
+    },
+    {
+      "title": "The Quiz of Rassilon - Doctor Who: TV Movie Special",
+      "type": "event",
+      "exact": true
+    },
+    {
+      "title": "Shorts and Documentaries",
+      "type": "event",
+      "exact": true
+    },
+    {
+      "title": "Cinema Club",
+      "type": "event",
+      "exact": true
+    },
+    {
+      "title": "Play and Explore",
+      "type": "event",
+      "exact": true
+    },
+    {
+      "title": "Blues at the Ritzy",
+      "type": "event",
+      "exact": true
+    },
+    {
+      "title": "Funky Stuff",
+      "type": "event",
+      "exact": true
+    },
+    {
+      "title": "CAZENOVE WARD STORIES",
+      "type": "event",
+      "exact": true
+    },
+    {
+      "title": "NICKELFEST #1 - DAY ONE",
+      "type": "event",
+      "exact": true
+    },
+    {
+      "title": "NICKELFEST #1 - DAY TWO",
+      "type": "event",
+      "exact": true
+    },
+    {
+      "title": "Incomplete Works",
+      "type": "event",
+      "exact": true
+    },
+    {
+      "title": "Marie-Laure Garnier - 'Invitation au Voyage'",
+      "type": "event",
+      "exact": true
+    },
+    {
+      "title": "Marie-Laure Garnier - Invitation au Voyage",
+      "type": "event",
+      "exact": true
+    },
+    {
+      "title": "Cafés philo anglais",
+      "type": "event",
+      "exact": true
+    },
+    {
+      "title": "Cafés philo en français",
+      "type": "event",
+      "exact": true
+    },
+    {
+      "title": "The Adjani Notebooks",
+      "type": "event",
+      "exact": true
+    },
+    {
+      "title": "Water Emoji x5 Shorts Programme",
+      "type": "event",
+      "exact": true
+    },
+    {
+      "title": "Gemini Season",
+      "type": "event",
+      "exact": true
+    },
+    {
+      "title": "Ghosts, Ghouls and Glitches",
+      "type": "event",
+      "exact": true
+    },
+    {
+      "title": "Bloodlines & Fault Lines",
+      "type": "event",
+      "exact": true
+    },
+    {
+      "title": "Try Not to Laugh - LVSFF",
+      "type": "event",
+      "exact": true
+    },
+    {
+      "title": "On the Edge of Your Seat - LVSFF",
+      "type": "event",
+      "exact": true
+    },
+    {
+      "title": "My Name is Monday: a Night of Soviet Film, Music & Animation",
+      "type": "event",
+      "exact": true
+    },
+    {
+      "title": "Rio Staff Selects My Chemical Romance: Life on the Murder Scene",
+      "type": "event",
+      "exact": true
+    },
+    {
+      "title": "SCREEN IN USE - 30",
+      "type": "event",
+      "exact": true
+    },
+    {
+      "title": "The Playboy of the Western World",
+      "type": "live_broadcast",
+      "exact": true
+    },
+    {
+      "title": "Evgenij Onegin",
+      "type": "live_broadcast",
+      "exact": true
+    },
+    {
+      "title": "El Último Sueño de Frida y Diego",
+      "type": "live_broadcast",
+      "exact": true
+    },
+    {
+      "regex": true,
+      "pattern": "^caf[eé]s? philo\\b",
+      "type": "event"
+    },
+    {
+      "regex": true,
+      "pattern": "^baby comptines\\b",
+      "type": "event"
+    },
+    {
+      "regex": true,
+      "pattern": "^the king['']?s favourite ep\\.?\\s*\\d",
+      "type": "event"
+    },
+    {
+      "regex": true,
+      "pattern": "^marie-laure garnier\\b",
+      "type": "event"
+    },
+    {
+      "regex": true,
+      "pattern": "^nickelfest #\\d+",
+      "type": "event"
+    },
+    {
+      "regex": true,
+      "pattern": "^private hire\\b",
+      "type": "event"
+    },
+    {
+      "regex": true,
+      "pattern": "^screen in use\\b",
+      "type": "event"
+    },
+    {
+      "regex": true,
+      "pattern": "^mystery movie( marathon)?$",
+      "type": "event"
+    },
+    {
+      "regex": true,
+      "pattern": "^the quiz of rassilon\\b",
+      "type": "event"
+    },
+    {
+      "regex": true,
+      "pattern": "^sing in french\\b",
+      "type": "event"
+    },
+    {
+      "regex": true,
+      "pattern": "^language activity\\b",
+      "type": "event"
+    },
+    {
+      "regex": true,
+      "pattern": "^andre rieu['']?s\\b.*concert",
+      "type": "live_broadcast"
+    },
+    {
+      "title": "The Bill Reunion 16",
+      "type": "event",
+      "exact": true
+    },
+    {
+      "title": "The Blinking Buzzards - 17 October",
+      "type": "event",
+      "exact": true
+    },
+    {
+      "title": "The Live Ghost Tent – Quarterly Meeting June 2026",
+      "type": "event",
+      "exact": true
+    }
+  ],
+  "cinemaQuirks": {
+    "prince-charles-cinema": {
+      "staleExpected": true,
+      "reason": "Forward-looking scraper only, doesn't refresh old listings"
+    },
+    "bfi-southbank": {
+      "largeStaleExpected": true,
+      "reason": "Extended seasons with future-dated screenings"
+    },
+    "cine-lumiere": {
+      "largeStaleExpected": true,
+      "reason": "Extended seasons with future-dated screenings (La Grazia, etc.)"
+    }
+  },
+  "prefixesToStrip": [
+    "Film Club: ",
+    "Doc'n Roll x Rio: ",
+    "Funeral Parade presents ",
+    "Screen Cuba presents: ",
+    "East London Doc Club: ",
+    "Classic Matinee: ",
+    "Lost Reels: ",
+    "Classics Night: ",
+    "Japanese Film Club: ",
+    "TV PARTY, TONIGHT! ",
+    "LAFS PRESENTS: ",
+    "LRB Screen x MUBI: ",
+    "LONDON PREMIERE",
+    "Outdoor: ",
+    "Parent & Baby Screening: ",
+    "Parent & Baby: ",
+    "Parents and Baby screening: ",
+    "Member Picks: ",
+    "Member exclusive: ",
+    "Members’ Preview: ",
+    "LOCO presents: ",
+    "Lina Wertmüller: ",
+    "Kung Fu Cinema: ",
+    "Lexi Seniors' Film Club: ",
+    "New Writings: ",
+    "Never Watching Movies: ",
+    "OCDF: ",
+    "Niki de Saint Phalle: ",
+    "Seniors’ Matinee: ",
+    "Seniors' Matinee: ",
+    "Seniors’ Free Matinee: ",
+    "Seniors' Free Matinee: ",
+    "Senior Community Cinema: ",
+    "Relaxed Screening: ",
+    "Relaxed screening: ",
+    "RIO FOREVER: ",
+    "Rio Forever: ",
+    "Throwback: ",
+    "Drink & Dine: ",
+    "Dog-Friendly Screening: ",
+    "Dog Friendly Screening: ",
+    "Discreet Cine Presents: ",
+    "Hackney History Festival presents: ",
+    "Hackney History Festival: ",
+    "London Latino Film Festival presents: ",
+    "Violet Hour presents: ",
+    "Distorted Frame: ",
+    "Refugee Week: ",
+    "Pitchblack Playback: ",
+    "Seventh X Bounce Cinema Present: ",
+    "Rio Forever / ",
+    "Rio Forever x ",
+    "CAMP CLASSICS presents ",
+    "London Festival of Architecture & AFFR present ",
+    "Experiments in Film: A Focus on Gabriel Abrantes: ",
+    "Journey Through Irish Cinema: "
+  ],
+  "suffixesToStrip": [
+    " + Q&A",
+    " + extended intro",
+    " + pre-recorded intro",
+    " + intro",
+    " + discussion",
+    " + panel",
+    " (Dubbed)",
+    " (Cert TBC)",
+    " (25th Anniversary)",
+    " - 40th Anniversary",
+    " (40th Anniversary)",
+    " - 50th Anniversary",
+    " (4K Restoration)",
+    " with Live Acoustic Guitar & Introduction",
+    " - Celebrating The Oscars®",
+    " Presented by the Cult Classic Collective",
+    "- Birthday Season",
+    " (Black & White version)",
+    " Presented by the Cult Classic Collective- Birthday Season"
+  ],
+  "verifierCoverage": [
+    "rio-dalston",
+    "ica",
+    "barbican",
+    "close-up",
+    "genesis",
+    "rich-mix",
+    "ritzy-brixton",
+    "gate-notting-hill",
+    "curzon-*",
+    "picturehouse-*",
+    "everyman-*"
+  ],
+  "dqsHistory": [
+    {
+      "timestamp": "2026-04-27T23:35:43.537Z",
+      "tmdbMatchRate": 0.8,
+      "posterCoverage": 0.857,
+      "letterboxdCoverage": 0.743,
+      "synopsisCoverage": 0.8,
+      "staleScreeningRate": 1,
+      "verificationPassRate": 0,
+      "compositeScore": 72.29
+    },
+    {
+      "timestamp": "2026-04-27T23:45:21.122Z",
+      "tmdbMatchRate": 0.667,
+      "posterCoverage": 0.718,
+      "letterboxdCoverage": 0.667,
+      "synopsisCoverage": 0.667,
+      "staleScreeningRate": 1,
+      "verificationPassRate": 0,
+      "compositeScore": 64.1
+    },
+    {
+      "timestamp": "2026-04-29T19:56:35.043Z",
+      "tmdbMatchRate": 0.576,
+      "posterCoverage": 0.667,
+      "letterboxdCoverage": 0.636,
+      "synopsisCoverage": 0.576,
+      "staleScreeningRate": 1,
+      "verificationPassRate": 0,
+      "compositeScore": 59.39
+    },
+    {
+      "timestamp": "2026-04-29T20:05:40.278Z",
+      "tmdbMatchRate": 0.6,
+      "posterCoverage": 0.686,
+      "letterboxdCoverage": 0.629,
+      "synopsisCoverage": 0.6,
+      "staleScreeningRate": 1,
+      "verificationPassRate": 0.8,
+      "compositeScore": 72.57
+    },
+    {
+      "timestamp": "2026-04-29T20:15:44.773Z",
+      "tmdbMatchRate": 0.514,
+      "posterCoverage": 0.622,
+      "letterboxdCoverage": 0.541,
+      "synopsisCoverage": 0.514,
+      "staleScreeningRate": 1,
+      "verificationPassRate": 0.333,
+      "compositeScore": 60.27
+    },
+    {
+      "timestamp": "2026-04-29T20:25:39.565Z",
+      "tmdbMatchRate": 0.528,
+      "posterCoverage": 0.611,
+      "letterboxdCoverage": 0.528,
+      "synopsisCoverage": 0.528,
+      "staleScreeningRate": 1,
+      "verificationPassRate": 0.9,
+      "compositeScore": 69.06
+    },
+    {
+      "timestamp": "2026-04-29T20:35:42.554Z",
+      "tmdbMatchRate": 0.778,
+      "posterCoverage": 0.833,
+      "letterboxdCoverage": 0.75,
+      "synopsisCoverage": 0.75,
+      "staleScreeningRate": 1,
+      "verificationPassRate": 0,
+      "compositeScore": 70.83
+    },
+    {
+      "timestamp": "2026-04-29T20:45:41.538Z",
+      "tmdbMatchRate": 0.706,
+      "posterCoverage": 0.794,
+      "letterboxdCoverage": 0.706,
+      "synopsisCoverage": 0.706,
+      "staleScreeningRate": 1,
+      "verificationPassRate": 1,
+      "compositeScore": 82.21
+    },
+    {
+      "timestamp": "2026-04-29T20:55:50.979Z",
+      "tmdbMatchRate": 0.757,
+      "posterCoverage": 0.838,
+      "letterboxdCoverage": 0.838,
+      "synopsisCoverage": 0.757,
+      "staleScreeningRate": 1,
+      "verificationPassRate": 0,
+      "compositeScore": 71.22
+    },
+    {
+      "timestamp": "2026-04-29T21:05:41.654Z",
+      "tmdbMatchRate": 0.75,
+      "posterCoverage": 0.778,
+      "letterboxdCoverage": 0.75,
+      "synopsisCoverage": 0.75,
+      "staleScreeningRate": 1,
+      "verificationPassRate": 0,
+      "compositeScore": 69.17
+    },
+    {
+      "timestamp": "2026-04-29T21:15:41.885Z",
+      "tmdbMatchRate": 0.872,
+      "posterCoverage": 0.897,
+      "letterboxdCoverage": 0.897,
+      "synopsisCoverage": 0.872,
+      "staleScreeningRate": 1,
+      "verificationPassRate": 0,
+      "compositeScore": 77.31
+    },
+    {
+      "timestamp": "2026-05-03T15:05:11.123Z",
+      "tmdbMatchRate": 0.889,
+      "posterCoverage": 0.944,
+      "letterboxdCoverage": 0.917,
+      "synopsisCoverage": 0.889,
+      "staleScreeningRate": 1,
+      "verificationPassRate": 1,
+      "compositeScore": 93.89
+    },
+    {
+      "timestamp": "2026-05-03T15:06:16.357Z",
+      "tmdbMatchRate": 0.889,
+      "posterCoverage": 0.944,
+      "letterboxdCoverage": 0.917,
+      "synopsisCoverage": 0.889,
+      "staleScreeningRate": 1,
+      "verificationPassRate": 1,
+      "compositeScore": 93.89
+    },
+    {
+      "timestamp": "2026-05-18T13:37:02.960Z",
+      "tmdbMatchRate": 1,
+      "posterCoverage": 0.973,
+      "letterboxdCoverage": 1,
+      "synopsisCoverage": 1,
+      "staleScreeningRate": 1,
+      "verificationPassRate": 0,
+      "compositeScore": 84.59
+    },
+    {
+      "timestamp": "2026-05-18T13:38:02.166Z",
+      "tmdbMatchRate": 1,
+      "posterCoverage": 0.973,
+      "letterboxdCoverage": 1,
+      "synopsisCoverage": 1,
+      "staleScreeningRate": 1,
+      "verificationPassRate": 0,
+      "compositeScore": 84.59
+    },
+    {
+      "timestamp": "2026-05-18T13:45:55.159Z",
+      "tmdbMatchRate": 0.875,
+      "posterCoverage": 0.875,
+      "letterboxdCoverage": 0.917,
+      "synopsisCoverage": 0.875,
+      "staleScreeningRate": 1,
+      "verificationPassRate": 1,
+      "compositeScore": 92.29
+    },
+    {
+      "timestamp": "2026-05-18T13:56:03.800Z",
+      "tmdbMatchRate": 0.969,
+      "posterCoverage": 1,
+      "letterboxdCoverage": 0.969,
+      "synopsisCoverage": 0.938,
+      "staleScreeningRate": 1,
+      "verificationPassRate": 0.5,
+      "compositeScore": 90.63
+    },
+    {
+      "timestamp": "2026-05-18T14:05:54.866Z",
+      "tmdbMatchRate": 0.97,
+      "posterCoverage": 0.97,
+      "letterboxdCoverage": 0.97,
+      "synopsisCoverage": 0.97,
+      "staleScreeningRate": 1,
+      "verificationPassRate": 0,
+      "compositeScore": 83.03
+    },
+    {
+      "timestamp": "2026-05-18T14:15:55.927Z",
+      "tmdbMatchRate": 0.889,
+      "posterCoverage": 0.972,
+      "letterboxdCoverage": 0.917,
+      "synopsisCoverage": 0.889,
+      "staleScreeningRate": 1,
+      "verificationPassRate": 1,
+      "compositeScore": 94.31
+    },
+    {
+      "timestamp": "2026-05-18T14:26:00.113Z",
+      "tmdbMatchRate": 0.73,
+      "posterCoverage": 0.757,
+      "letterboxdCoverage": 0.703,
+      "synopsisCoverage": 0.73,
+      "staleScreeningRate": 1,
+      "verificationPassRate": 1,
+      "compositeScore": 82.57
+    },
+    {
+      "timestamp": "2026-05-18T14:35:53.865Z",
+      "tmdbMatchRate": 0.867,
+      "posterCoverage": 0.933,
+      "letterboxdCoverage": 0.9,
+      "synopsisCoverage": 0.867,
+      "staleScreeningRate": 1,
+      "verificationPassRate": 1,
+      "compositeScore": 92.67
+    },
+    {
+      "timestamp": "2026-05-18T14:46:05.815Z",
+      "tmdbMatchRate": 0.9,
+      "posterCoverage": 0.9,
+      "letterboxdCoverage": 0.9,
+      "synopsisCoverage": 0.9,
+      "staleScreeningRate": 1,
+      "verificationPassRate": 1,
+      "compositeScore": 93.5
+    },
+    {
+      "timestamp": "2026-05-18T14:56:24.660Z",
+      "tmdbMatchRate": 0.968,
+      "posterCoverage": 1,
+      "letterboxdCoverage": 0.968,
+      "synopsisCoverage": 0.968,
+      "staleScreeningRate": 1,
+      "verificationPassRate": 1,
+      "compositeScore": 98.39
+    },
+    {
+      "timestamp": "2026-05-18T15:06:35.206Z",
+      "tmdbMatchRate": 0.943,
+      "posterCoverage": 0.943,
+      "letterboxdCoverage": 0.943,
+      "synopsisCoverage": 0.943,
+      "staleScreeningRate": 1,
+      "verificationPassRate": 1,
+      "compositeScore": 96.29
+    },
+    {
+      "timestamp": "2026-05-18T15:16:09.056Z",
+      "tmdbMatchRate": 0.886,
+      "posterCoverage": 0.914,
+      "letterboxdCoverage": 0.943,
+      "synopsisCoverage": 0.886,
+      "staleScreeningRate": 1,
+      "verificationPassRate": 0,
+      "compositeScore": 78.57
+    },
+    {
+      "timestamp": "2026-05-18T15:26:34.671Z",
+      "tmdbMatchRate": 0.839,
+      "posterCoverage": 1,
+      "letterboxdCoverage": 0.871,
+      "synopsisCoverage": 0.839,
+      "staleScreeningRate": 1,
+      "verificationPassRate": 0,
+      "compositeScore": 77.26
+    },
+    {
+      "timestamp": "2026-05-18T15:37:11.750Z",
+      "tmdbMatchRate": 0.912,
+      "posterCoverage": 0.912,
+      "letterboxdCoverage": 0.912,
+      "synopsisCoverage": 0.912,
+      "staleScreeningRate": 1,
+      "verificationPassRate": 0.714,
+      "compositeScore": 89.98
+    },
+    {
+      "timestamp": "2026-05-18T15:46:30.178Z",
+      "tmdbMatchRate": 1,
+      "posterCoverage": 1,
+      "letterboxdCoverage": 1,
+      "synopsisCoverage": 1,
+      "staleScreeningRate": 1,
+      "verificationPassRate": 1,
+      "compositeScore": 100
+    },
+    {
+      "timestamp": "2026-05-18T15:55:49.517Z",
+      "tmdbMatchRate": 0.929,
+      "posterCoverage": 0.964,
+      "letterboxdCoverage": 0.929,
+      "synopsisCoverage": 0.929,
+      "staleScreeningRate": 1,
+      "verificationPassRate": 1,
+      "compositeScore": 95.89
+    },
+    {
+      "timestamp": "2026-05-18T16:05:52.418Z",
+      "tmdbMatchRate": 0.912,
+      "posterCoverage": 0.971,
+      "letterboxdCoverage": 0.912,
+      "synopsisCoverage": 0.912,
+      "staleScreeningRate": 1,
+      "verificationPassRate": 1,
+      "compositeScore": 95.15
+    },
+    {
+      "timestamp": "2026-05-18T16:16:00.741Z",
+      "tmdbMatchRate": 0.871,
+      "posterCoverage": 0.935,
+      "letterboxdCoverage": 0.903,
+      "synopsisCoverage": 0.871,
+      "staleScreeningRate": 1,
+      "verificationPassRate": 1,
+      "compositeScore": 92.9
+    },
+    {
+      "timestamp": "2026-05-18T16:26:05.999Z",
+      "tmdbMatchRate": 0.912,
+      "posterCoverage": 0.941,
+      "letterboxdCoverage": 0.912,
+      "synopsisCoverage": 0.882,
+      "staleScreeningRate": 1,
+      "verificationPassRate": 1,
+      "compositeScore": 94.41
+    },
+    {
+      "timestamp": "2026-05-18T16:37:20.331Z",
+      "tmdbMatchRate": 1,
+      "posterCoverage": 0.969,
+      "letterboxdCoverage": 1,
+      "synopsisCoverage": 1,
+      "staleScreeningRate": 1,
+      "verificationPassRate": 1,
+      "compositeScore": 99.53
+    },
+    {
+      "timestamp": "2026-05-18T16:45:48.648Z",
+      "tmdbMatchRate": 0.929,
+      "posterCoverage": 0.929,
+      "letterboxdCoverage": 0.929,
+      "synopsisCoverage": 0.929,
+      "staleScreeningRate": 1,
+      "verificationPassRate": 1,
+      "compositeScore": 95.36
+    },
+    {
+      "timestamp": "2026-05-18T16:56:10.484Z",
+      "tmdbMatchRate": 0.966,
+      "posterCoverage": 0.966,
+      "letterboxdCoverage": 0.966,
+      "synopsisCoverage": 0.966,
+      "staleScreeningRate": 1,
+      "verificationPassRate": 1,
+      "compositeScore": 97.76
+    },
+    {
+      "timestamp": "2026-05-18T17:05:59.415Z",
+      "tmdbMatchRate": 0.974,
+      "posterCoverage": 0.974,
+      "letterboxdCoverage": 1,
+      "synopsisCoverage": 0.974,
+      "staleScreeningRate": 1,
+      "verificationPassRate": 1,
+      "compositeScore": 98.55
+    },
+    {
+      "timestamp": "2026-05-18T17:15:49.941Z",
+      "tmdbMatchRate": 0.939,
+      "posterCoverage": 0.939,
+      "letterboxdCoverage": 1,
+      "synopsisCoverage": 0.939,
+      "staleScreeningRate": 1,
+      "verificationPassRate": 1,
+      "compositeScore": 96.67
+    },
+    {
+      "timestamp": "2026-05-18T17:25:50.374Z",
+      "tmdbMatchRate": 0.972,
+      "posterCoverage": 0.944,
+      "letterboxdCoverage": 1,
+      "synopsisCoverage": 0.972,
+      "staleScreeningRate": 1,
+      "verificationPassRate": 1,
+      "compositeScore": 98.06
+    },
+    {
+      "timestamp": "2026-05-18T17:35:52.287Z",
+      "tmdbMatchRate": 0.974,
+      "posterCoverage": 0.947,
+      "letterboxdCoverage": 0.947,
+      "synopsisCoverage": 0.974,
+      "staleScreeningRate": 1,
+      "verificationPassRate": 1,
+      "compositeScore": 97.63
+    },
+    {
+      "timestamp": "2026-05-18T17:46:04.991Z",
+      "tmdbMatchRate": 0.824,
+      "posterCoverage": 0.824,
+      "letterboxdCoverage": 0.971,
+      "synopsisCoverage": 0.824,
+      "staleScreeningRate": 1,
+      "verificationPassRate": 0.75,
+      "compositeScore": 86.25
+    },
+    {
+      "timestamp": "2026-05-18T17:55:55.674Z",
+      "tmdbMatchRate": 0.875,
+      "posterCoverage": 0.875,
+      "letterboxdCoverage": 0.938,
+      "synopsisCoverage": 0.875,
+      "staleScreeningRate": 1,
+      "verificationPassRate": 0.778,
+      "compositeScore": 89.17
+    },
+    {
+      "timestamp": "2026-05-18T18:05:58.615Z",
+      "tmdbMatchRate": 0.929,
+      "posterCoverage": 0.929,
+      "letterboxdCoverage": 0.929,
+      "synopsisCoverage": 0.929,
+      "staleScreeningRate": 1,
+      "verificationPassRate": 0.875,
+      "compositeScore": 93.48
+    },
+    {
+      "timestamp": "2026-05-18T18:15:58.107Z",
+      "tmdbMatchRate": 1,
+      "posterCoverage": 0.973,
+      "letterboxdCoverage": 1,
+      "synopsisCoverage": 1,
+      "staleScreeningRate": 1,
+      "verificationPassRate": 0,
+      "compositeScore": 84.59
+    },
+    {
+      "timestamp": "2026-05-18T18:26:06.438Z",
+      "tmdbMatchRate": 0.913,
+      "posterCoverage": 0.87,
+      "letterboxdCoverage": 0.957,
+      "synopsisCoverage": 0.913,
+      "staleScreeningRate": 1,
+      "verificationPassRate": 1,
+      "compositeScore": 94.13
+    },
+    {
+      "timestamp": "2026-05-18T18:36:00.303Z",
+      "tmdbMatchRate": 1,
+      "posterCoverage": 1,
+      "letterboxdCoverage": 1,
+      "synopsisCoverage": 0.969,
+      "staleScreeningRate": 1,
+      "verificationPassRate": 0.5,
+      "compositeScore": 92.19
+    },
+    {
+      "timestamp": "2026-05-18T18:46:03.608Z",
+      "tmdbMatchRate": 0.97,
+      "posterCoverage": 0.97,
+      "letterboxdCoverage": 1,
+      "synopsisCoverage": 0.97,
+      "staleScreeningRate": 1,
+      "verificationPassRate": 0,
+      "compositeScore": 83.33
+    },
+    {
+      "timestamp": "2026-06-01T19:00:08.375Z",
+      "tmdbMatchRate": 0.833,
+      "posterCoverage": 0.944,
+      "letterboxdCoverage": 0.861,
+      "synopsisCoverage": 0.806,
+      "staleScreeningRate": 1,
+      "verificationPassRate": 1,
+      "compositeScore": 90.83
+    },
+    {
+      "timestamp": "2026-07-20T13:24:30.984Z",
+      "tmdbMatchRate": 0.575,
+      "posterCoverage": 0.8,
+      "letterboxdCoverage": 0.6,
+      "synopsisCoverage": 0.575,
+      "staleScreeningRate": 1,
+      "verificationPassRate": 1,
+      "compositeScore": 76
+    },
+    {
+      "timestamp": "2026-07-20T13:49:36.668Z",
+      "tmdbMatchRate": 0.6,
+      "posterCoverage": 0.8,
+      "letterboxdCoverage": 0.6,
+      "synopsisCoverage": 0.575,
+      "staleScreeningRate": 1,
+      "verificationPassRate": 1,
+      "compositeScore": 76.75
+    },
+    {
+      "timestamp": "2026-07-20T14:40:36.677Z",
+      "tmdbMatchRate": 0.675,
+      "posterCoverage": 0.825,
+      "letterboxdCoverage": 0.625,
+      "synopsisCoverage": 0.6,
+      "staleScreeningRate": 1,
+      "verificationPassRate": 1,
+      "compositeScore": 79.88
+    }
+  ],
+  "cycleSummaries": []
+}

@@ -49,7 +49,9 @@ export class NickelScraperV2 extends BaseScraper {
 
   protected async fetchPages(): Promise<string[]> {
     console.log("[the-nickel] Fetching from API...");
-    const json = await this.fetchUrl(`${this.apiUrl}?limit=100`);
+    // The API ignores paging params and returns everything up to `limit`;
+    // 500 is headroom (64 rows published on 2026-11-05).
+    const json = await this.fetchUrl(`${this.apiUrl}?limit=500`);
     return [json];
   }
 

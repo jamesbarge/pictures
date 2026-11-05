@@ -70,6 +70,8 @@
     "scrape:chains": "npm run scrape -- --chains",
     "scrape:all": "npm run scrape -- --all",
     "scrape:unified": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/scripts/run-scrape-and-enrich.ts",
+    "enrich:gaps": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register scripts/enrichment-gaps.ts",
+    "enrich:apply": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register scripts/apply-manual-tmdb-matches.ts",
     "lcut:gapfill": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register scripts/lcut-gapfill.ts",
     "agents": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/agents/run-agents.ts",
     "agents:enrich": "dotenv -e .env.local -- npx tsx -r tsconfig-paths/register src/agents/run-agents.ts",
