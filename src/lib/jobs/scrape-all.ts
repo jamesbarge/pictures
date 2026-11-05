@@ -113,7 +113,15 @@ interface WaveSummary {
  * Kept as one constant because the two call sites previously repeated `4` as a
  * literal with nothing tying it to the pool size.
  */
-const WAVE_CONCURRENCY = 4;
+const WAVE_CONCURRENCY = (() => {
+  // Scrape v2 (2026-11): 8 by default — ~28 independents on distinct hosts,
+  // so per-host load is unchanged; override with SCRAPE_CONCURRENCY.
+  const parsed = Number(process.env.SCRAPE_CONCURRENCY);
+  return Number.isFinite(parsed) && parsed >= 1 ? Math.floor(parsed) : 8;
+})();
+
+/** Chains run in their own pool alongside the independents (3 entries). */
+const CHAIN_CONCURRENCY = 3;
 
 /**
  * Open every pool slot with a trivial query before wave 1 starts.
@@ -133,14 +141,14 @@ const WAVE_CONCURRENCY = 4;
  */
 async function warmConnectionPool(): Promise<void> {
   const slots = Math.max(1, Number(process.env.DB_POOL_MAX ?? 1));
-  if (slots <= WAVE_CONCURRENCY) {
+  if (slots <= WAVE_CONCURRENCY + CHAIN_CONCURRENCY) {
     console.warn(
       `[scrape-all] DB_POOL_MAX=${slots} leaves no headroom above wave concurrency ` +
-        `${WAVE_CONCURRENCY}. Venues then queue on connection acquisition and can blow ` +
+        `${WAVE_CONCURRENCY + CHAIN_CONCURRENCY} (independents + chains). Venues then queue on connection acquisition and can blow ` +
         `their wall-clock cap; isConnectionError counts a cap expiry as a connection ` +
         `failure, so three of them trip the run breaker and every remaining scraper is ` +
         `skipped without being attempted. Measured 2026-09-20: 25 of 31 venues lost, ` +
-        `electric 852s -> 6.4s once the pool was raised. Set DB_POOL_MAX=8 in .env.local.`,
+        `electric 852s -> 6.4s once the pool was raised. Set DB_POOL_MAX=${WAVE_CONCURRENCY + CHAIN_CONCURRENCY + 1} or more in .env.local.`,
     );
   }
   const startedAt = Date.now();
@@ -920,27 +928,13 @@ export async function runScrapeAll(options: ScrapeAllOptions = {}): Promise<Scra
   // Venues knocked out by an anti-bot block, re-attempted once after the waves.
   const challengeQueue: ChallengedEntry[] = [];
 
-  // Wave 1: Chain scrapers (3 — fully parallel). Kept as their own pool:
-  // chains are multi-venue giants with scaled wall-clock caps.
-  waveSummaries.push(
-    ...(await runWaves(
-      ["chain"],
-      "Chains",
-      WAVE_CONCURRENCY,
-      freshness,
-      countMap,
-      breaker,
-      options,
-      challengeQueue,
-    )),
-  );
-
-  // Waves 2+3: Playwright (7) + Cheerio/API (20) independents share ONE pool
-  // (cap 4 — same ceiling as the old per-wave caps, so memory headroom is
-  // unchanged). Previously the wave barrier let one slow Playwright straggler
-  // block all 20 Cheerio scrapers; the shared pool removes that dead time.
-  waveSummaries.push(
-    ...(await runWaves(
+  // Scrape v2: independents first. The independents pool (Playwright +
+  // Cheerio, incl. BFI) and the chains pool start together — independents are
+  // queued first and never wait on a chain — so wall-clock is the slower of
+  // the two pools instead of their sum. Chains keep their own small pool:
+  // they are multi-venue giants with scaled wall-clock caps.
+  const [independentSummaries, chainSummaries] = await Promise.all([
+    runWaves(
       ["playwright", "cheerio"],
       "Independents (Playwright + Cheerio)",
       WAVE_CONCURRENCY,
@@ -949,8 +943,19 @@ export async function runScrapeAll(options: ScrapeAllOptions = {}): Promise<Scra
       breaker,
       options,
       challengeQueue,
-    )),
-  );
+    ),
+    runWaves(
+      ["chain"],
+      "Chains",
+      CHAIN_CONCURRENCY,
+      freshness,
+      countMap,
+      breaker,
+      options,
+      challengeQueue,
+    ),
+  ]);
+  waveSummaries.push(...independentSummaries, ...chainSummaries);
 
   // Deferred retry BEFORE enrichment, so anything recovered here still gets
   // its Letterboxd pass in this run rather than waiting a week.

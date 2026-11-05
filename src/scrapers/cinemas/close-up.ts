@@ -29,9 +29,11 @@
  *     waitForCloudflare sat on "Just a moment..." for 60s, headless AND headed.
  *   - TicketSource (the booking backend the `blink` URLs point at) is behind the
  *     same Cloudflare challenge, so it is not an alternative source.
- * Do NOT add a browser dependency or a paid proxy. The only thing that moves
- * this venue's coverage is re-attempting minutes-to-hours later, which belongs
- * to the scheduler, not here. See SCRAPING_PLAYBOOK.md.
+ * Since 2026-11 (scrape v2) BaseScraper.fetchUrl escalates a challenged 403 to
+ * Firecrawl's GB proxy (src/scrapers/fetch/tiered-fetch.ts), so no change is
+ * needed here. Without a Firecrawl key the old behaviour stands: re-attempt
+ * minutes-to-hours later (the runner's deferred challenge retry). See
+ * SCRAPING_PLAYBOOK.md.
  */
 
 import * as cheerio from "cheerio";
@@ -219,8 +221,9 @@ export class CloseUpCinemaScraper extends BaseScraper {
         `(bare UA, Chrome 131 + Sec-CH-UA client hints + Sec-Fetch-*, Googlebot and no headers ` +
         `all returned 403 within the same minute), and neither does a stealth browser — ` +
         `createPersistentPage + waitForCloudflare sat on "Just a moment..." for 60s headless AND ` +
-        `headed. Nothing to fix in this scraper. Do NOT add a browser dependency or a paid proxy. ` +
-        `The fix is to re-attempt the venue minutes-to-hours later, not harder. ` +
+        `headed. Since 2026-11 fetchUrl escalates a 403 to Firecrawl (GB proxy) — reaching this ` +
+        `error means FIRECRAWL_API_KEY is unset, its page budget is spent, or Firecrawl was ` +
+        `challenged too. Otherwise re-attempt the venue minutes-to-hours later, not harder. ` +
         `See SCRAPING_PLAYBOOK.md → "Close-Up Film Centre". ${SCRAPER_CHALLENGE_MARKER}`,
     );
   }

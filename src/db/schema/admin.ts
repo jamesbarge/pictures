@@ -89,7 +89,10 @@ export const scraperRuns = pgTable("scraper_runs", {
   metadata: jsonb("metadata").$type<{
     duration?: number;
     userAgent?: string;
+    /** True when any paid fetch tier (Firecrawl, Browserbase) served this run. */
     proxyUsed?: boolean;
+    /** Requests served per fetch tier (src/scrapers/fetch/tiered-fetch.ts). */
+    fetchTiers?: Partial<Record<"direct" | "firecrawl" | "browserbase", number>>;
     /**
      * Outcome discriminator for run accounting. Classified from the error
      * string by classifyFailureKind() in src/scrapers/runner-factory.ts:
