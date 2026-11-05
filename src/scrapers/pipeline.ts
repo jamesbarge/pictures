@@ -28,8 +28,10 @@ import {
   tryUpdatePoster,
   releaseYearHint,
   yearConflicts,
+  clearTitleLeakDirectors,
   type FilmCache,
 } from "./utils/film-matching";
+import { dropTitleLeakDirectors, undatedStubNeedsMatch } from "./utils/film-write-guards";
 import {
   classifyScreening,
   checkForDuplicate,
@@ -823,10 +825,21 @@ async function getOrCreateFilm(
 
   const normalized = normalizeTitle(matchingTitle);
 
+  // "The Silence" / "The Trip: Director's Cut" / "Monkey Tennis" are the
+  // listing copied into the credit. Compare the raw title and the cleaned
+  // one: the cleaner peels ": Director's Cut" before this credit is stored.
+  const creditTitles = [title, cleanedTitle, matchingTitle];
+  const directorForMatch =
+    scraperDirector && dropTitleLeakDirectors([scraperDirector], creditTitles).length > 0
+      ? scraperDirector
+      : undefined;
+  const droppedLeakDirector = Boolean(scraperDirector) && !directorForMatch;
+
   // Try to find existing film using the pre-loaded cache (O(1) lookup)
   const existing = lookupFilmInCache(filmCache, normalized, cacheYear);
 
-  if (existing && yearConflicts(existing, cacheYear)) {
+  const releaseYear = releaseYearHint(cacheYear);
+  if (existing && (yearConflicts(existing, cacheYear) || undatedStubNeedsMatch(existing, releaseYear))) {
     // Every cached film of this title disagrees with the scraper's release year
     // (Riverside's Hammer "Dracula" 1958 vs the cached 2025 film). Ask TMDB with
     // the year, and keep the cached film unless TMDB finds one that year vouches
@@ -838,7 +851,7 @@ async function getOrCreateFilm(
           filmCache,
           matchingTitle,
           cacheYear,
-          scraperDirector,
+          directorForMatch,
           scraperPosterUrl,
           scraperRuntime,
           venueLanguages,
@@ -857,6 +870,16 @@ async function getOrCreateFilm(
   }
 
   if (existing) {
+    // The film row already exists, so a rejected credit would otherwise stay
+    // on it forever: the next scrape reuses the row and does not rewrite
+    // directors. Monkey Tennis is this case.
+    if (droppedLeakDirector) {
+      try {
+        await clearTitleLeakDirectors(existing.id, creditTitles);
+      } catch (error) {
+        console.warn(`[Pipeline] Could not clear a title-leak director on ${existing.id}:`, error);
+      }
+    }
     // If existing film lacks a poster, try to find one
     if (!existing.posterUrl) {
       await tryUpdatePoster(existing.id, title, existing.year, existing.imdbId, existing.tmdbId, scraperPosterUrl);
@@ -876,7 +899,7 @@ async function getOrCreateFilm(
       filmCache,
       matchingTitle,
       scraperYear,
-      scraperDirector,
+      directorForMatch,
       scraperPosterUrl,
       scraperRuntime,
       venueLanguages,
@@ -890,7 +913,7 @@ async function getOrCreateFilm(
   }
 
   // Fallback: Create film without TMDB data
-  return createFilmWithoutTMDB(filmCache, matchingTitle, scraperYear, scraperDirector, scraperPosterUrl);
+  return createFilmWithoutTMDB(filmCache, matchingTitle, scraperYear, directorForMatch, scraperPosterUrl);
 }
 
 /**

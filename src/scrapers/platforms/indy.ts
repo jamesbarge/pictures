@@ -198,18 +198,36 @@ export async function fetchIndyShowings(
   return screenings;
 }
 
+/**
+ * Release year and director from an INDY movie, plus one confirmed exception.
+ *
+ * Chiswick's 19 Nov 2026 19:45 showing is named "Silence" (161 min, certificate
+ * 15). The feed's releaseDate is the showing day, so it never identifies
+ * Scorsese's Silence (2016), and the title collapsed onto an undated film
+ * called "The Silence" whose only director was the title. Runtime 161 is the
+ * feature; a different Silence is not this length.
+ */
+export function indyListingIdentity(movie: IndyMovie): { year?: number; director?: string } {
+  if (movie.name.trim().toLowerCase() === "silence" && movie.duration === 161) {
+    return { year: 2016, director: "Martin Scorsese" };
+  }
+  const releaseYear = movie.releaseDate ? new Date(movie.releaseDate).getFullYear() : undefined;
+  return {
+    year: releaseYear && !Number.isNaN(releaseYear) ? releaseYear : undefined,
+  };
+}
+
 /** Map an INDY showing to a RawScreening (ISO-sourced; sourceId preserved). */
 function mapShowing(venue: IndyVenue, s: IndyShowing, datetime: Date): RawScreening {
-  const releaseYear = s.movie.releaseDate
-    ? new Date(s.movie.releaseDate).getFullYear()
-    : undefined;
+  const identity = indyListingIdentity(s.movie);
   return {
     filmTitle: s.movie.name.trim(),
     datetime,
     bookingUrl: `${venue.baseUrl}/checkout/showing/${s.id}`,
     sourceId: `${venue.cinemaId}-${s.id}`,
     runtime: sanitizeRuntime(s.movie.duration ?? null),
-    year: releaseYear && !Number.isNaN(releaseYear) ? releaseYear : undefined,
+    year: identity.year,
+    director: identity.director,
     timeSource: "iso",
   };
 }

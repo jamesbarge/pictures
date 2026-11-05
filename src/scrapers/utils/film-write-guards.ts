@@ -32,6 +32,55 @@ export function sanitizeYear(year: unknown): number | null {
 }
 
 /**
+ * A credit copied from the listing, not a person.
+ *
+ * "The Silence" stored as its own director, "The Trip: Director's Cut" stored
+ * against The Trip, and "Monkey Tennis" stored against Ten Years of Monkey
+ * Tennis. A leading possessive ("Ken Russell's The Devils", director Ken
+ * Russell) and a title that opens with the person's name stay.
+ */
+export function isTitleLeakDirector(director: string, title: string): boolean {
+  const credit = normalizeCredit(director);
+  const film = normalizeCredit(title);
+  if (!credit || !film || credit.length < 3) return false;
+  if (credit === film) return true;
+  // The raw listing was copied in, decorations and all.
+  if (film.length >= 4 && credit.includes(film)) return true;
+  if (credit.split(" ").length < 2 || !film.includes(credit)) return false;
+  // "ken russells the devils" still starts with "ken russell".
+  if (film.startsWith(credit)) return false;
+  return true;
+}
+
+/** Drop credits that are the listing title. Other names in the same array stay. */
+export function dropTitleLeakDirectors(directors: readonly string[], titles: readonly string[]): string[] {
+  return directors.filter((director) => !titles.some((title) => title && isTitleLeakDirector(director, title)));
+}
+
+/**
+ * An undated film with no TMDB id cannot be the namesake a release year is
+ * asking for. `yearConflicts` leaves that row in place (a null year is not a
+ * disagreement), so The Trip with no year kept swallowing a 1967 hint.
+ */
+export function undatedStubNeedsMatch(
+  film: { year?: number | null; tmdbId?: number | null },
+  releaseYear: number | undefined,
+): boolean {
+  return film.year == null && film.tmdbId == null && releaseYear !== undefined;
+}
+
+function normalizeCredit(value: string): string {
+  return value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/['’]/g, "")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
  * Directors sanitiser.
  *
  * Scrapers occasionally concatenate the directors string with the cast list,
