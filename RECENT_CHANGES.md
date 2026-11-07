@@ -1,5 +1,5 @@
 ## 2026-11-07: Listings QA — Tenet, Blue Velvet, Barbican titles, LDNDOCS
-**PR**: pending | **Files**: `src/scrapers/cinemas/prince-charles.ts`, `src/scrapers/cinemas/barbican.ts`, `src/scrapers/cinemas/bertha-dochouse.ts`, `src/scrapers/utils/film-title-cleaner.ts`, `src/lib/title-patterns.ts`, `src/scrapers/utils/film-matching.ts`
+**PR**: #863 | **Files**: `src/scrapers/cinemas/prince-charles.ts`, `src/scrapers/cinemas/barbican.ts`, `src/scrapers/cinemas/bertha-dochouse.ts`, `src/scrapers/utils/film-title-cleaner.ts`, `src/lib/title-patterns.ts`, `src/scrapers/utils/film-matching.ts`
 - PCC reads the year and runtime from `.running-time`, so Tenet is Nolan's 2020 film and Blue Velvet is Lynch's 1986 film.
 - A Barbican card ending in `...` takes its title from the event page. Lexi Block 1 and Block 2 stay separate films.
 - `LDNDOCS` peels like the other festival acronyms. The 1915 Great Experiment is not reused for the 2026 documentary. `Narrow Margin Presents`, `Nolan in 35mm:` and `Parents & Baby Screening -` peel, and two full director names joined by "and" are stored separately.
