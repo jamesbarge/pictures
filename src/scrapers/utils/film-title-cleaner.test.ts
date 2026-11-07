@@ -3,6 +3,7 @@ import {
   cleanFilmTitle,
   cleanFilmTitleWithMetadata,
   listingEventNote,
+  ldndocsMinReleaseYear,
   programmeStrandNote,
   EVENT_PREFIXES,
   extractEnglishFromBracket,
@@ -1143,5 +1144,60 @@ describe("25 Oct 2026 listings QA — season subtitles and programme strands", (
     expect(programmeStrandNote("Sinners - Black History Month 2026")).toBeNull();
     expect(programmeStrandNote("Ponyboi")).toBeNull();
     expect(cleanFilmTitle("Ponyboi")).toBe("Ponyboi");
+  });
+});
+
+describe("7 Nov 2026 listings QA — strands and LDNDOCS", () => {
+  it.each([
+    ["Narrow Margin Presents The Tall T on 35mm", "The Tall T", "Narrow Margin Presents"],
+    ["Nolan in 35mm: The Prestige", "The Prestige", "Nolan in 35mm"],
+    ["Parents & Baby Screening - Wicker", "Wicker", "Parents & Baby Screening"],
+    ["Parents and Baby screening: The Drama", "The Drama", "Parents and Baby screening"],
+    ["LDNDOCS: The Great Experiment", "The Great Experiment", "LDNDOCS"],
+    ["LDNDOCS 2026: American Doctor", "American Doctor", "LDNDOCS 2026"],
+    ["LDNDOCS 2026: Bleeding Hearts", "Bleeding Hearts", "LDNDOCS 2026"],
+    ["LDNDOCS 2026: Nuisance Bear", "Nuisance Bear", "LDNDOCS 2026"],
+    ["LDNDOCS 2026: Time And Water", "Time And Water", "LDNDOCS 2026"],
+  ])("%s → %s, note %s", (raw, title, note) => {
+    expect(cleanFilmTitle(raw)).toBe(title);
+    expect(listingEventNote(raw)).toBe(note);
+    expect(cleanFilmTitle(title)).toBe(title);
+  });
+
+  it("keeps titles that only look like these strands", () => {
+    for (const title of [
+      "Christmas Presents",
+      "The Prestige",
+      "The Tall T",
+      "Wicker",
+      "Dune: Part Two",
+      "Sundance Film Festival: The First 25 Years",
+      "28 Years Later: The Bone Temple",
+      "Short Cuts : 35mm Roadshow Tour",
+    ]) {
+      expect(cleanFilmTitle(title)).toBe(
+        title === "Short Cuts : 35mm Roadshow Tour" ? "Short Cuts" : title,
+      );
+      expect(ldndocsMinReleaseYear(title)).toBeUndefined();
+    }
+  });
+
+  it("treats an LDNDOCS title as too new for a silent namesake", () => {
+    const floor = ldndocsMinReleaseYear("LDNDOCS: The Great Experiment");
+    expect(floor).toBe(new Date().getFullYear() - 3);
+    expect(ldndocsMinReleaseYear("LDNDOCS 2026: American Doctor")).toBe(floor);
+    expect(ldndocsMinReleaseYear("The Great Experiment")).toBeUndefined();
+  });
+
+  it("keeps the Barbican event-page titles once the card ellipsis is gone", () => {
+    expect(cleanFilmTitle("Reverie Cineclub Presents: Hubley Hash + music with trumpeter Olivia Cuttill")).toBe(
+      "Hubley Hash + music with trumpeter Olivia Cuttill",
+    );
+    expect(cleanFilmTitle("Blues Like Showers of Rain & Jazz Is Our Religion")).toBe(
+      "Blues Like Showers of Rain & Jazz Is Our Religion",
+    );
+    expect(
+      cleanFilmTitle("The Films of Madeline Anderson and St. Clair Bourne 1960-1974 + Introduction"),
+    ).toBe("The Films of Madeline Anderson and St. Clair Bourne 1960-1974");
   });
 });

@@ -38,6 +38,9 @@ describe("BerthaDochouseScraper.parseDetailPage", () => {
 
   it("extracts 3 screenings from the fixture", () => {
     const screenings = scraper.parseDetailPage(DETAIL_FIXTURE, FIXTURE_NOW);
+    expect(screenings[0].year).toBeUndefined();
+    expect(screenings[0].director).toBeUndefined();
+    expect(screenings[0].runtime).toBeUndefined();
     expect(screenings).toHaveLength(3);
   });
 
@@ -130,5 +133,26 @@ describe("BerthaDochouseScraper.parseDetailPage", () => {
     const out = scraper.parseDetailPage(fixture, FIXTURE_NOW);
     expect(out).toHaveLength(1);
     expect(out[0].datetime.toISOString()).toBe("2026-05-14T15:30:00.000Z");
+  });
+
+  it("reads the 2026 Great Experiment credits off the detail page", () => {
+    const fixture = `
+      <h1 class="fs-60"> The Great Experiment </h1>
+      <div class="film-details">
+        <span class="director">Directed by: <strong>Stephen Maing and Eric Daniel Metzgar </strong></span>
+        <div class="film-info">
+          <span class="runtime">Runtime: <strong>1h 40min</strong></span>
+          <span class="year">Year: <strong>2026</strong></span>
+        </div>
+      </div>
+      <link rel="canonical" href="https://dochouse.org/event/the-great-experiment/" />
+      <a href="https://www.curzon.com/ticketing/seats/BLO1-999">Sat 21st Nov 12:45 Q&amp;A, LDNDOCS 2026</a>
+    `;
+    const [screening] = scraper.parseDetailPage(fixture, new Date("2026-11-07T00:00:00Z"));
+    expect(screening.filmTitle).toBe("The Great Experiment");
+    expect(screening.year).toBe(2026);
+    expect(screening.runtime).toBe(100);
+    expect(screening.director).toBe("Stephen Maing and Eric Daniel Metzgar");
+    expect(screening.datetime.toISOString()).toBe("2026-11-21T12:45:00.000Z");
   });
 });

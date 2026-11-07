@@ -18,12 +18,31 @@
  * Times are displayed in UK local format like "12.00pm", "5.55pm".
  */
 
+import * as cheerio from "cheerio";
 import { BaseScraper } from "../base";
 import type { RawScreening, ScraperConfig } from "../types";
 import type { CheerioAPI } from "../utils/cheerio-types";
 import { parseScreeningTime, ukLocalToUTC } from "../utils/date-parser";
 import { FestivalDetector } from "../festivals/festival-detector";
 import { addDaysToDateString, londonDateString } from "@/lib/london-date";
+import { decodeHtmlEntities } from "@/lib/title-patterns";
+
+/** A listing card cut the title short ("Jazz Is Our..."). */
+export function isTruncatedListingTitle(title: string): boolean {
+  return /\.\.\.\s*$/.test(title);
+}
+
+/**
+ * The event page h1 is the full programme title. The certificate in
+ * parentheses ("(15*)", "(PG)") is the card's rating, not part of the name.
+ */
+export function titleFromBarbicanEventPage(html: string): string | null {
+  const h1 = cheerio.load(html)("h1").first().text().replace(/\s+/g, " ").trim();
+  if (!h1) return null;
+  const title = decodeHtmlEntities(h1).replace(/\s*\((?:U|PG|12A?|15|18)\*?\)\s*$/i, "").trim();
+  if (!title || isTruncatedListingTitle(title)) return null;
+  return title;
+}
 
 /**
  * Number of days ahead to scrape from today (London calendar days).
@@ -52,6 +71,8 @@ const RETRY_BACKOFF_MS = 4_000;
 const PROGRESS_EVERY = 10;
 
 export class BarbicanScraper extends BaseScraper {
+  /** Card title was truncated; the event page URL for that source id. */
+  private eventUrlBySourceId = new Map<string, string>();
   config: ScraperConfig = {
     cinemaId: "barbican",
     baseUrl: "https://www.barbican.org.uk",
@@ -143,6 +164,7 @@ export class BarbicanScraper extends BaseScraper {
     await FestivalDetector.preload();
     const screenings: RawScreening[] = [];
     let failures = 0;
+    this.eventUrlBySourceId = new Map();
 
     for (const page of htmlPages) {
       try {
@@ -165,8 +187,36 @@ export class BarbicanScraper extends BaseScraper {
       throw new Error(`Failed to parse ${failures}/${htmlPages.length} Barbican day pages`);
     }
 
+    await this.fillTruncatedTitles(screenings);
+
     console.log(`[${this.config.cinemaId}] Found ${screenings.length} screenings total`);
     return screenings;
+  }
+
+  /**
+   * Replace a card title that ends in "..." with the event page h1.
+   * The source id stays on the card title, so the existing row updates
+   * instead of a second screening being inserted.
+   */
+  private async fillTruncatedTitles(screenings: RawScreening[]): Promise<void> {
+    const fetched = new Map<string, string | null>();
+    for (const screening of screenings) {
+      if (!screening.sourceId || !isTruncatedListingTitle(screening.filmTitle)) continue;
+      const eventUrl = this.eventUrlBySourceId.get(screening.sourceId);
+      if (!eventUrl) continue;
+      let full = fetched.get(eventUrl);
+      if (full === undefined) {
+        try {
+          full = titleFromBarbicanEventPage(await this.fetchUrl(eventUrl));
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          console.warn(`[${this.config.cinemaId}] Event page failed for "${screening.filmTitle}": ${message}`);
+          full = null;
+        }
+        fetched.set(eventUrl, full);
+      }
+      if (full) screening.filmTitle = full;
+    }
   }
 
   /**
@@ -282,6 +332,10 @@ export class BarbicanScraper extends BaseScraper {
             .replace(/[^a-z0-9]+/g, "-")
             .slice(0, 40);
           const sourceId = `barbican-${dateStr}-${String(parsedTime.hours).padStart(2, "0")}${String(parsedTime.minutes).padStart(2, "0")}-${titleSlug}`;
+
+          if (isTruncatedListingTitle(title) && eventHref) {
+            this.eventUrlBySourceId.set(sourceId, eventUrl);
+          }
 
           // Fall back to event page URL if no booking link (sold out)
           const finalBookingUrl = bookingUrl || eventUrl;

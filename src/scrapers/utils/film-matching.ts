@@ -14,7 +14,7 @@ import { getPosterService } from "@/lib/posters";
 import { findMatchingFilm } from "@/lib/film-similarity";
 import { v4 as uuidv4 } from "uuid";
 import { isBlockedTmdbId } from "@/lib/tmdb/blocklist";
-import { sanitizeDirectors, sanitizeYear } from "./film-write-guards";
+import { sanitizeDirectors, sanitizeYear, splitDirectorCredit } from "./film-write-guards";
 
 /**
  * The cache stores only the columns its consumers actually read, NOT the whole
@@ -25,13 +25,15 @@ import { sanitizeDirectors, sanitizeYear } from "./film-write-guards";
  * measured blowing it at 15,001ms with nothing else touching the DB. Each throw
  * then cost 4 attempts (retryAttempts: 3) that RE-SCRAPE the venue's site.
  *
- * The six columns below are the complete read set:
+ * The columns below are the complete read set:
  *   - `title`    — initFilmCache/addToFilmCache normalize it for the byTitle key
  *   - `tmdbId`   — byTmdbId index + the "prefer the row with TMDB data" tiebreak
  *   - `id`       — every caller returns this as the resolved filmId
  *   - `posterUrl`, `year`, `imdbId` — pipeline.ts getOrCreateFilm's
  *     tryUpdatePoster backfill for a cached film with no poster
  *   - `originalTitle` — initFilmCache's original-title alias keys
+ *   - `runtime`, `directors` — a feature-length listing with a different
+ *     director must not reuse a short namesake (The Great Experiment, 1915)
  *
  * Adding a consumer that needs another column means adding it to BOTH this Pick
  * and the select projection in initFilmCache. Correctness beats the byte count:
@@ -39,7 +41,15 @@ import { sanitizeDirectors, sanitizeYear } from "./film-write-guards";
  */
 type FilmRecord = Pick<
   typeof films.$inferSelect,
-  "id" | "title" | "originalTitle" | "year" | "tmdbId" | "imdbId" | "posterUrl"
+  | "id"
+  | "title"
+  | "originalTitle"
+  | "year"
+  | "tmdbId"
+  | "imdbId"
+  | "posterUrl"
+  | "runtime"
+  | "directors"
 >;
 
 // ============================================================================
@@ -101,6 +111,8 @@ export async function initFilmCache(
         tmdbId: films.tmdbId,
         imdbId: films.imdbId,
         posterUrl: films.posterUrl,
+        runtime: films.runtime,
+        directors: films.directors,
       })
       .from(films),
     15_000,
@@ -229,6 +241,49 @@ export function yearConflicts(film: Pick<FilmRecord, "year">, scraperYear?: numb
   return hint !== undefined && film.year != null && Math.abs(film.year - hint) > 1;
 }
 
+function directorSurname(name: string): string {
+  const words = name.trim().split(/\s+/);
+  return (words[words.length - 1] ?? "")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+/**
+ * A feature-length listing is not a short of the same title from another era.
+ * All three have to hold, so a repertory venue that sends a screening year
+ * and the right director still keeps the cached film:
+ * the cached runtime is a short, the listing is feature-length, the directors
+ * share no surname, and the years are more than 20 apart.
+ */
+export function cachedNamesakeContradictsListing(
+  film: { year: number | null; runtime?: number | null; directors?: string[] | null },
+  listing: { year?: number; runtime?: number; director?: string },
+): boolean {
+  const filmRuntime = film.runtime ?? null;
+  if (filmRuntime == null || filmRuntime >= 30) return false;
+  if (listing.runtime == null || listing.runtime < 60) return false;
+  const listingDirectors = splitDirectorCredit(listing.director);
+  const filmDirectors = film.directors ?? [];
+  if (listingDirectors.length === 0 || filmDirectors.length === 0) return false;
+  const surnames = new Set(filmDirectors.map(directorSurname));
+  if (listingDirectors.some((name) => surnames.has(directorSurname(name)))) return false;
+  if (film.year == null || listing.year == null) return false;
+  return Math.abs(film.year - listing.year) > 20;
+}
+
+/** The cached row for an id, so a similarity hit can be refused the same way. */
+export function findCachedFilm(
+  cache: FilmCache,
+  id: string,
+): FilmRecord | null {
+  for (const list of cache.namesakes.values()) {
+    const found = list.find((film) => film.id === id);
+    if (found) return found;
+  }
+  return null;
+}
+
 /**
  * Which same-title film a listing with NO year gets: the one holding the most
  * upcoming screenings, then the one with TMDB data, then the first loaded.
@@ -343,7 +398,8 @@ export async function matchAndCreateFromTMDB(
   scraperRuntime?: number,
   venueLanguages?: string[],
   allowCurrentRelease = false,
-  requireYearAgreement = false
+  requireYearAgreement = false,
+  minReleaseYear?: number,
 ): Promise<string | null> {
   // Year discipline (`releaseYearHint`): a wrong current-year hint gives junk
   // stubs a +0.2/+0.3 exact-year bonus and SELECTS the wrong film; losing a
@@ -359,6 +415,13 @@ export async function matchAndCreateFromTMDB(
   });
 
   if (!match) {
+    return null;
+  }
+
+  // A current festival title (LDNDOCS) must not land on a silent-era namesake
+  // just because the titles match. The floor is a release year, not a hint:
+  // it never bonuses the search.
+  if (minReleaseYear !== undefined && match.year > 0 && match.year < minReleaseYear) {
     return null;
   }
 
@@ -471,6 +534,8 @@ export async function matchAndCreateFromTMDB(
     tmdbId: match.tmdbId,
     imdbId: details.details.imdb_id,
     posterUrl,
+    runtime: details.details.runtime,
+    directors: guardedDirectors,
   });
 
   console.log(`[Pipeline] Created film: ${details.details.title} (${match.year})`);
@@ -519,11 +584,13 @@ export async function createFilmWithoutTMDB(
 
   const filmId = uuidv4();
 
-  // Clean director: strip "Starring ..." suffix that cinema websites sometimes include
+  // Clean director: strip "Starring ..." suffix that cinema websites sometimes include.
+  // "Alex Huston Fischer and Eleanor Wilson" is two directors.
   const cleanedDirector = scraperDirector
     ?.replace(/\s+Starring\s+.*/i, "")
     .replace(/\s+With\s+.*/i, "")
     .trim() || undefined;
+  const directors = sanitizeDirectors(splitDirectorCredit(cleanedDirector));
 
   // isRepertory is intentionally false when we have no year — enrichment will
   // overwrite it from the TMDB release date. Don't guess.
@@ -533,7 +600,7 @@ export async function createFilmWithoutTMDB(
     id: filmId,
     title: matchingTitle,
     year: cleanYear,
-    directors: cleanedDirector ? [cleanedDirector] : [],
+    directors,
     posterUrl,
     isRepertory,
     cast: [],
@@ -552,6 +619,8 @@ export async function createFilmWithoutTMDB(
     tmdbId: null,
     imdbId: null,
     posterUrl,
+    runtime: null,
+    directors,
   });
 
   console.log(`[Pipeline] Created film without TMDB: ${matchingTitle}${posterUrl ? " (with poster)" : ""}`);
