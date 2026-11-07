@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { sanitizeDirectors, sanitizeYear } from "./film-write-guards";
+import { sanitizeDirectors, sanitizeYear, splitDirectorCredit } from "./film-write-guards";
 
 describe("sanitizeYear", () => {
   it("returns null for empty / zero / negative", () => {
@@ -67,5 +67,24 @@ describe("sanitizeDirectors", () => {
 
   it("preserves multiple legitimate directors", () => {
     expect(sanitizeDirectors(["Joel Coen", "Ethan Coen"])).toEqual(["Joel Coen", "Ethan Coen"]);
+  });
+});
+
+describe("splitDirectorCredit", () => {
+  it("splits two full names joined by and", () => {
+    expect(splitDirectorCredit("Alex Huston Fischer and Eleanor Wilson")).toEqual([
+      "Alex Huston Fischer",
+      "Eleanor Wilson",
+    ]);
+    expect(splitDirectorCredit("Stephen Maing and Eric Daniel Metzgar")).toEqual([
+      "Stephen Maing",
+      "Eric Daniel Metzgar",
+    ]);
+  });
+
+  it("leaves a shared-surname pair and a single director whole", () => {
+    expect(splitDirectorCredit("Joel and Ethan Coen")).toEqual(["Joel and Ethan Coen"]);
+    expect(splitDirectorCredit("David Lynch")).toEqual(["David Lynch"]);
+    expect(splitDirectorCredit("Christopher Nolan")).toEqual(["Christopher Nolan"]);
   });
 });

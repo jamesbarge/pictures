@@ -22,7 +22,7 @@ vi.mock("../festivals/festival-detector", () => ({
   },
 }));
 
-import { BarbicanScraper } from "./barbican";
+import { BarbicanScraper, isTruncatedListingTitle, titleFromBarbicanEventPage } from "./barbican";
 import type { RawScreening } from "../types";
 import type { CheerioAPI } from "../utils/cheerio-types";
 
@@ -154,5 +154,48 @@ describe("Barbican parseDayPage", () => {
     const screenings = parse("2026-08-19");
     expect(new Set(screenings.map((s) => s.sourceId)).size).toBe(screenings.length);
     expect(screenings[0].sourceId).toBe("barbican-2026-08-19-1100-the-odyssey");
+  });
+});
+
+describe("Barbican truncated card titles", () => {
+  it("detects a card that ends in an ellipsis", () => {
+    expect(isTruncatedListingTitle("Hubley Hash...")).toBe(true);
+    expect(isTruncatedListingTitle("Blues Like Showers of Rain & Jazz Is Our...")).toBe(true);
+    expect(isTruncatedListingTitle("The Odyssey")).toBe(false);
+  });
+
+  it("reads the full title from the event page h1", () => {
+    expect(
+      titleFromBarbicanEventPage(
+        "<h1>Reverie Cineclub Presents: Hubley Hash + music with trumpeter Olivia Cuttill\n(PG*)</h1>",
+      ),
+    ).toBe("Reverie Cineclub Presents: Hubley Hash + music with trumpeter Olivia Cuttill");
+    expect(
+      titleFromBarbicanEventPage("<h1>Blues Like Showers of Rain &amp; Jazz Is Our Religion\n(15)</h1>"),
+    ).toBe("Blues Like Showers of Rain & Jazz Is Our Religion");
+    expect(
+      titleFromBarbicanEventPage(
+        "<h1>The Films of Madeline Anderson and St. Clair Bourne 1960-1974 + Introduction\n(15*)</h1>",
+      ),
+    ).toBe("The Films of Madeline Anderson and St. Clair Bourne 1960-1974 + Introduction");
+  });
+
+  it("keeps the card-title source id when the card is truncated", () => {
+    const html = `
+      <div class="cinema-listing-card">
+        <div class="cinema-listing-card__title">
+          <a href="/whats-on/2026/event/jazz-on-screen-blues-like-showers-of-rain-jazz-is-our">Jazz on Screen: Blues Like Showers of Rain &amp; Jazz Is Our...</a>
+        </div>
+        <div class="cinema-instance-list__instance">
+          <a href="https://tickets.barbican.org.uk/choose-seats/3621201">2.00pm</a>
+        </div>
+      </div>`;
+    const internals = new BarbicanScraper() as unknown as PrivBarbican;
+    const [screening] = internals.parseDayPage(cheerio.load(html) as CheerioAPI, "2026-11-21");
+    expect(screening.filmTitle).toBe("Jazz on Screen: Blues Like Showers of Rain & Jazz Is Our...");
+    expect(screening.sourceId).toBe(
+      "barbican-2026-11-21-1400-jazz-on-screen-blues-like-showers-of-rai",
+    );
+    expect(screening.datetime.toISOString()).toBe("2026-11-21T14:00:00.000Z");
   });
 });

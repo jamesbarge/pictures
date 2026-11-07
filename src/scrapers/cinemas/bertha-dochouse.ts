@@ -30,11 +30,42 @@ import {
   parseScreeningTime,
 } from "../utils/date-parser";
 import { normalizeUrl } from "../utils/url";
+import { sanitizeRuntime } from "../utils/metadata-parser";
+import type { CheerioAPI } from "../utils/cheerio-types";
 
 const BASE_URL = "https://dochouse.org";
 const LISTING_PATH = "/whats-on/";
 const MAX_LIST_PAGES = 10; // Hard cap — programming horizon is ~2 months
 const TICKET_HREF_RE = /\/ticketing\/seats\/(BLO1-\d+)/;
+
+/** "1h 40min" or "100 min" from the detail page's runtime line. */
+function parseDochouseRuntime(text: string): number | undefined {
+  const hours = text.match(/(\d+)\s*h/i);
+  const minutes = text.match(/(\d+)\s*m/i);
+  if (hours) {
+    return parseInt(hours[1], 10) * 60 + (minutes ? parseInt(minutes[1], 10) : 0);
+  }
+  return minutes ? parseInt(minutes[1], 10) : undefined;
+}
+
+/**
+ * The detail page prints "Directed by", "Runtime" and "Year" next to the h1.
+ * Without them, "The Great Experiment" (Stephen Maing and Eric Daniel
+ * Metzgar, 2026, 100 min) matches Tom Santschi's 1915 short.
+ */
+export function dochouseListingCredits(
+  $: CheerioAPI,
+): { year?: number; director?: string; runtime?: number } {
+  const directed = $(".film-details .director").first().text().match(/directed\s+by:\s*(.+)/i);
+  const yearMatch = $(".film-details .year").first().text().match(/\b(19\d{2}|20\d{2})\b/);
+  const runtime = sanitizeRuntime(parseDochouseRuntime($(".film-details .runtime").first().text()));
+  const director = directed?.[1]?.replace(/\s+/g, " ").trim() || undefined;
+  return {
+    director: director || undefined,
+    year: yearMatch ? parseInt(yearMatch[1], 10) : undefined,
+    runtime,
+  };
+}
 
 export class BerthaDochouseScraper extends BaseScraper {
   config: ScraperConfig = {
@@ -149,6 +180,7 @@ export class BerthaDochouseScraper extends BaseScraper {
     // Title — DocHouse uses <h1> for the film/event title on the detail page.
     const filmTitle = $("h1").first().text().trim();
     if (!filmTitle) return [];
+    const credits = dochouseListingCredits($);
 
     // Stable booking URL = this DocHouse event page itself (where all showtimes
     // and Curzon "book" buttons live). The per-screening Curzon href
@@ -202,6 +234,9 @@ export class BerthaDochouseScraper extends BaseScraper {
         datetime,
         bookingUrl: eventUrl,
         sourceId,
+        year: credits.year,
+        director: credits.director,
+        runtime: credits.runtime,
       });
     });
 

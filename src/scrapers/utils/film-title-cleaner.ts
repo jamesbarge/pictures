@@ -170,6 +170,9 @@ export const EVENT_PREFIXES = [
   // Format-based event names
   /^35mm[:\s]+/i,
   /^70mm[:\s]+/i,
+  // "Nolan in 35mm: The Prestige". The colon handler would keep this whole,
+  // because "The Prestige" starts with an article and looks like a subtitle.
+  /^(?:\S+\s+){1,4}in\s+(?:16|35|70)mm\s*:\s*/i,
   /^70mm\s+imax[:\s]+/i,
   /^imax[:\s]+/i,
   /^4k\s+restoration[:\s]+/i,
@@ -281,7 +284,7 @@ export const EVENT_PREFIXES = [
   // strand name, then a colon or a spaced dash ("LPFF 2026 Short Session: …",
   // "UKJFF: …", "FFFL Opening Gala - …"). Case-sensitive so ordinary words
   // never match.
-  /^(?:LPFF|UKJFF|HKFF|LIFF|FFFL|LoLaFF)(?:\s+\d{4})?(?:\s+[^:]{1,30}?)?(?:\s*:|\s+[-–])\s+/,
+  /^(?:LPFF|UKJFF|HKFF|LIFF|FFFL|LoLaFF|LDNDOCS)(?:\s+\d{4})?(?:\s+[^:]{1,30}?)?(?:\s*:|\s+[-–])\s+/,
   /^london\s+palestine\s+film\s+festival(?:\s+\d{4})?\s*:\s*/i,
   /^london\s+breeze\s+film\s+festival(?:\s+shorts)?\s*:\s*/i,
   /^sheffield\s+docfest(?:\s+spotlights?)?\s*:\s*/i,
@@ -317,7 +320,9 @@ export const EVENT_PREFIXES = [
   /^lob-?sters\s+tennis\s+anniversary\s+screening[:\s]+/i,
   /^phoenix\s+classics?\s*\+\s*ysp\s+pizza\s+night[:\s]+/i,
   /^spare\s+ribs\s+club[:\s]+/i,
-  /^parents?\s+and\s+bab(?:y|ies)\s+screening[:\s]+/i,
+  // "&" as well as "and", and a dash as well as a colon: Phoenix writes
+  // "Parents & Baby Screening - Wicker".
+  /^parents?\s+(?:and|&)\s+bab(?:y|ies)\s+screening\s*[:\-–]?\s*/i,
   /^the\s+gate[''\u2019]?s?\s+\d+(?:th|st|nd|rd)?\s+birthday[:\s]+/i,
   /^reece\s+shearsmith\s+presents[:\s]+/i,
   /^bloody\s+mary\s+film\s+club[:\s]+/i,
@@ -352,7 +357,7 @@ export const EVENT_PREFIXES = [
   // seen in listings are stripped, so a title such as "Christmas Presents" is
   // safe.
   /^(?:[\w'\u2019&.!-]+\s+){1,4}presents\s*:\s*/i,
-  /^(?:cinecarib|peer|evolution\s+of\s+horror)\s+presents?\s+/i,
+  /^(?:cinecarib|peer|evolution\s+of\s+horror|narrow\s+margin)\s+presents?\s+/i,
   // A presenter the venue already cut, leaving "presents MIRACLE MILE"
   /^presents\s+/i,
 
@@ -821,12 +826,29 @@ export function cleanFilmTitle(title: string): string {
  * copy would label every "Film Club:" showing.
  */
 const LISTING_NOTE_PREFIX =
-  /^(?:bfi imax exclusive preview|exclusive preview|special preview|women and the world festival)$/i;
+  /^(?:bfi imax exclusive preview|exclusive preview|special preview|women and the world festival|ldndocs(?:\s+\d{4})?|narrow margin presents|parents (?:&|and) baby screening|(?:\S+\s+){1,4}in (?:16|35|70)mm)$/i;
 
 /** The peeled preview or festival label, or null when the title is not one of those. */
 export function listingEventNote(title: string): string | null {
   const { strippedPrefix, cleanedTitle } = cleanFilmTitleWithMetadata(title);
   if (!strippedPrefix || cleanedTitle.length < 2) return null;
-  if (!LISTING_NOTE_PREFIX.test(strippedPrefix)) return null;
-  return strippedPrefix;
+  // A dash separator ("Parents & Baby Screening - Wicker") stays on the
+  // captured prefix; the note is the strand, not the separator.
+  const prefix = strippedPrefix.replace(/[\s:–-]+$/u, "").trim();
+  if (!LISTING_NOTE_PREFIX.test(prefix)) return null;
+  return prefix;
+}
+
+/**
+ * LDNDOCS is a current festival. A peeled title must not reuse a namesake
+ * from more than three years ago: "The Great Experiment" is a 2026
+ * documentary, and the only other film of that name is a 1915 short.
+ * Returns the oldest release year still acceptable, or undefined when the
+ * title is not this strand.
+ */
+export function ldndocsMinReleaseYear(title: string): number | undefined {
+  const { strippedPrefix, cleanedTitle } = cleanFilmTitleWithMetadata(title);
+  if (!strippedPrefix || cleanedTitle.length < 2) return undefined;
+  if (!/^LDNDOCS(?:\s+\d{4})?$/i.test(strippedPrefix)) return undefined;
+  return new Date().getFullYear() - 3;
 }

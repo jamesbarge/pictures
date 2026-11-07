@@ -42,6 +42,23 @@ export function sanitizeYear(year: unknown): number | null {
  * Logs to stderr when a noisy scraper is detected so the upstream gets
  * surfaced rather than silently swallowed.
  */
+/**
+ * Two full names joined by "and" or "&" are co-directors, not one person.
+ * "Alex Huston Fischer and Eleanor Wilson" splits. "Joel and Ethan Coen"
+ * does not: the left side is a single word, and guessing the shared surname
+ * would be wrong. A name needs a capital letter and at least two words.
+ */
+const CO_DIRECTOR_NAME = /^\p{Lu}[\p{L}'’.-]*(?:\s+\p{Lu}[\p{L}'’.-]*){1,3}$/u;
+
+export function splitDirectorCredit(director: string | undefined | null): string[] {
+  if (!director) return [];
+  const trimmed = director.replace(/\s+/g, " ").trim();
+  if (!trimmed) return [];
+  const parts = trimmed.split(/\s+(?:and|&)\s+/i).map((part) => part.trim()).filter(Boolean);
+  if (parts.length < 2 || parts.some((part) => !CO_DIRECTOR_NAME.test(part))) return [trimmed];
+  return parts;
+}
+
 export function sanitizeDirectors(directors: unknown, context?: string): string[] {
   if (!Array.isArray(directors)) return [];
   const out: string[] = [];

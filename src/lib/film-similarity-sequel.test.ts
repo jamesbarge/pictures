@@ -132,6 +132,11 @@ describe("numbered titles behind a trailing festival tag", () => {
     await expect(findMatchingFilm("Shorts Block 3 - LIFF", null)).resolves.toBeNull();
   });
 
+  it('refuses "British Shorts (Block 2)" → "British Shorts (Block 1)"', async () => {
+    pgRows = [row("British Shorts (Block 1)", 0.92)];
+    await expect(findMatchingFilm("British Shorts (Block 2)", null)).resolves.toBeNull();
+  });
+
   it("keeps the same block matching itself", async () => {
     pgRows = [row("Shorts Block 11 - LIFF", 1, null, "block-11")];
     await expect(findMatchingFilm("Shorts Block 11 - LIFF", null)).resolves.toEqual({
@@ -262,6 +267,11 @@ describe("sequelMarkerOf", () => {
     ["Shorts Block 7 — LIFF", 7],
     // Bracket and tag peel in turn until neither is left.
     ["Shorts Block 3 (Q&A) - LIFF", 3],
+    // The number sits inside the bracket. Peeling "(Block N)" as decoration
+    // made both Lexi British Shorts programmes the same film.
+    ["British Shorts (Block 1)", 1],
+    ["British Shorts (Block 2)", 2],
+    ["Women and the World Festival: British Shorts (Block 2)", 2],
     // ...unless the tag is itself the numeral.
     ["Rocky - IV", 4],
   ])("reads %s as instalment %i", (title, expected) => {

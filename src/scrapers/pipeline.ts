@@ -28,6 +28,8 @@ import {
   tryUpdatePoster,
   releaseYearHint,
   yearConflicts,
+  cachedNamesakeContradictsListing,
+  findCachedFilm,
   type FilmCache,
 } from "./utils/film-matching";
 import {
@@ -41,7 +43,8 @@ import {
 } from "./utils/screening-accounting";
 
 // Import for local use + re-export for external consumers
-import { cleanFilmTitle, cleanFilmTitleWithMetadata, extractEnglishFromBracket } from "./utils/film-title-cleaner";
+import { cleanFilmTitle, cleanFilmTitleWithMetadata, extractEnglishFromBracket, ldndocsMinReleaseYear } from "./utils/film-title-cleaner";
+import { splitDirectorCredit } from "./utils/film-write-guards";
 export { cleanFilmTitle } from "./utils/film-title-cleaner";
 
 export interface PipelineResult {
@@ -823,8 +826,25 @@ async function getOrCreateFilm(
 
   const normalized = normalizeTitle(matchingTitle);
 
+  // "A and B" is two people. The TMDB hint is the first; both are stored
+  // when the film is created without a TMDB match.
+  const directorHint = splitDirectorCredit(scraperDirector)[0];
+
   // Try to find existing film using the pre-loaded cache (O(1) lookup)
-  const existing = lookupFilmInCache(filmCache, normalized, cacheYear);
+  const lookedUp = lookupFilmInCache(filmCache, normalized, cacheYear);
+  const festivalFloor = ldndocsMinReleaseYear(title);
+  const rejectCached = (film: { year: number | null; runtime?: number | null; directors?: string[] | null } | null) =>
+    !!film && (
+      cachedNamesakeContradictsListing(film, {
+        year: scraperYear,
+        runtime: scraperRuntime,
+        director: scraperDirector,
+      }) ||
+      (festivalFloor !== undefined && film.year != null && film.year < festivalFloor)
+    );
+  // A contradicted namesake is not "the" film of this title. Falling through
+  // asks TMDB and, if that also refuses, creates a row without the old match.
+  const existing = rejectCached(lookedUp) ? null : lookedUp;
 
   if (existing && yearConflicts(existing, cacheYear)) {
     // Every cached film of this title disagrees with the scraper's release year
@@ -838,7 +858,7 @@ async function getOrCreateFilm(
           filmCache,
           matchingTitle,
           cacheYear,
-          scraperDirector,
+          directorHint,
           scraperPosterUrl,
           scraperRuntime,
           venueLanguages,
@@ -866,7 +886,7 @@ async function getOrCreateFilm(
 
   // If no exact match, try trigram similarity search
   const similarityMatch = await findFilmBySimilarity(matchingTitle, scraperYear);
-  if (similarityMatch) {
+  if (similarityMatch && !rejectCached(findCachedFilm(filmCache, similarityMatch))) {
     return similarityMatch;
   }
 
@@ -876,11 +896,13 @@ async function getOrCreateFilm(
       filmCache,
       matchingTitle,
       scraperYear,
-      scraperDirector,
+      directorHint,
       scraperPosterUrl,
       scraperRuntime,
       venueLanguages,
-      allowCurrentRelease
+      allowCurrentRelease,
+      false,
+      festivalFloor,
     );
     if (tmdbFilmId) {
       return tmdbFilmId;
