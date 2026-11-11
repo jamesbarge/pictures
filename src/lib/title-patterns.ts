@@ -252,25 +252,55 @@ export function trailingNumberOf(title: string): number | null {
 
 type TrailingNumber = { value: number; kind: "instalment" | "name-number" };
 
+/**
+ * A bracket that names a programme block rather than a decoration.
+ * "(Block 1)" and "(Part II)" identify the film; "(BIA)" and "(Q&A)" do not.
+ * Read before the bracket is peeled, or "British Shorts (Block 1)" and
+ * "(Block 2)" both collapse to "British Shorts".
+ */
+function instalmentInBracket(inner: string): number | null {
+  const match = inner
+    .trim()
+    .match(/^(?:block|part|pt|vol|volume|chapter|episode|ep|programme|program)\.?\s+(\d{1,3}|[IVXLCDMivxlcdm]+)$/i);
+  if (!match) return null;
+  const token = match[1];
+  if (/^\d+$/.test(token)) {
+    const parsed = Number.parseInt(token, 10);
+    return parsed >= 1 && parsed <= MAX_INSTALMENT ? parsed : null;
+  }
+  return instalmentRoman(token);
+}
+
 function readTrailingNumber(title: string): TrailingNumber | null {
   let base = title.trim();
   // Peel every trailing bracketed group and festival tag, not just the last
-  // one: "Sessions (London Premiere) - LIFF" carries both.
+  // one: "Sessions (London Premiere) - LIFF" carries both. A bracket that is
+  // itself "Block N" / "Part N" is remembered: it is the instalment, not chrome.
+  let bracketInstalment: number | null = null;
   let previous: string;
   do {
     previous = base;
-    base = base.replace(TRAILING_BRACKET, "").trim();
+    const bracket = base.match(TRAILING_BRACKET);
+    if (bracket) {
+      const inner = bracket[0].replace(/^[\s([{]+|[)\]}\s]+$/g, "");
+      const fromBracket = instalmentInBracket(inner);
+      if (fromBracket !== null) bracketInstalment = fromBracket;
+      base = base.slice(0, bracket.index).trim();
+    }
     const tag = base.match(TRAILING_TAG);
     if (tag && instalmentRoman(tag[1]) === null) {
       base = base.slice(0, tag.index).trim();
     }
   } while (base !== previous);
 
-  if (TRAILING_DATE.test(base)) return null;
+  const fromBracket = (): TrailingNumber | null =>
+    bracketInstalment === null ? null : { value: bracketInstalment, kind: "instalment" };
+
+  if (TRAILING_DATE.test(base)) return fromBracket();
 
   const instalmentWord = base.match(new RegExp(INSTALMENT_WORD.source + "(\\S+)$", "i"));
   const token = instalmentWord ? instalmentWord[1] : (base.split(/\s+/).pop() ?? "");
-  if (!token) return null;
+  if (!token) return fromBracket();
 
   // The number needs a base title to belong to. "X" (2022), "M" (1931), "1917"
   // and a bare "II" are titles, not numbers attached to something.
@@ -278,7 +308,7 @@ function readTrailingNumber(title: string): TrailingNumber | null {
     .slice(0, base.length - (instalmentWord ? instalmentWord[0].length : token.length))
     .replace(TRAILING_SEPARATORS, "")
     .trim();
-  if (withoutToken === "") return null;
+  if (withoutToken === "") return fromBracket();
 
   if (/^\d{1,4}$/.test(token)) {
     const parsed = Number.parseInt(token, 10);
@@ -300,11 +330,11 @@ function readTrailingNumber(title: string): TrailingNumber | null {
 
   if (instalmentWord) {
     const parsed = WORD_NUMERALS[token.toLowerCase()];
-    if (parsed === undefined) return null;
+    if (parsed === undefined) return fromBracket();
     return { value: parsed, kind: "instalment" };
   }
 
-  return null;
+  return fromBracket();
 }
 
 /**

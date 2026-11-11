@@ -41,6 +41,7 @@ import {
   lookupFilmInCache,
   logCacheStats,
   yearConflicts,
+  cachedNamesakeContradictsListing,
   type FilmCache,
 } from "./film-matching";
 import { normalizeTitle } from "../pipeline";
@@ -427,5 +428,40 @@ describe("namesakes: the scraper's release year picks between same-title films",
 
     expect(film.id).toBe("heat-1972");
     expect(yearConflicts(film, thisYear)).toBe(false);
+  });
+});
+
+describe("cachedNamesakeContradictsListing", () => {
+  const silent = {
+    year: 1915,
+    runtime: 20,
+    directors: ["Tom Santschi"],
+  };
+
+  it("refuses the 1915 short when the listing is the 2026 feature", () => {
+    expect(
+      cachedNamesakeContradictsListing(silent, {
+        year: 2026,
+        runtime: 100,
+        director: "Stephen Maing and Eric Daniel Metzgar",
+      }),
+    ).toBe(true);
+  });
+
+  it("keeps a namesake the director and the runtime still agree with", () => {
+    expect(
+      cachedNamesakeContradictsListing(
+        { year: 1986, runtime: 121, directors: ["David Lynch"] },
+        { year: 1986, runtime: 121, director: "David Lynch" },
+      ),
+    ).toBe(false);
+    // 53 minutes is not a short under the 30-minute line, so Blue Velvet's
+    // 2011 row is left to the year conflict instead of this rule.
+    expect(
+      cachedNamesakeContradictsListing(
+        { year: 2011, runtime: 53, directors: ["David Lynch"] },
+        { year: 1986, runtime: 121, director: "David Lynch" },
+      ),
+    ).toBe(false);
   });
 });

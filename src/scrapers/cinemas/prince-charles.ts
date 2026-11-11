@@ -6,10 +6,30 @@
 import { BaseScraper } from "../base";
 import type { RawScreening, ScraperConfig } from "../types";
 import { parseScreeningDate, parseScreeningTime, combineDateAndTime } from "../utils/date-parser";
-import { parseFilmMetadata } from "../utils/metadata-parser";
+import { parseFilmMetadata, sanitizeRuntime } from "../utils/metadata-parser";
 import { slugify } from "../utils/url";
 import type { CheerioAPI, CheerioSelection } from "../utils/cheerio-types";
 import { FestivalDetector } from "../festivals/festival-detector";
+
+/**
+ * PCC prints the release year and runtime in `.running-time` and the credit
+ * in `.film-info` ("Directed by Christopher Nolan"). Parsing `.film-info`
+ * alone hid the year, so Tenet matched a 2026 namesake and Blue Velvet a
+ * 2011 one. The credit is passed through.
+ */
+export function pccListingCredits(
+  runningTime: string,
+  filmInfo: string,
+): { year?: number; director?: string; runtime?: number } {
+  const yearMatch = runningTime.match(/\b(19\d{2}|20\d{2})\b/);
+  const year = yearMatch ? parseInt(yearMatch[1], 10) : undefined;
+  const runtimeMatch = runningTime.match(/(\d{2,3})\s*mins?\b/i);
+  const runtime = runtimeMatch ? sanitizeRuntime(parseInt(runtimeMatch[1], 10)) : undefined;
+  const directed = filmInfo.match(/\bdirected\s+by\s+(.+?)(?=\bstarring\b|$)/i);
+  const director = directed?.[1]?.replace(/[.\s]+$/, "").trim() || undefined;
+  if (director || year || runtime) return { year, director, runtime };
+  return parseFilmMetadata(`${filmInfo} ${runningTime}`);
+}
 
 export class PrinceCharlesScraper extends BaseScraper {
   config: ScraperConfig = {
@@ -59,11 +79,11 @@ export class PrinceCharlesScraper extends BaseScraper {
     const title = $film.find(".liveeventtitle").first().text().trim();
     if (!title) return screenings;
 
-    // Extract metadata (director, year) from film description
-    // PCC often has film info in .synopsis or the film block text
-    const synopsisText = $film.find(".synopsis, .film-info, .description").text().trim();
-    const filmBlockText = $film.text();
-    const metadata = parseFilmMetadata(synopsisText || filmBlockText);
+    // Year and runtime live in .running-time; "Directed by …" lives in .film-info.
+    const metadata = pccListingCredits(
+      $film.find(".running-time").text(),
+      $film.find(".film-info").text(),
+    );
 
     // Detect format from film classes
     const filmClasses = $film.attr("class") || "";
@@ -100,7 +120,7 @@ export class PrinceCharlesScraper extends BaseScraper {
     filmTitle: string,
     date: Date,
     defaultFormat?: string,
-    metadata?: { director?: string; year?: number }
+    metadata?: { director?: string; year?: number; runtime?: number }
   ): RawScreening | null {
     // Get the booking link (could be film_book_button or soldfilm_book_button)
     const $bookLink = $li.find("a.film_book_button, a.soldfilm_book_button").first();
@@ -156,6 +176,7 @@ export class PrinceCharlesScraper extends BaseScraper {
       // Pass extracted metadata for better TMDB matching
       year: metadata?.year,
       director: metadata?.director,
+      runtime: metadata?.runtime,
       // Availability status from CSS class
       availabilityStatus: isSoldOut ? "sold_out" : "available",
       ...FestivalDetector.detect("prince-charles", filmTitle, datetime, bookingUrl),
