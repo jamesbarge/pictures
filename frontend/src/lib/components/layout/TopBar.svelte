@@ -1,9 +1,12 @@
 <script lang="ts">
 	/**
 	 * What stays on the page when the sidebar is closed: the burger, the small
-	 * logo (phones), ALL / NEW / REP and search on the homepage, and a search
+	 * logo (the handwritten mark after the burger on phones, the favicon P before
+	 * it on desktop), ALL / NEW / REP and search on the homepage, and a search
 	 * button that opens ⌘K everywhere else. Hidden at 1024px and up unless the
-	 * sidebar is collapsed.
+	 * sidebar is collapsed. On the homepage at desktop widths the bar sits in the
+	 * same centred column as the day sections, so its left edge lines up with
+	 * the TODAY box (width ladder mirrors .page-chrome in routes/+page.svelte).
 	 */
 	import { tick } from 'svelte';
 	import { page } from '$app/state';
@@ -35,37 +38,42 @@
 </script>
 
 <div class="topbar" class:home={isHome}>
-	<div class="unit">
-		<button
-			type="button"
-			id="topbar-burger"
-			class="burger"
-			aria-label={burgerLabel}
-			aria-controls="site-sidebar"
-			aria-expanded={shell.drawerOpen}
-			onclick={openMenu}
-		>
-			<svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-				<path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" stroke-width="1.4" stroke-linecap="square" />
-			</svg>
-			{#if choices}
-				<span class="badge" aria-hidden="true">{choices}</span>
+	<div class="inner">
+		<div class="unit">
+			<a href="/" class="logo-cell logo-desktop" aria-label="pictures london, what’s on">
+				<img src="/icon-192.png" alt="" width="46" height="46" />
+			</a>
+			<button
+				type="button"
+				id="topbar-burger"
+				class="burger"
+				aria-label={burgerLabel}
+				aria-controls="site-sidebar"
+				aria-expanded={shell.drawerOpen}
+				onclick={openMenu}
+			>
+				<svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+					<path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" stroke-width="1.4" stroke-linecap="square" />
+				</svg>
+				{#if choices}
+					<span class="badge" aria-hidden="true">{choices}</span>
+				{/if}
+			</button>
+			<a href="/" class="logo-cell logo-mobile" aria-label="pictures london, what’s on">
+				<img src="/pictures-mark.png" alt="" width="33" height="44" />
+			</a>
+			{#if isHome}
+				<ProgrammeToggle />
 			{/if}
-		</button>
-		<a href="/" class="logo-cell" aria-label="pictures london, what’s on">
-			<img src="/pictures-mark.png" alt="" width="33" height="44" />
-		</a>
-		{#if isHome}
-			<ProgrammeToggle />
-		{/if}
-	</div>
+		</div>
 
-	<div class="search">
-		{#if isHome}
-			<SearchBox id="topbar-search" />
-		{:else}
-			<PaletteButton />
-		{/if}
+		<div class="search">
+			{#if isHome}
+				<SearchBox id="topbar-search" />
+			{:else}
+				<PaletteButton />
+			{/if}
+		</div>
 	</div>
 </div>
 
@@ -76,19 +84,44 @@
 		position: sticky;
 		top: 0;
 		z-index: 30;
+		padding: 16px 16px 18px;
+		background: var(--color-bg);
+	}
+
+	.inner {
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
 		gap: 14px 20px;
-		padding: 16px 16px 18px;
-		background: var(--color-bg);
 	}
+
+	/* One home link per width: the handwritten mark after the burger on phones,
+	   the favicon P as the bar's first cell on desktop. */
+	.logo-desktop { display: none !important; }
 
 	/* Beside the open sidebar the bar has nothing to do. */
 	@media (min-width: 1024px) {
 		.topbar { padding: 24px 24px 20px; }
 		:global(html:not([data-sidebar-collapsed])) .topbar { display: none; }
-		.logo-cell { display: none !important; }
+		.logo-mobile { display: none !important; }
+		.logo-desktop { display: flex !important; }
+	}
+
+	/* Homepage: share .page-chrome's centred column (same padding and width
+	   ladder) so the bar starts exactly where the TODAY box does. */
+	@media (min-width: 1024px) {
+		.home.topbar { padding-left: 0; padding-right: 0; }
+		.home .inner {
+			width: 100%;
+			margin: 0 auto;
+			padding: 0 24px;
+		}
+	}
+	@media (min-width: 1030px) {
+		.home .inner { max-width: calc(982px + 48px); }
+	}
+	@media (min-width: 1357px) {
+		.home .inner { max-width: calc(1309px + 48px); }
 	}
 
 	.unit {
@@ -158,8 +191,18 @@
 		height: 44px;
 		mix-blend-mode: multiply;
 	}
-	/* The joined unit ends at the logo when there is no programme toggle. */
-	.topbar:not(.home) .logo-cell { border-right: 0; }
+	.logo-desktop {
+		flex: 0 0 48px;
+		border-right: 1px solid var(--ink);
+	}
+	.logo-desktop img {
+		width: 46px;
+		height: 46px;
+		/* The icon carries its own cream ground; multiply would darken it. */
+		mix-blend-mode: normal;
+	}
+	/* The joined unit ends at the phone logo when there is no programme toggle. */
+	.topbar:not(.home) .logo-mobile { border-right: 0; }
 
 	.burger:focus-visible,
 	.logo-cell:focus-visible {
