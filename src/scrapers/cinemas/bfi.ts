@@ -163,6 +163,20 @@ export function bfiDirectorCredit(
   return credit;
 }
 
+/**
+ * Feed titles that do not carry a year, confirmed against the BFI article.
+ * "The Trip: Director's Cut" on 18 Nov 2026 is Roger Corman's 1967 film
+ * (Movie Maverick). The search row is only the title, so the credit line
+ * was stored as the director and the year never reached TMDB.
+ */
+export function bfiKnownListing(rawTitle: string): { year: number; director: string } | undefined {
+  const normalized = rawTitle.trim().replace(/\u2019/g, "'").toLowerCase();
+  if (normalized === "the trip: director's cut" || normalized === "the trip: the director's cut") {
+    return { year: 1967, director: "Roger Corman" };
+  }
+  return undefined;
+}
+
 
 export class BFIScraper {
   private venue: BFIVenueConfig;
@@ -408,7 +422,9 @@ export class BFIScraper {
       // Anton Bitel" was stored as the film's only director, because the
       // metadata parser treats a comma-less string as a credit. A stats line
       // ("Greta Gerwig, USA, 2019, 135m.") still yields the name before the comma.
-      const director = bfiDirectorCredit(metadata.director, rawTitle);
+      const known = bfiKnownListing(rawTitle);
+      const director = known?.director ?? bfiDirectorCredit(metadata.director, rawTitle);
+      const releaseYear = metadata.year ?? known?.year;
 
       // Canonical, path-agnostic sourceId (see buildBfiSourceId): identical
       // shape across Playwright/PDF/changes so a path flip cannot duplicate,
@@ -424,7 +440,7 @@ export class BFIScraper {
         eventType,
         availabilityStatus,
         sourceId,
-        year: metadata.year,
+        year: releaseYear,
         director,
         ...FestivalDetector.detect(this.config.cinemaId, cleanTitle, datetime, bookingUrl),
       });

@@ -5,7 +5,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { bfiDirectorCredit, createBFIScraper } from "./bfi";
+import { bfiDirectorCredit, bfiKnownListing, createBFIScraper } from "./bfi";
 import type { RawScreening } from "../types";
 
 type SearchRow = unknown[];
@@ -52,6 +52,16 @@ describe("BFI Southbank intro line, 25 Oct 2026", () => {
     expect(bfiDirectorCredit(INTRO, INTRO)).toBeUndefined();
     expect(bfiDirectorCredit("Be My Baby + intro by programmer Anton Bitel", "Be My Baby")).toBeUndefined();
     expect(bfiDirectorCredit("Special preview: La Bola Negra", "Special preview: La Bola Negra")).toBeUndefined();
+  });
+
+  it("resolves The Trip: Director's Cut to Roger Corman, 1967", () => {
+    const raw = "The Trip: Director\u2019s Cut";
+    expect(bfiKnownListing(raw)).toEqual({ year: 1967, director: "Roger Corman" });
+    const [screening] = mapRows([southbankRow(raw)]);
+    expect(screening.filmTitle).toBe(raw);
+    expect(screening.director).toBe("Roger Corman");
+    expect(screening.year).toBe(1967);
+    expect(bfiDirectorCredit(raw, raw)).toBeUndefined();
   });
 
   it("still reads a director from a comma-separated stats line", () => {

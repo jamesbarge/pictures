@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { jw3FilmTitle } from "./jw3";
+import { jw3CinemaTitle, jw3FilmTitle } from "./jw3";
 
 /**
  * Event names and genres are verbatim from the Spektrix feed
@@ -40,6 +40,15 @@ describe("jw3FilmTitle", () => {
     ["Walks", "Mayfair Walk – with a Jewish Twist!"],
   ])("drops %s event %j", (genre, name) => {
     expect(jw3FilmTitle(event(genre, name))).toBeNull();
+  });
+
+  it("keeps Babka and treats the lowercase screening note as not the title", () => {
+    expect(jw3FilmTitle(event("Cinema", "Babka: short film screening and panel discussion"))).toBe("Babka");
+    expect(jw3CinemaTitle("Babka: short film screening and panel discussion")).toEqual({
+      title: "Babka",
+      note: "short film screening and panel discussion",
+    });
+    expect(jw3FilmTitle(event("Cinema", "Babka: The Short Film"))).toBe("Babka: The Short Film");
   });
 
   it("drops a film-night label with nothing after the colon", () => {
