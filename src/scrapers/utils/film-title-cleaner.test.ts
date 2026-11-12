@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   cleanFilmTitle,
   cleanFilmTitleWithMetadata,
+  guestAppearanceNote,
   listingEventNote,
   programmeStrandNote,
   EVENT_PREFIXES,
@@ -1143,5 +1144,77 @@ describe("25 Oct 2026 listings QA — season subtitles and programme strands", (
     expect(programmeStrandNote("Sinners - Black History Month 2026")).toBeNull();
     expect(programmeStrandNote("Ponyboi")).toBeNull();
     expect(cleanFilmTitle("Ponyboi")).toBe("Ponyboi");
+  });
+});
+
+describe("26 Oct 2026 listings QA — release year then guest", () => {
+  it("stores Garden's Spider as the 2002 film and keeps the guest as the note", () => {
+    const raw = "Spider (2002) with Peter Suschitzky";
+    const result = cleanFilmTitleWithMetadata(raw);
+    expect(result.cleanedTitle).toBe("Spider");
+    expect(result.extractedYear).toBe(2002);
+    expect(guestAppearanceNote(raw)).toBe("with Peter Suschitzky");
+    expect(cleanFilmTitle(result.cleanedTitle)).toBe("Spider");
+    expect(guestAppearanceNote(result.cleanedTitle)).toBeNull();
+  });
+
+  it.each([
+    ["The Brood (1979) with Oliver Reed", "The Brood", 1979, "with Oliver Reed"],
+    ["Spider (2002) with Sir Ian McKellen", "Spider", 2002, "with Sir Ian McKellen"],
+    ["Amélie (2001) with Jean-Pierre Jeunet", "Amélie", 2001, "with Jean-Pierre Jeunet"],
+  ])("%s → %s (%i), note %s", (raw, title, year, note) => {
+    const result = cleanFilmTitleWithMetadata(raw);
+    expect(result.cleanedTitle).toBe(title);
+    expect(result.extractedYear).toBe(year);
+    expect(guestAppearanceNote(raw)).toBe(note);
+  });
+
+  it.each([
+    "Dances with Wolves",
+    "Interview with the Vampire",
+    "Gone with the Wind",
+    "From Russia with Love",
+    "The Man with the Golden Gun",
+    "Conversation with the Sea",
+    // Live Garden title the same day. The names are the event, not a guest after a year.
+    "Bar Shorts with Darren Walsh & Russell McLean",
+    // One word after "with" is part of the title, and so is a four-word tail.
+    "Spider (2002) with Wolves",
+    "Spider (2002) with Mary Ann Evans Smith",
+    // The last year belongs to the second film.
+    "Speak (1962) and The Committee (1968) with Sophia Satchell-Baeza",
+  ])("keeps %s whole", (title) => {
+    expect(cleanFilmTitle(title)).toBe(title);
+    expect(guestAppearanceNote(title)).toBeNull();
+  });
+
+  it.each([
+    ["Interview with the Vampire (1994)", "Interview with the Vampire", 1994],
+    ["Dances with Wolves (1990)", "Dances with Wolves", 1990],
+    ["The Girl with the Dragon Tattoo (2011)", "The Girl with the Dragon Tattoo", 2011],
+    ["The Man with the Golden Gun (1974)", "The Man with the Golden Gun", 1974],
+  ])("takes only the trailing year from %s", (raw, title, year) => {
+    const result = cleanFilmTitleWithMetadata(raw);
+    expect(result.cleanedTitle).toBe(title);
+    expect(result.extractedYear).toBe(year);
+    expect(guestAppearanceNote(raw)).toBeNull();
+    expect(cleanFilmTitle(result.cleanedTitle)).toBe(title);
+  });
+
+  it("leaves live-score and shadow-cast tails to their own strips", () => {
+    const live = cleanFilmTitleWithMetadata("Nosferatu (1922) with Live Score");
+    expect(live.cleanedTitle).toBe("Nosferatu");
+    expect(live.extractedYear).toBe(1922);
+    expect(guestAppearanceNote("Nosferatu (1922) with Live Score")).toBeNull();
+
+    const shadow = "The Rocky Horror Picture Show (1975) with Shadow Cast";
+    expect(cleanFilmTitle(shadow)).toBe(shadow);
+    expect(guestAppearanceNote(shadow)).toBeNull();
+  });
+
+  it("still peels a preview-of guest that has no year", () => {
+    expect(cleanFilmTitle("Special Preview of Fatherland with Katja Hoyer")).toBe("Fatherland");
+    expect(guestAppearanceNote("Special Preview of Fatherland with Katja Hoyer")).toBeNull();
+    expect(cleanFilmTitle("Special Preview of Dances with Wolves")).toBe("Dances with Wolves");
   });
 });
