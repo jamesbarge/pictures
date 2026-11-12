@@ -33,6 +33,7 @@ import {
 import {
   classifyScreening,
   checkForDuplicate,
+  isSameTicketSlot,
 } from "./utils/screening-classification";
 import {
   emptyWriteOutcomeCounts,
@@ -915,7 +916,9 @@ async function insertScreening(
     cinemaId,
     screening.datetime,
     normalizeTitle,
-    screening.sourceId
+    screening.sourceId,
+    screening.bookingUrl,
+    screening.screen,
   );
 
   if (shouldSkip) {
@@ -975,6 +978,34 @@ async function insertScreening(
       const pgCode = (err as { cause?: { code?: string }; code?: string })?.cause?.code
         ?? (err as { code?: string })?.code;
       if (pgCode === "23505") {
+        // The canonical film already has this clock. Delete this source row
+        // only when that occupant is the same ticket link and the same screen
+        // (Everyman's second Peppa movie id). A different screen stays: the
+        // unique index cannot store both, and deleting it would drop a
+        // second auditorium.
+        const occupants = await db
+          .select()
+          .from(screeningsTable)
+          .where(
+            and(
+              eq(screeningsTable.filmId, filmId),
+              eq(screeningsTable.cinemaId, cinemaId),
+              eq(screeningsTable.datetime, screening.datetime),
+            ),
+          )
+          .limit(5);
+        const sameSlot = occupants.find(
+          (row) => row.id !== duplicate.id && isSameTicketSlot(row, screening),
+        );
+        if (sameSlot) {
+          console.warn(
+            `[Pipeline] Deleting extra ticket copy ${duplicate.id.slice(0, 8)} ` +
+              `at ${cinemaId} ${screening.datetime.toISOString()} ` +
+              `(film_id flip ${duplicate.filmId} -> ${filmId} collided with ${sameSlot.id.slice(0, 8)})`,
+          );
+          await db.delete(screeningsTable).where(eq(screeningsTable.id, duplicate.id));
+          return "updated";
+        }
         console.warn(
           `[Pipeline] Skipping update for duplicate ${duplicate.id.slice(0, 8)} ` +
             `(${cinemaId}/${screening.sourceId ?? "<nosrc>"}@${screening.datetime.toISOString()}): ` +

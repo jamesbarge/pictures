@@ -15,7 +15,7 @@ import {
 } from "@/lib/event-classifier";
 import type { EventType, ScreeningFormat } from "@/types/screening";
 import type { RawScreening } from "../types";
-import { listingEventNote, programmeStrandNote } from "./film-title-cleaner";
+import { listingEventNote, programmeStrandNote, strandSeasonNote } from "./film-title-cleaner";
 
 // ============================================================================
 // Screening Metadata
@@ -108,16 +108,24 @@ export async function classifyScreening(
     }
   }
 
-  // A preview or festival label peeled off the title is the screening note.
-  // Applied when the scraper left the note empty, including when it already
-  // named the event type (BFI sets "preview" and used to drop the label).
+  // A preview, festival, club, or hospitality label peeled off the title is
+  // the screening note. The scraper wins when it already wrote one. The
+  // classifier does not: for "cocktails, intro + Ennio" it keeps the film
+  // title as the description and drops the extras.
   // Castle appends " - Trans Awareness programme 2026" to the film instead;
   // that strand is the note when no label came first.
-  if (!eventDescription) {
+  if (!screening.eventDescription) {
     const note =
       listingEventNote(screening.filmTitle) ||
       programmeStrandNote(screening.filmTitle);
     if (note) eventDescription = note;
+  }
+
+  // screenings.season holds a programme name ("Hitchcock: Master of Suspense").
+  // SLA and the Bubblegum club land here when the classifier found none.
+  if (!season) {
+    const strand = strandSeasonNote(screening.filmTitle);
+    if (strand) season = strand;
   }
 
   return {
@@ -146,26 +154,64 @@ interface DuplicateCheckResult {
   shouldSkip: boolean;
 }
 
+/** How far apart two clocks can be and still be the same showing. */
+const TICKET_WINDOW_MS = 120_000;
+
+function normalizeScreenLabel(screen: string | null | undefined): string {
+  return (screen ?? "").trim().toLowerCase();
+}
+
+/**
+ * A booking link that names one showing or one film, not a cinema homepage.
+ * A UUID, a 4+ digit id, or a Picturehouse `HO00018763` code counts. A shared
+ * `/whats-on` page does not, so two films starting together are left alone.
+ */
+export function bookingUrlIdentifiesAShowing(url: string | null | undefined): boolean {
+  if (!url || url.length < 12) return false;
+  return /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|\d{4,}|HO\d{5,}/i.test(url);
+}
+
+/**
+ * Same cinema is the caller's job. This is the rest of one ticket slot:
+ * the same showing-specific link, the same screen (both blank counts), and
+ * clocks within two minutes.
+ */
+export function isSameTicketSlot(
+  existing: { bookingUrl: string; datetime: Date; screen: string | null },
+  incoming: { bookingUrl: string; datetime: Date; screen?: string | null },
+  windowMs = TICKET_WINDOW_MS,
+): boolean {
+  if (!bookingUrlIdentifiesAShowing(incoming.bookingUrl)) return false;
+  if (existing.bookingUrl !== incoming.bookingUrl) return false;
+  if (normalizeScreenLabel(existing.screen) !== normalizeScreenLabel(incoming.screen)) return false;
+  return Math.abs(existing.datetime.getTime() - incoming.datetime.getTime()) <= windowMs;
+}
+
 /**
  * Check for duplicate screenings.
  *
- * Three-layer dedup:
- * 0. Same (cinemaId + sourceId + datetime) regardless of filmId. The cinema's
- *    source_id is the operational identity of a showing — if we've seen the
- *    same source_id at the same datetime before, it IS the same showing,
- *    even if a previous scrape resolved it to a different film. Returning
- *    the existing row lets the caller refresh its filmId to the current
- *    matcher's resolution.
+ * Layers:
+ * 0. Same (cinemaId + sourceId) regardless of filmId. The cinema's source_id
+ *    is the operational identity of a showing — if we've seen the same
+ *    source_id before, it IS the same showing, even if a previous scrape
+ *    resolved it to a different film. Returning the existing row lets the
+ *    caller refresh its filmId.
+ * 0.5. Same showing-specific booking URL, screen, and time, when the two
+ *    film titles normalize to one film. Everyman files "Festive Fun with
+ *    Peppa" and "... Cinema Experience" as two movies that share a ticketing
+ *    UUID. Different films that share a link (Garden's bilingual cards) are
+ *    not merged here.
  * 1. Exact composite key (filmId + cinemaId + datetime)
  * 2. Same (cinemaId + datetime) with a different filmId but same normalized title
- *    (catches duplicate film records creating duplicate screenings)
  */
 export async function checkForDuplicate(
   filmId: string,
   cinemaId: string,
   datetime: Date,
   normalizeTitle: (title: string) => string,
-  sourceId?: string
+  sourceId?: string,
+  bookingUrl?: string,
+  screen?: string | null,
 ): Promise<DuplicateCheckResult> {
   // Layer 0: same (cinemaId, sourceId) regardless of filmId or datetime.
   //
@@ -192,6 +238,47 @@ export async function checkForDuplicate(
     }
   }
 
+  // Layer 0.5: one ticketing link at this cinema and clock is one showing,
+  // once the cleaner agrees the two titles are the same film. A different
+  // film on the same link is left in place (Garden's bilingual pair).
+  if (bookingUrl && bookingUrlIdentifiesAShowing(bookingUrl)) {
+    const ticketWindowStart = new Date(datetime.getTime() - TICKET_WINDOW_MS);
+    const ticketWindowEnd = new Date(datetime.getTime() + TICKET_WINDOW_MS);
+    const ticketRows = await db
+      .select({ screening: screeningsTable, title: films.title })
+      .from(screeningsTable)
+      .innerJoin(films, eq(films.id, screeningsTable.filmId))
+      .where(
+        and(
+          eq(screeningsTable.cinemaId, cinemaId),
+          eq(screeningsTable.bookingUrl, bookingUrl),
+          gte(screeningsTable.datetime, ticketWindowStart),
+          lte(screeningsTable.datetime, ticketWindowEnd),
+        ),
+      )
+      .limit(8);
+
+    const [incomingFilm] = await db
+      .select({ title: films.title })
+      .from(films)
+      .where(eq(films.id, filmId))
+      .limit(1);
+    const incomingNorm = incomingFilm ? normalizeTitle(incomingFilm.title) : null;
+
+    for (const row of ticketRows) {
+      if (!isSameTicketSlot(row.screening, { bookingUrl, datetime, screen })) continue;
+      const sameFilm =
+        row.screening.filmId === filmId ||
+        (incomingNorm !== null && normalizeTitle(row.title) === incomingNorm);
+      if (!sameFilm) continue;
+      console.warn(
+        `[Pipeline] Same ticket link at ${cinemaId} ${datetime.toISOString()} ` +
+          `already stored as ${row.screening.id} ("${row.title}")`,
+      );
+      return { duplicate: row.screening, shouldSkip: false };
+    }
+  }
+
   // Check for existing screening using exact composite key
   const [duplicate] = await db
     .select()
@@ -210,8 +297,8 @@ export async function checkForDuplicate(
   }
 
   // Layer 1.5: Same filmId + cinemaId within ±2 minutes (catches sub-minute timestamp drift)
-  const windowStart = new Date(datetime.getTime() - 120_000);
-  const windowEnd = new Date(datetime.getTime() + 120_000);
+  const windowStart = new Date(datetime.getTime() - TICKET_WINDOW_MS);
+  const windowEnd = new Date(datetime.getTime() + TICKET_WINDOW_MS);
   const [nearDuplicate] = await db
     .select()
     .from(screeningsTable)

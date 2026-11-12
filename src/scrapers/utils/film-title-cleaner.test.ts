@@ -4,6 +4,7 @@ import {
   cleanFilmTitleWithMetadata,
   listingEventNote,
   programmeStrandNote,
+  strandSeasonNote,
   EVENT_PREFIXES,
   extractEnglishFromBracket,
   getKnownNonFilmTypeFromEntries,
@@ -1143,5 +1144,74 @@ describe("25 Oct 2026 listings QA — season subtitles and programme strands", (
     expect(programmeStrandNote("Sinners - Black History Month 2026")).toBeNull();
     expect(programmeStrandNote("Ponyboi")).toBeNull();
     expect(cleanFilmTitle("Ponyboi")).toBe("Ponyboi");
+  });
+});
+
+describe("31 Oct 2026 listings QA", () => {
+  it.each([
+    ["Festive Fun with Peppa Cinema Experience", "Festive Fun with Peppa", null, null],
+    ["SLA 2026: A Silent Voice", "A Silent Voice", "SLA 2026", "SLA 2026"],
+    ["SLA 2026: A New Dawn", "A New Dawn", "SLA 2026", "SLA 2026"],
+    ["SLA 2026: Ghost", "Ghost", "SLA 2026", "SLA 2026"],
+    ["SLA 2026: Ninja Scroll", "Ninja Scroll", "SLA 2026", "SLA 2026"],
+    ["SLA 2026: The Keeper of the Camphor Tree", "The Keeper of the Camphor Tree", "SLA 2026", "SLA 2026"],
+    ["SLA 2026: We Are Aliens", "We Are Aliens", "SLA 2026", "SLA 2026"],
+    [
+      "Italian cocktails, Morricone musical intro + Ennio",
+      "Ennio",
+      "Italian cocktails, Morricone musical intro",
+      null,
+    ],
+    [
+      "'Wicker Sour' cocktails, straw man making + Wicker",
+      "Wicker",
+      "'Wicker Sour' cocktails, straw man making",
+      null,
+    ],
+    [
+      "All Out Of Bubblegum Film Club: THE SHINING",
+      "THE SHINING",
+      "All Out Of Bubblegum Film Club",
+      "All Out Of Bubblegum Film Club",
+    ],
+  ])("%s → %s", (raw, title, note, season) => {
+    const result = cleanFilmTitleWithMetadata(raw);
+    expect(result.cleanedTitle).toBe(title);
+    expect(listingEventNote(raw)).toBe(note);
+    expect(strandSeasonNote(raw)).toBe(season);
+    expect(cleanFilmTitle(result.cleanedTitle)).toBe(title);
+  });
+
+  it("keeps a film's own colon when the SLA code is the only prefix", () => {
+    expect(cleanFilmTitle("SLA 2026: 28 Years Later: The Bone Temple")).toBe(
+      "28 Years Later: The Bone Temple",
+    );
+  });
+
+  it.each([
+    "28 Years Later: The Bone Temple",
+    "Master and Commander: The Far Side of the World",
+    "Dune: Part Two",
+    "2001: A Space Odyssey",
+    "Star Wars: The Empire Strikes Back",
+    "Sundance Film Festival: The First 25 Years",
+    "Tony Takitani + Talk Radio",
+    "Volver + Talk to Her",
+    "Halloween (1978) + Halloween II (1981) • Double Feature",
+    "Festive Fun with Peppa",
+    "The Cinema Experience",
+    "Cinema Experience",
+    "Cocktails + Ennio",
+    "The Cook, the Thief, His Wife & Her Lover",
+  ])("leaves %s whole", (title) => {
+    expect(cleanFilmTitle(title)).toBe(title);
+    expect(listingEventNote(title)).toBeNull();
+  });
+
+  it("does not take a cinema-experience tail as a note", () => {
+    const result = cleanFilmTitleWithMetadata("Festive Fun with Peppa Cinema Experience");
+    expect(result.strippedPrefix).toBeNull();
+    expect(result.strippedSuffix).toBe("Cinema Experience");
+    expect(listingEventNote("Festive Fun with Peppa Cinema Experience")).toBeNull();
   });
 });
