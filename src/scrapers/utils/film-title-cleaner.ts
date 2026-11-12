@@ -515,6 +515,69 @@ const SEASON_SUBTITLE =
   /^(?:series|season)\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\b/i;
 
 /**
+ * "Don DeLillo at 90: Cosmopolis". The words before "at" are a person's
+ * name, then a small number: a season, not the film. The colon is required,
+ * so "Home at the End of the World" stays a title.
+ */
+const STRAND_AT_NUMBER =
+  /^(\p{Lu}[\p{L}'’.-]+(?:\s+\p{Lu}[\p{L}'’.-]+){0,4})\s+[Aa]t\s+(\d{1,3})\s*:\s+/u;
+
+/** Two or three capitalised words. "with Wolves" and "with the Vampire" do not match. */
+const TRAILING_PERSON =
+  /\s+with\s+(\p{Lu}[\p{L}'’-]+(?:\s+\p{Lu}[\p{L}'’-]+){1,2})$/u;
+
+/**
+ * "Cosmopolis (2012) with Ben Rivers". The release year sits immediately
+ * before "with". "Interview with the Vampire (1994)" only loses the year,
+ * because "with" is not after it. A second year in the film half is a
+ * double bill and stays whole.
+ */
+const YEAR_THEN_GUEST =
+  /^(.+?)\s+\(((?:19|20)\d{2})\)\s+with\s+(\p{Lu}[\p{L}'’-]+(?:\s+\p{Lu}[\p{L}'’-]+){1,2})$/u;
+
+/** An event, not a guest. The live-score strip later in the loop still sees it. */
+const GUEST_EVENT_TAIL =
+  /^(?:live\s+score|live\s+music|shadow\s+cast|(?:(?:pre-?)?recorded|extended)\s+intro)$/i;
+
+function normalizeListingTitle(title: string): string {
+  return decodeHtmlEntities(title)
+    .replace(/\u00c2([\u0080-\u00bf])/g, "$1")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function matchTrailingPerson(input: string): { title: string; guest: string } | null {
+  const match = input.match(TRAILING_PERSON);
+  if (!match || match.index === undefined) return null;
+  if (GUEST_EVENT_TAIL.test(match[1])) return null;
+  const title = input.slice(0, match.index).trim();
+  if (title.length < 1) return null;
+  return { title, guest: match[1] };
+}
+
+function matchYearThenGuest(
+  input: string,
+): { title: string; year: number; guest: string } | null {
+  const match = input.match(YEAR_THEN_GUEST);
+  if (!match) return null;
+  const title = match[1].trim();
+  if (title.length < 1) return null;
+  if (/\((?:19|20)\d{2}\)/.test(title)) return null;
+  if (GUEST_EVENT_TAIL.test(match[3])) return null;
+  const year = parseInt(match[2], 10);
+  if (!Number.isFinite(year)) return null;
+  return { title, year, guest: match[3] };
+}
+
+function matchStrandAtNumber(input: string): { label: string; rest: string } | null {
+  const match = input.match(STRAND_AT_NUMBER);
+  if (!match) return null;
+  const rest = input.slice(match[0].length).trim();
+  if (rest.length < 2) return null;
+  return { label: `${match[1]} at ${match[2]}`, rest };
+}
+
+/**
  * Clean a film title and return metadata about what was stripped.
  *
  * Returns the cleaned title along with the stripped prefix and suffix,
@@ -549,6 +612,20 @@ export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
     cleaned = cleaned.replace(/\s+with\s+\p{Lu}[\p{L}'’-]+(?:\s+\p{Lu}[\p{L}'’-]+){1,2}$/u, "").trim();
   }
 
+  // "Don DeLillo at 90: Cosmopolis with Ben Rivers". The guest comes off
+  // only because the season prefix is what told us the tail is not the title.
+  // "Cosmopolis with Ben Rivers" on its own stays whole; the "(2012) with"
+  // form is the rule inside the decoration loop.
+  if (!strippedPrefix) {
+    const strand = matchStrandAtNumber(cleaned);
+    if (strand) {
+      strippedPrefix = strand.label;
+      cleaned = strand.rest;
+      const guest = matchTrailingPerson(cleaned);
+      if (guest) cleaned = guest.title;
+    }
+  }
+
   // Strip pagination artifacts from BFI titles (e.g. "The Chronology of Water p17")
   cleaned = cleaned.replace(/\s+p\d{1,3}\s*$/i, "").trim();
 
@@ -566,8 +643,10 @@ export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
   // Same reason for ": The Director's Cut": "Brazil: Director's Cut" would
   // otherwise come out as "Director's Cut". A director's cut also drops its
   // two- or three-word possessive credit ("Ken Russell's The Devils: The
-  // Director's Cut"). Elsewhere that credit can be the film's own TMDB title
-  // ("Lee Cronin's The Mummy", "Bram Stoker's Dracula"), so it stays.
+  // Director's Cut"). A bare "Ken Russell's The Devils" stays in this
+  // function: the same shape is the TMDB title of other films. The pipeline
+  // peels it only when the remainder is a known film and the name is that
+  // film's director.
   const directorsCut = cleaned.match(/\s*:\s*(?:the\s+)?director['’]?s\s+cut\s*$/i);
   if (directorsCut) {
     cleaned = cleaned
@@ -641,6 +720,12 @@ export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
   for (let pass = 0; pass < 3; pass++) {
     const beforePass = cleaned;
 
+    // "Cosmopolis (2012) with Ben Rivers" → "Cosmopolis (2012)", so the year
+    // strip at the end of this pass records 2012. Same shape as Garden's
+    // "Spider (2002) with Peter Suschitzky".
+    const guest = matchYearThenGuest(cleaned);
+    if (guest) cleaned = `${guest.title} (${guest.year})`;
+
     // Capture the year inside "(2026 Re-release)"-style decorations as a
     // year hint before the chain below discards it. `??=` so a plain
     // trailing release year (stripTrailingYear above/below) wins on collision.
@@ -689,6 +774,7 @@ export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
     // "Ponyboi - Trans Awareness programme 2026" (Castle's spaced dash),
     // "Edition w/ Bonus Footage"
     .replace(/\s+[-–]\s+preview\s*$/i, "")
+    .replace(/\s+[-–]\s+london\s+preview\s*$/i, "")
     .replace(/\s+[-–]\s+black\s+history\s+month(?:\s+\d{4})?\s*$/i, "")
     .replace(/\s+(?:[-–]|[I|])\s+trans\s+awareness\s+programme(?:\s+\d{4})?\s*$/i, "")
     .replace(/\s+edition\s+w\/\s*bonus\s+footage\s*$/i, "")
@@ -785,6 +871,10 @@ export function cleanFilmTitleWithMetadata(title: string): CleanTitleResult {
     ? beforeSuffixStrip.slice(cleaned.length).trim()
     : null;
 
+  // `"Terrorists" - London Preview` is `Terrorists` once the suffix is gone.
+  // Only a pair that wraps the whole remaining title. `Say "Hello"` stays.
+  cleaned = unwrapQuotedTitle(cleaned);
+
   return { cleanedTitle: cleaned, strippedPrefix, strippedSuffix, extractedYear };
 }
 
@@ -803,6 +893,46 @@ export function programmeStrandNote(title: string): string | null {
   if (!strippedSuffix || cleanedTitle.length < 2) return null;
   const match = strippedSuffix.match(PROGRAMME_STRAND_NOTE);
   return match ? match[1] : null;
+}
+
+/**
+ * "with Ben Rivers" when the title is a release year plus a guest, or a
+ * "Name at N:" season plus the same guest. Null for "Dances with Wolves"
+ * and for a bare "Cosmopolis with Ben Rivers", which has no year and no season.
+ */
+export function guestAppearanceNote(title: string): string | null {
+  const normalized = normalizeListingTitle(title);
+  const yearGuest = matchYearThenGuest(normalized);
+  if (yearGuest && cleanFilmTitle(title) === yearGuest.title) return `with ${yearGuest.guest}`;
+  const strand = matchStrandAtNumber(normalized);
+  if (!strand) return null;
+  const guest = matchTrailingPerson(strand.rest);
+  if (!guest || cleanFilmTitle(title) !== guest.title) return null;
+  return `with ${guest.guest}`;
+}
+
+/** "London Preview" peeled off `"Terrorists" - London Preview`, or null. */
+export function londonPreviewNote(title: string): string | null {
+  const { strippedSuffix, cleanedTitle } = cleanFilmTitleWithMetadata(title);
+  if (!strippedSuffix || cleanedTitle.length < 2) return null;
+  if (!/^[-–]\s+london\s+preview$/i.test(strippedSuffix)) return null;
+  return "London Preview";
+}
+
+/** "Don DeLillo at 90" when that season prefix was peeled, or null. */
+export function strandSeasonNote(title: string): string | null {
+  const strand = matchStrandAtNumber(normalizeListingTitle(title));
+  if (!strand || cleanFilmTitle(title).length < 2) return null;
+  return strand.label;
+}
+
+/**
+ * Which of two Garden listings of the same performance to keep.
+ * A "Name at N:" season outranks the "(year) with Guest" card, so the
+ * season is still on the title when the screening is classified. 0 is kept.
+ */
+export function listedGardenFilmRank(title: string): number {
+  return strandSeasonNote(title) ? 0 : 1;
 }
 
 /**

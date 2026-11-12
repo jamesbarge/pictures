@@ -20,7 +20,9 @@ import { parseUKLocalDateTime } from "../utils/date-parser";
 import { normalizeUrl, slugify } from "../utils/url";
 import { sanitizeRuntime } from "../utils/metadata-parser";
 import { escapeRegex } from "@/lib/title-extraction/patterns";
+import { cleanFilmTitle, listedGardenFilmRank } from "../utils/film-title-cleaner";
 import {
+  collapseSameGardenFilm,
   gardenPerformanceId,
   parseGardenBookingHeading,
   resolveSharedGardenPerformance,
@@ -129,7 +131,17 @@ export class GardenCinemaScraper extends BaseScraper {
       });
     });
 
-    const reconciled = await this.dropSharedPerformanceMismatches(screenings);
+    const collapsed = collapseSameGardenFilm(
+      screenings,
+      cleanFilmTitle,
+      (row) => listedGardenFilmRank(row.filmTitle),
+    );
+    for (const screening of collapsed.drop) {
+      console.warn(
+        `[${this.config.cinemaId}] dropping "${screening.filmTitle}" at ${screening.datetime.toISOString()} — same film and TcsPerformance as another listing`,
+      );
+    }
+    const reconciled = await this.dropSharedPerformanceMismatches(collapsed.keep);
     console.log(`[${this.config.cinemaId}] Found ${reconciled.length} future screenings`);
     return reconciled;
   }

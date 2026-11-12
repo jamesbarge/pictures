@@ -108,6 +108,54 @@ export interface SharedPerformancePlan<T> {
 }
 
 /**
+ * Two listings of one Savoy performance that are the same film once the
+ * title cleaner has run. "Don DeLillo at 90: Cosmopolis with Ben Rivers"
+ * and "Cosmopolis (2012) with Ben Rivers" share TcsPerformance_6283015 at
+ * the same instant; one row stays. Different films that share an id are
+ * left for {@link resolveSharedGardenPerformance}, which reads the booking page.
+ * The kept row is the one `prefer` ranks first (a "Name at N:" season, when
+ * the caller passes that), then the lexicographically first raw title, so
+ * the choice does not change between scrapes.
+ */
+export function collapseSameGardenFilm<
+  T extends { filmTitle: string; datetime: Date; bookingUrl?: string | null },
+>(
+  screenings: readonly T[],
+  clean: (title: string) => string,
+  prefer?: (row: T) => number,
+): SharedPerformancePlan<T> {
+  const drop = new Set<T>();
+  const groups = new Map<string, T[]>();
+  for (const screening of screenings) {
+    const id = screening.bookingUrl ? gardenPerformanceId(screening.bookingUrl) : null;
+    if (!id) continue;
+    const key = `${id}\0${screening.datetime.toISOString()}`;
+    const list = groups.get(key) ?? [];
+    list.push(screening);
+    groups.set(key, list);
+  }
+
+  for (const group of groups.values()) {
+    if (group.length < 2) continue;
+    const cleaned = group.map((screening) => clean(screening.filmTitle));
+    if (cleaned.some((title) => title.length < 2)) continue;
+    if (new Set(cleaned).size !== 1) continue;
+    const rank = prefer ?? (() => 0);
+    const keep = [...group].sort(
+      (a, b) => rank(a) - rank(b) || (a.filmTitle < b.filmTitle ? -1 : a.filmTitle > b.filmTitle ? 1 : 0),
+    )[0];
+    for (const screening of group) {
+      if (screening !== keep) drop.add(screening);
+    }
+  }
+
+  return {
+    keep: screenings.filter((screening) => !drop.has(screening)),
+    drop: screenings.filter((screening) => drop.has(screening)),
+  };
+}
+
+/**
  * A performance id claimed by two different showings. When the booking page
  * names one of them, the others are dropped. When the page can't be read,
  * nothing is dropped.

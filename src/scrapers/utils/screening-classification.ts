@@ -15,7 +15,13 @@ import {
 } from "@/lib/event-classifier";
 import type { EventType, ScreeningFormat } from "@/types/screening";
 import type { RawScreening } from "../types";
-import { listingEventNote, programmeStrandNote } from "./film-title-cleaner";
+import {
+  guestAppearanceNote,
+  listingEventNote,
+  londonPreviewNote,
+  programmeStrandNote,
+  strandSeasonNote,
+} from "./film-title-cleaner";
 
 // ============================================================================
 // Screening Metadata
@@ -112,12 +118,20 @@ export async function classifyScreening(
   // Applied when the scraper left the note empty, including when it already
   // named the event type (BFI sets "preview" and used to drop the label).
   // Castle appends " - Trans Awareness programme 2026" to the film instead;
-  // that strand is the note when no label came first.
+  // that strand is the note when no label came first. Garden appends
+  // "(2012) with Ben Rivers" or "Name at 90: … with Ben Rivers"; the guest
+  // is the note. Genesis appends " - London Preview".
   if (!eventDescription) {
     const note =
       listingEventNote(screening.filmTitle) ||
-      programmeStrandNote(screening.filmTitle);
+      programmeStrandNote(screening.filmTitle) ||
+      guestAppearanceNote(screening.filmTitle) ||
+      londonPreviewNote(screening.filmTitle);
     if (note) eventDescription = note;
+  }
+  if (!season) {
+    const strand = strandSeasonNote(screening.filmTitle);
+    if (strand) season = strand;
   }
 
   return {

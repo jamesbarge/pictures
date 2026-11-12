@@ -15,6 +15,10 @@ import { findMatchingFilm } from "@/lib/film-similarity";
 import { v4 as uuidv4 } from "uuid";
 import { isBlockedTmdbId } from "@/lib/tmdb/blocklist";
 import { sanitizeDirectors, sanitizeYear } from "./film-write-guards";
+import {
+  resolveDirectorPossessive,
+  splitDirectorPossessive,
+} from "./listings-qa-2026-11-03";
 
 /**
  * The cache stores only the columns its consumers actually read, NOT the whole
@@ -295,6 +299,53 @@ function addToFilmCache(cache: FilmCache, film: FilmRecord) {
   }
   if (film.tmdbId) {
     cache.byTmdbId.set(film.tmdbId, film);
+  }
+}
+
+/**
+ * "Ken Russell's The Devils" → the cached The Devils row, when Ken Russell
+ * directed it. One extra query, and only for a title with that shape.
+ * A lookup failure leaves the ordinary match in place.
+ */
+export async function resolveDirectorPossessiveId(
+  cache: FilmCache,
+  title: string,
+): Promise<string | null> {
+  const split = splitDirectorPossessive(title);
+  if (!split) return null;
+
+  const ids = new Set<string>();
+  for (const key of [title, split.title]) {
+    for (const film of cache.namesakes.get(cache.normalizeTitle(key)) ?? []) {
+      ids.add(film.id);
+    }
+  }
+  if (ids.size === 0) return null;
+
+  try {
+    const rows = await withDbTimeout(
+      db
+        .select({
+          id: films.id,
+          title: films.title,
+          year: films.year,
+          tmdbId: films.tmdbId,
+          directors: films.directors,
+        })
+        .from(films)
+        .where(inArray(films.id, [...ids])),
+      8_000,
+      `director possessive "${title}"`,
+    );
+    return (
+      resolveDirectorPossessive(
+        title,
+        rows.map((row) => ({ ...row, directors: row.directors ?? [] })),
+      )?.id ?? null
+    );
+  } catch (error) {
+    console.warn(`[Pipeline] Director-credit lookup failed for "${title}":`, error);
+    return null;
   }
 }
 
