@@ -1,7 +1,8 @@
-import { beforeEach, describe, it, expect, vi } from "vitest";
+import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
 import { GardenCinemaScraper } from "./garden";
 import { FestivalDetector } from "../festivals/festival-detector";
 import type { RawScreening } from "../types";
+import { slugify } from "../utils/url";
 
 /**
  * Garden Cinema title cleanup regression tests.
@@ -212,5 +213,81 @@ describe("GardenCinemaScraper — one Savoy performance, one film", () => {
       scraper as unknown as { parsePages(pages: string[]): Promise<RawScreening[]> }
     ).parsePages([sharedPerformancePage()]);
     expect(screenings).toHaveLength(3);
+  });
+});
+
+const FLAMENCO_LISTED = "La guitarra flamenca de Yerai Cortés (The Flamenco Guitar of Yerai Cortés)";
+const FLAMENCO_ENGLISH = "The Flamenco Guitar of Yerai Cortés";
+const FLAMENCO_URL =
+  "https://bookings.thegardencinema.co.uk/TheGardenCinema.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_0.TcsWebTab_0.TcsPerformance_6223527.TcsSection_971";
+
+function flamencoPage(titles: string[]): string {
+  const cards = titles
+    .map(
+      (title) => `
+      <div class="films-list__by-date__film">
+        <div class="films-list__by-date__film__title"><a href="/film/flamenco/">${title}</a></div>
+        <div class="films-list__by-date__film__rating">PG</div>
+        <div class="films-list__by-date__film__stats">Antón Álvarez, Spain, 2024, 95m.</div>
+        <a class="screening" href="${FLAMENCO_URL}">18:10</a>
+      </div>`,
+    )
+    .join("");
+  return `<html><body><div class="date-block" data-date="2026-11-10">${cards}</div></body></html>`;
+}
+
+describe("GardenCinemaScraper — Original (English title)", () => {
+  beforeEach(() => {
+    vi.spyOn(FestivalDetector, "preload").mockResolvedValue();
+    vi.spyOn(FestivalDetector, "detect").mockReturnValue({});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("stores the English title and keeps the source id on the listed bilingual string", async () => {
+    const scraper = new GardenCinemaScraper();
+    const screenings = await (
+      scraper as unknown as { parsePages(pages: string[]): Promise<RawScreening[]> }
+    ).parsePages([flamencoPage([FLAMENCO_LISTED])]);
+
+    expect(screenings).toHaveLength(1);
+    expect(screenings[0].filmTitle).toBe(FLAMENCO_ENGLISH);
+    expect(screenings[0].datetime.toISOString()).toBe("2026-11-10T18:10:00.000Z");
+    expect(screenings[0].sourceId).toBe(`garden-${slugify(FLAMENCO_LISTED)}-2026-11-10T18:10:00.000Z`);
+    expect(screenings[0].year).toBe(2024);
+    expect(screenings[0].director).toBe("Antón Álvarez");
+    expect(screenings[0].runtime).toBe(95);
+  });
+
+  it("emits one screening when the bilingual card and the English card share the performance", async () => {
+    const scraper = new GardenCinemaScraper();
+    const fetchPage = vi.spyOn(
+      scraper as unknown as { fetchPerformancePage(url: string): Promise<string> },
+      "fetchPerformancePage",
+    );
+    const screenings = await (
+      scraper as unknown as { parsePages(pages: string[]): Promise<RawScreening[]> }
+    ).parsePages([flamencoPage([FLAMENCO_LISTED, FLAMENCO_ENGLISH])]);
+
+    expect(fetchPage).not.toHaveBeenCalled();
+    expect(screenings).toHaveLength(1);
+    expect(screenings[0].filmTitle).toBe(FLAMENCO_ENGLISH);
+    expect(screenings[0].sourceId).toBe(`garden-${slugify(FLAMENCO_ENGLISH)}-2026-11-10T18:10:00.000Z`);
+  });
+
+  it("still emits one English screening when the booking page cannot be fetched", async () => {
+    const scraper = new GardenCinemaScraper();
+    vi.spyOn(
+      scraper as unknown as { fetchPerformancePage(url: string): Promise<string> },
+      "fetchPerformancePage",
+    ).mockRejectedValue(new Error("timeout"));
+    const screenings = await (
+      scraper as unknown as { parsePages(pages: string[]): Promise<RawScreening[]> }
+    ).parsePages([flamencoPage([FLAMENCO_LISTED, FLAMENCO_ENGLISH])]);
+
+    expect(screenings).toHaveLength(1);
+    expect(screenings[0].filmTitle).toBe(FLAMENCO_ENGLISH);
   });
 });

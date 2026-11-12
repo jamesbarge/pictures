@@ -18,6 +18,7 @@ const defaultDryScripts = [
   "src/scripts/enrich-upcoming-films.ts",
   "src/scripts/cleanup-upcoming-films.ts",
   "scripts/repair-listings-qa-2026-10-24.ts",
+  "scripts/repair-listings-qa-2026-10-27.ts",
 ];
 
 const removedHazardousScripts = [

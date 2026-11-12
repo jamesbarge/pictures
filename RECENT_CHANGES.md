@@ -1,3 +1,10 @@
+## 2026-10-27: Listings QA — Garden bilingual titles, Genesis strand
+**PR**: #854 | **Files**: `src/scrapers/cinemas/garden-performance.ts`, `src/scrapers/cinemas/garden.ts`, `src/scrapers/cinemas/genesis.ts`, `scripts/repair-listings-qa-2026-10-27.ts`
+- Garden's `Original (English title)` listings store the English title, so `La guitarra flamenca de Yerai Cortés (The Flamenco Guitar of Yerai Cortés)` matches the TMDB film. The same Savoy performance is kept once.
+- Genesis `The Crow - Seasonal Affective Cinema` stores `The Crow`, with the strand as the screening note. Other dashed titles are unchanged.
+- `scripts/repair-listings-qa-2026-10-27.ts` is a dry run unless `--execute`, and was not run.
+
+---
 ## 2026-10-25: Remove the homepage STARTING SOON strip
 **PR**: #845 | **Files**: `frontend/src/routes/+page.svelte`, `frontend/src/lib/components/calendar/FigmaTextDay.svelte`, `frontend/src/lib/analytics/posthog.ts`, `frontend/test-all.spec.ts`, `frontend/tests/mobile.spec.ts`
 - The homepage opens on the first day of poster cards again. The STARTING SOON strip from #762 is gone, with its once-a-minute clock and `.soon` CSS.

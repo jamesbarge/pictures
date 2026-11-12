@@ -716,6 +716,7 @@ Use this format when recording cinema-specific quirks:
 - Known pitfalls:
   - Rating strip must stay end-anchored (regression: `"What's Up, Doc? U"` → `"What's p, Doc?"` with substring replace).
   - A Savoy `TcsPerformance_{id}` is one showing. On 24 Oct 2026 the homepage listed `6266328` under both The Social Reckoning (15:45) and Fatherland (16:00). The booking page (`h1.title` + `p.perf-time`) says that id is The Social Reckoning (15), Tuesday 27 Oct 2026, 3:45pm. Fatherland that day is `6266332` at 3:30pm and `6266334` at 5:50pm. When one id is emitted for two film/time pairs, the scraper reads the booking page and drops the rows that are not that film at that London time. A failed lookup keeps every row. `scripts/repair-listings-qa-2026-10-24.ts` deletes the stored extra; it is a dry run unless `--execute`.
+  - Garden prints `Original title (English title)`. The film stored is the English title (`La guitarra flamenca de Yerai Cortés (The Flamenco Guitar of Yerai Cortés)` and `El canto de las manos (Song of the Hands)`). The source id still slugs the listed string. A trailing `(YYYY)` or BBFC rating is not the translation. `Die Hard (With a Vengeance)`, `La La Land (…)`, `Spider (2002) with Peter Suschitzky` and `The Godfather (Part II)` stay whole. On 27 Oct 2026 performance `6223527` was that flamenco showing twice: the booking h1 is `In-Edit Cine-Documental: La guitarra flamenca de Yerai Cortés (The Flamenco Guitar of Yerai Cortés) (PG)`, so exact title equality matched neither stored row and the #840 guard kept both. The English title is now preferred. `scripts/repair-listings-qa-2026-10-27.ts` deletes the stored extra; dry run unless `--execute`.
 - Last verified (2026-06-12): live run — 88/88 films emitted runtime, all within 1–600; His Girl Friday=92 matches canonical.
 
 ### Ibraaz (Fitzrovia, W1)
@@ -1232,6 +1233,11 @@ because L-CUT carried none of its screenings.
     shared trailing-number guard peeling that tag (see the sequel-safe section below); before the
     2026-10-04 fix, Shorts Blocks 2-12 all merged into one `Shorts Block 11 - LIFF` film, and
     L-CUT parity reported them as 9-10 "missing" even though every showing was in the DB.
+  - The strand `Seasonal Affective Cinema` is peeled in the scraper, not by a general dash
+    split: `The Crow - Seasonal Affective Cinema` stores `The Crow` and the strand becomes
+    `eventDescription`. `Raft - A London Story` and `Rammstein - Live in Mexico City` are not
+    Genesis strands and are not matched. `Halloween (1978)- Halloween at Genesis` is a different
+    suffix (no space before the dash) and is left for draft #829.
   - L-CUT lists the 25 Oct event as `Steel on Film`; Genesis's own title is
     `Steel of Film (in 35 mm) + Q&A`. We store the venue's title, so L-CUT parity will keep
     reporting that one row as missing. It is a source-side spelling difference.

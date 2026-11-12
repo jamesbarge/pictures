@@ -19,7 +19,8 @@ vi.mock("../festivals/festival-detector", () => ({
   },
 }));
 
-import { GenesisScraper, decodeBody } from "./genesis";
+import { cleanFilmTitle } from "../utils/film-title-cleaner";
+import { GenesisScraper, decodeBody, peelGenesisStrand } from "./genesis";
 
 type PrivGenesis = {
   parseDateTime: (date: string, time: string) => Date | null;
@@ -122,5 +123,75 @@ describe("GenesisScraper.parseDateTime year handling", () => {
 
     expect(scraper.parseDateTime("13 Jan", "19:00")?.toISOString())
       .toBe("2027-01-13T19:00:00.000Z");
+  });
+});
+
+const CROW = "The Crow - Seasonal Affective Cinema";
+
+describe("peelGenesisStrand", () => {
+  it("splits the live Seasonal Affective Cinema listing", () => {
+    expect(peelGenesisStrand(CROW)).toEqual({
+      title: "The Crow",
+      note: "Seasonal Affective Cinema",
+    });
+  });
+
+  it("does not split a dash that belongs to the title", () => {
+    for (const title of [
+      "Raft - A London Story",
+      "Rammstein - Live in Mexico City",
+      "On Becoming a Guinea Fowl - G.O.A.T. Film Club presents BLACK IS: BOUNDLESS",
+      "Paytap Presents Rubayyat Jahan - live in concert",
+      "Halloween (1978)- Halloween at Genesis",
+      "The Crow",
+    ]) {
+      expect(peelGenesisStrand(title), title).toBeNull();
+      expect(cleanFilmTitle(title), title).toBe(title);
+    }
+  });
+});
+
+describe("GenesisScraper Seasonal Affective Cinema", () => {
+  const whatsOn = `<ul><li><a class="p-3 block" href="/event/13797">${CROW}</a></li></ul>`;
+  const eventPage = `
+    <h1>${CROW}</h1>
+    <div id="panel_20261110" class="whatson_panel">
+      <a class="perfButton" href="https://genesis.admit-one.co.uk/seats/?perfCode=13797"><span>18:40</span></a>
+    </div>`;
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-27T10:00:00.000Z"));
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        const html = String(url).endsWith("/whats-on/") ? whatsOn : eventPage;
+        return new Response(html, {
+          status: 200,
+          headers: { "content-type": "text/html; charset=utf-8" },
+        });
+      }),
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it("stores The Crow and keeps the strand as the screening note", async () => {
+    const scraper = new GenesisScraper();
+    vi.spyOn(scraper as unknown as PrivGenesis, "delay").mockResolvedValue();
+
+    const screenings = await scraper.scrape();
+
+    expect(screenings).toHaveLength(1);
+    expect(screenings[0].filmTitle).toBe("The Crow");
+    expect(screenings[0].eventDescription).toBe("Seasonal Affective Cinema");
+    expect(screenings[0].datetime.toISOString()).toBe("2026-11-10T18:40:00.000Z");
+    expect(screenings[0].sourceId).toBe("genesis-13797");
+    expect(screenings[0].bookingUrl).toBe("https://genesis.admit-one.co.uk/seats/?perfCode=13797");
   });
 });
