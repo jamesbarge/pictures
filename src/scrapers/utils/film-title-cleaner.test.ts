@@ -3,7 +3,9 @@ import {
   cleanFilmTitle,
   cleanFilmTitleWithMetadata,
   listingEventNote,
+  listingSeasonNote,
   programmeStrandNote,
+  versionScreeningNote,
   EVENT_PREFIXES,
   extractEnglishFromBracket,
   getKnownNonFilmTypeFromEntries,
@@ -1143,5 +1145,65 @@ describe("25 Oct 2026 listings QA — season subtitles and programme strands", (
     expect(programmeStrandNote("Sinners - Black History Month 2026")).toBeNull();
     expect(programmeStrandNote("Ponyboi")).toBeNull();
     expect(cleanFilmTitle("Ponyboi")).toBe("Ponyboi");
+  });
+});
+
+describe("1 Nov 2026 listings QA — MUBI Fest and Director's Cut", () => {
+  const directorsCut = "Little Shop of Horrors (director\u2019s Cut)";
+
+  it.each([
+    ["MUBI FEST LIVE: A LONG WINTER", "A Long Winter", "MUBI FEST LIVE"],
+    ["MUBI FEST LIVE: A LONG WINTER + Q&A", "A Long Winter", "MUBI FEST LIVE"],
+    ["Mubi Fest Live: A Long Winter", "A Long Winter", "Mubi Fest Live"],
+    ["MUBI FEST: A LONG WINTER", "A Long Winter", "MUBI FEST"],
+    ["MUBI FEST 2026: THE LONG WINTER", "The Long Winter", "MUBI FEST 2026"],
+  ])("%s → %s, note %s", (raw, title, note) => {
+    const result = cleanFilmTitleWithMetadata(raw);
+    expect(result.cleanedTitle).toBe(title);
+    expect(result.strippedPrefix).toBe(note);
+    expect(listingEventNote(raw)).toBe(note);
+    expect(listingSeasonNote(raw)).toBe(note);
+    expect(versionScreeningNote(raw)).toBeNull();
+    expect(cleanFilmTitle(result.cleanedTitle)).toBe(title);
+  });
+
+  it("keeps a film's own colon after the MUBI Fest prefix", () => {
+    expect(cleanFilmTitle("MUBI FEST LIVE: 28 Years Later: The Bone Temple")).toBe(
+      "28 Years Later: The Bone Temple",
+    );
+  });
+
+  it.each([
+    directorsCut,
+    "Little Shop of Horrors (Director's Cut)",
+    "Little Shop of Horrors (DIRECTOR'S CUT)",
+    "Little Shop of Horrors (The Director's Cut)",
+    "Brazil (director\u2019s cut)",
+  ])("strips the director's cut parenthetical from %s", (raw) => {
+    const result = cleanFilmTitleWithMetadata(raw);
+    expect(result.cleanedTitle).toBe(raw.startsWith("Brazil") ? "Brazil" : "Little Shop of Horrors");
+    expect(versionScreeningNote(raw)).toBe("Director's Cut");
+    expect(listingEventNote(raw)).toBeNull();
+    expect(cleanFilmTitle(result.cleanedTitle)).toBe(result.cleanedTitle);
+  });
+
+  it.each([
+    "Little Shop of Horrors",
+    "Director's Cut",
+    "The Director",
+    "Brazil: Director's Cut",
+    "A Long Winter",
+    "THE SECRET AGENT",
+    "Sundance Film Festival: The First 25 Years",
+    "Dune: Part Two",
+  ])("does not invent a MUBI or director's-cut note for %s", (title) => {
+    expect(listingSeasonNote(title)).toBeNull();
+    expect(versionScreeningNote(title)).toBeNull();
+  });
+
+  it("still peels the colon form of a director's cut", () => {
+    expect(cleanFilmTitle("Brazil: Director's Cut")).toBe("Brazil");
+    expect(cleanFilmTitle("Brazil: Director\u2019s Cut")).toBe("Brazil");
+    expect(versionScreeningNote("Brazil: Director's Cut")).toBeNull();
   });
 });
