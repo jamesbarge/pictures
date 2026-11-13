@@ -14,6 +14,10 @@
  * Album titles that lost their closing quote are renamed, or their upcoming
  * screenings move onto a film that already has the quote. A note that is
  * only the stray quote plus the anniversary is rewritten without the quote.
+ *
+ * A unique-key collision leaves the original screening in place. Festival
+ * tags and user schedule rows cascade-delete with a screening, so this
+ * script does not delete one.
  */
 
 import { and, eq, gte } from "drizzle-orm";
@@ -31,6 +35,13 @@ const execute = process.argv.includes("--execute");
 
 function log(line: string): void {
   console.log(`${execute ? "APPLY" : "DRY"} ${line}`);
+}
+
+function pgCode(error: unknown): string | undefined {
+  return (
+    (error as { cause?: { code?: string }; code?: string }).cause?.code ??
+    (error as { code?: string }).code
+  );
 }
 
 async function upcomingOf(filmId: string, now: Date) {
@@ -72,12 +83,25 @@ async function repairAlker(now: Date): Promise<void> {
         }
       }
       if (!execute) continue;
-      await db.update(films).set({ title: "Stalker", updatedAt: now }).where(eq(films.id, source.id));
-      for (const screening of rows) {
-        const sourceId = restoredAlkerSourceId(screening.sourceId);
-        if (sourceId === screening.sourceId) continue;
-        await db.update(screenings).set({ sourceId, updatedAt: now }).where(eq(screenings.id, screening.id));
-      }
+      await db.transaction(async (tx) => {
+        await tx.update(films).set({ title: "Stalker", updatedAt: now }).where(eq(films.id, source.id));
+        for (const screening of rows) {
+          const sourceId = restoredAlkerSourceId(screening.sourceId);
+          if (!sourceId || sourceId === screening.sourceId) continue;
+          const taken = await tx
+            .select({ id: screenings.id })
+            .from(screenings)
+            .where(and(eq(screenings.cinemaId, screening.cinemaId), eq(screenings.sourceId, sourceId)));
+          if (taken.length > 0) {
+            log(`  sourceId ${sourceId} already used by ${taken[0].id}; kept ${screening.sourceId}`);
+            continue;
+          }
+          await tx
+            .update(screenings)
+            .set({ sourceId, updatedAt: now })
+            .where(eq(screenings.id, screening.id));
+        }
+      });
       continue;
     }
 
@@ -92,18 +116,49 @@ async function repairAlker(now: Date): Promise<void> {
           (sourceId === screening.sourceId ? "" : ` sourceId ${screening.sourceId} → ${sourceId}`),
       );
       if (!execute) continue;
+      const already = await db
+        .select({ id: screenings.id })
+        .from(screenings)
+        .where(
+          and(
+            eq(screenings.filmId, canonical.id),
+            eq(screenings.cinemaId, screening.cinemaId),
+            eq(screenings.datetime, screening.datetime),
+          ),
+        );
+      if (already.length > 0) {
+        log(
+          `  screening ${screening.id} left in place: Stalker already has ${screening.cinemaId} at ${screening.datetime.toISOString()} (${already[0].id})`,
+        );
+        continue;
+      }
       try {
         await db
           .update(screenings)
-          .set({ filmId: canonical.id, sourceId, updatedAt: now })
+          .set({ filmId: canonical.id, updatedAt: now })
           .where(eq(screenings.id, screening.id));
       } catch (error) {
-        const code =
-          (error as { cause?: { code?: string }; code?: string }).cause?.code ??
-          (error as { code?: string }).code;
-        if (code !== "23505") throw error;
-        log(`  screening ${screening.id} already exists on Stalker; deleting the extra`);
-        await db.delete(screenings).where(eq(screenings.id, screening.id));
+        if (pgCode(error) !== "23505") throw error;
+        log(`  screening ${screening.id} left in place: film move hit a unique key`);
+        continue;
+      }
+      if (!sourceId || sourceId === screening.sourceId) continue;
+      const taken = await db
+        .select({ id: screenings.id })
+        .from(screenings)
+        .where(and(eq(screenings.cinemaId, screening.cinemaId), eq(screenings.sourceId, sourceId)));
+      if (taken.length > 0) {
+        log(`  sourceId ${sourceId} already used by ${taken[0].id}; kept ${screening.sourceId}`);
+        continue;
+      }
+      try {
+        await db
+          .update(screenings)
+          .set({ sourceId, updatedAt: now })
+          .where(eq(screenings.id, screening.id));
+      } catch (error) {
+        if (pgCode(error) !== "23505") throw error;
+        log(`  sourceId ${sourceId} collided; kept ${screening.sourceId}`);
       }
     }
   }
@@ -126,6 +181,22 @@ async function repairQuotedAlbums(now: Date): Promise<void> {
           const note = noteWithoutStrayQuote(screening.eventDescription);
           log(`  screening ${screening.id} ${screening.cinemaId} ${screening.datetime.toISOString()}`);
           if (!execute) continue;
+          const already = await db
+            .select({ id: screenings.id })
+            .from(screenings)
+            .where(
+              and(
+                eq(screenings.filmId, canonical.id),
+                eq(screenings.cinemaId, screening.cinemaId),
+                eq(screenings.datetime, screening.datetime),
+              ),
+            );
+          if (already.length > 0) {
+            log(
+              `  screening ${screening.id} left in place: "${repair.to}" already has ${screening.cinemaId} at ${screening.datetime.toISOString()} (${already[0].id})`,
+            );
+            continue;
+          }
           try {
             await db
               .update(screenings)
@@ -136,12 +207,8 @@ async function repairQuotedAlbums(now: Date): Promise<void> {
               })
               .where(eq(screenings.id, screening.id));
           } catch (error) {
-            const code =
-              (error as { cause?: { code?: string }; code?: string }).cause?.code ??
-              (error as { code?: string }).code;
-            if (code !== "23505") throw error;
-            log(`  screening ${screening.id} already exists on "${repair.to}"; deleting the extra`);
-            await db.delete(screenings).where(eq(screenings.id, screening.id));
+            if (pgCode(error) !== "23505") throw error;
+            log(`  screening ${screening.id} left in place: film move hit a unique key`);
           }
         }
         continue;
@@ -153,15 +220,17 @@ async function repairQuotedAlbums(now: Date): Promise<void> {
         if (note) log(`  note on ${screening.id}: ${JSON.stringify(screening.eventDescription)} → ${JSON.stringify(note)}`);
       }
       if (!execute) continue;
-      await db.update(films).set({ title: repair.to, updatedAt: now }).where(eq(films.id, source.id));
-      for (const screening of rows) {
-        const note = noteWithoutStrayQuote(screening.eventDescription);
-        if (!note) continue;
-        await db
-          .update(screenings)
-          .set({ eventDescription: note, updatedAt: now })
-          .where(eq(screenings.id, screening.id));
-      }
+      await db.transaction(async (tx) => {
+        await tx.update(films).set({ title: repair.to, updatedAt: now }).where(eq(films.id, source.id));
+        for (const screening of rows) {
+          const note = noteWithoutStrayQuote(screening.eventDescription);
+          if (!note) continue;
+          await tx
+            .update(screenings)
+            .set({ eventDescription: note, updatedAt: now })
+            .where(eq(screenings.id, screening.id));
+        }
+      });
     }
   }
 }

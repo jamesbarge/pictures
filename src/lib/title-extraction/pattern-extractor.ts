@@ -18,7 +18,6 @@ import {
   PRESENTS_PATTERN,
   REVIEWED_WRAPPER_PREFIXES,
   stripTerminalDecorations,
-  unwrapQuotedTitle,
   SINGALONG_PATTERN,
   DOUBLE_FEATURE_PATTERN,
   FESTIVAL_PREFIXES,
@@ -26,6 +25,32 @@ import {
   escapeRegex,
 } from "./patterns";
 import { decodeHtmlEntities } from "../title-patterns";
+
+const WRAPPING_QUOTES: ReadonlyArray<readonly [string, string]> = [
+  ['"', '"'],
+  ["'", "'"],
+  ["\u201C", "\u201D"],
+  ["\u2018", "\u2019"],
+];
+
+/**
+ * Remove one matching pair of quotes from the two ends of a title.
+ * The inside may contain the same mark (`'Singin' in the Rain'`). A title
+ * that merely ends in a quote is left alone.
+ */
+function stripWrappingQuotePair(title: string): string {
+  const trimmed = title.trim();
+  for (const [open, close] of WRAPPING_QUOTES) {
+    if (
+      trimmed.length > open.length + close.length &&
+      trimmed.startsWith(open) &&
+      trimmed.endsWith(close)
+    ) {
+      return trimmed.slice(open.length, trimmed.length - close.length).trim();
+    }
+  }
+  return trimmed;
+}
 
 /** Confidence when no extraction is needed — title used as-is */
 const FULL_CONFIDENCE = 1.0;
@@ -160,14 +185,14 @@ export function extractFilmTitleSync(title: string): PatternExtractionResult {
     }
   }
 
-  // Collapse whitespace, then drop quotes that wrap the whole title
-  // ("The Long Day Closes"). A trailing quote that only closes an inner
-  // quotation stays: "My Bloody Valentine 'Loveless'" was losing its
-  // closer once "(35th Anniversary)" had been stripped, and the stored
-  // title was "My Bloody Valentine 'Loveless".
+  // Collapse whitespace, then drop one pair of quotes that wraps the whole
+  // title, including a name with its own apostrophe ("'Singin' in the Rain'").
+  // A trailing quote that only closes an inner quotation stays: the title
+  // does not start with a quote, so "My Bloody Valentine 'Loveless'" keeps
+  // both of its marks.
   extracted = extracted.replace(/\s+/g, " ").trim();
   for (let pass = 0; pass < 2; pass++) {
-    const unwrapped = unwrapQuotedTitle(extracted);
+    const unwrapped = stripWrappingQuotePair(extracted);
     if (unwrapped === extracted) break;
     extracted = unwrapped;
   }

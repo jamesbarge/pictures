@@ -319,6 +319,12 @@ describe("extractFilmTitleSync", () => {
         "The Long Day Closes",
       );
       expect(extractFilmTitleSync("'Paris Is Burning'").extractedTitle).toBe("Paris Is Burning");
+      expect(extractFilmTitleSync("'Singin' in the Rain'").extractedTitle).toBe(
+        "Singin' in the Rain",
+      );
+      expect(extractFilmTitleSync("'It's a Wonderful Life'").extractedTitle).toBe(
+        "It's a Wonderful Life",
+      );
     });
 
     it("decodes the Rio Hackney fest listing's &amp;", () => {
