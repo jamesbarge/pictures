@@ -34,26 +34,32 @@ const WRAPPING_QUOTES: ReadonlyArray<readonly [string, string]> = [
 ];
 
 /**
- * Remove one matching pair of quotes from the two ends of a title.
- * The inside may contain the same mark (`'Singin' in the Rain'`). A title
- * that merely ends in a quote is left alone.
+ * A mark that closes one quotation and another that opens the next, as in
+ * `Film A' + 'Film B`. A single apostrophe does not count: `It's`, `Singin'`,
+ * or a leading elision such as `'Burbs`, `'Round`, `'71`.
  */
-/** A `'` between letters, or after a letter at a word end (`It's`, `Singin'`). */
-function isApostrophe(text: string, index: number): boolean {
-  const prev = text[index - 1];
-  const next = text[index + 1];
-  if (prev === undefined || !/\p{L}/u.test(prev)) return false;
-  return next === undefined || next === " " || /\p{L}/u.test(next);
-}
-
-/** A quote that opens or closes its own quotation, not an apostrophe. */
-function hasQuotationDelimiter(inner: string, quote: string): boolean {
+function hasSeparateQuotations(inner: string, quote: string): boolean {
+  let closes = false;
+  let opens = false;
   for (let i = 0; i < inner.length; i++) {
-    if (inner[i] === quote && !isApostrophe(inner, i)) return true;
+    if (inner[i] !== quote) continue;
+    const prev = inner[i - 1];
+    const next = inner[i + 1];
+    const prevLetter = prev !== undefined && /\p{L}/u.test(prev);
+    const nextLetter = next !== undefined && /[\p{L}\p{N}]/u.test(next);
+    if (prevLetter && nextLetter) continue;
+    if (prevLetter) closes = true;
+    if (nextLetter && (prev === undefined || /\s/.test(prev))) opens = true;
   }
-  return false;
+  return closes && opens;
 }
 
+/**
+ * Remove one matching pair of quotes from the two ends of a title.
+ * The inside may contain an apostrophe (`'Singin' in the Rain'`,
+ * `'The 'Burbs'`). A title that merely ends in a quote is left alone, and
+ * so is a string whose inside quotes are separate quotations.
+ */
 function stripWrappingQuotePair(title: string): string {
   const trimmed = title.trim();
   for (const [open, close] of WRAPPING_QUOTES) {
@@ -65,10 +71,7 @@ function stripWrappingQuotePair(title: string): string {
       continue;
     }
     const inner = trimmed.slice(open.length, trimmed.length - close.length);
-    // `'Film A' + 'Film B'` starts and ends with a quote, and the inner
-    // quotes are their own pair. Leave that whole string alone. `'Singin'
-    // in the Rain'` has only an apostrophe inside, so the wrapper goes.
-    if (open === close && hasQuotationDelimiter(inner, open)) return trimmed;
+    if (open === close && hasSeparateQuotations(inner, open)) return trimmed;
     return inner.trim();
   }
   return trimmed;
