@@ -1,6 +1,6 @@
 # Listings QA: truncated Stalker and unmatched album quotes
 
-**PR**: (opened with this change)
+**PR**: #867
 **Date**: 2026-11-13
 
 ## Changes
