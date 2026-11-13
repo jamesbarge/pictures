@@ -326,12 +326,19 @@ describe("extractFilmTitleSync", () => {
         "It's a Wonderful Life",
       );
       expect(extractFilmTitleSync("'The 'Burbs'").extractedTitle).toBe("The 'Burbs");
+      expect(extractFilmTitleSync("'Rock 'n' Roll'").extractedTitle).toBe("Rock 'n' Roll");
       expect(extractFilmTitleSync("''Round Midnight'").extractedTitle).toBe("'Round Midnight");
       expect(extractFilmTitleSync("''71'").extractedTitle).toBe("'71");
       // A suffix strip skips the double-feature split. The outer quotes stay,
       // because the inner quotes are their own pair, not apostrophes.
       expect(extractFilmTitleSync("'Film A' + 'Film B' (4K Restoration)").extractedTitle).toBe(
         "'Film A' + 'Film B'",
+      );
+      expect(extractFilmTitleSync("'2001' + 'Solaris' (4K Restoration)").extractedTitle).toBe(
+        "'2001' + 'Solaris'",
+      );
+      expect(extractFilmTitleSync("'Film!' + 'Other' (4K Restoration)").extractedTitle).toBe(
+        "'Film!' + 'Other'",
       );
     });
 

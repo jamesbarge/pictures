@@ -34,24 +34,28 @@ const WRAPPING_QUOTES: ReadonlyArray<readonly [string, string]> = [
 ];
 
 /**
- * A mark that closes one quotation and another that opens the next, as in
- * `Film A' + 'Film B`. A single apostrophe does not count: `It's`, `Singin'`,
- * or a leading elision such as `'Burbs`, `'Round`, `'71`.
+ * A closing quote that comes before a later opening quote, as in
+ * `Film A' + 'Film B` or `2001' + 'Solaris`. Order matters: `'n'` is an
+ * opening quote, then a letter, then a closing quote, so `Rock 'n' Roll`
+ * is one title. `It's`, `Singin'`, `'Burbs` and `'71` have only one side.
  */
 function hasSeparateQuotations(inner: string, quote: string): boolean {
-  let closes = false;
-  let opens = false;
+  let closerAt = -1;
   for (let i = 0; i < inner.length; i++) {
     if (inner[i] !== quote) continue;
     const prev = inner[i - 1];
     const next = inner[i + 1];
-    const prevLetter = prev !== undefined && /\p{L}/u.test(prev);
-    const nextLetter = next !== undefined && /[\p{L}\p{N}]/u.test(next);
-    if (prevLetter && nextLetter) continue;
-    if (prevLetter) closes = true;
-    if (nextLetter && (prev === undefined || /\s/.test(prev))) opens = true;
+    const prevWord = prev !== undefined && /[\p{L}\p{N}]/u.test(prev);
+    const nextWord = next !== undefined && /[\p{L}\p{N}]/u.test(next);
+    // `It's` and `O'Brien`: the mark sits inside a word.
+    if (prevWord && nextWord) continue;
+    const opens = nextWord && (prev === undefined || /\s/.test(prev));
+    // A closer can follow a letter, a digit (`2001'`) or punctuation (`Film!'`).
+    const closes = prev !== undefined && !/\s/.test(prev) && (next === undefined || !nextWord);
+    if (closes) closerAt = i;
+    if (opens && closerAt !== -1 && i > closerAt) return true;
   }
-  return closes && opens;
+  return false;
 }
 
 /**
