@@ -18,6 +18,7 @@ import {
   PRESENTS_PATTERN,
   REVIEWED_WRAPPER_PREFIXES,
   stripTerminalDecorations,
+  unwrapQuotedTitle,
   SINGALONG_PATTERN,
   DOUBLE_FEATURE_PATTERN,
   FESTIVAL_PREFIXES,
@@ -159,11 +160,17 @@ export function extractFilmTitleSync(title: string): PatternExtractionResult {
     }
   }
 
-  // Clean up remaining artifacts
-  extracted = extracted
-    .replace(/\s+/g, " ")
-    .replace(/^["'"'\u201C\u201D]+|["'"'\u201C\u201D]+$/g, "")
-    .trim();
+  // Collapse whitespace, then drop quotes that wrap the whole title
+  // ("The Long Day Closes"). A trailing quote that only closes an inner
+  // quotation stays: "My Bloody Valentine 'Loveless'" was losing its
+  // closer once "(35th Anniversary)" had been stripped, and the stored
+  // title was "My Bloody Valentine 'Loveless".
+  extracted = extracted.replace(/\s+/g, " ").trim();
+  for (let pass = 0; pass < 2; pass++) {
+    const unwrapped = unwrapQuotedTitle(extracted);
+    if (unwrapped === extracted) break;
+    extracted = unwrapped;
+  }
 
   // If we extracted something meaningful
   if (extracted !== original && extracted.length > 0) {

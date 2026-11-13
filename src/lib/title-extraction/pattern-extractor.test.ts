@@ -9,6 +9,7 @@
 import { describe, it, expect } from "vitest";
 import { extractFilmTitleSync } from "./pattern-extractor";
 import { generateSearchVariations } from "./search-variants";
+import { cleanFilmTitle } from "@/scrapers/utils/film-title-cleaner";
 
 describe("extractFilmTitleSync", () => {
   describe("event prefix removal", () => {
@@ -274,6 +275,50 @@ describe("extractFilmTitleSync", () => {
     it("should decode &#39; entities", () => {
       const result = extractFilmTitleSync("Classic Matinee: Singin&#39; in the Rain");
       expect(result.extractedTitle).toBe("Singin' in the Rain");
+    });
+
+    it("keeps the closing quote of an album title once the anniversary is gone", () => {
+      // Riverside and Castle, 13 Nov 2026. The anniversary suffix used to
+      // leave the closer at the end of the string, and the old edge-quote
+      // strip ate it. The venue writes a space, not a colon, before the album.
+      const cases = [
+        "Pitchblack Playback: My Bloody Valentine 'Loveless' (35th Anniversary)",
+        "Pitchblack Premiere: Primal Scream 'Screamadelica' (35th Anniversary)",
+        "Pitchblack Playback: Joni Mitchell 'Hejira' (50th Anniversary)",
+      ];
+      for (const title of cases) {
+        const result = extractFilmTitleSync(title);
+        expect(result.extractedTitle.endsWith("'")).toBe(true);
+        expect(result.extractedTitle).not.toMatch(/anniversary/i);
+      }
+      const loveless = extractFilmTitleSync(
+        "Pitchblack Playback: My Bloody Valentine 'Loveless' (35th Anniversary)",
+      ).extractedTitle;
+      expect(loveless).toBe("Pitchblack Playback: My Bloody Valentine 'Loveless'");
+      // The pipeline cleans the extractor's title again. The strand and the
+      // anniversary go; both quotes around the album stay.
+      expect(cleanFilmTitle(loveless)).toBe("My Bloody Valentine 'Loveless'");
+      expect(
+        cleanFilmTitle(
+          extractFilmTitleSync(
+            "Pitchblack Premiere: Primal Scream 'Screamadelica' (35th Anniversary)",
+          ).extractedTitle,
+        ),
+      ).toBe("Primal Scream 'Screamadelica'");
+      expect(
+        cleanFilmTitle(
+          extractFilmTitleSync(
+            "Pitchblack Playback: Joni Mitchell 'Hejira' (50th Anniversary)",
+          ).extractedTitle,
+        ),
+      ).toBe("Joni Mitchell 'Hejira'");
+    });
+
+    it("still unwraps a title that is quoted all the way around", () => {
+      expect(extractFilmTitleSync('"The Long Day Closes"').extractedTitle).toBe(
+        "The Long Day Closes",
+      );
+      expect(extractFilmTitleSync("'Paris Is Burning'").extractedTitle).toBe("Paris Is Burning");
     });
 
     it("decodes the Rio Hackney fest listing's &amp;", () => {

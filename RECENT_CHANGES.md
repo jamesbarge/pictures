@@ -1,3 +1,10 @@
+## 2026-11-13: Listings QA — Stalker tail and album quotes
+**PR**: (this change) | **Files**: `src/lib/title-extraction/pattern-extractor.ts`, `src/scrapers/cinemas/close-up.ts`, `scripts/repair-listings-qa-2026-11-13.ts`
+- A trailing quote that closes an album name is no longer stripped with the anniversary. Riverside's `My Bloody Valentine 'Loveless'` and the same shape on Primal Scream and Joni Mitchell stay quoted.
+- Close-Up's `alker` on TicketSource `e-eaoamek` is restored to `Stalker` when the same booking URL also has the full title. The search-page source id follows.
+- `scripts/repair-listings-qa-2026-11-13.ts` rewrites the rows already stored. Dry run unless `--execute`. Not run against production.
+
+---
 ## 2026-10-25: Remove the homepage STARTING SOON strip
 **PR**: #845 | **Files**: `frontend/src/routes/+page.svelte`, `frontend/src/lib/components/calendar/FigmaTextDay.svelte`, `frontend/src/lib/analytics/posthog.ts`, `frontend/test-all.spec.ts`, `frontend/tests/mobile.spec.ts`
 - The homepage opens on the first day of poster cards again. The STARTING SOON strip from #762 is gone, with its once-a-minute clock and `.soon` CSS.
