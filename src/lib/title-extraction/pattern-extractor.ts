@@ -38,16 +38,38 @@ const WRAPPING_QUOTES: ReadonlyArray<readonly [string, string]> = [
  * The inside may contain the same mark (`'Singin' in the Rain'`). A title
  * that merely ends in a quote is left alone.
  */
+/** A `'` between letters, or after a letter at a word end (`It's`, `Singin'`). */
+function isApostrophe(text: string, index: number): boolean {
+  const prev = text[index - 1];
+  const next = text[index + 1];
+  if (prev === undefined || !/\p{L}/u.test(prev)) return false;
+  return next === undefined || next === " " || /\p{L}/u.test(next);
+}
+
+/** A quote that opens or closes its own quotation, not an apostrophe. */
+function hasQuotationDelimiter(inner: string, quote: string): boolean {
+  for (let i = 0; i < inner.length; i++) {
+    if (inner[i] === quote && !isApostrophe(inner, i)) return true;
+  }
+  return false;
+}
+
 function stripWrappingQuotePair(title: string): string {
   const trimmed = title.trim();
   for (const [open, close] of WRAPPING_QUOTES) {
     if (
-      trimmed.length > open.length + close.length &&
-      trimmed.startsWith(open) &&
-      trimmed.endsWith(close)
+      trimmed.length <= open.length + close.length ||
+      !trimmed.startsWith(open) ||
+      !trimmed.endsWith(close)
     ) {
-      return trimmed.slice(open.length, trimmed.length - close.length).trim();
+      continue;
     }
+    const inner = trimmed.slice(open.length, trimmed.length - close.length);
+    // `'Film A' + 'Film B'` starts and ends with a quote, and the inner
+    // quotes are their own pair. Leave that whole string alone. `'Singin'
+    // in the Rain'` has only an apostrophe inside, so the wrapper goes.
+    if (open === close && hasQuotationDelimiter(inner, open)) return trimmed;
+    return inner.trim();
   }
   return trimmed;
 }

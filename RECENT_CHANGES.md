@@ -1,5 +1,5 @@
 ## 2026-11-13: Listings QA — Stalker tail and album quotes
-**PR**: #867 | **Files**: `src/lib/title-extraction/pattern-extractor.ts`, `src/scrapers/cinemas/close-up.ts`, `scripts/repair-listings-qa-2026-11-13.ts`
+**PR**: #867 | **Files**: `src/lib/title-extraction/pattern-extractor.ts`, `src/scrapers/cinemas/close-up.ts`, `scripts/repair-listings-qa-2026-11-13.ts`, `frontend/test-all.spec.ts`
 - A trailing quote that closes an album name is no longer stripped with the anniversary. Riverside's `My Bloody Valentine 'Loveless'` and the same shape on Primal Scream and Joni Mitchell stay quoted.
 - Close-Up's `alker` on TicketSource `e-eaoamek` is restored to `Stalker` when the same booking URL also has the full title. The search-page source id follows.
 - `scripts/repair-listings-qa-2026-11-13.ts` rewrites the rows already stored. Dry run unless `--execute`. Not run against production.
