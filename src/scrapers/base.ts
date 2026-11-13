@@ -6,6 +6,7 @@
 import * as cheerio from "cheerio";
 import type { RawScreening, ScraperConfig, CinemaScraper } from "./types";
 import { CHROME_USER_AGENT_FULL } from "./constants";
+import { fetchTextWithEscalation } from "./fetch/tiered-fetch";
 import type { PreFilterReason, PreFilterReport } from "./utils/screening-accounting";
 
 export abstract class BaseScraper implements CinemaScraper {
@@ -206,20 +207,19 @@ export abstract class BaseScraper implements CinemaScraper {
     // Rate limiting delay
     await this.delay(this.config.delayBetweenRequests);
 
-    const response = await fetch(url, {
+    // Direct first; escalates to Firecrawl only on a bot block (see
+    // fetch/tiered-fetch.ts). Errors keep the `HTTP <status>` shape callers
+    // classify on.
+    const { body } = await fetchTextWithEscalation(url, {
       headers: {
         "User-Agent": CHROME_USER_AGENT_FULL,
         Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Accept-Language": "en-GB,en;q=0.9",
       },
-      signal: AbortSignal.timeout(30_000),
+      timeoutMs: 30_000,
+      label: this.config.cinemaId,
     });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-
-    return response.text();
+    return body;
   }
 
   /**

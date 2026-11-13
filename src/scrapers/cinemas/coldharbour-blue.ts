@@ -89,22 +89,30 @@ export class ColdharbourBlueScraper implements CinemaScraper {
     console.log(`[coldharbour-blue] Fetching from WordPress Events Calendar API...`);
 
     try {
-      const response = await fetch(`${this.apiUrl}?per_page=100`, {
-        headers: {
-          "Accept": "application/json",
-          "User-Agent": CHROME_USER_AGENT,
-          "Referer": "https://www.coldharbourblue.com/",
-        },
-      });
+      // Follow total_pages (capped at 10) so a long programme isn't truncated
+      // at the first 100 events.
+      const events: TribeEvent[] = [];
+      let totalPages = 1;
+      for (let page = 1; page <= Math.min(totalPages, 10); page++) {
+        const response = await fetch(`${this.apiUrl}?per_page=100&page=${page}`, {
+          headers: {
+            "Accept": "application/json",
+            "User-Agent": CHROME_USER_AGENT,
+            "Referer": "https://www.coldharbourblue.com/",
+          },
+        });
 
-      if (!response.ok) {
-        throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+        if (!response.ok) {
+          throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+        }
+
+        const data: TribeEventsResponse = await response.json();
+        events.push(...data.events);
+        totalPages = data.total_pages || 1;
       }
+      console.log(`[coldharbour-blue] API returned ${events.length} events (${totalPages} page(s))`);
 
-      const data: TribeEventsResponse = await response.json();
-      console.log(`[coldharbour-blue] API returned ${data.events.length} events`);
-
-      const screenings = this.convertToRawScreenings(data.events);
+      const screenings = this.convertToRawScreenings(events);
       const validated = this.validate(screenings);
 
       console.log(`[coldharbour-blue] ${validated.length} valid screenings after filtering`);

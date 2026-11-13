@@ -18,6 +18,7 @@
 
 import { chromium, type Browser, type BrowserContext, type Page } from "rebrowser-playwright";
 import { CHROME_USER_AGENT_FULL } from "../constants";
+import { recordTierUse } from "../fetch/tiered-fetch";
 import * as os from "os";
 import * as path from "path";
 
@@ -277,4 +278,107 @@ export async function waitForCloudflare(page: Page, maxWaitSeconds = 60): Promis
   }
 
   return false;
+}
+
+// ---------------------------------------------------------------------------
+// Tier 3: Browserbase remote browser (paid, opt-in via env).
+//
+// A hosted Chromium with residential GB proxies, attached over CDP to the same
+// rebrowser-playwright we use locally — no SDK dependency. Used only after the
+// local persistent/stealth attempts fail a Cloudflare challenge.
+//
+// Fails soft: returns null when BROWSERBASE_API_KEY / BROWSERBASE_PROJECT_ID
+// are unset or the per-process session budget (SCRAPE_BROWSERBASE_MAX_SESSIONS,
+// default 10) is spent.
+// ---------------------------------------------------------------------------
+
+const DEFAULT_BROWSERBASE_MAX_SESSIONS = 10;
+let browserbaseSessionsUsed = 0;
+
+export function browserbaseAvailable(): boolean {
+  const raw = Number(process.env.SCRAPE_BROWSERBASE_MAX_SESSIONS);
+  const max = Number.isFinite(raw) && raw >= 0 ? raw : DEFAULT_BROWSERBASE_MAX_SESSIONS;
+  return Boolean(process.env.BROWSERBASE_API_KEY && process.env.BROWSERBASE_PROJECT_ID) && browserbaseSessionsUsed < max;
+}
+
+export function getBrowserbaseSessionsUsed(): number {
+  return browserbaseSessionsUsed;
+}
+
+/** Best-effort release of a session we created but could not attach to. */
+async function releaseBrowserbaseSession(sessionId: string): Promise<void> {
+  await fetch(`https://api.browserbase.com/v1/sessions/${sessionId}`, {
+    method: "POST",
+    headers: {
+      "X-BB-API-Key": process.env.BROWSERBASE_API_KEY as string,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ projectId: process.env.BROWSERBASE_PROJECT_ID, status: "REQUEST_RELEASE" }),
+    signal: AbortSignal.timeout(15_000),
+  }).catch(() => { /* the session's own timeout still ends it */ });
+}
+
+/**
+ * Open a page in a fresh Browserbase session. Caller MUST call `close()` —
+ * closing the CDP browser ends the (billed) session. Never throws: any failure
+ * returns null (and releases the session if one was created).
+ */
+export async function createRemoteBrowserPage(
+  label: string,
+): Promise<{ page: Page; close: () => Promise<void> } | null> {
+  if (!browserbaseAvailable()) return null;
+
+  let session: { id?: string; connectUrl?: string };
+  try {
+    const response = await fetch("https://api.browserbase.com/v1/sessions", {
+      method: "POST",
+      headers: {
+        "X-BB-API-Key": process.env.BROWSERBASE_API_KEY as string,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        projectId: process.env.BROWSERBASE_PROJECT_ID,
+        proxies: [{ type: "browserbase", geolocation: { country: "GB" } }],
+        browserSettings: { viewport: { width: 1920, height: 1080 } },
+        timeout: 600,
+      }),
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (!response.ok) {
+      const detail = (await response.text().catch(() => "")).slice(0, 200);
+      console.warn(`[${label}] Browserbase session create failed: HTTP ${response.status} ${detail}`);
+      return null;
+    }
+    session = (await response.json()) as { id?: string; connectUrl?: string };
+  } catch (err) {
+    console.warn(`[${label}] Browserbase session create failed: ${err instanceof Error ? err.message : err}`);
+    return null;
+  }
+  browserbaseSessionsUsed++;
+  if (!session.connectUrl) {
+    console.warn(`[${label}] Browserbase session has no connectUrl`);
+    if (session.id) await releaseBrowserbaseSession(session.id);
+    return null;
+  }
+
+  let remote: Browser | null = null;
+  try {
+    remote = await chromium.connectOverCDP(session.connectUrl);
+    const context = remote.contexts()[0] ?? (await remote.newContext());
+    const page = context.pages()[0] ?? (await context.newPage());
+    recordTierUse(label, "browserbase");
+    console.log(`[${label}] Browserbase session ${session.id} opened (GB proxy)`);
+    const connected = remote;
+    return {
+      page,
+      close: async () => {
+        await connected.close().catch(() => { /* session may already be gone */ });
+      },
+    };
+  } catch (err) {
+    console.warn(`[${label}] Browserbase attach failed: ${err instanceof Error ? err.message : err}`);
+    if (remote) await remote.close().catch(() => { /* ignore */ });
+    if (session.id) await releaseBrowserbaseSession(session.id);
+    return null;
+  }
 }

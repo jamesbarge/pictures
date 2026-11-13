@@ -37,7 +37,7 @@
  */
 
 import type { RawScreening, ScraperConfig } from "../types";
-import { createPersistentPage, waitForCloudflare } from "../utils/browser";
+import { createPersistentPage, createRemoteBrowserPage, waitForCloudflare } from "../utils/browser";
 import type { BrowserContext, Page } from "rebrowser-playwright";
 import { parseFilmMetadata } from "../utils/metadata-parser";
 import { FestivalDetector } from "../festivals/festival-detector";
@@ -266,6 +266,34 @@ export class BFIScraper {
         if (context) await context.close().catch(() => { /* may be closed */ });
         // Clean the cold profile dir so /tmp doesn't accumulate per-run dirs.
         await fs.rm(userDataDir, { recursive: true, force: true }).catch(() => { /* best effort */ });
+      }
+    }
+
+    // Tier 3: every local attempt was blocked by Cloudflare — try once from a
+    // Browserbase session (GB residential IP). No-op when unconfigured.
+    if (lastError instanceof BlockedByCloudflareError) {
+      const remote = await createRemoteBrowserPage(this.config.cinemaId);
+      if (remote) {
+        try {
+          console.log(`[${this.config.cinemaId}] Local attempts blocked — retrying via Browserbase...`);
+          await remote.page.goto(url, { waitUntil: "domcontentloaded", timeout: 90_000 });
+          if (!(await waitForCloudflare(remote.page, CLOUDFLARE_WAIT_SECONDS))) {
+            throw new BlockedByCloudflareError("Cloudflare challenge not cleared on Browserbase");
+          }
+          await remote.page.waitForTimeout(1500);
+          const rows = await this.extractSearchResults(remote.page);
+          if (rows === null) {
+            throw new BlockedByCloudflareError("searchResults not found on Browserbase page");
+          }
+          const screenings = this.mapRows(rows);
+          console.log(`[${this.config.cinemaId}] Browserbase: mapped ${screenings.length} screenings from ${rows.length} rows`);
+          return screenings;
+        } catch (err) {
+          lastError = err instanceof Error ? err : new Error(String(err));
+          console.warn(`[${this.config.cinemaId}] Browserbase attempt failed: ${lastError.message}`);
+        } finally {
+          await remote.close();
+        }
       }
     }
 
