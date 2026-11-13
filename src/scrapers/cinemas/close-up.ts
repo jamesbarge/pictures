@@ -42,6 +42,66 @@ import { normalizeUrl } from "../utils/url";
 import { londonParts, parseScreeningDate, ukLocalToUTC } from "../utils/date-parser";
 import { FestivalDetector } from "../festivals/festival-detector";
 
+const MIN_TRUNCATED_SUFFIX = 4;
+const MAX_DROPPED_LETTERS = 3;
+
+/**
+ * Put back letters a listing dropped off the front of a title.
+ *
+ * On 13 Nov 2026 TicketSource e-eaoamek was listed twice: "Stalker" on
+ * 20 Nov and "alker" on 27 Nov. The later date sits past the JSON window.
+ * The parser keeps the text it is given ("Stalker" stays "Stalker"), so the
+ * short title is a mid-word tail of the other showing on that same URL.
+ * The dropped piece is one to three letters. A space before the shared tail
+ * ("The Film" / "Film") is a different title, not a truncated one.
+ */
+export function restoreTruncatedTitle(title: string, candidates: readonly string[]): string {
+  const trimmed = title.trim();
+  if (trimmed.length < MIN_TRUNCATED_SUFFIX) return trimmed;
+  let best: string | null = null;
+  for (const candidate of candidates) {
+    const full = candidate.trim();
+    if (full.length <= trimmed.length || !full.endsWith(trimmed)) continue;
+    const dropped = full.slice(0, full.length - trimmed.length);
+    if (dropped.length < 1 || dropped.length > MAX_DROPPED_LETTERS) continue;
+    if (!/\p{L}$/u.test(dropped) || !/^\p{L}/u.test(trimmed)) continue;
+    if (!best || full.length > best.length) best = full;
+  }
+  return best ?? trimmed;
+}
+
+/** Title slug used in Close-Up's search-page source id. */
+function titleSlug(title: string): string {
+  return title.replace(/\s+/g, "-").toLowerCase();
+}
+
+/**
+ * When two showings share a booking URL and one title is a mid-word tail of
+ * the other, keep the longer title. A search-page source id that was built
+ * from the short title is rewritten so the next scrape updates that row.
+ */
+export function reconcileTruncatedTitles(screenings: RawScreening[]): void {
+  const byUrl = new Map<string, string[]>();
+  for (const screening of screenings) {
+    const url = screening.bookingUrl.trim();
+    if (!url) continue;
+    const list = byUrl.get(url) ?? [];
+    list.push(screening.filmTitle);
+    byUrl.set(url, list);
+  }
+  for (const screening of screenings) {
+    const candidates = byUrl.get(screening.bookingUrl.trim()) ?? [];
+    const restored = restoreTruncatedTitle(screening.filmTitle, candidates);
+    if (restored === screening.filmTitle) continue;
+    const oldSlug = titleSlug(screening.filmTitle);
+    const newSlug = titleSlug(restored);
+    if (screening.sourceId?.endsWith(`-${oldSlug}`)) {
+      screening.sourceId = `${screening.sourceId.slice(0, -oldSlug.length)}${newSlug}`;
+    }
+    screening.filmTitle = restored;
+  }
+}
+
 /** Month name → zero-indexed month number (shared across date-parsing methods). */
 const MONTH_NAMES: Record<string, number> = {
   january: 0, february: 1, march: 2, april: 3, may: 4, june: 5,
@@ -608,6 +668,11 @@ export class CloseUpCinemaScraper extends BaseScraper {
       htmlCount += pageHtmlScreenings.length;
       screenings.push(...pageHtmlScreenings);
     }
+
+    // Same booking URL, one title a mid-word tail of the other: "alker" on
+    // e-eaoamek is "Stalker". Done after both sources are in, so a JSON
+    // showing and a later search-page showing correct each other.
+    reconcileTruncatedTitles(screenings);
 
     console.log(`[${this.config.cinemaId}] Found ${screenings.length} future screenings (JSON: ${jsonCount}, HTML: ${htmlCount})`);
     return screenings;

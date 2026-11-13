@@ -312,9 +312,12 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 			await page.goto(BASE);
 			const cards = page.getByRole('article');
 			await expect(cards.first()).toBeVisible();
-			const title = await cards.first().getAttribute('aria-label');
-			expect(title, 'a loaded film provides the positive search case').toBeTruthy();
-			const matchingFilm = page.getByRole('article', { name: title!, exact: true }).first();
+			const label = await cards.first().getAttribute('aria-label');
+			expect(label, 'a loaded film provides the positive search case').toBeTruthy();
+			// A Sleeper card's accessible name appends " — The Sleeper: …".
+			// Search matches the film title, not that suffix.
+			const filmTitle = label!.split(' — ')[0];
+			const matchingFilm = page.getByRole('article', { name: label!, exact: true }).first();
 			const search = page.getByRole('searchbox', { name: 'Search films, cinemas and directors' });
 			const noMatch = '__pictures_e2e_nonexistent_film__';
 
@@ -330,7 +333,7 @@ test.describe('Pictures London — SvelteKit Frontend', () => {
 
 			// An always-empty search must fail here. Use a real loaded title so
 			// the assertion does not depend on a particular film being programmed.
-			await search.fill(title!.toLowerCase());
+			await search.fill(filmTitle.toLowerCase());
 			await expect(matchingFilm).toBeVisible();
 			// Clear from an empty result set: the positive result already being
 			// visible would not prove that clearing actually restores anything.

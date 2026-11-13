@@ -26,6 +26,61 @@ import {
 } from "./patterns";
 import { decodeHtmlEntities } from "../title-patterns";
 
+const WRAPPING_QUOTES: ReadonlyArray<readonly [string, string]> = [
+  ['"', '"'],
+  ["'", "'"],
+  ["\u201C", "\u201D"],
+  ["\u2018", "\u2019"],
+];
+
+/**
+ * A closing quote that comes before a later opening quote, as in
+ * `Film A' + 'Film B` or `2001' + 'Solaris`. Order matters: `'n'` is an
+ * opening quote, then a letter, then a closing quote, so `Rock 'n' Roll`
+ * is one title. `It's`, `Singin'`, `'Burbs` and `'71` have only one side.
+ */
+function hasSeparateQuotations(inner: string, quote: string): boolean {
+  let closerAt = -1;
+  for (let i = 0; i < inner.length; i++) {
+    if (inner[i] !== quote) continue;
+    const prev = inner[i - 1];
+    const next = inner[i + 1];
+    const prevWord = prev !== undefined && /[\p{L}\p{N}]/u.test(prev);
+    const nextWord = next !== undefined && /[\p{L}\p{N}]/u.test(next);
+    // `It's` and `O'Brien`: the mark sits inside a word.
+    if (prevWord && nextWord) continue;
+    const opens = nextWord && (prev === undefined || /\s/.test(prev));
+    // A closer can follow a letter, a digit (`2001'`) or punctuation (`Film!'`).
+    const closes = prev !== undefined && !/\s/.test(prev) && (next === undefined || !nextWord);
+    if (closes) closerAt = i;
+    if (opens && closerAt !== -1 && i > closerAt) return true;
+  }
+  return false;
+}
+
+/**
+ * Remove one matching pair of quotes from the two ends of a title.
+ * The inside may contain an apostrophe (`'Singin' in the Rain'`,
+ * `'The 'Burbs'`). A title that merely ends in a quote is left alone, and
+ * so is a string whose inside quotes are separate quotations.
+ */
+function stripWrappingQuotePair(title: string): string {
+  const trimmed = title.trim();
+  for (const [open, close] of WRAPPING_QUOTES) {
+    if (
+      trimmed.length <= open.length + close.length ||
+      !trimmed.startsWith(open) ||
+      !trimmed.endsWith(close)
+    ) {
+      continue;
+    }
+    const inner = trimmed.slice(open.length, trimmed.length - close.length);
+    if (open === close && hasSeparateQuotations(inner, open)) return trimmed;
+    return inner.trim();
+  }
+  return trimmed;
+}
+
 /** Confidence when no extraction is needed — title used as-is */
 const FULL_CONFIDENCE = 1.0;
 /** Confidence for "X presents: Y" pattern extraction */
@@ -159,11 +214,17 @@ export function extractFilmTitleSync(title: string): PatternExtractionResult {
     }
   }
 
-  // Clean up remaining artifacts
-  extracted = extracted
-    .replace(/\s+/g, " ")
-    .replace(/^["'"'\u201C\u201D]+|["'"'\u201C\u201D]+$/g, "")
-    .trim();
+  // Collapse whitespace, then drop one pair of quotes that wraps the whole
+  // title, including a name with its own apostrophe ("'Singin' in the Rain'").
+  // A trailing quote that only closes an inner quotation stays: the title
+  // does not start with a quote, so "My Bloody Valentine 'Loveless'" keeps
+  // both of its marks.
+  extracted = extracted.replace(/\s+/g, " ").trim();
+  for (let pass = 0; pass < 2; pass++) {
+    const unwrapped = stripWrappingQuotePair(extracted);
+    if (unwrapped === extracted) break;
+    extracted = unwrapped;
+  }
 
   // If we extracted something meaningful
   if (extracted !== original && extracted.length > 0) {

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { CloseUpCinemaScraper } from "./close-up";
+import { CloseUpCinemaScraper, reconcileTruncatedTitles, restoreTruncatedTitle } from "./close-up";
 import { FestivalDetector } from "../festivals/festival-detector";
 import type { RawScreening } from "../types";
 
@@ -318,6 +318,39 @@ describe("Close-Up challenge fast-fail is unchanged by sweep planning", () => {
     expect(pages).toHaveLength(2); // homepage + 22 Oct
   });
 
+  it("restores a search-page title that dropped its first letters", async () => {
+    // 13 Nov 2026. TicketSource e-eaoamek is Stalker. The JSON showing on
+    // 20 Nov carries that title. The 27 Nov search-page span, past the JSON
+    // window, was read as "alker" and linked to the same event URL.
+    const blink = "https://www.ticketsource.com/close-up-cinema/e-eaoamek";
+    const shows = JSON.stringify([
+      {
+        id: "900",
+        fp_id: "1",
+        title: "Stalker",
+        blink,
+        show_time: "2026-11-20 20:15:00",
+        status: "1",
+        booking_availability: "1",
+        film_url: "/film_programmes/2026/histoires-du-cinema/stalker",
+      },
+    ]);
+    const homepage = `<html><head><script>var shows ='${shows}';</script></head><body></body></html>`;
+    const search = `<html><body>
+      <a href="/search_film_programmes/?date=27-11-2026"></a>
+      <h2>Friday 27 November 2026</h2>
+      <a href="${blink}"><span>08:15 pm                                : alker</span></a>
+    </body></html>`;
+    const { internals } = scraperWith(() => homepage);
+    const screenings = await internals.parsePages([homepage, search]);
+    const later = screenings.find((row) => row.datetime.toISOString() === "2026-11-27T20:15:00.000Z");
+
+    expect(later?.filmTitle).toBe("Stalker");
+    expect(later?.bookingUrl).toBe(blink);
+    expect(later?.sourceId).toMatch(/-stalker$/);
+    expect(later?.sourceId).not.toMatch(/-alker$/);
+  });
+
   it("spends no request on a later attempt once a challenge has been seen", async () => {
     const { internals, requested } = scraperWith(() => {
       throw new Error("HTTP 403: ");
@@ -326,5 +359,42 @@ describe("Close-Up challenge fast-fail is unchanged by sweep planning", () => {
     await expect(internals.fetchPages()).rejects.toThrow(/Cloudflare's challenge \(homepage\)/);
     await expect(internals.fetchPages()).rejects.toThrow(/already seen earlier in this run/);
     expect(requested).toEqual([BASE]);
+  });
+});
+
+describe("restoreTruncatedTitle", () => {
+  it("puts the dropped letters back when the cut is inside the word", () => {
+    expect(restoreTruncatedTitle("alker", ["Stalker", "alker"])).toBe("Stalker");
+  });
+
+  it("leaves a shorter title that is a separate word", () => {
+    expect(restoreTruncatedTitle("Film", ["The Film", "Film"])).toBe("Film");
+  });
+
+  it("leaves a title that only shares a long tail", () => {
+    expect(restoreTruncatedTitle("Matter", ["Vicky Smith – Animated Matter"])).toBe("Matter");
+  });
+});
+
+describe("reconcileTruncatedTitles", () => {
+  it("rewrites the short title and a source id built from it", () => {
+    const rows: RawScreening[] = [
+      {
+        filmTitle: "Stalker",
+        datetime: new Date("2026-11-20T20:15:00Z"),
+        bookingUrl: "https://www.ticketsource.com/close-up-cinema/e-eaoamek",
+        sourceId: "close-up-900-2026-11-20T20:15:00.000Z",
+      },
+      {
+        filmTitle: "alker",
+        datetime: new Date("2026-11-27T20:15:00Z"),
+        bookingUrl: "https://www.ticketsource.com/close-up-cinema/e-eaoamek",
+        sourceId: "close-up-search-2026-11-27T20:15:00.000Z-alker",
+      },
+    ];
+    reconcileTruncatedTitles(rows);
+    expect(rows[1].filmTitle).toBe("Stalker");
+    expect(rows[1].sourceId).toBe("close-up-search-2026-11-27T20:15:00.000Z-stalker");
+    expect(rows[0].filmTitle).toBe("Stalker");
   });
 });
